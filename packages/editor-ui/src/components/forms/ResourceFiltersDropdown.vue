@@ -30,9 +30,11 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<resource-sharing-filter-select
+				<n8n-user-select
+					:users="ownedByUsers"
+					:currentUserId="currentUser.id"
 					:value="value.ownedBy"
-					:related-id="value.sharedWith"
+					size="small"
 					@input="setKeyValue('ownedBy', $event)"
 				/>
 			</enterprise-edition>
@@ -44,9 +46,11 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<resource-sharing-filter-select
+				<n8n-user-select
+					:users="sharedWithUsers"
+					:currentUserId="currentUser.id"
 					:value="value.sharedWith"
-					:related-id="value.ownedBy"
+					size="small"
 					@input="setKeyValue('sharedWith', $event)"
 				/>
 			</enterprise-edition>
@@ -62,15 +66,12 @@
 <script lang="ts">
 import Vue, { PropType } from 'vue';
 import {EnterpriseEditionFeature} from "@/constants";
-import ResourceSharingFilterSelect from "@/components/forms/ResourceSharingFilterSelect.ee.vue";
 import {IResource} from "@/components/layouts/ResourcesListLayout.vue";
+import {IUser} from "@/Interface";
 
 export type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
 export default Vue.extend({
-	components: {
-		ResourceSharingFilterSelect,
-	},
 	props: {
 		value: {
 			type: Object as PropType<IResourceFiltersType>,
@@ -94,6 +95,18 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		currentUser(): IUser {
+			return this.$store.getters['users/currentUser'];
+		},
+		allUsers(): IUser[] {
+			return this.$store.getters['users/allUsers'];
+		},
+		ownedByUsers(): IUser[] {
+			return this.allUsers.map((user) => user.id === this.value.sharedWith ? { ...user, disabled: true } : user);
+		},
+		sharedWithUsers(): IUser[] {
+			return this.allUsers.map((user) => user.id === this.value.ownedBy ? { ...user, disabled: true } : user);
+		},
 		filtersLength(): number {
 			let length = 0;
 

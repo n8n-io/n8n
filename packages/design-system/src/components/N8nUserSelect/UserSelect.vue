@@ -22,6 +22,7 @@
 			:value="user.id"
 			:class="$style.itemContainer"
 			:label="getLabel(user)"
+			:disabled="user.disabled"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 		</el-option>
