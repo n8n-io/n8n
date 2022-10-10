@@ -1,12 +1,19 @@
-import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { ITriggerFunctions } from 'n8n-core';
+import {
+	INodeType,
+	INodeTypeDescription,
+	INodeExecutionData,
+	ITriggerResponse,
+	toCronExpression,
+	TriggerTime,
+} from 'n8n-workflow';
 
 export class ManualTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Manual Trigger',
 		name: 'manualTrigger',
 		icon: 'fa:mouse-pointer',
-		group: ['trigger', 'output'],
+		group: ['trigger', 'input'],
 		version: 1,
 		description: 'Starts the workflow execution on clicking a buton in N8N',
 		maxNodes: 1,
@@ -28,9 +35,13 @@ export class ManualTrigger implements INodeType {
 		],
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const items = this.getInputData();
+	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		const manualTriggerFunction = async () => {
+			this.emit([this.helpers.returnJsonArray([{}])]);
+		};
 
-		return this.prepareOutputData(items);
+		return {
+			manualTriggerFunction,
+		};
 	}
 }
