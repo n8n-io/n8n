@@ -13,6 +13,7 @@ import {
 	EntityTarget,
 	getRepository,
 	LoggerOptions,
+	ObjectLiteral,
 	Repository,
 } from 'typeorm';
 import { TlsOptions } from 'tls';
@@ -38,7 +39,9 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 	return connection.transaction(fn);
 }
 
-export function linkRepository<Entity>(entityClass: EntityTarget<Entity>): Repository<Entity> {
+export function linkRepository<Entity extends ObjectLiteral>(
+	entityClass: EntityTarget<Entity>,
+): Repository<Entity> {
 	return getRepository(entityClass, connection.name);
 }
 
@@ -183,9 +186,12 @@ export async function init(
 		}
 	}
 
+	// @ts-ignore
 	collections.Credentials = linkRepository(entities.CredentialsEntity);
+	// @ts-ignore
 	collections.Execution = linkRepository(entities.ExecutionEntity);
 	collections.Workflow = linkRepository(entities.WorkflowEntity);
+	// @ts-ignore
 	collections.Webhook = linkRepository(entities.WebhookEntity);
 	collections.Tag = linkRepository(entities.TagEntity);
 
