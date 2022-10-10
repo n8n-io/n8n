@@ -6,7 +6,6 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { gitlabApiRequest } from './GenericFunctions';
