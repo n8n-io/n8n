@@ -47,11 +47,11 @@
 	</div>
 </template>
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
 import NodeIcon from '@/components/NodeIcon.vue';
 import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
-import { ITemplatesNode } from '@/Interface';
+import { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 export default Vue.extend({
 	name: 'TemplateDetails',
 	props: {
@@ -62,7 +62,7 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		template: {
-			type: Object,
+			type: Object as PropType<ITemplatesWorkflow | ITemplatesWorkflowFull>,
 		},
 	},
 	components: {
