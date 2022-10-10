@@ -96,21 +96,21 @@ export default Vue.extend({
 	},
 	computed: {
 		availableChildren(): IMenuItem[] {
-			return this.item.children ? this.item.children.filter(child => child.available !== false) : [];
+			return Array.isArray(this.item.children) ? this.item.children.filter(child => child.available !== false) : [];
 		},
 	},
 	methods: {
 		isItemActive(item: IMenuItem): boolean {
 			const isItemActive = this.isActive(item);
-			const childActive = item.children !== undefined && item.children.find(child => this.isActive(child)) !== undefined;
-			return isItemActive || childActive;
+			const hasActiveChild = Array.isArray(item.children) && item.children.some(child => this.isActive(child));
+			return isItemActive || hasActiveChild;
 		},
 		isActive(item: IMenuItem): boolean {
 			if (this.mode === 'router') {
 				if (item.activateOnRoutePaths) {
-					return item.activateOnRoutePaths !== undefined && item.activateOnRoutePaths.includes(this.$route.path);
+					return Array.isArray(item.activateOnRoutePaths) && item.activateOnRoutePaths.includes(this.$route.path);
 				} else if (item.activateOnRouteNames) {
-					return item.activateOnRouteNames !== undefined && item.activateOnRouteNames.includes(this.$route.name || '');
+					return Array.isArray(item.activateOnRouteNames) && item.activateOnRouteNames.includes(this.$route.name || '');
 				}
 				return false;
 			} else {
@@ -160,8 +160,11 @@ export default Vue.extend({
 		padding: var(--spacing-2xs) var(--spacing-xs) !important;
 		user-select: none;
 
-		i:hover {
-			color: var(--color-primary);
+		i {
+			padding-top: 2px;
+			&:hover {
+				color: var(--color-primary);
+			}
 		}
 
 		&:hover {

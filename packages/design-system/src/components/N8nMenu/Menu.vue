@@ -8,7 +8,7 @@
 			<slot name="header"></slot>
 		</div>
 		<div :class="$style.menuContent">
-			<div :class="{[$style.upperContent]: true, ['pt-xs']: $slots.menuPrefix === undefined  }">
+			<div :class="{[$style.upperContent]: true, ['pt-xs']: $slots.menuPrefix }">
 				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
 					<slot name="menuPrefix"></slot>
 				</div>
@@ -30,7 +30,7 @@
 					/>
 				</el-menu>
 			</div>
-			<div :class="{[$style.lowerContent]: true, ['pb-xs']: $slots.menuSuffix === undefined}">
+			<div :class="{[$style.lowerContent]: true, ['pb-xs']: $slots.menuSuffix }">
 				<el-menu
 					:defaultActive="defaultActive"
 					:collapse="collapsed"
@@ -107,8 +107,8 @@ export default Vue.extend({
 	mounted() {
 		if (this.mode === 'router') {
 			const found = this.items.find(item => {
-				return item.activateOnRouteNames !== undefined && (item.activateOnRouteNames ).includes(this.$route.name || '') ||
-					item.activateOnRoutePaths !== undefined && (item.activateOnRoutePaths).includes(this.$route.path);
+				return Array.isArray(item.activateOnRouteNames) && (item.activateOnRouteNames ).includes(this.$route.name || '') ||
+					Array.isArray(item.activateOnRoutePaths) && (item.activateOnRoutePaths).includes(this.$route.path);
 			});
 			this.activeTab = found ? found.id : '';
 		} else {
