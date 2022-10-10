@@ -176,8 +176,8 @@ export default mixins(
 			default: (): IResource[] => [],
 		},
 		initialize: {
-			type: Function as PropType<() => void>,
-			default: () => () => {},
+			type: Function as PropType<() => Promise<void>>,
+			default: () => () => Promise.resolve(),
 		},
 		filters: {
 			type: Object,
@@ -301,12 +301,12 @@ export default mixins(
 			return this.$locale.baseText(`${this.resourceKey as IResourceKeyType}.menu.${this.isOwnerSubview ? 'my' : 'all'}`);
 		},
 		sendSubviewTelemetry() {
-			this.$telemetry.track('User changed credentials sub view', {
+			this.$telemetry.track(`User changed ${this.resourceKey} sub view`, {
 				sub_view: this.getTelemetrySubview(),
 			});
 		},
 		sendSortingTelemetry() {
-			this.$telemetry.track('User changed sorting in cred list', {
+			this.$telemetry.track(`User changed sorting in ${this.resourceKey} list`, {
 				sub_view: this.getTelemetrySubview(),
 				sorting: this.sortBy,
 			});
@@ -333,12 +333,12 @@ export default mixins(
 				}
 			});
 
-			this.$telemetry.track('User set filters in cred list', {
+			this.$telemetry.track(`User set filters in ${this.resourceKey} list`, {
 				filters_set: filtersSet,
 				filter_values: filterValues,
 				sub_view: this.getTelemetrySubview(),
-				creds_total_in_view: this.subviewResources.length,
-				creds_after_filtering: this.filteredAndSortedSubviewResources.length,
+				[`${this.resourceKey}_total_in_view`]: this.subviewResources.length,
+				[`${this.resourceKey}_after_filtering`]: this.filteredAndSortedSubviewResources.length,
 			});
 		},
 		onUpdateFiltersLength(length: number) {
