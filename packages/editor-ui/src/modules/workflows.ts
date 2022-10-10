@@ -51,25 +51,39 @@ const module: Module<IWorkflowsState, IRootState> = {
 
 			return newName;
 		},
-		async loadCurrentWorkflowExecutions(context: ActionContext<IWorkflowsState, IRootState>) {
+		async loadCurrentWorkflowExecutions(context: ActionContext<IWorkflowsState, IRootState>, filter: { finished: boolean, status: string }) {
+			let activeExecutions = [];
+			let finishedExecutions = [];
+			const requestFilter: IDataObject = { workflowId: context.rootGetters.workflowId };
 
 			if (!context.rootGetters.workflowId) {
 				return;
 			}
 			try {
-				const activeExecutions = await makeRestApiRequest(
-					context.rootGetters.getRestApiContext,
-					'GET',
-					`/executions-current`,
-					{ filter: { workflowId: context.rootGetters.workflowId } } as IDataObject,
-				);
-				const finishedExecutions = await makeRestApiRequest(
-					context.rootGetters.getRestApiContext,
-					'GET',
-					'/executions',
-					{ filter: { workflowId: context.rootGetters.workflowId } } as IDataObject,
-				);
-				context.commit('setCurrentWorkflowExecutions', [...activeExecutions, ...finishedExecutions.results]);
+				if (filter.status === ''|| !filter.finished) {
+					activeExecutions = await makeRestApiRequest(
+						context.rootGetters.getRestApiContext,
+						'GET',
+						`/executions-current`,
+						{ filter: requestFilter },
+					);
+				}
+				if (filter.status === '' || filter.finished) {
+					if (filter.status === 'waiting') {
+						requestFilter.waitTill = true;
+					} else if (filter.status !== '')  {
+						requestFilter.finished = filter.status === 'success';
+					}
+					finishedExecutions = await makeRestApiRequest(
+						context.rootGetters.getRestApiContext,
+						'GET',
+						'/executions',
+						{
+							filter: requestFilter,
+						},
+					);
+				}
+				context.commit('setCurrentWorkflowExecutions', [...activeExecutions, ...finishedExecutions.results || []]);
 			} catch (error) {
 				throw(error);
 			}
