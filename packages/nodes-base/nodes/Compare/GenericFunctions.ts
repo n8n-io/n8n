@@ -57,6 +57,28 @@ function compareItems(
 	return { json: { keys, same, different } } as INodeExecutionData;
 }
 
+function combineItems(
+	item1: INodeExecutionData,
+	item2: INodeExecutionData,
+	prefer: string,
+	except: string,
+) {
+	let exceptFields: string[];
+	const [entry, match] = prefer === 'input1' ? [item1, item2] : [item2, item1];
+
+	if (except && Array.isArray(except) && except.length) {
+		exceptFields = except;
+	} else {
+		exceptFields = except ? except.split(',').map((field) => field.trim()) : [];
+	}
+
+	exceptFields.forEach((field) => {
+		entry.json[field] = match.json[field];
+	});
+
+	return entry;
+}
+
 function findAllMatches(
 	data: INodeExecutionData[],
 	lookup: IDataObject,
@@ -188,9 +210,28 @@ export function findMatches(
 			if (isEqual(entryMatches.entry.json, match.json)) {
 				if (!entryCopy) entryCopy = match;
 			} else {
-				different.push(
-					compareItems(entryMatches.entry, match, fieldsToMatch, options.resolve as string),
-				);
+				switch (options.resolve) {
+					case 'preferInput1':
+						different.push(entryMatches.entry);
+						break;
+					case 'preferInput2':
+						different.push(match);
+						break;
+					case 'mix':
+						different.push(
+							combineItems(
+								entryMatches.entry,
+								match,
+								options.preferWhenMix as string,
+								options.exceptWhenMix as string,
+							),
+						);
+						break;
+					default:
+						different.push(
+							compareItems(entryMatches.entry, match, fieldsToMatch, options.resolve as string),
+						);
+				}
 			}
 		});
 		if (!isEmpty(entryCopy)) {

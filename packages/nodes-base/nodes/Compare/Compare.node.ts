@@ -69,11 +69,51 @@ export class Compare implements INodeType {
 						value: 'preferInput2',
 					},
 					{
+						name: 'Use a Mix of Versions',
+						value: 'mix',
+						description: 'Output uses a different input for different fields',
+					},
+					{
 						name: 'Include Both Versions',
 						value: 'includeBoth',
 						description: 'Output contains all data (but structure more complex)',
 					},
 				],
+			},
+			{
+				displayName: 'Prefer',
+				name: 'preferWhenMix',
+				type: 'options',
+				default: 'input1',
+				options: [
+					{
+						name: 'Input 1 Version',
+						value: 'input1',
+					},
+					{
+						name: 'Input 2 Version',
+						value: 'input2',
+					},
+				],
+				displayOptions: {
+					show: {
+						resolve: ['mix'],
+					},
+				},
+			},
+			{
+				displayName: 'For Everything Except',
+				name: 'exceptWhenMix',
+				type: 'string',
+				default: '',
+				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
+				placeholder: 'e.d. id, country',
+				hint: 'Enter the names of the input fields as text',
+				displayOptions: {
+					show: {
+						resolve: ['mix'],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -97,14 +137,14 @@ export class Compare implements INodeType {
 						default: 'first',
 						options: [
 							{
-								name: 'Include All Matches',
-								value: 'all',
-								description: 'Output multiple items if there are multiple matches',
-							},
-							{
 								name: 'Include First Match Only',
 								value: 'first',
 								description: 'Only ever output a single item per match',
+							},
+							{
+								name: 'Include All Matches',
+								value: 'all',
+								description: 'Output multiple items if there are multiple matches',
 							},
 						],
 					},
@@ -118,11 +158,7 @@ export class Compare implements INodeType {
 			this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
 		);
 
-		const resolve = this.getNodeParameter('resolve', 0, {}) as IDataObject;
-
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
-
-		options.resolve = resolve;
 
 		const input1 = checkInput(
 			this.getInputData(0),
@@ -137,6 +173,14 @@ export class Compare implements INodeType {
 			(options.disableDotNotation as boolean) || false,
 			'Input 2',
 		);
+
+		const resolve = this.getNodeParameter('resolve', 0, '') as string;
+		options.resolve = resolve;
+
+		if (resolve === 'mix') {
+			options.preferWhenMix = this.getNodeParameter('preferWhenMix', 0, '') as string;
+			options.exceptWhenMix = this.getNodeParameter('exceptWhenMix', 0, '') as string;
+		}
 
 		const matches = findMatches(input1, input2, matchFields, options);
 
