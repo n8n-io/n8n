@@ -31,34 +31,6 @@ export class WorkflowStatistics1664196174001 implements MigrationInterface {
 			`ALTER TABLE ${tablePrefix}workflow_entity ADD COLUMN "dataLoaded" BOOLEAN DEFAULT false;`,
 		);
 
-		// Fetch data from executions table to populate statistics table
-		await queryRunner.query(
-			`INSERT INTO ${tablePrefix}workflow_statistics ("count", "latestEvent", "name", "workflowId")
-			SELECT
-			  COUNT("id") as "count",
-				COALESCE(MAX("stoppedAt"), MAX("startedAt")) as "latestEvent",
-				CASE WHEN "finished" = true THEN 'production_success' ELSE 'production_error' END as "name",
-				CAST ("workflowId" AS INTEGER) AS "workflowId"
-			FROM ${tablePrefix}execution_entity
-			WHERE "workflowId" IS NOT NULL
-				AND mode != 'manual'
-			GROUP BY "workflowId", "finished"
-			ORDER BY "workflowId";`,
-		);
-		await queryRunner.query(
-			`INSERT INTO ${tablePrefix}workflow_statistics ("count", "latestEvent", "name", "workflowId")
-			SELECT
-			  COUNT("id") as "count",
-				COALESCE(MAX("stoppedAt"), MAX("startedAt")) as "latestEvent",
-				CASE WHEN "finished" = true THEN 'production_success' ELSE 'production_error' END as "name",
-				CAST ("workflowId" AS INTEGER) AS "workflowId"
-			FROM ${tablePrefix}execution_entity
-			WHERE "workflowId" IS NOT NULL
-				AND mode == 'manual'
-			GROUP BY "workflowId", "finished"
-			ORDER BY "workflowId";`,
-		);
-
 		logMigrationEnd(this.name);
 	}
 
