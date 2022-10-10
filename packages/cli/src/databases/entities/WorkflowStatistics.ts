@@ -1,5 +1,5 @@
 /* eslint-disable import/no-cycle */
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import { Column, Entity, RelationId, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
 import * as config from '../../../config';
 import { DatabaseType } from '../..';
 import { WorkflowEntity } from './WorkflowEntity';
@@ -33,8 +33,12 @@ export class WorkflowStatistics {
 	@PrimaryColumn({ length: 128 })
 	name: string;
 
-	@PrimaryColumn()
-	@ManyToOne(() => WorkflowEntity, (workflowEntity: WorkflowEntity) => workflowEntity.statistics)
-	@JoinColumn({ name: 'workflow', referencedColumnName: 'id' })
+	@ManyToOne(() => WorkflowEntity, (workflow) => workflow.shared, {
+		primary: true,
+		onDelete: 'CASCADE',
+	})
 	workflow: WorkflowEntity;
+
+	@RelationId((workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow)
+	workflowId: number;
 }
