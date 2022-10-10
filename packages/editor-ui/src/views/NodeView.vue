@@ -284,7 +284,7 @@ export default mixins(
 			},
 			containsTrigger(containsTrigger) {
 				// Re-center CanvasAddButton if there's no triggers
-				if (containsTrigger === false) this.setRecenteredCanvasAddButtonPosition();
+				if (containsTrigger === false) this.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
 			},
 		},
 		async beforeRouteLeave(to, from, next) {
@@ -345,7 +345,7 @@ export default mixins(
 				return this.$route.name === VIEWS.EXECUTION;
 			},
 			showCanvasAddButton(): boolean {
-				return this.loadingService === null && !this.containsTrigger && !this.isDemo && !this.isExecutionView
+				return this.loadingService === null && !this.containsTrigger && !this.isDemo && !this.isExecutionView;
 			},
 			lastSelectedNode(): INodeUi | null {
 				return this.$store.getters.lastSelectedNode;
@@ -373,8 +373,8 @@ export default mixins(
 			},
 			canvasAddButtonStyle(): object {
 				return {
-					'pointer-events': this.createNodeActive ? 'none' : 'all'
-				}
+					'pointer-events': this.createNodeActive ? 'none' : 'all',
+				};
 			},
 			backgroundStyle(): object {
 				return CanvasHelpers.getBackgroundStyles(this.nodeViewScale, this.getNodeViewOffsetPosition);
@@ -1220,10 +1220,9 @@ export default mixins(
 				// @ts-ignore
 				this.instance.setZoom(zoomLevel);
 			},
-			setRecenteredCanvasAddButtonPosition () {
-				const offset = this.getNodeViewOffsetPosition;
+			setRecenteredCanvasAddButtonPosition (offset?: XYPosition) {
 
-				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
+				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset || [0, 0]);
 
 				position[0] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
 				position[1] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
@@ -1247,7 +1246,7 @@ export default mixins(
 
 				const extendedNodes = this.containsTrigger
 					? nodes
-					: [...nodes, this.getPlaceholderTriggerNodeUI()];
+					: [this.getPlaceholderTriggerNodeUI(), ...nodes];
 
 				return extendedNodes;
 			},
