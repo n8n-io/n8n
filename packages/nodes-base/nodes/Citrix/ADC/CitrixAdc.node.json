@@ -6,12 +6,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": "https://docs.n8n.io/credentials/citrixAdc"
+				"url": "https://docs.n8n.io/integrations/builtin/credentials/citrixAdc/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.citrixAdc/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.citrixAdc/"
 			}
 		]
 	}
