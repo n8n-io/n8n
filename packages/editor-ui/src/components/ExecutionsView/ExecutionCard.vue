@@ -14,8 +14,14 @@
 			<div :class="$style.description">
 				<n8n-text color="text-dark" :bold="true" size="medium">{{ executionUIDetails.startTime }}</n8n-text>
 				<div>
+					<n8n-spinner v-if="executionUIDetails.name === 'running'" size="small" :class="[$style.spinner, 'mr-4xs']"/>
 					<n8n-text :class="$style.statusLabel" size="small">{{ executionUIDetails.label }}</n8n-text>
-					<n8n-text color="text-base" size="small"> in {{ executionUIDetails.runningTime }}</n8n-text>
+					<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="small">
+						{{ $locale.baseText('executionDetails.runningTimeRunning', { interpolate: { time: executionUIDetails.runningTime } }) }}
+					</n8n-text>
+					<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="small">
+						{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }}
+					</n8n-text>
 				</div>
 			</div>
 			<div :class="$style.icons">
@@ -127,6 +133,16 @@ export default mixins(
 		}
 	}
 
+	&.running {
+		.spinner {
+			position: relative;
+			top: 1px;
+		}
+		&, & .executionLink {
+			border-left: 4px solid #E6A23D;
+		}
+		.statusLabel, .spinner { color: #E6A23D; }
+	}
 	&.success {
 		&, & .executionLink {
 			border-left: 4px solid #29A568;
@@ -140,9 +156,9 @@ export default mixins(
 	}
 	&.error {
 		&, & .executionLink {
-			border-left: 4px solid #FF6D5A;
+			border-left: 4px solid #F45959;
 		}
-		.statusLabel { color: #FF6D5A; }
+		.statusLabel { color: #F45959; }
 	}
 }
 

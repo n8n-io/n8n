@@ -2,8 +2,14 @@
 	<div :class="$style.previewContainer">
 		<div :class="$style.executionDetails" v-if="activeExecution">
 			<n8n-text size="medium" color="text-base" :bold="true">{{ executionUIDetails.startTime }}</n8n-text><br>
+			<n8n-spinner v-if="executionUIDetails.name === 'running'" size="small" :class="[$style.spinner, 'mr-4xs']"/>
 			<n8n-text size="small" :class="[$style.status, $style[executionUIDetails.name]]">{{ executionUIDetails.label }}</n8n-text>
-			<n8n-text size="small" color="text-light"> in {{ executionUIDetails.runningTime }} | ID#{{ activeExecution.id }}</n8n-text>
+			<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="small">
+				{{ $locale.baseText('executionDetails.runningTimeRunning', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
+			</n8n-text>
+			<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="small">
+				{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
+			</n8n-text>
 		</div>
 		<workflow-preview mode="execution" loaderType="spinner" :executionId="executionId"/>
 	</div>
@@ -60,7 +66,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	padding: var(--spacing-m);
 }
 
-.unknown, .waiting, .running { color: var(--color-warning); }
+.unknown, .waiting, .running, .spinner { color: var(--color-warning); }
 .success { color: var(--color-success); }
 .error { color: var(--color-danger); }
 </style>

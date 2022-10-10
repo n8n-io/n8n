@@ -43,6 +43,7 @@ export const executionHelpers = mixins(genericHelpers).extend({
 			} else if (execution.stoppedAt === undefined) {
 				status.name = 'running';
 				status.label = 'Running';
+				status.runningTime = this.displayTimer(new Date().getTime() - new Date(execution.startedAt).getTime(), true);
 			} else if (execution.finished) {
 				status.name = 'success';
 				status.label = 'Succeeded';
