@@ -18,7 +18,6 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
-	IResourceLocatorResult,
 	INodeTypeNameVersion,
 	ILoadOptions,
 	INodeCredentials,
@@ -946,9 +945,15 @@ export interface IUiState {
 		sessionId: string;
 		input: {
 			displayMode: IRunDataDisplayMode;
+			data: {
+				isEmpty: boolean;
+			}
 		};
 		output: {
 			displayMode: IRunDataDisplayMode;
+			data: {
+				isEmpty: boolean;
+			}
 			editMode: {
 				enabled: boolean;
 				value: string;
