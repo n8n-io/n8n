@@ -50,6 +50,7 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFilter,
+	faFlask,
 	faFolderOpen,
 	faGlobeAmericas,
 	faGift,
@@ -169,6 +170,7 @@ addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
 addIcon(faFilter);
+addIcon(faFlask);
 addIcon(faFolderOpen);
 addIcon(faGift);
 addIcon(faGlobeAmericas);

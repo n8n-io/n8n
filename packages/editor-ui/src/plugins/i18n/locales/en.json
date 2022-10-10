@@ -283,6 +283,7 @@
 	"executionsList.selectStatus": "Select Status",
 	"executionsList.selectWorkflow": "Select Workflow",
 	"executionsList.selected": "Selected",
+	"executionsList.manual": "Manual execution",
 	"executionsList.showError.handleDeleteSelected.title": "Problem deleting executions",
 	"executionsList.showError.loadMore.title": "Problem loading executions",
 	"executionsList.showError.loadWorkflows.title": "Problem loading workflows",

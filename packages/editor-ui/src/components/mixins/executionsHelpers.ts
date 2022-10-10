@@ -60,7 +60,10 @@ export const executionHelpers = mixins(genericHelpers).extend({
 			return status;
 		},
 		formatDate(date: Date) {
-			return dateFormat(date.getTime(), 'HH:MM:ss "on" d mmmm');
+			if (date.getFullYear() === new Date().getFullYear()) {
+				return dateFormat(date.getTime(), 'HH:MM:ss "on" d mmm');
+			}
+			return dateFormat(date.getTime(), 'HH:MM:ss "on" d mmm yyyy');
 		},
 	},
 });

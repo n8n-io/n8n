@@ -232,7 +232,7 @@ export const workflowRun = mixins(
 
 				this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
 
-				await this.$store.dispatch('loadCurrentWorkflowActions', this.$store.getters.workflowId);
+				await this.$store.dispatch('loadCurrentWorkflowExecutions', this.$store.getters.workflowId);
 
 				 return runWorkflowApiResponse;
 			} catch (error) {

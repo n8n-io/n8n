@@ -8,7 +8,7 @@
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			</div>
-			<execution-card v-else v-for="execution in executions" :key="execution.id" :execution="execution" />
+			<execution-card v-else v-for="execution in executions" :key="execution.id" :execution="execution" @refresh="loadExecutions"/>
 		</div>
 	</div>
 </template>
@@ -31,6 +31,17 @@ export default mixins(executionHelpers).extend({
 			loading: false,
 		};
 	},
+	watch: {
+		executions(newValue) {
+			const loadedExecutionId = this.$route.params.executionId;
+			if (!this.activeExecution && loadedExecutionId) {
+				const execution = this.$store.getters['workflows/getExecutionDataById'](loadedExecutionId);
+				if (execution) {
+					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
+				}
+			}
+		},
+	},
 	async mounted() {
 		if (!this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
@@ -39,7 +50,7 @@ export default mixins(executionHelpers).extend({
 			if (this.executions.length > 0) {
 				this.$router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: this.currentWorkflow, executionId: this.executions[0].id }
+					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
 				}).catch(()=>{});;
 			}
 		}
@@ -80,7 +91,7 @@ export default mixins(executionHelpers).extend({
 	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
-	padding: var(--spacing-l) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-l);
+	padding: var(--spacing-l) 0 var(--spacing-2xs) var(--spacing-l);
 	z-index: 1;
 	overflow: hidden;
 }
