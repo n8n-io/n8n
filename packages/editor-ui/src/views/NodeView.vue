@@ -695,10 +695,7 @@ export default mixins(
 					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 
 				} else if (e.key === 'Tab') {
-					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
-					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'tab', createNodeActive: this.createNodeActive });
-					this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'tab', workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
-
+					this.onToggleNodeCreator({ source: 'tab', createNodeActive: !this.createNodeActive && !this.isReadOnly });
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
 				} else if (e.key === 'F2' && !this.isReadOnly) {
@@ -1579,7 +1576,7 @@ export default mixins(
 						this.lastSelectedConnection = info.connection;
 					}
 
-					this.openNodeCreator(info.eventSource);
+					this.onToggleNodeCreator({ source: info.eventSource, createNodeActive: true});
 				};
 
 				this.instance.bind('connectionAborted', (connection) => {
@@ -2955,8 +2952,10 @@ export default mixins(
 					connections.forEach(CanvasHelpers.resetConnection);
 				});
 			},
-			onToggleNodeCreator(createNodeActive: boolean) {
+			onToggleNodeCreator({ source, createNodeActive }: { source?: string; createNodeActive: boolean }) {
 				this.createNodeActive = createNodeActive;
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
+				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.$store.getters.workflowId });
 			},
 			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
 				this.addNode(nodeTypeName, { position });

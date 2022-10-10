@@ -13,12 +13,11 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
-import { externalHooks } from "@/components/mixins/externalHooks";
+import Vue from "vue";
 import * as CanvasHelpers from "@/views/canvasHelpers";
 import {DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE} from "@/constants";
 
-export default mixins(externalHooks).extend({
+export default Vue.extend({
 	name: 'node-creation',
 	components: {
 		NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
@@ -63,11 +62,7 @@ export default mixins(externalHooks).extend({
 			document.addEventListener('mousemove', moveCallback, false);
 		},
 		openNodeCreator() {
-			const source = 'add_node_button';
-			const createNodeActive = true;
-			this.$emit('toggleNodeCreator', createNodeActive);
-			this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
-			this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.$store.getters.workflowId });
+			this.$emit('toggleNodeCreator', { source: 'add_node_button', createNodeActive: true });
 		},
 		addStickyNote() {
 			if (document.activeElement) {
@@ -86,7 +81,7 @@ export default mixins(externalHooks).extend({
 			});
 		},
 		closeNodeCreator() {
-			this.$emit('toggleNodeCreator', false);
+			this.$emit('toggleNodeCreator', { createNodeActive: false });
 		},
 		nodeTypeSelected(nodeTypeName: string) {
 			this.$emit('addNode', { nodeTypeName });
