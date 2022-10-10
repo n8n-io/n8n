@@ -91,7 +91,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
-import {CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED} from '@/constants';
+import { CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -183,6 +183,9 @@ export default mixins(
 			});
 
 			return nodes.length === 1;
+		},
+		isManualTypeNode (): boolean {
+			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
 		isTriggerNode (): boolean {
 			return this.$store.getters['nodeTypes/isTriggerNode'](this.data.type);
@@ -382,7 +385,7 @@ export default mixins(
 	},
 	methods: {
 		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
-			if (!this.isTriggerNode) { return; }
+			if (!this.isTriggerNode || this.isManualTypeNode) { return; }
 
 			if (dataItemsCount > 0) {
 				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
