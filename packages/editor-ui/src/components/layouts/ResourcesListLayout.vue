@@ -124,7 +124,6 @@ import mixins from 'vue-typed-mixins';
 
 import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
 import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
-import CredentialCard from "@/components/CredentialCard.vue";
 import {EnterpriseEditionFeature} from "@/constants";
 import TemplateCard from "@/components/TemplateCard.vue";
 import Vue, {PropType} from "vue";
@@ -162,7 +161,6 @@ export default mixins(
 		TemplateCard,
 		PageViewLayout,
 		PageViewLayoutList,
-		CredentialCard,
 		ResourceOwnershipSelect,
 		ResourceFiltersDropdown,
 	},
