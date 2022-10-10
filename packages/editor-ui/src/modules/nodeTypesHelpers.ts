@@ -1,5 +1,5 @@
-import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER, ALL_NODE_FILTER, PERSONALIZED_CATEGORY  } from '@/constants';
-import { INodeCreateElement, ICategoriesWithNodes, INodeItemProps } from '@/Interface';
+import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, PERSONALIZED_CATEGORY  } from '@/constants';
+import { INodeCreateElement, ICategoriesWithNodes } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescription, category: string, subcategory: string) => {

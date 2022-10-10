@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container" :style="containerCssVars" ref="container">
-		<n8n-tooltip placement="top" :value="showTooltip" :disabled="isScrimActive" :popper-class="$style.tooltip">
-			<button :class="$style.button">
+		<n8n-tooltip placement="top" :value="showTooltip" :disabled="isScrimActive" :popper-class="$style.tooltip" :open-delay="700">
+			<button :class="$style.button" @click="$emit('click')">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
 			<template #content>
@@ -46,7 +46,9 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-
+	justify-content: center;
+	width: 100px;
+	height: 100px;
 	position: absolute;
 	top: var(--trigger-placeholder-top-position);
 	left: var(--trigger-placeholder-left-position);
@@ -65,8 +67,8 @@ export default Vue.extend({
 	border-radius: 8px;
 	padding: 0;
 
-	width: 100px;
-	height: 100px;
+	min-width: 100px;
+	min-height: 100px;
 	cursor: pointer;
 
 	svg {

@@ -71,13 +71,13 @@ export default Vue.extend({
 
 .title {
 	font-size: 14px;
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 	line-height: 16px;
 	margin-bottom: 3px;
 }
 
 .description {
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	line-height: 16px;
 	font-weight: 400;
 	color: $node-creator-description-color;
@@ -86,6 +86,7 @@ export default Vue.extend({
 .action {
 	display: flex;
 	align-items: center;
+	margin-left: var(--spacing-2xs);
 }
 
 .arrow {

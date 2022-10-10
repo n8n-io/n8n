@@ -27,8 +27,7 @@
 			<div v-if="searchFilter.length === 0" :class="$style.scrollable">
 				<item-iterator
 					:elements="renderedItems"
-					:disabled="!!activeSubcategory"
-					:activeIndex="activeIndex"
+					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					:transitionsEnabled="true"
 					@selected="selected"
 				/>
@@ -39,7 +38,7 @@
 			>
 				<item-iterator
 					:elements="filteredNodeTypes"
-					:activeIndex="activeIndex"
+					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					@selected="selected"
 				/>
 			</div>
@@ -89,7 +88,7 @@ import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
-import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER } from '@/constants';
+import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
 
@@ -116,6 +115,10 @@ export default mixins(externalHooks).extend({
 			type: Array as PropType<INodeCreateElement[]>,
 			default: () => [],
 		},
+		initialActiveCategories: {
+			type: Array as PropType<string[]>,
+			default: () => [],
+		},
 		initialActiveIndex: {
 			type: Number,
 			default: 1,
@@ -123,7 +126,7 @@ export default mixins(externalHooks).extend({
 	},
 	data() {
 		return {
-			activeCategory: [] as string[],
+			activeCategory: this.initialActiveCategories || [] as string[],
 			// Keep track of activated subcategories so we could traverse back more than one level
 			activeSubcategoryHistory: [] as INodeCreateElement[],
 			activeIndex: this.initialActiveIndex,
@@ -246,7 +249,28 @@ export default mixins(externalHooks).extend({
 		},
 
 		isSearchVisible(): boolean {
-			return this.subcategorizedItems.length === 0 || this.subcategorizedItems.length > 9;
+			if(this.subcategorizedItems.length === 0) return true;
+
+			let totalItems = 0;
+			for (const item of this.subcategorizedItems) {
+				// Category contains many nodes so we need to count all of them
+				// for the current selectedType
+				if(item.type === 'category') {
+					const categoryItems = this.categoriesWithNodes[item.key];
+					const categoryItemsCount = Object.values(categoryItems)?.[0];
+					const countKeys = NODE_TYPE_COUNT_MAPPER[this.selectedType];
+
+					for (const countKey of countKeys) {
+						totalItems += categoryItemsCount[(countKey as "triggerCount" | "regularCount")];
+					}
+
+					continue;
+				}
+				// If it's not category, it must be just a node item so we count it as 1
+				totalItems += 1;
+			}
+
+			return totalItems > 9;
 		},
 	},
 	watch: {
@@ -254,12 +278,15 @@ export default mixins(externalHooks).extend({
 			if(isVisible === false) {
 				// Focus the root container when search is hidden to make sure
 				// keyboard navigation still works
-				(this.$refs.mainPanelContainer as HTMLElement).focus();
+				this.$nextTick(() => {
+					(this.$refs.mainPanelContainer as HTMLElement).focus();
+				});
 			}
 		},
 		nodeFilter(newValue, oldValue) {
 			// Reset the index whenver the filter-value changes
 			this.activeIndex = 0;
+			this.activeSubcategoryIndex = 0;
 			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', {
 				oldValue,
 				newValue,
@@ -284,11 +311,12 @@ export default mixins(externalHooks).extend({
 			this.$emit('nodeTypeSelected', HTTP_REQUEST_NODE_TYPE);
 		},
 		nodeFilterKeyDown(e: KeyboardEvent) {
-			if (!['Escape', 'Tab'].includes(e.key)) {
-				// We only want to propagate 'Escape' as it closes the node-creator and
-				// 'Tab' which toggles it
-				e.stopPropagation();
-			}
+			// We only want to propagate 'Escape' as it closes the node-creator and
+			// 'Tab' which toggles it
+			if (!['Escape', 'Tab'].includes(e.key)) e.stopPropagation();
+
+			// Prevent cursors position change
+			if(['ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault();
 
 			if (this.activeSubcategory) {
 				const activeList = this.subcategorizedItems;
@@ -307,20 +335,17 @@ export default mixins(externalHooks).extend({
 				}
 				else if (e.key === 'Enter') {
 					this.selected(activeNodeType);
-				}
-				else if (e.key === 'ArrowLeft') {
+				} else if (e.key === 'ArrowLeft' && activeNodeType?.type === 'category' && (activeNodeType.properties as ICategoryItemProps).expanded) {
+					this.selected(activeNodeType);
+				} else if (e.key === 'ArrowLeft') {
 					this.onSubcategoryClose();
+				} else if (e.key === 'ArrowRight' && activeNodeType?.type === 'category' && !(activeNodeType.properties as ICategoryItemProps).expanded) {
+					this.selected(activeNodeType);
 				}
-
 				return;
 			}
 
-			let activeList;
-			if (this.searchFilter.length > 0) {
-				activeList = this.filteredNodeTypes;
-			} else {
-				activeList = this.renderedItems;
-			}
+			const activeList = this.searchFilter.length > 0 ? this.filteredNodeTypes : this.renderedItems;
 			const activeNodeType = activeList[this.activeIndex];
 
 			if (e.key === 'ArrowDown') {
@@ -336,11 +361,11 @@ export default mixins(externalHooks).extend({
 				this.activeIndex = Math.max(this.activeIndex, 0);
 			} else if (e.key === 'Enter' && activeNodeType) {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowRight' && activeNodeType && activeNodeType.type === 'subcategory') {
+			} else if (e.key === 'ArrowRight' && activeNodeType?.type === 'subcategory') {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowRight' && activeNodeType && activeNodeType.type === 'category' && !(activeNodeType.properties as ICategoryItemProps).expanded) {
+			} else if (e.key === 'ArrowRight' && activeNodeType?.type === 'category' && !(activeNodeType.properties as ICategoryItemProps).expanded) {
 				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowLeft' && activeNodeType && activeNodeType.type === 'category' && (activeNodeType.properties as ICategoryItemProps).expanded) {
+			} else if (e.key === 'ArrowLeft' && activeNodeType?.type === 'category' && (activeNodeType.properties as ICategoryItemProps).expanded) {
 				this.selected(activeNodeType);
 			}
 		},
@@ -380,18 +405,15 @@ export default mixins(externalHooks).extend({
 			this.activeSubcategoryHistory.pop();
 			this.activeSubcategoryIndex = 0;
 			this.nodeFilter = '';
-			this.$store.commit('ui/setShowNodeCreatorTabs', true);
+
+			if(!this.$store.getters['ui/showCreatorPanelScrim']) {
+				this.$store.commit('ui/setShowNodeCreatorTabs', true);
+			}
 		},
 
 		onClickInside() {
 			this.searchEventBus.$emit('focus');
 		},
-	},
-	mounted() {
-		this.$nextTick(() => {
-			// initial opening effect
-			this.activeCategory = [CORE_NODES_CATEGORY];
-		});
 	},
 });
 </script>
@@ -437,7 +459,7 @@ export default mixins(externalHooks).extend({
 	}
 }
 .subcategoryHeader {
-	border: $node-creator-border-color solid 1px;
+	border-bottom: $node-creator-border-color solid 1px;
 	height: 50px;
 	background-color: $node-creator-subcategory-panel-header-bacground-color;
 
