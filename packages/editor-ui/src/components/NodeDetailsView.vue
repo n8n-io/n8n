@@ -111,7 +111,7 @@ import {
 	IRunExecutionData,
 	Workflow,
 } from 'n8n-workflow';
-import { IExecutionResponse, INodeUi, IUpdateInformation } from '../Interface';
+import { IExecutionResponse, INodeUi, IUpdateInformation } from '@/Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -133,7 +133,7 @@ import {
 } from '@/constants';
 import { workflowActivate } from './mixins/workflowActivate';
 import { pinData } from "@/components/mixins/pinData";
-import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 
 export default mixins(
 	externalHooks,
