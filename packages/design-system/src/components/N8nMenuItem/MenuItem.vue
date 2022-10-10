@@ -226,6 +226,7 @@ export default Vue.extend({
 .label {
 	overflow: hidden;
 	text-overflow: ellipsis;
+	user-select: none;
 }
 
 .item + .item {
