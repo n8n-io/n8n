@@ -59,6 +59,9 @@
 			</div>
 			<execution-card v-else v-for="execution in executions" :key="execution.id" :execution="execution" @refresh="loadExecutions"/>
 		</div>
+		<div :class="$style.infoAccordion">
+			<executions-info-accordion />
+		</div>
 	</div>
 </template>
 
@@ -67,12 +70,14 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import mixins from 'vue-typed-mixins';
 import { executionHelpers } from '../mixins/executionsHelpers';
 import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
+import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
 import { VIEWS } from '../../constants';
 
 export default mixins(executionHelpers).extend({
 	name: 'executions-sidebar',
 	components: {
 		ExecutionCard,
+		ExecutionsInfoAccordion,
 	},
 	data() {
 		return {
@@ -171,16 +176,28 @@ export default mixins(executionHelpers).extend({
 	overflow: hidden;
 }
 
-.executionList {
-	height: 93%;
-	overflow: auto;
-	margin: var(--spacing-m) 0;
-}
-
 .heading {
 	display: flex;
 	justify-content: space-between;
 	align-items: baseline;
 	padding-right: var(--spacing-l);
 }
+
+.executionList {
+	height: 93%;
+	overflow: auto;
+	margin: var(--spacing-m) 0;
+}
+.infoAccordion {
+	position: absolute;
+	bottom: 0;
+	margin-left: -24px;
+
+	& > div {
+		width: 309px;
+		background-color: var(--color-background-light);
+	}
+}
+
+
 </style>

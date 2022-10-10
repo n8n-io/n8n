@@ -1,0 +1,129 @@
+<template>
+	<n8n-info-accordion
+		:class="[$style.accordion, 'mt-2xl']"
+		title="Which executions is this workflow saving?"
+		:items="accordionItems"
+		:description="accordionDescription"
+		:initiallyExpanded="shouldExpandAccordion"
+		@click="onAccordionClick"
+	></n8n-info-accordion>
+</template>
+
+<script lang="ts">
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { IWorkflowSettings } from 'n8n-workflow';
+import Vue from 'vue';
+
+interface IWorkflowSaveSettings {
+	saveFailedExecutions: boolean,
+	saveSuccessfulExecutions: boolean,
+	saveManualExecutions: boolean,
+};
+
+export default Vue.extend({
+	name: 'executions-info-accordion',
+	data() {
+		return {
+			workflowSaveSettings: {
+				saveFailedExecutions: false,
+				saveSuccessfulExecutions: false,
+				saveManualExecutions: false,
+			} as IWorkflowSaveSettings,
+		};
+	},
+	mounted() {
+		this.updateSettings(this.workflowSettings);
+	},
+	watch: {
+		workflowSettings(newSettings: IWorkflowSettings) {
+			this.updateSettings(newSettings);
+		},
+	},
+	computed: {
+		shouldExpandAccordion(): boolean {
+			return this.workflowSaveSettings.saveFailedExecutions === false ||
+				this.workflowSaveSettings.saveSuccessfulExecutions === false ||
+				this.workflowSaveSettings.saveManualExecutions === false;
+		},
+		workflowSettings(): IWorkflowSettings {
+			const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings)) as IWorkflowSettings;
+			return workflowSettings;
+		},
+		accordionItems(): Object[] {
+			return [
+				{
+					id: 'successfulExecutions',
+					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.successfulExecutions'),
+					icon: this.workflowSaveSettings.saveSuccessfulExecutions ? 'check' : 'times',
+					iconColor: this.workflowSaveSettings.saveSuccessfulExecutions ? 'success' : 'danger',
+				},
+				{
+					id: 'failedExecutions',
+					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.failedExecutions'),
+					icon: this.workflowSaveSettings.saveFailedExecutions ? 'check' : 'times',
+					iconColor: this.workflowSaveSettings.saveFailedExecutions ? 'success' : 'danger',
+				},
+				{
+					id: 'manualExecutions',
+					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.manualExecutions'),
+					icon: this.workflowSaveSettings.saveManualExecutions ? 'check' : 'times',
+					iconColor: this.workflowSaveSettings.saveManualExecutions ? 'success' : 'danger',
+				},
+			];
+		},
+		accordionDescription(): string {
+			return `
+				<footer class="mt-2xs">
+					${this.$locale.baseText('executionsLandingPage.emptyState.accordion.footer')}
+				</footer>
+			`;
+		},
+	},
+	methods: {
+		updateSettings(settingsInStore: IWorkflowSettings): void {
+			this.workflowSaveSettings.saveFailedExecutions = settingsInStore.saveDataErrorExecution !== 'none';
+			this.workflowSaveSettings.saveSuccessfulExecutions = settingsInStore.saveDataSuccessExecution !== 'none';
+			this.workflowSaveSettings.saveManualExecutions = settingsInStore.saveManualExecutions === true;
+		},
+		onAccordionClick(event: MouseEvent): void {
+			if (event.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+			}
+		},
+	},
+});
+</script>
+
+<style module lang="scss">
+
+.accordion {
+	background: none;
+	width: 320px;
+
+	// Accordion header
+	& > div:nth-child(1) {
+		display: flex;
+		flex-direction: row;
+		padding: 12px;
+		width: 100%;
+		user-select: none;
+	}
+
+	// Accordion description
+	& > div:nth-child(2) {
+		display: flex;
+		flex-direction: column;
+		width: 100%;
+		padding: var(--spacing-s) !important;
+
+		span { width: 100%; }
+	}
+
+	footer {
+		text-align: left;
+		width: 100%;
+	}
+}
+
+</style>
