@@ -16,8 +16,7 @@ export class Compare implements INodeType {
 		inputNames: ['Input 1', 'Input 2'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
-		outputNames: ['In 1st', 'Same', 'Different', 'In 2nd'],
-		// outputNames: ['1st', 'same', 'diff', '2nd'],
+		outputNames: ['In 1 only', 'Same', 'Different', 'In 2 only'],
 		properties: [
 			{
 				displayName: 'Fields to Match',
@@ -56,6 +55,27 @@ export class Compare implements INodeType {
 				],
 			},
 			{
+				displayName: 'When There Are Differences',
+				name: 'resolve',
+				type: 'options',
+				default: 'preferInput2',
+				options: [
+					{
+						name: 'Use Input 1 Version',
+						value: 'preferInput1',
+					},
+					{
+						name: 'Use Input 2 Version',
+						value: 'preferInput2',
+					},
+					{
+						name: 'Include Both Versions',
+						value: 'includeBoth',
+						description: 'Output contains all data (but structure more complex)',
+					},
+				],
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -88,69 +108,6 @@ export class Compare implements INodeType {
 							},
 						],
 					},
-					{
-						displayName: 'When There Are Differences',
-						name: 'resolve',
-						type: 'options',
-						default: 'preferInput2',
-						options: [
-							{
-								name: 'Use Input 1 Version',
-								value: 'preferInput1',
-							},
-							{
-								name: 'Use Input 2 Version',
-								value: 'preferInput2',
-							},
-							{
-								name: 'Include Both Versions',
-								value: 'includeBoth',
-								description: 'Output contains all data (but structure more complex)',
-							},
-						],
-					},
-					// {
-					// 	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					// 	displayName: 'When there are differences',
-					// 	name: 'whenDifferences',
-					// 	type: 'fixedCollection',
-					// 	default: {
-					// 		values: { resolve: 'preferInput2' },
-					// 	},
-					// 	options: [
-					// 		{
-					// 			displayName: 'Values',
-					// 			name: 'values',
-					// 			values: [
-					// 				{
-					// 					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					// 					displayName: 'When there are differences',
-					// 					name: 'resolve',
-					// 					type: 'options',
-					// 					default: '',
-					// 					options: [
-					// 						{
-					// 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					// 							name: 'Use input 1 version',
-					// 							value: 'preferInput1',
-					// 						},
-					// 						{
-					// 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					// 							name: 'Use input 2 version',
-					// 							value: 'preferInput2',
-					// 						},
-					// 						{
-					// 							// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-					// 							name: 'Include both versions',
-					// 							value: 'includeBoth',
-					// 							description: 'Output contains all data (but structure more complex)',
-					// 						},
-					// 					],
-					// 				},
-					// 			],
-					// 		},
-					// 	],
-					// },
 				],
 			},
 		],
@@ -161,7 +118,11 @@ export class Compare implements INodeType {
 			this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
 		);
 
+		const resolve = this.getNodeParameter('resolve', 0, {}) as IDataObject;
+
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+
+		options.resolve = resolve;
 
 		const input1 = checkInput(
 			this.getInputData(0),

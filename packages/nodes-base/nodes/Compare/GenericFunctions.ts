@@ -50,7 +50,7 @@ function compareItems(
 			default:
 				const input1 = item1.json[key] || null;
 				const input2 = item2.json[key] || null;
-				different[key] = [input1, input2];
+				different[key] = { input1, input2 };
 		}
 	});
 
