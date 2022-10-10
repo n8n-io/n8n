@@ -48,7 +48,6 @@ export class Code implements INodeType {
 				],
 				default: 'runOnceForAllItems',
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'JavaScript',
 				name: 'jsCodeAllItems',
@@ -65,7 +64,6 @@ export class Code implements INodeType {
 					},
 				},
 			},
-			// eslint-disable-next-line n8n-nodes-base/node-param-default-missing
 			{
 				displayName: 'JavaScript',
 				name: 'jsCodeEachItem',
