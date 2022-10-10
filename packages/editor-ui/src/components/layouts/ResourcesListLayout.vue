@@ -156,7 +156,7 @@ export default mixins(
 	showMessage,
 	debounceHelper,
 ).extend({
-	name: 'ResourcesListLayout',
+	name: 'resources-list-layout',
 	components: {
 		TemplateCard,
 		PageViewLayout,
