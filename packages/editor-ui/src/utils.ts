@@ -45,3 +45,14 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
+export const isEmpty = (value?: unknown): boolean => {
+	if (!value && value !== 0) return true;
+	if(Array.isArray(value)){
+		if(!value.length) return true;
+		return value.every(isEmpty);
+	}
+	if (typeof value === 'object') {
+		return Object.values(value).every(isEmpty);
+	}
+	return false;
+};
