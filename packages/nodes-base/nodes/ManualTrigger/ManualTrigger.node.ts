@@ -8,7 +8,7 @@ export class ManualTrigger implements INodeType {
 		icon: 'fa:mouse-pointer',
 		group: ['trigger', 'output'],
 		version: 1,
-		description: 'Starts the workflow execution on clicking a buton in N8N',
+		description: 'Starts the workflow execution on clicking a button in n8n',
 		maxNodes: 1,
 		defaults: {
 			name: 'Manual Trigger',
