@@ -61,7 +61,7 @@ EEWorkflowController.put('/:workflowId/share', async (req: WorkflowRequest.Share
 
 EEWorkflowController.get(
 	'/:id',
-	(req, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
+	(req: WorkflowRequest.Get, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
