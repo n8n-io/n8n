@@ -51,13 +51,16 @@ const module: Module<IWorkflowsState, IRootState> = {
 
 			return newName;
 		},
-		async loadCurrentWorkflowExecutions(context: ActionContext<IWorkflowsState, IRootState>, filter: { finished: boolean, status: string }) {
+		async loadCurrentWorkflowExecutions(
+			context: ActionContext<IWorkflowsState, IRootState>,
+			filter: { finished: boolean, status: string }
+		): Promise<IExecutionsSummary[]> {
 			let activeExecutions = [];
 			let finishedExecutions = [];
 			const requestFilter: IDataObject = { workflowId: context.rootGetters.workflowId };
 
 			if (!context.rootGetters.workflowId) {
-				return;
+				return [];
 			}
 			try {
 				if (filter.status === ''|| !filter.finished) {
@@ -83,7 +86,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 						},
 					);
 				}
-				context.commit('setCurrentWorkflowExecutions', [...activeExecutions, ...finishedExecutions.results || []]);
+				return [...activeExecutions, ...finishedExecutions.results || []];
 			} catch (error) {
 				throw(error);
 			}
