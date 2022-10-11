@@ -1,10 +1,9 @@
 import express from 'express';
 import { Db } from '..';
 import config from '../../config';
-import { WorkflowRequest } from '../requests';
+import type { WorkflowRequest } from '../requests';
 import { isSharingEnabled, rightDiff } from '../UserManagement/UserManagementHelper';
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
-// import { work }
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();

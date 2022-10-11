@@ -7,7 +7,7 @@ export class WorkflowsService {
 	static async getSharing(
 		user: User,
 		workflowId: number | string,
-		relations: string[] | undefined = ['workflow'],
+		relations: string[] = ['workflow'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedWorkflow | undefined> {
 		const options: FindOneOptions<SharedWorkflow> & { where: ObjectLiteral } = {
