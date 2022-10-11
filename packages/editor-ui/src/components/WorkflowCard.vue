@@ -16,6 +16,7 @@
 						:tags="data.tags"
 						:truncateAt="3"
 						truncate
+						@click="onClickTag"
 					/>
 				</span>
 			</n8n-text>
@@ -153,6 +154,11 @@ export default mixins(
 				name: VIEWS.WORKFLOW,
 				params: { name: this.data.id },
 			});
+		},
+		onClickTag(tagId: string, event: PointerEvent) {
+			event.stopPropagation();
+
+			this.$emit('click:tag', tagId, event);
 		},
 		async onAction(action: string) {
 			if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {

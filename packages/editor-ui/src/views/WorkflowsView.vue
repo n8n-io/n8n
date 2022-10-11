@@ -12,7 +12,7 @@
 		@update:filters="filters = $event"
 	>
 		<template v-slot="{ data }">
-			<workflow-card :data="data" />
+			<workflow-card :data="data" @click:tag="onClickTag" />
 		</template>
 		<template #empty>
 			<div class="text-center mt-s">
@@ -129,6 +129,11 @@ export default mixins(
 				this.$store.dispatch('fetchAllWorkflows'),
 				this.$store.dispatch('fetchActiveWorkflows'),
 			]);
+		},
+		onClickTag(tagId: string, event: PointerEvent) {
+			if (!this.filters.tags.includes(tagId)) {
+				this.filters.tags.push(tagId);
+			}
 		},
 		onFilter(resource: IWorkflowDb, filters: { tags: string[]; search: string; }, matches: boolean): boolean {
 			if (this.areTagsEnabled && filters.tags.length > 0) {
