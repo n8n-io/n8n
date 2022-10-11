@@ -2,6 +2,7 @@ import { FindOneOptions, ObjectLiteral } from 'typeorm';
 import { Db } from '..';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
+import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 
 export class WorkflowsService {
 	static async getSharing(
@@ -28,5 +29,9 @@ export class WorkflowsService {
 		}
 
 		return Db.collections.SharedWorkflow.findOne(options);
+	}
+
+	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
+		return Db.collections.Workflow.findOne(workflow, options);
 	}
 }
