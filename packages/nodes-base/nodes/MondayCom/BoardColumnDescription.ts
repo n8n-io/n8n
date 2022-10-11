@@ -21,7 +21,7 @@ export const boardColumnOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all columns',
+				description: 'Get many columns',
 				action: 'Get many board columns',
 			},
 		],

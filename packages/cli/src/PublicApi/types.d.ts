@@ -152,7 +152,7 @@ export interface IRequired {
 }
 export interface IDependency {
 	if?: { properties: {} };
-	then?: { oneOf: IRequired[] };
+	then?: { allOf: IRequired[] };
 	else?: { allOf: IRequired[] };
 }
 

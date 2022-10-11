@@ -33,7 +33,7 @@ export const meetingOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all meetings',
+				description: 'Retrieve many meetings',
 				action: 'Get many meetings',
 			},
 			{
@@ -104,6 +104,7 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Password to join the meeting with maximum 10 characters',
 			},
@@ -510,6 +511,7 @@ export const meetingFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 				description: 'Password to join the meeting with maximum 10 characters',
 			},

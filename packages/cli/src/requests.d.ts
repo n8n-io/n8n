@@ -105,6 +105,8 @@ export declare namespace CredentialRequest {
 	type NewName = WorkflowRequest.NewName;
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
+
+	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
@@ -286,6 +288,25 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 >;
 
 // ----------------------------------
+//        /node-list-search
+// ----------------------------------
+
+export type NodeListSearchRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{
+		nodeTypeAndVersion: string;
+		methodName: string;
+		path: string;
+		currentNodeParameters: string;
+		credentials: string;
+		filter?: string;
+		paginationToken?: string;
+	}
+>;
+
+// ----------------------------------
 //             /tags
 // ----------------------------------
 
@@ -305,4 +326,12 @@ export declare namespace NodeRequest {
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
 	type Update = Post;
+}
+
+// ----------------------------------
+//           /curl-to-json
+// ----------------------------------
+
+export declare namespace CurlHelper {
+	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
 }

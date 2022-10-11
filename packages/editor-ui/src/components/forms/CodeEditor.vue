@@ -1,10 +1,10 @@
 <template>
-	<div ref="code" class="text-editor" @keydown.stop />
+	<div ref="code" class="text-editor ph-no-capture" @keydown.stop />
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
-import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
+import * as monaco from 'monaco-editor';
 
 export default Vue.extend({
 	props: {

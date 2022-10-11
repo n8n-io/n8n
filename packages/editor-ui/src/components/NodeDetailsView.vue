@@ -32,6 +32,7 @@
 				:hideInputAndOutput="activeNodeType === null"
 				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
 				:isDraggable="!isTriggerNode"
+				:nodeType="activeNodeType"
 				@close="close"
 				@init="onPanelsInit"
 				@dragstart="onDragStart"
@@ -82,6 +83,7 @@
 						:eventBus="settingsEventBus"
 						:dragging="isDragging"
 						:sessionId="sessionId"
+						:nodeType="activeNodeType"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@activate="onWorkflowActivate"
@@ -261,7 +263,7 @@ export default mixins(
 			if (this.workflowExecution === null) {
 				return null;
 			}
-			const executionData: IRunExecutionData = this.workflowExecution.data;
+			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
 			if (executionData && executionData.resultData) {
 				return executionData.resultData.runData;
 			}
@@ -338,8 +340,8 @@ export default mixins(
 		},
 	},
 	watch: {
-		activeNode(node, oldNode) {
-			if (node && !oldNode && !this.isActiveStickyNode) {
+		activeNode(node: INodeUi | null) {
+			if (node && !this.isActiveStickyNode) {
 				this.runInputIndex = -1;
 				this.runOutputIndex = -1;
 				this.isLinkingEnabled = true;
@@ -590,7 +592,7 @@ export default mixins(
 </style>
 
 <style lang="scss" module>
-$--main-panel-width: 360px;
+$main-panel-width: 360px;
 
 .modalBackground {
 	height: 100%;
@@ -615,7 +617,7 @@ $--main-panel-width: 360px;
 	}
 }
 
-@media (min-width: $--breakpoint-lg) {
+@media (min-width: $breakpoint-lg) {
 	.backToCanvas {
 		top: var(--spacing-xs);
 		left: var(--spacing-m);

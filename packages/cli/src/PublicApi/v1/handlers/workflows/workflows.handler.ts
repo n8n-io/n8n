@@ -198,7 +198,13 @@ export = {
 				await workflowRunner.remove(id.toString());
 			}
 
-			await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			try {
+				await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			} catch (error) {
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+			}
 
 			if (sharedWorkflow.workflow.active) {
 				try {

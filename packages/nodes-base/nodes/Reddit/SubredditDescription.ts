@@ -17,7 +17,7 @@ export const subredditOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve information about subreddits from all of Reddit',
+				description: 'Retrieve information about many subreddits',
 				action: 'Get many subreddits',
 			},
 		],

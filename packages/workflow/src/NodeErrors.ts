@@ -7,8 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 // eslint-disable-next-line max-classes-per-file
 import { parseString } from 'xml2js';
-// eslint-disable-next-line import/no-cycle
-import { IDataObject, INode, IStatusCodeMessages, JsonObject } from '.';
+import { IDataObject, INode, IStatusCodeMessages, JsonObject } from './Interfaces';
 
 /**
  * Top-level properties where an error message can be found in an API response.
@@ -76,9 +75,8 @@ export abstract class ExecutionBaseError extends Error {
 			this.message = error.message as string;
 		}
 
-		if (Object.prototype.hasOwnProperty.call(error, 'context')) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
-			this.context = (error as any).context;
+		if (error instanceof ExecutionBaseError) {
+			this.context = error.context;
 		}
 	}
 }
@@ -118,10 +116,6 @@ abstract class NodeError extends ExecutionBaseError {
 	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is
 	 * returned.
 	 *
-	 * @param {JsonObject} error
-	 * @param {string[]} potentialKeys
-	 * @param {string[]} traversalKeys
-	 * @returns {string | null}
 	 */
 	protected findProperty(
 		error: JsonObject,
@@ -130,14 +124,12 @@ abstract class NodeError extends ExecutionBaseError {
 	): string | null {
 		// eslint-disable-next-line no-restricted-syntax
 		for (const key of potentialKeys) {
-			if (error[key]) {
-				if (typeof error[key] === 'string') return error[key] as string;
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				if (typeof error[key] === 'number') return error[key]!.toString();
-				if (Array.isArray(error[key])) {
-					// @ts-ignore
-					const resolvedErrors: string[] = error[key]
-						// @ts-ignore
+			const value = error[key];
+			if (value) {
+				if (typeof value === 'string') return value;
+				if (typeof value === 'number') return value.toString();
+				if (Array.isArray(value)) {
+					const resolvedErrors: string[] = value
 						.map((error) => {
 							if (typeof error === 'string') return error;
 							if (typeof error === 'number') return error.toString();
@@ -146,15 +138,15 @@ abstract class NodeError extends ExecutionBaseError {
 							}
 							return null;
 						})
-						.filter((errorValue: string | null) => errorValue !== null);
+						.filter((errorValue): errorValue is string => errorValue !== null);
 
 					if (resolvedErrors.length === 0) {
 						return null;
 					}
 					return resolvedErrors.join(' | ');
 				}
-				if (this.isTraversableObject(error[key])) {
-					const property = this.findProperty(error[key] as JsonObject, potentialKeys);
+				if (this.isTraversableObject(value)) {
+					const property = this.findProperty(value, potentialKeys);
 					if (property) {
 						return property;
 					}
@@ -164,8 +156,9 @@ abstract class NodeError extends ExecutionBaseError {
 
 		// eslint-disable-next-line no-restricted-syntax
 		for (const key of traversalKeys) {
-			if (this.isTraversableObject(error[key])) {
-				const property = this.findProperty(error[key] as JsonObject, potentialKeys, traversalKeys);
+			const value = error[key];
+			if (this.isTraversableObject(value)) {
+				const property = this.findProperty(value, potentialKeys, traversalKeys);
 				if (property) {
 					return property;
 				}
@@ -342,7 +335,6 @@ export class NodeApiError extends NodeError {
 	/**
 	 * Set the error's message based on the HTTP status code.
 	 *
-	 * @returns {void}
 	 */
 	private setMessage() {
 		if (!this.httpCode) {

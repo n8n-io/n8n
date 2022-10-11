@@ -2,7 +2,7 @@
 	<div>
 		<div class="error-header">
 			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + getErrorMessage() }}</div>
-			<div class="error-description" v-if="error.description">{{getErrorDescription()}}</div>
+			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
@@ -139,27 +139,33 @@ export default mixins(
 		},
 	},
 	methods: {
+		replacePlaceholders (parameter: string, message: string): string {
+			const parameterName = this.parameterDisplayName(parameter, false);
+			const parameterFullName = this.parameterDisplayName(parameter, true);
+			return message.replace(/%%PARAMETER%%/g, parameterName).replace(/%%PARAMETER_FULL%%/g, parameterFullName);
+		},
 		getErrorDescription (): string {
 			if (!this.error.context || !this.error.context.descriptionTemplate) {
 				return this.error.description;
 			}
-
-			const parameterName = this.parameterDisplayName(this.error.context.parameter);
-			return this.error.context.descriptionTemplate.replace(/%%PARAMETER%%/g, parameterName);
+			return this.replacePlaceholders(this.error.context.parameter, this.error.context.descriptionTemplate);
 		},
 		getErrorMessage (): string {
 			if (!this.error.context || !this.error.context.messageTemplate) {
 				return this.error.message;
 			}
 
-			const parameterName = this.parameterDisplayName(this.error.context.parameter);
-			return this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
+			return this.replacePlaceholders(this.error.context.parameter, this.error.context.messageTemplate);
 		},
-		parameterDisplayName(path: string) {
+		parameterDisplayName(path: string, fullPath = true) {
 			try {
 				const parameters = this.parameterName(this.parameters, path.split('.'));
 				if (!parameters.length) {
 					throw new Error();
+				}
+
+				if (fullPath === false) {
+					return parameters.pop()!.displayName;
 				}
 				return parameters.map(parameter => parameter.displayName).join(' > ');
 			} catch (error) {

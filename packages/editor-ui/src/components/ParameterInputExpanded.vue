@@ -12,6 +12,7 @@
 				:value="value"
 				:isReadOnly="false"
 				:showOptions="true"
+				:isValueExpression="isValueExpression"
 				@optionSelected="optionSelected"
 				@menu-expanded="onMenuExpanded"
 			/>
@@ -29,6 +30,7 @@
 				:errorHighlight="showRequiredErrors"
 				:isForCredential="true"
 				:eventSource="eventSource"
+				:isValueExpression="isValueExpression"
 				@focus="onFocus"
 				@blur="onBlur"
 				@textInput="valueChanged"
@@ -53,6 +55,8 @@ import ParameterInput from './ParameterInput.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import InputHint from './ParameterInputHint.vue';
 import Vue from 'vue';
+import { isValueExpression } from './helpers';
+import { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 
 export default Vue.extend({
 	name: 'ParameterInputExpanded',
@@ -63,6 +67,7 @@ export default Vue.extend({
 	},
 	props: {
 		parameter: {
+			type: Object as () => INodeProperties,
 		},
 		value: {
 		},
@@ -100,6 +105,9 @@ export default Vue.extend({
 			}
 
 			return false;
+		},
+		isValueExpression (): boolean {
+			return isValueExpression(this.parameter, this.value as string | INodeParameterResourceLocator);
 		},
 	},
 	methods: {

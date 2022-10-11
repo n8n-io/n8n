@@ -1,12 +1,6 @@
 import {
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
-	IPushDataConsoleMessage,
-	IPushDataExecutionFinished,
-	IPushDataExecutionStarted,
-	IPushDataNodeExecuteAfter,
-	IPushDataNodeExecuteBefore,
-	IPushDataTestWebhook,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -16,7 +10,11 @@ import { titleChange } from '@/components/mixins/titleChange';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import {
+	ExpressionError,
+	IDataObject,
 	INodeTypeNameVersion,
+	IWorkflowBase,
+	TelemetryHelpers,
 } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
@@ -107,9 +105,6 @@ export const pushConnection = mixins(
 			 * is currently active. So internally resend the message
 			 * a few more times
 			 *
-			 * @param {Event} event
-			 * @param {number} retryAttempts
-			 * @returns
 			 */
 			queuePushMessage (event: Event, retryAttempts: number) {
 				this.pushMessageQueue.push({ event, retriesLeft: retryAttempts });
@@ -156,7 +151,6 @@ export const pushConnection = mixins(
 			 *
 			 * @param {Event} event The event data with the message data
 			 * @param {boolean} [isRetry] If it is a retry
-			 * @returns {boolean} If message could be processed
 			 */
 			pushMessageReceived (event: Event, isRetry?: boolean): boolean {
 				const retryAttempts = 5;
@@ -219,7 +213,7 @@ export const pushConnection = mixins(
 
 					const runDataExecuted = pushData.data;
 
-					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data.resultData.error);
+					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
 
 					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
@@ -233,7 +227,12 @@ export const pushConnection = mixins(
 
 						let action;
 						if (!isSavingExecutions) {
-							action = '<a class="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
+							this.$root.$emit('registerGlobalLinkAction', 'open-settings', async () => {
+								if (this.$store.getters.isNewWorkflow) await this.saveAsNewWorkflow();
+								this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+							});
+
+							action = '<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 						}
 						else {
 							action = `<a href="/execution/${activeExecutionId}" target="_blank">View the execution</a> to see what happened after this node.`;
@@ -243,23 +242,55 @@ export const pushConnection = mixins(
 						this.$titleSet(workflow.name as string, 'IDLE');
 						this.$showToast({
 							title: 'Workflow started waiting',
-							message: `${action} <a href="https://docs.n8n.io/nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
+							message: `${action} <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.wait/" target="_blank">More info</a>`,
 							type: 'success',
 							duration: 0,
-							onLinkClick: async (e: HTMLLinkElement) => {
-								if (e.classList.contains('open-settings')) {
-									if (this.$store.getters.isNewWorkflow) {
-										await this.saveAsNewWorkflow();
-									}
-									this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
-								}
-							},
 						});
 					} else if (runDataExecuted.finished !== true) {
 						this.$titleSet(workflow.name as string, 'ERROR');
 
+						if (
+							runDataExecuted.data.resultData.error!.name === 'ExpressionError' &&
+							(runDataExecuted.data.resultData.error as ExpressionError).context.functionality === 'pairedItem'
+						) {
+							const error = runDataExecuted.data.resultData.error as ExpressionError;
+
+							this.getWorkflowDataToSave().then((workflowData) => {
+								const eventData: IDataObject = {
+									caused_by_credential: false,
+									error_message: error.description,
+									error_title: error.message,
+									error_type: error.context.type,
+									node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+									workflow_id: this.$store.getters.workflowId,
+								};
+
+								if (error.context.nodeCause && ['no pairing info', 'invalid pairing info'].includes(error.context.type as string)) {
+									const node = workflow.getNode(error.context.nodeCause as string);
+
+									if (node) {
+										eventData.is_pinned = !!workflow.getPinDataOfNode(node.name);
+										eventData.mode = node.parameters.mode;
+										eventData.node_type = node.type;
+										eventData.operation = node.parameters.operation;
+										eventData.resource = node.parameters.resource;
+									}
+								}
+
+								this.$telemetry.track('Instance FE emitted paired item error', eventData);
+							});
+
+						}
+
+						let title: string;
+						if (runDataExecuted.data.resultData.lastNodeExecuted) {
+							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+						} else {
+							title = 'Problem executing workflow';
+						}
+
 						this.$showMessage({
-							title: 'Problem executing workflow',
+							title,
 							message: runDataExecutedErrorMessage,
 							type: 'error',
 							duration: 0,
@@ -369,6 +400,7 @@ export const pushConnection = mixins(
 
 					this.processWaitingPushMessages();
 				} else if (receivedData.type === 'reloadNodeType') {
+					this.$store.dispatch('nodeTypes/getNodeTypes');
 					this.$store.dispatch('nodeTypes/getFullNodesProperties', [receivedData.data]);
 				} else if (receivedData.type === 'removeNodeType') {
 					const pushData = receivedData.data;

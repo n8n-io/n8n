@@ -27,7 +27,7 @@ export const contactListOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts on list',
+				description: 'Get many contacts from a list',
 				action: 'Get many contact lists',
 			},
 			{

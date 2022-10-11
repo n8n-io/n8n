@@ -21,7 +21,7 @@ export const channelMessageOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all messages',
+				description: 'Get many messages',
 				action: 'Get many messages in a channel',
 			},
 		],
