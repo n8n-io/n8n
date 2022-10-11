@@ -71,7 +71,7 @@ export default Vue.extend({
 <style lang="scss" module>
 .category {
 	font-size: 11px;
-	font-weight: var(--font-weight-bold);
+	font-weight: 700;
 	letter-spacing: 1px;
 	line-height: 11px;
 	padding: 10px 0;
