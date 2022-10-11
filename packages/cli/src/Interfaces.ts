@@ -518,6 +518,7 @@ export interface IN8nUISettings {
 	isNpmAvailable: boolean;
 	enterprise: {
 		sharing: boolean;
+		workflowSharing: boolean;
 	};
 }
 

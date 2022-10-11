@@ -29,11 +29,27 @@ import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { validateEntity } from '../GenericHelpers';
 import { InternalHooksManager } from '../InternalHooksManager';
 import { externalHooks } from '../Server';
+import { getLogger } from '../Logger';
 import type { WorkflowRequest } from '../requests';
 import { isBelowOnboardingThreshold } from '../WorkflowHelpers';
+import { EEWorkflowController } from './workflows.controller.ee';
 
 const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 export const workflowsController = express.Router();
+
+/**
+ * Initialize Logger if needed
+ */
+workflowsController.use((req, res, next) => {
+	try {
+		LoggerProxy.getInstance();
+	} catch (error) {
+		LoggerProxy.init(getLogger());
+	}
+	next();
+});
+
+workflowsController.use('/', EEWorkflowController);
 
 const isTrigger = (nodeType: string) =>
 	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
