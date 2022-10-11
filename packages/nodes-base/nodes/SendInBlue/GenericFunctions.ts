@@ -73,7 +73,7 @@ export namespace SendInBlueNode {
 					if (item.binary![binaryPropertyName as string] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`The binary data property “${binaryPropertyName}” exists on item!`,
+							`The binary data property “${binaryPropertyName}” does not exist on item!`,
 						);
 					}
 
