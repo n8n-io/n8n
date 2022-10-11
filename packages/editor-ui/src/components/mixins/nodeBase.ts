@@ -311,7 +311,7 @@ export const nodeBase = mixins(
 				if (this.$store.getters.isActionActive('dragActive')) {
 					this.$store.commit('removeActiveAction', 'dragActive');
 				} else {
-					if (this.isCtrlKeyPressed(e) === false) {
+					if (!this.isCtrlKeyPressed(e)) {
 						this.$emit('deselectAllNodes');
 					}
 
