@@ -2143,7 +2143,7 @@ export default mixins(
 			tryToAddWelcomeSticky: once(async function(this: any) {
 				const newWorkflow = this.workflowData;
 				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
-				if (true || flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
+				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
 					// For novice users (onboardingFlowEnabled == true)
 					// Inject welcome sticky note and zoom to fit
 
