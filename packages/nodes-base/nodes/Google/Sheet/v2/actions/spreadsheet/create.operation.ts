@@ -37,28 +37,42 @@ export const description: SpreadSheetProperties = [
 				name: 'sheetValues',
 				displayName: 'Sheet',
 				values: [
+					// {
+					// 	displayName: 'Sheet',
+					// 	name: 'propertiesUi',
+					// 	placeholder: 'Add Property',
+					// 	type: 'collection',
+					// 	default: {},
+					// 	options: [
+					// 		{
+					// 			displayName: 'Title',
+					// 			name: 'title',
+					// 			type: 'string',
+					// 			default: '',
+					// 			description: 'Title of the property to create',
+					// 		},
+					// 		{
+					// 			displayName: 'Hidden',
+					// 			name: 'hidden',
+					// 			type: 'boolean',
+					// 			default: false,
+					// 			description: 'Whether the Sheet should be hidden in the UI',
+					// 		},
+					// 	],
+					// },
 					{
-						displayName: 'Sheet Properties',
-						name: 'propertiesUi',
-						placeholder: 'Add Property',
-						type: 'collection',
-						default: {},
-						options: [
-							{
-								displayName: 'Hidden',
-								name: 'hidden',
-								type: 'boolean',
-								default: false,
-								description: 'Whether the Sheet should be hidden in the UI',
-							},
-							{
-								displayName: 'Title',
-								name: 'title',
-								type: 'string',
-								default: '',
-								description: 'Title of the property to create',
-							},
-						],
+						displayName: 'Title',
+						name: 'title',
+						type: 'string',
+						default: '',
+						description: 'Title of the property to create',
+					},
+					{
+						displayName: 'Hidden',
+						name: 'hidden',
+						type: 'boolean',
+						default: false,
+						description: 'Whether the Sheet should be hidden in the UI',
 					},
 				],
 			},
@@ -145,11 +159,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		if (Object.keys(sheetsUi).length) {
 			const data = [];
 			const sheets = sheetsUi.sheetValues as IDataObject[];
-			for (const sheet of sheets) {
-				const properties = sheet.propertiesUi as IDataObject;
-				if (properties) {
-					data.push({ properties });
-				}
+			for (const properties of sheets) {
+				data.push({ properties });
 			}
 			body.sheets = data;
 		}

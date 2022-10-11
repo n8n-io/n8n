@@ -160,6 +160,7 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		const clearType = this.getNodeParameter('clear', i) as string;
+		const keepFirstRow = this.getNodeParameter('keepFirstRow', i, false) as boolean;
 		let range = '';
 
 		if (clearType === 'specificRows') {
@@ -187,11 +188,16 @@ export async function execute(
 		}
 
 		if (clearType === 'wholeSheet') {
-			const keepFirstRow = this.getNodeParameter('keepFirstRow', i) as boolean;
-			range = keepFirstRow ? `${sheetName}!A2:D` : sheetName;
+			range = sheetName;
 		}
 
-		await sheet.clearData(range);
+		if (keepFirstRow) {
+			const firstRow = await sheet.getData(`${range}!1:1`, 'FORMATTED_VALUE');
+			await sheet.clearData(range);
+			await sheet.updateRow(range, firstRow as string[][], 'RAW', 1);
+		} else {
+			await sheet.clearData(range);
+		}
 	}
 
 	return items;

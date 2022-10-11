@@ -576,7 +576,6 @@ export class GoogleSheet {
 			});
 			setData.push(rowData);
 		});
-
 		return setData;
 	}
 

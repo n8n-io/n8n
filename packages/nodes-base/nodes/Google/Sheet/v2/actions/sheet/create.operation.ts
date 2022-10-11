@@ -3,11 +3,7 @@ import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { SheetProperties } from '../../helpers/GoogleSheets.types';
 import { apiRequest } from '../../transport';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
-import {
-	getExistingSheetNames,
-	hexToRgb,
-	untilSheetSelected,
-} from '../../helpers/GoogleSheets.utils';
+import { getExistingSheetNames, hexToRgb } from '../../helpers/GoogleSheets.utils';
 
 export const description: SheetProperties = [
 	{
