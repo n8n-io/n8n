@@ -178,7 +178,7 @@
 						{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.text') }}
 					</n8n-link>
 				</n8n-text>
-				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" :class="$style.errorDisplay" />
+				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" :class="$style.dataDisplay" />
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
@@ -1161,7 +1161,7 @@ export default mixins(
 	}
 }
 
-.errorDisplay {
+.dataDisplay {
 	position: absolute;
 	top: 0;
 	left: 0;
