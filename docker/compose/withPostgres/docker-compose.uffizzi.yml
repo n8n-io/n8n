@@ -1,0 +1,42 @@
+version: '3.8'
+
+x-uffizzi:
+  ingress:
+    service: application
+    port: 5678
+
+services:
+  postgres:
+    image: postgres:11
+    restart: always
+    environment:
+      - POSTGRES_USER=changeUser
+      - POSTGRES_PASSWORD=changePassword
+      - POSTGRES_DB=n8n
+      - POSTGRES_NON_ROOT_USER=changeUser
+      - POSTGRES_NON_ROOT_PASSWORD=changePassword
+
+  application:
+    image: "${APP_IMAGE}"
+    restart: always
+    environment:
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=localhost
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=changeUser
+      - DB_POSTGRESDB_PASSWORD=changePassword
+      - N8N_BASIC_AUTH_ACTIVE=false
+      - N8N_BASIC_AUTH_USER=changeUser
+      - N8N_BASIC_AUTH_PASSWORD=changePassword
+      - N8N_LOG_LEVEL=debug
+      - N8N_LOG_OUTPUT=console,file
+    ports:
+      - 5678:5678
+    depends_on:
+      - postgres
+    deploy:
+      resources:
+        limits:
+          memory: 500M
+          cpu: 500m

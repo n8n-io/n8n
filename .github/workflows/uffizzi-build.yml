@@ -1,0 +1,86 @@
+name: Build PR Image
+on:
+  pull_request:
+    types: [opened,synchronize,reopened,closed]
+
+jobs:
+
+  build-appication:
+    name: Build and Push `n8n`
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request' || github.event.action != 'closed' }}
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout git repo
+        uses: actions/checkout@v3
+      - name: Generate UUID image name
+        id: uuid
+        run: echo "::set-output name=uuid::$(uuidgen)"
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: registry.uffizzi.com/${{ steps.uuid.outputs.uuid }}
+          tags: type=raw,value=60d
+      - name: Build and Push Image to registry.uffizzi.com ephemeral registry
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          context: ./
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          file: ./docker/images/n8n-custom/Dockerfile
+
+  render-compose-file:
+    name: Render Docker Compose File
+    # Pass output of this workflow to another triggered by `workflow_run` event.
+    runs-on: ubuntu-latest
+    needs: 
+      - build-appication
+    outputs:
+      compose-file-cache-key: ${{ steps.hash.outputs.hash }}
+    steps:
+      - name: Checkout git repo
+        uses: actions/checkout@v3
+      - name: Render Compose File
+        run: |
+          APP_IMAGE=$(echo ${{ needs.build-appication.outputs.tags }})
+          export APP_IMAGE        
+          # Render simple template from environment variables.
+          envsubst < ./docker/compose/withPostgres/docker-compose.uffizzi.yml > docker-compose.rendered.yml
+          cat docker-compose.rendered.yml
+      - name: Upload Rendered Compose File as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: preview-spec
+          path: docker-compose.rendered.yml
+          retention-days: 2
+      - name: Serialize PR Event to File
+        run:  |
+          cat << EOF > event.json
+          ${{ toJSON(github.event) }} 
+          
+          EOF
+      - name: Upload PR Event as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: preview-spec
+          path: event.json
+          retention-days: 2
+
+  delete-preview:
+    name: Call for Preview Deletion
+    runs-on: ubuntu-latest
+    if: ${{ github.event.action == 'closed' }}
+    steps:
+      # If this PR is closing, we will not render a compose file nor pass it to the next workflow.
+      - name: Serialize PR Event to File
+        run: echo '${{ toJSON(github.event) }}' > event.json
+      - name: Upload PR Event as Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: preview-spec
+          path: event.json
+          retention-days: 2
+

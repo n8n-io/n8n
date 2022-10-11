@@ -1,0 +1,86 @@
+name: Deploy Uffizzi Preview
+
+on:
+  workflow_run:
+    workflows:
+      - "Build PR Image"
+    types:
+      - completed
+
+
+jobs:
+  cache-compose-file:
+    name: Cache Compose File
+    runs-on: ubuntu-latest
+    outputs:
+      compose-file-cache-key: ${{ steps.hash.outputs.hash }}
+      pr-number: ${{ steps.pr.outputs.number }}
+    steps:
+      - name: 'Download artifacts'
+        # Fetch output (zip archive) from the workflow run that triggered this workflow.
+        uses: actions/github-script@v6
+        with:
+          script: |
+            let allArtifacts = await github.rest.actions.listWorkflowRunArtifacts({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               run_id: context.payload.workflow_run.id,
+            });
+            let matchArtifact = allArtifacts.data.artifacts.filter((artifact) => {
+              return artifact.name == "preview-spec"
+            })[0];
+            let download = await github.rest.actions.downloadArtifact({
+               owner: context.repo.owner,
+               repo: context.repo.repo,
+               artifact_id: matchArtifact.id,
+               archive_format: 'zip',
+            });
+            let fs = require('fs');
+            fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/preview-spec.zip`, Buffer.from(download.data));
+
+      - name: 'Unzip artifact'
+        run: unzip preview-spec.zip
+      - name: Read Event into ENV
+        run: |
+          echo 'EVENT_JSON<<EOF' >> $GITHUB_ENV
+          cat event.json >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
+
+      - name: Hash Rendered Compose File
+        id: hash
+        # If the previous workflow was triggered by a PR close event, we will not have a compose file artifact.
+        if: ${{ fromJSON(env.EVENT_JSON).action != 'closed' }}
+        run: echo "::set-output name=hash::$(md5sum docker-compose.rendered.yml | awk '{ print $1 }')"
+      - name: Cache Rendered Compose File
+        if: ${{ fromJSON(env.EVENT_JSON).action != 'closed' }}
+        uses: actions/cache@v3
+        with:
+          path: docker-compose.rendered.yml
+          key: ${{ steps.hash.outputs.hash }}
+
+      - name: Read PR Number From Event Object
+        id: pr
+        run: echo "::set-output name=number::${{ fromJSON(env.EVENT_JSON).number }}"
+      - name: DEBUG - Print Job Outputs
+        if: ${{ runner.debug }}
+        run: |
+          echo "PR number: ${{ steps.pr.outputs.number }}"
+          echo "Compose file hash: ${{ steps.hash.outputs.hash }}"
+          cat event.json
+
+  deploy-uffizzi-preview:
+    name: Use Remote Workflow to Preview on Uffizzi
+    needs:
+      - cache-compose-file
+    uses: UffizziCloud/preview-action/.github/workflows/reusable.yaml@v2
+    with:
+      # If this workflow was triggered by a PR close event, cache-key will be an empty string
+      # and this reusable workflow will delete the preview deployment.
+      compose-file-cache-key: ${{ needs.cache-compose-file.outputs.compose-file-cache-key }}
+      compose-file-cache-path: docker-compose.rendered.yml
+      server: https://app.uffizzi.com/
+      pr-number: ${{ needs.cache-compose-file.outputs.pr-number }}
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
