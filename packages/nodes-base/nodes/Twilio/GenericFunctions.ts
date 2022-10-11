@@ -36,11 +36,7 @@ export async function twilioApiRequest(
 		json: true,
 	};
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'twilioApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'twilioApi', options);
 }
 
 const XML_CHAR_MAP: { [key: string]: string } = {

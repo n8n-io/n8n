@@ -28,12 +28,7 @@ export async function clockifyApiRequest(
 		json: true,
 		useQuerystring: true,
 	};
-
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
 }
 
 export async function clockifyApiRequestAllItems(

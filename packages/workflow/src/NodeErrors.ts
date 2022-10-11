@@ -250,9 +250,12 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 	'502': 'Bad gateway - the service failed to handle your request',
 	'503': 'Service unavailable - perhaps try again later?',
 	'504': 'Gateway timed out - perhaps try again later?',
+
+	ECONNREFUSED: 'The service refused the connection - perhaps it is offline',
 };
 
 const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
+const UNKNOWN_ERROR_MESSAGE_CRED = 'UNKNOWN ERROR';
 
 /**
  * Class for instantiating an error in an API response, e.g. a 404 Not Found response,
@@ -357,6 +360,9 @@ export class NodeApiError extends NodeError {
 				break;
 			default:
 				this.message = UNKNOWN_ERROR_MESSAGE;
+		}
+		if (this.node.type === 'n8n-nodes-base.noOp' && this.message === UNKNOWN_ERROR_MESSAGE) {
+			this.message = `${UNKNOWN_ERROR_MESSAGE_CRED} - ${this.httpCode}`;
 		}
 	}
 }

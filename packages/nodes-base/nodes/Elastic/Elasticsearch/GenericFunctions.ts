@@ -34,9 +34,5 @@ export async function elasticsearchApiRequest(
 		delete options.qs;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'elasticsearchApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'elasticsearchApi', options);
 }
