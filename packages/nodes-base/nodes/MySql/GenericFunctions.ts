@@ -6,7 +6,6 @@ import { IDataObject, INodeExecutionData } from 'n8n-workflow';
  *
  * @param {INodeExecutionData[]} items The items to copy
  * @param {string[]} properties The properties it should include
- * @returns
  */
 export function copyInputItems(items: INodeExecutionData[], properties: string[]): IDataObject[] {
 	// Prepare the data to insert and copy it to be returned

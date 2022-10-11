@@ -7,11 +7,6 @@ import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 /**
  * Make an API request to Message Bird
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function messageBirdApiRequest(
 	this: IHookFunctions | IExecuteFunctions,

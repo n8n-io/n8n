@@ -16,6 +16,11 @@
 				/>
 			</div>
 
+			<import-parameter
+					v-else-if="parameter.type === 'curlImport' && nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion >= 3"
+					@valueChanged="valueChanged"
+			/>
+
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
@@ -93,7 +98,6 @@
 import {
 	INodeParameters,
 	INodeProperties,
-	INodeType,
 	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
@@ -104,6 +108,7 @@ import MultipleParameter from '@/components/MultipleParameter.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
 
 import { get, set } from 'lodash';
 
@@ -121,6 +126,7 @@ export default mixins(
 			ParameterInputFull,
 			FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
 			CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
+			ImportParameter,
 		},
 		props: [
 			'nodeValues', // INodeParameters
@@ -130,6 +136,18 @@ export default mixins(
 			'indent',
 		],
 		computed: {
+			nodeTypeVersion(): number | null {
+				if (this.node) {
+					return this.node.typeVersion;
+				}
+				return null;
+			},
+			nodeTypeName (): string {
+				if (this.node) {
+					return this.node.type;
+				}
+				return '';
+			},
 			filteredParameters (): INodeProperties[] {
 				return this.parameters.filter((parameter: INodeProperties) => this.displayNodeParameter(parameter));
 			},

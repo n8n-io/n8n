@@ -10,7 +10,7 @@
 		"allowJs": true,
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
-		"types": ["webpack-env", "jest", "vitest/globals"],
+		"types": ["webpack-env", "vitest/globals"],
 		"typeRoots": ["@testing-library", "@types"],
 		"paths": {
 			"@/*": ["src/*"]
