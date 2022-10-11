@@ -488,6 +488,7 @@ export default mixins(externalHooks).extend({
 		position: sticky;
 		top: 0;
 		color: var(--color-text-dark);
+		z-index: 1;
 	}
 
 	td {
@@ -497,6 +498,27 @@ export default mixins(externalHooks).extend({
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
+	}
+
+	td:first-child, td:nth-last-child(2) {
+		position: relative;
+		z-index: 0;
+
+		&:after { // add border without shifting content
+			content: '';
+			position: absolute;
+			height: 100%;
+			width: 2px;
+			top: 0;
+		}
+	}
+
+	td:nth-last-child(2):after {
+		right: -1px;
+	}
+
+	td:first-child:after {
+		left: -1px;
 	}
 
 	th:last-child,
@@ -623,10 +645,8 @@ export default mixins(externalHooks).extend({
 }
 
 .hoveringRow {
-	background-color: var(--color-secondary-tint-4);
-
-	td:first-child {
-		border-left: 1px solid var(--color-secondary);
+	td:first-child:after, td:nth-last-child(2):after {
+		background-color: var(--color-secondary);
 	}
 }
 </style>
