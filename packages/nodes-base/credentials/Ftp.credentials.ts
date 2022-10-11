@@ -35,5 +35,11 @@ export class Ftp implements ICredentialType {
 			},
 			default: '',
 		},
+		{
+			displayName: 'SSL/TLS',
+			name: 'secure',
+			type: 'boolean',
+			default: false,
+		},
 	];
 }

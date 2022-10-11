@@ -15,6 +15,7 @@ import { basename, dirname } from 'path';
 
 import ftpClient from 'promise-ftp';
 import sftpClient from 'ssh2-sftp-client';
+import { ConnectionOptions, TlsOptions } from 'tls';
 
 interface ReturnFtpItem {
 	type: string;
@@ -368,6 +369,7 @@ export class Ftp implements INodeType {
 						port: credentials.port as number,
 						user: credentials.username as string,
 						password: credentials.password as string,
+						secure: true,
 					});
 				} catch (error) {
 					return {
@@ -442,11 +444,19 @@ export class Ftp implements INodeType {
 				});
 			} else {
 				ftp = new ftpClient();
+				// credentials.secure = true;
+				// const _secureOptions: ConnectionOptions = {
+				// 	host: credentials.host as string,
+				// 	port: credentials.port as number,
+				// 	timeout: 10000,
+				// };
 				await ftp.connect({
 					host: credentials.host as string,
 					port: credentials.port as number,
 					user: credentials.username as string,
 					password: credentials.password as string,
+					secure: credentials.secure as boolean,
+					// secureOptions: _secureOptions,
 				});
 			}
 
