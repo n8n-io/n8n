@@ -36,7 +36,7 @@ export default Vue.extend({
 	},
 	props: {
 		tags: {
-			type: Array as PropType<Array<ITag>>,
+			type: Array as PropType<ITag[]>,
 			default: () => [],
 		},
 		truncate: {
@@ -46,7 +46,7 @@ export default Vue.extend({
 		truncateAt: {
 			type: Number,
 			default: 3,
-		}
+		},
 	},
 	computed: {
 		visibleTags(): ITag[] {
@@ -58,7 +58,7 @@ export default Vue.extend({
 		},
 		hiddenTagsLength(): number {
 			return this.tags.length - this.truncateAt;
-		}
+		},
 	},
 });
 </script>
