@@ -211,7 +211,7 @@ export class MicrosoftOneDrive implements INodeType {
 							if (items[i].binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`The binary data property "${binaryPropertyName}" does not exist on item!`,
 									{ itemIndex: i },
 								);
 							}

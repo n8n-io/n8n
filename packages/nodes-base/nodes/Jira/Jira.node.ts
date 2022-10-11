@@ -993,7 +993,7 @@ export class Jira implements INodeType {
 					if (binaryData === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`No binary data property "${binaryPropertyName}" does not exists on item!`,
+							`The binary data property "${binaryPropertyName}" does not exist on item!`,
 							{ itemIndex: i },
 						);
 					}

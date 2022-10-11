@@ -774,7 +774,7 @@ export class Dropbox implements INodeType {
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
+									`The binary data property "${propertyNameUpload}" does not exist on item!`,
 									{ itemIndex: i },
 								);
 							}
@@ -942,7 +942,7 @@ export class Dropbox implements INodeType {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
 						binary: {},
-						pairedItem: {item: i},
+						pairedItem: { item: i },
 					};
 
 					if (items[i].binary !== undefined) {
@@ -1000,9 +1000,9 @@ export class Dropbox implements INodeType {
 				} else if (resource === 'search' && operation === 'query') {
 					let data = responseData;
 					if (returnAll === true) {
-							data = (simple === true) ? simplify(responseData) : responseData;
+						data = simple === true ? simplify(responseData) : responseData;
 					} else {
-							data = (simple === true) ? simplify(responseData[property]) : responseData[property];
+						data = simple === true ? simplify(responseData[property]) : responseData[property];
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -1023,7 +1023,7 @@ export class Dropbox implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({json: { error: error.message }});
+						returnData.push({ json: { error: error.message } });
 					}
 					continue;
 				}

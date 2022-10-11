@@ -202,7 +202,7 @@ export class Zulip implements INodeType {
 						if (items[i].binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
+								`The binary data property "${binaryProperty}" does not exist on item!`,
 								{ itemIndex: i },
 							);
 						}

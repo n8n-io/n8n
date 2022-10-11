@@ -613,7 +613,7 @@ export class ServiceNow implements INodeType {
 						} else {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${inputDataFieldName}" does not exists on item!`,
+								`The binary data property "${inputDataFieldName}" does not exist on item!`,
 								{ itemIndex: i },
 							);
 						}

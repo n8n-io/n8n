@@ -817,7 +817,7 @@ export class AwsS3 implements INodeType {
 							if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`The binary data property "${binaryPropertyName}" does not exist on item!`,
 									{ itemIndex: i },
 								);
 							}

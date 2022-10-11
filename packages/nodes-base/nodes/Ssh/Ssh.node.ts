@@ -359,7 +359,7 @@ export class Ssh implements INodeType {
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${propertyNameUpload}" does not exists on item!`,
+									`The binary data property "${propertyNameUpload}" does not exist on item!`,
 									{ itemIndex: i },
 								);
 							}

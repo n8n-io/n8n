@@ -83,7 +83,7 @@ export class CitrixAdc implements INodeType {
 						if (item.binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
+								`The binary data property "${binaryProperty}" does not exists on item!`,
 							);
 						}
 
@@ -172,12 +172,23 @@ export class CitrixAdc implements INodeType {
 								...body,
 								keyfile: privateKeyFileName,
 							};
-
 						} else {
-							const caCertificateFileName = this.getNodeParameter('caCertificateFileName', i) as string;
-							const caCertificateFileFormat = this.getNodeParameter('caCertificateFileFormat', i) as string;
-							const caPrivateKeyFileFormat = this.getNodeParameter('caPrivateKeyFileFormat', i) as string;
-							const caPrivateKeyFileName = this.getNodeParameter('caPrivateKeyFileName', i) as string;
+							const caCertificateFileName = this.getNodeParameter(
+								'caCertificateFileName',
+								i,
+							) as string;
+							const caCertificateFileFormat = this.getNodeParameter(
+								'caCertificateFileFormat',
+								i,
+							) as string;
+							const caPrivateKeyFileFormat = this.getNodeParameter(
+								'caPrivateKeyFileFormat',
+								i,
+							) as string;
+							const caPrivateKeyFileName = this.getNodeParameter(
+								'caPrivateKeyFileName',
+								i,
+							) as string;
 							const caSerialFileNumber = this.getNodeParameter('caSerialFileNumber', i) as string;
 
 							body = {

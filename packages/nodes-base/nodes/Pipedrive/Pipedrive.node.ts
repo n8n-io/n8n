@@ -4352,7 +4352,7 @@ export class Pipedrive implements INodeType {
 						if (item.binary[binaryPropertyName] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryPropertyName}" does not exists on item!`,
+								`The binary data property "${binaryPropertyName}" does not exist on item!`,
 								{ itemIndex: i },
 							);
 						}
@@ -4876,7 +4876,7 @@ export class Pipedrive implements INodeType {
 
 					responseData = responseData.data;
 					if (responseData.data === true) {
-						responseData = {success: true};
+						responseData = { success: true };
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -4890,7 +4890,7 @@ export class Pipedrive implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({json:{ error: error.message }});
+						returnData.push({ json: { error: error.message } });
 					}
 					continue;
 				}

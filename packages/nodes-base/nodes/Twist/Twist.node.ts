@@ -262,7 +262,7 @@ export class Twist implements INodeType {
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
+										`The binary data property "${binaryProperty}" does not exist on item!`,
 										{ itemIndex: i },
 									);
 								}
@@ -371,7 +371,7 @@ export class Twist implements INodeType {
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
+										`The binary data property "${binaryProperty}" does not exist on item!`,
 										{ itemIndex: i },
 									);
 								}
@@ -450,7 +450,7 @@ export class Twist implements INodeType {
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
+										`The binary data property "${binaryProperty}" does not exist on item!`,
 										{ itemIndex: i },
 									);
 								}
@@ -575,7 +575,7 @@ export class Twist implements INodeType {
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
+										`The binary data property "${binaryProperty}" does not exist on item!`,
 										{ itemIndex: i },
 									);
 								}
@@ -659,7 +659,7 @@ export class Twist implements INodeType {
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
+										`The binary data property "${binaryProperty}" does not exist on item!`,
 										{ itemIndex: i },
 									);
 								}
@@ -767,7 +767,7 @@ export class Twist implements INodeType {
 								if (binaryData === undefined) {
 									throw new NodeOperationError(
 										this.getNode(),
-										`No binary data property "${binaryProperty}" does not exists on item!`,
+										`The binary data property "${binaryProperty}" does not exist on item!`,
 										{ itemIndex: i },
 									);
 								}

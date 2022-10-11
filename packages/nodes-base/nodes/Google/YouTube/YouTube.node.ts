@@ -399,7 +399,7 @@ export class YouTube implements INodeType {
 						if (item.binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
+								`The binary data property "${binaryProperty}" does not exist on item!`,
 								{ itemIndex: i },
 							);
 						}
@@ -865,7 +865,7 @@ export class YouTube implements INodeType {
 						if (item.binary[binaryProperty] === undefined) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`No binary data property "${binaryProperty}" does not exists on item!`,
+								`The binary data property "${binaryProperty}" does not exist on item!`,
 								{ itemIndex: i },
 							);
 						}

@@ -215,7 +215,7 @@ export async function handleMatrixCall(
 			) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`No binary data property "${binaryPropertyName}" does not exists on item!`,
+					`The binary data property "${binaryPropertyName}" does not exist on item!`,
 				);
 			}
 

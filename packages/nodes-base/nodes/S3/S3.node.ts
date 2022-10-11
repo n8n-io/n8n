@@ -293,9 +293,19 @@ export class S3 implements INodeType {
 
 						const region = responseData.LocationConstraint._;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'PUT', path, '', qs, headers, {}, region);
+						responseData = await s3ApiRequestSOAP.call(
+							this,
+							bucketName,
+							'PUT',
+							path,
+							'',
+							qs,
+							headers,
+							{},
+							region,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -660,7 +670,7 @@ export class S3 implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -836,7 +846,7 @@ export class S3 implements INodeType {
 							if ((items[i].binary as IBinaryKeyData)[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									`The binary data property "${binaryPropertyName}" does not exist on item!`,
 									{ itemIndex: i },
 								);
 							}
@@ -882,7 +892,7 @@ export class S3 implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -895,7 +905,7 @@ export class S3 implements INodeType {
 						items[i].json = { error: error.message };
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({error: error.message}),
+							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
