@@ -134,6 +134,8 @@ import {
 } from 'jsplumb';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
+import once from 'lodash/once';
+
 import {
 	DEFAULT_STICKY_HEIGHT,
 	DEFAULT_STICKY_WIDTH,
@@ -208,6 +210,7 @@ import {
 	XYPosition,
 	IPushDataExecutionFinished,
 	ITag,
+	INewWorkflowData,
 	IWorkflowTemplate,
 	IExecutionsSummary,
 	IWorkflowToShare,
@@ -285,6 +288,7 @@ export default mixins(
 			containsTrigger(containsTrigger) {
 				// Re-center CanvasAddButton if there's no triggers
 				if (containsTrigger === false) this.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
+				else this.tryToAddWelcomeSticky();
 			},
 		},
 		async beforeRouteLeave(to, from, next) {
@@ -442,6 +446,7 @@ export default mixins(
 				showStickyButton: false,
 				showTriggerMissingTooltip: false,
 				canvasAddButtonPosition: [1, 1] as XYPosition,
+				workflowData: null as INewWorkflowData | null,
 			};
 		},
 		beforeDestroy() {
@@ -603,6 +608,9 @@ export default mixins(
 				if (this.createNodeActive) return;
 
 				this.createNodeActive = true;
+				// Default to the trigger tab in node creator if there's no trigger node yet
+				if (!this.containsTrigger) this.$store.commit('ui/setSelectedNodeCreatorType', TRIGGER_NODE_FILTER);
+
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 			},
@@ -738,7 +746,7 @@ export default mixins(
 				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
-				await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
+				this.workflowData = await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', true);
@@ -2126,38 +2134,41 @@ export default mixins(
 			},
 			async newWorkflow(): Promise<void> {
 				await this.resetWorkspace();
-				const newWorkflow = await this.$store.dispatch('workflows/getNewWorkflowData');
+				this.workflowData = await this.$store.dispatch('workflows/getNewWorkflowData');
 
 				this.$store.commit('setStateDirty', false);
 				this.setZoomLevel(1);
 				this.zoomToFit();
-
-				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
-				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
-					setTimeout(() => {
-						this.$store.commit('setNodeViewOffsetPosition', { newOffset: [0, 0] });
-						// For novice users (onboardingFlowEnabled == true)
-						// Inject welcome sticky note and zoom to fit
-						if (newWorkflow.onboardingFlowEnabled && !this.isReadOnly) {
-							this.$nextTick(async () => {
-								await this.addNodes([
-									{
-										id: uuid(),
-										...CanvasHelpers.WELCOME_STICKY_NODE,
-										parameters: {
-											// Use parameters from the template but add translated content
-											...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
-											content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
-										},
-									},
-								]);
-								this.zoomToFit();
-								this.$telemetry.track('welcome note inserted');
-							});
-						}
-					}, 0);
-				}
 			},
+			tryToAddWelcomeSticky: once(async function(this: any) {
+				const newWorkflow = this.workflowData;
+				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
+				if (true || flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
+					// For novice users (onboardingFlowEnabled == true)
+					// Inject welcome sticky note and zoom to fit
+
+					if (newWorkflow?.onboardingFlowEnabled && !this.isReadOnly) {
+						const collisionPadding = CanvasHelpers.GRID_SIZE + CanvasHelpers.NODE_SIZE;
+						// Position the welcome sticky left to the added trigger node
+						let position: XYPosition = [...(this.triggerNodes[0].position as XYPosition)];
+
+						position[0] -= CanvasHelpers.WELCOME_STICKY_NODE.parameters.width + (CanvasHelpers.GRID_SIZE * 4);
+						position = CanvasHelpers.getNewNodePosition(this.nodes, position, [collisionPadding, collisionPadding]);
+
+						await this.addNodes([{
+							id: uuid(),
+							...CanvasHelpers.WELCOME_STICKY_NODE,
+							parameters: {
+								// Use parameters from the template but add translated content
+								...CanvasHelpers.WELCOME_STICKY_NODE.parameters,
+								content: this.$locale.baseText('onboardingWorkflow.stickyContent'),
+							},
+							position,
+						}]);
+						this.$telemetry.track('welcome note inserted');
+					}
+				}
+			}),
 			async initView(): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
