@@ -172,12 +172,23 @@ export class CitrixAdc implements INodeType {
 								...body,
 								keyfile: privateKeyFileName,
 							};
-
 						} else {
-							const caCertificateFileName = this.getNodeParameter('caCertificateFileName', i) as string;
-							const caCertificateFileFormat = this.getNodeParameter('caCertificateFileFormat', i) as string;
-							const caPrivateKeyFileFormat = this.getNodeParameter('caPrivateKeyFileFormat', i) as string;
-							const caPrivateKeyFileName = this.getNodeParameter('caPrivateKeyFileName', i) as string;
+							const caCertificateFileName = this.getNodeParameter(
+								'caCertificateFileName',
+								i,
+							) as string;
+							const caCertificateFileFormat = this.getNodeParameter(
+								'caCertificateFileFormat',
+								i,
+							) as string;
+							const caPrivateKeyFileFormat = this.getNodeParameter(
+								'caPrivateKeyFileFormat',
+								i,
+							) as string;
+							const caPrivateKeyFileName = this.getNodeParameter(
+								'caPrivateKeyFileName',
+								i,
+							) as string;
 							const caSerialFileNumber = this.getNodeParameter('caSerialFileNumber', i) as string;
 
 							body = {
@@ -193,6 +204,46 @@ export class CitrixAdc implements INodeType {
 						const endpoint = `/config/sslcert?action=create`;
 
 						await citrixADCApiRequest.call(this, 'POST', endpoint, { sslcert: body });
+
+						responseData = { success: true };
+					}
+
+					if (operation === 'install') {
+						const certificateKeyPairName = this.getNodeParameter(
+							'certificateKeyPairName',
+							i,
+						) as string;
+						const certificateFileName = this.getNodeParameter('certificateFileName', i) as string;
+						const privateKeyFileName = this.getNodeParameter('privateKeyFileName', i) as string;
+						const certificateFormat = this.getNodeParameter('certificateFormat', i) as string;
+						const notifyExpiration = this.getNodeParameter('notifyExpiration', i) as boolean;
+						const body: IDataObject = {
+							cert: certificateFileName,
+							certkey: certificateKeyPairName,
+							key: privateKeyFileName,
+							inform: certificateFormat,
+						};
+
+						if (certificateFormat === 'PEM') {
+							const password = this.getNodeParameter('password', i) as string;
+							const certificateBundle = this.getNodeParameter('certificateBundle', i) as boolean;
+							Object.assign(body, {
+								passplain: password,
+								bundle: certificateBundle ? 'YES' : 'NO',
+							});
+						}
+
+						if (notifyExpiration) {
+							const notificationPeriod = this.getNodeParameter('notificationPeriod', i) as number;
+							Object.assign(body, {
+								expirymonitor: 'ENABLED',
+								notificationperiod: notificationPeriod,
+							});
+						}
+
+						const endpoint = `/config/sslcertkey`;
+
+						await citrixADCApiRequest.call(this, 'POST', endpoint, { sslcertkey: body });
 
 						responseData = { success: true };
 					}
