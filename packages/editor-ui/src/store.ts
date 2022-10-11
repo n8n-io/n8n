@@ -3,7 +3,6 @@ import Vuex, { ActionContext } from 'vuex';
 
 import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	DEFAULT_NODETYPE_VERSION,
 } from '@/constants';
 
 import {
@@ -33,8 +32,6 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
-	IWorkflowsState,
-	IExecutionsSummary,
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
@@ -50,8 +47,6 @@ import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
 import { isJsonKeyObject } from './utils';
-import { restApi } from './components/mixins/restApi';
-import { makeRestApiRequest } from './api/helpers';
 
 Vue.use(Vuex);
 

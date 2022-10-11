@@ -54,6 +54,7 @@ import {
 	faFolderOpen,
 	faGlobeAmericas,
 	faGift,
+	faGlobe,
 	faGraduationCap,
 	faGripVertical,
 	faHandPointLeft,
@@ -173,6 +174,7 @@ addIcon(faFilter);
 addIcon(faFlask);
 addIcon(faFolderOpen);
 addIcon(faGift);
+addIcon(faGlobe);
 addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
 addIcon(faHandPointLeft);
