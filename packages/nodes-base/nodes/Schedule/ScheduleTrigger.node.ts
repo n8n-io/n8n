@@ -196,24 +196,8 @@ export class ScheduleTrigger implements INodeType {
 								},
 								options: [
 									{
-										name: 'Friday',
-										value: 5,
-									},
-									{
 										name: 'Monday',
 										value: 1,
-									},
-									{
-										name: 'Saturday',
-										value: 6,
-									},
-									{
-										name: 'Sunday',
-										value: 7,
-									},
-									{
-										name: 'Thursday',
-										value: 4,
 									},
 									{
 										name: 'Tuesday',
@@ -222,6 +206,23 @@ export class ScheduleTrigger implements INodeType {
 									{
 										name: 'Wednesday',
 										value: 3,
+									},
+									{
+										name: 'Thursday',
+										value: 4,
+									},
+									{
+										name: 'Friday',
+										value: 5,
+									},
+
+									{
+										name: 'Saturday',
+										value: 6,
+									},
+									{
+										name: 'Sunday',
+										value: 7,
 									},
 								],
 								default: [7],
