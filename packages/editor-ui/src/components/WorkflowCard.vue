@@ -33,15 +33,6 @@
 						</n8n-badge>
 					</enterprise-edition>
 
-					<div :class="$style.activeStatusText">
-						<n8n-text v-if="data.active" color="success" size="small" bold>
-							{{ $locale.baseText('workflows.item.active') }}
-						</n8n-text>
-						<n8n-text v-else color="text-base" size="small" bold>
-							{{ $locale.baseText('workflows.item.inactive') }}
-						</n8n-text>
-					</div>
-
 					<workflow-activator
 						class="mr-xs"
 						:workflow-active="data.active"
@@ -221,14 +212,6 @@ export default mixins(
 	flex-direction: row;
 	justify-content: center;
 	align-items: center;
-}
-
-.activeStatusText {
-	width: 64px; // Required to avoid jumping when changing active state
-	padding-right: var(--spacing-xs);
-	box-sizing: border-box;
-	display: inline-block;
-	text-align: right;
 }
 </style>
 
