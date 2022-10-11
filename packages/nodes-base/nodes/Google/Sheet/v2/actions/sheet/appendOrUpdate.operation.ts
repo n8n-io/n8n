@@ -1,9 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-	ISheetUpdateData,
-	RangeDetectionOptions,
-	SheetProperties,
-} from '../../helpers/GoogleSheets.types';
+import { ISheetUpdateData, SheetProperties } from '../../helpers/GoogleSheets.types';
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
@@ -12,19 +8,24 @@ import { cellFormat, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data Mode',
 		name: 'dataMode',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Match',
-				value: 'autoMatch',
-				description: 'Attempt to automatically find the field',
+				name: 'Auto-Map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below',
+				name: 'Map Each Column Below',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Nothing',
+				value: 'nothing',
+				description: 'Do not send anything',
 			},
 		],
 		displayOptions: {
@@ -50,7 +51,7 @@ export const description: SheetProperties = [
 			loadOptionsMethod: 'getSheetHeaderRow',
 		},
 		default: '',
-		hint: 'This column does not get changed it gets only used to find the correct row to update',
+		hint: "Used to find the correct row to update. Doesn't get changed.",
 		displayOptions: {
 			show: {
 				operation: ['appendOrUpdate'],
@@ -76,7 +77,7 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Fields',
+		displayName: 'Values to Send',
 		name: 'fieldsUi',
 		placeholder: 'Add Field',
 		type: 'fixedCollection',
@@ -99,19 +100,31 @@ export const description: SheetProperties = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Field Name or ID',
-						name: 'fieldId',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Column',
+						name: 'column',
 						type: 'options',
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName'],
-							loadOptionsMethod: 'getSheetHeaderRow',
+							loadOptionsMethod: 'getSheetHeaderRowAndAddColumn',
 						},
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Column Name',
+						name: 'columnName',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								column: ['newColumn'],
+							},
+						},
+					},
+					{
+						displayName: 'Value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -149,9 +162,16 @@ export async function execute(
 	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
 
 	for (let i = 0; i < items.length; i++) {
+		const dataMode = this.getNodeParameter('dataMode', i) as
+			| 'defineBelow'
+			| 'autoMapInputData'
+			| 'nothing';
+
+		if (dataMode === 'nothing') continue;
+
 		const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
-		// const valueInputMode = (options.cellFormat || 'RAW') as ValueInputOption;
+		const valueInputMode = (options.cellFormat || 'RAW') as ValueInputOption;
 		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
 
 		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
@@ -172,19 +192,36 @@ export async function execute(
 			}
 		}
 
-		const dataMode = this.getNodeParameter('dataMode', i) as 'defineBelow' | 'autoMatch';
+		let columnNames: string[] = [];
+		const response = await sheet.getData(
+			`${sheetName}!${headerRow + 1}:${headerRow + 1}`,
+			'FORMATTED_VALUE',
+		);
+
+		columnNames = response ? response[0] : [];
+		const newColumns = new Set<string>();
 
 		const data: IDataObject[] = [];
 		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 
-		if (dataMode === 'autoMatch') {
+		if (dataMode === 'autoMapInputData') {
 			data.push(items[i].json);
 		} else {
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 
 			const fields = (this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]).reduce(
 				(acc, entry) => {
-					acc[entry.fieldId as string] = entry.fieldValue as string;
+					if (entry.column === 'newColumn') {
+						const columnName = entry.columnName as string;
+
+						if (columnNames.includes(columnName) === false) {
+							newColumns.add(columnName);
+						}
+
+						acc[columnName] = entry.fieldValue as string;
+					} else {
+						acc[entry.column as string] = entry.fieldValue as string;
+					}
 					return acc;
 				},
 				{} as IDataObject,
@@ -193,6 +230,15 @@ export async function execute(
 			fields[columnToMatchOn] = valueToMatchOn;
 
 			data.push(fields);
+		}
+
+		if (newColumns.size) {
+			await sheet.updateRow(
+				sheetName,
+				[columnNames.concat([...newColumns])],
+				(options.cellFormat as ValueInputOption) || 'RAW',
+				headerRow + 1,
+			);
 		}
 
 		const preparedData = await sheet.prepareDataForUpdateOrUpsert(

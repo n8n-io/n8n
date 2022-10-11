@@ -206,7 +206,6 @@ export function mapFields(this: IExecuteFunctions, inputSize: number) {
 
 export async function autoMapInputData(
 	this: IExecuteFunctions,
-	// handlingExtraData: string,
 	sheetNameWithRange: string,
 	sheet: GoogleSheet,
 	items: INodeExecutionData[],

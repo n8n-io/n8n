@@ -3,7 +3,7 @@ import { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.ty
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
-import { cellFormat, locationDefine } from './commonDescription';
+import { cellFormat } from './commonDescription';
 
 export const description: SheetProperties = [
 	{

@@ -205,6 +205,8 @@ export class GoogleSheet {
 			query,
 		);
 
+		console.log(body, query);
+
 		return response;
 	}
 

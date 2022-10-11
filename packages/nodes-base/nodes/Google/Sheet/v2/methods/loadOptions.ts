@@ -70,3 +70,14 @@ export async function getSheetHeaderRow(
 		return [];
 	}
 }
+
+export async function getSheetHeaderRowAndAddColumn(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData = await getSheetHeaderRow.call(this);
+	returnData.push({
+		name: 'New column ...',
+		value: 'newColumn',
+	});
+	return returnData;
+}
