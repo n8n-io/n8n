@@ -363,7 +363,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					await githubApiRequest.call(this, 'GET', endpoint, {});
 				} catch (error) {
-					if (error.httpCode === '404') {
+					if (error.cause.httpCode === '404') {
 						// Webhook does not exist
 						delete webhookData.webhookId;
 						delete webhookData.webhookEvents;
@@ -412,7 +412,7 @@ export class GithubTrigger implements INodeType {
 				try {
 					responseData = await githubApiRequest.call(this, 'POST', endpoint, body);
 				} catch (error) {
-					if (error.httpCode === '422') {
+					if (error.cause.httpCode === '422') {
 						// Webhook exists already
 
 						// Get the data of the already registered webhook

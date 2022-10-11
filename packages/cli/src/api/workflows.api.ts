@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 
 import express from 'express';
-import { IDataObject, IPinData, LoggerProxy, Workflow } from 'n8n-workflow';
+import { IDataObject, INode, IPinData, LoggerProxy, Workflow } from 'n8n-workflow';
 
 import axios from 'axios';
 import { FindManyOptions, In } from 'typeorm';
@@ -565,7 +565,9 @@ workflowsController.post(
 			userId: req.user.id,
 		};
 
-		if (pinnedTrigger) {
+		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
+
+		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
 			data.startNodes = [pinnedTrigger.name];
 		}
 
