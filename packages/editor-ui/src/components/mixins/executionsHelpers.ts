@@ -6,7 +6,7 @@ import { genericHelpers } from "./genericHelpers";
 export interface IExecutionUIData {
 	name: string;
 	label: string;
-	startTime: string,
+	startTime: string;
 	runningTime: string;
 }
 
