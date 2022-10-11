@@ -171,8 +171,3 @@ export default Vue.extend({
 	align-items: center;
 }
 </style>
-
-<style lang="scss" scoped>
-.n8n-select {
-	height: 34px;
-}
