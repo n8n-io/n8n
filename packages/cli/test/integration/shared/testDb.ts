@@ -96,7 +96,12 @@ export async function init() {
 
 		try {
 			const schema = config.getEnv('database.postgresdb.schema');
-			await exec(`psql -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`);
+			const exportPasswordCli = pgOptions.password
+				? `export PGPASSWORD=${pgOptions.password} && `
+				: '';
+			await exec(
+				`${exportPasswordCli} psql -h ${pgOptions.host} -U ${pgOptions.username} -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`,
+			);
 		} catch (error) {
 			if (error instanceof Error && error.message.includes('command not found')) {
 				console.error(
@@ -645,6 +650,18 @@ export async function createWorkflowWithTrigger(
 	);
 
 	return workflow;
+}
+
+// ----------------------------------
+//        workflow sharing
+// ----------------------------------
+
+export async function getWorkflowSharing(workflow: WorkflowEntity) {
+	return Db.collections.SharedWorkflow.find({
+		where: {
+			workflow,
+		},
+	});
 }
 
 // ----------------------------------
