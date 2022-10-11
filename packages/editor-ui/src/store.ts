@@ -33,7 +33,6 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
-	IWorkflowsState,
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
