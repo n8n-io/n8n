@@ -153,10 +153,12 @@ export default Vue.extend({
 
 
 .submenu {
+	background: none !important;
+
 	:global(.el-submenu__title) {
 		display: flex;
 		align-items: center;
-		border-radius: var(--border-radius-base);
+		border-radius: var(--border-radius-base) !important;
 		padding: var(--spacing-2xs) var(--spacing-xs) !important;
 		user-select: none;
 
@@ -205,9 +207,11 @@ export default Vue.extend({
 }
 
 .active {
-	background-color: var(--color-foreground-base);
-	border-radius: var(--border-radius-base);
-	.icon { color: var(--color-text-dark) }
+	&, & :global(.el-submenu__title) {
+		background-color: var(--color-foreground-base);
+		border-radius: var(--border-radius-base);
+		.icon { color: var(--color-text-dark) }
+	}
 }
 
 .menuItem {
