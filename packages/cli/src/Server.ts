@@ -90,7 +90,7 @@ import { WEBHOOK_METHODS } from './WebhookHelpers';
 import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 
 import { nodesController } from './api/nodes.api';
-import { workflowsController } from './api/workflows.api';
+import { workflowsController } from './workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './credentials/credentials.controller';
 import { oauth2CredentialController } from './credentials/oauth2Credential.api';
@@ -108,12 +108,12 @@ import { resolveJwt } from './UserManagement/auth/jwt';
 import { executionsController } from './api/executions.api';
 import { nodeTypesController } from './api/nodeTypes.api';
 import { tagsController } from './api/tags.api';
-import { isCredentialsSharingEnabled } from './credentials/helpers';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
+	isSharingEnabled,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import {
@@ -330,6 +330,7 @@ class App {
 			isNpmAvailable: false,
 			enterprise: {
 				sharing: false,
+				workflowSharing: false,
 			},
 		};
 	}
@@ -357,7 +358,8 @@ class App {
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
-			sharing: isCredentialsSharingEnabled(),
+			sharing: isSharingEnabled(),
+			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {

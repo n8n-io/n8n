@@ -1,4 +1,4 @@
-import { createVuePlugin } from 'vite-plugin-vue2';
+import vue from '@vitejs/plugin-vue2';
 import { createHtmlPlugin } from 'vite-plugin-html';
 import legacy from '@vitejs/plugin-legacy';
 import monacoEditorPlugin from "vite-plugin-monaco-editor";
@@ -36,7 +36,7 @@ export default defineConfig({
 		legacy({
 			targets: ['defaults', 'not IE 11'],
 		}),
-		createVuePlugin(),
+		vue(),
 		...createHtmlPlugin({
 			inject: {
 				data: {

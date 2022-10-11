@@ -5,15 +5,15 @@ import { Db, InternalHooksManager, ResponseHelper } from '..';
 import type { CredentialsEntity } from '../databases/entities/CredentialsEntity';
 
 import type { CredentialRequest } from '../requests';
+import { isSharingEnabled, rightDiff } from '../UserManagement/UserManagementHelper';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 import type { CredentialWithSharings } from './credentials.types';
-import { isCredentialsSharingEnabled, rightDiff } from './helpers';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EECredentialsController = express.Router();
 
 EECredentialsController.use((req, res, next) => {
-	if (!isCredentialsSharingEnabled()) {
+	if (!isSharingEnabled()) {
 		// skip ee router and use free one
 		next('router');
 		return;
