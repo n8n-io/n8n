@@ -1,3 +1,11 @@
+## [0.197.1](https://github.com/n8n-io/n8n/compare/n8n@0.197.0...n8n@0.197.1) (2022-10-10)
+
+
+### Bug Fixes
+
+* **editor:** Fix resource locator width for trigger nodes ([#4302](https://github.com/n8n-io/n8n/issues/4302)) ([845d1f8](https://github.com/n8n-io/n8n/commit/845d1f8bd9763e9b886ac70c7ccbd37ff1c24b43))
+
+
 # [0.197.0](https://github.com/n8n-io/n8n/compare/n8n@0.196.0...n8n@0.197.0) (2022-10-10)
 
 
