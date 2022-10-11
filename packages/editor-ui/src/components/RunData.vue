@@ -367,7 +367,6 @@ import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
 import RunDataJson from '@/components/RunDataJson.vue';
-import { PropType } from 'vue';
 import { isEmpty } from '@/utils';
 
 export type EnterEditModeArgs = {
