@@ -258,7 +258,7 @@ export default mixins(
 					case 'lastCreated':
 						return (new Date(b.createdAt)).valueOf() - (new Date(a.createdAt)).valueOf();
 					case 'nameAsc':
-						return a.name.localeCompare(b.name);
+						return a.name.trim().localeCompare(b.name.trim());
 					case 'nameDesc':
 						return b.name.localeCompare(a.name);
 					default:
