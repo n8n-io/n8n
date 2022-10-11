@@ -23,7 +23,6 @@
 
 <script lang="ts">
 import camelcase from 'lodash.camelcase';
-import { INodeCreateElement } from '@/Interface';
 import Vue from 'vue';
 
 import ItemIterator from './ItemIterator.vue';
