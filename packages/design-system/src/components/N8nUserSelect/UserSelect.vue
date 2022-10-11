@@ -1,5 +1,5 @@
 <template>
-	<el-select
+	<n8n-select
 		:value="value"
 		:filterable="true"
 		:filterMethod="setFilter"
@@ -16,7 +16,7 @@
 		<template #prefix v-if="$slots.prefix">
 			<slot name="prefix" />
 		</template>
-		<el-option
+		<n8n-option
 			v-for="user in sortedUsers"
 			:key="user.id"
 			:value="user.id"
@@ -25,8 +25,8 @@
 			:disabled="user.disabled"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
-		</el-option>
-	</el-select>
+		</n8n-option>
+	</n8n-select>
 </template>
 
 <script lang="ts">

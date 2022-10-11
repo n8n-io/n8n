@@ -1,53 +1,22 @@
 <template>
 	<div :class="$style.container">
-		<n8n-menu :router="true" :default-active="$route.path" type="secondary">
-			<div :class="$style.returnButton" @click="onReturn">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="arrow-left" />
-				</i>
-				<n8n-heading slot="title" size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
-			</div>
-			<n8n-menu-item index="/settings/personal" v-if="canAccessPersonalSettings()" :class="$style.tab">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="user-circle" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.personal') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item index="/settings/users" v-if="canAccessUsersSettings()" :class="[$style.tab, $style.usersMenu]">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="user-friends" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.users') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item index="/settings/api" v-if="canAccessApiSettings()" :class="[$style.tab, $style.apiMenu]">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="plug" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.n8napi') }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item
-				v-for="fakeDoor in settingsFakeDoorFeatures"
-				v-bind:key="fakeDoor.featureName"
-				:index="`/settings/coming-soon/${fakeDoor.id}`"
-				:class="$style.tab"
-			>
-				<i :class="$style.icon">
-					<font-awesome-icon :icon="fakeDoor.icon" />
-				</i>
-				<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
-			</n8n-menu-item>
-			<n8n-menu-item index="/settings/community-nodes" v-if="canAccessCommunityNodes()" :class="$style.tab">
-				<i :class="$style.icon">
-					<font-awesome-icon icon="cube" />
-				</i>
-				<span slot="title">{{ $locale.baseText('settings.communityNodes') }}</span>
-			</n8n-menu-item>
+		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
+			<template #header>
+				<div :class="$style.returnButton" @click="onReturn">
+					<i class="mr-xs">
+						<font-awesome-icon icon="arrow-left" />
+					</i>
+					<n8n-heading slot="title" size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
+				</div>
+			</template>
+			<template #menuSuffix>
+				<div :class="$style.versionContainer">
+					<n8n-link @click="onVersionClick" size="small">
+						{{ $locale.baseText('settings.version') }} {{ versionCli }}
+					</n8n-link>
+				</div>
+			</template>
 		</n8n-menu>
-		<div :class="$style.versionContainer">
-			<n8n-link @click="onVersionClick" size="small">
-				{{ $locale.baseText('settings.version') }} {{ versionCli }}
-			</n8n-link>
-		</div>
 	</div>
 </template>
 
@@ -59,6 +28,8 @@ import { userHelpers } from './mixins/userHelpers';
 import { pushConnection } from "@/components/mixins/pushConnection";
 import { IFakeDoor } from '@/Interface';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
+import { IMenuItem } from 'n8n-design-system';
+import { BaseTextKey } from '@/plugins/i18n';
 
 export default mixins(
 	userHelpers,
@@ -73,6 +44,64 @@ export default mixins(
 		settingsFakeDoorFeatures(): IFakeDoor[] {
 			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
 		},
+		sidebarMenuItems(): IMenuItem[] {
+
+			const menuItems: IMenuItem[] = [
+				{
+					id: 'settings-personal',
+					icon: 'user-circle',
+					label: this.$locale.baseText('settings.personal'),
+					position: 'top',
+					available: this.canAccessPersonalSettings(),
+					activateOnRouteNames: [ VIEWS.PERSONAL_SETTINGS ],
+				},
+				{
+					id: 'settings-users',
+					icon: 'user-friends',
+					label: this.$locale.baseText('settings.users'),
+					position: 'top',
+					available: this.canAccessUsersSettings(),
+					activateOnRouteNames: [ VIEWS.USERS_SETTINGS ],
+				},
+				{
+					id: 'settings-api',
+					icon: 'plug',
+					label: this.$locale.baseText('settings.n8napi'),
+					position: 'top',
+					available: this.canAccessApiSettings(),
+					activateOnRouteNames: [ VIEWS.API_SETTINGS ],
+				},
+			];
+
+			for (const item of this.settingsFakeDoorFeatures) {
+				if (item.uiLocations.includes('settings')) {
+					menuItems.push({
+						id: item.id,
+						icon: item.icon || 'question',
+						label: this.$locale.baseText(item.featureName as BaseTextKey),
+						position: 'top',
+						available: true,
+						activateOnRoutePaths: [ `/settings/coming-soon/${item.id}` ],
+					});
+				}
+			}
+
+			menuItems.push(
+				{
+					id: 'settings-community-nodes',
+					icon: 'cube',
+					label: this.$locale.baseText('settings.communityNodes'),
+					position: 'top',
+					available: this.canAccessCommunityNodes(),
+					activateOnRouteNames: [ VIEWS.COMMUNITY_NODES ],
+				},
+			);
+
+			return menuItems;
+		},
+	},
+	mounted() {
+		this.pushConnect();
 	},
 	methods: {
 		canAccessPersonalSettings(): boolean {
@@ -96,81 +125,58 @@ export default mixins(
 		openUpdatesPanel() {
 			this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
 		},
-	},
-	mounted() {
-		this.pushConnect();
+		async handleSelect (key: string) {
+			switch (key) {
+				case 'settings-personal':
+					if (this.$router.currentRoute.name !== VIEWS.PERSONAL_SETTINGS) {
+						this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+					}
+					break;
+				case 'settings-users':
+					if (this.$router.currentRoute.name !== VIEWS.USERS_SETTINGS) {
+						this.$router.push({ name: VIEWS.USERS_SETTINGS });
+					}
+					break;
+				case 'settings-api':
+					if (this.$router.currentRoute.name !== VIEWS.API_SETTINGS) {
+						this.$router.push({ name: VIEWS.API_SETTINGS });
+					}
+					break;
+				case 'environments':
+				case 'logging':
+					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
+					break;
+				case 'settings-community-nodes':
+					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
+						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+					}
+					break;
+				default:
+					break;
+			}
+		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-:global(.el-menu) {
-	--menu-item-height: 35px;
-	--submenu-item-height: 27px;
-}
 
 .container {
-	min-width: 200px;
-	height: 100%;
+	min-width: $sidebar-expanded-width;
+	height: 100vh;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
 	position: relative;
-	padding: var(--spacing-xs);
 	overflow: auto;
 
-	ul {
-		height: 100%;
-	}
-
-	:global(.el-menu-item) > span{
-		position: relative;
-		left: 8px;
-	}
-}
-
-.settingsHeading {
-	position: relative;
-	left: 8px;
-}
-
-.tab {
-	margin-bottom: var(--spacing-2xs);
-	svg:global(.svg-inline--fa) { position: relative; }
 }
 
 .returnButton {
-	composes: tab;
-	margin-bottom: var(--spacing-l);
-	padding: 0 var(--spacing-xs);
-	height: 38px;
-	display: flex;
-	align-items: center;
-	color: var(--color-text-base);
-	font-size: var(--font-size-s);
+	padding: var(--spacing-s) var(--spacing-l);
 	cursor: pointer;
-
-	i {
-		color: var(--color-text-light);
-	}
-
-	&:hover > * {
+	&:hover {
 		color: var(--color-primary);
 	}
-}
-
-.usersMenu svg { left: -2px; }
-.apiMenu svg { left: 2px; }
-
-.icon {
-	width: 16px;
-	display: inline-flex;
-	margin-right: 10px;
-}
-
-.versionContainer {
-	position: absolute;
-	left: 23px;
-	bottom: 20px;
 }
 
 @media screen and (max-height: 420px) {

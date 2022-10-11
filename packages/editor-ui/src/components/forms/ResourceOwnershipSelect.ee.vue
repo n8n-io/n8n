@@ -1,27 +1,15 @@
 <template>
-	<n8n-menu default-active="owner" type="secondary" @select="onSelectOwner" ref="selectOwnerMenu">
-		<n8n-menu-item index="owner">
-			<template #title>
-				<n8n-icon icon="user"/>
-				<span class="ml-xs">
-					{{ myResourcesLabel }}
-				</span>
-			</template>
-		</n8n-menu-item>
-		<n8n-menu-item index="all">
-			<template #title>
-				<n8n-icon icon="globe-americas"/>
-				<span class="ml-xs">
-					{{ allResourcesLabel }}
-				</span>
-			</template>
-		</n8n-menu-item>
-	</n8n-menu>
+		<n8n-menu
+			:items="menuItems"
+			mode="tabs"
+			:value="value ? 'owner' : 'all'"
+			@input="onSelectOwner"
+		/>
 </template>
 
 <script lang="ts">
 import Vue from 'vue';
-import {IUser} from "@/Interface";
+import { IMenuItem } from 'n8n-design-system';
 
 export default Vue.extend({
 	props: {
@@ -38,15 +26,34 @@ export default Vue.extend({
 			default: '',
 		},
 	},
+	computed: {
+		menuItems(): IMenuItem[] {
+			return [
+				{
+					id: 'owner',
+					icon: 'user',
+					label: this.myResourcesLabel,
+					position: 'top',
+				},
+				{
+					id: 'all',
+					icon: 'globe-americas',
+					label: this.allResourcesLabel,
+					position: 'top',
+				},
+			];
+		},
+	},
 	methods: {
 		onSelectOwner(type: string) {
 			this.$emit('input', type === 'owner');
 		},
 	},
-	watch: {
-		value(active) {
-			(this.$refs.selectOwnerMenu as Vue & { $children: Array<{ activeIndex: string; }> }).$children[0].activeIndex = active ? 'owner' : 'all';
-		},
-	},
 });
 </script>
+
+<style lang="scss" scoped>
+.menu-container {
+	--menu-padding: 0;
+}
+</style>

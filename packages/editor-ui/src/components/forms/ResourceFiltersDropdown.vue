@@ -86,7 +86,7 @@ export default Vue.extend({
 			default: true,
 		},
 		reset: {
-			type: Function as PropType<(resource: IResource, filters: IResourceFiltersType, matches: boolean) => boolean>,
+			type: Function as PropType<() => void>,
 		},
 	},
 	data() {
@@ -171,3 +171,8 @@ export default Vue.extend({
 	align-items: center;
 }
 </style>
+
+<style lang="scss" scoped>
+.n8n-select {
+	height: 34px;
+}

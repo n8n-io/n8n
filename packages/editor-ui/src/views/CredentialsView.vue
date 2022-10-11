@@ -44,7 +44,7 @@
 
 <script lang="ts">
 import {showMessage} from '@/components/mixins/showMessage';
-import {ICredentialsResponse} from '@/Interface';
+import {ICredentialsResponse, IUser} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -88,6 +88,12 @@ export default mixins(
 		};
 	},
 	computed: {
+		currentUser(): IUser {
+			return this.$store.getters['users/currentUser'];
+		},
+		allUsers(): IUser[] {
+			return this.$store.getters['users/allUsers'];
+		},
 		allCredentials(): ICredentialsResponse[] {
 			return this.$store.getters['credentials/allCredentials'];
 		},
@@ -150,6 +156,10 @@ export default mixins(
 <style lang="scss" module>
 .type-input {
 	--max-width: 265px;
+}
+
+.sidebarContainer ul {
+	padding: 0 !important;
 }
 </style>
 

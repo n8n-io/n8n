@@ -8,7 +8,7 @@
 			size="small"
 			@click.stop.prevent="showAll = true"
 		>
-			+{{hiddenTagsLength}} more
+			+{{ hiddenTagsLength }} more
 		</n8n-link>
 	</div>
 </template>
@@ -18,7 +18,10 @@ import N8nTag from '../N8nTag';
 import N8nLink from '../N8nLink';
 import Vue, {PropType} from 'vue';
 
-interface ITag { id: string; name: string; }
+interface ITag {
+	id: string;
+	name: string;
+}
 
 export default Vue.extend({
 	name: 'n8n-tags',
@@ -64,7 +67,18 @@ export default Vue.extend({
 .tags {
 	display: inline-flex;
 	flex-wrap: wrap;
-  	align-items: center;
+	align-items: center;
+	overflow-x: scroll;
+
+	/* Hide scrollbar for Chrome, Safari and Opera */
+	&::-webkit-scrollbar {
+		display: none;
+	}
+
+	/* Hide scrollbar for IE, Edge and Firefox */
+	-ms-overflow-style: none; /* IE and Edge */
+	scrollbar-width: none; /* Firefox */
+
 
 	* {
 		margin: var(--spacing-4xs) var(--spacing-4xs) 0 0;
