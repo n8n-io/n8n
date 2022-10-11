@@ -46,7 +46,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				typeOptions: {
-					loadOptionsMethod: 'getActityTypes',
+					loadOptionsMethod: 'getActivityTypes',
 				},
 				required: true,
 				default: [],
@@ -59,7 +59,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 				name: 'triggerOn',
 				type: 'multiOptions',
 				typeOptions: {
-					loadOptionsMethod: 'getActitySubTypes',
+					loadOptionsMethod: 'getActivitySubTypes',
 					loadOptionsDependsOn: ['resource'],
 				},
 				required: true,
@@ -72,7 +72,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getActityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const activitytypes = await venafiApiRequest.call(this, 'GET', '/v1/activitytypes');
 				return activitytypes.map(
 					({ key, readableName }: { key: string; readableName: string }) => ({
@@ -81,7 +81,7 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 					}),
 				);
 			},
-			async getActitySubTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+			async getActivitySubTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const resource = this.getCurrentNodeParameter('resource') as string;
 				const activitytypes = await venafiApiRequest.call(this, 'GET', '/v1/activitytypes');
 				const activity = activitytypes.find(({ key }: { key: string }) => key === resource) as {
