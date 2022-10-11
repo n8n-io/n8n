@@ -17,7 +17,7 @@ import { User } from './User';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 
-type RoleNames = 'owner' | 'member' | 'user';
+type RoleNames = 'owner' | 'member' | 'user' | 'editor';
 type RoleScopes = 'global' | 'workflow' | 'credential';
 
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
