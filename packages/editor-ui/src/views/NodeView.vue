@@ -148,10 +148,7 @@ import {
 	IWorkflowToShare,
 } from '@/Interface';
 import { mapGetters } from 'vuex';
-<<<<<<< HEAD
 
-=======
->>>>>>> master
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
