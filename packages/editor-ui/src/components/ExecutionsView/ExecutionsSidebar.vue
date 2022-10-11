@@ -1,5 +1,5 @@
 <template>
-	<div :class="['executions-sidebar', $style.container]">
+	<div v-if="statusFilterApplied || executions.length > 0" :class="['executions-sidebar', $style.container]">
 		<div :class="$style.heading">
 				<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
@@ -68,7 +68,7 @@
 			/>
 		</div>
 		<div :class="$style.infoAccordion">
-			<executions-info-accordion />
+			<executions-info-accordion :initiallyExpanded="false" />
 		</div>
 	</div>
 </template>
@@ -286,7 +286,7 @@ export default mixins(executionHelpers).extend({
 .infoAccordion {
 	position: absolute;
 	bottom: 0;
-	margin-left: -24px;
+	margin-left: calc(-1 * var(--spacing-l));
 	border-top: var(--border-base);
 
 	& > div {

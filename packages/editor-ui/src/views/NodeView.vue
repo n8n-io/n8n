@@ -2904,29 +2904,6 @@ export default mixins(
 
 				return Promise.resolve(data);
 			},
-			resetJustNodeView() {
-				this.deleteEveryEndpoint();
-				if (this.executionWaitingForWebhook === true) {
-					// Make sure that if there is a waiting test-webhook that
-					// it gets removed
-					this.restApi().removeTestWebhook(this.$store.getters.workflowId)
-						.catch(() => {
-							// Ignore all errors
-						});
-				}
-				this.$store.commit('removeAllConnections', { setStateDirty: false });
-				this.$store.commit('removeAllNodes', { setStateDirty: false, removePinData: true });
-				this.$store.commit('setWorkflowExecutionData', null);
-				this.$store.commit('resetAllNodesIssues');
-				this.$store.commit('setActive', false);
-				this.$store.commit('setActiveExecutionId', null);
-				this.$store.commit('setExecutingNode', null);
-				this.$store.commit('removeActiveAction', 'workflowRunning');
-				this.$store.commit('setExecutionWaitingForWebhook', false);
-				this.$store.commit('resetSelectedNodes');
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: [0, 0], setStateDirty: false });
-				return Promise.resolve();
-			},
 			resetWorkspace() {
 				// Reset nodes
 				this.deleteEveryEndpoint();

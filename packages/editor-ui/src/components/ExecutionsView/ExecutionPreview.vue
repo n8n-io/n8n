@@ -3,7 +3,9 @@
 		<div :class="$style.spinner">
 			<font-awesome-icon icon="spinner" spin />
 		</div>
-		<n8n-text :class="$style.runningMessage">Execution is running. It will show here once finished.</n8n-text>
+		<n8n-text :class="$style.runningMessage">
+			{{ $locale.baseText('executionDetails.runningMessage') }}
+		</n8n-text>
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div :class="$style.executionDetails" v-if="activeExecution">

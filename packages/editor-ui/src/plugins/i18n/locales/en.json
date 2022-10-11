@@ -251,6 +251,7 @@
 	"executionDetails.retry": "Retry of",
 	"executionDetails.runningTimeFinished": "in {time}",
 	"executionDetails.runningTimeRunning": "for {time}",
+	"executionDetails.runningMessage": "Execution is running. It will show here once finished.",
 	"executionDetails.workflow": "workflow",
 	"executionsLandingPage.emptyState.noTrigger.heading": "Set up a Trigger node. Then execute your workflow.",
 	"executionsLandingPage.emptyState.noTrigger.buttonText": "Set up Trigger",

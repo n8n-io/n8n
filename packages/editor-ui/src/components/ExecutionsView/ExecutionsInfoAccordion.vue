@@ -1,7 +1,7 @@
 <template>
 	<n8n-info-accordion
 		:class="[$style.accordion, 'mt-2xl']"
-		title="Which executions is this workflow saving?"
+		:title="$locale.baseText('executionsLandingPage.emptyState.accordion.title')"
 		:items="accordionItems"
 		:description="accordionDescription"
 		:initiallyExpanded="shouldExpandAccordion"
@@ -22,6 +22,12 @@ interface IWorkflowSaveSettings {
 
 export default Vue.extend({
 	name: 'executions-info-accordion',
+	props: {
+		initiallyExpanded: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	data() {
 		return {
 			workflowSaveSettings: {
@@ -41,6 +47,9 @@ export default Vue.extend({
 	},
 	computed: {
 		shouldExpandAccordion(): boolean {
+			if (this.initiallyExpanded === false) {
+				return false;
+			}
 			return this.workflowSaveSettings.saveFailedExecutions === false ||
 				this.workflowSaveSettings.saveSuccessfulExecutions === false ||
 				this.workflowSaveSettings.saveManualExecutions === false;
@@ -105,7 +114,7 @@ export default Vue.extend({
 	& > div:nth-child(1) {
 		display: flex;
 		flex-direction: row;
-		padding: 12px;
+		padding: var(--spacing-xs);
 		width: 100%;
 		user-select: none;
 	}

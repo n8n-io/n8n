@@ -32,7 +32,7 @@
 			</div>
 			<div :class="$style.icons">
 				<n8n-action-dropdown
-					v-if="execution.stoppedAt !== undefined && !execution.finished && execution.retryOf === undefined && execution.retrySuccessId === undefined && !execution.waitTill"
+					v-if="executionUIDetails.name === 'error'"
 					:class="[$style.icon, $style.retry]"
 					:items="retryExecutionActions"
 					activatorIcon="redo"
@@ -136,9 +136,9 @@ export default mixins(
 	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) 0;
 
 	&:hover, &.active {
-		border-left: 4px solid transparent !important;
+		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
 		.executionLink {
-			background-color: #DBDFE7;
+			background-color: var(--color-foreground-base);
 		}
 	}
 
@@ -148,29 +148,29 @@ export default mixins(
 			top: 1px;
 		}
 		&, & .executionLink {
-			border-left: 4px solid #E6A23D;
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-warning);
 		}
-		.statusLabel, .spinner { color: #E6A23D; }
+		.statusLabel, .spinner { color: var(--color-warning); }
 	}
 
 	&.success {
 		&, & .executionLink {
-			border-left: 4px solid #29A568;
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-success);
 		}
 	}
 
 	&.waiting {
 		&, & .executionLink {
-			border-left: 4px solid #5C4EC2;
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-secondary);
 		}
-		.statusLabel { color: #5C4EC2; }
+		.statusLabel { color: var(--color-secondary); }
 	}
 
 	&.error {
 		&, & .executionLink {
-			border-left: 4px solid #F45959;
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-danger);
 		}
-		.statusLabel { color: #F45959; }
+		.statusLabel { color: var(--color-danger ); }
 	}
 }
 
@@ -182,9 +182,9 @@ export default mixins(
 	color: var(--color-text-base);
 	font-size: var(--font-size-xs);
 	padding: var(--spacing-xs);
-	border-radius: 4px;
+	border-radius: var(--border-radius-base);
 	position: relative;
-	left: -4px;
+	left: calc(-1 * var(--spacing-4xs)); // Hide link border under card border so it's not visible when not hovered
 
 	&:active {
 		.icon, .statusLabel {
