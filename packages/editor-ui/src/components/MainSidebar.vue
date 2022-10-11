@@ -277,7 +277,7 @@ export default mixins(
 				return [ ...items, ...regularItems ];
 			},
 		},
-		mounted() {
+		async mounted() {
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
@@ -285,9 +285,8 @@ export default mixins(
 				this.$store.commit('ui/expandSidebarMenu');
 			}
 			this.checkWidthAndAdjustSidebar(window.innerWidth);
-			Vue.nextTick(() => {
-				this.fullyExpanded = !this.isCollapsed;
-			});
+			await Vue.nextTick();
+			this.fullyExpanded = !this.isCollapsed;
 		},
 		created() {
 			window.addEventListener("resize", this.onResize);
