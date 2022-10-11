@@ -2583,7 +2583,7 @@ export class Hubspot implements INodeType {
 							responseData = await hubspotApiRequest.call(this, 'PATCH', endpoint, { properties }, idProperty ? { idProperty } : {});
 						}
 						if (operation === 'upsert') {
-							let idProperty = this.getNodeParameter('idProperty', i) as string;
+							const idProperty = this.getNodeParameter('idProperty', i) as string;
 							const objectId = this.getNodeParameter('objectId', i) as string;
 							const customObjectProperties = this.getNodeParameter('customObjectProperties.values', i, []) as IDataObject[];
 							const properties: IDataObject = {};
@@ -3716,70 +3716,21 @@ export class Hubspot implements INodeType {
 							}
 						}
 					}
-					if (Array.isArray(responseData)) {
-						returnData.push.apply(returnData, responseData as IDataObject[]);
-					} else {
-						returnData.push(responseData as IDataObject);
-					}
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+
+					returnData.push(...executionData);
+
 				} catch (error) {
-					if (this.continueOnFail()) {
-						if (resource === 'customObject' || resource === 'association') {
-							const errorDetails: Record<string, unknown> = {
-								httpCode: (error as JsonObject).httpCode,
-								timestamp: (error as JsonObject).timestamp,
-								message: (error as JsonObject).message,
-							};
-
-							try {
-								errorDetails.objectId = this.getNodeParameter('objectId', i) as string;
-							} catch (e) { }
-
-							try {
-								errorDetails.idProperty = this.getNodeParameter('idProperty', i) as string;
-							} catch (e) { }
-
-							const cause = (error as NodeApiError).cause as Error;
-							errorDetails.response = cause.message;
-
-							try {
-								const causeJsonString = cause.message?.split(' - ')[1];
-								errorDetails.response = causeJsonString;
-								const responseJson = JSON.parse(causeJsonString);
-								errorDetails.response = responseJson;
-
-								// This does not always work, because sometimes the response contains a javascript object as a string and not JSON
-								const parseMessage = (errorMessage: string) => {
-									try {
-										const responseMessageText = errorMessage?.slice(0, errorMessage?.indexOf(': '));
-										const responseMessageDataString = errorMessage?.slice(errorMessage?.indexOf(': ') + 2);
-										const responseMessageData = JSON.parse(responseMessageDataString);
-										const responseMessageObject = {
-											text: responseMessageText,
-											data: responseMessageData,
-										};
-
-										responseMessageObject.data.map((data: { message?: string } & unknown) => typeof data.message === 'string' ? { ...data, message: parseMessage(data.message) } : data);
-										return responseMessageObject;
-									} catch (e) {
-										return errorMessage;
-									}
-								};
-
-								const errorMessage = (errorDetails.response as { message: string })?.message;
-								(errorDetails.response as { message: unknown }).message = parseMessage(errorMessage);
-							} catch (e) { }
-
-							returnData.push({ error: (error as JsonObject).message, errorDetails });
-							continue;
-
-						}
-						returnData.push({ error: (error as JsonObject).message });
-						continue;
-					}
+					if (this.continueOnFail()) {}
 					throw error;
 				}
 			}
 		}
+
 		return this.prepareOutputData(returnData);
 	}
 }
