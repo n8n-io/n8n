@@ -53,7 +53,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 		},
 		async loadCurrentWorkflowExecutions(
 			context: ActionContext<IWorkflowsState, IRootState>,
-			filter: { finished: boolean, status: string }
+			filter: { finished: boolean, status: string },
 		): Promise<IExecutionsSummary[]> {
 			let activeExecutions = [];
 			let finishedExecutions = [];
