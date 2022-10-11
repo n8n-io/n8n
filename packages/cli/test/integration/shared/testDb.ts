@@ -458,6 +458,13 @@ export function getWorkflowOwnerRole() {
 	});
 }
 
+export function getWorkflowEditorRole() {
+	return Db.collections.Role.findOneOrFail({
+		name: 'editor',
+		scope: 'workflow',
+	});
+}
+
 export function getCredentialOwnerRole() {
 	return Db.collections.Role.findOneOrFail({
 		name: 'owner',
@@ -605,6 +612,16 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 		});
 	}
 	return workflow;
+}
+
+export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: User[]) {
+	const role = await getWorkflowEditorRole();
+	const sharedWorkflows = users.map((user) => ({
+		user,
+		workflow,
+		role,
+	}));
+	return Db.collections.SharedWorkflow.save(sharedWorkflows);
 }
 
 /**
