@@ -93,7 +93,7 @@
 				</div>
 
 				<div class="mt-xs mb-l">
-					<ul class="list-style-none" v-if="filteredAndSortedSubviewResources.length > 0">
+					<ul :class="[$style.list, 'list-style-none']" v-if="filteredAndSortedSubviewResources.length > 0">
 						<li v-for="resource in filteredAndSortedSubviewResources" :key="resource.id" class="mb-2xs">
 							<slot :data="resource" />
 						</li>
@@ -383,6 +383,11 @@ export default mixins(
 
 .search {
 	max-width: 240px;
+}
+
+.list {
+	display: flex;
+	flex-direction: column;
 }
 
 .sort-and-filter {

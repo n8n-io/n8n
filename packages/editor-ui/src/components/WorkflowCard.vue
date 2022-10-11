@@ -213,6 +213,7 @@ export default mixins(
 
 .cardHeading {
 	font-size: var(--font-size-s);
+	word-break: break-word;
 }
 
 .cardActions {
