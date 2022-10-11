@@ -6,14 +6,13 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	IOAuth2Options,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request-promise-native';
 
-import { replaceNullValues } from '../GenericFunctions';
+import { getOAuth2AdditionalParameters, replaceNullValues } from '../GenericFunctions';
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -1145,25 +1144,7 @@ export class HttpRequestV3 implements INodeType {
 					requestPromises.push(request);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
-				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
-					clickUpOAuth2Api: {
-						keepBearer: false,
-						tokenType: 'Bearer',
-					},
-					slackOAuth2Api: {
-						tokenType: 'Bearer',
-						property: 'authed_user.access_token',
-					},
-					boxOAuth2Api: {
-						includeCredentialsOnRefreshOnBody: true,
-					},
-					shopifyOAuth2Api: {
-						tokenType: 'Bearer',
-						keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
-					},
-				};
-
-				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
+				const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
 
 				// service-specific cred: OAuth1, OAuth2, plain
 
@@ -1232,7 +1213,7 @@ export class HttpRequestV3 implements INodeType {
 				} else {
 					responseFormat = 'text';
 					const data = Buffer.from(response.body).toString();
-					response.body = (!data) ? undefined : data;
+					response.body = !data ? undefined : data;
 				}
 			}
 

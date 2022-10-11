@@ -6,13 +6,12 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	IOAuth2Options,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
-import { replaceNullValues } from '../GenericFunctions';
+import { getOAuth2AdditionalParameters, replaceNullValues } from '../GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -1010,25 +1009,7 @@ export class HttpRequestV2 implements INodeType {
 					requestPromises.push(request);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
-				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
-					clickUpOAuth2Api: {
-						keepBearer: false,
-						tokenType: 'Bearer',
-					},
-					slackOAuth2Api: {
-						tokenType: 'Bearer',
-						property: 'authed_user.access_token',
-					},
-					boxOAuth2Api: {
-						includeCredentialsOnRefreshOnBody: true,
-					},
-					shopifyOAuth2Api: {
-						tokenType: 'Bearer',
-						keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
-					},
-				};
-
-				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
+				const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
 
 				// service-specific cred: OAuth1, OAuth2, plain
 				const requestWithAuthentication = this.helpers.requestWithAuthentication.call(

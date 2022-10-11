@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 
 import express from 'express';
-import { IDataObject, IPinData, LoggerProxy, Workflow } from 'n8n-workflow';
+import { IDataObject, INode, IPinData, LoggerProxy, Workflow } from 'n8n-workflow';
 
 import axios from 'axios';
 import { FindManyOptions, In } from 'typeorm';
@@ -29,11 +29,27 @@ import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { validateEntity } from '../GenericHelpers';
 import { InternalHooksManager } from '../InternalHooksManager';
 import { externalHooks } from '../Server';
+import { getLogger } from '../Logger';
 import type { WorkflowRequest } from '../requests';
 import { isBelowOnboardingThreshold } from '../WorkflowHelpers';
+import { EEWorkflowController } from './workflows.controller.ee';
 
 const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 export const workflowsController = express.Router();
+
+/**
+ * Initialize Logger if needed
+ */
+workflowsController.use((req, res, next) => {
+	try {
+		LoggerProxy.getInstance();
+	} catch (error) {
+		LoggerProxy.init(getLogger());
+	}
+	next();
+});
+
+workflowsController.use('/', EEWorkflowController);
 
 const isTrigger = (nodeType: string) =>
 	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
@@ -565,7 +581,9 @@ workflowsController.post(
 			userId: req.user.id,
 		};
 
-		if (pinnedTrigger) {
+		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
+
+		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
 			data.startNodes = [pinnedTrigger.name];
 		}
 

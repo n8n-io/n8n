@@ -19,19 +19,7 @@
 			</div>
 		</div>
 		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged" />
-		<div :class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']" v-if="!createNodeActive && !isReadOnly"
-			@mouseenter="onCreateMenuHoverIn">
-			<div class="node-creator-button">
-				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')"
-					:title="$locale.baseText('nodeView.addNode')" />
-				<div :class="['add-sticky-button', showStickyButton ? 'visible-button' : '']" @click="addStickyNote">
-					<n8n-icon-button size="medium" type="secondary" :icon="['far', 'note-sticky']"
-						:title="$locale.baseText('nodeView.addSticky')" />
-				</div>
-			</div>
-		</div>
-		<node-creator :active="createNodeActive" @nodeTypeSelected="nodeTypeSelected"
-			@closeNodeCreator="closeNodeCreator" />
+		<node-creation v-if="!isReadOnly" :create-node-active="createNodeActive" :node-view-scale="nodeViewScale" @toggleNodeCreator="onToggleNodeCreator" @addNode="onAddNode"/>
 		<div
 			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
 			<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')"
@@ -73,8 +61,6 @@ import {
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
 import {
-	DEFAULT_STICKY_HEIGHT,
-	DEFAULT_STICKY_WIDTH,
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -105,7 +91,6 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
-import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
 
@@ -146,17 +131,11 @@ import {
 	IWorkflowTemplate,
 	IExecutionsSummary,
 	IWorkflowToShare,
-} from '../Interface';
+} from '@/Interface';
 import { mapGetters } from 'vuex';
-
-import {
-	addNodeTranslation,
-} from '@/plugins/i18n';
-
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
-import { IUser } from 'n8n-design-system';
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
 
@@ -185,9 +164,10 @@ export default mixins(
 		components: {
 			NodeDetailsView,
 			Node,
-			NodeCreator,
+			NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
 			NodeSettings,
 			Sticky,
+			NodeCreation: () => import('@/components/Node/NodeCreation.vue'),
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -377,29 +357,6 @@ export default mixins(
 
 				this.runWorkflow();
 			},
-			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
-				const buttonsWrapper = mouseinEvent.target as Element;
-
-				// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
-				this.showStickyButton = true;
-				const moveCallback = (mousemoveEvent: MouseEvent) => {
-					if (buttonsWrapper) {
-						const wrapperBounds = buttonsWrapper.getBoundingClientRect();
-						const wrapperH = wrapperBounds.height;
-						const wrapperW = wrapperBounds.width;
-						const wrapperLeftNear = wrapperBounds.left;
-						const wrapperLeftFar = wrapperLeftNear + wrapperW;
-						const wrapperTopNear = wrapperBounds.top;
-						const wrapperTopFar = wrapperTopNear + wrapperH;
-						const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
-						if (!inside) {
-							this.showStickyButton = false;
-							document.removeEventListener('mousemove', moveCallback, false);
-						}
-					}
-				};
-				document.addEventListener('mousemove', moveCallback, false);
-			},
 			clearExecutionData() {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -477,11 +434,6 @@ export default mixins(
 			async onSaveKeyboardShortcut() {
 				const saved = await this.saveCurrentWorkflow();
 				if (saved) this.$store.dispatch('settings/fetchPromptsData');
-			},
-			openNodeCreator(source: string) {
-				this.createNodeActive = true;
-				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
-				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
 			},
 			async openExecution(executionId: string) {
 				this.resetWorkspace();
@@ -743,10 +695,7 @@ export default mixins(
 					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 
 				} else if (e.key === 'Tab') {
-					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
-					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'tab', createNodeActive: this.createNodeActive });
-					this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'tab', workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
-
+					this.onToggleNodeCreator({ source: 'tab', createNodeActive: !this.createNodeActive && !this.isReadOnly });
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
 				} else if (e.key === 'F2' && !this.isReadOnly) {
@@ -1351,32 +1300,6 @@ export default mixins(
 					);
 				}
 			},
-
-			closeNodeCreator() {
-				this.createNodeActive = false;
-			},
-
-			addStickyNote() {
-				if (document.activeElement) {
-					(document.activeElement as HTMLElement).blur();
-				}
-
-				const offset: [number, number] = [...(this.$store.getters.getNodeViewOffsetPosition as [number, number])];
-
-				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
-				position[0] -= DEFAULT_STICKY_WIDTH / 2;
-				position[1] -= DEFAULT_STICKY_HEIGHT / 2;
-
-				this.addNodeButton(STICKY_NODE_TYPE, {
-					position,
-				});
-			},
-
-			nodeTypeSelected(nodeTypeName: string) {
-				this.addNodeButton(nodeTypeName);
-				this.createNodeActive = false;
-			},
-
 			onDragOver(event: DragEvent) {
 				event.preventDefault();
 			},
@@ -1391,7 +1314,7 @@ export default mixins(
 					const mousePosition = this.getMousePositionWithinNodeView(event);
 					const sidebarOffset = this.sidebarMenuCollapsed ? CanvasHelpers.SIDEBAR_WIDTH : CanvasHelpers.SIDEBAR_WIDTH_EXPANDED;
 
-					this.addNodeButton(nodeTypeName, {
+					this.addNode(nodeTypeName, {
 						position: [
 							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2,
 							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2,
@@ -1593,7 +1516,7 @@ export default mixins(
 
 				this.__addConnection(connectionData, true);
 			},
-			async addNodeButton(nodeTypeName: string, options: AddNodeOptions = {}) {
+			async addNode(nodeTypeName: string, options: AddNodeOptions = {}) {
 				if (this.editAllowedCheck() === false) {
 					return;
 				}
@@ -1653,7 +1576,7 @@ export default mixins(
 						this.lastSelectedConnection = info.connection;
 					}
 
-					this.openNodeCreator(info.eventSource);
+					this.onToggleNodeCreator({ source: info.eventSource, createNodeActive: true});
 				};
 
 				this.instance.bind('connectionAborted', (connection) => {
@@ -3029,6 +2952,14 @@ export default mixins(
 					connections.forEach(CanvasHelpers.resetConnection);
 				});
 			},
+			onToggleNodeCreator({ source, createNodeActive }: { source?: string; createNodeActive: boolean }) {
+				this.createNodeActive = createNodeActive;
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
+				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.$store.getters.workflowId });
+			},
+			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
+				this.addNode(nodeTypeName, { position });
+			},
 		},
 
 		async mounted() {
@@ -3173,43 +3104,6 @@ export default mixins(
 .demo-zoom-menu {
 	left: 10px;
 	bottom: 10px;
-}
-
-.no-events {
-	pointer-events: none;
-}
-
-.node-buttons-wrapper {
-	position: fixed;
-	width: 150px;
-	height: 200px;
-	top: 0;
-	right: 0;
-	display: flex;
-
-	.add-sticky-button {
-		margin-top: var(--spacing-2xs);
-		opacity: 0;
-		transition: .1s;
-		transition-timing-function: linear;
-	}
-
-	.visible-button {
-		opacity: 1;
-		pointer-events: all;
-	}
-}
-
-.node-creator-button {
-	position: fixed;
-	text-align: center;
-	top: 80px;
-	right: 20px;
-	pointer-events: all !important;
-}
-
-.node-creator-button button {
-	position: relative;
 }
 
 .node-view-root {
