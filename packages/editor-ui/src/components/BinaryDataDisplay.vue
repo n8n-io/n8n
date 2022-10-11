@@ -117,7 +117,7 @@ export default mixins(
 	}
 
 	.binary-data {
-		background-color: #fff;
+		background-color: var(--color-foreground-xlight);
 
 		&.image {
 			max-height: calc(100% - 1em);

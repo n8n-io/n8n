@@ -17,10 +17,13 @@ export class MindeeReceiptApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		// @ts-ignore
 		const url = requestOptions.url ? requestOptions.url : requestOptions.uri;
-		if(url.includes('https://api.mindee.net/v1/')) {
+		if (url.includes('https://api.mindee.net/v1/')) {
 			requestOptions.headers!['Authorization'] = `Token ${credentials.apiKey}`;
 		} else {
 			requestOptions.headers!['X-Inferuser-Token'] = `${credentials.apiKey}`;

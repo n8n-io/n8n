@@ -1,6 +1,6 @@
 export interface ILead {
 	// tslint:disable-next-line: no-any
-	[key:  string]: any;
+	[key: string]: any;
 	Company?: string;
 	LastName?: string;
 	Email?: string;

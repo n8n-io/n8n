@@ -7,7 +7,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class TwilioApi implements ICredentialType {
 	name = 'twilioApi';
 	displayName = 'Twilio API';
@@ -42,9 +41,7 @@ export class TwilioApi implements ICredentialType {
 			default: '',
 			displayOptions: {
 				show: {
-					authType: [
-						'authToken',
-					],
+					authType: ['authToken'],
 				},
 			},
 		},
@@ -55,9 +52,7 @@ export class TwilioApi implements ICredentialType {
 			default: '',
 			displayOptions: {
 				show: {
-					authType: [
-						'apiKey',
-					],
+					authType: ['apiKey'],
 				},
 			},
 		},
@@ -71,9 +66,7 @@ export class TwilioApi implements ICredentialType {
 			default: '',
 			displayOptions: {
 				show: {
-					authType: [
-						'apiKey',
-					],
+					authType: ['apiKey'],
 				},
 			},
 		},
@@ -83,8 +76,10 @@ export class TwilioApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			auth: {
-				username: '={{ $credentials.authType === "apiKey" ? $credentials.apiKeySid : $credentials.accountSid }}',
-				password: '={{ $credentials.authType === "apiKey" ? $credentials.apiKeySecret : $credentials.authToken }}',
+				username:
+					'={{ $credentials.authType === "apiKey" ? $credentials.apiKeySid : $credentials.accountSid }}',
+				password:
+					'={{ $credentials.authType === "apiKey" ? $credentials.apiKeySecret : $credentials.authToken }}',
 			},
 		},
 	};

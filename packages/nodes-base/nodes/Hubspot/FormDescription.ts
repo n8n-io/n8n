@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const formOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const formOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
+				resource: ['form'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const formOperations: INodeProperties[] = [
 ];
 
 export const formFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                form:submit                                 */
 	/* -------------------------------------------------------------------------- */
@@ -48,16 +43,13 @@ export const formFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'submit',
-				],
+				resource: ['form'],
+				operation: ['submit'],
 			},
 		},
 		default: '',
-		description: 'The ID of the form you\'re sending data to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the form you\'re sending data to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -67,12 +59,8 @@ export const formFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'submit',
-				],
+				resource: ['form'],
+				operation: ['submit'],
 			},
 		},
 		options: [
@@ -102,12 +90,8 @@ export const formFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'submit',
-				],
+				resource: ['form'],
+				operation: ['submit'],
 			},
 		},
 		default: {},
@@ -121,7 +105,8 @@ export const formFields: INodeProperties[] = [
 						name: 'hutk',
 						type: 'string',
 						default: '',
-						description: 'Include this parameter and set it to the hubspotutk cookie value to enable cookie tracking on your submission',
+						description:
+							'Include this parameter and set it to the hubspotutk cookie value to enable cookie tracking on your submission',
 					},
 					{
 						displayName: 'IP Address',
@@ -149,7 +134,16 @@ export const formFields: INodeProperties[] = [
 						name: 'sfdcCampaignId',
 						type: 'string',
 						default: '',
-						description: 'If the form is for an account using the HubSpot Salesforce Integration, you can include the ID of a Salesforce campaign to add the contact to the specified campaign',
+						description:
+							'If the form is for an account using the HubSpot Salesforce Integration, you can include the ID of a Salesforce campaign to add the contact to the specified campaign',
+					},
+					{
+						displayName: 'Go to Webinar Webinar ID',
+						name: 'goToWebinarWebinarKey',
+						type: 'string',
+						default: '',
+						description:
+							'If the form is for an account using the HubSpot GoToWebinar Integration, you can include the ID of a webinar to enroll the contact in that webinar when they submit the form',
 					},
 				],
 			},
@@ -165,12 +159,8 @@ export const formFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'submit',
-				],
+				resource: ['form'],
+				operation: ['submit'],
 			},
 		},
 		default: {},
@@ -215,21 +205,24 @@ export const formFields: INodeProperties[] = [
 											loadOptionsMethod: 'getSubscriptionTypes',
 										},
 										default: '',
-										description: 'The ID of the specific subscription type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+										description:
+											'The ID of the specific subscription type. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 									},
 									{
 										displayName: 'Value',
 										name: 'value',
 										type: 'boolean',
 										default: false,
-										description: 'Whether or not the visitor checked the checkbox for this subscription type',
+										description:
+											'Whether or not the visitor checked the checkbox for this subscription type',
 									},
 									{
 										displayName: 'Text',
 										name: 'text',
 										type: 'string',
 										default: '',
-										description: 'The text displayed to the visitor for this specific subscription checkbox',
+										description:
+											'The text displayed to the visitor for this specific subscription checkbox',
 									},
 								],
 							},
@@ -249,7 +242,8 @@ export const formFields: INodeProperties[] = [
 							loadOptionsMethod: 'getSubscriptionTypes',
 						},
 						default: '',
-						description: 'The ID of the specific subscription type that this forms indicates interest to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The ID of the specific subscription type that this forms indicates interest to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Value',
@@ -257,7 +251,8 @@ export const formFields: INodeProperties[] = [
 						type: 'boolean',
 						default: false,
 						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-						description: 'This must be true when using the \'legitimateInterest\' option, as it reflects the consent indicated by the visitor when submitting the form',
+						description:
+							"This must be true when using the 'legitimateInterest' option, as it reflects the consent indicated by the visitor when submitting the form",
 					},
 					{
 						displayName: 'Legal Basis',
@@ -301,15 +296,12 @@ export const formFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getFields',
-				],
+				resource: ['form'],
+				operation: ['getFields'],
 			},
 		},
 		default: '',
-		description: 'The ID of the form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the form. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

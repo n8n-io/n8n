@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-shadow */
@@ -16,6 +17,7 @@ import fs from 'fs';
 import glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { EntityManager, getConnection } from 'typeorm';
+import { v4 as uuid } from 'uuid';
 import { getLogger } from '../../src/Logger';
 import { Db, ICredentialsDb, IWorkflowToImport } from '../../src';
 import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
@@ -113,9 +115,10 @@ export class ImportWorkflowsCommand extends Command {
 					inputPath = inputPath.replace(/\\/g, '/');
 				}
 
-				inputPath = inputPath.replace(/\/$/g, '');
-
-				const files = await glob(`${inputPath}/*.json`);
+				const files = await glob('*.json', {
+					cwd: inputPath,
+					absolute: true,
+				});
 
 				totalImported = files.length;
 
@@ -128,6 +131,11 @@ export class ImportWorkflowsCommand extends Command {
 						if (credentials.length > 0) {
 							workflow.nodes.forEach((node: INode) => {
 								this.transformCredentials(node, credentials);
+
+								if (!node.id) {
+									// eslint-disable-next-line no-param-reassign
+									node.id = uuid();
+								}
 							});
 						}
 
@@ -156,6 +164,11 @@ export class ImportWorkflowsCommand extends Command {
 					if (credentials.length > 0) {
 						workflow.nodes.forEach((node: INode) => {
 							this.transformCredentials(node, credentials);
+
+							if (!node.id) {
+								// eslint-disable-next-line no-param-reassign
+								node.id = uuid();
+							}
 						});
 					}
 

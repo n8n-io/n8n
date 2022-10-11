@@ -92,6 +92,9 @@ export class Start extends Command {
 		getLogger().info('\nStopping n8n...');
 
 		try {
+			// Stop with trying to activate workflows that could not be activated
+			activeWorkflowRunner?.removeAllQueuedWorkflowActivations();
+
 			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
 
@@ -256,7 +259,7 @@ export class Start extends Command {
 								missingPackages.delete(missingPackage);
 							}
 							LoggerProxy.info(
-								'Packages reinstalled successfully. Resuming regular intiailization.',
+								'Packages reinstalled successfully. Resuming regular initialization.',
 							);
 						} catch (error) {
 							LoggerProxy.error('n8n was unable to install the missing packages.');
@@ -327,6 +330,7 @@ export class Start extends Command {
 						if (error.toString().includes('ECONNREFUSED') === true) {
 							logger.warn('Redis unavailable - trying to reconnect...');
 						} else {
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							logger.warn('Error with Redis: ', error);
 						}
 					});
@@ -415,6 +419,7 @@ export class Start extends Command {
 					process.stdin.setRawMode(true);
 					process.stdin.resume();
 					process.stdin.setEncoding('utf8');
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 					let inputText = '';
 
 					if (flags.open) {

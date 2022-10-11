@@ -1,14 +1,6 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	AddressFixedCollection,
@@ -17,13 +9,9 @@ import {
 	RolesParameter,
 } from './types';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	omit,
-} from 'lodash';
+import { omit } from 'lodash';
 
 export async function freshserviceApiRequest(
 	this: IExecuteFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -32,7 +20,9 @@ export async function freshserviceApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { apiKey, domain } = await this.getCredentials('freshserviceApi') as FreshserviceCredentials;
+	const { apiKey, domain } = (await this.getCredentials(
+		'freshserviceApi',
+	)) as FreshserviceCredentials;
 	const encodedApiKey = Buffer.from(`${apiKey}:X`).toString('base64');
 
 	const options: OptionsWithUri = {
@@ -58,7 +48,6 @@ export async function freshserviceApiRequest(
 		return await this.helpers.request!(options);
 	} catch (error) {
 		if (error.error.description === 'Validation failed') {
-
 			const numberOfErrors = error.error.errors.length;
 			const message = 'Please check your parameters';
 
@@ -68,11 +57,10 @@ export async function freshserviceApiRequest(
 					message,
 					description: `For ${validationError.field}: ${validationError.message}`,
 				});
-
 			} else if (numberOfErrors > 1) {
 				throw new NodeApiError(this.getNode(), error, {
 					message,
-					description: 'For more information, expand \'details\' below and look at \'cause\' section',
+					description: "For more information, expand 'details' below and look at 'cause' section",
 				});
 			}
 		}
@@ -99,9 +87,7 @@ export async function freshserviceApiRequestAllItems(
 		if (!items.length) return returnData;
 		returnData.push(...items);
 		qs.page++;
-	} while (
-		items.length >= 30
-	);
+	} while (items.length >= 30);
 
 	return returnData;
 }
@@ -145,23 +131,14 @@ export const toUserOptions = (loadedUsers: LoadedUser[]) => {
 /**
  * Ensure at least one role has been specified.
  */
-export function validateAssignmentScopeGroup(
-	this: IExecuteFunctions,
-	roles: RolesParameter,
-) {
+export function validateAssignmentScopeGroup(this: IExecuteFunctions, roles: RolesParameter) {
 	if (!roles.roleProperties?.length) {
-		throw new NodeOperationError(
-			this.getNode(),
-			'Please specify a role for the agent to create.',
-		);
+		throw new NodeOperationError(this.getNode(), 'Please specify a role for the agent to create.');
 	}
 }
 
-export function sanitizeAssignmentScopeGroup(
-	this: IExecuteFunctions,
-	roles: RolesParameter,
-) {
-	roles.roleProperties.forEach(roleProperty => {
+export function sanitizeAssignmentScopeGroup(this: IExecuteFunctions, roles: RolesParameter) {
+	roles.roleProperties.forEach((roleProperty) => {
 		if (roleProperty.assignment_scope === 'specified_groups' && !roleProperty?.groups?.length) {
 			throw new NodeOperationError(
 				this.getNode(),
@@ -192,19 +169,21 @@ export function adjustAgentRoles(roles: RolesParameter) {
 }
 
 export function formatFilters(filters: IDataObject) {
-	const query = Object.keys(filters).map(key => {
-		const value = filters[key];
+	const query = Object.keys(filters)
+		.map((key) => {
+			const value = filters[key];
 
-		if (!isNaN(Number(value))) {
-			return `${key}:${filters[key]}`; // number
-		}
+			if (!isNaN(Number(value))) {
+				return `${key}:${filters[key]}`; // number
+			}
 
-		if (typeof value === 'string' && value.endsWith('Z')) {
-			return `${key}:'${value.split('T')[0]}'`; // date
-		}
+			if (typeof value === 'string' && value.endsWith('Z')) {
+				return `${key}:'${value.split('T')[0]}'`; // date
+			}
 
-		return `${key}:'${filters[key]}'`; // string
-	}).join(' AND ');
+			return `${key}:'${filters[key]}'`; // string
+		})
+		.join(' AND ');
 
 	return {
 		query: `"${query}"`,
@@ -226,12 +205,14 @@ export function validateUpdateFields(
 
 		throw new NodeOperationError(
 			this.getNode(),
-			`Please enter at least one field to update for the ${twoWordResources[resource] ?? resource}.`,
+			`Please enter at least one field to update for the ${
+				twoWordResources[resource] ?? resource
+			}.`,
 		);
 	}
 }
 
-export const toArray = (str: string) => str.split(',').map(e => e.trim());
+export const toArray = (str: string) => str.split(',').map((e) => e.trim());
 
 export function adjustAddress(fixedCollection: IDataObject & AddressFixedCollection) {
 	if (!fixedCollection.address) return fixedCollection;

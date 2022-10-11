@@ -55,7 +55,7 @@
 							{{ header }}
 						</n8n-heading>
 						<n8n-text v-if="subheader">
-							<span v-html="subheader"></span>
+							<span v-text="subheader" />
 						</n8n-text>
 					</div>
 
@@ -125,7 +125,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 			}
 
 			return null;

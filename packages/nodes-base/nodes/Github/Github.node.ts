@@ -1,24 +1,17 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	IPairedItemData,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	getFileSha,
-	githubApiRequest,
-	githubApiRequestAllItems,
-} from './GenericFunctions';
+import { getFileSha, githubApiRequest, githubApiRequestAllItems } from './GenericFunctions';
 
-import {
-	snakeCase,
-} from 'change-case';
+import { snakeCase } from 'change-case';
 
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
@@ -249,7 +242,8 @@ export class Github implements INodeType {
 					{
 						name: 'Get License',
 						value: 'getLicense',
-						description: 'Returns the contents of the repository\'s license file, if one is detected',
+						description:
+							"Returns the contents of the repository's license file, if one is detected",
 						action: 'Get the license of a repository',
 					},
 					{
@@ -290,7 +284,7 @@ export class Github implements INodeType {
 						name: 'Get Repositories',
 						value: 'getRepositories',
 						description: 'Returns the repositories of a user',
-						action: 'Get a user\'s repositories',
+						action: "Get a user's repositories",
 					},
 					{
 						name: 'Invite',
@@ -332,10 +326,10 @@ export class Github implements INodeType {
 						action: 'Get a release',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all repository releases',
-						action: 'Get all releases',
+						description: 'Get many repository releases',
+						action: 'Get many releases',
 					},
 					{
 						name: 'Update',
@@ -371,10 +365,10 @@ export class Github implements INodeType {
 						action: 'Get a review',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all reviews for a pull request',
-						action: 'Get all reviews',
+						description: 'Get many reviews for a pull request',
+						action: 'Get many reviews',
 					},
 					{
 						name: 'Update',
@@ -1026,8 +1020,7 @@ export class Github implements INodeType {
 						name: 'prerelease',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to point out that the release is non-production ready',
+						description: 'Whether to point out that the release is non-production ready',
 					},
 					{
 						displayName: 'Target Commitish',
@@ -1035,7 +1028,7 @@ export class Github implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository\'s default branch(usually master).',
+							"Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository's default branch(usually master).",
 					},
 				],
 			},
@@ -1105,8 +1098,7 @@ export class Github implements INodeType {
 						name: 'prerelease',
 						type: 'boolean',
 						default: false,
-						description:
-							'Whether to point out that the release is non-production ready',
+						description: 'Whether to point out that the release is non-production ready',
 					},
 					{
 						displayName: 'Tag Name',
@@ -1121,7 +1113,7 @@ export class Github implements INodeType {
 						type: 'string',
 						default: '',
 						description:
-							'Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository\'s default branch(usually master).',
+							"Specifies the commitish value that determines where the Git tag is created from. Can be any branch or commit SHA. Unused if the Git tag already exists. Default: the repository's default branch(usually master).",
 					},
 				],
 			},
@@ -1618,7 +1610,7 @@ export class Github implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		let returnAll = false;
 
@@ -1741,7 +1733,9 @@ export class Github implements INodeType {
 							const item = items[i];
 
 							if (item.binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', { itemIndex: i });
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+									itemIndex: i,
+								});
 							}
 
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -2104,9 +2098,12 @@ export class Github implements INodeType {
 						}
 					}
 				} else {
-					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not known!`, {
+						itemIndex: i,
+					});
 				}
 
+				const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i, false) as boolean;
 				if (returnAll === true) {
 					responseData = await githubApiRequestAllItems.call(
 						this,
@@ -2120,11 +2117,11 @@ export class Github implements INodeType {
 				}
 
 				if (fullOperation === 'file:get') {
-					const asBinaryProperty = this.getNodeParameter('asBinaryProperty', i);
-
 					if (asBinaryProperty === true) {
-						if (Array.isArray(responseData)) {
-							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', { itemIndex: i });
+						if (Array.isArray(responseData) && responseData.length > 1) {
+							throw new NodeOperationError(this.getNode(), 'File Path is a folder, not a file.', {
+								itemIndex: i,
+							});
 						}
 						// Add the returned data to the item as binary property
 						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -2138,27 +2135,33 @@ export class Github implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary as object, items[i].binary!);
 						}
-
+						const { content, path } = responseData;
 						newItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-							Buffer.from(responseData.content, 'base64'),
-							responseData.path,
+							Buffer.from(content as string, 'base64'),
+							path as string,
 						);
 
 						items[i] = newItem;
 
-						return this.prepareOutputData(items);
+						return [items];
 					}
 				}
+
 				if (fullOperation === 'release:delete') {
 					responseData = { success: true };
 				}
 
-				if (overwriteDataOperations.includes(fullOperation)) {
-					returnData.push(responseData);
-				} else if (overwriteDataOperationsArray.includes(fullOperation)) {
-					returnData.push.apply(returnData, responseData);
+				if (
+					overwriteDataOperations.includes(fullOperation) ||
+					overwriteDataOperationsArray.includes(fullOperation)
+				) {
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -2166,7 +2169,17 @@ export class Github implements INodeType {
 						overwriteDataOperations.includes(fullOperation) ||
 						overwriteDataOperationsArray.includes(fullOperation)
 					) {
-						returnData.push({ error: error.message });
+						const executionErrorData = this.helpers.constructExecutionMetaData(
+							[
+								{
+									json: {
+										error: error.message,
+									},
+								},
+							],
+							{ itemData: { item: i } },
+						);
+						returnData.push(...executionErrorData);
 					} else {
 						items[i].json = { error: error.message };
 					}
@@ -2181,10 +2194,10 @@ export class Github implements INodeType {
 			overwriteDataOperationsArray.includes(fullOperation)
 		) {
 			// Return data gets replaced
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		} else {
 			// For all other ones simply return the unchanged items
-			return this.prepareOutputData(items);
+			return [items];
 		}
 	}
 }

@@ -1,6 +1,4 @@
-import {
-	FileProperties,
-} from '../../Interfaces';
+import { FileProperties } from '../../Interfaces';
 
 export const fileUpdateDescription: FileProperties = [
 	{
@@ -10,12 +8,8 @@ export const fileUpdateDescription: FileProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['update'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -29,12 +23,8 @@ export const fileUpdateDescription: FileProperties = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['update'],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -46,7 +36,8 @@ export const fileUpdateDescription: FileProperties = [
 					loadOptionsMethod: 'getCompanyFileCategories',
 				},
 				default: '',
-				description: 'Move the file to a different category. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Move the file to a different category. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Name',

@@ -17,6 +17,10 @@ import { AddUserSettings1652367743993 } from './1652367743993-AddUserSettings';
 import { CommunityNodes1652254514003 } from './1652254514003-CommunityNodes';
 import { AddAPIKeyColumn1652905585850 } from './1652905585850-AddAPIKeyColumn';
 import { IntroducePinData1654090101303 } from './1654090101303-IntroducePinData';
+import { AddNodeIds1658932910559 } from './1658932910559-AddNodeIds';
+import { AddJsonKeyPinData1659895550980 } from './1659895550980-AddJsonKeyPinData';
+import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
+import { CreateWorkflowsEditorRole1663755770894 } from './1663755770894-CreateWorkflowsEditorRole';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -38,4 +42,8 @@ export const mysqlMigrations = [
 	CommunityNodes1652254514003,
 	AddAPIKeyColumn1652905585850,
 	IntroducePinData1654090101303,
+	AddNodeIds1658932910559,
+	AddJsonKeyPinData1659895550980,
+	CreateCredentialsUserRole1660062385367,
+	CreateWorkflowsEditorRole1663755770894,
 ];

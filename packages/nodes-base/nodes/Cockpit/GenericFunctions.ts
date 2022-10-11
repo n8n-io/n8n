@@ -1,12 +1,17 @@
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError, } from 'n8n-workflow';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 
-export async function cockpitApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function cockpitApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('cockpitApi');
 	let options: OptionsWithUri = {
 		headers: {
@@ -35,7 +40,10 @@ export async function cockpitApiRequest(this: IExecuteFunctions | IExecuteSingle
 	}
 }
 
-export function createDataFromParameters(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, itemIndex: number): IDataObject {
+export function createDataFromParameters(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	itemIndex: number,
+): IDataObject {
 	const dataFieldsAreJson = this.getNodeParameter('jsonDataFields', itemIndex) as boolean;
 
 	if (dataFieldsAreJson) {

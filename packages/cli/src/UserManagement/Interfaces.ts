@@ -1,8 +1,8 @@
 /* eslint-disable import/no-cycle */
 import { Application } from 'express';
 import { JwtFromRequestFunction } from 'passport-jwt';
-import type { IExternalHooksClass, IPersonalizationSurveyAnswers } from '../Interfaces';
 import { ActiveWorkflowRunner } from '..';
+import type { IExternalHooksClass, IPersonalizationSurveyAnswers } from '../Interfaces';
 
 export interface JwtToken {
 	token: string;
@@ -28,6 +28,7 @@ export interface PublicUser {
 	personalizationAnswers?: IPersonalizationSurveyAnswers | null;
 	password?: string;
 	passwordResetToken?: string;
+	createdAt: Date;
 	isPending: boolean;
 }
 

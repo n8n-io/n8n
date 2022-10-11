@@ -9,10 +9,10 @@
 					:key="node.name"
 					:class="$style.icon"
 				>
-					<HoverableNodeIcon
+					<NodeIcon
 						:nodeType="node"
-						:title="node.name"
 						:size="24"
+						:showTooltip="true"
 						@click="redirectToSearchPage(node)"
 					/>
 				</div>
@@ -47,14 +47,11 @@
 	</div>
 </template>
 <script lang="ts">
-import Vue from 'vue';
-
+import Vue, { PropType } from 'vue';
 import TemplateDetailsBlock from '@/components/TemplateDetailsBlock.vue';
-import HoverableNodeIcon from '@/components/HoverableNodeIcon.vue';
-
+import NodeIcon from '@/components/NodeIcon.vue';
 import { abbreviateNumber, filterTemplateNodes } from '@/components/helpers';
-import { ITemplatesNode } from '@/Interface';
-
+import { ITemplatesNode, ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
 export default Vue.extend({
 	name: 'TemplateDetails',
 	props: {
@@ -65,11 +62,11 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		template: {
-			type: Object,
+			type: Object as PropType<ITemplatesWorkflow | ITemplatesWorkflowFull>,
 		},
 	},
 	components: {
-		HoverableNodeIcon,
+		NodeIcon,
 		TemplateDetailsBlock,
 	},
 	methods: {
@@ -91,12 +88,11 @@ export default Vue.extend({
 	display: flex;
 	flex-wrap: wrap;
 }
-
 .icon {
 	margin-right: var(--spacing-xs);
 	margin-bottom: var(--spacing-xs);
+	cursor: pointer;
 }
-
 .text {
 	padding-bottom: var(--spacing-xs);
 }

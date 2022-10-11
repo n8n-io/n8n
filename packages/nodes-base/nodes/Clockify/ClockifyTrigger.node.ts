@@ -10,14 +10,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	clockifyApiRequest,
-} from './GenericFunctions';
+import { clockifyApiRequest } from './GenericFunctions';
 
 import { EntryTypeEnum } from './EntryTypeEnum';
 import { IUserDto } from './UserDtos';
 import { IWorkspaceDto } from './WorkpaceInterfaces';
-
 
 export class ClockifyTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -44,7 +41,8 @@ export class ClockifyTrigger implements INodeType {
 				displayName: 'Workspace Name or ID',
 				name: 'workspaceId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'listWorkspaces',
 				},
@@ -72,14 +70,17 @@ export class ClockifyTrigger implements INodeType {
 		loadOptions: {
 			async listWorkspaces(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const rtv: INodePropertyOptions[] = [];
-				const workspaces: IWorkspaceDto[] = await clockifyApiRequest.call(this, 'GET', 'workspaces');
+				const workspaces: IWorkspaceDto[] = await clockifyApiRequest.call(
+					this,
+					'GET',
+					'workspaces',
+				);
 				if (undefined !== workspaces) {
-					workspaces.forEach(value => {
-						rtv.push(
-							{
-								name: value.name,
-								value: value.id,
-							});
+					workspaces.forEach((value) => {
+						rtv.push({
+							name: value.name,
+							value: value.id,
+						});
 					});
 				}
 				return rtv;

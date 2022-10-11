@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	ILoadOptionsFunctions,
@@ -11,10 +8,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	capitalizeFirstLetter,
-	linearApiRequest,
-} from './GenericFunctions';
+import { capitalizeFirstLetter, linearApiRequest } from './GenericFunctions';
 
 export class LinearTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,7 +45,8 @@ export class LinearTrigger implements INodeType {
 				displayName: 'Team Name or ID',
 				name: 'teamId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},
@@ -91,7 +86,6 @@ export class LinearTrigger implements INodeType {
 						name: 'Project',
 						value: 'project',
 					},
-
 				],
 				default: [],
 				required: true,
@@ -104,8 +98,7 @@ export class LinearTrigger implements INodeType {
 			async getTeams(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const body = {
-					query:
-						`query Teams {
+					query: `query Teams {
 							 teams {
 								nodes {
 									id
@@ -114,7 +107,11 @@ export class LinearTrigger implements INodeType {
 							}
 						}`,
 				};
-				const { data: { teams: { nodes } } } = await linearApiRequest.call(this, body);
+				const {
+					data: {
+						teams: { nodes },
+					},
+				} = await linearApiRequest.call(this, body);
 
 				for (const node of nodes) {
 					returnData.push({
@@ -135,8 +132,7 @@ export class LinearTrigger implements INodeType {
 				const webhookData = this.getWorkflowStaticData('node');
 				const teamId = this.getNodeParameter('teamId') as string;
 				const body = {
-					query:
-						`query {
+					query: `query {
 							 webhooks {
 									nodes {
 										id
@@ -152,12 +148,14 @@ export class LinearTrigger implements INodeType {
 				};
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
-				const { data: { webhooks: { nodes } } } = await linearApiRequest.call(this, body);
+				const {
+					data: {
+						webhooks: { nodes },
+					},
+				} = await linearApiRequest.call(this, body);
 
 				for (const node of nodes) {
-					if (node.url === webhookUrl &&
-						node.team.id === teamId &&
-						node.enabled === true) {
+					if (node.url === webhookUrl && node.team.id === teamId && node.enabled === true) {
 						webhookData.webhookId = node.id as string;
 						return true;
 					}
@@ -193,7 +191,14 @@ export class LinearTrigger implements INodeType {
 					},
 				};
 
-				const { data: { webhookCreate: { success, webhook: { id } } } } = await linearApiRequest.call(this, body);
+				const {
+					data: {
+						webhookCreate: {
+							success,
+							webhook: { id },
+						},
+					},
+				} = await linearApiRequest.call(this, body);
 
 				if (!success) {
 					return false;
@@ -236,9 +241,7 @@ export class LinearTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

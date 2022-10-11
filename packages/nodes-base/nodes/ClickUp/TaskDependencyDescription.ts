@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const taskDependencyOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const taskDependencyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
+				resource: ['taskDependency'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const taskDependencyOperations: INodeProperties[] = [
 ];
 
 export const taskDependencyFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                taskDependency:create                        */
 	/* -------------------------------------------------------------------------- */
@@ -45,12 +40,8 @@ export const taskDependencyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['taskDependency'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -62,12 +53,8 @@ export const taskDependencyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['taskDependency'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -83,12 +70,8 @@ export const taskDependencyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['taskDependency'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -100,12 +83,8 @@ export const taskDependencyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskDependency',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['taskDependency'],
+				operation: ['delete'],
 			},
 		},
 		required: true,

@@ -8,9 +8,7 @@ export const eventOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -32,10 +30,9 @@ export const eventOperations: INodeProperties[] = [
 ];
 
 export const eventFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                   event:track                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   event:track                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Customer ID',
 		name: 'customerId',
@@ -44,12 +41,8 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
+				resource: ['event'],
+				operation: ['track'],
 			},
 		},
 		description: 'The unique identifier for the customer',
@@ -61,12 +54,8 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
+				resource: ['event'],
+				operation: ['track'],
 			},
 		},
 		description: 'Name of the event to track',
@@ -78,12 +67,8 @@ export const eventFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
+				resource: ['event'],
+				operation: ['track'],
 			},
 		},
 	},
@@ -97,18 +82,13 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['event'],
+				operation: ['track'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting">here</a>',
+		description:
+			'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -118,15 +98,9 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['event'],
+				operation: ['track'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -176,9 +150,9 @@ export const eventFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   event:track anonymous                    */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   event:track anonymous                    */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Event Name',
 		name: 'eventName',
@@ -187,12 +161,8 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'trackAnonymous',
-				],
+				resource: ['event'],
+				operation: ['trackAnonymous'],
 			},
 		},
 		description: 'The unique identifier for the customer',
@@ -204,12 +174,8 @@ export const eventFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'trackAnonymous',
-				],
+				resource: ['event'],
+				operation: ['trackAnonymous'],
 			},
 		},
 	},
@@ -223,18 +189,13 @@ export const eventFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'trackAnonymous',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['event'],
+				operation: ['trackAnonymous'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting">here</a>',
+		description:
+			'Object of values to set as described <a href="https://customer.io/docs/api-triggered-data-format#basic-data-formatting">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -244,15 +205,9 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'trackAnonymous',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['event'],
+				operation: ['trackAnonymous'],
+				jsonParameters: [false],
 			},
 		},
 		options: [

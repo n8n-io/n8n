@@ -5,14 +5,13 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class NocoDb implements ICredentialType {
 	name = 'nocoDb';
 	displayName = 'NocoDB';
 	documentationUrl = 'nocoDb';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Token',
+			displayName: 'User Token',
 			name: 'apiToken',
 			type: 'string',
 			default: '',
@@ -26,9 +25,9 @@ export class NocoDb implements ICredentialType {
 		},
 	];
 	authenticate: IAuthenticateGeneric = {
-		type:'generic',
+		type: 'generic',
 		properties: {
-			headers:{
+			headers: {
 				'xc-auth': '={{$credentials.apiToken}}',
 			},
 		},

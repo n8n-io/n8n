@@ -1,11 +1,6 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -19,11 +14,15 @@ import {
 
 import get from 'lodash.get';
 
-import {
-	query,
-} from './Queries';
+import { query } from './Queries';
 
-export async function linearApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, body: any = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function linearApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('linearApi');
 
 	const endpoint = 'https://api.linear.app/graphql';
@@ -41,7 +40,6 @@ export async function linearApiRequest(this: IExecuteFunctions | IWebhookFunctio
 	options = Object.assign({}, options, option);
 	try {
 		return await this.helpers.request!(options);
-
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
@@ -51,8 +49,13 @@ export function capitalizeFirstLetter(data: string) {
 	return data.charAt(0).toUpperCase() + data.slice(1);
 }
 
-export async function linearApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, body: any = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function linearApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -63,13 +66,15 @@ export async function linearApiRequestAllItems(this: IHookFunctions | IExecuteFu
 		responseData = await linearApiRequest.call(this, body);
 		returnData.push.apply(returnData, get(responseData, `${propertyName}.nodes`));
 		body.variables.after = get(responseData, `${propertyName}.pageInfo.endCursor`);
-	} while (
-		get(responseData, `${propertyName}.pageInfo.hasNextPage`)
-	);
+	} while (get(responseData, `${propertyName}.pageInfo.hasNextPage`));
 	return returnData;
 }
 
-export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+export async function validateCredentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = decryptedCredentials;
 
 	const options: OptionsWithUri = {
@@ -93,7 +98,11 @@ export async function validateCredentials(this: ICredentialTestFunctions, decryp
 
 //@ts-ignore
 export const sort = (a, b) => {
-	if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
-	if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
+	if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+		return -1;
+	}
+	if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+		return 1;
+	}
 	return 0;
 };

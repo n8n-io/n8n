@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const taskListOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const taskListOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'taskList',
-				],
+				resource: ['taskList'],
 			},
 		},
 		options: [
@@ -44,13 +40,8 @@ export const taskListFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskList',
-				],
-				operation: [
-					'remove',
-					'add',
-				],
+				resource: ['taskList'],
+				operation: ['remove', 'add'],
 			},
 		},
 		required: true,
@@ -62,13 +53,8 @@ export const taskListFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'taskList',
-				],
-				operation: [
-					'remove',
-					'add',
-				],
+				resource: ['taskList'],
+				operation: ['remove', 'add'],
 			},
 		},
 		required: true,

@@ -1,6 +1,9 @@
 type: object
 additionalProperties: false
 properties:
+  id:
+    type: string
+    example: 0f5532f9-36ba-4bef-86c7-30d607400b15
   name:
     type: string
     example: Jira

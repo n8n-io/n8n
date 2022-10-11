@@ -4,6 +4,7 @@ import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
+	faAngleLeft,
 	faAngleRight,
 	faAngleUp,
 	faArrowLeft,
@@ -12,6 +13,7 @@ import {
 	faBook,
 	faBoxOpen,
 	faBug,
+	faBan,
 	faCalendar,
 	faCheck,
 	faCheckCircle,
@@ -37,6 +39,7 @@ import {
 	faEye,
 	faExclamationTriangle,
 	faExpand,
+	faExpandAlt,
 	faExternalLinkAlt,
 	faExchangeAlt,
 	faFile,
@@ -46,8 +49,11 @@ import {
 	faFileExport,
 	faFileImport,
 	faFilePdf,
+	faFilter,
 	faFolderOpen,
+	faGlobeAmericas,
 	faGift,
+	faGlobe,
 	faGraduationCap,
 	faGripVertical,
 	faHdd,
@@ -98,6 +104,7 @@ import {
 	faTrash,
 	faUndo,
 	faUnlink,
+	faUser,
 	faUserCircle,
 	faUserFriends,
 	faUsers,
@@ -115,11 +122,13 @@ function addIcon(icon: any) { // tslint:disable-line:no-any
 
 addIcon(faAngleDoubleLeft);
 addIcon(faAngleDown);
+addIcon(faAngleLeft);
 addIcon(faAngleRight);
 addIcon(faAngleUp);
 addIcon(faArrowLeft);
 addIcon(faArrowRight);
 addIcon(faAt);
+addIcon(faBan);
 addIcon(faBook);
 addIcon(faBoxOpen);
 addIcon(faBug);
@@ -149,6 +158,7 @@ addIcon(faEnvelope);
 addIcon(faEye);
 addIcon(faExclamationTriangle);
 addIcon(faExpand);
+addIcon(faExpandAlt);
 addIcon(faExternalLinkAlt);
 addIcon(faExchangeAlt);
 addIcon(faFile);
@@ -158,8 +168,11 @@ addIcon(faFileDownload);
 addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
+addIcon(faFilter);
 addIcon(faFolderOpen);
 addIcon(faGift);
+addIcon(faGlobe);
+addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
 addIcon(faHdd);
 addIcon(faHome);
@@ -211,6 +224,7 @@ addIcon(faTimesCircle);
 addIcon(faTrash);
 addIcon(faUndo);
 addIcon(faUnlink);
+addIcon(faUser);
 addIcon(faUserCircle);
 addIcon(faUserFriends);
 addIcon(faUsers);

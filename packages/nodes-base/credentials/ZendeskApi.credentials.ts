@@ -33,7 +33,10 @@ export class ZendeskApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.auth = {
 			username: `${credentials.email}/token`,
 			password: credentials.apiToken as string,

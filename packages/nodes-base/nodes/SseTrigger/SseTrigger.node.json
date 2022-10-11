@@ -2,14 +2,11 @@
 	"node": "n8n-nodes-base.sseTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Core Nodes"
-	],
+	"categories": ["Development", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.sseTrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.ssetrigger/"
 			}
 		],
 		"generic": [
@@ -21,8 +18,6 @@
 		]
 	},
 	"subcategories": {
-		"Core Nodes": [
-			"Flow"
-		]
+		"Core Nodes": ["Flow"]
 	}
 }

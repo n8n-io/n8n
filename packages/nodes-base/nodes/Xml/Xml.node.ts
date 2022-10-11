@@ -8,7 +8,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-
 export class Xml implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'XML',
@@ -54,9 +53,7 @@ export class Xml implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'jsonToxml',
-						],
+						mode: ['jsonToxml'],
 					},
 				},
 				default: 'data',
@@ -70,9 +67,7 @@ export class Xml implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						mode: [
-							'jsonToxml',
-						],
+						mode: ['jsonToxml'],
 					},
 				},
 				default: {},
@@ -96,7 +91,8 @@ export class Xml implements INodeType {
 						name: 'cdata',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to wrap text nodes in &lt;![CDATA[ ... ]]&gt; instead of escaping when necessary. Does not add &lt;![CDATA[ ... ]]&gt; if it is not required.',
+						description:
+							'Whether to wrap text nodes in &lt;![CDATA[ ... ]]&gt; instead of escaping when necessary. Does not add &lt;![CDATA[ ... ]]&gt; if it is not required.',
 					},
 					{
 						displayName: 'Character Key',
@@ -122,8 +118,6 @@ export class Xml implements INodeType {
 				],
 			},
 
-
-
 			// ----------------------------------
 			//         option:xmlToJson
 			// ----------------------------------
@@ -133,9 +127,7 @@ export class Xml implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'xmlToJson',
-						],
+						mode: ['xmlToJson'],
 					},
 				},
 				default: 'data',
@@ -149,9 +141,7 @@ export class Xml implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						mode: [
-							'xmlToJson',
-						],
+						mode: ['xmlToJson'],
 					},
 				},
 				default: {},
@@ -175,14 +165,16 @@ export class Xml implements INodeType {
 						name: 'explicitArray',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to always put child nodes in an array if true; otherwise an array is created only if there is more than one',
+						description:
+							'Whether to always put child nodes in an array if true; otherwise an array is created only if there is more than one',
 					},
 					{
 						displayName: 'Explicit Root',
 						name: 'explicitRoot',
 						type: 'boolean',
 						default: true,
-						description: 'Whether to set this if you want to get the root node in the resulting object',
+						description:
+							'Whether to set this if you want to get the root node in the resulting object',
 					},
 					{
 						displayName: 'Ignore Attributes',
@@ -196,7 +188,8 @@ export class Xml implements INodeType {
 						name: 'mergeAttrs',
 						type: 'boolean',
 						default: true,
-						description: 'Whether to merge attributes and child elements as properties of the parent, instead of keying attributes off a child attribute object. This option is ignored if ignoreAttrs is true.',
+						description:
+							'Whether to merge attributes and child elements as properties of the parent, instead of keying attributes off a child attribute object. This option is ignored if ignoreAttrs is true.',
 					},
 					{
 						displayName: 'Normalize',
@@ -224,7 +217,6 @@ export class Xml implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 
@@ -232,24 +224,29 @@ export class Xml implements INodeType {
 		const dataPropertyName = this.getNodeParameter('dataPropertyName', 0) as string;
 		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
-
 		let item: INodeExecutionData;
 		const returnData: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-
 				item = items[itemIndex];
 
 				if (mode === 'xmlToJson') {
-					const parserOptions = Object.assign({
-						mergeAttrs: true,
-						explicitArray: false,
-					}, options);
+					const parserOptions = Object.assign(
+						{
+							mergeAttrs: true,
+							explicitArray: false,
+						},
+						options,
+					);
 
 					const parser = new Parser(parserOptions);
 
 					if (item.json[dataPropertyName] === undefined) {
-						throw new NodeOperationError(this.getNode(), `No json property "${dataPropertyName}" does not exists on item!`, { itemIndex });
+						throw new NodeOperationError(
+							this.getNode(),
+							`No json property "${dataPropertyName}" does not exists on item!`,
+							{ itemIndex },
+						);
 					}
 
 					// @ts-ignore
@@ -267,18 +264,20 @@ export class Xml implements INodeType {
 						},
 					});
 				} else {
-					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`, { itemIndex });
+					throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`, {
+						itemIndex,
+					});
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					items[itemIndex] = ({
+					items[itemIndex] = {
 						json: {
 							error: error.message,
 						},
 						pairedItem: {
 							item: itemIndex,
 						},
-					});
+					};
 					continue;
 				}
 				throw error;
@@ -286,6 +285,5 @@ export class Xml implements INodeType {
 		}
 
 		return this.prepareOutputData(returnData);
-
 	}
 }

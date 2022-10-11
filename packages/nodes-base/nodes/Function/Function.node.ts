@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -16,7 +17,8 @@ export class Function implements INodeType {
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
-		description: 'Run custom function code which gets executed once and allows you to add, remove, change and replace items',
+		description:
+			'Run custom function code which gets executed once and allows you to add, remove, change and replace items',
 		defaults: {
 			name: 'Function',
 			color: '#FF9922',
@@ -35,7 +37,7 @@ export class Function implements INodeType {
 				},
 				type: 'string',
 				default: `// Code here will run only once, no matter how many input items there are.
-// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function
+// More info and help:https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.function/
 // Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Loop over inputs and add a new field called 'myNewField' to the JSON of each one
@@ -60,8 +62,13 @@ return items;`,
 		// Copy the items as they may get changed in the functions
 		items = JSON.parse(JSON.stringify(items));
 
+		// Assign item indexes
+		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+			items[itemIndex].index = itemIndex;
+		}
+
 		const cleanupData = (inputData: IDataObject): IDataObject => {
-			Object.keys(inputData).map(key => {
+			Object.keys(inputData).map((key) => {
 				if (inputData[key] !== null && typeof inputData[key] === 'object') {
 					if (inputData[key]!.constructor.name === 'Object') {
 						// Is regular node.js object so check its data
@@ -83,6 +90,48 @@ return items;`,
 			items,
 			// To be able to access data of other items
 			$item: (index: number) => this.getWorkflowDataProxy(index),
+			getBinaryDataAsync: async (item: INodeExecutionData): Promise<IBinaryKeyData | undefined> => {
+				// Fetch Binary Data, if available. Cannot check item with `if (item?.index)`, as index may be 0.
+				if (item?.binary && item?.index !== undefined && item?.index !== null) {
+					for (const binaryPropertyName of Object.keys(item.binary)) {
+						item.binary[binaryPropertyName].data = (
+							await this.helpers.getBinaryDataBuffer(item.index as number, binaryPropertyName)
+						)?.toString('base64');
+					}
+				}
+
+				// Return Data
+				return item.binary;
+			},
+			setBinaryDataAsync: async (item: INodeExecutionData, data: IBinaryKeyData) => {
+				// Ensure item is provided, else return a friendly error.
+				if (!item) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'No item was provided to setBinaryDataAsync (item: INodeExecutionData, data: IBinaryKeyData).',
+					);
+				}
+
+				// Ensure data is provided, else return a friendly error.
+				if (!data) {
+					throw new NodeOperationError(
+						this.getNode(),
+						'No data was provided to setBinaryDataAsync (item: INodeExecutionData, data: IBinaryKeyData).',
+					);
+				}
+
+				// Set Binary Data
+				for (const binaryPropertyName of Object.keys(data)) {
+					const binaryItem = data[binaryPropertyName];
+					data[binaryPropertyName] = await this.helpers.setBinaryDataBuffer(
+						binaryItem,
+						Buffer.from(binaryItem.data, 'base64'),
+					);
+				}
+
+				// Set Item Reference
+				item.binary = data;
+			},
 		};
 
 		// Make it possible to access data via $node, $parameter, ...
@@ -92,7 +141,7 @@ return items;`,
 		const mode = this.getMode();
 
 		const options = {
-			console: (mode === 'manual') ? 'redirect' : 'inherit',
+			console: mode === 'manual' ? 'redirect' : 'inherit',
 			sandbox,
 			require: {
 				external: false as boolean | { modules: string[] },
@@ -119,19 +168,28 @@ return items;`,
 
 		try {
 			// Execute the function code
-			items = (await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname));
+			items = await vm.run(`module.exports = async function() {${functionCode}\n}()`, __dirname);
 			items = this.helpers.normalizeItems(items);
 
 			// Do very basic validation of the data
 			if (items === undefined) {
-				throw new NodeOperationError(this.getNode(), 'No data got returned. Always return an Array of items!');
+				throw new NodeOperationError(
+					this.getNode(),
+					'No data got returned. Always return an Array of items!',
+				);
 			}
 			if (!Array.isArray(items)) {
-				throw new NodeOperationError(this.getNode(), 'Always an Array of items has to be returned!');
+				throw new NodeOperationError(
+					this.getNode(),
+					'Always an Array of items has to be returned!',
+				);
 			}
 			for (const item of items) {
 				if (item.json === undefined) {
-					throw new NodeOperationError(this.getNode(), 'All returned items have to contain a property named "json"!');
+					throw new NodeOperationError(
+						this.getNode(),
+						'All returned items have to contain a property named "json"!',
+					);
 				}
 				if (typeof item.json !== 'object') {
 					throw new NodeOperationError(this.getNode(), 'The json-property has to be an object!');
@@ -141,13 +199,16 @@ return items;`,
 
 				if (item.binary !== undefined) {
 					if (Array.isArray(item.binary) || typeof item.binary !== 'object') {
-						throw new NodeOperationError(this.getNode(), 'The binary-property has to be an object!');
+						throw new NodeOperationError(
+							this.getNode(),
+							'The binary-property has to be an object!',
+						);
 					}
 				}
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {
-				items=[{json:{ error: error.message }}];
+				items = [{ json: { error: error.message } }];
 			} else {
 				// Try to find the line number which contains the error and attach to error message
 				const stackLines = error.stack.split('\n');

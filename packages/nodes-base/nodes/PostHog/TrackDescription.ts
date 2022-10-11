@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const trackOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const trackOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
+				resource: ['track'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const trackOperations: INodeProperties[] = [
 ];
 
 export const trackFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 track:page                                 */
 	/* -------------------------------------------------------------------------- */
@@ -45,13 +40,8 @@ export const trackFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-					'screen',
-				],
+				resource: ['track'],
+				operation: ['page', 'screen'],
 			},
 		},
 		default: '',
@@ -63,17 +53,12 @@ export const trackFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-					'screen',
-				],
+				resource: ['track'],
+				operation: ['page', 'screen'],
 			},
 		},
 		default: '',
-		description: 'The user\'s distinct ID',
+		description: "The user's distinct ID",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -82,13 +67,8 @@ export const trackFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-					'screen',
-				],
+				resource: ['track'],
+				operation: ['page', 'screen'],
 			},
 		},
 		default: {},
@@ -170,7 +150,7 @@ export const trackFields: INodeProperties[] = [
 				name: 'timestamp',
 				type: 'dateTime',
 				default: '',
-				description: 'If not set, it\'ll automatically be set to the current time',
+				description: "If not set, it'll automatically be set to the current time",
 			},
 		],
 	},

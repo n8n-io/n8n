@@ -194,6 +194,7 @@ describe('CredentialsHelper', () => {
 		];
 
 		const node: INode = {
+			id: 'uuid-1',
 			parameters: {},
 			name: 'test',
 			type: 'test.set',
