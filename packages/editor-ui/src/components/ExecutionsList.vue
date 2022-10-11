@@ -6,7 +6,6 @@
 		:eventBus="modalBus"
 	>
 		<template v-slot:content>
-
 			<div class="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">
@@ -199,6 +198,7 @@ import {
 
 import {
 	range as _range,
+	sortBy,
 } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
@@ -253,7 +253,7 @@ export default mixins(
 	},
 	computed: {
 		finishedExecutions(): IExecutionsSummary[] {
-			return this.$store.getters['executions/finishedExecutions'];
+			return this.$store.getters['executions/sortedFinishedExecutions'];
 		},
 		finishedExecutionsCount(): number {
 			return this.$store.getters['executions/finishedExecutionsCount'];
@@ -289,16 +289,16 @@ export default mixins(
 			];
 		},
 		activeExecutions (): IExecutionsCurrentSummaryExtended[] {
-			return this.$store.getters['executions/getActiveExecutions'];
+			return this.$store.getters['executions/sortedActiveExecutions'];
 		},
 		combinedExecutions (): IExecutionsSummary[] {
-			const returnData: IExecutionsSummary[] = [];
+			const returnData: Array<IExecutionsSummary|IExecutionsCurrentSummaryExtended> = [];
 
 			if (['ALL', 'running'].includes(this.filter.status)) {
-				returnData.push.apply(returnData, this.activeExecutions);
+				returnData.push(...this.activeExecutions);
 			}
 			if (['ALL', 'error', 'success', 'waiting'].includes(this.filter.status)) {
-				returnData.push.apply(returnData, this.finishedExecutions);
+				returnData.push(...this.finishedExecutions);
 			}
 
 			return returnData;
@@ -414,7 +414,7 @@ export default mixins(
 			sendData.filters = this.workflowFilterPast;
 
 			try {
-				await this.restApi().deleteExecutions(sendData);
+				await this.$store.dispatch('executions/deleteExecutions', sendData);
 			} catch (error) {
 				this.isDataLoading = false;
 				this.$showError(
@@ -493,7 +493,7 @@ export default mixins(
 
 			await this.$store.dispatch(
 				'executions/loadFinishedExecutions',
-				{ filter: this.workflowFilterPast, limit: this.requestItemsPerRequest },
+				{ filter: this.workflowFilterPast, limit: 2 },
 			);
 		},
 		async loadMore () {
@@ -578,6 +578,7 @@ export default mixins(
 				const finishedExecutionsPromise = this.loadFinishedExecutions();
 				await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]);
 			} catch (error) {
+				console.log("🚀 ~ file: ExecutionsList.vue ~ line 581 ~ refreshData ~ error", error);
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.refreshData.title'),
@@ -629,15 +630,8 @@ export default mixins(
 		},
 		async stopExecution (activeExecutionId: string) {
 			try {
-				// Add it to the list of currently stopping executions that we
-				// can show the user in the UI that it is in progress
-				this.stoppingExecutions.push(activeExecutionId);
 
-				await this.restApi().stopCurrentExecution(activeExecutionId);
-
-				// Remove it from the list of currently stopping executions
-				const index = this.stoppingExecutions.indexOf(activeExecutionId);
-				this.stoppingExecutions.splice(index, 1);
+				this.$store.dispatch('executions/stopExecution', activeExecutionId);
 
 				this.$showMessage({
 					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),

@@ -1039,9 +1039,15 @@ export interface IWorkflowsState {
 export interface IExecutionsState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	finishedExecutions: IExecutionsSummary[];
+	finishedExecutionsObj: {
+		[executionId: string]: IExecutionsSummary
+	}
 	finishedExecutionsCount: number;
 	finishedExecutionsCountEstimated: boolean;
 	stoppingExecutions: string[];
+	activeExecutionsObj: {
+		[executionId: string]: IExecutionsCurrentSummaryExtended
+	}
 }
 
 export interface ICommunityNodesState {
