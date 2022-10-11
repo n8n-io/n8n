@@ -8,7 +8,7 @@
 			size="small"
 			@click.stop.prevent="showAll = true"
 		>
-			+{{ hiddenTagsLength }} more
+			{{ t('tags.showMore', hiddenTagsLength) }}
 		</n8n-link>
 	</div>
 </template>
@@ -16,14 +16,16 @@
 <script lang="ts">
 import N8nTag from '../N8nTag';
 import N8nLink from '../N8nLink';
+import Locale from "../../mixins/locale";
 import Vue, {PropType} from 'vue';
+import mixins from "vue-typed-mixins";
 
 interface ITag {
 	id: string;
 	name: string;
 }
 
-export default Vue.extend({
+export default mixins(Locale).extend({
 	name: 'n8n-tags',
 	components: {
 		N8nTag,
