@@ -244,7 +244,7 @@ export class Xml implements INodeType {
 					if (item.json[dataPropertyName] === undefined) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`The json property "${dataPropertyName}" does not exist on item!`,
+							`Item has no JSON property called "${dataPropertyName}"`,
 							{ itemIndex },
 						);
 					}

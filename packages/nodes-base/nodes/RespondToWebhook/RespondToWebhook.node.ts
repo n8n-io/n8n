@@ -242,7 +242,7 @@ export class RespondToWebhook implements INodeType {
 			if (binaryData === undefined) {
 				throw new NodeOperationError(
 					this.getNode(),
-					`The binary data property "${responseBinaryPropertyName}" does not exist on item!`,
+					`Item has no binary property called "${responseBinaryPropertyName}"`,
 				);
 			}
 

@@ -291,7 +291,7 @@ export class Box implements INodeType {
 							if (items[i].binary[binaryPropertyName] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`The binary data property "${binaryPropertyName}" does not exist on item!`,
+									`Item has no binary property called "${binaryPropertyName}"`,
 									{ itemIndex: i },
 								);
 							}

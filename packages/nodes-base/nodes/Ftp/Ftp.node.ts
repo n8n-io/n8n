@@ -554,7 +554,7 @@ export class Ftp implements INodeType {
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`The binary data property "${propertyNameUpload}" does not exist on item!`,
+									`Item has no binary property called "${propertyNameUpload}"`,
 									{ itemIndex: i },
 								);
 							}
@@ -669,7 +669,7 @@ export class Ftp implements INodeType {
 							if (item.binary[propertyNameUpload] === undefined) {
 								throw new NodeOperationError(
 									this.getNode(),
-									`The binary data property "${propertyNameUpload}" does not exist on item!`,
+									`Item has no binary property called "${propertyNameUpload}"`,
 									{ itemIndex: i },
 								);
 							}
