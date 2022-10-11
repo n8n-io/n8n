@@ -248,6 +248,7 @@
 	"executionDetails.openWorkflow": "Open Workflow",
 	"executionDetails.readOnly.readOnly": "Read only",
 	"executionDetails.readOnly.youreViewingTheLogOf": "You're viewing the log of a previous execution. You cannot<br />\n\t\tmake changes since this execution already occurred. Make changes<br />\n\t\tto this workflow by clicking on its name on the left.",
+	"executionDetails.retry": "Retry of",
 	"executionDetails.runningTimeFinished": "in {time}",
 	"executionDetails.runningTimeRunning": "for {time}",
 	"executionDetails.workflow": "workflow",

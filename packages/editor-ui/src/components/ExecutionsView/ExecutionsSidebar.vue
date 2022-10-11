@@ -1,5 +1,5 @@
 <template>
-	<div v-if="statusFilterApplied || executions.length > 0" :class="['executions-sidebar', $style.container]">
+	<div :class="['executions-sidebar', $style.container]">
 		<div :class="$style.heading">
 				<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
@@ -53,11 +53,19 @@
 			</n8n-info-tip>
 		</div>
 		<div :class="$style.executionList">
-			<div v-if="loading" :class="$style.loadingContainer">
+			<div v-if="loading" class="mr-m">
+				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 			</div>
-			<execution-card v-else v-for="execution in executions" :key="execution.id" :execution="execution" @refresh="setExecutions"/>
+			<execution-card
+				v-else
+				v-for="execution in executions"
+				:key="execution.id"
+				:execution="execution"
+				:highlight="highlightExecutionIds.includes(execution.id)"
+				@refresh="loadAutoRefresh"
+			/>
 		</div>
 		<div :class="$style.infoAccordion">
 			<executions-info-accordion />
@@ -84,12 +92,13 @@ export default mixins(executionHelpers).extend({
 	data() {
 		return {
 			VIEWS,
-			loading: false,
+			loading: true,
 			filter: {
 				status: '',
 			},
 			autoRefresh: true,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
+			highlightExecutionIds: [] as string[],
 		};
 	},
 	computed: {
@@ -127,9 +136,9 @@ export default mixins(executionHelpers).extend({
 					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
 				}).catch(()=>{});;
 			}
-			// Set auto-refresh automatically for now
-			this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4000);
 		}
+		// Set auto-refresh automatically for now
+		this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4000);
 	},
 	beforeDestroy() {
 		if (this.autoRefreshInterval) {
@@ -138,9 +147,9 @@ export default mixins(executionHelpers).extend({
 		}
 	},
 	methods: {
-		resetFilters(): void {
+		async resetFilters(): Promise<void> {
 			this.filter.status = '';
-			this.setExecutions();
+			await this.setExecutions();
 		},
 		prepareFilter(): object {
 			return {
@@ -151,12 +160,13 @@ export default mixins(executionHelpers).extend({
 		async setExecutions(): Promise<void> {
 			this.loading = true;
 			const workflowExecutions = await this.loadExecutions();
-			this.loading = false;
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
+			this.setActiveExecution();
+			this.loading = false;
 		},
 		async loadAutoRefresh(): Promise<void> {
-			console.log('Refreshing...');
-
+			this.highlightExecutionIds = [];
+			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
 			const fetchedExecutions: IExecutionsSummary[] = await this.loadExecutions();
 			let existingExecutions: IExecutionsSummary[] = [ ...this.executions ];
 			const alreadyPresentExecutionIds = existingExecutions.map(exec => parseInt(exec.id, 10));
@@ -167,39 +177,26 @@ export default mixins(executionHelpers).extend({
 				const currentItem = fetchedExecutions[i];
 				const currentId = parseInt(currentItem.id, 10);
 				if (lastId !== 0 && isNaN(currentId) === false) {
-					// We are doing this iteration to detect possible gaps.
-					// The gaps are used to remove executions that finished
-					// and were deleted from database but were displaying
-					// in this list while running.
 					if (currentId - lastId > 1) {
-						// We have some gaps.
 						const range = _range(lastId + 1, currentId);
 						gaps.push(...range);
 					}
 				}
 				lastId = parseInt(currentItem.id, 10) || 0;
 
-				// Check new results from end to start
-				// Add new items accordingly.
 				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
 				if (executionIndex !== -1) {
-					// Execution that we received is already present.
 					const existingExecution = existingExecutions.find(ex => ex.id === currentItem.id);
 					const existingStillRunning = existingExecution && existingExecution.finished === false || existingExecution?.stoppedAt === undefined;
+					const currentFinished =  currentItem.finished === true || currentItem.stoppedAt !== undefined;
 
-					if (existingStillRunning && currentItem.finished === true) {
-							console.log('FOUND: ' + currentId);
-						// Concurrency stuff. This might happen if the execution finishes
-						// prior to saving all information to database. Somewhat rare but
-						// With auto refresh and several executions, it happens sometimes.
-						// So we replace the execution data so it displays correctly.
+					if (existingStillRunning && currentFinished) {
 						existingExecutions[executionIndex] = currentItem;
+						this.highlightExecutionIds.push(currentItem.id);
 					}
-
 					continue;
 				}
 
-				// Find the correct position to place this newcomer
 				let j;
 				for (j = existingExecutions.length - 1; j >= 0; j--) {
 					if (currentId < parseInt(existingExecutions[j].id, 10)) {
@@ -218,13 +215,11 @@ export default mixins(executionHelpers).extend({
 		},
 		async loadExecutions(): Promise<IExecutionsSummary[]> {
 			if (!this.currentWorkflow) {
-				this.loading = false;
 				return [];
 			}
 			try {
 				const executions: IExecutionsSummary[] =
 					await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', this.prepareFilter());
-					this.setActiveExecution();
 				return executions;
 			} catch (error) {
 				this.$showError(
@@ -232,8 +227,6 @@ export default mixins(executionHelpers).extend({
 					this.$locale.baseText('executionsList.showError.refreshData.title'),
 				);
 				return [];
-			} finally {
-				this.loading = false;
 			}
 		},
 		setActiveExecution(): void {
@@ -271,6 +264,23 @@ export default mixins(executionHelpers).extend({
 	height: 93%;
 	overflow: auto;
 	margin: var(--spacing-m) 0;
+	background-color: var(--color-background-xlight) !important;
+
+	// Scrolling fader
+	&::before {
+		position: absolute;
+		display: block;
+		width: 270px;
+		height: 6px;
+		content: '';
+		background: linear-gradient(to bottom, rgba(251, 251, 251, 1) 0%, rgba(251, 251, 251, 0) 100%);
+		z-index: 999;
+	}
+
+	// Lower first execution card so fader is not visible when not scrolled
+	& > div:first-child {
+		margin-top: 3px;
+	}
 }
 
 .infoAccordion {

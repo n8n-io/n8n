@@ -28,7 +28,8 @@ export default mixins(restApi, showMessage).extend({
 	async mounted() {
 		if (this.workflowDataNotLoaded) {
 			await this.openWorkflow(this.$route.params.name);
-			await await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { status: '' });
+			const executions = await await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { status: '' });
+			this.$store.commit('workflows/setCurrentWorkflowExecutions', executions);
 		}
 	},
 	methods: {

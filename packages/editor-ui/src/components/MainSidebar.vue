@@ -209,7 +209,7 @@ export default mixins(
 					{
 						id: 'executions',
 						icon: 'tasks',
-						label: this.$locale.baseText('mainSidebar.executions'),
+						label: this.$locale.baseText('generic.executions'),
 						position: 'top',
 					},
 					{

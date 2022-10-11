@@ -5,6 +5,7 @@
 			[$style.executionCard]: true,
 			[$style.active]: activeExecution && execution.id === activeExecution.id,
 			[$style[executionUIDetails.name]]: true,
+			[$style.highlight]: highlight,
 		}"
 	>
 		<router-link
@@ -21,6 +22,11 @@
 					</n8n-text>
 					<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="small">
 						{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }}
+					</n8n-text>
+				</div>
+				<div v-if="execution.mode === 'retry'">
+					<n8n-text color="text-base" size="small">
+						{{ $locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</n8n-text>
 				</div>
 			</div>
@@ -66,6 +72,10 @@ export default mixins(
 		execution: {
 			type: Object as () => IExecutionsSummary,
 			required: true,
+		},
+		highlight: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	computed: {
@@ -127,7 +137,6 @@ export default mixins(
 
 	&:hover, &.active {
 		border-left: 4px solid transparent !important;
-
 		.executionLink {
 			background-color: #DBDFE7;
 		}
@@ -143,17 +152,20 @@ export default mixins(
 		}
 		.statusLabel, .spinner { color: #E6A23D; }
 	}
+
 	&.success {
 		&, & .executionLink {
 			border-left: 4px solid #29A568;
 		}
 	}
+
 	&.waiting {
 		&, & .executionLink {
 			border-left: 4px solid #5C4EC2;
 		}
 		.statusLabel { color: #5C4EC2; }
 	}
+
 	&.error {
 		&, & .executionLink {
 			border-left: 4px solid #F45959;
@@ -175,7 +187,7 @@ export default mixins(
 	left: -4px;
 
 	&:active {
-		.icon {
+		.icon, .statusLabel {
 			color: var(--color-text-base);;
 		}
 	}

@@ -1,5 +1,11 @@
 <template>
-	<div :class="$style.previewContainer">
+	<div v-if="executionUIDetails && executionUIDetails.name === 'running'" :class="$style.runningInfo">
+		<div :class="$style.spinner">
+			<font-awesome-icon icon="spinner" spin />
+		</div>
+		<n8n-text :class="$style.runningMessage">Execution is running. It will show here once finished.</n8n-text>
+	</div>
+	<div v-else :class="$style.previewContainer">
 		<div :class="$style.executionDetails" v-if="activeExecution">
 			<n8n-text size="medium" color="text-base" :bold="true">{{ executionUIDetails.startTime }}</n8n-text><br>
 			<n8n-spinner v-if="executionUIDetails.name === 'running'" size="small" :class="[$style.spinner, 'mr-4xs']"/>
@@ -9,6 +15,15 @@
 			</n8n-text>
 			<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="small">
 				{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
+			</n8n-text>
+			<br><n8n-text v-if="activeExecution.mode === 'retry'" color="text-base" size= "small">
+				{{ $locale.baseText('executionDetails.retry') }}
+				<router-link
+					:class="$style.executionLink"
+					:to="{ name: VIEWS.EXECUTION_PREVIEW, params: { workflowId: activeExecution.workflowId, executionId: activeExecution.retryOf }}"
+				>
+					#{{ activeExecution.retryOf }}
+				</router-link>
 			</n8n-text>
 		</div>
 		<workflow-preview mode="execution" loaderType="spinner" :executionId="executionId"/>
@@ -21,11 +36,17 @@ import { restApi } from '@/components/mixins/restApi';
 import { showMessage } from '../mixins/showMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers';
+import { VIEWS } from '../../constants';
 
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
 	components: {
 		WorkflowPreview,
+	},
+	data() {
+		return {
+			VIEWS,
+		};
 	},
 	mounted() {
 		this.syncActiveExecution();
@@ -39,8 +60,8 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 	},
 	computed: {
-		executionUIDetails(): IExecutionUIData {
-			return this.getExecutionUIDetails(this.activeExecution);
+		executionUIDetails(): IExecutionUIData | null {
+			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
 	},
 	methods: {
@@ -69,4 +90,22 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 .unknown, .waiting, .running, .spinner { color: var(--color-warning); }
 .success { color: var(--color-success); }
 .error { color: var(--color-danger); }
+
+.runningInfo {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	margin-top: var(--spacing-4xl);
+}
+
+.spinner {
+	font-size: var(--font-size-2xl);
+	color: var(--color-primary);
+}
+
+.runningMessage {
+	width: 200px;
+	margin-top: var(--spacing-l);
+	text-align: center;
+}
 </style>
