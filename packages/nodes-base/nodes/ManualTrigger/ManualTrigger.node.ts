@@ -2,10 +2,7 @@ import { ITriggerFunctions } from 'n8n-core';
 import {
 	INodeType,
 	INodeTypeDescription,
-	INodeExecutionData,
 	ITriggerResponse,
-	toCronExpression,
-	TriggerTime,
 } from 'n8n-workflow';
 
 export class ManualTrigger implements INodeType {
