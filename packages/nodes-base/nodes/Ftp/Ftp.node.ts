@@ -351,6 +351,28 @@ export class Ftp implements INodeType {
 					'Whether to return object representing all directories / objects recursively found within SFTP server',
 				required: true,
 			},
+			{
+				displayName: 'Options',
+				displayOptions: {
+					show: {
+						protocol: ['ftps'],
+					},
+				},
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Reject Unauthorized',
+						name: 'rejectUnauthorized',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether the server certificate is verified against the list of supplied CAs',
+					},
+				],
+			},
 		],
 	};
 
@@ -369,7 +391,13 @@ export class Ftp implements INodeType {
 						port: credentials.port as number,
 						user: credentials.username as string,
 						password: credentials.password as string,
-						secure: true,
+						secure: credentials.secure as string | boolean,
+						secureOptions: (credentials.secure
+							? {
+									requestCert: credentials.disableCertificateValidation,
+									rejectUnauthorized: !credentials.disableCertificateValidation,
+							  }
+							: undefined) as ConnectionOptions | undefined,
 					});
 				} catch (error) {
 					return {
@@ -422,6 +450,7 @@ export class Ftp implements INodeType {
 
 		let credentials: ICredentialDataDecryptedObject | undefined = undefined;
 		const protocol = this.getNodeParameter('protocol', 0) as string;
+		const options = this.getNodeParameter('options', 0, {}) as IDataObject;
 
 		if (protocol === 'sftp') {
 			credentials = await this.getCredentials('sftp');
@@ -444,19 +473,13 @@ export class Ftp implements INodeType {
 				});
 			} else {
 				ftp = new ftpClient();
-				// credentials.secure = true;
-				// const _secureOptions: ConnectionOptions = {
-				// 	host: credentials.host as string,
-				// 	port: credentials.port as number,
-				// 	timeout: 10000,
-				// };
 				await ftp.connect({
 					host: credentials.host as string,
 					port: credentials.port as number,
 					user: credentials.username as string,
 					password: credentials.password as string,
 					secure: credentials.secure as boolean,
-					// secureOptions: _secureOptions,
+					// secureOptions: options || ({} as IDataObject),
 				});
 			}
 
