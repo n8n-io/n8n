@@ -133,7 +133,9 @@ export default mixins(
 
 <style lang="scss" scoped>
 .workflow-activator {
-	display: inline-block;
+	display: inline-flex;
+	flex-wrap: nowrap;
+	align-items: center;
 }
 
 .could-not-be-started {
