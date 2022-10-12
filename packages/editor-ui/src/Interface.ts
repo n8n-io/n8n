@@ -996,7 +996,7 @@ export type IFakeDoorLocation = 'settings' | 'credentialsModal';
 export type INodeFilterType = "Regular" | "Trigger" | "All";
 
 export interface INodeCreatorState {
-	itemsFilter: string,
+	itemsFilter: string;
 	showTabs: boolean;
 	showScrim: boolean;
 	selectedType: INodeFilterType;

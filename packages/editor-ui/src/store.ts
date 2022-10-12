@@ -116,7 +116,7 @@ const modules = {
 	users,
 	ui,
 	communityNodes,
-	nodeCreator
+	nodeCreator,
 };
 
 export const store = new Vuex.Store({
