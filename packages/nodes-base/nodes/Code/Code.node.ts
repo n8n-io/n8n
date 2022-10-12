@@ -57,7 +57,7 @@ export class Code implements INodeType {
 			},
 			{
 				displayName:
-					'Type <code>$</code> for a <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">list of special vars/methods</a>. Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
+					'Type <code>$</code> for a list of <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">special vars/methods</a>. Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
 				name: 'notice',
 				type: 'notice',
 				default: '',
