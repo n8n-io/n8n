@@ -27,6 +27,12 @@ import {
 	hasExpressionExtension,
 	hasNativeMethod,
 } from './Extensions';
+import {
+	ExpressionChunk,
+	ExpressionCode,
+	joinExpression,
+	splitExpression,
+} from './Extensions/ExpressionParser';
 
 // @ts-ignore
 
@@ -268,52 +274,19 @@ export class Expression {
 		data.extend = extend;
 
 		// Execute the expression
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		let returnValue;
-		let expressionTemplate: string = parameterValue;
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			returnValue = this.renderExpression(expressionTemplate, data);
-
-			if (returnValue === undefined && hasExpressionExtension(parameterValue)) {
-				expressionTemplate = this.extendSyntax(parameterValue);
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				returnValue = this.renderExpression(expressionTemplate, data);
-			}
-		} catch (error) {
-			if (error instanceof ExpressionError) {
-				// Ignore all errors except if they are ExpressionErrors and they are supposed
-				// to fail the execution
-				if (error.context.failExecution) {
-					throw error;
-				}
-			}
-
-			// Handle Type Errors,
-			// because we're extending native types,
-			// {{ "".isBlank() }} will always fail once
-			// check and retry with an extended expressionTemplate string
-			// {{ extend("").isBlank() }}
-			if (error instanceof TypeError) {
-				expressionTemplate = this.extendSyntax(parameterValue);
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				returnValue = this.renderExpression(expressionTemplate, data);
-			}
-		}
-
+		const extendedExpression = this.extendSyntax(parameterValue);
+		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
 			throw new Error('Expression resolved to a function. Please add "()"');
+		} else if (typeof returnValue === 'string') {
+			return returnValue;
 		} else if (returnValue !== null && typeof returnValue === 'object') {
 			if (returnObjectAsString) {
-				return this.convertObjectValueToString(returnValue as object);
+				return this.convertObjectValueToString(returnValue);
 			}
 		}
 
-		return returnValue as
-			| NodeParameterValue
-			| INodeParameters
-			| NodeParameterValue[]
-			| INodeParameters[];
+		return returnValue;
 	}
 
 	private renderExpression(
@@ -339,19 +312,40 @@ export class Expression {
 		if (!hasExpressionExtension(bracketedExpression) || hasNativeMethod(bracketedExpression))
 			return bracketedExpression;
 
-		const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+		const chunks = splitExpression(bracketedExpression);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		const output = BabelCore.transformSync(unbracketedExpression, {
-			plugins: [expressionExtensionPlugin],
+		// const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+
+		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
+			if (chunk.type === 'code') {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+				const output = BabelCore.transformSync(chunk.text, {
+					plugins: [expressionExtensionPlugin],
+					ast: true,
+				});
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				if (!output?.code) {
+					throw new ExpressionExtensionError('Failed to extend syntax');
+				}
+
+				let text = output.code;
+				// We need to cut off any trailing semicolons. These cause issues
+				// with certain types of expression and cause the whole expression
+				// to fail.
+				if (text.endsWith(';')) {
+					text = text.slice(0, -1);
+				}
+
+				return {
+					...chunk,
+					text,
+				} as ExpressionCode;
+			}
+			return chunk;
 		});
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (!output?.code) {
-			throw new ExpressionExtensionError('Failed to extend syntax');
-		}
-
-		return `{{ ${output.code} }}`;
+		return joinExpression(extendedChunks);
 	}
 
 	/**
