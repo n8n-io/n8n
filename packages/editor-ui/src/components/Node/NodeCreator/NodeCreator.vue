@@ -1,23 +1,21 @@
 <template>
-	<div>
-		<SlideTransition>
-			<div
-				v-if="active"
-				class="node-creator"
-				ref="nodeCreator"
-			 	v-click-outside="onClickOutside"
-			 	@dragover="onDragOver"
-			 	@drop="onDrop"
-			>
-				<MainPanel
-					@nodeTypeSelected="nodeTypeSelected"
-					:categorizedItems="categorizedItems"
-					:categoriesWithNodes="categoriesWithNodes"
-					:searchItems="searchItems"
-				/>
-			</div>
-		</SlideTransition>
-	</div>
+	<SlideTransition>
+		<div
+			v-if="active"
+			class="node-creator"
+			ref="nodeCreator"
+			v-click-outside="onClickOutside"
+			@dragover="onDragOver"
+			@drop="onDrop"
+		>
+			<MainPanel
+				@nodeTypeSelected="nodeTypeSelected"
+				:categorizedItems="categorizedItems"
+				:categoriesWithNodes="categoriesWithNodes"
+				:searchItems="searchItems"
+			/>
+		</div>
+	</SlideTransition>
 </template>
 
 <script lang="ts">
@@ -26,7 +24,7 @@ import Vue from 'vue';
 
 import { ICategoriesWithNodes, INodeCreateElement } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
-import SlideTransition from '../transitions/SlideTransition.vue';
+import SlideTransition from '../../transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
 import { getCategoriesWithNodes, getCategorizedList } from './helpers';
@@ -38,9 +36,11 @@ export default Vue.extend({
 		MainPanel,
 		SlideTransition,
 	},
-	props: [
-		'active',
-	],
+	props: {
+		active: {
+			type: Boolean,
+		},
+  },
 	computed: {
 		...mapGetters('users', ['personalizedNodeTypes']),
 		allLatestNodeTypes(): INodeTypeDescription[] {

@@ -96,7 +96,12 @@ export async function init() {
 
 		try {
 			const schema = config.getEnv('database.postgresdb.schema');
-			await exec(`psql -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`);
+			const exportPasswordCli = pgOptions.password
+				? `export PGPASSWORD=${pgOptions.password} && `
+				: '';
+			await exec(
+				`${exportPasswordCli} psql -h ${pgOptions.host} -U ${pgOptions.username} -d ${testDbName} -c "CREATE SCHEMA IF NOT EXISTS ${schema}";`,
+			);
 		} catch (error) {
 			if (error instanceof Error && error.message.includes('command not found')) {
 				console.error(
@@ -453,6 +458,13 @@ export function getWorkflowOwnerRole() {
 	});
 }
 
+export function getWorkflowEditorRole() {
+	return Db.collections.Role.findOneOrFail({
+		name: 'editor',
+		scope: 'workflow',
+	});
+}
+
 export function getCredentialOwnerRole() {
 	return Db.collections.Role.findOneOrFail({
 		name: 'owner',
@@ -602,6 +614,16 @@ export async function createWorkflow(attributes: Partial<WorkflowEntity> = {}, u
 	return workflow;
 }
 
+export async function shareWorkflowWithUsers(workflow: WorkflowEntity, users: User[]) {
+	const role = await getWorkflowEditorRole();
+	const sharedWorkflows = users.map((user) => ({
+		user,
+		workflow,
+		role,
+	}));
+	return Db.collections.SharedWorkflow.save(sharedWorkflows);
+}
+
 /**
  * Store a workflow in the DB (with a trigger) and optionally assign it to a user.
  * @param user user to assign the workflow to
@@ -645,6 +667,18 @@ export async function createWorkflowWithTrigger(
 	);
 
 	return workflow;
+}
+
+// ----------------------------------
+//        workflow sharing
+// ----------------------------------
+
+export async function getWorkflowSharing(workflow: WorkflowEntity) {
+	return Db.collections.SharedWorkflow.find({
+		where: {
+			workflow,
+		},
+	});
 }
 
 // ----------------------------------

@@ -12,6 +12,11 @@ export const certificateDescription: INodeProperties[] = [
 				value: 'create',
 				action: 'Create a certificate',
 			},
+			{
+				name: 'Install',
+				value: 'install',
+				action: 'Install a certificate',
+			},
 		],
 		default: 'create',
 		displayOptions: {
@@ -20,6 +25,9 @@ export const certificateDescription: INodeProperties[] = [
 			},
 		},
 	},
+	/* -------------------------------------------------------------------------- */
+	/*                                certificate:create                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Certificate File Name',
 		name: 'certificateFileName',
@@ -221,7 +229,8 @@ export const certificateDescription: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Serial number file maintained for the CA certificate. This file contains the serial number of the next certificate to be issued or signed by the CA.',
+		description:
+			'Serial number file maintained for the CA certificate. This file contains the serial number of the next certificate to be issued or signed by the CA.',
 	},
 	{
 		displayName: 'Private Key Format',
@@ -304,5 +313,143 @@ export const certificateDescription: INodeProperties[] = [
 					'Number of days for which the certificate will be valid, beginning with the time and day (system time) of creation',
 			},
 		],
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                certificate:install                          */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Certificate-Key Pair Name',
+		name: 'certificateKeyPairName',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['certificate'],
+				operation: ['install'],
+			},
+		},
+		default: '',
+		description: 'Name for the certificate and private-key pair',
+	},
+	{
+		displayName: 'Certificate File Name',
+		name: 'certificateFileName',
+		type: 'string',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['certificate'],
+				operation: ['install'],
+			},
+		},
+		default: '',
+		description: 'Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path.',
+	},
+	{
+		displayName: 'Private Key File Name',
+		name: 'privateKeyFileName',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['certificate'],
+				operation: ['install'],
+			},
+		},
+		description: 'Name of and, optionally, path to the X509 certificate file that is used to form the certificate-key pair. /nsconfig/ssl/ is the default path.',
+	},
+	{
+		displayName: 'Certificate Format',
+		name: 'certificateFormat',
+		type: 'options',
+		options: [
+			{
+				name: 'PEM',
+				value: 'PEM',
+			},
+			{
+				name: 'DER',
+				value: 'DER',
+			},
+		],
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['certificate'],
+				operation: ['install'],
+			},
+		},
+		default: 'PEM',
+		description:
+			'Input format of the certificate and the private-key files. The three formats supported by the appliance are: PEM - Privacy Enhanced Mail DER - Distinguished Encoding Rule PFX - Personal Information Exchange.',
+	},
+	{
+		displayName: 'Password',
+		name: 'password',
+		type: 'string',
+		typeOptions: {
+			password: true,
+		},
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['certificate'],
+				operation: ['install'],
+				certificateFormat: ['PEM'],
+			},
+		},
+		default: '',
+		description:
+			'Input format of the certificate and the private-key files. The three formats supported by the appliance are: PEM - Privacy Enhanced Mail DER - Distinguished Encoding Rule PFX - Personal Information Exchange.',
+	},
+	{
+		displayName: 'Notify When Expires',
+		name: 'notifyExpiration',
+		type: 'boolean',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['certificate'],
+				operation: ['install'],
+			},
+		},
+		default: false,
+		description: 'Whether to alert when the certificate is about to expire',
+	},
+	{
+		displayName: 'Notification Period (Days)',
+		name: 'notificationPeriod',
+		type: 'number',
+		default: 10,
+		required: true,
+		typeOptions: {
+			minValue: 10,
+			maxValue: 100,
+		},
+		displayOptions: {
+			show: {
+				resource: ['certificate'],
+				operation: ['install'],
+				notifyExpiration: [true],
+			},
+		},
+		description:
+			'Time, in number of days, before certificate expiration, at which to generate an alert that the certificate is about to expire',
+	},
+	{
+		displayName: 'Certificate Bundle',
+		name: 'certificateBundle',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['certificate'],
+				operation: ['install'],
+				certificateFormat: ['PEM'],
+			},
+		},
+		description:
+			"Whether to parse the certificate chain as a single file after linking the server certificate to its issuer's certificate within the file",
 	},
 ];
