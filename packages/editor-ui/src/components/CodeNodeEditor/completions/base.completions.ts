@@ -58,10 +58,13 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
 
 			options.push(
-				...getAutocompletableNodeNames(this.$store.getters.allNodes).map((name) => {
+				...getAutocompletableNodeNames(this.$store.getters.allNodes).map((nodeName) => {
 					return {
-						label: `$('${name}')`,
+						label: `$('${nodeName}')`,
 						type: 'variable',
+						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
+							interpolate: { nodeName },
+						}),
 					};
 				}),
 			);
@@ -98,6 +101,9 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 					return {
 						label: `$('${nodeName}')`,
 						type: 'variable',
+						info: this.$locale.baseText('codeNodeEditor.completer.$()', {
+							interpolate: { nodeName },
+						}),
 					};
 				},
 			);
