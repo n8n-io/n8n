@@ -66,10 +66,10 @@
 			@mouseenter="onCreateMenuHoverIn"
 		>
 			<div class="node-creator-button">
-				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')"
+				<n8n-icon-button size="xlarge" icon="plus" class="node-creator-plus" @click="() => openNodeCreator('add_node_button')" type="tertiary"
 					:title="$locale.baseText('nodeView.addNode')" />
 				<div :class="['add-sticky-button', showStickyButton ? 'visible-button' : '']" @click="addStickyNote">
-					<n8n-icon-button size="medium" type="secondary" :icon="['far', 'note-sticky']"
+					<n8n-icon-button size="medium" type="tertiary" :icon="['far', 'note-sticky']"
 						:title="$locale.baseText('nodeView.addSticky')" />
 				</div>
 			</div>
@@ -3372,6 +3372,20 @@ export default mixins(
 	top: 80px;
 	right: 20px;
 	pointer-events: all !important;
+
+	button {
+		border-color: var(--color-foreground-xdark);
+
+		&:hover {
+			border-color: var(--color-primary);
+			color: var(--color-primary);
+			background: transparent;
+		}
+	}
+	.node-creator-plus {
+		border-width: 2px;
+		border-radius: 4px;
+	}
 }
 
 .node-creator-button button {
