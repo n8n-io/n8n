@@ -959,6 +959,10 @@ export default mixins(
 				return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex+1) + itemsLabel;
 			},
 			getDataCount(runIndex: number, outputIndex: number) {
+				if (this.pinData) {
+					return this.pinData.length;
+				}
+
 				if (this.node === null) {
 					return 0;
 				}
