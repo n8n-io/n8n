@@ -35,7 +35,7 @@
 		<NodeDetailsView :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged" />
 		<node-creation v-if="!isReadOnly" :create-node-active="createNodeActive" :node-view-scale="nodeViewScale" @toggleNodeCreator="onToggleNodeCreator" @addNode="onAddNode"/>
 		<div
-			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo && !isExecutionPreview, expanded: !sidebarMenuCollapsed }">
+			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
 			<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')"
 				icon="expand" />
 			<n8n-icon-button @click="zoomIn" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomIn')"

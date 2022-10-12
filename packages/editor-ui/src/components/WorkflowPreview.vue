@@ -9,6 +9,7 @@
 		<iframe
 			:class="{
 				[$style.workflow]: !this.nodeViewDetailsOpened,
+				[$style.executionPreview]: mode === 'execution',
 				[$style.openNDV]: this.nodeViewDetailsOpened,
 				[$style.show]: this.showPreview,
 			}"
@@ -184,7 +185,6 @@ export default mixins(showMessage).extend({
 	width: 100%;
 	height: 100%;
 	display: flex;
-	align-items: center;
 	justify-content: center;
 }
 
@@ -212,9 +212,17 @@ export default mixins(showMessage).extend({
 
 .spinner {
 	color: var(--color-primary);
+	position: absolute;
+	top: 50% !important;
+  -ms-transform: translateY(-50%);
+  transform: translateY(-50%);
 }
 
 .imageLoader {
 	width: 100%;
+}
+
+.executionPreview {
+	height: calc(100% - $header-height);
 }
 </style>

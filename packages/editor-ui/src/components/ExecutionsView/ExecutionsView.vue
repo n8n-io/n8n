@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
-		<executions-sidebar />
-		<div :class="$style.content">
+		<executions-sidebar @loaded="onExecutionsLoaded"/>
+		<div :class="$style.content" v-if="!loading">
 				<router-view name="executionPreview" />
 		</div>
 	</div>
@@ -20,6 +20,11 @@ export default mixins(restApi, showMessage).extend({
 	components: {
 		ExecutionsSidebar,
 	},
+	data() {
+		return {
+			loading: true,
+		};
+	},
 	computed: {
 		workflowDataNotLoaded (): boolean {
 			return this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID && this.$store.getters.workflowName === '';
@@ -33,6 +38,9 @@ export default mixins(restApi, showMessage).extend({
 		}
 	},
 	methods: {
+		onExecutionsLoaded(): void {
+			this.loading = false;
+		},
 		async openWorkflow(workflowId: string): Promise<void> {
 			let data: IWorkflowDb | undefined;
 				try {

@@ -29,7 +29,7 @@
 </template>
 
 <script lang="ts">
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { IExecutionsSummary } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { getActivatableTriggerNodes } from '../helpers';

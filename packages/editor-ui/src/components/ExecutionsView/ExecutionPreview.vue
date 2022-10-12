@@ -89,7 +89,8 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	padding: var(--spacing-m);
 }
 
-.unknown, .waiting, .running, .spinner { color: var(--color-warning); }
+.unknown, .running, .spinner { color: var(--color-warning); }
+.waiting { color: var(--color-secondary); }
 .success { color: var(--color-success); }
 .error { color: var(--color-danger); }
 

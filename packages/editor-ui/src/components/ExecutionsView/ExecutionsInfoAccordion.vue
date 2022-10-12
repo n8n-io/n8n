@@ -30,6 +30,11 @@ export default Vue.extend({
 	},
 	data() {
 		return {
+			defaultValues: {
+				saveFailedExecutions: 'all',
+				saveSuccessfulExecutions: 'all',
+				saveManualExecutions: false,
+			},
 			workflowSaveSettings: {
 				saveFailedExecutions: false,
 				saveSuccessfulExecutions: false,
@@ -38,6 +43,9 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
+		this.defaultValues.saveFailedExecutions = this.$store.getters.saveDataErrorExecution;
+		this.defaultValues.saveSuccessfulExecutions = this.$store.getters.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
 		this.updateSettings(this.workflowSettings);
 	},
 	watch: {
@@ -92,7 +100,7 @@ export default Vue.extend({
 		updateSettings(settingsInStore: IWorkflowSettings): void {
 			this.workflowSaveSettings.saveFailedExecutions = settingsInStore.saveDataErrorExecution !== 'none';
 			this.workflowSaveSettings.saveSuccessfulExecutions = settingsInStore.saveDataSuccessExecution !== 'none';
-			this.workflowSaveSettings.saveManualExecutions = settingsInStore.saveManualExecutions === true;
+			this.workflowSaveSettings.saveManualExecutions = settingsInStore.saveManualExecutions ? settingsInStore.saveManualExecutions === true : this.defaultValues.saveManualExecutions;
 		},
 		onAccordionClick(event: MouseEvent): void {
 			if (event.target instanceof HTMLAnchorElement) {

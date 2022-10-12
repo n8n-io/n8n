@@ -113,6 +113,9 @@ export default mixins(executionHelpers).extend({
 				{ id: 'waiting', name: this.$locale.baseText('executionsList.waiting') },
 			];
 		},
+		showExecutionPreview(): boolean {
+			return this.executions.length > 0;
+		},
 	},
 	watch: {
 		executions(newValue) {
@@ -128,14 +131,9 @@ export default mixins(executionHelpers).extend({
 	async mounted() {
 		if (!this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
+			this.stopLoading();
 		} else {
 			await this.setExecutions();
-			if (this.executions.length > 0) {
-				this.$router.push({
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
-				}).catch(()=>{});;
-			}
 		}
 		// Set auto-refresh automatically for now
 		this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4000);
@@ -162,7 +160,13 @@ export default mixins(executionHelpers).extend({
 			const workflowExecutions = await this.loadExecutions();
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
 			this.setActiveExecution();
-			this.loading = false;
+			if (this.executions.length > 0) {
+				this.$router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+				}).catch(()=>{});;
+			}
+			this.stopLoading();
 		},
 		async loadAutoRefresh(): Promise<void> {
 			this.highlightExecutionIds = [];
@@ -238,6 +242,10 @@ export default mixins(executionHelpers).extend({
 				}
 			}
 		},
+		stopLoading(): void {
+			this.loading = false;
+			this.$emit('loaded', this.executions.length);
+		},
 	},
 });
 </script>
@@ -245,10 +253,9 @@ export default mixins(executionHelpers).extend({
 <style module lang="scss">
 .container {
 	flex: 310px 0 0;
-	height: 100%;
 	background-color: var(--color-background-xlight);
 	border-right: var(--border-base);
-	padding: var(--spacing-l) 0 var(--spacing-2xs) var(--spacing-l);
+	padding: var(--spacing-l) 0 var(--spacing-l) var(--spacing-l);
 	z-index: 1;
 	overflow: hidden;
 }
@@ -261,7 +268,7 @@ export default mixins(executionHelpers).extend({
 }
 
 .executionList {
-	height: 93%;
+	height: calc(100% - 8em);
 	overflow: auto;
 	margin: var(--spacing-m) 0;
 	background-color: var(--color-background-xlight) !important;
