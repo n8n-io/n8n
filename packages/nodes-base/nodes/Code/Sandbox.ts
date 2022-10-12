@@ -218,6 +218,20 @@ export class Sandbox extends NodeVM {
 			});
 		}
 
+		// If at least one top-level key is a supported item key (`json`, `binary`, etc.),
+		// and another top-level key is unrecognized, then the user mis-added a property
+		// directly on the item, when they intended to add it on the `json` property
+
+		Object.keys(executionResult).forEach((key) => {
+			if (SUPPORTED_ITEM_KEYS.has(key)) return;
+
+			throw new ValidationError({
+				message: `Unknown top-level item key: ${key}`,
+				description: 'Access the properties of an item under `.json`, e.g. `item.json`',
+				itemIndex: this.itemIndex,
+			});
+		});
+
 		if (Array.isArray(executionResult)) {
 			const firstSentence =
 				executionResult.length > 0
