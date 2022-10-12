@@ -98,7 +98,7 @@ export class Kafka implements INodeType {
 				description: 'URL of the schema registry',
 			},
 			{
-				displayName: 'Use key',
+				displayName: 'Use Key',
 				name: 'useKey',
 				type: 'boolean',
 				default: false,
@@ -354,7 +354,7 @@ export class Kafka implements INodeType {
 
 				const useKey = this.getNodeParameter('useKey', i) as boolean;
 
-				const key = useKey ? this.getNodeParameter('key', i) as string : null;
+				const key = useKey ? (this.getNodeParameter('key', i) as string) : null;
 
 				let headers;
 
