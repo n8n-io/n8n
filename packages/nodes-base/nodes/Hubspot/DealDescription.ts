@@ -716,7 +716,7 @@ export const dealFields: INodeProperties[] = [
 										options: [
 											{
 												name: 'Contains Exactly',
-												value: 'CONSTAIN_TOKEN',
+												value: 'CONTAINS_TOKEN',
 											},
 											{
 												name: 'Equal',
