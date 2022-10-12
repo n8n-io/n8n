@@ -870,7 +870,7 @@ export interface IRootState {
 	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
-	workflows: IWorkflowsMap;
+	workflowsById: IWorkflowsMap;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};

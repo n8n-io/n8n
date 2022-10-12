@@ -102,7 +102,7 @@ const state: IRootState = {
 		tags: [],
 		pinData: {},
 	},
-	workflows: {},
+	workflowsById: {},
 	sidebarMenuItems: [],
 	instanceId: '',
 	nodeMetadata: {},
@@ -181,7 +181,7 @@ export const store = new Vuex.Store({
 
 		// Workflows
 		setWorkflows: (state: IRootState, workflows: IWorkflowDb[]) => {
-			state.workflows = workflows.reduce<IWorkflowsMap>((acc, workflow: IWorkflowDb) => {
+			state.workflowsById = workflows.reduce<IWorkflowsMap>((acc, workflow: IWorkflowDb) => {
 				if (workflow.id) {
 					acc[workflow.id] = workflow;
 				}
@@ -190,9 +190,9 @@ export const store = new Vuex.Store({
 			}, {});
 		},
 		deleteWorkflow: (state: IRootState, id: string) => {
-			const { [id]: deletedWorkflow, ...workflows } = state.workflows;
+			const { [id]: deletedWorkflow, ...workflows } = state.workflowsById;
 
-			state.workflows = workflows;
+			state.workflowsById = workflows;
 		},
 
 		// Active Workflows
@@ -206,8 +206,8 @@ export const store = new Vuex.Store({
 				state.activeWorkflows.push(workflowId);
 			}
 
-			if (state.workflows[workflowId]) {
-				Vue.set(state.workflows[workflowId], 'active', true);
+			if (state.workflowsById[workflowId]) {
+				Vue.set(state.workflowsById[workflowId], 'active', true);
 			}
 		},
 		setWorkflowInactive(state, workflowId: string) {
@@ -216,8 +216,8 @@ export const store = new Vuex.Store({
 				state.activeWorkflows.splice(index, 1);
 			}
 
-			if (state.workflows[workflowId]) {
-				Vue.set(state.workflows[workflowId], 'active', false);
+			if (state.workflowsById[workflowId]) {
+				Vue.set(state.workflowsById[workflowId], 'active', false);
 			}
 		},
 		// Set state condition dirty or not
@@ -851,7 +851,7 @@ export const store = new Vuex.Store({
 
 		// Workflows
 		allWorkflows(state: IRootState): IWorkflowDb[] {
-			return Object.values(state.workflows)
+			return Object.values(state.workflowsById)
 				.sort((a, b) => a.name.localeCompare(b.name));
 		},
 

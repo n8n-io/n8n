@@ -323,7 +323,9 @@ export default mixins(
 			async handleSelect (key: string) {
 				switch (key) {
 					case 'workflows': {
-						this.$router.push({name: VIEWS.WORKFLOWS});
+						if (this.$router.currentRoute.name !== VIEWS.WORKFLOWS) {
+							this.$router.push({name: VIEWS.WORKFLOWS});
+						}
 						break;
 					}
 					case 'templates': {
