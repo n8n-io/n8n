@@ -147,8 +147,13 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			}),
 		];
 
+		// empty on first load, default param value
+		if (this.jsCode === '') {
+			this.$emit('valueChanged', this.placeholder);
+		}
+
 		const state = EditorState.create({
-			doc: this.jsCode !== '' ? this.jsCode : this.placeholder,
+			doc: this.jsCode === '' ? this.placeholder : this.jsCode,
 			extensions: [
 				...baseExtensions,
 				...stateBasedExtensions,
