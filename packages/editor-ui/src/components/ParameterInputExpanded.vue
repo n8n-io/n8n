@@ -18,19 +18,18 @@
 			/>
 		</template>
 		<template>
-			<parameter-input
+			<parameter-input-wrapper
 				ref="param"
 				inputSize="large"
 				:parameter="parameter"
 				:value="value"
 				:path="parameter.name"
 				:hideIssues="true"
-				:displayOptions="true"
 				:documentationUrl="documentationUrl"
 				:errorHighlight="showRequiredErrors"
 				:isForCredential="true"
 				:eventSource="eventSource"
-				:isValueExpression="isValueExpression"
+				:hint="!showRequiredErrors? hint: ''"
 				@focus="onFocus"
 				@blur="onBlur"
 				@textInput="valueChanged"
@@ -44,30 +43,27 @@
 					</n8n-link>
 				</n8n-text>
 			</div>
-			<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
 		</template>
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
-import ParameterInput from './ParameterInput.vue';
 import ParameterOptions from './ParameterOptions.vue';
-import InputHint from './ParameterInputHint.vue';
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
+import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { isValueExpression } from './helpers';
 import { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 
 export default Vue.extend({
-	name: 'ParameterInputExpanded',
+	name: 'parameter-input-expanded',
 	components: {
-		ParameterInput,
-		InputHint,
 		ParameterOptions,
+		ParameterInputWrapper,
 	},
 	props: {
 		parameter: {
-			type: Object as () => INodeProperties,
+			type: Object as PropType<INodeProperties>,
 		},
 		value: {
 		},
@@ -105,6 +101,13 @@ export default Vue.extend({
 			}
 
 			return false;
+		},
+		hint(): string | null {
+			if (this.isValueExpression) {
+				return null;
+			}
+
+			return this.$locale.credText().hint(this.parameter);
 		},
 		isValueExpression (): boolean {
 			return isValueExpression(this.parameter, this.value as string | INodeParameterResourceLocator);
