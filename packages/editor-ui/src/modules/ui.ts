@@ -28,6 +28,7 @@ import {
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
+	IExecutionResponse,
 	IFakeDoor,
 	IFakeDoorLocation,
 	IRootState,
@@ -117,12 +118,16 @@ const module: Module<IUiState, IRootState> = {
 			sessionId: '',
 			input: {
 				displayMode: 'table',
+				nodeName: undefined,
+				run: undefined,
+				branch: undefined,
 				data: {
 					isEmpty: true,
 				},
 			},
 			output: {
 				displayMode: 'table',
+				branch: undefined,
 				data: {
 					isEmpty: true,
 				},
@@ -133,6 +138,7 @@ const module: Module<IUiState, IRootState> = {
 			},
 			focusedMappableInput: '',
 			mappingTelemetry: {},
+			hoveringItem: null,
 		},
 		mainPanelPosition: 0.5,
 		draggable: {
@@ -174,8 +180,17 @@ const module: Module<IUiState, IRootState> = {
 		],
 	},
 	getters: {
-		areExpressionsDisabled(state: IUiState) {
-			return state.currentView === VIEWS.DEMO;
+		ndvInputData: (state: IUiState, getters, rootState: IRootState, rootGetters) => {
+			const executionData = rootGetters.getWorkflowExecution as IExecutionResponse | null;
+			const inputNodeName: string | undefined = state.ndv.input.nodeName;
+			const inputRunIndex: number = state.ndv.input.run ?? 0;
+			const inputBranchIndex: number = state.ndv.input.branch?? 0;
+
+			if (!executionData || !inputNodeName || inputRunIndex === undefined || inputBranchIndex === undefined) {
+				return [];
+			}
+
+			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data?.main?.[inputBranchIndex];
 		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
@@ -230,9 +245,19 @@ const module: Module<IUiState, IRootState> = {
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
+		hoveringItem: (state: IUiState) => state.ndv.hoveringItem,
+		ndvInputNodeName: (state: IUiState) => state.ndv.input.nodeName,
+		ndvInputRunIndex: (state: IUiState) => state.ndv.input.run,
+		ndvInputBranchIndex: (state: IUiState) => state.ndv.input.branch,
 		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
 	},
 	mutations: {
+		setInputNodeName: (state: IUiState, name: string | undefined) => {
+			Vue.set(state.ndv.input, 'nodeName', name);
+		},
+		setInputRunIndex: (state: IUiState, run?: string) => {
+			Vue.set(state.ndv.input, 'run', run);
+		},
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
 			Vue.set(
 				state.mainPanelDimensions,
@@ -336,6 +361,12 @@ const module: Module<IUiState, IRootState> = {
 		},
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
+		},
+		setHoveringItem(state: IUiState, item: null | IUiState['ndv']['hoveringItem']) {
+			Vue.set(state.ndv, 'hoveringItem', item);
+		},
+		setNDVBranchIndex(state: IUiState, e: {pane: 'input' | 'output', branchIndex: number}) {
+			Vue.set(state.ndv[e.pane], 'branch', e.branchIndex);
 		},
 		setNDVPanelDataIsEmpty(state: IUiState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
 			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
