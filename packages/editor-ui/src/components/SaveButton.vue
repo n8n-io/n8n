@@ -40,7 +40,7 @@ export default Vue.extend({
 		type: {
 			type: String,
 			default: 'primary',
-		}
+		},
 	},
 	computed: {
 		saveButtonLabel() {

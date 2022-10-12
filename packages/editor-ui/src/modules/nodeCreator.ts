@@ -3,7 +3,7 @@ import { Module } from 'vuex';
 import {
 	IRootState,
 	INodeCreatorState,
-	INodeFilterType
+	INodeFilterType,
 } from '@/Interface';
 
 const module: Module<INodeCreatorState, IRootState> = {

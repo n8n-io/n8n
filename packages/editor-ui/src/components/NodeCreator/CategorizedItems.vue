@@ -141,7 +141,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		this.registerCustomAction('showAllNodeCreatorNodes', this.switchToAllTabAndFilter);
 	},
 	destroyed() {
-		this.$store.commit('nodeCreator/setFilter', '')
+		this.$store.commit('nodeCreator/setFilter', '');
 		this.unregisterCustomAction('showAllNodeCreatorNodes');
 	},
 	computed: {
@@ -200,7 +200,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 				return this.searchFilter && matchesNodeType(el, this.searchFilter);
 			});
 
-			return matchedAllNodex
+			return matchedAllNodex;
 		},
 		categorized(): INodeCreateElement[] {
 			return this.categorizedItems && this.categorizedItems
@@ -322,15 +322,15 @@ export default mixins(externalHooks, globalLinkActions).extend({
 	},
 	methods: {
 		switchToAllTabAndFilter() {
-			const currentFilter = this.nodeFilter
+			const currentFilter = this.nodeFilter;
 			this.$store.commit('nodeCreator/setShowTabs', true);
-			this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER)
+			this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
 			this.activeSubcategoryHistory = [];
 
-			this.$nextTick(() => this.$store.commit('nodeCreator/setFilter', currentFilter))
+			this.$nextTick(() => this.$store.commit('nodeCreator/setFilter', currentFilter));
 		},
 		onNodeFilterChange(filter: string) {
-			this.$store.commit('nodeCreator/setFilter', filter)
+			this.$store.commit('nodeCreator/setFilter', filter);
 		},
 		selectWebhook() {
 			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
