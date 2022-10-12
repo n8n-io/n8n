@@ -160,7 +160,7 @@ export default mixins(
 			expressionOutput(): string | null {
 				if (this.isValueExpression && this.expressionValueComputed) {
 					const inputData = this.$store.getters['ui/ndvInputData'];
-					if (inputData && inputData.length <= 1) {
+					if (!inputData || (inputData && inputData.length <= 1)) {
 						return this.expressionValueComputed;
 					}
 
