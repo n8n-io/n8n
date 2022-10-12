@@ -1,5 +1,5 @@
 import express from 'express';
-import { Db } from '..';
+import { Db, ResponseHelper } from '..';
 import config from '../../config';
 import type { WorkflowRequest } from '../requests';
 import { isSharingEnabled, rightDiff } from '../UserManagement/UserManagementHelper';
@@ -58,3 +58,37 @@ EEWorkflowController.put('/:workflowId/share', async (req: WorkflowRequest.Share
 
 	return res.status(200).send();
 });
+
+EEWorkflowController.get(
+	'/:id',
+	(req: WorkflowRequest.Get, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
+	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
+		const { id: workflowId } = req.params;
+
+		if (Number.isNaN(Number(workflowId))) {
+			throw new ResponseHelper.ResponseError(`Workflow ID must be a number.`, undefined, 400);
+		}
+
+		const workflow = await EEWorkflows.get(
+			{ id: parseInt(workflowId, 10) },
+			{ relations: ['shared', 'shared.user', 'shared.role'] },
+		);
+
+		if (!workflow) {
+			throw new ResponseHelper.ResponseError(
+				`Workflow with ID "${workflowId}" could not be found.`,
+				undefined,
+				404,
+			);
+		}
+
+		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
+
+		if (!userSharing && req.user.globalRole.name !== 'owner') {
+			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
+		}
+		// @TODO: also return the credentials used by the workflow
+
+		return EEWorkflows.addOwnerAndSharings(workflow);
+	}),
+);

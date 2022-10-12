@@ -1,8 +1,12 @@
-import { IPollFunctions } from 'n8n-core';
-
-import { INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
-
-import moment from 'moment';
+import {
+	IHookFunctions,
+	ILoadOptionsFunctions,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypeDescription,
+	IWebhookFunctions,
+	IWebhookResponseData,
+} from 'n8n-workflow';
 
 import { venafiApiRequest } from './GenericFunctions';
 
@@ -13,10 +17,9 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 		icon: 'file:../venafi.svg',
 		group: ['trigger'],
 		version: 1,
-		subtitle: '={{$parameter["triggerOn"]}}',
 		description: 'Starts the workflow when Venafi events occure',
 		defaults: {
-			name: 'Venafi TLS Protect Cloud​',
+			name: 'Venafi TLS Protect Cloud​ Trigger',
 			color: '#000000',
 		},
 		credentials: [
@@ -25,77 +28,164 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 				required: true,
 			},
 		],
-		polling: true,
+		webhooks: [
+			{
+				name: 'default',
+				httpMethod: 'POST',
+				responseMode: 'onReceived',
+				path: 'webhook',
+			},
+		],
 		inputs: [],
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Trigger On',
-				name: 'trigger On',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+				displayName: 'Resource',
+				name: 'resource',
 				type: 'options',
-				options: [
-					{
-						name: 'Certificate Expired',
-						value: 'certificateExpired',
-					},
-				],
+				noDataExpression: true,
+				typeOptions: {
+					loadOptionsMethod: 'getActivityTypes',
+				},
 				required: true,
-				default: 'certificateExpired',
+				default: [],
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			},
+			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Trigger On',
+				name: 'triggerOn',
+				type: 'multiOptions',
+				typeOptions: {
+					loadOptionsMethod: 'getActivitySubTypes',
+					loadOptionsDependsOn: ['resource'],
+				},
+				required: true,
+				default: [],
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	};
 
-	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const webhookData = this.getWorkflowStaticData('node');
-		const event = this.getNodeParameter('event') as string;
-
-		const now = moment().format();
-
-		const startDate = webhookData.lastTimeChecked || now;
-		const endDate = now;
-
-		const { certificates: certificates } = await venafiApiRequest.call(
-			this,
-			'POST',
-			`/outagedetection/v1/certificatesearch`,
-			{
-				expression: {
-					operands: [
-						{
-							operator: 'AND',
-							operands: [
-								{
-									field: 'validityEnd',
-									operator: 'LTE',
-									values: [endDate],
-								},
-								{
-									field: 'validityEnd',
-									operator: 'GTE',
-									values: [startDate],
-								},
-							],
-						},
-					],
-				},
-				ordering: {
-					orders: [
-						{
-							field: 'certificatInstanceModificationDate',
-							direction: 'DESC',
-						},
-					],
-				},
+	methods = {
+		loadOptions: {
+			async getActivityTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const activitytypes = await venafiApiRequest.call(this, 'GET', '/v1/activitytypes');
+				return activitytypes.map(
+					({ key, readableName }: { key: string; readableName: string }) => ({
+						name: readableName,
+						value: key,
+					}),
+				);
 			},
-			{},
-		);
+			async getActivitySubTypes(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const resource = this.getCurrentNodeParameter('resource') as string;
+				const activitytypes = await venafiApiRequest.call(this, 'GET', '/v1/activitytypes');
+				const activity = activitytypes.find(({ key }: { key: string }) => key === resource) as {
+					values: [{ key: string; readableName: string }];
+				};
+				const subActivities = activity.values.map(({ key, readableName }) => ({ name: readableName, value: key }));
+				subActivities.unshift({ name: '[All]', value: '*' });
+				return subActivities;
+			},
+		},
+	};
 
-		webhookData.lastTimeChecked = endDate;
+	webhookMethods = {
+		default: {
+			async checkExists(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
 
-		if (Array.isArray(certificates) && certificates.length) {
-			return [this.helpers.returnJsonArray(certificates)];
+				const { connectors } = await venafiApiRequest.call(this, 'GET', '/v1/connectors');
+
+				for (const connector of connectors) {
+					const {
+						id,
+						properties: {
+							target: {
+								connection: { url },
+							},
+						},
+					} = connector;
+
+					if (url === webhookUrl) {
+						await venafiApiRequest.call(this, 'DELETE', `/v1/connectors/${id}`);
+						return false;
+					}
+				}
+				return false;
+			},
+			async create(this: IHookFunctions): Promise<boolean> {
+				const webhookUrl = this.getNodeWebhookUrl('default');
+				const resource = this.getNodeParameter('resource') as string;
+				const body = {
+					name: `n8n-webhook (${webhookUrl})`,
+					properties: {
+						connectorKind: 'WEBHOOK',
+						target: {
+							type: 'generic',
+							connection: {
+								url: webhookUrl,
+							},
+						},
+						filter: {
+							activityTypes: [resource],
+						},
+					},
+				};
+
+				const responseData = await venafiApiRequest.call(this, 'POST', `/v1/connectors`, body);
+
+				if (responseData.id === undefined) {
+					// Required data is missing so was not successful
+					return false;
+				}
+
+				const webhookData = this.getWorkflowStaticData('node');
+				webhookData.webhookId = responseData.id as string;
+
+				return true;
+			},
+			async delete(this: IHookFunctions): Promise<boolean> {
+				const webhookData = this.getWorkflowStaticData('node');
+
+				if (webhookData.webhookId !== undefined) {
+					try {
+						await venafiApiRequest.call(this, 'DELETE', `/v1/connectors/${webhookData.webhookId}`);
+					} catch (error) {
+						return false;
+					}
+
+					// Remove from the static workflow data so that it is clear
+					// that no webhooks are registred anymore
+					delete webhookData.webhookId;
+				}
+
+				return true;
+			},
+		},
+	};
+
+	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
+		const bodyData = this.getBodyData() as { message: string; eventName: string };
+		const triggerOn = this.getNodeParameter('triggerOn') as string;
+
+		if (Object.keys(bodyData).length === 1 && bodyData.message) {
+			// Is a create webhook confirmation request
+			const res = this.getResponseObject();
+			res.status(200).end();
+			return {
+				noWebhookResponse: true,
+			};
 		}
 
-		return null;
+		if (!triggerOn.includes('*') && !triggerOn.includes(bodyData.eventName)) return {};
+
+		return {
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
+		};
 	}
 }

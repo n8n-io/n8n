@@ -83,6 +83,7 @@ import {
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
+import Vue from 'vue';
 
 export default mixins(
 	genericHelpers,
@@ -161,7 +162,6 @@ export default mixins(
 								// @ts-ignore
 								label: item.properties ? item.properties.title : '',
 								position: item.position,
-								activateOnRouteNames: [ VIEWS.TEMPLATES ],
 								type: item.properties?.href ? 'link' : 'regular',
 								properties: item.properties,
 							} as IMenuItem,
@@ -278,8 +278,7 @@ export default mixins(
 				return [ ...items, ...regularItems ];
 			},
 		},
-		mounted() {
-			this.fullyExpanded = !this.isCollapsed;
+		async mounted() {
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
@@ -287,6 +286,8 @@ export default mixins(
 				this.$store.commit('ui/expandSidebarMenu');
 			}
 			this.checkWidthAndAdjustSidebar(window.innerWidth);
+			await Vue.nextTick();
+			this.fullyExpanded = !this.isCollapsed;
 		},
 		created() {
 			window.addEventListener("resize", this.onResize);
