@@ -62,6 +62,7 @@
 						@select="onInputSelect"
 						@execute="onNodeExecute"
 						@tableMounted="onInputTableMounted"
+						@itemHover="onInputItemHover"
 					/>
 				</template>
 				<template #output>
@@ -76,6 +77,7 @@
 						@runChange="onRunOutputIndexChange"
 						@openSettings="openSettings"
 						@tableMounted="onOutputTableMounted"
+						@itemHover="onOutputItemHover"
 					/>
 				</template>
 				<template #main>
@@ -111,7 +113,7 @@ import {
 	IRunExecutionData,
 	Workflow,
 } from 'n8n-workflow';
-import { IExecutionResponse, INodeUi, IUpdateInformation } from '../Interface';
+import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -200,7 +202,7 @@ export default mixins(
 				this.executionWaitingForWebhook
 			);
 		},
-		activeNode(): INodeUi {
+		activeNode(): INodeUi | null {
 			return this.$store.getters.activeNode;
 		},
 		inputNodeName(): string | undefined {
@@ -394,8 +396,45 @@ export default mixins(
 		maxInputRun() {
 			this.runInputIndex = -1;
 		},
+		inputNodeName(nodeName: string | undefined) {
+			this.$store.commit('ui/setInputNodeName', nodeName);
+		},
+		inputRun() {
+			this.$store.commit('ui/setInputRunIndex', this.inputRun);
+		},
 	},
 	methods: {
+		onInputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
+			if (!this.inputNodeName) {
+				return;
+			}
+			if (e === null) {
+				this.$store.commit('ui/setHoveringItem', null);
+				return;
+			}
+
+			const item: TargetItem = {
+				nodeName: this.inputNodeName,
+				runIndex: this.inputRun,
+				outputIndex: e.outputIndex,
+				itemIndex: e.itemIndex,
+			};
+			this.$store.commit('ui/setHoveringItem', item);
+		},
+		onOutputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
+			if (e === null || !this.activeNode) {
+				this.$store.commit('ui/setHoveringItem', null);
+				return;
+			}
+
+			const item: TargetItem = {
+				nodeName: this.activeNode.name,
+				runIndex: this.outputRun,
+				outputIndex: e.outputIndex,
+				itemIndex: e.itemIndex,
+			};
+			this.$store.commit('ui/setHoveringItem', item);
+		},
 		onInputTableMounted(e: { avgRowHeight: number }) {
 			this.avgInputRowHeight = e.avgRowHeight;
 		},
@@ -410,13 +449,15 @@ export default mixins(
 		},
 		onFeatureRequestClick() {
 			window.open(this.featureRequestUrl, '_blank');
-			this.$telemetry.track('User clicked ndv link', {
-				node_type: this.activeNode.type,
-				workflow_id: this.$store.getters.workflowId,
-				session_id: this.sessionId,
-				pane: 'main',
-				type: 'i-wish-this-node-would',
-			});
+			if (this.activeNode) {
+				this.$telemetry.track('User clicked ndv link', {
+					node_type: this.activeNode.type,
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					pane: 'main',
+					type: 'i-wish-this-node-would',
+				});
+			}
 		},
 		onPanelsInit(e: { position: number }) {
 			this.mainPanelPosition = e.position;

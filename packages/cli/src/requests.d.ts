@@ -77,6 +77,8 @@ export declare namespace WorkflowRequest {
 			destinationNode?: string;
 		}
 	>;
+
+	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
