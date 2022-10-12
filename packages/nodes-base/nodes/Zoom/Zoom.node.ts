@@ -774,7 +774,7 @@ export class Zoom implements INodeType {
 				// 	}
 				// }
 				const executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(returnData),
+					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);

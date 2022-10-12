@@ -522,6 +522,7 @@ export interface IN8nUISettings {
 	};
 	enterprise: {
 		sharing: boolean;
+		workflowSharing: boolean;
 	};
 }
 
