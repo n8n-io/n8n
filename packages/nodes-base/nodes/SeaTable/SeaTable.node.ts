@@ -294,6 +294,10 @@ export class SeaTable implements INodeType {
 
 						Object.assign(qs, filters, options);
 
+						if (qs.convert_link_id === false) {
+							delete qs.convert_link_id;
+						}
+
 						if (returnAll) {
 							responseData = await setableApiRequestAllItems.call(
 								this,

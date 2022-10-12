@@ -1,7 +1,7 @@
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
-const config = module.exports = {
+const config = (module.exports = {
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
 		sourceType: 'module',
@@ -361,6 +361,13 @@ const config = module.exports = {
 		 */
 		'prefer-spread': 'error',
 
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
+		 *
+		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
+		 */
+		'@typescript-eslint/no-unused-vars': 'warn',
+
 		// ----------------------------------
 		//              import
 		// ----------------------------------
@@ -370,7 +377,7 @@ const config = module.exports = {
 		 */
 		'import/prefer-default-export': 'off',
 	},
-};
+});
 
 if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
 	/**

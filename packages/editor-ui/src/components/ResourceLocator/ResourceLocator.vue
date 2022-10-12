@@ -27,7 +27,6 @@
 						<a @click="openCredential">{{
 							$locale.baseText('resourceLocator.mode.list.error.description.part2')
 						}}</a>
-						{{ $locale.baseText('resourceLocator.mode.list.error.description.part3') }}
 					</n8n-text>
 				</div>
 			</template>
@@ -428,9 +427,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	mounted() {
 		this.$on('refreshList', this.refreshList);
-		this.setWidth();
 		window.addEventListener('resize', this.setWidth);
 		this.mainPanelMutationSubscription = this.$store.subscribe(this.setWidthOnMainPanelResize);
+		setTimeout(() => {
+			this.setWidth();
+		}, 0);
 	},
 	beforeDestroy() {
 		// Unsubscribe

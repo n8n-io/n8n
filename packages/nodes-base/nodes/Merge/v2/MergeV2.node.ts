@@ -59,12 +59,12 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Merge By Fields',
 					value: 'mergeByFields',
-					description: 'Pair items with the same field values',
+					description: 'Combine items with the same field values',
 				},
 				{
 					name: 'Merge By Position',
 					value: 'mergeByPosition',
-					description: 'Pair items based on their order',
+					description: 'Combine items based on their order',
 				},
 				{
 					name: 'Multiplex',
