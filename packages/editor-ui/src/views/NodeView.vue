@@ -2311,6 +2311,10 @@ export default mixins(
 				});
 			},
 			onNodeRun({ name, data, waiting }: { name: string, data: ITaskData[] | null, waiting: boolean }) {
+				const pinData = this.$store.getters.pinData;
+
+				if (pinData && pinData[name]) return;
+
 				const sourceNodeName = name;
 				const sourceNode = this.$store.getters.getNodeByName(sourceNodeName);
 				const sourceId = sourceNode.id;
