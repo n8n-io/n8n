@@ -655,7 +655,7 @@ export const alertFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Severity',
-				name: ' severity',
+				name: 'severity',
 				type: 'options',
 				options: [
 					{
