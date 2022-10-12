@@ -1,12 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	ICredentialDataDecryptedObject,
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,

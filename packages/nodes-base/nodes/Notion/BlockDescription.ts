@@ -32,7 +32,7 @@ export const blockOperations: INodeProperties[] = [
 	},
 ];
 
-export const blockFields = [
+export const blockFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                block:append                                 */
 	/* -------------------------------------------------------------------------- */
