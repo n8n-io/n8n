@@ -15,11 +15,11 @@ export class ManualTrigger implements INodeType {
 		icon: 'fa:mouse-pointer',
 		group: ['trigger', 'input'],
 		version: 1,
-		description: 'Starts the workflow execution on clicking a buton in N8N',
+		description: 'Runs the flow on clicking a button in n8n',
 		maxNodes: 1,
 		defaults: {
-			name: 'Manual Trigger',
-			color: '#ff6d5a',
+			name: 'On clicking \'execute\'',
+			color: '#909298',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

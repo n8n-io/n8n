@@ -28,7 +28,7 @@ export default Vue.extend({
 	},
 	computed: {
 		selectedType(): "Regular" | "Trigger" | "All" {
-			return this.$store.getters['ui/selectedNodeCreatorType'];
+			return this.$store.getters['nodeCreator/selectedType'];
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return this.$store.getters['nodeTypes/categoriesWithNodes'];

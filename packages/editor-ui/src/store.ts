@@ -48,6 +48,7 @@ import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
+import nodeCreator from './modules/nodeCreator';
 import { isJsonKeyObject } from './utils';
 
 Vue.use(Vuex);
@@ -115,6 +116,7 @@ const modules = {
 	users,
 	ui,
 	communityNodes,
+	nodeCreator
 };
 
 export const store = new Vuex.Store({

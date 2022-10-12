@@ -56,7 +56,7 @@ export default mixins(externalHooks).extend({
 	},
 	computed: {
 		selectedType(): string {
-			return this.$store.getters['ui/selectedNodeCreatorType'];
+			return this.$store.getters['nodeCreator/selectedType'];
 		},
 	},
 	watch: {
@@ -75,10 +75,10 @@ export default mixins(externalHooks).extend({
 	mounted() {
 		this.$externalHooks().run('nodeCreateList.mounted');
 		// Make sure tabs are visible on mount
-		this.$store.commit('ui/setShowNodeCreatorTabs', true);
+		this.$store.commit('nodeCreator/setShowTabs', true);
 	},
 	destroyed() {
-		this.$store.commit('ui/setSelectedNodeCreatorType', ALL_NODE_FILTER);
+		this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
 		this.$externalHooks().run('nodeCreateList.destroyed');
 		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.$store.getters.workflowId });
 	},

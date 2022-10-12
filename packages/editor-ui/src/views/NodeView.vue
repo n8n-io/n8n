@@ -609,7 +609,7 @@ export default mixins(
 
 				this.createNodeActive = true;
 				// Default to the trigger tab in node creator if there's no trigger node yet
-				if (!this.containsTrigger) this.$store.commit('ui/setSelectedNodeCreatorType', TRIGGER_NODE_FILTER);
+				if (!this.containsTrigger) this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
 
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
@@ -617,10 +617,10 @@ export default mixins(
 			showTriggerCreator(source: string) {
 				if(this.createNodeActive) return;
 
-				this.$store.commit('ui/setSelectedNodeCreatorType', TRIGGER_NODE_FILTER);
-				this.$store.commit('ui/setShowCreatorPanelScrim', true);
+				this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
+				this.$store.commit('nodeCreator/setShowScrim', true);
 				this.openNodeCreator(source);
-				this.$nextTick(() => this.$store.commit('ui/setShowNodeCreatorTabs', false));
+				this.$nextTick(() => this.$store.commit('nodeCreator/setShowTabs', false));
 			},
 			async openExecution(executionId: string) {
 				this.resetWorkspace();
