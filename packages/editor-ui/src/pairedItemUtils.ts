@@ -38,7 +38,7 @@ export function getSourceItems(data: IExecutionResponse, target: TargetItem): Ta
 	return sourceItems.filter((item): item is TargetItem => isNotNull(item));
 }
 
-function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, pairedItem: IPairedItemData, sources: ITaskData['source'], executionData: INodeExecutionData, runData: IRunData) {
+function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, pairedItem: IPairedItemData, sources: ITaskData['source']) {
 	paths[pairedItemId] = paths[pairedItemId] || [];
 
 	const input = pairedItem.input || 0;
@@ -51,7 +51,10 @@ function addPairing(paths: {[item: string]: string[][]}, pairedItemId: string, p
 	const sourceNodeRun = sources[input]?.previousNodeRun || 0;
 
 	const sourceItem = getPairedItemId(sourceNode, sourceNodeRun, sourceNodeOutput, pairedItem.item);
-	paths?.[sourceItem]?.forEach((path) => {
+	if (!paths[sourceItem]) {
+		paths[sourceItem] = [[sourceItem]]; // pinned data case
+	}
+	paths[sourceItem]?.forEach((path) => {
 		paths?.[pairedItemId]?.push([...path, pairedItemId]);
 	});
 }
@@ -100,17 +103,17 @@ function addPairedItemIdsRec(node: string, runIndex: number, runData: IRunData, 
 			const pairedItem = executionData.pairedItem;
 			if (Array.isArray(pairedItem)) {
 				pairedItem.forEach((item) => {
-					addPairing(paths, pairedItemId, item, sources, executionData, runData);
+					addPairing(paths, pairedItemId, item, sources);
 				});
 				return;
 			}
 
 			if (typeof pairedItem === 'object') {
-				addPairing(paths, pairedItemId, pairedItem, sources, executionData, runData);
+				addPairing(paths, pairedItemId, pairedItem, sources);
 				return;
 			}
 
-			addPairing(paths, pairedItemId, {item: pairedItem}, sources, executionData, runData);
+			addPairing(paths, pairedItemId, {item: pairedItem}, sources);
 		});
 	});
 }
