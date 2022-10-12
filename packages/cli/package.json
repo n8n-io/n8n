@@ -146,6 +146,7 @@
     "lodash.set": "^4.3.2",
     "lodash.split": "^4.4.2",
     "lodash.unset": "^4.5.2",
+    "moment": "~2.29.2",
     "mysql2": "~2.3.0",
     "n8n-core": "~0.137.0",
     "n8n-editor-ui": "~0.163.1",

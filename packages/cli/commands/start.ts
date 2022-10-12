@@ -33,6 +33,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { CrashJournal } from '../src/CrashJournal';
 import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
@@ -83,7 +84,7 @@ export class Start extends Command {
 	}
 
 	/**
-	 * Stoppes the n8n in a graceful way.
+	 * Stop n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
@@ -141,6 +142,8 @@ export class Start extends Command {
 				});
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
+
+			await CrashJournal.cleanup();
 		} catch (error) {
 			console.error('There was an error shutting down n8n.', error);
 		}
@@ -152,6 +155,9 @@ export class Start extends Command {
 		// Make sure that n8n shuts down gracefully if possible
 		process.on('SIGTERM', Start.stopProcess);
 		process.on('SIGINT', Start.stopProcess);
+
+		await CrashJournal.init();
+		CrashJournal.entry('starting', 'server');
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
@@ -173,6 +179,7 @@ export class Start extends Command {
 					process.exit(1);
 				});
 
+				CrashJournal.entry('loading', 'setting');
 				// Make sure the settings exist
 				const userSettings = await UserSettings.prepareUserSettings();
 
@@ -193,10 +200,12 @@ export class Start extends Command {
 					);
 				}
 
+				CrashJournal.entry('loading', 'nodes and credentials');
 				// Load all node and credential types
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
 				await loadNodesAndCredentials.init();
 
+				CrashJournal.entry('loading', 'external hooks');
 				// Load all external hooks
 				const externalHooks = ExternalHooks();
 				await externalHooks.init();
