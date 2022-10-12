@@ -635,6 +635,8 @@
 	"onboardingWorkflow.stickyContent": "## 👇 Get started faster \nLightning tour of the key concepts [3 min] \n\n[![n8n quickstart video](/static/quickstart_thumbnail.png#full-width)](https://www.youtube.com/watch?v=RpjQTGKm-ok)",
 	"openWorkflow.workflowImportError": "Could not import workflow",
 	"openWorkflow.workflowNotFoundError": "Could not find workflow",
+	"parameterInput.expressionResult": "e.g. {result}",
+	"parameterInput.emptyString": "[empty]",
 	"parameterInput.customApiCall": "Custom API Call",
 	"parameterInput.error": "ERROR",
 	"parameterInput.expression": "Expression",
