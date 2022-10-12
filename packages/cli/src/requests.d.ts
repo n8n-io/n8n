@@ -77,6 +77,8 @@ export declare namespace WorkflowRequest {
 			destinationNode?: string;
 		}
 	>;
+
+	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
@@ -334,4 +336,12 @@ export declare namespace NodeRequest {
 
 export declare namespace NodeTypesRequest {
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { onlyLatest?: string }>;
+}
+
+// ----------------------------------
+//           /curl-to-json
+// ----------------------------------
+
+export declare namespace CurlHelper {
+	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
 }

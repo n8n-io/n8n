@@ -87,8 +87,6 @@ export class LoadNodeParameterOptions {
 	/**
 	 * Returns data of a fake workflow
 	 *
-	 * @returns
-	 * @memberof LoadNodeParameterOptions
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	getWorkflowData() {
@@ -165,9 +163,6 @@ export class LoadNodeParameterOptions {
 	 * Returns the available options via a load request information
 	 *
 	 * @param {ILoadOptions} loadOptions The load options which also contain the request information
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @returns {Promise<INodePropertyOptions[]>}
-	 * @memberof LoadNodeParameterOptions
 	 */
 	async getOptionsViaRequestProperty(
 		loadOptions: ILoadOptions,

@@ -25,6 +25,17 @@ export default Vue.extend({
 .tags {
 	display: flex;
 	flex-wrap: wrap;
+  overflow-x: scroll;
+
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  &::-webkit-scrollbar {
+	display: none;
+  }
+
+  /* Hide scrollbar for IE, Edge and Firefox */
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+
 
 	* {
 		margin: 0 var(--spacing-4xs) var(--spacing-4xs) 0;

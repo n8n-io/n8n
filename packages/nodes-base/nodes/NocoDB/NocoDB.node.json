@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.nocoDb",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Data & Storage"
-	],
+	"categories": ["Data & Storage"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -13,10 +11,9 @@
 		],
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.nocoDb/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.nocodb/"
 			}
 		],
-		"generic": [
-		]
+		"generic": []
 	}
 }

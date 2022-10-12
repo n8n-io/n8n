@@ -19,6 +19,8 @@
 </template>
 
 <script lang="ts">
+import { PropType } from "vue";
+import { ITemplatesCollection } from "@/Interface";
 import Card from '@/components/WorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
@@ -30,7 +32,7 @@ export default mixins(genericHelpers).extend({
 	name: 'CollectionsCarousel',
 	props: {
 		collections: {
-			type: Array,
+			type: Array as PropType<ITemplatesCollection[]>,
 		},
 		loading: {
 			type: Boolean,
@@ -165,17 +167,8 @@ export default mixins(genericHelpers).extend({
 	&__list {
 		width: 100%;
 		padding-bottom: var(--spacing-2xs);
-		overflow-x: scroll;
+		overflow-x: auto;
 		transition: all 1s ease-in-out;
-
-		&::-webkit-scrollbar {
-			height: 6px;
-		}
-
-		&::-webkit-scrollbar-thumb {
-			border-radius: 6px;
-			background-color: var(--color-foreground-dark);
-		}
 	}
 
 	&__track {

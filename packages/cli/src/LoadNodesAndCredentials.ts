@@ -147,8 +147,6 @@ class LoadNodesAndCredentialsClass {
 	 * Returns all the names of the packages which could
 	 * contain n8n nodes
 	 *
-	 * @returns {Promise<string[]>}
-	 * @memberof LoadNodesAndCredentialsClass
 	 */
 	async getN8nNodePackages(baseModulesPath: string): Promise<string[]> {
 		const getN8nNodePackagesRecursive = async (relativePath: string): Promise<string[]> => {

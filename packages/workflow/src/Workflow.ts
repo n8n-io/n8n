@@ -150,9 +150,6 @@ export class Workflow {
 	 * The default connections are by source node. This function rewrites them by destination nodes
 	 * to easily find parent nodes.
 	 *
-	 * @param {IConnections} connections
-	 * @returns {IConnections}
-	 * @memberof Workflow
 	 */
 	__getConnectionsByDestination(connections: IConnections): IConnections {
 		const returnConnection: IConnections = {};
@@ -202,8 +199,6 @@ export class Workflow {
 	 * or webhooks defined.
 	 *
 	 * @param {string[]} [ignoreNodeTypes] Node-types to ignore in the check
-	 * @returns {boolean}
-	 * @memberof Workflow
 	 */
 	checkIfWorkflowCanBeActivated(ignoreNodeTypes?: string[]): boolean {
 		let node: INode;
@@ -249,8 +244,6 @@ export class Workflow {
 	 * which have been found for the different nodes.
 	 * TODO: Does currently not check for credential issues!
 	 *
-	 * @returns {(IWorfklowIssues | null)}
-	 * @memberof Workflow
 	 */
 	checkReadyForExecution(inputData: {
 		startNode?: string;
@@ -317,8 +310,6 @@ export class Workflow {
 	 *
 	 * @param {string} type The type of data to return ("global"|"node")
 	 * @param {INode} [node] If type is set to "node" then the node has to be provided
-	 * @returns {IDataObject}
-	 * @memberof Workflow
 	 */
 	getStaticData(type: string, node?: INode): IDataObject {
 		let key: string;
@@ -349,8 +340,6 @@ export class Workflow {
 	/**
 	 * Returns all the trigger nodes in the workflow.
 	 *
-	 * @returns {INode[]}
-	 * @memberof Workflow
 	 */
 	getTriggerNodes(): INode[] {
 		return this.queryNodes((nodeType: INodeType) => !!nodeType.trigger);
@@ -359,8 +348,6 @@ export class Workflow {
 	/**
 	 * Returns all the poll nodes in the workflow
 	 *
-	 * @returns {INode[]}
-	 * @memberof Workflow
 	 */
 	getPollNodes(): INode[] {
 		return this.queryNodes((nodeType: INodeType) => !!nodeType.poll);
@@ -371,8 +358,6 @@ export class Workflow {
 	 * checkFunction return true
 	 *
 	 * @param {(nodeType: INodeType) => boolean} checkFunction
-	 * @returns {INode[]}
-	 * @memberof Workflow
 	 */
 	queryNodes(checkFunction: (nodeType: INodeType) => boolean): INode[] {
 		const returnNodes: INode[] = [];
@@ -402,8 +387,6 @@ export class Workflow {
 	 * Returns the node with the given name if it exists else null
 	 *
 	 * @param {string} nodeName Name of the node to return
-	 * @returns {(INode | null)}
-	 * @memberof Workflow
 	 */
 	getNode(nodeName: string): INode | null {
 		if (this.nodes.hasOwnProperty(nodeName)) {
@@ -417,8 +400,6 @@ export class Workflow {
 	 * Returns the pinData of the node with the given name if it exists
 	 *
 	 * @param {string} nodeName Name of the node to return the pinData of
-	 * @returns {(IDataObject[] | undefined)}
-	 * @memberof Workflow
 	 */
 	getPinDataOfNode(nodeName: string): IDataObject[] | undefined {
 		return this.pinData ? this.pinData[nodeName] : undefined;
@@ -430,8 +411,6 @@ export class Workflow {
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue The parameters to check for expressions
 	 * @param {string} currentName The current name of the node
 	 * @param {string} newName The new name
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
 	 */
 	renameNodeInExpressions(
 		parameterValue: NodeParameterValueType,
@@ -514,7 +493,6 @@ export class Workflow {
 	 *
 	 * @param {string} currentName The current name of the node
 	 * @param {string} newName The new name
-	 * @memberof Workflow
 	 */
 	renameNode(currentName: string, newName: string) {
 		// Rename the node itself
@@ -573,11 +551,7 @@ export class Workflow {
 	/**
 	 * Finds the highest parent nodes of the node with the given name
 	 *
-	 * @param {string} nodeName
 	 * @param {string} [type='main']
-	 * @param {number} [nodeConnectionIndex]
-	 * @returns {string[]}
-	 * @memberof Workflow
 	 */
 	getHighestNode(
 		nodeName: string,
@@ -656,11 +630,8 @@ export class Workflow {
 	/**
 	 * Returns all the after the given one
 	 *
-	 * @param {string} nodeName
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
-	 * @returns {string[]}
-	 * @memberof Workflow
 	 */
 	getChildNodes(nodeName: string, type = 'main', depth = -1): string[] {
 		return this.getConnectedNodes(this.connectionsBySourceNode, nodeName, type, depth);
@@ -669,11 +640,8 @@ export class Workflow {
 	/**
 	 * Returns all the nodes before the given one
 	 *
-	 * @param {string} nodeName
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
-	 * @returns {string[]}
-	 * @memberof Workflow
 	 */
 	getParentNodes(nodeName: string, type = 'main', depth = -1): string[] {
 		return this.getConnectedNodes(this.connectionsByDestinationNode, nodeName, type, depth);
@@ -683,13 +651,8 @@ export class Workflow {
 	 * Gets all the nodes which are connected nodes starting from
 	 * the given one
 	 *
-	 * @param {IConnections} connections
-	 * @param {string} nodeName
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
-	 * @param {string[]} [checkedNodes]
-	 * @returns {string[]}
-	 * @memberof Workflow
 	 */
 	getConnectedNodes(
 		connections: IConnections,
@@ -770,10 +733,7 @@ export class Workflow {
 	/**
 	 * Returns all the nodes before the given one
 	 *
-	 * @param {string} nodeName
 	 * @param {*} [maxDepth=-1]
-	 * @returns {string[]}
-	 * @memberof Workflow
 	 */
 	getParentNodesByDepth(nodeName: string, maxDepth = -1): IConnectedNode[] {
 		return this.searchNodesBFS(this.connectionsByDestinationNode, nodeName, maxDepth);
@@ -784,11 +744,7 @@ export class Workflow {
 	 * the given one
 	 * Uses BFS traversal
 	 *
-	 * @param {IConnections} connections
-	 * @param {string} sourceNode
 	 * @param {*} [maxDepth=-1]
-	 * @returns {IConnectedNode[]}
-	 * @memberof Workflow
 	 */
 	searchNodesBFS(connections: IConnections, sourceNode: string, maxDepth = -1): IConnectedNode[] {
 		const returnConns: IConnectedNode[] = [];
@@ -855,9 +811,6 @@ export class Workflow {
 	 * @param {string} parentNodeName The parent node to get the output index of
 	 * @param {string} [type='main']
 	 * @param {*} [depth=-1]
-	 * @param {string[]} [checkedNodes]
-	 * @returns {(INodeConnection | undefined)}
-	 * @memberof Workflow
 	 */
 	getNodeConnectionIndexes(
 		nodeName: string,
@@ -938,8 +891,6 @@ export class Workflow {
 	 * Returns from which of the given nodes the workflow should get started from
 	 *
 	 * @param {string[]} nodeNames The potential start nodes
-	 * @returns {(INode | undefined)}
-	 * @memberof Workflow
 	 */
 	__getStartNode(nodeNames: string[]): INode | undefined {
 		// Check if there are any trigger or poll nodes and then return the first one
@@ -973,9 +924,6 @@ export class Workflow {
 	/**
 	 * Returns the start node to start the workflow from
 	 *
-	 * @param {string} [destinationNode]
-	 * @returns {(INode | undefined)}
-	 * @memberof Workflow
 	 */
 	getStartNode(destinationNode?: string): INode | undefined {
 		if (destinationNode) {
@@ -1006,11 +954,6 @@ export class Workflow {
 	 * Executes the Webhooks method of the node
 	 *
 	 * @param {WebhookSetupMethodNames} method The name of the method to execute
-	 * @param {IWebhookData} webhookData
-	 * @param {INodeExecuteFunctions} nodeExecuteFunctions
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns {(Promise<boolean | undefined>)}
-	 * @memberof Workflow
 	 */
 	async runWebhookMethod(
 		method: WebhookSetupMethodNames,
@@ -1052,12 +995,6 @@ export class Workflow {
 	 * Runs the given trigger node so that it can trigger the workflow
 	 * when the node has data.
 	 *
-	 * @param {INode} node
-	 * @param {IGetExecuteTriggerFunctions} getTriggerFunctions
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns {(Promise<ITriggerResponse | undefined>)}
-	 * @memberof Workflow
 	 */
 	async runTrigger(
 		node: INode,
@@ -1139,10 +1076,6 @@ export class Workflow {
 	 * Runs the given trigger node so that it can trigger the workflow
 	 * when the node has data.
 	 *
-	 * @param {INode} node
-	 * @param {IPollFunctions} pollFunctions
-	 * @returns
-	 * @memberof Workflow
 	 */
 
 	async runPoll(
@@ -1168,12 +1101,6 @@ export class Workflow {
 	 * Executes the webhook data to see what it should return and if the
 	 * workflow should be started or not
 	 *
-	 * @param {INode} node
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @param {INodeExecuteFunctions} nodeExecuteFunctions
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns {Promise<IWebhookResponseData>}
-	 * @memberof Workflow
 	 */
 	async runWebhook(
 		webhookData: IWebhookData,
@@ -1202,14 +1129,6 @@ export class Workflow {
 	/**
 	 * Executes the given node.
 	 *
-	 * @param {IExecuteData} executionData
-	 * @param {IRunExecutionData} runExecutionData
-	 * @param {number} runIndex
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @param {INodeExecuteFunctions} nodeExecuteFunctions
-	 * @param {WorkflowExecuteMode} mode
-	 * @returns {(Promise<INodeExecutionData[][] | null>)}
-	 * @memberof Workflow
 	 */
 	async runNode(
 		executionData: IExecuteData,

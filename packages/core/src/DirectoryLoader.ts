@@ -171,13 +171,27 @@ export abstract class DirectoryLoader {
 	 */
 	private getCodex(filePath: string): CodexData {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const { categories, subcategories, alias } = module.require(`${filePath}on`); // .js to .json
+		const {
+			categories,
+			subcategories,
+			resources: allResources,
+			alias,
+		} = module.require(`${filePath}on`); // .js to .json
+
+		const resources = {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+			primaryDocumentation: allResources.primaryDocumentation,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+			credentialDocumentation: allResources.credentialDocumentation,
+		};
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			...(categories && { categories }),
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			...(subcategories && { subcategories }),
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			...(resources && { resources }),
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			...(alias && { alias }),
 		};

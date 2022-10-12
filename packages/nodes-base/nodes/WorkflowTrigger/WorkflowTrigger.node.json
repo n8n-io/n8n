@@ -2,19 +2,15 @@
 	"node": "n8n-nodes-base.WorkflowTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.workflowtrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.workflowtrigger/"
 			}
 		]
 	},
 	"subcategories": {
-		"Core Nodes": [
-			"Flow"
-		]
+		"Core Nodes": ["Flow"]
 	}
 }
