@@ -13,6 +13,7 @@
 				:bold="false"
 				:set="issues = getIssues(credentialTypeDescription.name)"
 				size="small"
+				color="text-dark"
 			>
 				<div v-if="isReadOnly">
 					<n8n-input

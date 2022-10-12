@@ -220,8 +220,11 @@
 				:distanceFromActive="distanceFromActive"
 				:showMappingHint="showMappingHint"
 				:runIndex="runIndex"
+				:pageOffset="currentPageOffset"
 				:totalRuns="maxRunIndex"
+				:hasDefaultHoverState="paneType === 'input'"
 				@mounted="$emit('tableMounted', $event)"
+				@activeRowChanged="onItemHover"
 			/>
 
 			<run-data-json
@@ -419,7 +422,7 @@ export default mixins(
 				type: String,
 			},
 			overrideOutputs: {
-				type: Array,
+				type: Array as PropType<number[]>,
 			},
 			mappingEnabled: {
 				type: Boolean,
@@ -463,6 +466,10 @@ export default mixins(
 					this.showPinDataDiscoveryTooltip(this.jsonData);
 				}
 			}
+			this.$store.commit('ui/setNDVBranchIndex', {
+				pane: this.paneType,
+				branchIndex: this.currentOutputIndex,
+			});
 		},
 		destroyed() {
 			this.hidePinDataDiscoveryTooltip();
@@ -560,6 +567,9 @@ export default mixins(
 				}
 
 				return 0;
+			},
+			currentPageOffset(): number {
+				return this.pageSize * (this.currentPage - 1);
 			},
 			maxRunIndex (): number {
 				if (this.node === null) {
@@ -662,6 +672,17 @@ export default mixins(
 			},
 		},
 		methods: {
+			onItemHover(itemIndex: number | null) {
+				if (itemIndex === null) {
+					this.$emit('itemHover', null);
+
+					return;
+				}
+				this.$emit('itemHover', {
+					outputIndex: this.currentOutputIndex,
+					itemIndex,
+				});
+			},
 			onClickDataPinningDocsLink() {
 				this.$telemetry.track('User clicked ndv link', {
 					workflow_id: this.$store.getters.workflowId,
@@ -1093,6 +1114,12 @@ export default mixins(
 				else if (!newData.length && this.displayMode === 'binary') {
 					this.onDisplayModeChange('table');
 				}
+			},
+			currentOutputIndex(branchIndex: number) {
+				this.$store.commit('ui/setNDVBranchIndex', {
+					pane: this.paneType,
+					branchIndex,
+				});
 			},
 		},
 	});

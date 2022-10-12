@@ -3,7 +3,6 @@ import Vuex, {ActionContext} from 'vuex';
 
 import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	DEFAULT_NODETYPE_VERSION,
 } from '@/constants';
 
 import {
@@ -51,6 +50,7 @@ import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
 import { isJsonKeyObject } from './utils';
 import {getActiveWorkflows, getWorkflows} from "@/api/workflows";
+import { getPairedItemsMapping } from './pairedItemUtils';
 
 Vue.use(Vuex);
 
@@ -80,6 +80,7 @@ const state: IRootState = {
 	oauthCallbackUrls: {},
 	n8nMetadata: {},
 	workflowExecutionData: null,
+	workflowExecutionPairedItemMappings: {},
 	lastSelectedNode: null,
 	lastSelectedNodeOutputIndex: null,
 	nodeViewOffsetPosition: [0, 0],
@@ -407,6 +408,8 @@ export const store = new Vuex.Store({
 				Vue.set(state.workflow.pinData, nameData.new, state.workflow.pinData[nameData.old]);
 				Vue.delete(state.workflow.pinData, nameData.old);
 			}
+
+			state.workflowExecutionPairedItemMappings = getPairedItemsMapping(state.workflowExecutionData);
 		},
 
 		resetAllNodesIssues(state) {
@@ -661,6 +664,7 @@ export const store = new Vuex.Store({
 
 		setWorkflowExecutionData(state, workflowResultData: IExecutionResponse | null) {
 			state.workflowExecutionData = workflowResultData;
+			state.workflowExecutionPairedItemMappings = getPairedItemsMapping(state.workflowExecutionData);
 		},
 		addNodeExecutionData(state, pushData: IPushDataNodeExecuteAfter): void {
 			if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
@@ -670,6 +674,7 @@ export const store = new Vuex.Store({
 				Vue.set(state.workflowExecutionData.data.resultData.runData, pushData.nodeName, []);
 			}
 			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
+			state.workflowExecutionPairedItemMappings = getPairedItemsMapping(state.workflowExecutionData);
 		},
 		clearNodeExecutionData(state, nodeName: string): void {
 			if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
@@ -737,6 +742,9 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
+		workflowExecutionPairedItemMappings: (state): IRootState['workflowExecutionPairedItemMappings'] => {
+			return state.workflowExecutionPairedItemMappings;
+		},
 		executedNode: (state): string | undefined => {
 			return state.workflowExecutionData ? state.workflowExecutionData.executedNode : undefined;
 		},
