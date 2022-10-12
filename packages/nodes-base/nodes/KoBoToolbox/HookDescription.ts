@@ -16,26 +16,31 @@ export const hookOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single hook definition',
+				action: 'Get a hook',
 			},
 			{
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'List many hooks on a form',
+				action: 'Get Many hooks',
 			},
 			{
 				name: 'Logs',
 				value: 'getLogs',
 				description: 'Get hook logs',
+				action: 'Get Logs for a hook',
 			},
 			{
 				name: 'Retry All',
 				value: 'retryAll',
 				description: 'Retry all failed attempts for a given hook',
+				action: 'Retry All hooks',
 			},
 			{
 				name: 'Retry One',
 				value: 'retryOne',
 				description: 'Retry a specific hook',
+				action: 'Retry One hook',
 			},
 		],
 		default: 'getAll',
@@ -158,7 +163,7 @@ export const hookFields: INodeProperties[] = [
 			},
 		},
 		default: '',
-		description: 'Only retrive logs with a specific status',
+		description: 'Only retrieve logs with a specific status',
 		options: [
 			{
 				name: 'All',
