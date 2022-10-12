@@ -72,31 +72,32 @@
 		var(--color-secondary-l)
 	);
 
-	--color-secondary-tint-1-h: 247;
-	--color-secondary-tint-1-s: 49%;
 	--color-secondary-tint-1-l: 85%;
 	--color-secondary-tint-1: hsl(
-		var(--color-secondary-tint-1-h),
-		var(--color-secondary-tint-1-s),
+		var(--color-secondary-h),
+		var(--color-secondary-s),
 		var(--color-secondary-tint-1-l)
 	);
 
-	--color-secondary-tint-2-h: 247;
-	--color-secondary-tint-2-s: 49%;
 	--color-secondary-tint-2-l: 92%;
 	--color-secondary-tint-2: hsl(
-		var(--color-secondary-tint-2-h),
-		var(--color-secondary-tint-2-s),
+		var(--color-secondary-h),
+		var(--color-secondary-s),
 		var(--color-secondary-tint-2-l)
 	);
 
-	--color-secondary-tint-3-h: 247;
-	--color-secondary-tint-3-s: 49%;
 	--color-secondary-tint-3-l: 95%;
 	--color-secondary-tint-3: hsl(
-		var(--color-secondary-tint-3-h),
-		var(--color-secondary-tint-3-s),
+		var(--color-secondary-h),
+		var(--color-secondary-s),
 		var(--color-secondary-tint-3-l)
+	);
+
+	--color-secondary-tint-4-l: 98%;
+	--color-secondary-tint-4: hsl(
+		var(--color-secondary-h),
+		var(--color-secondary-s),
+		var(--color-secondary-tint-4-l)
 	);
 
 	--color-success-h: 150.4;
