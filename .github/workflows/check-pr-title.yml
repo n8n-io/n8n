@@ -15,8 +15,6 @@ jobs:
       - name: Validate PR title
         id: validate_pr_title
         uses: ivov/validate-n8n-pull-request-title@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Post validation issue comment
         uses: marocchino/sticky-pull-request-comment@v2
