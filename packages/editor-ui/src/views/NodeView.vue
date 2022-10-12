@@ -2839,6 +2839,7 @@ export default mixins(
 			},
 			async loadCredentials(): Promise<void> {
 				await this.$store.dispatch('credentials/fetchAllCredentials');
+				await this.$store.dispatch('credentials/fetchForeignCredentials');
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes: INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];

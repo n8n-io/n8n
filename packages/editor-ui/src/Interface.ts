@@ -920,6 +920,7 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
+	foreignCredentials?: ICredentialMap;
 }
 
 export interface ITagsState {

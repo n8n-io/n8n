@@ -54,7 +54,7 @@
 						:linkedRuns="linked"
 						:currentNodeName="inputNodeName"
 						:sessionId="sessionId"
-						:readOnly="readOnly"
+						:readOnly="readOnly || hasForeignCredential"
 						@linkRun="onLinkRunToInput"
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
@@ -70,7 +70,7 @@
 						:runIndex="outputRun"
 						:linkedRuns="linked"
 						:sessionId="sessionId"
-						:isReadOnly="readOnly"
+						:isReadOnly="readOnly || hasForeignCredential"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -171,6 +171,7 @@ export default mixins(
 			pinDataDiscoveryTooltipVisible: false,
 			avgInputRowHeight: 0,
 			avgOutputRowHeight: 0,
+			hasForeignCredential: false,
 		};
 	},
 	mounted() {
@@ -354,6 +355,8 @@ export default mixins(
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
+
+				this.checkForeignCredentials();
 
 				setTimeout(() => {
 					if (this.activeNode) {
@@ -554,6 +557,10 @@ export default mixins(
 				selection_value: index,
 				input_node_type: this.inputNode ? this.inputNode.type : '',
 			});
+		},
+		checkForeignCredentials() {
+			const issues = this.getNodeCredentialIssues(this.activeNode);
+			this.hasForeignCredential = !!issues?.credentials?.foreign;
 		},
 	},
 });
