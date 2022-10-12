@@ -1,16 +1,13 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-export const resource = [
-	'timeEntry',
-];
+export const resource = ['timeEntry'];
 
 export const timeEntryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -21,50 +18,58 @@ export const timeEntryOperations: INodeProperties[] = [
 				name: 'Create via Duration',
 				value: 'createByDuration',
 				description: 'Create a time entry via duration',
+				action: 'Create a time entry via duration',
 			},
 			{
 				name: 'Create via Start and End Time',
 				value: 'createByStartEnd',
 				description: 'Create a time entry via start and end time',
+				action: 'Create a time entry via start and end time',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a time entry',
+				action: 'Delete a time entry',
 			},
 			{
 				name: 'Delete External Reference',
 				value: 'deleteExternal',
 				description: 'Delete a time entry’s external reference',
+				action: 'Delete a time entry’s external reference',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a time entry',
+				action: 'Get data of a time entry',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all time entries',
+				description: 'Get data of many time entries',
+				action: 'Get data of all time entries',
 			},
 			{
 				name: 'Restart',
 				value: 'restartTime',
 				description: 'Restart a time entry',
+				action: 'Restart a time entry',
 			},
 			{
 				name: 'Stop',
 				value: 'stopTime',
 				description: 'Stop a time entry',
+				action: 'Stop a time entry',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a time entry',
+				action: 'Update a time entry',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -80,9 +85,7 @@ export const timeEntryFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -95,12 +98,8 @@ export const timeEntryFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -119,9 +118,7 @@ export const timeEntryFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -144,14 +141,16 @@ export const timeEntryFields: INodeProperties[] = [
 				name: 'is_billed',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
+				description:
+					'Whether to only return time entries that have been invoiced and false to return time entries that have not been invoiced',
 			},
 			{
 				displayName: 'Is Running',
 				name: 'is_running',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return running time entries and false to return non-running time entries',
+				description:
+					'Whether to only return running time entries and false to return non-running time entries',
 			},
 			{
 				displayName: 'Page',
@@ -161,7 +160,8 @@ export const timeEntryFields: INodeProperties[] = [
 					minValue: 1,
 				},
 				default: 1,
-				description: 'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
+				description:
+					'The page number to use in pagination. For instance, if you make a list request and receive 100 records, your subsequent call can include page=2 to retrieve the next page of the list. (Default: 1)',
 			},
 			{
 				displayName: 'To',
@@ -175,7 +175,8 @@ export const timeEntryFields: INodeProperties[] = [
 				name: 'updated_since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return time entries that have been updated since the given date and time',
+				description:
+					'Only return time entries that have been updated since the given date and time',
 			},
 			{
 				displayName: 'User ID',
@@ -191,16 +192,14 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 				resource,
 			},
 		},
@@ -211,16 +210,14 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:delete                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 				resource,
 			},
 		},
@@ -231,16 +228,14 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:deleteExternal                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'deleteExternal',
-				],
+				operation: ['deleteExternal'],
 				resource,
 			},
 		},
@@ -251,56 +246,52 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:stopTime                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'stopTime',
-				],
+				operation: ['stopTime'],
 				resource,
 			},
 		},
-		description: 'Stop a running time entry. Stopping a time entry is only possible if it’s currently running.',
+		description:
+			'Stop a running time entry. Stopping a time entry is only possible if it’s currently running.',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                timeEntry:restartTime                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'restartTime',
-				],
+				operation: ['restartTime'],
 				resource,
 			},
 		},
-		description: 'Restart a stopped time entry. Restarting a time entry is only possible if it isn’t currently running.',
+		description:
+			'Restart a stopped time entry. Restarting a time entry is only possible if it isn’t currently running.',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                timeEntry:update                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -313,9 +304,7 @@ export const timeEntryFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -361,14 +350,12 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:createByDuration                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Id',
+		displayName: 'Project ID',
 		name: 'projectId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'createByDuration',
-				],
+				operation: ['createByDuration'],
 				resource,
 			},
 		},
@@ -377,14 +364,12 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'The ID of the project to associate with the time entry',
 	},
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'createByDuration',
-				],
+				operation: ['createByDuration'],
 				resource,
 			},
 		},
@@ -398,9 +383,7 @@ export const timeEntryFields: INodeProperties[] = [
 		type: 'dateTime',
 		displayOptions: {
 			show: {
-				operation: [
-					'createByDuration',
-				],
+				operation: ['createByDuration'],
 				resource,
 			},
 		},
@@ -415,9 +398,7 @@ export const timeEntryFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'createByDuration',
-				],
+				operation: ['createByDuration'],
 				resource,
 			},
 		},
@@ -445,7 +426,8 @@ export const timeEntryFields: INodeProperties[] = [
 				name: 'user_id',
 				type: 'string',
 				default: '',
-				description: 'The ID of the user to associate with the time entry. Defaults to the currently authenticated user’s ID.',
+				description:
+					'The ID of the user to associate with the time entry. Defaults to the currently authenticated user’s ID.',
 			},
 		],
 	},
@@ -454,14 +436,12 @@ export const timeEntryFields: INodeProperties[] = [
 	/*                                timeEntry:createByStartEnd                           */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Project Id',
+		displayName: 'Project ID',
 		name: 'projectId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'createByStartEnd',
-				],
+				operation: ['createByStartEnd'],
 				resource,
 			},
 		},
@@ -470,14 +450,12 @@ export const timeEntryFields: INodeProperties[] = [
 		description: 'The ID of the project to associate with the time entry',
 	},
 	{
-		displayName: 'Task Id',
+		displayName: 'Task ID',
 		name: 'taskId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'createByStartEnd',
-				],
+				operation: ['createByStartEnd'],
 				resource,
 			},
 		},
@@ -491,9 +469,7 @@ export const timeEntryFields: INodeProperties[] = [
 		type: 'dateTime',
 		displayOptions: {
 			show: {
-				operation: [
-					'createByStartEnd',
-				],
+				operation: ['createByStartEnd'],
 				resource,
 			},
 		},
@@ -508,9 +484,7 @@ export const timeEntryFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'createByStartEnd',
-				],
+				operation: ['createByStartEnd'],
 				resource,
 			},
 		},
@@ -544,11 +518,9 @@ export const timeEntryFields: INodeProperties[] = [
 				name: 'user_id',
 				type: 'string',
 				default: '',
-				description: 'The ID of the user to associate with the time entry. Defaults to the currently authenticated user’s ID.',
+				description:
+					'The ID of the user to associate with the time entry. Defaults to the currently authenticated user’s ID.',
 			},
 		],
 	},
-
-
-
 ];

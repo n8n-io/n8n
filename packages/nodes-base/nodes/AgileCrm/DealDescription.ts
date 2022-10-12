@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const dealOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
+				resource: ['deal'],
 			},
 		},
 		options: [
@@ -19,31 +16,34 @@ export const dealOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new deal',
+				action: 'Create a deal',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a deal',
+				action: 'Delete a deal',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a deal',
+				action: 'Get a deal',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all deals',
+				description: 'Get many deals',
+				action: 'Get many deals',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update deal properties',
+				action: 'Update a deal',
 			},
-
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -58,18 +58,13 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['deal'],
+				operation: ['get'],
 			},
 		},
 		default: '',
 		description: 'Unique identifier for a particular deal',
 	},
-
 
 	/* -------------------------------------------------------------------------- */
 	/*                                  deal:get all                           */
@@ -78,19 +73,16 @@ export const dealFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		description: 'Max number of results to return',
 		default: 20,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -100,12 +92,8 @@ export const dealFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['deal'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -121,15 +109,9 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -146,15 +128,9 @@ export const dealFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: 1,
@@ -167,15 +143,9 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -188,15 +158,9 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: '',
@@ -213,15 +177,9 @@ export const dealFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		default: 50,
@@ -234,17 +192,13 @@ export const dealFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['deal'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
-		displayName: ' Additional Fields',
+		displayName: 'Additional Fields',
 		name: 'additionalFieldsJson',
 		type: 'json',
 		typeOptions: {
@@ -253,18 +207,13 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['deal'],
+				operation: ['create'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
+		description:
+			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -274,20 +223,14 @@ export const dealFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
 			{
-				displayName: 'Contact Ids',
+				displayName: 'Contact IDs',
 				name: 'contactIds',
 				type: 'string',
 				typeOptions: {
@@ -342,12 +285,8 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['deal'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -364,12 +303,8 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['deal'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -382,12 +317,8 @@ export const dealFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['deal'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -401,19 +332,14 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['deal'],
+				operation: ['update'],
+				jsonParameters: [true],
 			},
 		},
 
-		description: 'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
+		description:
+			'Object of values to set as described <a href="https://github.com/agilecrm/rest-api#1-deals---companies-api">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -423,15 +349,9 @@ export const dealFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['deal'],
+				operation: ['update'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -465,7 +385,7 @@ export const dealFields: INodeProperties[] = [
 				description: 'Expected Value of deal',
 			},
 			{
-				displayName: 'Contact Ids',
+				displayName: 'Contact IDs',
 				name: 'contactIds',
 				type: 'string',
 				typeOptions: {

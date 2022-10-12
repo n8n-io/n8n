@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 	{
@@ -71,7 +69,8 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Customer Memo',
 		name: 'CustomerMemo',
-		description: 'User-entered message to the customer. This message is visible to end user on their transactions.',
+		description:
+			'User-entered message to the customer. This message is visible to end user on their transactions.',
 		type: 'string',
 		default: '',
 	},
@@ -90,14 +89,15 @@ export const invoiceAdditionalFieldsOptions: INodeProperties[] = [
 				name: 'Field',
 				values: [
 					{
-						displayName: 'Field Definition ID',
+						displayName: 'Field Definition Name or ID',
 						name: 'DefinitionId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getCustomFields',
 						},
 						default: '',
-						description: 'ID of the field to set',
+						description:
+							'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',

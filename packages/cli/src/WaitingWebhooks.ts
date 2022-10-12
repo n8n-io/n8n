@@ -35,7 +35,7 @@ export class WaitingWebhooks {
 		req: express.Request,
 		res: express.Response,
 	): Promise<IResponseCallbackData> {
-		Logger.debug(`Received waiting-webhoook "${httpMethod}" for path "${fullPath}"`);
+		Logger.debug(`Received waiting-webhook "${httpMethod}" for path "${fullPath}"`);
 
 		// Reset request parameters
 		req.params = {};

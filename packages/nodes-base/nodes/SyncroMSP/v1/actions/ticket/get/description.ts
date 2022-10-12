@@ -1,6 +1,4 @@
-import {
-	TicketProperties,
-} from '../../Interfaces';
+import { TicketProperties } from '../../Interfaces';
 
 export const ticketGetDescription: TicketProperties = [
 	{
@@ -9,12 +7,8 @@ export const ticketGetDescription: TicketProperties = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['ticket'],
+				operation: ['get'],
 			},
 		},
 		default: '',

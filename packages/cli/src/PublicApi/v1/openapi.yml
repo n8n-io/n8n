@@ -1,0 +1,59 @@
+---
+openapi: 3.0.0
+info:
+  title: n8n Public API
+  description: n8n Public API
+  termsOfService: https://n8n.io/legal/terms
+  contact:
+    email: hello@n8n.io
+  license:
+    name: Sustainable Use License
+    url: https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md
+  version: 1.0.0
+externalDocs:
+  description: n8n API documentation
+  url: https://docs.n8n.io/api/
+servers:
+  - url: /api/v1
+tags:
+  - name: Execution
+    description: Operations about executions
+  - name: Workflow
+    description: Operations about workflows
+  - name: Credential
+    description: Operations about credentials
+
+paths:
+  /credentials:
+    $ref: './handlers/credentials/spec/paths/credentials.yml'
+  /credentials/{id}:
+    $ref: './handlers/credentials/spec/paths/credentials.id.yml'
+  /credentials/schema/{credentialTypeName}:
+    $ref: './handlers/credentials/spec/paths/credentials.schema.id.yml'
+  /executions:
+    $ref: './handlers/executions/spec/paths/executions.yml'
+  /executions/{id}:
+    $ref: './handlers/executions/spec/paths/executions.id.yml'
+  /workflows:
+    $ref: './handlers/workflows/spec/paths/workflows.yml'
+  /workflows/{id}:
+    $ref: './handlers/workflows/spec/paths/workflows.id.yml'
+  /workflows/{id}/activate:
+    $ref: './handlers/workflows/spec/paths/workflows.id.activate.yml'
+  /workflows/{id}/deactivate:
+    $ref: './handlers/workflows/spec/paths/workflows.id.deactivate.yml'
+components:
+  schemas:
+    $ref: './shared/spec/schemas/_index.yml'
+  responses:
+    $ref: './shared/spec/responses/_index.yml'
+  parameters:
+    $ref: './shared/spec/parameters/_index.yml'
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-N8N-API-KEY
+
+security:
+  - ApiKeyAuth: []

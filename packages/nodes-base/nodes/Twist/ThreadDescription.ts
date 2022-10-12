@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const threadOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -19,30 +16,34 @@ export const threadOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new thread in a channel',
+				action: 'Create a thread',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a thread',
+				action: 'Delete a thread',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get information about a thread',
+				action: 'Get a thread',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all threads',
+				description: 'Get many threads',
+				action: 'Get many threads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a thread',
+				action: 'Update a thread',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -57,12 +58,8 @@ export const threadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['create'],
+				resource: ['thread'],
 			},
 		},
 		required: true,
@@ -75,12 +72,8 @@ export const threadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['create'],
+				resource: ['thread'],
 			},
 		},
 		required: true,
@@ -93,12 +86,8 @@ export const threadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['create'],
+				resource: ['thread'],
 			},
 		},
 		required: true,
@@ -112,12 +101,8 @@ export const threadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['thread'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -169,10 +154,7 @@ export const threadFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'send_reply',
-											'prefill_message',
-										],
+										action: ['send_reply', 'prefill_message'],
 									},
 								},
 								description: 'The text for the action button',
@@ -182,7 +164,8 @@ export const threadFields: INodeProperties[] = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button. (Currently only <code>action</code> is available).',
+								description:
+									'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -197,9 +180,7 @@ export const threadFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'open_url',
-										],
+										action: ['open_url'],
 									},
 								},
 								description: 'URL to redirect',
@@ -214,40 +195,39 @@ export const threadFields: INodeProperties[] = [
 				name: 'binaryProperties',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
+				description:
+					'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 				},
 				default: [],
-				description: 'The users that are directly mentioned',
+				description:
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Recipients',
+				displayName: 'Recipient Names or IDs',
 				name: 'recipients',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 				},
 				default: [],
-				description: 'The users that will attached to the thread',
+				description:
+					'The users that will attached to the thread. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Send as integration',
+				displayName: 'Send as Integration',
 				name: 'send_as_integration',
 				type: 'boolean',
 				default: false,
-				description: 'Displays the integration as the thread creator',
+				description: 'Whether to display the integration as the thread creator',
 			},
 			{
 				displayName: 'Temporary ID',
@@ -268,13 +248,8 @@ export const threadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-					'delete',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['get', 'delete'],
+				resource: ['thread'],
 			},
 		},
 		required: true,
@@ -290,12 +265,8 @@ export const threadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
 			},
 		},
 		required: true,
@@ -307,12 +278,8 @@ export const threadFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['thread'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -324,15 +291,9 @@ export const threadFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['thread'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -350,12 +311,8 @@ export const threadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['thread'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -364,7 +321,7 @@ export const threadFields: INodeProperties[] = [
 				name: 'as_ids',
 				type: 'boolean',
 				default: false,
-				description: 'If enabled, only the IDs of the threads are returned',
+				description: 'Whether only the IDs of the threads are returned',
 			},
 			{
 				displayName: 'Filter By',
@@ -372,7 +329,7 @@ export const threadFields: INodeProperties[] = [
 				type: 'options',
 				options: [
 					{
-						name: 'Attached to me',
+						name: 'Attached to Me',
 						value: 'attached_to_me',
 					},
 					{
@@ -385,7 +342,8 @@ export const threadFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'A filter can be one of <code>attached_to_me</code>, <code>everyone</code> and <code>is_starred</code>',
+				description:
+					'A filter can be one of <code>attached_to_me</code>, <code>everyone</code> and <code>is_starred</code>',
 			},
 			{
 				displayName: 'Newer Than',
@@ -414,12 +372,8 @@ export const threadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['update'],
+				resource: ['thread'],
 			},
 		},
 		required: true,
@@ -433,12 +387,8 @@ export const threadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['thread'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -490,10 +440,7 @@ export const threadFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'send_reply',
-											'prefill_message',
-										],
+										action: ['send_reply', 'prefill_message'],
 									},
 								},
 								description: 'The text for the action button',
@@ -503,7 +450,8 @@ export const threadFields: INodeProperties[] = [
 								displayName: 'Type',
 								name: 'type',
 								type: 'options',
-								description: 'The type of the button. (Currently only <code>action</code> is available).',
+								description:
+									'The type of the button. (Currently only <code>action</code> is available).',
 								options: [
 									{
 										name: 'Action',
@@ -518,9 +466,7 @@ export const threadFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										action: [
-											'open_url',
-										],
+										action: ['open_url'],
 									},
 								},
 								description: 'URL to redirect',
@@ -535,7 +481,8 @@ export const threadFields: INodeProperties[] = [
 				name: 'binaryProperties',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
+				description:
+					'Name of the property that holds the binary data. Multiple can be defined separated by comma.',
 			},
 			{
 				displayName: 'Content',
@@ -545,17 +492,16 @@ export const threadFields: INodeProperties[] = [
 				description: 'The content of the thread',
 			},
 			{
-				displayName: 'Direct Mentions',
+				displayName: 'Direct Mention Names or IDs',
 				name: 'direct_mentions',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
-					loadOptionsDependsOn: [
-						'workspaceId',
-					],
+					loadOptionsDependsOn: ['workspaceId'],
 				},
 				default: [],
-				description: 'The users that are directly mentioned',
+				description:
+					'The users that are directly mentioned. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Title',

@@ -1,11 +1,8 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HubspotApi implements ICredentialType {
 	name = 'hubspotApi';
-	displayName = 'Hubspot API';
+	displayName = 'HubSpot API';
 	documentationUrl = 'hubspot';
 	properties: INodeProperties[] = [
 		{

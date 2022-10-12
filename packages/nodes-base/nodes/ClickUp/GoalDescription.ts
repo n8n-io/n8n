@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const goalOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
+				resource: ['goal'],
 			},
 		},
 		options: [
@@ -19,51 +16,52 @@ export const goalOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a goal',
+				action: 'Create a goal',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a goal',
+				action: 'Delete a goal',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a goal',
+				action: 'Get a goal',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all goals',
+				description: 'Get many goals',
+				action: 'Get many goals',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a goal',
+				action: 'Update a goal',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const goalFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                goal:create                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goal'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -78,12 +76,8 @@ export const goalFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goal'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -96,12 +90,8 @@ export const goalFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['goal'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -151,12 +141,8 @@ export const goalFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['goal'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -172,12 +158,8 @@ export const goalFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['goal'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -187,18 +169,16 @@ export const goalFields: INodeProperties[] = [
 	/*                                goal:getAll                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team ID',
+		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['goal'],
+				operation: ['getAll'],
 			},
 		},
 		typeOptions: {
@@ -212,12 +192,8 @@ export const goalFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['goal'],
+				operation: ['getAll'],
 			},
 		},
 		typeOptions: {
@@ -238,12 +214,8 @@ export const goalFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['goal'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -256,12 +228,8 @@ export const goalFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'goal',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['goal'],
+				operation: ['update'],
 			},
 		},
 		options: [

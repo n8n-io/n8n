@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
@@ -13,7 +14,6 @@ import { LoggerProxy } from 'n8n-workflow';
 
 import fs from 'fs';
 import glob from 'fast-glob';
-import path from 'path';
 import { EntityManager, getConnection } from 'typeorm';
 import { getLogger } from '../../src/Logger';
 import { Db } from '../../src';
@@ -87,9 +87,16 @@ export class ImportCredentialsCommand extends Command {
 			const encryptionKey = await UserSettings.getEncryptionKey();
 
 			if (flags.separate) {
-				const files = await glob(
-					`${flags.input.endsWith(path.sep) ? flags.input : flags.input + path.sep}*.json`,
-				);
+				let { input: inputPath } = flags;
+
+				if (process.platform === 'win32') {
+					inputPath = inputPath.replace(/\\/g, '/');
+				}
+
+				const files = await glob('*.json', {
+					cwd: inputPath,
+					absolute: true,
+				});
 
 				totalImported = files.length;
 

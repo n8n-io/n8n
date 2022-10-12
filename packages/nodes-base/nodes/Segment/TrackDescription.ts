@@ -1,41 +1,40 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const trackOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
+				resource: ['track'],
 			},
 		},
 		options: [
 			{
 				name: 'Event',
 				value: 'event',
-				description: 'Record the actions your users perform. Every action triggers an event, which can also have associated properties.',
+				description:
+					'Record the actions your users perform. Every action triggers an event, which can also have associated properties.',
+				action: 'Track an event',
 			},
 			{
 				name: 'Page',
 				value: 'page',
-				description: 'Record page views on your website, along with optional extra information about the page being viewed',
+				description:
+					'Record page views on your website, along with optional extra information about the page being viewed',
+				action: 'Track a page',
 			},
 		],
 		default: 'event',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const trackFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                track:event                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                track:event                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -43,12 +42,8 @@ export const trackFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
 	},
@@ -59,12 +54,8 @@ export const trackFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
 		description: 'Name of the action that a user has performed',
@@ -80,12 +71,8 @@ export const trackFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
 		default: {},
@@ -120,14 +107,16 @@ export const trackFields: INodeProperties[] = [
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
+						description:
+							'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
 					},
 					{
 						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'string',
 						default: '',
-						description: 'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
+						description:
+							'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
 					},
 					{
 						displayName: 'App',
@@ -281,12 +270,8 @@ export const trackFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
 		default: {},
@@ -321,12 +306,8 @@ export const trackFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'event',
-				],
+				resource: ['track'],
+				operation: ['event'],
 			},
 		},
 		default: {},
@@ -351,9 +332,9 @@ export const trackFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                track:page                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                track:page                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'User ID',
 		name: 'userId',
@@ -361,12 +342,8 @@ export const trackFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
 	},
@@ -377,15 +354,12 @@ export const trackFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
-		description: 'Name of the page For example, most sites have a “Signup” page that can be useful to tag, so you can see users as they move through your funnel',
+		description:
+			'Name of the page For example, most sites have a “Signup” page that can be useful to tag, so you can see users as they move through your funnel',
 	},
 	{
 		displayName: 'Context',
@@ -397,12 +371,8 @@ export const trackFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
 		default: {},
@@ -437,14 +407,16 @@ export const trackFields: INodeProperties[] = [
 						name: 'page',
 						type: 'string',
 						default: '',
-						description: 'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and url',
+						description:
+							'Dictionary of information about the current page in the browser, containing hash, path, referrer, search, title and URL',
 					},
 					{
 						displayName: 'Timezone',
 						name: 'timezone',
 						type: 'string',
 						default: '',
-						description: 'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
+						description:
+							'Timezones are sent as tzdata strings to add user timezone information which might be stripped from the timestamp, for example America/New_York',
 					},
 					{
 						displayName: 'App',
@@ -598,12 +570,8 @@ export const trackFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
 		default: {},
@@ -638,12 +606,8 @@ export const trackFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'track',
-				],
-				operation: [
-					'page',
-				],
+				resource: ['track'],
+				operation: ['page'],
 			},
 		},
 		default: {},

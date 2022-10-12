@@ -1,19 +1,8 @@
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-
-import {
-	googleApiRequest,
-	googleApiRequestAllItems,
-} from './GenericFunctions';
+import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 export interface IGoogleAuthCredentials {
 	email: string;
@@ -26,7 +15,7 @@ export class GoogleBooks implements INodeType {
 		name: 'googleBooks',
 		icon: 'file:googlebooks.svg',
 		group: ['input', 'output'],
-		version: 1,
+		version: [1, 2],
 		description: 'Read data from Google Books',
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
@@ -40,9 +29,7 @@ export class GoogleBooks implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'serviceAccount',
-						],
+						authentication: ['serviceAccount'],
 					},
 				},
 			},
@@ -51,9 +38,7 @@ export class GoogleBooks implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -74,11 +59,39 @@ export class GoogleBooks implements INodeType {
 					},
 				],
 				default: 'serviceAccount',
+				displayOptions: {
+					show: {
+						'@version': [1],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
+						value: 'oAuth2',
+					},
+					{
+						name: 'Service Account',
+						value: 'serviceAccount',
+					},
+				],
+				default: 'oAuth2',
+				displayOptions: {
+					show: {
+						'@version': [2],
+					},
+				},
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Bookshelf',
@@ -94,100 +107,102 @@ export class GoogleBooks implements INodeType {
 					},
 				],
 				default: 'bookshelf',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Retrieve a specific bookshelf resource for the specified user',
+						action: 'Get a bookshelf',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all public bookshelf resource for the specified user',
+						description: 'Get many public bookshelf resource for the specified user',
+						action: 'Get many bookshelves',
 					},
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'bookshelf',
-						],
+						resource: ['bookshelf'],
 					},
 				},
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Add',
 						value: 'add',
 						description: 'Add a volume to a bookshelf',
+						action: 'Add a bookshelf volume',
 					},
 					{
 						name: 'Clear',
 						value: 'clear',
 						description: 'Clears all volumes from a bookshelf',
+						action: 'Clear a bookshelf volume',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all volumes in a specific bookshelf for the specified user',
+						description: 'Get many volumes in a specific bookshelf for the specified user',
+						action: 'Get many bookshelf volumes',
 					},
 					{
 						name: 'Move',
 						value: 'move',
 						description: 'Moves a volume within a bookshelf',
+						action: 'Move a bookshelf volume',
 					},
 					{
 						name: 'Remove',
 						value: 'remove',
 						description: 'Removes a volume from a bookshelf',
+						action: 'Remove a bookshelf volume',
 					},
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'bookshelfVolume',
-						],
+						resource: ['bookshelfVolume'],
 					},
 				},
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a volume resource based on ID',
+						action: 'Get a volume',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all volumes filtered by query',
+						description: 'Get many volumes filtered by query',
+						action: 'Get many volumes',
 					},
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'volume',
-						],
+						resource: ['volume'],
 					},
 				},
 				default: 'get',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'My Library',
@@ -197,14 +212,8 @@ export class GoogleBooks implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-							'getAll',
-						],
-						resource: [
-							'bookshelf',
-							'bookshelfVolume',
-						],
+						operation: ['get', 'getAll'],
+						resource: ['bookshelf', 'bookshelfVolume'],
 					},
 				},
 			},
@@ -221,12 +230,8 @@ export class GoogleBooks implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'volume',
-						],
+						operation: ['getAll'],
+						resource: ['volume'],
 					},
 				},
 			},
@@ -239,19 +244,11 @@ export class GoogleBooks implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-							'getAll',
-						],
-						resource: [
-							'bookshelf',
-							'bookshelfVolume',
-						],
+						operation: ['get', 'getAll'],
+						resource: ['bookshelf', 'bookshelfVolume'],
 					},
 					hide: {
-						myLibrary: [
-							true,
-						],
+						myLibrary: [true],
 					},
 				},
 			},
@@ -264,17 +261,8 @@ export class GoogleBooks implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'get',
-							'add',
-							'clear',
-							'move',
-							'remove',
-						],
-						resource: [
-							'bookshelf',
-							'bookshelfVolume',
-						],
+						operation: ['get', 'add', 'clear', 'move', 'remove'],
+						resource: ['bookshelf', 'bookshelfVolume'],
 					},
 				},
 			},
@@ -287,12 +275,8 @@ export class GoogleBooks implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'bookshelfVolume',
-						],
+						operation: ['getAll'],
+						resource: ['bookshelfVolume'],
 					},
 				},
 			},
@@ -305,16 +289,8 @@ export class GoogleBooks implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'add',
-							'move',
-							'remove',
-							'get',
-						],
-						resource: [
-							'bookshelfVolume',
-							'volume',
-						],
+						operation: ['add', 'move', 'remove', 'get'],
+						resource: ['bookshelfVolume', 'volume'],
 					},
 				},
 			},
@@ -322,17 +298,14 @@ export class GoogleBooks implements INodeType {
 				displayName: 'Volume Position',
 				name: 'volumePosition',
 				type: 'string',
-				description: 'Position on shelf to move the item (0 puts the item before the current first item, 1 puts it between the first and the second and so on)',
+				description:
+					'Position on shelf to move the item (0 puts the item before the current first item, 1 puts it between the first and the second and so on)',
 				default: '',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'move',
-						],
-						resource: [
-							'bookshelfVolume',
-						],
+						operation: ['move'],
+						resource: ['bookshelfVolume'],
 					},
 				},
 			},
@@ -342,9 +315,7 @@ export class GoogleBooks implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -356,12 +327,8 @@ export class GoogleBooks implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -377,7 +344,7 @@ export class GoogleBooks implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const length = items.length;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const qs: IDataObject = {};
@@ -385,7 +352,6 @@ export class GoogleBooks implements INodeType {
 
 		for (let i = 0; i < length; i++) {
 			try {
-
 				if (resource === 'volume') {
 					if (operation === 'get') {
 						const volumeId = this.getNodeParameter('volumeId', i) as string;
@@ -394,10 +360,22 @@ export class GoogleBooks implements INodeType {
 						const searchQuery = this.getNodeParameter('searchQuery', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						if (returnAll) {
-							responseData = await googleApiRequestAllItems.call(this, 'items', 'GET', `v1/volumes?q=${searchQuery}`, {});
+							responseData = await googleApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								`v1/volumes?q=${searchQuery}`,
+								{},
+							);
 						} else {
 							qs.maxResults = this.getNodeParameter('limit', i) as number;
-							responseData = await googleApiRequest.call(this, 'GET', `v1/volumes?q=${searchQuery}`, {}, qs);
+							responseData = await googleApiRequest.call(
+								this,
+								'GET',
+								`v1/volumes?q=${searchQuery}`,
+								{},
+								qs,
+							);
 							responseData = responseData.items || [];
 						}
 					}
@@ -427,7 +405,13 @@ export class GoogleBooks implements INodeType {
 							endpoint = `v1/mylibrary/bookshelves`;
 						}
 						if (returnAll) {
-							responseData = await googleApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
+							responseData = await googleApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								endpoint,
+								{},
+							);
 						} else {
 							qs.maxResults = this.getNodeParameter('limit', i) as number;
 							responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
@@ -443,12 +427,21 @@ export class GoogleBooks implements INodeType {
 						const body: IDataObject = {
 							volumeId,
 						};
-						responseData = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/addVolume`, body);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`v1/mylibrary/bookshelves/${shelfId}/addVolume`,
+							body,
+						);
 					}
 
 					if (operation === 'clear') {
 						const shelfId = this.getNodeParameter('shelfId', i) as string;
-						responseData = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/clearVolumes`);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`v1/mylibrary/bookshelves/${shelfId}/clearVolumes`,
+						);
 					}
 
 					if (operation === 'getAll') {
@@ -463,7 +456,13 @@ export class GoogleBooks implements INodeType {
 							endpoint = `v1/mylibrary/bookshelves/${shelfId}/volumes`;
 						}
 						if (returnAll) {
-							responseData = await googleApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
+							responseData = await googleApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								endpoint,
+								{},
+							);
 						} else {
 							qs.maxResults = this.getNodeParameter('limit', i) as number;
 							responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
@@ -479,7 +478,12 @@ export class GoogleBooks implements INodeType {
 							volumeId,
 							volumePosition,
 						};
-						responseData = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/moveVolume`, body);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`v1/mylibrary/bookshelves/${shelfId}/moveVolume`,
+							body,
+						);
 					}
 
 					if (operation === 'remove') {
@@ -488,23 +492,32 @@ export class GoogleBooks implements INodeType {
 						const body: IDataObject = {
 							volumeId,
 						};
-						responseData = await googleApiRequest.call(this, 'POST', `v1/mylibrary/bookshelves/${shelfId}/removeVolume`, body);
+						responseData = await googleApiRequest.call(
+							this,
+							'POST',
+							`v1/mylibrary/bookshelves/${shelfId}/removeVolume`,
+							body,
+						);
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
 
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(responseData)];
+		return this.prepareOutputData(returnData);
 	}
 }

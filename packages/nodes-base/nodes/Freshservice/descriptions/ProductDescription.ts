@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const productOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
+				resource: ['product'],
 			},
 		},
 		options: [
@@ -19,26 +16,31 @@ export const productOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a product',
+				action: 'Create a product',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a product',
+				action: 'Delete a product',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a product',
+				action: 'Get a product',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all products',
+				description: 'Retrieve many products',
+				action: 'Get many products',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a product',
+				action: 'Update a product',
 			},
 		],
 		default: 'create',
@@ -50,10 +52,11 @@ export const productFields: INodeProperties[] = [
 	//             product: create
 	// ----------------------------------------
 	{
-		displayName: 'Asset Type Name/ID',
+		displayName: 'Asset Type Name or ID',
 		name: 'assetTypeId',
 		type: 'options',
-		description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -61,12 +64,8 @@ export const productFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -78,12 +77,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -95,12 +90,8 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['product'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -172,12 +163,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['product'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -194,12 +181,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['product'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -215,12 +198,8 @@ export const productFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['product'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -235,15 +214,9 @@ export const productFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['product'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -260,12 +233,8 @@ export const productFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -277,20 +246,17 @@ export const productFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'product',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['product'],
+				operation: ['update'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Asset Type Name/ID',
+				displayName: 'Asset Type Name or ID',
 				name: 'asset_type_id',
 				type: 'options',
-				description: 'Choose from the list or specify an ID. You can also specify the ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getAssetTypes',

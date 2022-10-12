@@ -5,11 +5,10 @@ export const mailboxOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'mailbox',
-				],
+				resource: ['mailbox'],
 			},
 		},
 		options: [
@@ -17,23 +16,23 @@ export const mailboxOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a mailbox',
+				action: 'Get a mailbox',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all mailboxes',
+				description: 'Get many mailboxes',
+				action: 'Get many mailboxes',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const mailboxFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                mailbox:get                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                mailbox:get                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Mailbox ID',
 		name: 'mailboxId',
@@ -42,30 +41,22 @@ export const mailboxFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'mailbox',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['mailbox'],
+				operation: ['get'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                mailbox:getAll                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                mailbox:getAll                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'mailbox',
-				],
+				operation: ['getAll'],
+				resource: ['mailbox'],
 			},
 		},
 		default: false,
@@ -77,15 +68,9 @@ export const mailboxFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'mailbox',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['mailbox'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

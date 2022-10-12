@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const issueAttachmentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
+				resource: ['issueAttachment'],
 			},
 		},
 		options: [
@@ -19,30 +16,32 @@ export const issueAttachmentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add attachment to issue',
+				action: 'Add an attachment to an issue',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an attachment',
+				action: 'Get an attachment from an issue',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all attachments',
+				description: 'Get many attachments',
+				action: 'Get many issue attachments',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove an attachment',
+				action: 'Remove an attachment from an issue',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const issueAttachmentFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                issueAttachment:add                         */
 	/* -------------------------------------------------------------------------- */
@@ -53,12 +52,8 @@ export const issueAttachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['issueAttachment'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -67,12 +62,8 @@ export const issueAttachmentFields: INodeProperties[] = [
 		displayName: 'Binary Property',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['issueAttachment'],
+				operation: ['add'],
 			},
 		},
 		name: 'binaryPropertyName',
@@ -92,12 +83,8 @@ export const issueAttachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issueAttachment'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -111,12 +98,8 @@ export const issueAttachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issueAttachment'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -127,15 +110,9 @@ export const issueAttachmentFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'get',
-				],
-				download: [
-					true,
-				],
+				resource: ['issueAttachment'],
+				operation: ['get'],
+				download: [true],
 			},
 		},
 		description: 'Object property name which holds binary data',
@@ -151,12 +128,8 @@ export const issueAttachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issueAttachment'],
+				operation: ['getAll'],
 			},
 		},
 		default: '',
@@ -167,12 +140,8 @@ export const issueAttachmentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issueAttachment'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -184,15 +153,9 @@ export const issueAttachmentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['issueAttachment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -210,12 +173,8 @@ export const issueAttachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issueAttachment'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -226,15 +185,9 @@ export const issueAttachmentFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'getAll',
-				],
-				download: [
-					true,
-				],
+				resource: ['issueAttachment'],
+				operation: ['getAll'],
+				download: [true],
 			},
 		},
 		description: 'Object property name which holds binary data',
@@ -250,12 +203,8 @@ export const issueAttachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueAttachment',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['issueAttachment'],
+				operation: ['remove'],
 			},
 		},
 		default: '',

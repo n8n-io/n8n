@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	billingAddress,
@@ -15,11 +13,10 @@ export const accountOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
+				resource: ['account'],
 			},
 		},
 		options: [
@@ -27,35 +24,40 @@ export const accountOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an account',
+				action: 'Create an account',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or Update an account',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an account',
+				action: 'Delete an account',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an account',
+				action: 'Get an account',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all accounts',
+				description: 'Get many accounts',
+				action: 'Get many accounts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an account',
+				action: 'Update an account',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -71,12 +73,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['account'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -87,18 +85,15 @@ export const accountFields: INodeProperties[] = [
 	{
 		displayName: 'Account Name',
 		name: 'accountName',
-		description: 'Name of the account. If a record with this account name exists it will be updated, otherwise a new one will be created.',
+		description:
+			'Name of the account. If a record with this account name exists it will be updated, otherwise a new one will be created.',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['account'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -114,13 +109,8 @@ export const accountFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['account'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -138,12 +128,14 @@ export const accountFields: INodeProperties[] = [
 				description: 'Name of the account’s location, e.g. Headquarters or London',
 			},
 			{
-				displayName: 'Account Type',
+				displayName: 'Account Type Name or ID',
 				name: 'Account_Type',
 				type: 'options',
-					typeOptions: {
-						loadOptionsMethod: 'getAccountType',
-					},
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountType',
+				},
 				default: [],
 			},
 			{
@@ -234,12 +226,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['account'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -256,12 +244,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['account'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -283,12 +267,8 @@ export const accountFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['account'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -300,12 +280,8 @@ export const accountFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'account',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['account'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -329,12 +305,14 @@ export const accountFields: INodeProperties[] = [
 				description: 'Name of the account’s location, e.g. Headquarters or London',
 			},
 			{
-				displayName: 'Account Type',
+				displayName: 'Account Type Name or ID',
 				name: 'Account_Type',
 				type: 'options',
-					typeOptions: {
-						loadOptionsMethod: 'getAccountType',
-					},
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsMethod: 'getAccountType',
+				},
 				default: [],
 			},
 			{

@@ -1,17 +1,14 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const recipientOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
+				resource: ['recipient'],
 			},
 		},
 		options: [
@@ -19,16 +16,19 @@ export const recipientOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet recipient',
+				action: 'Create a recipient',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a specific Onfleet recipient',
+				action: 'Get a recipient',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet recipient',
+				action: 'Update a recipient',
 			},
 		],
 		default: 'get',
@@ -41,7 +41,8 @@ const additionalRecipientFields: INodeProperties[] = [
 		name: 'recipientNotes',
 		type: 'string',
 		default: '',
-		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific',
+		description:
+			'Notes for this recipient: these are global notes that should not be task- or destination-specific',
 	},
 	{
 		displayName: 'Skip Recipient SMS Notifications',
@@ -56,7 +57,7 @@ const recipientName = {
 	displayName: 'Recipient Name',
 	name: 'recipientName',
 	type: 'string',
-	description: 'The recipient\'s complete name',
+	description: "The recipient's complete name",
 	default: '',
 } as INodeProperties;
 
@@ -64,7 +65,8 @@ const recipientPhone = {
 	displayName: 'Recipient Phone',
 	name: 'recipientPhone',
 	type: 'string',
-	description: 'A unique, valid phone number as per the organization\'s country if there\'s no leading + sign. If a phone number has a leading + sign, it will disregard the organization\'s country setting.',
+	description:
+		"A unique, valid phone number as per the organization's country if there's no leading + sign. If a phone number has a leading + sign, it will disregard the organization's country setting.",
 	default: '',
 } as INodeProperties;
 
@@ -78,7 +80,8 @@ const updateFields: INodeProperties[] = [
 		name: 'notes',
 		type: 'string',
 		default: '',
-		description: 'Notes for this recipient: these are global notes that should not be task- or destination-specific',
+		description:
+			'Notes for this recipient: these are global notes that should not be task- or destination-specific',
 	},
 	{
 		...recipientPhone,
@@ -126,12 +129,8 @@ export const recipientFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['recipient'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -158,15 +157,9 @@ export const recipientFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'get',
-				],
-				getBy: [
-					'id',
-				],
+				resource: ['recipient'],
+				operation: ['get'],
+				getBy: ['id'],
 			},
 		},
 		default: '',
@@ -179,12 +172,8 @@ export const recipientFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['recipient'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -197,15 +186,9 @@ export const recipientFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'get',
-				],
-				getBy: [
-					'name',
-				],
+				resource: ['recipient'],
+				operation: ['get'],
+				getBy: ['name'],
 			},
 		},
 		default: '',
@@ -218,15 +201,9 @@ export const recipientFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'get',
-				],
-				getBy: [
-					'phone',
-				],
+				resource: ['recipient'],
+				operation: ['get'],
+				getBy: ['phone'],
 			},
 		},
 		default: '',
@@ -236,12 +213,8 @@ export const recipientFields: INodeProperties[] = [
 	{
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['recipient'],
+				operation: ['create'],
 			},
 		},
 		...recipientName,
@@ -250,12 +223,8 @@ export const recipientFields: INodeProperties[] = [
 	{
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['recipient'],
+				operation: ['create'],
 			},
 		},
 		...recipientPhone,
@@ -269,12 +238,8 @@ export const recipientFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['recipient'],
+				operation: ['create'],
 			},
 		},
 		options: additionalRecipientFields,
@@ -287,12 +252,8 @@ export const recipientFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['recipient'],
+				operation: ['update'],
 			},
 		},
 		options: updateFields,
@@ -305,12 +266,8 @@ export const recipientFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'recipient',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['recipient'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -319,7 +276,7 @@ export const recipientFields: INodeProperties[] = [
 				name: 'recipientSkipPhoneNumberValidation',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to skip validation for this recipient\'s phone number',
+				description: "Whether to skip validation for this recipient's phone number",
 			},
 		],
 	},

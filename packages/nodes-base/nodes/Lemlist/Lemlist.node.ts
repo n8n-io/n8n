@@ -1,10 +1,9 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
@@ -22,15 +21,9 @@ import {
 	unsubscribeOperations,
 } from './descriptions';
 
-import {
-	lemlistApiRequest,
-	lemlistApiRequestAllItems,
-} from './GenericFunctions';
+import { lemlistApiRequest, lemlistApiRequestAllItems } from './GenericFunctions';
 
-import {
-	isEmpty,
-	omit,
-} from 'lodash';
+import { isEmpty, omit } from 'lodash';
 
 export class Lemlist implements INodeType {
 	description: INodeTypeDescription = {
@@ -57,6 +50,7 @@ export class Lemlist implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Activity',
@@ -75,12 +69,11 @@ export class Lemlist implements INodeType {
 						value: 'team',
 					},
 					{
-						name: 'Unsubscribes',
+						name: 'Unsubscribe',
 						value: 'unsubscribe',
 					},
 				],
 				default: 'activity',
-				description: 'Resource to consume',
 			},
 			...activityOperations,
 			...activityFields,
@@ -99,7 +92,7 @@ export class Lemlist implements INodeType {
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions) {
 				const campaigns = await lemlistApiRequest.call(this, 'GET', '/campaigns');
-				return campaigns.map(({ _id, name }: { _id: string, name: string }) => ({
+				return campaigns.map(({ _id, name }: { _id: string; name: string }) => ({
 					name,
 					value: _id,
 				}));
@@ -114,20 +107,16 @@ export class Lemlist implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		let responseData;
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'activity') {
-
 					// *********************************************************************
 					//                             activity
 					// *********************************************************************
 
 					if (operation === 'getAll') {
-
 						// ----------------------------------
 						//        activity: getAll
 						// ----------------------------------
@@ -149,17 +138,13 @@ export class Lemlist implements INodeType {
 							const limit = this.getNodeParameter('limit', 0) as number;
 							responseData = responseData.slice(0, limit);
 						}
-
 					}
-
 				} else if (resource === 'campaign') {
-
 					// *********************************************************************
 					//                             campaign
 					// *********************************************************************
 
 					if (operation === 'getAll') {
-
 						// ----------------------------------
 						//        campaign: getAll
 						// ----------------------------------
@@ -175,15 +160,12 @@ export class Lemlist implements INodeType {
 							responseData = responseData.slice(0, limit);
 						}
 					}
-
 				} else if (resource === 'lead') {
-
 					// *********************************************************************
 					//                             lead
 					// *********************************************************************
 
 					if (operation === 'create') {
-
 						// ----------------------------------
 						//          lead: create
 						// ----------------------------------
@@ -210,9 +192,7 @@ export class Lemlist implements INodeType {
 						const endpoint = `/campaigns/${campaignId}/leads/${email}`;
 
 						responseData = await lemlistApiRequest.call(this, 'POST', endpoint, body, qs);
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------
 						//         lead: delete
 						// ----------------------------------
@@ -222,10 +202,14 @@ export class Lemlist implements INodeType {
 						const campaignId = this.getNodeParameter('campaignId', i);
 						const email = this.getNodeParameter('email', i);
 						const endpoint = `/campaigns/${campaignId}/leads/${email}`;
-						responseData = await lemlistApiRequest.call(this, 'DELETE', endpoint, {}, { action: 'remove' });
-
+						responseData = await lemlistApiRequest.call(
+							this,
+							'DELETE',
+							endpoint,
+							{},
+							{ action: 'remove' },
+						);
 					} else if (operation === 'get') {
-
 						// ----------------------------------
 						//         lead: get
 						// ----------------------------------
@@ -234,9 +218,7 @@ export class Lemlist implements INodeType {
 
 						const email = this.getNodeParameter('email', i);
 						responseData = await lemlistApiRequest.call(this, 'GET', `/leads/${email}`);
-
 					} else if (operation === 'unsubscribe') {
-
 						// ----------------------------------
 						//         lead: unsubscribe
 						// ----------------------------------
@@ -247,17 +229,13 @@ export class Lemlist implements INodeType {
 						const email = this.getNodeParameter('email', i);
 						const endpoint = `/campaigns/${campaignId}/leads/${email}`;
 						responseData = await lemlistApiRequest.call(this, 'DELETE', endpoint);
-
 					}
-
 				} else if (resource === 'team') {
-
 					// *********************************************************************
 					//                             team
 					// *********************************************************************
 
 					if (operation === 'get') {
-
 						// ----------------------------------
 						//         team: get
 						// ----------------------------------
@@ -265,17 +243,13 @@ export class Lemlist implements INodeType {
 						// https://developer.lemlist.com/#team
 
 						responseData = await lemlistApiRequest.call(this, 'GET', '/team');
-
 					}
-
 				} else if (resource === 'unsubscribe') {
-
 					// *********************************************************************
 					//                             unsubscribe
 					// *********************************************************************
 
 					if (operation === 'add') {
-
 						// ----------------------------------
 						//        unsubscribe: Add
 						// ----------------------------------
@@ -284,9 +258,7 @@ export class Lemlist implements INodeType {
 
 						const email = this.getNodeParameter('email', i);
 						responseData = await lemlistApiRequest.call(this, 'POST', `/unsubscribes/${email}`);
-
 					} else if (operation === 'delete') {
-
 						// ----------------------------------
 						//        unsubscribe: delete
 						// ----------------------------------
@@ -295,9 +267,7 @@ export class Lemlist implements INodeType {
 
 						const email = this.getNodeParameter('email', i);
 						responseData = await lemlistApiRequest.call(this, 'DELETE', `/unsubscribes/${email}`);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------
 						//        unsubscribe: getAll
 						// ----------------------------------
@@ -316,21 +286,27 @@ export class Lemlist implements INodeType {
 						}
 					}
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.toString() });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 
 				throw error;
 			}
 
-			Array.isArray(responseData)
-				? returnData.push(...responseData)
-				: returnData.push(responseData);
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

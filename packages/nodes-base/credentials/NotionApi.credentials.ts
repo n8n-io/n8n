@@ -1,6 +1,5 @@
 import {
-	IAuthenticateHeaderAuth,
-	ICredentialDataDecryptedObject,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
@@ -19,19 +18,19 @@ export class NotionApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		requestOptions.headers = {
-			...requestOptions.headers,
-			'Notion-Version': '2021-08-16',
-			'Authorization': `Bearer ${credentials.apiKey}`,
-		};
-		return requestOptions;
-	}
-	test:ICredentialTestRequest = {
+	test: ICredentialTestRequest = {
 		request: {
 			baseURL: 'https://api.notion.com/v1',
-			url: '/users/me',
-			method: 'GET',
+			url: '/users',
+		},
+	};
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.apiKey}}',
+				'Notion-Version': '2021-05-13',
+			},
 		},
 	};
 }

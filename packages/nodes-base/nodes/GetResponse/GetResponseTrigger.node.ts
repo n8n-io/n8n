@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -14,15 +11,13 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	getresponseApiRequest,
-	getResponseApiRequestAllItems,
-} from './GenericFunctions';
+import { getresponseApiRequest, getResponseApiRequestAllItems } from './GenericFunctions';
 
 export class GetResponseTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GetResponse Trigger',
 		name: 'getResponseTrigger',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:getResponse.png',
 		group: ['trigger'],
 		version: 1,
@@ -38,9 +33,7 @@ export class GetResponseTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiKey',
-						],
+						authentication: ['apiKey'],
 					},
 				},
 			},
@@ -49,9 +42,7 @@ export class GetResponseTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -80,7 +71,6 @@ export class GetResponseTrigger implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'The resource to operate on.',
 			},
 			{
 				displayName: 'Events',
@@ -98,14 +88,14 @@ export class GetResponseTrigger implements INodeType {
 						description: 'Receive notifications when a customer is unsubscribed from a list',
 					},
 					{
-						name: 'Email Opened',
-						value: 'open',
-						description: 'Receive notifications when a email is opened',
-					},
-					{
 						name: 'Email Clicked',
 						value: 'click',
 						description: 'Receive notifications when a email is clicked',
+					},
+					{
+						name: 'Email Opened',
+						value: 'open',
+						description: 'Receive notifications when a email is opened',
 					},
 					{
 						name: 'Survey Submitted',
@@ -117,9 +107,11 @@ export class GetResponseTrigger implements INodeType {
 				required: true,
 			},
 			{
-				displayName: 'List IDs',
+				displayName: 'List Names or IDs',
 				name: 'listIds',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getLists',
 				},
@@ -137,7 +129,7 @@ export class GetResponseTrigger implements INodeType {
 						name: 'delete',
 						type: 'boolean',
 						default: false,
-						description: 'Delete the current subscription',
+						description: 'Whether to delete the current subscription',
 					},
 				],
 			},
@@ -175,7 +167,9 @@ export class GetResponseTrigger implements INodeType {
 
 					if (data.url !== webhookUrl) {
 						if (deleteCurrentSubscription === false) {
-							throw new NodeApiError(this.getNode(), data, { message: `The webhook (${data.url}) is active in the account. Delete it manually or set the parameter "Delete Current Subscription" to true, and the node will delete it for you.` });
+							throw new NodeApiError(this.getNode(), data, {
+								message: `The webhook (${data.url}) is active in the account. Delete it manually or set the parameter "Delete Current Subscription" to true, and the node will delete it for you.`,
+							});
 						}
 					}
 				} catch (error) {
@@ -194,10 +188,13 @@ export class GetResponseTrigger implements INodeType {
 
 				const body = {
 					url: webhookUrl,
-					actions: events.reduce((accumulator: { [key: string]: boolean }, currentValue: string) => {
-						accumulator[currentValue] = true;
-						return accumulator;
-					}, {}),
+					actions: events.reduce(
+						(accumulator: { [key: string]: boolean }, currentValue: string) => {
+							accumulator[currentValue] = true;
+							return accumulator;
+						},
+						{},
+					),
 				};
 
 				await getresponseApiRequest.call(this, 'POST', '/accounts/callbacks', body);
@@ -225,9 +222,7 @@ export class GetResponseTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(query),
-			],
+			workflowData: [this.helpers.returnJsonArray(query)],
 		};
 	}
 }

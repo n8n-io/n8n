@@ -1,0 +1,11 @@
+{
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.formatOnSave": true,
+	"search.exclude": {
+		"node_modules": true,
+		"dist": true,
+		"package-lock.json": true
+	},
+	"typescript.tsdk": "node_modules/typescript/lib",
+	"workspace-default-settings.runOnActivation": true
+}

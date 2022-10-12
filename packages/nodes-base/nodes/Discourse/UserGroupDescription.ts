@@ -1,19 +1,16 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userGroupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
+				resource: ['userGroup'],
 			},
 		},
 		options: [
@@ -21,11 +18,13 @@ export const userGroupOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Create a user to group',
+				action: 'Add a user to a group',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove user from group',
+				action: 'Remove a user from a group',
 			},
 		],
 		default: 'add',
@@ -43,12 +42,8 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['userGroup'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -61,12 +56,8 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['userGroup'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -83,12 +74,8 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userGroup'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
@@ -101,16 +88,11 @@ export const userGroupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userGroup',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['userGroup'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
 		description: 'ID of the group to remove',
 	},
-
 ];

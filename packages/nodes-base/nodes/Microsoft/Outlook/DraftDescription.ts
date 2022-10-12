@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const draftOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
+				resource: ['draft'],
 			},
 		},
 		options: [
@@ -19,30 +16,34 @@ export const draftOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new email draft',
+				action: 'Create a draft',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a draft',
+				action: 'Delete a draft',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single draft',
+				action: 'Get a draft',
 			},
 			{
 				name: 'Send',
 				value: 'send',
 				description: 'Send an existing draft message',
+				action: 'Send a draft',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a draft',
+				action: 'Update a draft',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -55,15 +56,8 @@ export const draftFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'delete',
-					'get',
-					'send',
-					'update',
-				],
+				resource: ['draft'],
+				operation: ['delete', 'get', 'send', 'update'],
 			},
 		},
 	},
@@ -75,12 +69,8 @@ export const draftFields: INodeProperties[] = [
 		description: 'The subject of the message',
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		type: 'string',
@@ -93,12 +83,8 @@ export const draftFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -111,12 +97,8 @@ export const draftFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['draft'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -139,12 +121,12 @@ export const draftFields: INodeProperties[] = [
 								name: 'binaryPropertyName',
 								type: 'string',
 								default: '',
-								description: 'Name of the binary property containing the data to be added to the email as an attachment',
+								description:
+									'Name of the binary property containing the data to be added to the email as an attachment',
 							},
 						],
 					},
 				],
-
 			},
 			{
 				displayName: 'BCC Recipients',
@@ -171,9 +153,11 @@ export const draftFields: INodeProperties[] = [
 				default: 'html',
 			},
 			{
-				displayName: 'Categories',
+				displayName: 'Category Names or IDs',
 				name: 'categories',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
@@ -221,7 +205,8 @@ export const draftFields: INodeProperties[] = [
 			{
 				displayName: 'From',
 				name: 'from',
-				description: 'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
+				description:
+					'The owner of the mailbox which the message is sent. Must correspond to the actual mailbox used.',
 				type: 'string',
 				default: '',
 			},
@@ -249,7 +234,7 @@ export const draftFields: INodeProperties[] = [
 			{
 				displayName: 'Read Receipt Requested',
 				name: 'isReadReceiptRequested',
-				description: 'Indicates whether a read receipt is requested for the message',
+				description: 'Whether a read receipt is requested for the message',
 				type: 'boolean',
 				default: false,
 			},
@@ -279,12 +264,8 @@ export const draftFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'draft',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['draft'],
+				operation: ['send'],
 			},
 		},
 		options: [
@@ -297,7 +278,4 @@ export const draftFields: INodeProperties[] = [
 			},
 		],
 	},
-
-
-
 ];

@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -19,60 +16,67 @@ export const fileOperations: INodeProperties[] = [
 				name: 'Copy',
 				value: 'copy',
 				description: 'Copy a file',
+				action: 'Copy a file',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a file',
+				action: 'Delete a file',
 			},
 			{
 				name: 'Download',
 				value: 'download',
 				description: 'Download a file',
+				action: 'Download a file',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a file',
+				action: 'Get a file',
+			},
+			{
+				name: 'Rename',
+				value: 'rename',
+				description: 'Rename a file',
+				action: 'Rename a file',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search a file',
+				action: 'Search a file',
 			},
 			{
 				name: 'Share',
 				value: 'share',
 				description: 'Share a file',
+				action: 'Share a file',
 			},
 			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a file up to 4MB in size',
+				action: 'Upload a file',
 			},
 		],
 		default: 'upload',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const fileFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 file:copy                                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:copy                                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'File ID',
 		name: 'fileId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'copy',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['copy'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -84,12 +88,8 @@ export const fileFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'copy',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['copy'],
+				resource: ['file'],
 			},
 		},
 		default: {},
@@ -99,7 +99,8 @@ export const fileFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The new name for the copy. If this isn\'t provided, the same name will be used as the original.',
+				description:
+					"The new name for the copy. If this isn't provided, the same name will be used as the original.",
 			},
 		],
 	},
@@ -108,15 +109,12 @@ export const fileFields: INodeProperties[] = [
 		name: 'parentReference',
 		type: 'collection',
 		placeholder: 'Add Parent Reference',
-		description: 'Reference to the parent item the copy will be created in <a href="https://docs.microsoft.com/en-us/onedrive/developer/rest-api/resources/itemreference?view=odsp-graph-online"> Details </a>',
+		description:
+			'Reference to the parent item the copy will be created in <a href="https://docs.microsoft.com/en-us/onedrive/developer/rest-api/resources/itemreference?view=odsp-graph-online"> Details </a>',
 		displayOptions: {
 			show: {
-				operation: [
-					'copy',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['copy'],
+				resource: ['file'],
 			},
 		},
 		default: {},
@@ -179,41 +177,33 @@ export const fileFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:delete                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'File ID',
 		name: 'fileId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['delete'],
+				resource: ['file'],
 			},
 		},
 		default: '',
 		description: 'Field ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:download                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:download                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'File ID',
 		name: 'fileId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'download',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['download'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -226,71 +216,85 @@ export const fileFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				operation: [
-					'download',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['download'],
+				resource: ['file'],
 			},
 		},
 		description: 'Name of the binary property to which to write the data of the read file',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:get                                   */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:get                                   */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'File ID',
 		name: 'fileId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['get'],
+				resource: ['file'],
 			},
 		},
 		default: '',
 		description: 'Field ID',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:search                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:rename                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['rename'],
+				resource: ['file'],
+			},
+		},
+		default: '',
+		description: 'ID of the file',
+	},
+	{
+		displayName: 'New Name',
+		name: 'newName',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['rename'],
+				resource: ['file'],
+			},
+		},
+		default: '',
+		description: 'New name for file',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:search                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Query',
 		name: 'query',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['search'],
+				resource: ['file'],
 			},
 		},
 		default: '',
-		description: 'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
+		description:
+			'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:share                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:share                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'File ID',
 		name: 'fileId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['share'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -315,12 +319,8 @@ export const fileFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['share'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -342,32 +342,24 @@ export const fileFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['share'],
+				resource: ['file'],
 			},
 		},
 		default: '',
 		description: 'The type of sharing link to create',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:upload                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:upload                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'File Name',
 		name: 'fileName',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -380,12 +372,8 @@ export const fileFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -399,15 +387,11 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field',
+		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',
@@ -417,17 +401,10 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				binaryData: [
-					false,
-				],
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				binaryData: [false],
+				operation: ['upload'],
+				resource: ['file'],
 			},
-
 		},
 		placeholder: '',
 		description: 'The text content of the file',
@@ -440,17 +417,10 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				binaryData: [
-					true,
-				],
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				binaryData: [true],
+				operation: ['upload'],
+				resource: ['file'],
 			},
-
 		},
 		placeholder: '',
 		description: 'Name of the binary property which contains the data for the file',

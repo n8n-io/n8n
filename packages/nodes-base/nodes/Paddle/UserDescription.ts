@@ -1,28 +1,25 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all users',
+				description: 'Get many users',
+				action: 'Get many users',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -36,12 +33,8 @@ export const userFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -59,15 +52,9 @@ export const userFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		description: 'Max number of results to return',
@@ -79,12 +66,8 @@ export const userFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -98,15 +81,9 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				jsonParameters: [true],
 			},
 		},
 		description: 'Attributes in JSON form',
@@ -118,15 +95,9 @@ export const userFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -150,7 +121,8 @@ export const userFields: INodeProperties[] = [
 				name: 'state',
 				type: 'options',
 				default: 'active',
-				description: 'Filter: The user subscription status. Returns all active, past_due, trialing and paused subscription plans if not specified.',
+				description:
+					'Filter: The user subscription status. Returns all active, past_due, trialing and paused subscription plans if not specified.',
 				options: [
 					{
 						name: 'Active',

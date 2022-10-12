@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	addressFixedCollection,
@@ -13,37 +11,40 @@ export const leadOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
+				resource: ['lead'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a lead',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a lead',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a lead',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many leads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a lead',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -60,12 +61,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -77,19 +74,11 @@ export const leadFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
-		options: [
-			addressFixedCollection,
-			emailFixedCollection,
-			phoneNumbersFixedCollection,
-		],
+		options: [addressFixedCollection, emailFixedCollection, phoneNumbersFixedCollection],
 	},
 
 	// ----------------------------------------
@@ -104,12 +93,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['lead'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -126,12 +111,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['lead'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -147,12 +128,8 @@ export const leadFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['lead'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -168,15 +145,9 @@ export const leadFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['lead'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -188,12 +159,8 @@ export const leadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['lead'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -226,12 +193,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -243,12 +206,8 @@ export const leadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 		options: [

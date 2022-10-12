@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const softwareOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
+				resource: ['software'],
 			},
 		},
 		options: [
@@ -19,26 +16,31 @@ export const softwareOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a software application',
+				action: 'Create a software application',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a software application',
+				action: 'Delete a software application',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a software application',
+				action: 'Get a software application',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all software applications',
+				description: 'Retrieve many software applications',
+				action: 'Get many software applications',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a software application',
+				action: 'Update a software application',
 			},
 		],
 		default: 'create',
@@ -71,12 +73,8 @@ export const softwareFields: INodeProperties[] = [
 		default: 'desktop',
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['software'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -88,12 +86,8 @@ export const softwareFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['software'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -105,12 +99,8 @@ export const softwareFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['software'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -165,12 +155,8 @@ export const softwareFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['software'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -187,12 +173,8 @@ export const softwareFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['software'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -208,12 +190,8 @@ export const softwareFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['software'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -228,15 +206,9 @@ export const softwareFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['software'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -253,12 +225,8 @@ export const softwareFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['software'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -270,12 +238,8 @@ export const softwareFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'software',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['software'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -1,4 +1,3 @@
-
 export interface IOrganization {
 	name?: string;
 	domain?: string;

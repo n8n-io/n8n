@@ -1,29 +1,27 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const itemOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an item',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many items',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
+				resource: ['item'],
 			},
 		},
 	},
@@ -42,12 +40,8 @@ export const itemFields: INodeProperties[] = [
 		description: 'The ID of the item to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['item'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -63,12 +57,8 @@ export const itemFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['item'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -76,7 +66,7 @@ export const itemFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
@@ -84,15 +74,9 @@ export const itemFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['item'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -108,8 +92,9 @@ export const itemFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting items. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting items. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -117,12 +102,8 @@ export const itemFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'item',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['item'],
+				operation: ['getAll'],
 			},
 		},
 	},

@@ -1,7 +1,4 @@
-
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -52,7 +49,6 @@ interface ICreateMemberBody {
 }
 
 export class Mailchimp implements INodeType {
-
 	description: INodeTypeDescription = {
 		displayName: 'Mailchimp',
 		name: 'mailchimp',
@@ -72,9 +68,7 @@ export class Mailchimp implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'apiKey',
-						],
+						authentication: ['apiKey'],
 					},
 				},
 			},
@@ -83,9 +77,7 @@ export class Mailchimp implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -106,12 +98,12 @@ export class Mailchimp implements INodeType {
 					},
 				],
 				default: 'apiKey',
-				description: 'Method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Campaign',
@@ -132,18 +124,16 @@ export class Mailchimp implements INodeType {
 				],
 				default: 'member',
 				required: true,
-				description: 'Resource to consume.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
+						resource: ['member'],
 					},
 				},
 				options: [
@@ -151,41 +141,44 @@ export class Mailchimp implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new member on list',
+						action: 'Create a member',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a member on list',
+						action: 'Delete a member',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a member on list',
+						action: 'Get a member',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all members on list',
+						description: 'Get many members on a list',
+						action: 'Get many members',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a new member on list',
+						action: 'Update a member',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'memberTag',
-						],
+						resource: ['memberTag'],
 					},
 				},
 				options: [
@@ -193,91 +186,94 @@ export class Mailchimp implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Add tags from a list member',
+						action: 'Create a member tag',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Remove tags from a list member',
+						action: 'Delete a member tag',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'listGroup',
-						],
+						resource: ['listGroup'],
 					},
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all groups',
+						description: 'Get many groups',
+						action: 'Get many list groups',
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
-				type:'options',
+				type: 'options',
+				noDataExpression: true,
 				required: true,
-				displayOptions : {
+				displayOptions: {
 					show: {
-						resource: [
-							'campaign',
-						],
+						resource: ['campaign'],
 					},
-
 				},
 				options: [
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a campaign',
+						action: 'Delete a campaign',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a campaign',
+						action: 'Get a campaign',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all the campaigns',
+						description: 'Get many campaigns',
+						action: 'Get many campaigns',
 					},
 					{
 						name: 'Replicate',
 						value: 'replicate',
 						description: 'Replicate a campaign',
+						action: 'Replicate a campaign',
 					},
 					{
 						name: 'Resend',
 						value: 'resend',
 						description: 'Creates a Resend to Non-Openers version of this campaign',
+						action: 'Resend a campaign',
 					},
 					{
 						name: 'Send',
 						value: 'send',
 						description: 'Send a campaign',
+						action: 'Send a campaign',
 					},
 				],
 				default: 'getAll',
-				description: 'The operation to perform.',
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 member:create                              */
-/* -------------------------------------------------------------------------- */
+			/* -------------------------------------------------------------------------- */
+			/*                                 member:create                              */
+			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -285,32 +281,26 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['member'],
+						operation: ['create'],
 					},
 				},
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description:
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['member'],
+						operation: ['create'],
 					},
 				},
 				default: '',
@@ -323,23 +313,11 @@ export class Mailchimp implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['member'],
+						operation: ['create'],
 					},
 				},
 				options: [
-					{
-						name: 'Subscribed',
-						value: 'subscribed',
-					},
-					{
-						name: 'Unsubscribed',
-						value: 'unsubscribed',
-					},
 					{
 						name: 'Cleaned',
 						value: 'cleaned',
@@ -349,12 +327,20 @@ export class Mailchimp implements INodeType {
 						value: 'pending',
 					},
 					{
+						name: 'Subscribed',
+						value: 'subscribed',
+					},
+					{
 						name: 'Transactional',
 						value: 'transactional',
 					},
+					{
+						name: 'Unsubscribed',
+						value: 'unsubscribed',
+					},
 				],
 				default: '',
-				description: 'Subscriber\'s current status',
+				description: "Subscriber's current status",
 			},
 			{
 				displayName: 'JSON Parameters',
@@ -363,12 +349,8 @@ export class Mailchimp implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['member'],
+						operation: ['create'],
 					},
 				},
 			},
@@ -380,12 +362,8 @@ export class Mailchimp implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['member'],
+						operation: ['create'],
 					},
 				},
 				options: [
@@ -411,7 +389,7 @@ export class Mailchimp implements INodeType {
 						name: 'language',
 						type: 'string',
 						default: '',
-						description: 'If set/detected, the subscriber\'s language',
+						description: "If set/detected, the subscriber's language",
 					},
 					{
 						displayName: 'Opt-in IP',
@@ -432,7 +410,8 @@ export class Mailchimp implements INodeType {
 						name: 'timestampSignup',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time the subscriber signed up for the list in ISO 8601 format',
+						description:
+							'The date and time the subscriber signed up for the list in ISO 8601 format',
 					},
 					{
 						displayName: 'Tags',
@@ -446,6 +425,7 @@ export class Mailchimp implements INodeType {
 						name: 'vip',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Vip status for subscribers',
 					},
 					{
@@ -453,7 +433,8 @@ export class Mailchimp implements INodeType {
 						name: 'timestampOpt',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format',
+						description:
+							'The date and time the subscribe confirmed their opt-in status in ISO 8601 format',
 					},
 				],
 			},
@@ -466,15 +447,9 @@ export class Mailchimp implements INodeType {
 				description: 'Subscriber location information.n',
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							false,
-						],
+						resource: ['member'],
+						operation: ['create'],
+						jsonParameters: [false],
 					},
 				},
 				options: [
@@ -513,15 +488,9 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							false,
-						],
+						resource: ['member'],
+						operation: ['create'],
+						jsonParameters: [false],
 					},
 				},
 				description: 'An individual merge var and value for a member',
@@ -534,17 +503,16 @@ export class Mailchimp implements INodeType {
 						},
 						values: [
 							{
-								displayName: 'Field Name',
+								displayName: 'Field Name or ID',
 								name: 'name',
 								type: 'options',
 								typeOptions: {
 									loadOptionsMethod: 'getMergeFields',
-									loadOptionsDependsOn: [
-										'list',
-									],
+									loadOptionsDependsOn: ['list'],
 								},
 								required: true,
-								description: 'Merge Field name',
+								description:
+									'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -569,15 +537,9 @@ export class Mailchimp implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							true,
-						],
+						resource: ['member'],
+						operation: ['create'],
+						jsonParameters: [true],
 					},
 				},
 			},
@@ -591,15 +553,9 @@ export class Mailchimp implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							true,
-						],
+						resource: ['member'],
+						operation: ['create'],
+						jsonParameters: [true],
 					},
 				},
 			},
@@ -614,15 +570,9 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							false,
-						],
+						resource: ['member'],
+						operation: ['create'],
+						jsonParameters: [false],
 					},
 				},
 				options: [
@@ -634,14 +584,14 @@ export class Mailchimp implements INodeType {
 						},
 						values: [
 							{
-								displayName: 'Category ID',
+								displayName: 'Category Name or ID',
 								name: 'categoryId',
 								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getGroupCategories',
-									loadOptionsDependsOn: [
-										'list',
-									],
+									loadOptionsDependsOn: ['list'],
 								},
 								default: '',
 							},
@@ -671,23 +621,17 @@ export class Mailchimp implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'create',
-						],
-						jsonParameters: [
-							true,
-						],
+						resource: ['member'],
+						operation: ['create'],
+						jsonParameters: [true],
 					},
 				},
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 member:delete                              */
-/* -------------------------------------------------------------------------- */
+			/* -------------------------------------------------------------------------- */
+			/*                                 member:delete                              */
+			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -695,42 +639,36 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'delete',
-						],
+						resource: ['member'],
+						operation: ['delete'],
 					},
 				},
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description:
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'delete',
-						],
+						resource: ['member'],
+						operation: ['delete'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'Member\'s email',
+				description: "Member's email",
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 member:get                                 */
-/* -------------------------------------------------------------------------- */
+			/* -------------------------------------------------------------------------- */
+			/*                                 member:get                                 */
+			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -738,36 +676,30 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'get',
-						],
+						resource: ['member'],
+						operation: ['get'],
 					},
 				},
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description:
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'get',
-						],
+						resource: ['member'],
+						operation: ['get'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'Member\'s email',
+				description: "Member's email",
 			},
 			{
 				displayName: 'Options',
@@ -777,12 +709,8 @@ export class Mailchimp implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'get',
-						],
+						resource: ['member'],
+						operation: ['get'],
 					},
 				},
 				options: [
@@ -802,11 +730,11 @@ export class Mailchimp implements INodeType {
 					},
 				],
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 member:getAll                              */
-/* -------------------------------------------------------------------------- */
+			/* -------------------------------------------------------------------------- */
+			/*                                 member:getAll                              */
+			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -814,18 +742,15 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['member'],
+						operation: ['getAll'],
 					},
 				},
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description:
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Return All',
@@ -833,12 +758,8 @@ export class Mailchimp implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['member'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -850,15 +771,9 @@ export class Mailchimp implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['member'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -876,12 +791,8 @@ export class Mailchimp implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['member'],
+						operation: ['getAll'],
 					},
 				},
 				options: [
@@ -890,7 +801,8 @@ export class Mailchimp implements INodeType {
 						name: 'beforeLastChanged',
 						type: 'dateTime',
 						default: '',
-						description: 'Restrict results to subscribers whose information changed before the set timeframe',
+						description:
+							'Restrict results to subscribers whose information changed before the set timeframe',
 					},
 					{
 						displayName: 'Before Timestamp Opt',
@@ -936,14 +848,6 @@ export class Mailchimp implements INodeType {
 						type: 'options',
 						options: [
 							{
-								name: 'Subscribed',
-								value: 'subscribed',
-							},
-							{
-								name: 'Unsubscribed',
-								value: 'unsubscribed',
-							},
-							{
 								name: 'Cleaned',
 								value: 'cleaned',
 							},
@@ -952,27 +856,36 @@ export class Mailchimp implements INodeType {
 								value: 'pending',
 							},
 							{
+								name: 'Subscribed',
+								value: 'subscribed',
+							},
+							{
 								name: 'Transactional',
 								value: 'transactional',
 							},
+							{
+								name: 'Unsubscribed',
+								value: 'unsubscribed',
+							},
 						],
 						default: '',
-						description: 'Subscriber\'s current status',
+						description: "Subscriber's current status",
 					},
 					{
 						displayName: 'Since Last Changed',
 						name: 'sinceLastChanged',
 						type: 'dateTime',
 						default: '',
-						description: 'Restrict results to subscribers whose information changed after the set timeframe',
+						description:
+							'Restrict results to subscribers whose information changed after the set timeframe',
 					},
 				],
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 member:update                              */
-/* -------------------------------------------------------------------------- */
+			/* -------------------------------------------------------------------------- */
+			/*                                 member:update                              */
+			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -980,32 +893,26 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['member'],
+						operation: ['update'],
 					},
 				},
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description:
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'member',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['member'],
+						operation: ['update'],
 					},
 				},
 				default: '',
@@ -1018,12 +925,8 @@ export class Mailchimp implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['member'],
+						operation: ['update'],
 					},
 				},
 			},
@@ -1035,12 +938,8 @@ export class Mailchimp implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['member'],
+						operation: ['update'],
 					},
 				},
 				options: [
@@ -1072,15 +971,9 @@ export class Mailchimp implements INodeType {
 						},
 						displayOptions: {
 							show: {
-								'/resource':[
-									'member',
-								],
-								'/operation':[
-									'update',
-								],
-								'/jsonParameters': [
-									false,
-								],
+								'/resource': ['member'],
+								'/operation': ['update'],
+								'/jsonParameters': [false],
 							},
 						},
 						options: [
@@ -1092,14 +985,14 @@ export class Mailchimp implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Category ID',
+										displayName: 'Category Name or ID',
 										name: 'categoryId',
 										type: 'options',
+										description:
+											'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getGroupCategories',
-											loadOptionsDependsOn: [
-												'list',
-											],
+											loadOptionsDependsOn: ['list'],
 										},
 										default: '',
 									},
@@ -1124,7 +1017,7 @@ export class Mailchimp implements INodeType {
 						name: 'language',
 						type: 'string',
 						default: '',
-						description: 'If set/detected, the subscriber\'s language',
+						description: "If set/detected, the subscriber's language",
 					},
 					{
 						displayName: 'Merge Fields',
@@ -1137,15 +1030,9 @@ export class Mailchimp implements INodeType {
 						},
 						displayOptions: {
 							show: {
-								'/resource':[
-									'member',
-								],
-								'/operation':[
-									'update',
-								],
-								'/jsonParameters': [
-									false,
-								],
+								'/resource': ['member'],
+								'/operation': ['update'],
+								'/jsonParameters': [false],
 							},
 						},
 						description: 'An individual merge var and value for a member',
@@ -1158,17 +1045,16 @@ export class Mailchimp implements INodeType {
 								},
 								values: [
 									{
-										displayName: 'Field Name',
+										displayName: 'Field Name or ID',
 										name: 'name',
 										type: 'options',
 										typeOptions: {
 											loadOptionsMethod: 'getMergeFields',
-											loadOptionsDependsOn: [
-												'list',
-											],
+											loadOptionsDependsOn: ['list'],
 										},
 										required: true,
-										description: 'Merge Field name',
+										description:
+											'Merge Field name. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 										default: '',
 									},
 									{
@@ -1202,29 +1088,22 @@ export class Mailchimp implements INodeType {
 						name: 'timestampSignup',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time the subscriber signed up for the list in ISO 8601 format',
+						description:
+							'The date and time the subscriber signed up for the list in ISO 8601 format',
 					},
 					{
 						displayName: 'Skip Merge Validation',
 						name: 'skipMergeValidation',
 						type: 'boolean',
 						default: false,
-						description: 'If skip_merge_validation is true, member data will be accepted without merge field values, even if the merge field is usually required',
+						description:
+							'Whether member data will be accepted without merge field values, even if the merge field is usually required',
 					},
 					{
 						displayName: 'Status',
 						name: 'status',
 						type: 'options',
-						required: true,
 						options: [
-							{
-								name: 'Subscribed',
-								value: 'subscribed',
-							},
-							{
-								name: 'Unsubscribed',
-								value: 'unsubscribed',
-							},
 							{
 								name: 'Cleaned',
 								value: 'cleaned',
@@ -1234,18 +1113,27 @@ export class Mailchimp implements INodeType {
 								value: 'pending',
 							},
 							{
+								name: 'Subscribed',
+								value: 'subscribed',
+							},
+							{
 								name: 'Transactional',
 								value: 'transactional',
 							},
+							{
+								name: 'Unsubscribed',
+								value: 'unsubscribed',
+							},
 						],
 						default: '',
-						description: 'Subscriber\'s current status',
+						description: "Subscriber's current status",
 					},
 					{
 						displayName: 'Vip',
 						name: 'vip',
 						type: 'boolean',
 						default: false,
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 						description: 'Vip status for subscribers',
 					},
 					{
@@ -1257,15 +1145,9 @@ export class Mailchimp implements INodeType {
 						description: 'Subscriber location information.n',
 						displayOptions: {
 							show: {
-								'/resource':[
-									'member',
-								],
-								'/operation':[
-									'update',
-								],
-								'/jsonParameters': [
-									false,
-								],
+								'/resource': ['member'],
+								'/operation': ['update'],
+								'/jsonParameters': [false],
 							},
 						},
 						options: [
@@ -1298,7 +1180,8 @@ export class Mailchimp implements INodeType {
 						name: 'timestampOpt',
 						type: 'dateTime',
 						default: '',
-						description: 'The date and time the subscribe confirmed their opt-in status in ISO 8601 format',
+						description:
+							'The date and time the subscribe confirmed their opt-in status in ISO 8601 format',
 					},
 				],
 			},
@@ -1312,15 +1195,9 @@ export class Mailchimp implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'update',
-						],
-						jsonParameters: [
-							true,
-						],
+						resource: ['member'],
+						operation: ['update'],
+						jsonParameters: [true],
 					},
 				},
 			},
@@ -1334,15 +1211,9 @@ export class Mailchimp implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'update',
-						],
-						jsonParameters: [
-							true,
-						],
+						resource: ['member'],
+						operation: ['update'],
+						jsonParameters: [true],
 					},
 				},
 			},
@@ -1356,23 +1227,17 @@ export class Mailchimp implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource:[
-							'member',
-						],
-						operation: [
-							'update',
-						],
-						jsonParameters: [
-							true,
-						],
+						resource: ['member'],
+						operation: ['update'],
+						jsonParameters: [true],
 					},
 				},
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 memberTag:create                           */
-/* -------------------------------------------------------------------------- */
+			/* -------------------------------------------------------------------------- */
+			/*                                 memberTag:create                           */
+			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -1380,34 +1245,26 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'memberTag',
-						],
-						operation: [
-							'create',
-							'delete',
-						],
+						resource: ['memberTag'],
+						operation: ['create', 'delete'],
 					},
 				},
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description:
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				required: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'memberTag',
-						],
-						operation: [
-							'create',
-							'delete',
-						],
+						resource: ['memberTag'],
+						operation: ['create', 'delete'],
 					},
 				},
 				default: '',
@@ -1423,13 +1280,8 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource:[
-							'memberTag',
-						],
-						operation: [
-							'create',
-							'delete',
-						],
+						resource: ['memberTag'],
+						operation: ['create', 'delete'],
 					},
 				},
 				default: [],
@@ -1442,13 +1294,8 @@ export class Mailchimp implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource:[
-							'memberTag',
-						],
-						operation: [
-							'create',
-							'delete',
-						],
+						resource: ['memberTag'],
+						operation: ['create', 'delete'],
 					},
 				},
 				options: [
@@ -1457,15 +1304,15 @@ export class Mailchimp implements INodeType {
 						name: 'isSyncing',
 						type: 'boolean',
 						default: false,
-						description: 'When is_syncing is true, automations based on the tags in the request will not fire',
+						description: 'Whether automations based on the tags in the request will not fire',
 					},
 				],
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 member:getAll                              */
-/* -------------------------------------------------------------------------- */
+			/* -------------------------------------------------------------------------- */
+			/*                                 member:getAll                              */
+			/* -------------------------------------------------------------------------- */
 			{
-				displayName: 'List',
+				displayName: 'List Name or ID',
 				name: 'list',
 				type: 'options',
 				typeOptions: {
@@ -1473,37 +1320,30 @@ export class Mailchimp implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'listGroup',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['listGroup'],
+						operation: ['getAll'],
 					},
 				},
 				default: '',
 				options: [],
 				required: true,
-				description: 'List of lists',
+				description:
+					'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Group Category',
+				displayName: 'Group Category Name or ID',
 				name: 'groupCategory',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroupCategories',
-					loadOptionsDependsOn: [
-						'list',
-					],
+					loadOptionsDependsOn: ['list'],
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'listGroup',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['listGroup'],
+						operation: ['getAll'],
 					},
 				},
 				default: '',
@@ -1516,12 +1356,8 @@ export class Mailchimp implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'listGroup',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['listGroup'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -1533,15 +1369,9 @@ export class Mailchimp implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: [
-							'listGroup',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['listGroup'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -1551,21 +1381,17 @@ export class Mailchimp implements INodeType {
 				default: 500,
 				description: 'Max number of results to return',
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 campaign:getAll                            */
-/* -------------------------------------------------------------------------- */
+			/* -------------------------------------------------------------------------- */
+			/*                                 campaign:getAll                            */
+			/* -------------------------------------------------------------------------- */
 			{
 				displayName: 'Return All',
 				name: 'returnAll',
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'campaign',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['campaign'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -1577,15 +1403,9 @@ export class Mailchimp implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						resource: [
-							'campaign',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['campaign'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -1603,12 +1423,8 @@ export class Mailchimp implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource:[
-							'campaign',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['campaign'],
+						operation: ['getAll'],
 					},
 				},
 				options: [
@@ -1627,17 +1443,18 @@ export class Mailchimp implements INodeType {
 						description: 'Restrict the response to campaigns sent before the set time',
 					},
 					{
-						displayName: 'Exclude Fields',
+						displayName: 'Exclude Field Names or IDs',
 						name: 'excludeFields',
 						type: 'multiOptions',
 						typeOptions: {
 							loadOptionsMethod: 'getCampaignsFields',
 						},
 						default: [],
-						description: 'A comma-separated list of fields to exclude',
+						description:
+							'A comma-separated list of fields to exclude. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'Fields',
+						displayName: 'Field Names or IDs',
 						name: 'fields',
 						type: 'multiOptions',
 						typeOptions: {
@@ -1651,17 +1468,19 @@ export class Mailchimp implements INodeType {
 							'campaigns.settings.reply_to',
 							'campaigns.settings.title',
 						],
-						description: 'A comma-separated list of fields to return',
+						description:
+							'A comma-separated list of fields to return. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
-						displayName: 'List ID',
+						displayName: 'List Name or ID',
 						name: 'listId',
 						type: 'options',
 						typeOptions: {
 							loadOptionsMethod: 'getLists',
 						},
 						default: '',
-						description: 'List of lists',
+						description:
+							'List of lists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Since Create Time',
@@ -1738,39 +1557,29 @@ export class Mailchimp implements INodeType {
 					},
 				],
 			},
-/* -------------------------------------------------------------------------- */
-/*                                 campaign:send                              */
-/* -------------------------------------------------------------------------- */
+			/* -------------------------------------------------------------------------- */
+			/*                                 campaign:send                              */
+			/* -------------------------------------------------------------------------- */
 			{
 				displayName: 'Campaign ID',
 				name: 'campaignId',
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'campaign',
-						],
-						operation: [
-							'send',
-							'get',
-							'delete',
-							'replicate',
-							'resend',
-						],
+						resource: ['campaign'],
+						operation: ['send', 'get', 'delete', 'replicate', 'resend'],
 					},
 				},
 				required: true,
 				default: '',
 				description: 'List of Campaigns',
-				options:[],
+				options: [],
 			},
 		],
 	};
 
-
 	methods = {
 		loadOptions: {
-
 			// Get all the available lists to display them to user so that he can
 			// select them easily
 			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -1792,7 +1601,11 @@ export class Mailchimp implements INodeType {
 			async getMergeFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const listId = this.getCurrentNodeParameter('list');
-				const { merge_fields } = await mailchimpApiRequest.call(this, `/lists/${listId}/merge-fields`, 'GET');
+				const { merge_fields } = await mailchimpApiRequest.call(
+					this,
+					`/lists/${listId}/merge-fields`,
+					'GET',
+				);
 				for (const mergeField of merge_fields) {
 					const mergeFieldName = mergeField.name;
 					const mergeFieldId = mergeField.tag;
@@ -1809,7 +1622,11 @@ export class Mailchimp implements INodeType {
 			async getGroupCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const listId = this.getCurrentNodeParameter('list');
-				const { categories } = await mailchimpApiRequest.call(this, `/lists/${listId}/interest-categories`, 'GET');
+				const { categories } = await mailchimpApiRequest.call(
+					this,
+					`/lists/${listId}/interest-categories`,
+					'GET',
+				);
 				for (const category of categories) {
 					const categoryName = category.title;
 					const categoryId = category.id;
@@ -1824,7 +1641,12 @@ export class Mailchimp implements INodeType {
 			// Get all the available campaigns to display them to users so that they can select them easily
 			async getCampaigns(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const campaigns = await mailchimpApiRequestAllItems.call(this, '/campaigns', 'GET', 'campaigns');
+				const campaigns = await mailchimpApiRequestAllItems.call(
+					this,
+					'/campaigns',
+					'GET',
+					'campaigns',
+				);
 				for (const campaign of campaigns) {
 					const campaignName = campaign.settings.title;
 					const campaignId = campaign.id;
@@ -1852,7 +1674,7 @@ export class Mailchimp implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -1869,10 +1691,23 @@ export class Mailchimp implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						if (returnAll === true) {
-							responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', 'interests', {}, qs);
+							responseData = await mailchimpApiRequestAllItems.call(
+								this,
+								`/lists/${listId}/interest-categories/${categoryId}/interests`,
+								'GET',
+								'interests',
+								{},
+								qs,
+							);
 						} else {
 							qs.count = this.getNodeParameter('limit', i) as number;
-							responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/interest-categories/${categoryId}/interests`, 'GET', {}, qs);
+							responseData = await mailchimpApiRequest.call(
+								this,
+								`/lists/${listId}/interest-categories/${categoryId}/interests`,
+								'GET',
+								{},
+								qs,
+							);
 							responseData = responseData.interests;
 						}
 					}
@@ -1907,17 +1742,22 @@ export class Mailchimp implements INodeType {
 							body.ip_opt = options.ipOptIn as string;
 						}
 						if (options.timestampOpt) {
-							body.timestamp_opt = moment(options.timestampOpt as string).format('YYYY-MM-DD HH:MM:SS') as string;
+							body.timestamp_opt = moment(options.timestampOpt as string).format(
+								'YYYY-MM-DD HH:MM:SS',
+							) as string;
 						}
 						if (options.timestampSignup) {
-							body.timestamp_signup = moment(options.timestampSignup as string).format('YYYY-MM-DD HH:MM:SS') as string;
+							body.timestamp_signup = moment(options.timestampSignup as string).format(
+								'YYYY-MM-DD HH:MM:SS',
+							) as string;
 						}
 						if (options.tags) {
 							// @ts-ignore
 							body.tags = options.tags.split(',') as string[];
 						}
 						if (!jsonActive) {
-							const locationValues = (this.getNodeParameter('locationFieldsUi', i) as IDataObject).locationFieldsValues as IDataObject;
+							const locationValues = (this.getNodeParameter('locationFieldsUi', i) as IDataObject)
+								.locationFieldsValues as IDataObject;
 							if (locationValues) {
 								const location: ILocation = {};
 								for (const key of Object.keys(locationValues)) {
@@ -1929,7 +1769,8 @@ export class Mailchimp implements INodeType {
 								}
 								body.location = location;
 							}
-							const mergeFieldsValues = (this.getNodeParameter('mergeFieldsUi', i) as IDataObject).mergeFieldsValues as IDataObject[];
+							const mergeFieldsValues = (this.getNodeParameter('mergeFieldsUi', i) as IDataObject)
+								.mergeFieldsValues as IDataObject[];
 							if (mergeFieldsValues) {
 								const mergeFields = {};
 								for (let i = 0; i < mergeFieldsValues.length; i++) {
@@ -1939,7 +1780,8 @@ export class Mailchimp implements INodeType {
 								body.merge_fields = mergeFields;
 							}
 
-							const groupsValues = (this.getNodeParameter('groupsUi', i) as IDataObject).groupsValues as IDataObject[];
+							const groupsValues = (this.getNodeParameter('groupsUi', i) as IDataObject)
+								.groupsValues as IDataObject[];
 							if (groupsValues) {
 								const groups = {};
 								for (let i = 0; i < groupsValues.length; i++) {
@@ -1950,7 +1792,9 @@ export class Mailchimp implements INodeType {
 							}
 						} else {
 							const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
-							const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
+							const mergeFieldsJson = validateJSON(
+								this.getNodeParameter('mergeFieldsJson', i) as string,
+							);
 							const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
 							if (locationJson) {
 								body.location = locationJson;
@@ -1962,20 +1806,27 @@ export class Mailchimp implements INodeType {
 								body.interests = groupJson;
 							}
 						}
-						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members`, 'POST', body);
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/lists/${listId}/members`,
+							'POST',
+							body,
+						);
 					}
 					//https://mailchimp.com/developer/reference/lists/list-members/
 					if (operation === 'delete') {
-
 						const listId = this.getNodeParameter('list', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 
-						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/actions/delete-permanent`, 'POST');
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/lists/${listId}/members/${email}/actions/delete-permanent`,
+							'POST',
+						);
 						responseData = { success: true };
 					}
 					//https://mailchimp.com/developer/reference/lists/list-members/#get_/lists/-list_id-/members/-subscriber_hash-
 					if (operation === 'get') {
-
 						const listId = this.getNodeParameter('list', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
@@ -1988,7 +1839,13 @@ export class Mailchimp implements INodeType {
 							qs.exclude_fields = options.excludeFields as string;
 						}
 
-						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}`, 'GET', {}, qs);
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/lists/${listId}/members/${email}`,
+							'GET',
+							{},
+							qs,
+						);
 					}
 					//https://mailchimp.com/developer/reference/lists/list-members/#get_/lists/-list_id-/members
 					if (operation === 'getAll') {
@@ -2022,16 +1879,28 @@ export class Mailchimp implements INodeType {
 							qs.since_last_changed = options.sinceLastChanged as string;
 						}
 						if (returnAll === true) {
-							responseData = await mailchimpApiRequestAllItems.call(this, `/lists/${listId}/members`, 'GET', 'members', {}, qs);
+							responseData = await mailchimpApiRequestAllItems.call(
+								this,
+								`/lists/${listId}/members`,
+								'GET',
+								'members',
+								{},
+								qs,
+							);
 						} else {
 							qs.count = this.getNodeParameter('limit', i) as number;
-							responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members`, 'GET', {}, qs);
+							responseData = await mailchimpApiRequest.call(
+								this,
+								`/lists/${listId}/members`,
+								'GET',
+								{},
+								qs,
+							);
 							responseData = responseData.members;
 						}
 					}
 					//https://mailchimp.com/developer/reference/lists/list-members/#put_/lists/-list_id-/members/-subscriber_hash-
 					if (operation === 'update') {
-
 						const listId = this.getNodeParameter('list', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
@@ -2062,14 +1931,19 @@ export class Mailchimp implements INodeType {
 							body.ip_opt = updateFields.ipOptIn as string;
 						}
 						if (updateFields.timestampOpt) {
-							body.timestamp_opt = moment(updateFields.timestampOpt as string).format('YYYY-MM-DD HH:MM:SS') as string;
+							body.timestamp_opt = moment(updateFields.timestampOpt as string).format(
+								'YYYY-MM-DD HH:MM:SS',
+							) as string;
 						}
 						if (updateFields.timestampSignup) {
-							body.timestamp_signup = moment(updateFields.timestampSignup as string).format('YYYY-MM-DD HH:MM:SS') as string;
+							body.timestamp_signup = moment(updateFields.timestampSignup as string).format(
+								'YYYY-MM-DD HH:MM:SS',
+							) as string;
 						}
 						if (!jsonActive) {
 							if (updateFields.locationFieldsUi) {
-								const locationValues = (updateFields.locationFieldsUi as IDataObject).locationFieldsValues as IDataObject;
+								const locationValues = (updateFields.locationFieldsUi as IDataObject)
+									.locationFieldsValues as IDataObject;
 								if (locationValues) {
 									const location: ILocation = {};
 									for (const key of Object.keys(locationValues)) {
@@ -2083,7 +1957,8 @@ export class Mailchimp implements INodeType {
 								}
 							}
 							if (updateFields.mergeFieldsUi) {
-								const mergeFieldsValues = (updateFields.mergeFieldsUi as IDataObject).mergeFieldsValues as IDataObject[];
+								const mergeFieldsValues = (updateFields.mergeFieldsUi as IDataObject)
+									.mergeFieldsValues as IDataObject[];
 								if (mergeFieldsValues) {
 									const mergeFields = {};
 									for (let i = 0; i < mergeFieldsValues.length; i++) {
@@ -2094,7 +1969,8 @@ export class Mailchimp implements INodeType {
 								}
 							}
 							if (updateFields.groupsUi) {
-								const groupsValues = (updateFields.groupsUi  as IDataObject).groupsValues as IDataObject[];
+								const groupsValues = (updateFields.groupsUi as IDataObject)
+									.groupsValues as IDataObject[];
 								if (groupsValues) {
 									const groups = {};
 									for (let i = 0; i < groupsValues.length; i++) {
@@ -2106,7 +1982,9 @@ export class Mailchimp implements INodeType {
 							}
 						} else {
 							const locationJson = validateJSON(this.getNodeParameter('locationJson', i) as string);
-							const mergeFieldsJson = validateJSON(this.getNodeParameter('mergeFieldsJson', i) as string);
+							const mergeFieldsJson = validateJSON(
+								this.getNodeParameter('mergeFieldsJson', i) as string,
+							);
 							const groupJson = validateJSON(this.getNodeParameter('groupJson', i) as string);
 
 							if (locationJson) {
@@ -2119,11 +1997,16 @@ export class Mailchimp implements INodeType {
 								body.interests = groupJson;
 							}
 						}
-						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}`, 'PUT', body);
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/lists/${listId}/members/${email}`,
+							'PUT',
+							body,
+						);
 					}
 				}
 				if (resource === 'memberTag') {
-				//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
+					//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
 					if (operation === 'create') {
 						const listId = this.getNodeParameter('list', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
@@ -2146,12 +2029,16 @@ export class Mailchimp implements INodeType {
 							});
 						}
 
-						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/tags`, 'POST', body);
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/lists/${listId}/members/${email}/tags`,
+							'POST',
+							body,
+						);
 						responseData = { success: true };
 					}
-				//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
+					//https://mailchimp.com/developer/reference/lists/list-members/list-member-tags/#post_/lists/-list_id-/members/-subscriber_hash-/tags
 					if (operation === 'delete') {
-
 						const listId = this.getNodeParameter('list', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
 						const tags = this.getNodeParameter('tags', i) as string[];
@@ -2172,7 +2059,12 @@ export class Mailchimp implements INodeType {
 								status: 'inactive',
 							});
 						}
-						responseData = await mailchimpApiRequest.call(this, `/lists/${listId}/members/${email}/tags`, 'POST', body);
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/lists/${listId}/members/${email}/tags`,
+							'POST',
+							body,
+						);
 						responseData = { success: true };
 					}
 				}
@@ -2225,7 +2117,14 @@ export class Mailchimp implements INodeType {
 							qs.sort_field = options.sortField as string;
 						}
 						if (returnAll === true) {
-							responseData = await mailchimpApiRequestAllItems.call(this, `/campaigns`, 'GET', 'campaigns', {}, qs);
+							responseData = await mailchimpApiRequestAllItems.call(
+								this,
+								`/campaigns`,
+								'GET',
+								'campaigns',
+								{},
+								qs,
+							);
 						} else {
 							qs.count = this.getNodeParameter('limit', i) as number;
 							responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
@@ -2235,45 +2134,70 @@ export class Mailchimp implements INodeType {
 					//https://mailchimp.com/developer/api/marketing/campaigns/send-campaign/
 					if (operation === 'send') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
-						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/send`, 'POST', {});
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/campaigns/${campaignId}/actions/send`,
+							'POST',
+							{},
+						);
 						responseData = { success: true };
 					}
 					//https://mailchimp.com/developer/api/marketing/campaigns/get-campaign-info/
 					if (operation === 'get') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
-						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'GET', {});
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/campaigns/${campaignId}`,
+							'GET',
+							{},
+						);
 					}
 					//https://mailchimp.com/developer/api/marketing/campaigns/delete-campaign/
 					if (operation === 'delete') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
-						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}`, 'DELETE', {});
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/campaigns/${campaignId}`,
+							'DELETE',
+							{},
+						);
 						responseData = { success: true };
 					}
 					//https://mailchimp.com/developer/api/marketing/campaigns/replicate-campaign/
 					if (operation === 'replicate') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
-						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/replicate`, 'POST', {});
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/campaigns/${campaignId}/actions/replicate`,
+							'POST',
+							{},
+						);
 					}
 					//https://mailchimp.com/developer/api/marketing/campaigns/resend-campaign/
 					if (operation === 'resend') {
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
-						responseData = await mailchimpApiRequest.call(this, `/campaigns/${campaignId}/actions/create-resend`, 'POST', {});
+						responseData = await mailchimpApiRequest.call(
+							this,
+							`/campaigns/${campaignId}/actions/create-resend`,
+							'POST',
+							{},
+						);
 					}
 				}
 
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

@@ -1,13 +1,6 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 const data = [
 	{
@@ -71,20 +64,18 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Get One Person',
 						value: 'getOnePerson',
-						description: 'Get one person',
 					},
 					{
 						name: 'Get All People',
 						value: 'getAllPeople',
-						description: 'Get all people',
 					},
 				],
 				default: 'getOnePerson',
-				description: 'The operation to perform.',
 			},
 			{
 				displayName: 'Return All',
@@ -92,9 +83,7 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAllPeople',
-						],
+						operation: ['getAllPeople'],
 					},
 				},
 				default: false,
@@ -106,12 +95,8 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAllPeople',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['getAllPeople'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -132,14 +117,11 @@ export class N8nTrainingCustomerDatastore implements INodeType {
 		let responseData;
 
 		for (let i = 0; i < length; i++) {
-
 			if (operation === 'getOnePerson') {
-
 				responseData = data[0];
 			}
 
 			if (operation === 'getAllPeople') {
-
 				const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 				if (returnAll === true) {

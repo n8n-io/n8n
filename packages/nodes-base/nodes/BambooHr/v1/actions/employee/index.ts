@@ -3,27 +3,19 @@ import * as get from './get';
 import * as getAll from './getAll';
 import * as update from './update';
 
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-export {
-	create,
-	get,
-	getAll,
-	update
-};
+export { create, get, getAll, update };
 
 export const descriptions: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'employee',
-				],
+				resource: ['employee'],
 			},
 		},
 		options: [
@@ -31,21 +23,25 @@ export const descriptions: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an employee',
+				action: 'Create an employee',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an employee',
+				action: 'Get an employee',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all employees',
+				description: 'Get many employees',
+				action: 'Get many employees',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an employee',
+				action: 'Update an employee',
 			},
 		],
 		default: 'create',

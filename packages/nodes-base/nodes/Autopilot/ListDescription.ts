@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const listOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'list',
-				],
+				resource: ['list'],
 			},
 		},
 		options: [
@@ -19,20 +16,20 @@ export const listOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a list',
+				action: 'Create a list',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all lists',
+				description: 'Get many lists',
+				action: 'Get many lists',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const listFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 list:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -43,12 +40,8 @@ export const listFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['create'],
+				resource: ['list'],
 			},
 		},
 		default: '',
@@ -64,12 +57,8 @@ export const listFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
+				operation: ['getAll'],
+				resource: ['list'],
 			},
 		},
 		default: false,
@@ -81,15 +70,9 @@ export const listFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'list',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['list'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

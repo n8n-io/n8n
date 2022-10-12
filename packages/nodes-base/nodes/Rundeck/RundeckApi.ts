@@ -11,14 +11,11 @@ export class RundeckApi {
 	private credentials?: RundeckCredentials;
 	private executeFunctions: IExecuteFunctions;
 
-
 	constructor(executeFunctions: IExecuteFunctions) {
 		this.executeFunctions = executeFunctions;
 	}
 
-
 	protected async request(method: string, endpoint: string, body: IDataObject, query: object) {
-
 		const options: OptionsWithUri = {
 			headers: {
 				'user-agent': 'n8n',
@@ -50,11 +47,10 @@ export class RundeckApi {
 	}
 
 	executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
-
 		let params = '';
 
-		if(args) {
-			for(const arg of args) {
+		if (args) {
+			for (const arg of args) {
 				params += '-' + arg.name + ' ' + arg.value + ' ';
 			}
 		}
@@ -69,5 +65,4 @@ export class RundeckApi {
 	getJobMetadata(jobId: string): Promise<IDataObject> {
 		return this.request('GET', `/api/18/job/${jobId}/info`, {}, {});
 	}
-
 }

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,15 +10,14 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	mediumApiRequest,
-} from './GenericFunctions';
+import { mediumApiRequest } from './GenericFunctions';
 
 export class Medium implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Medium',
 		name: 'medium',
 		group: ['output'],
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:medium.png',
 		version: 1,
 		description: 'Consume Medium API',
@@ -36,9 +33,7 @@ export class Medium implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -47,9 +42,7 @@ export class Medium implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -70,12 +63,12 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'accessToken',
-				description: 'The method of authentication.',
 			},
 			{
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Post',
@@ -87,17 +80,15 @@ export class Medium implements INodeType {
 					},
 				],
 				default: 'post',
-				description: 'Resource to operate on.',
 			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'post',
-						],
+						resource: ['post'],
 					},
 				},
 				options: [
@@ -105,10 +96,10 @@ export class Medium implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a post',
+						action: 'Create a post',
 					},
 				],
 				default: 'create',
-				description: 'The operation to perform.',
 			},
 
 			// ----------------------------------
@@ -120,39 +111,30 @@ export class Medium implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'post',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['post'],
+						operation: ['create'],
 					},
 				},
 				default: false,
-				description: 'Are you posting for a publication?',
+				description: 'Whether you are posting for a publication',
 			},
 			{
-				displayName: 'Publication ID',
+				displayName: 'Publication Name or ID',
 				name: 'publicationId',
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'post',
-						],
-						operation: [
-							'create',
-						],
-						publication: [
-							true,
-						],
+						resource: ['post'],
+						operation: ['create'],
+						publication: [true],
 					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getPublications',
 				},
 				default: '',
-				description: 'Publication IDs',
+				description:
+					'Publication IDs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Title',
@@ -163,12 +145,8 @@ export class Medium implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'post',
-						],
+						operation: ['create'],
+						resource: ['post'],
 					},
 				},
 				description: 'Title of the post. Max Length : 100 characters.',
@@ -180,12 +158,8 @@ export class Medium implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'post',
-						],
+						operation: ['create'],
+						resource: ['post'],
 					},
 				},
 				type: 'options',
@@ -213,12 +187,8 @@ export class Medium implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'post',
-						],
+						operation: ['create'],
+						resource: ['post'],
 					},
 				},
 				description: 'The body of the post, in a valid semantic HTML fragment, or Markdown',
@@ -230,12 +200,8 @@ export class Medium implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
-						resource: [
-							'post',
-						],
+						operation: ['create'],
+						resource: ['post'],
 					},
 				},
 				default: {},
@@ -245,7 +211,8 @@ export class Medium implements INodeType {
 						name: 'canonicalUrl',
 						type: 'string',
 						default: '',
-						description: 'The original home of this content, if it was originally published elsewhere',
+						description:
+							'The original home of this content, if it was originally published elsewhere',
 					},
 					{
 						displayName: 'License',
@@ -326,7 +293,8 @@ export class Medium implements INodeType {
 						type: 'string',
 						default: '',
 						placeholder: 'open-source,mlh,fellowship',
-						description: 'Comma-separated strings to be used as tags for post classification. Max allowed tags: 5. Max tag length: 25 characters.',
+						description:
+							'Comma-separated strings to be used as tags for post classification. Max allowed tags: 5. Max tag length: 25 characters.',
 					},
 				],
 			},
@@ -334,22 +302,21 @@ export class Medium implements INodeType {
 				displayName: 'Operation',
 				name: 'operation',
 				type: 'options',
+				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'publication',
-						],
+						resource: ['publication'],
 					},
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all publications',
+						description: 'Get many publications',
+						action: 'Get many publications',
 					},
 				],
 				default: 'publication',
-				description: 'The operation to perform.',
 			},
 			// ----------------------------------
 			//         publication:getAll
@@ -360,12 +327,8 @@ export class Medium implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'publication',
-						],
+						operation: ['getAll'],
+						resource: ['publication'],
 					},
 				},
 				default: false,
@@ -377,15 +340,9 @@ export class Medium implements INodeType {
 				type: 'number',
 				displayOptions: {
 					show: {
-						operation: [
-							'getAll',
-						],
-						resource: [
-							'publication',
-						],
-						returnAll: [
-							false,
-						],
+						operation: ['getAll'],
+						resource: ['publication'],
+						returnAll: [false],
 					},
 				},
 				typeOptions: {
@@ -404,11 +361,7 @@ export class Medium implements INodeType {
 			async getPublications(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				//Get the User Id
-				const user = await mediumApiRequest.call(
-					this,
-					'GET',
-					`/me`,
-				);
+				const user = await mediumApiRequest.call(this, 'GET', `/me`);
 
 				const userId = user.data.id;
 				//Get all publications of that user
@@ -428,12 +381,10 @@ export class Medium implements INodeType {
 				}
 				return returnData;
 			},
-
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 
@@ -467,22 +418,29 @@ export class Medium implements INodeType {
 							title,
 							contentFormat,
 							content,
-
 						};
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						if (additionalFields.tags) {
 							const tags = additionalFields.tags as string;
-							bodyRequest.tags = tags.split(',').map(name => {
+							bodyRequest.tags = tags.split(',').map((name) => {
 								const returnValue = name.trim();
 								if (returnValue.length > 25) {
-									throw new NodeOperationError(this.getNode(), `The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`);
+									throw new NodeOperationError(
+										this.getNode(),
+										`The tag "${returnValue}" is to long. Maximum lenght of a tag is 25 characters.`,
+										{ itemIndex: i },
+									);
 								}
 								return returnValue;
 							});
 
 							if ((bodyRequest.tags as string[]).length > 5) {
-								throw new NodeOperationError(this.getNode(), 'To many tags got used. Maximum 5 can be set.');
+								throw new NodeOperationError(
+									this.getNode(),
+									'To many tags got used. Maximum 5 can be set.',
+									{ itemIndex: i },
+								);
 							}
 						}
 
@@ -512,15 +470,8 @@ export class Medium implements INodeType {
 								bodyRequest,
 								qs,
 							);
-						}
-						else {
-							const responseAuthorId = await mediumApiRequest.call(
-								this,
-								'GET',
-								'/me',
-								{},
-								qs,
-							);
+						} else {
+							const responseAuthorId = await mediumApiRequest.call(this, 'GET', '/me', {}, qs);
 
 							const authorId = responseAuthorId.data.id;
 							responseData = await mediumApiRequest.call(
@@ -544,11 +495,7 @@ export class Medium implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i) as string;
 
-						const user = await mediumApiRequest.call(
-							this,
-							'GET',
-							`/me`,
-						);
+						const user = await mediumApiRequest.call(this, 'GET', `/me`);
 
 						const userId = user.data.id;
 						//Get all publications of that user

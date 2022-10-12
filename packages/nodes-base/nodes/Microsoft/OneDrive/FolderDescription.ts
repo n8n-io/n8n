@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const folderOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
+				resource: ['folder'],
 			},
 		},
 		options: [
@@ -19,38 +16,47 @@ export const folderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a folder',
+				action: 'Create a folder',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a folder',
+				action: 'Delete a folder',
 			},
 			{
 				name: 'Get Children',
 				value: 'getChildren',
 				description: 'Get items inside a folder',
+				action: 'Get items in a folder',
+			},
+			{
+				name: 'Rename',
+				value: 'rename',
+				description: 'Rename a folder',
+				action: 'Rename a folder',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search a folder',
+				action: 'Search a folder',
 			},
 			{
 				name: 'Share',
 				value: 'share',
 				description: 'Share a folder',
+				action: 'Share a folder',
 			},
 		],
 		default: 'getChildren',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const folderFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 folder:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Name',
 		name: 'name',
@@ -59,12 +65,8 @@ export const folderFields: INodeProperties[] = [
 		placeholder: '/Pictures/2021',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['create'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -76,12 +78,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['create'],
+				resource: ['folder'],
 			},
 		},
 		default: {},
@@ -96,61 +94,78 @@ export const folderFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 folder:getChildren/delete                  */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:getChildren/delete                  */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Folder ID',
 		name: 'folderId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-					'getChildren',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['delete', 'getChildren'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 folder:search                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                               folder:rename                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Item ID',
+		name: 'itemId',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['rename'],
+				resource: ['folder'],
+			},
+		},
+		default: '',
+		description: 'ID of the folder',
+	},
+	{
+		displayName: 'New Name',
+		name: 'newName',
+		type: 'string',
+		displayOptions: {
+			show: {
+				operation: ['rename'],
+				resource: ['folder'],
+			},
+		},
+		default: '',
+		description: 'New name for folder',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:search                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Query',
 		name: 'query',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['search'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
-		description: 'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
+		description:
+			'The query text used to search for items. Values may be matched across several fields including filename, metadata, and file content.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 folder:share                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 folder:share                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Folder ID',
 		name: 'folderId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -176,12 +191,8 @@ export const folderFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -203,12 +214,8 @@ export const folderFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: '',

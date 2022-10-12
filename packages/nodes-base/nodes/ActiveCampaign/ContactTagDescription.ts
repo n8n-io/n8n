@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactTagOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactTag',
-				],
+				resource: ['contactTag'],
 			},
 		},
 		options: [
@@ -19,15 +16,16 @@ export const contactTagOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a tag to a contact',
+				action: 'Add a contact tag',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a tag from a contact',
+				action: 'Remove a contact tag',
 			},
 		],
 		default: 'add',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -36,9 +34,11 @@ export const contactTagFields: INodeProperties[] = [
 	//         contactTag:add
 	// ----------------------------------
 	{
-		displayName: 'Tag ID',
+		displayName: 'Tag Name or ID',
 		name: 'tagId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTags',
 		},
@@ -46,12 +46,8 @@ export const contactTagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['add'],
+				resource: ['contactTag'],
 			},
 		},
 	},
@@ -63,12 +59,8 @@ export const contactTagFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['add'],
+				resource: ['contactTag'],
 			},
 		},
 	},
@@ -81,12 +73,8 @@ export const contactTagFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'remove',
-				],
-				resource: [
-					'contactTag',
-				],
+				operation: ['remove'],
+				resource: ['contactTag'],
 			},
 		},
 		default: 0,

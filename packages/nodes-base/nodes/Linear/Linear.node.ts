@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -20,17 +18,12 @@ import {
 	linearApiRequest,
 	linearApiRequestAllItems,
 	sort,
-	validateCrendetials,
+	validateCredentials,
 } from './GenericFunctions';
 
-import {
-	issueFields,
-	issueOperations,
-} from './IssueDescription';
+import { issueFields, issueOperations } from './IssueDescription';
 
-import {
-	query,
-} from './Queries';
+import { query } from './Queries';
 interface IGraphqlBody {
 	query: string;
 	variables: IDataObject;
@@ -61,6 +54,7 @@ export class Linear implements INodeType {
 				displayName: 'Resource',
 				name: 'resource',
 				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Issue',
@@ -76,13 +70,18 @@ export class Linear implements INodeType {
 
 	methods = {
 		credentialTest: {
-			async linearApiTest(this: ICredentialTestFunctions, credential: ICredentialsDecrypted): Promise<INodeCredentialTestResult> {
+			async linearApiTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
 				try {
-					await validateCrendetials.call(this, credential.data as ICredentialDataDecryptedObject);
+					await validateCredentials.call(this, credential.data as ICredentialDataDecryptedObject);
 				} catch (error) {
 					const { error: err } = error as JsonObject;
 					const errors = (err as IDataObject).errors as [{ extensions: { code: string } }];
-					const authenticationError = Boolean(errors.filter(e => e.extensions.code === 'AUTHENTICATION_ERROR').length);
+					const authenticationError = Boolean(
+						errors.filter((e) => e.extensions.code === 'AUTHENTICATION_ERROR').length,
+					);
 					if (authenticationError) {
 						return {
 							status: 'Error',
@@ -157,7 +156,7 @@ export class Linear implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -238,21 +237,25 @@ export class Linear implements INodeType {
 						responseData = responseData?.data?.issueUpdate?.issue;
 					}
 				}
-				if (Array.isArray(responseData)) {
-					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} else {
-					returnData.push(responseData as IDataObject);
-				}
+
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({
-						error: (error as JsonObject).message,
-					});
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

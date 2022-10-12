@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 import {
 	address,
@@ -14,11 +12,10 @@ export const leadOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
+				resource: ['lead'],
 			},
 		},
 		options: [
@@ -26,40 +23,46 @@ export const leadOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a lead',
+				action: 'Create a lead',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
 				description: 'Create a new record, or update the current one if it already exists (upsert)',
+				action: 'Create or update a lead',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a lead',
+				action: 'Delete a lead',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a lead',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all leads',
+				action: 'Get a lead',
 			},
 			{
 				name: 'Get Fields',
 				value: 'getFields',
 				description: 'Get lead fields',
+				action: 'Get lead fields',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many leads',
+				action: 'Get many leads',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a lead',
+				action: 'Update a lead',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -76,12 +79,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -93,12 +92,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -110,12 +105,8 @@ export const leadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['lead'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -270,12 +261,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['lead'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -287,12 +274,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['lead'],
+				operation: ['upsert'],
 			},
 		},
 	},
@@ -304,12 +287,8 @@ export const leadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['lead'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
@@ -348,7 +327,8 @@ export const leadFields: INodeProperties[] = [
 				name: 'Email',
 				type: 'string',
 				default: '',
-				description: 'Email of the lead. If a record with this email exists it will be updated, otherwise a new one will be created.',
+				description:
+					'Email of the lead. If a record with this email exists it will be updated, otherwise a new one will be created.',
 			},
 			{
 				displayName: 'Email Opt Out',
@@ -465,12 +445,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['lead'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -487,12 +463,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['lead'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -514,12 +486,8 @@ export const leadFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -531,12 +499,8 @@ export const leadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'lead',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['lead'],
+				operation: ['update'],
 			},
 		},
 		options: [

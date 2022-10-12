@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const fileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -19,27 +16,29 @@ export const fileOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a file',
+				action: 'Delete a file',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all files',
+				description: 'Retrieve many files',
+				action: 'Get many files',
 			},
 			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a file',
+				action: 'Upload a file',
 			},
 		],
 		default: 'delete',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const fileFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 file:upload                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:upload                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Binary Data',
 		name: 'binaryData',
@@ -47,15 +46,11 @@ export const fileFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field',
+		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'Binary Property',
@@ -65,15 +60,9 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				binaryData: [
-					true,
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				binaryData: [true],
 			},
 		},
 		description: 'Name of the binary property which contains the data for the file to be uploaded',
@@ -99,12 +88,8 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 		default: '',
@@ -116,15 +101,9 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				fileAssociation: [
-					'contact',
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				fileAssociation: ['contact'],
 			},
 		},
 		default: '',
@@ -136,15 +115,9 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				binaryData: [
-					false,
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				binaryData: [false],
 			},
 		},
 		default: '',
@@ -160,15 +133,9 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				binaryData: [
-					false,
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				binaryData: [false],
 			},
 		},
 		default: '',
@@ -181,18 +148,14 @@ export const fileFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:delete                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:delete                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'File ID',
 		name: 'fileId',
@@ -200,31 +163,23 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['delete'],
+				resource: ['file'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 file:getAll                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 file:getAll                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['getAll'],
+				resource: ['file'],
 			},
 		},
 		default: false,
@@ -236,15 +191,9 @@ export const fileFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['file'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -262,12 +211,8 @@ export const fileFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['getAll'],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -286,7 +231,8 @@ export const fileFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'Filter files based on name, with \'*\' preceding or following to indicate LIKE queries',
+				description:
+					"Filter files based on name, with '*' preceding or following to indicate LIKE queries",
 			},
 			{
 				displayName: 'Permission',
@@ -319,20 +265,8 @@ export const fileFields: INodeProperties[] = [
 						value: 'application',
 					},
 					{
-						name: 'Image',
-						value: 'image',
-					},
-					{
-						name: 'Fax',
-						value: 'fax',
-					},
-					{
 						name: 'Attachment',
 						value: 'attachment',
-					},
-					{
-						name: 'Ticket',
-						value: 'ticket',
 					},
 					{
 						name: 'Contact',
@@ -343,36 +277,48 @@ export const fileFields: INodeProperties[] = [
 						value: 'digitalProduct',
 					},
 					{
-						name: 'Import',
-						value: 'import',
-					},
-					{
-						name: 'Hidden',
-						value: 'hidden',
-					},
-					{
-						name: 'Webform',
-						value: 'webform',
-					},
-					{
-						name: 'Style Cart',
-						value: 'styleCart',
-					},
-					{
-						name: 'Re Sampled Image',
-						value: 'reSampledImage',
-					},
-					{
-						name: 'Template Thumnail',
-						value: 'templateThumnail',
+						name: 'Fax',
+						value: 'fax',
 					},
 					{
 						name: 'Funnel',
 						value: 'funnel',
 					},
 					{
+						name: 'Hidden',
+						value: 'hidden',
+					},
+					{
+						name: 'Image',
+						value: 'image',
+					},
+					{
+						name: 'Import',
+						value: 'import',
+					},
+					{
 						name: 'Logo Thumnail',
 						value: 'logoThumnail',
+					},
+					{
+						name: 'Re Sampled Image',
+						value: 'reSampledImage',
+					},
+					{
+						name: 'Style Cart',
+						value: 'styleCart',
+					},
+					{
+						name: 'Template Thumnail',
+						value: 'templateThumnail',
+					},
+					{
+						name: 'Ticket',
+						value: 'ticket',
+					},
+					{
+						name: 'Webform',
+						value: 'webform',
 					},
 				],
 				default: '',

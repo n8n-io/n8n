@@ -1,5 +1,5 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition">
+	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId" ref="sticky">
 		<div
 			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
 			:style="stickySize"
@@ -18,7 +18,7 @@
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
-					:id="nodeIndex"
+					:id="node.id"
 					:readOnly="isReadOnly"
 					:defaultText="defaultText"
 					:editMode="isActive && !isReadOnly"
@@ -28,6 +28,7 @@
 					@resizestart="onResizeStart"
 					@resize="onResize"
 					@resizeend="onResizeEnd"
+					@markdown-click="onMarkdownClick"
 				/>
 			</div>
 
@@ -54,6 +55,7 @@ import { INodeUi, XYPosition } from '@/Interface';
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { QUICKSTART_NOTE_NAME } from '@/constants';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
@@ -79,7 +81,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters.nodeType(this.data.type, this.data.typeVersion);
+			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
@@ -124,7 +126,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		workflowRunning (): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
- 	},
+	},
 	data () {
 		return {
 			isResizing: false,
@@ -146,6 +148,15 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				this.$store.commit('setActiveNode', null);
 			}
 		},
+		onMarkdownClick ( link:HTMLAnchorElement, event: Event ) {
+			if (link) {
+				const isOnboardingNote = this.name === QUICKSTART_NOTE_NAME;
+				const isWelcomeVideo = link.querySelector('img[alt="n8n quickstart video"');
+				const type = isOnboardingNote && isWelcomeVideo ? 'welcome_video' : isOnboardingNote && link.getAttribute('href') === '/templates' ? 'templates' : 'other';
+
+				this.$telemetry.track('User clicked note link', { type } );
+			}
+		},
 		onInputChange(content: string) {
 			this.setParameters({content});
 		},
@@ -154,9 +165,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (!this.isSelected && this.node) {
 				this.$emit('nodeSelected', this.node.name, false, true);
 			}
-			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
-			const nodeIdName = `node-${nodeIndex}`;
-			this.instance.destroyDraggable(nodeIdName); // todo
+			if (this.node) {
+				this.instance.destroyDraggable(this.node.id); // todo avoid destroying if possible
+			}
 		},
 		onResize({height, width, dX, dY}:  { width: number, height: number, dX: number, dY: number }) {
 			if (!this.node) {
@@ -257,7 +268,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				}
 
 				&:hover {
-					color: $--color-primary;
+					color: $color-primary;
 				}
 			}
 		}

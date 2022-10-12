@@ -1,6 +1,4 @@
-import {
-	CustomerProperties,
-} from '../../Interfaces';
+import { CustomerProperties } from '../../Interfaces';
 
 export const customerGetAllDescription: CustomerProperties = [
 	{
@@ -9,12 +7,8 @@ export const customerGetAllDescription: CustomerProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -25,17 +19,14 @@ export const customerGetAllDescription: CustomerProperties = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 25,
@@ -48,12 +39,8 @@ export const customerGetAllDescription: CustomerProperties = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -68,6 +55,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 			},
 			{
@@ -102,7 +90,7 @@ export const customerGetAllDescription: CustomerProperties = [
 				type: 'string',
 				default: '',
 				placeholder: 'firstname ASC',
-				description: 'customer field to order by, eg: "firstname ASC", "city DESC" etc',
+				description: 'Customer field to order by, eg: "firstname ASC", "city DESC" etc',
 			},
 		],
 	},

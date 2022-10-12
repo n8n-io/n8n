@@ -34,6 +34,14 @@
 						</n8n-link>
 					</el-col>
 				</el-row>
+				<el-row>
+					<el-col :span="8" class="info-name">
+						<n8n-text>{{ $locale.baseText('about.instanceID') }}</n8n-text>
+					</el-col>
+					<el-col :span="16">
+						<n8n-text>{{ instanceId }}</n8n-text>
+					</el-col>
+				</el-row>
 			</div>
 		</template>
 
@@ -64,6 +72,7 @@ export default Vue.extend({
 	},
 	computed: {
 		...mapGetters('settings', ['versionCli']),
+		...mapGetters(['instanceId']),
 	},
 	methods: {
 		closeDialog() {
@@ -76,5 +85,6 @@ export default Vue.extend({
 <style module lang="scss">
 .container > * {
 	margin-bottom: var(--spacing-s);
+	overflow-wrap: break-word;
 }
 </style>

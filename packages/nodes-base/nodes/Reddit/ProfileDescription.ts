@@ -1,30 +1,26 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const profileOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'profile',
-				],
+				resource: ['profile'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a profile',
 			},
 		],
 		default: 'get',
-		description: 'Operation to perform',
 	},
 ];
-
 
 export const profileFields: INodeProperties[] = [
 	{
@@ -36,11 +32,6 @@ export const profileFields: INodeProperties[] = [
 		description: 'Details of my account to retrieve',
 		options: [
 			{
-				name: 'Identity',
-				value: 'identity',
-				description: 'Return the identity of the logged-in user',
-			},
-			{
 				name: 'Blocked Users',
 				value: 'blockedUsers',
 				description: 'Return the blocked users of the logged-in user',
@@ -49,6 +40,11 @@ export const profileFields: INodeProperties[] = [
 				name: 'Friends',
 				value: 'friends',
 				description: 'Return the friends of the logged-in user',
+			},
+			{
+				name: 'Identity',
+				value: 'identity',
+				description: 'Return the identity of the logged-in user',
 			},
 			{
 				name: 'Karma',
@@ -73,12 +69,8 @@ export const profileFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'profile',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['profile'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -90,15 +82,9 @@ export const profileFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'profile',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'saved',
-				],
+				resource: ['profile'],
+				operation: ['get'],
+				details: ['saved'],
 			},
 		},
 	},
@@ -114,18 +100,10 @@ export const profileFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'profile',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'saved',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['profile'],
+				operation: ['get'],
+				details: ['saved'],
+				returnAll: [false],
 			},
 		},
 	},

@@ -1,0 +1,87 @@
+// Vitest Snapshot v1
+
+exports[`components > N8nTree > should render each tree with node class 1`] = `
+"<div class=\\"n8n-tree\\">
+  <div class=\\"nodeClass\\">
+    <div><span>hello</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"nodeClass _indent_1y4uu_1\\">
+          <div class=\\"_simple_1y4uu_5\\"><span>test</span><span>:</span><span>world</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class=\\"nodeClass\\">
+    <div><span>options</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"nodeClass _indent_1y4uu_1\\">
+          <div class=\\"_simple_1y4uu_5\\"><span>0</span><span>:</span><span>yes</span></div>
+        </div>
+        <div class=\\"nodeClass _indent_1y4uu_1\\">
+          <div class=\\"_simple_1y4uu_5\\"><span>1</span><span>:</span><span>no</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>"
+`;
+
+exports[`components > N8nTree > should render simple tree 1`] = `
+"<div class=\\"n8n-tree\\">
+  <div class=\\"\\">
+    <div class=\\"_simple_1y4uu_5\\"><span>hello</span><span>:</span><span>world</span></div>
+  </div>
+</div>"
+`;
+
+exports[`components > N8nTree > should render tree 1`] = `
+"<div class=\\"n8n-tree\\">
+  <div class=\\"\\">
+    <div><span>hello</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"_indent_1y4uu_1\\">
+          <div class=\\"_simple_1y4uu_5\\"><span>test</span><span>:</span><span>world</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class=\\"\\">
+    <div><span>options</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"_indent_1y4uu_1\\">
+          <div class=\\"_simple_1y4uu_5\\"><span>0</span><span>:</span><span>yes</span></div>
+        </div>
+        <div class=\\"_indent_1y4uu_1\\">
+          <div class=\\"_simple_1y4uu_5\\"><span>1</span><span>:</span><span>no</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>"
+`;
+
+exports[`components > N8nTree > should render tree with slots 1`] = `
+"<div class=\\"n8n-tree\\">
+  <div class=\\"\\">
+    <div><span>label</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"_indent_1y4uu_1\\">
+          <div class=\\"_simple_1y4uu_5\\"><span>label</span><span>:</span><span>value</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class=\\"\\">
+    <div><span>label</span>
+      <div class=\\"n8n-tree\\">
+        <div class=\\"_indent_1y4uu_1\\">
+          <div class=\\"_simple_1y4uu_5\\"><span>label</span><span>:</span><span>value</span></div>
+        </div>
+        <div class=\\"_indent_1y4uu_1\\">
+          <div class=\\"_simple_1y4uu_5\\"><span>label</span><span>:</span><span>value</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>"
+`;

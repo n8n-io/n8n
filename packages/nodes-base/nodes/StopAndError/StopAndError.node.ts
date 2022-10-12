@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	INodeExecutionData,
@@ -59,9 +57,7 @@ export class StopAndError implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						errorType: [
-							'errorMessage',
-						],
+						errorType: ['errorMessage'],
 					},
 				},
 			},
@@ -78,9 +74,7 @@ export class StopAndError implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						errorType: [
-							'errorObject',
-						],
+						errorType: ['errorObject'],
 					},
 				},
 			},

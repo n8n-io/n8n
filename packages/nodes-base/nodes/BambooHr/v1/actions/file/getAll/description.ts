@@ -1,6 +1,4 @@
-import {
-	FileProperties,
-} from '../../Interfaces';
+import { FileProperties } from '../../Interfaces';
 
 export const fileGetAllDescription: FileProperties = [
 	{
@@ -11,12 +9,8 @@ export const fileGetAllDescription: FileProperties = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['getAll'],
+				resource: ['file'],
 			},
 		},
 	},
@@ -32,33 +26,23 @@ export const fileGetAllDescription: FileProperties = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['file'],
+				returnAll: [false],
 			},
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplifyOutput',
 		type: 'boolean',
 		default: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['getAll'],
+				resource: ['file'],
 			},
 		},
-		description: 'Whether to simplify the output or not',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 	},
 ];

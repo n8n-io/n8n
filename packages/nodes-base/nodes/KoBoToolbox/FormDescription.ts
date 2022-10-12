@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const formOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
+				resource: ['form'],
 			},
 		},
 		options: [
@@ -19,11 +16,13 @@ export const formOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a form',
+				action: 'Get a form',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all forms',
+				description: 'Get many forms',
+				action: 'Get many forms',
 			},
 		],
 		default: 'get',
@@ -31,7 +30,6 @@ export const formOperations: INodeProperties[] = [
 ];
 
 export const formFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                form:get                                    */
 	/* -------------------------------------------------------------------------- */
@@ -43,12 +41,8 @@ export const formFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['form'],
+				operation: ['get'],
 			},
 		},
 		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
@@ -64,12 +58,8 @@ export const formFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['form'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -83,15 +73,9 @@ export const formFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['form'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 1000,
@@ -105,12 +89,8 @@ export const formFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['form'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -133,7 +113,7 @@ export const formFields: INodeProperties[] = [
 								name: 'descending',
 								type: 'boolean',
 								default: true,
-								description: 'Sort by descending order',
+								description: 'Whether to sort by descending order',
 							},
 							{
 								displayName: 'Order By',
@@ -178,12 +158,8 @@ export const formFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'form',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['form'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -192,7 +168,8 @@ export const formFields: INodeProperties[] = [
 				name: 'filter',
 				type: 'string',
 				default: 'asset_type:survey',
-				description: 'A text search query based on form data - e.g. "owner__username:meg AND name__icontains:quixotic" - see <a href="https://github.com/kobotoolbox/kpi#searching" target="_blank">docs</a> for more details',
+				description:
+					'A text search query based on form data - e.g. "owner__username:meg AND name__icontains:quixotic" - see <a href="https://github.com/kobotoolbox/kpi#searching" target="_blank">docs</a> for more details',
 			},
 		],
 	},

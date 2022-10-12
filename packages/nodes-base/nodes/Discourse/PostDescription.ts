@@ -1,19 +1,16 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const postOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
+				resource: ['post'],
 			},
 		},
 		options: [
@@ -21,21 +18,25 @@ export const postOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a post',
+				action: 'Create a post',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a post',
+				action: 'Get a post',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all posts',
+				description: 'Get many posts',
+				action: 'Get many posts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a post',
+				action: 'Update a post',
 			},
 		],
 		default: 'create',
@@ -52,12 +53,8 @@ export const postFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['post'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -73,12 +70,8 @@ export const postFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['post'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -91,25 +84,22 @@ export const postFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'post',
-				],
+				operation: ['create'],
+				resource: ['post'],
 			},
 		},
 		default: {},
 		options: [
 			{
-				displayName: 'Category ID',
+				displayName: 'Category Name or ID',
 				name: 'category',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getCategories',
 				},
 				default: '',
-				description: 'ID of the category',
+				description:
+					'ID of the category. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Reply To Post Number',
@@ -138,12 +128,8 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['post'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -159,12 +145,8 @@ export const postFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['post'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -176,15 +158,9 @@ export const postFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['post'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -204,12 +180,8 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['post'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -225,12 +197,8 @@ export const postFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['post'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -244,12 +212,8 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['post'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -1,19 +1,16 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const groupOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
+				resource: ['group'],
 			},
 		},
 		options: [
@@ -21,21 +18,25 @@ export const groupOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a group',
+				action: 'Create a group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a group',
+				action: 'Get a group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all groups',
+				description: 'Get many groups',
+				action: 'Get many groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a group',
+				action: 'Update a group',
 			},
 		],
 		default: 'create',
@@ -53,13 +54,8 @@ export const groupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'get',
-					'create',
-				],
+				resource: ['group'],
+				operation: ['get', 'create'],
 			},
 		},
 		default: '',
@@ -75,12 +71,8 @@ export const groupFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['group'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -92,15 +84,9 @@ export const groupFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['group'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -121,12 +107,8 @@ export const groupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['group'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -139,12 +121,8 @@ export const groupFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['group'],
+				operation: ['update'],
 			},
 		},
 		default: '',

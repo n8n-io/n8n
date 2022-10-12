@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const reportOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
+				resource: ['report'],
 			},
 		},
 		options: [
@@ -19,15 +16,16 @@ export const reportOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a report',
+				action: 'Get a report',
 			},
 			{
 				name: 'Run',
 				value: 'run',
 				description: 'Run a report',
+				action: 'Run a report',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -43,12 +41,8 @@ export const reportFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['report'],
+				operation: ['get'],
 			},
 		},
 		description: 'The table identifier',
@@ -61,12 +55,8 @@ export const reportFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['report'],
+				operation: ['get'],
 			},
 		},
 		description: 'The identifier of the report, unique to the table',
@@ -82,12 +72,8 @@ export const reportFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'run',
-				],
+				resource: ['report'],
+				operation: ['run'],
 			},
 		},
 		description: 'The table identifier',
@@ -100,12 +86,8 @@ export const reportFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'run',
-				],
+				resource: ['report'],
+				operation: ['run'],
 			},
 		},
 		description: 'The identifier of the report, unique to the table',
@@ -116,12 +98,8 @@ export const reportFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'run',
-				],
+				resource: ['report'],
+				operation: ['run'],
 			},
 		},
 		default: true,
@@ -133,17 +111,11 @@ export const reportFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'report',
-				],
-				operation: [
-					'run',
-				],
+				resource: ['report'],
+				operation: ['run'],
 			},
 			hide: {
-				returnAll: [
-					true,
-				],
+				returnAll: [true],
 			},
 		},
 		typeOptions: {

@@ -1,19 +1,16 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const categoryOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		description: 'Choose an operation',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'category',
-				],
+				resource: ['category'],
 			},
 		},
 		options: [
@@ -21,16 +18,19 @@ export const categoryOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a category',
+				action: 'Create a category',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all categories',
+				description: 'Get many categories',
+				action: 'Get many categories',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a category',
+				action: 'Update a category',
 			},
 		],
 		default: 'create',
@@ -48,12 +48,8 @@ export const categoryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'category',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['category'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -66,12 +62,8 @@ export const categoryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'category',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['category'],
+				operation: ['create'],
 			},
 		},
 		default: '0000FF',
@@ -84,12 +76,8 @@ export const categoryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'category',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['category'],
+				operation: ['create'],
 			},
 		},
 		default: '0000FF',
@@ -105,12 +93,8 @@ export const categoryFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'category',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['category'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -122,15 +106,9 @@ export const categoryFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'category',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['category'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -151,12 +129,8 @@ export const categoryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'category',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['category'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -169,12 +143,8 @@ export const categoryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'category',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['category'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -188,12 +158,8 @@ export const categoryFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'category',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['category'],
+				operation: ['update'],
 			},
 		},
 		options: [

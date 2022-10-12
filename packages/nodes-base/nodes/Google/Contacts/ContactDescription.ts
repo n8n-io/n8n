@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -19,30 +16,34 @@ export const contactOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a contact',
+				action: 'Create a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all contacts',
+				description: 'Retrieve many contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a contact',
+				action: 'Update a contact',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
@@ -56,12 +57,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -72,12 +69,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -90,12 +83,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['create'],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -277,7 +266,8 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: 'The type of the email address. The type can be custom or one of these predefined values.',
+								description:
+									'The type of the email address. The type can be custom or one of these predefined values.',
 							},
 							{
 								displayName: 'Value',
@@ -327,7 +317,8 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: 'The type of the event. The type can be custom or one of these predefined values.',
+								description:
+									'The type of the event. The type can be custom or one of these predefined values.',
 							},
 						],
 					},
@@ -341,9 +332,11 @@ export const contactFields: INodeProperties[] = [
 				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Names or IDs',
 				name: 'group',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
@@ -396,24 +389,28 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: 'Google Voice',
+										value: 'googleVoice',
+									},
+									{
 										name: 'Home',
 										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
 									},
 									{
 										name: 'Home Fax',
 										value: 'homeFax',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
+										name: 'Main',
+										value: 'main',
+									},
+									{
+										name: 'Mobile',
+										value: 'mobile',
+									},
+									{
+										name: 'Other',
+										value: 'other',
 									},
 									{
 										name: 'Other Fax',
@@ -424,24 +421,20 @@ export const contactFields: INodeProperties[] = [
 										value: 'pager',
 									},
 									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
+									},
+									{
 										name: 'Work Mobile',
 										value: 'workMobile',
 									},
 									{
 										name: 'Work Pager',
 										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
 									},
 								],
 								default: '',
@@ -537,7 +530,8 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: 'The person\'s relation to the other person. The type can be custom or one of these predefined values.',
+								description:
+									"The person's relation to the other person. The type can be custom or one of these predefined values.",
 							},
 						],
 					},
@@ -555,12 +549,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['delete'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -575,12 +565,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['get'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -693,16 +679,13 @@ export const contactFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['get'],
+				resource: ['contact'],
 			},
 		},
 		default: [],
-		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
+		description:
+			'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
 		displayName: 'RAW Data',
@@ -710,16 +693,12 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['get'],
+				resource: ['contact'],
 			},
 		},
 		default: false,
-		description: 'Returns the data exactly in the way it got received from the API',
+		description: 'Whether to return the data exactly in the way it got received from the API',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:getAll                             */
@@ -730,12 +709,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
 			},
 		},
 		default: false,
@@ -747,15 +722,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -873,16 +842,13 @@ export const contactFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
 			},
 		},
 		default: [],
-		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
+		description:
+			'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
 		displayName: 'Use Query',
@@ -890,12 +856,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
 			},
 		},
 		default: false,
@@ -907,19 +869,14 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
-				useQuery: [
-					true,
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
+				useQuery: [true],
 			},
 		},
 		default: '',
-		description: 'The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".',
+		description:
+			'The plain-text query for the request. The query is used to match prefix phrases of the fields on a person. For example, a person with name "foo name" matches queries such as "f", "fo", "foo", "foo n", "nam", etc., but not "oo n".',
 	},
 	{
 		displayName: 'RAW Data',
@@ -927,16 +884,12 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
 			},
 		},
 		default: false,
-		description: 'Returns the data exactly in the way it got received from the API',
+		description: 'Whether to return the data exactly in the way it got received from the API',
 	},
 	{
 		displayName: 'Options',
@@ -946,15 +899,9 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
-				useQuery: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
+				useQuery: [false],
 			},
 		},
 		options: [
@@ -999,12 +946,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['update'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -1117,16 +1060,13 @@ export const contactFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['update'],
+				resource: ['contact'],
 			},
 		},
 		default: [],
-		description: 'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
+		description:
+			'A field mask to restrict which fields on each person are returned. Multiple fields can be specified by separating them with commas.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -1136,12 +1076,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['update'],
+				resource: ['contact'],
 			},
 		},
 		options: [
@@ -1150,7 +1086,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'etag',
 				type: 'string',
 				default: '',
-				description: 'The etag field in the person is nedded to make sure the contact has not changed since your last read',
+				description:
+					'The etag field in the person is nedded to make sure the contact has not changed since your last read',
 			},
 			{
 				displayName: 'Family Name',
@@ -1342,7 +1279,8 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: 'The type of the email address. The type can be custom or one of these predefined values.',
+								description:
+									'The type of the email address. The type can be custom or one of these predefined values.',
 							},
 							{
 								displayName: 'Value',
@@ -1392,7 +1330,8 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: 'The type of the event. The type can be custom or one of these predefined values.',
+								description:
+									'The type of the event. The type can be custom or one of these predefined values.',
 							},
 						],
 					},
@@ -1406,9 +1345,11 @@ export const contactFields: INodeProperties[] = [
 				description: 'The name that should be used to sort the person in a list',
 			},
 			{
-				displayName: 'Group',
+				displayName: 'Group Names or IDs',
 				name: 'group',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getGroups',
 				},
@@ -1461,24 +1402,28 @@ export const contactFields: INodeProperties[] = [
 								type: 'options',
 								options: [
 									{
+										name: 'Google Voice',
+										value: 'googleVoice',
+									},
+									{
 										name: 'Home',
 										value: 'home',
-									},
-									{
-										name: 'Work',
-										value: 'work',
-									},
-									{
-										name: 'Mobile',
-										value: 'mobile',
 									},
 									{
 										name: 'Home Fax',
 										value: 'homeFax',
 									},
 									{
-										name: 'Work Fax',
-										value: 'workFax',
+										name: 'Main',
+										value: 'main',
+									},
+									{
+										name: 'Mobile',
+										value: 'mobile',
+									},
+									{
+										name: 'Other',
+										value: 'other',
 									},
 									{
 										name: 'Other Fax',
@@ -1489,24 +1434,20 @@ export const contactFields: INodeProperties[] = [
 										value: 'pager',
 									},
 									{
+										name: 'Work',
+										value: 'work',
+									},
+									{
+										name: 'Work Fax',
+										value: 'workFax',
+									},
+									{
 										name: 'Work Mobile',
 										value: 'workMobile',
 									},
 									{
 										name: 'Work Pager',
 										value: 'workPager',
-									},
-									{
-										name: 'Main',
-										value: 'main',
-									},
-									{
-										name: 'Google Voice',
-										value: 'googleVoice',
-									},
-									{
-										name: 'Other',
-										value: 'other',
 									},
 								],
 								default: '',
@@ -1602,7 +1543,8 @@ export const contactFields: INodeProperties[] = [
 									},
 								],
 								default: '',
-								description: 'The person\'s relation to the other person. The type can be custom or one of these predefined values.',
+								description:
+									"The person's relation to the other person. The type can be custom or one of these predefined values.",
 							},
 						],
 					},

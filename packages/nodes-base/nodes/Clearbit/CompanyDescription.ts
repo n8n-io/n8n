@@ -5,11 +5,10 @@ export const companyOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -17,20 +16,20 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Autocomplete',
 				value: 'autocomplete',
 				description: 'Auto-complete company names and retrieve logo and domain',
+				action: 'Autocomplete a company',
 			},
 			{
 				name: 'Enrich',
 				value: 'enrich',
 				description: 'Look up person and company data based on an email or domain',
+				action: 'Enrich a company',
 			},
 		],
 		default: 'enrich',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const companyFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 company:enrich                         */
 	/* -------------------------------------------------------------------------- */
@@ -42,12 +41,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['company'],
+				operation: ['enrich'],
 			},
 		},
 		description: 'The domain to look up',
@@ -60,12 +55,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'enrich',
-				],
+				resource: ['company'],
+				operation: ['enrich'],
 			},
 		},
 		options: [
@@ -111,12 +102,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'autocomplete',
-				],
+				resource: ['company'],
+				operation: ['autocomplete'],
 			},
 		},
 		description: 'Name is the partial name of the company',

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const options = {
 	displayName: 'Options',
@@ -10,25 +8,46 @@ export const options = {
 	default: {},
 	options: [
 		{
+			displayName: 'Download Attachments',
+			name: 'download',
+			type: 'boolean',
+			default: false,
+			description: 'Whether to download submitted attachments',
+		},
+		{
+			displayName: 'Attachments Naming Scheme',
+			name: 'binaryNamingScheme',
+			type: 'options',
+			default: 'sequence',
+			displayOptions: {
+				show: {
+					download: [true],
+				},
+			},
+			options: [
+				{
+					name: 'Sequence (e.g. attachment_N)',
+					value: 'sequence',
+				},
+				{
+					name: 'Use Original Form Question ID',
+					value: 'question',
+				},
+			],
+		},
+		{
 			displayName: 'Attachments Prefix',
 			name: 'dataPropertyAttachmentsPrefixName',
 			type: 'string',
 			displayOptions: {
 				show: {
-					download: [
-						true,
-					],
+					download: [true],
+					binaryNamingScheme: ['sequence'],
 				},
 			},
 			default: 'attachment_',
-			description: 'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
-		},
-		{
-			displayName: 'Download Attachments',
-			name: 'download',
-			type: 'boolean',
-			default: false,
-			description: 'Download submitted attachments',
+			description:
+				'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 		},
 		{
 			displayName: 'File Size',
@@ -36,9 +55,7 @@ export const options = {
 			type: 'options',
 			displayOptions: {
 				show: {
-					download: [
-						true,
-					],
+					download: [true],
 				},
 			},
 			default: 'download_url',
@@ -67,21 +84,24 @@ export const options = {
 			name: 'selectMask',
 			type: 'string',
 			default: 'select_*',
-			description: 'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays.',
+			description:
+				'Comma-separated list of wildcard-style selectors for fields that should be treated as multiselect fields, i.e. parsed as arrays.',
 		},
 		{
 			displayName: 'Number Mask',
 			name: 'numberMask',
 			type: 'string',
 			default: 'n_*, f_*',
-			description: 'Comma-separated list of wildcard-style selectors for fields that should be treated as numbers',
+			description:
+				'Comma-separated list of wildcard-style selectors for fields that should be treated as numbers',
 		},
 		{
 			displayName: 'Reformat',
 			name: 'reformat',
 			type: 'boolean',
 			default: false,
-			description: 'Apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
+			description:
+				'Whether to apply some reformatting to the submission data, such as parsing GeoJSON coordinates',
 		},
 	],
 } as INodeProperties;

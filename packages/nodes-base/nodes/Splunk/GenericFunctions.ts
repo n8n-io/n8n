@@ -1,20 +1,10 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	parseString,
-} from 'xml2js';
+import { parseString } from 'xml2js';
 
 import {
 	SplunkCredentials,
@@ -31,15 +21,13 @@ export async function splunkApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const {
-		authToken,
-		baseUrl,
-		allowUnauthorizedCerts,
-	} = await this.getCredentials('splunkApi') as SplunkCredentials;
+	const { authToken, baseUrl, allowUnauthorizedCerts } = (await this.getCredentials(
+		'splunkApi',
+	)) as SplunkCredentials;
 
 	const options: OptionsWithUri = {
 		headers: {
-			'Authorization': `Bearer ${authToken}`,
+			Authorization: `Bearer ${authToken}`,
 			'Content-Type': 'application/x-www-form-urlencoded',
 		},
 		method,
@@ -66,7 +54,7 @@ export async function splunkApiRequest(
 			throw new NodeApiError(this.getNode(), { ...error, code: 401 });
 		}
 
-		const rawError = await parseXml(error.error) as SplunkError;
+		const rawError = (await parseXml(error.error)) as SplunkError;
 		error = extractErrorDescription(rawError);
 
 		if ('fatal' in error) {
@@ -91,13 +79,11 @@ export function parseXml(xml: string) {
 
 export function extractErrorDescription(rawError: SplunkError) {
 	const messages = rawError.response?.messages;
-	return messages
-		? { [messages.msg.$.type.toLowerCase()]: messages.msg._ }
-		: rawError;
+	return messages ? { [messages.msg.$.type.toLowerCase()]: messages.msg._ } : rawError;
 }
 
 export function toUnixEpoch(timestamp: string) {
-	return Date.parse(timestamp) /1000;
+	return Date.parse(timestamp) / 1000;
 }
 
 // ----------------------------------------
@@ -109,9 +95,7 @@ export function formatSearch(responseData: SplunkSearchResponse) {
 
 	if (!entries) return [];
 
-	return Array.isArray(entries)
-		? entries.map(formatEntry)
-		: [formatEntry(entries)];
+	return Array.isArray(entries) ? entries.map(formatEntry) : [formatEntry(entries)];
 }
 
 // ----------------------------------------
@@ -123,9 +107,7 @@ export function formatFeed(responseData: SplunkFeedResponse) {
 
 	if (!entries) return [];
 
-	return Array.isArray(entries)
-		? entries.map(formatEntry)
-		: [formatEntry(entries)];
+	return Array.isArray(entries) ? entries.map(formatEntry) : [formatEntry(entries)];
 }
 
 // ----------------------------------------
@@ -137,7 +119,7 @@ export function formatResults(responseData: SplunkResultResponse) {
 	if (!results) return [];
 
 	return Array.isArray(results)
-		? results.map(r => formatResult(r.field))
+		? results.map((r) => formatResult(r.field))
 		: [formatResult(results.field)];
 }
 
@@ -155,14 +137,9 @@ function compactResult(splunkObject: any): any {
 		return {};
 	}
 
-	if (
-		Array.isArray(splunkObject?.value) &&
-		splunkObject?.value[0]?.text
-	) {
+	if (Array.isArray(splunkObject?.value) && splunkObject?.value[0]?.text) {
 		return {
-			[splunkObject.$.k]: splunkObject.value
-				.map((v: { text: string }) => v.text)
-				.join(','),
+			[splunkObject.$.k]: splunkObject.value.map((v: { text: string }) => v.text).join(','),
 		};
 	}
 
@@ -241,7 +218,7 @@ function compactEntryContent(splunkObject: any): any {
 export function setCount(this: IExecuteFunctions, qs: IDataObject) {
 	qs.count = this.getNodeParameter('returnAll', 0)
 		? 0
-		: this.getNodeParameter('limit', 0) as number;
+		: (this.getNodeParameter('limit', 0) as number);
 }
 
 export function populate(source: IDataObject, destination: IDataObject) {
@@ -262,7 +239,5 @@ export function getId(
 ) {
 	const id = this.getNodeParameter(idType, i) as string;
 
-	return id.includes(endpoint)
-		? id.split(endpoint).pop()!
-		: id;
+	return id.includes(endpoint) ? id.split(endpoint).pop()! : id;
 }

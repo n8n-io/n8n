@@ -1,41 +1,42 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const transferOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a transfer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a transfer',
 			},
 			{
 				name: 'Execute',
 				value: 'execute',
+				action: 'Execute a transfer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a transfer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many transfers',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
+				resource: ['transfer'],
 			},
 		},
 	},
@@ -46,26 +47,21 @@ export const transferFields: INodeProperties[] = [
 	//         transfer: create
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
-			loadOptionsDependsOn: [
-				'profileId',
-			],
+			loadOptionsDependsOn: ['profileId'],
 		},
-		description: 'ID of the user profile to retrieve the balance of',
+		description:
+			'ID of the user profile to retrieve the balance of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['transfer'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -78,17 +74,13 @@ export const transferFields: INodeProperties[] = [
 		description: 'ID of the quote based on which to create the transfer',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['transfer'],
+				operation: ['create'],
 			},
 		},
 	},
 	{
-		displayName: 'Target Account ID',
+		displayName: 'Target Account Name or ID',
 		name: 'targetAccountId',
 		type: 'options',
 		required: true,
@@ -96,15 +88,12 @@ export const transferFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getRecipients',
 		},
-		description: 'ID of the account that will receive the funds',
+		description:
+			'ID of the account that will receive the funds. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['transfer'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -116,12 +105,8 @@ export const transferFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['transfer'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -130,7 +115,7 @@ export const transferFields: INodeProperties[] = [
 				name: 'reference',
 				type: 'string',
 				default: '',
-				description: 'Reference text to show in the recipient\'s bank statement',
+				description: "Reference text to show in the recipient's bank statement",
 			},
 		],
 	},
@@ -147,12 +132,8 @@ export const transferFields: INodeProperties[] = [
 		description: 'ID of the transfer to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['transfer'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -161,7 +142,7 @@ export const transferFields: INodeProperties[] = [
 	//        transfer: execute
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -169,15 +150,12 @@ export const transferFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to execute the transfer under',
+		description:
+			'ID of the user profile to execute the transfer under. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'execute',
-				],
+				resource: ['transfer'],
+				operation: ['execute'],
 			},
 		},
 	},
@@ -190,12 +168,8 @@ export const transferFields: INodeProperties[] = [
 		description: 'ID of the transfer to execute',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'execute',
-				],
+				resource: ['transfer'],
+				operation: ['execute'],
 			},
 		},
 	},
@@ -212,12 +186,8 @@ export const transferFields: INodeProperties[] = [
 		description: 'ID of the transfer to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['transfer'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -227,15 +197,12 @@ export const transferFields: INodeProperties[] = [
 		type: 'boolean',
 		required: true,
 		default: false,
-		description: 'Download the transfer receipt as a PDF file. Only for executed transfers, having status \'Outgoing Payment Sent\'.',
+		description:
+			"Whether to download the transfer receipt as a PDF file. Only for executed transfers, having status 'Outgoing Payment Sent'.",
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['transfer'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -248,15 +215,9 @@ export const transferFields: INodeProperties[] = [
 		description: 'Name of the binary property to which to write to',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'get',
-				],
-				downloadReceipt: [
-					true,
-				],
+				resource: ['transfer'],
+				operation: ['get'],
+				downloadReceipt: [true],
 			},
 		},
 	},
@@ -270,15 +231,9 @@ export const transferFields: INodeProperties[] = [
 		description: 'Name of the file that will be downloaded',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'get',
-				],
-				downloadReceipt: [
-					true,
-				],
+				resource: ['transfer'],
+				operation: ['get'],
+				downloadReceipt: [true],
 			},
 		},
 	},
@@ -287,7 +242,7 @@ export const transferFields: INodeProperties[] = [
 	//        transfer: getAll
 	// ----------------------------------
 	{
-		displayName: 'Profile ID',
+		displayName: 'Profile Name or ID',
 		name: 'profileId',
 		type: 'options',
 		required: true,
@@ -295,15 +250,12 @@ export const transferFields: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getProfiles',
 		},
-		description: 'ID of the user profile to retrieve',
+		description:
+			'ID of the user profile to retrieve. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['transfer'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -315,12 +267,8 @@ export const transferFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['transfer'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -336,15 +284,9 @@ export const transferFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['transfer'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -356,12 +298,8 @@ export const transferFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'transfer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['transfer'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -419,10 +357,6 @@ export const transferFields: INodeProperties[] = [
 						value: 'charged_back',
 					},
 					{
-						name: 'Outgoing Payment Sent',
-						value: 'outgoing_payment_sent',
-					},
-					{
 						name: 'Funds Converted',
 						value: 'funds_converted',
 					},
@@ -433,6 +367,10 @@ export const transferFields: INodeProperties[] = [
 					{
 						name: 'Incoming Payment Waiting',
 						value: 'incoming_payment_waiting',
+					},
+					{
+						name: 'Outgoing Payment Sent',
+						value: 'outgoing_payment_sent',
 					},
 					{
 						name: 'Processing',

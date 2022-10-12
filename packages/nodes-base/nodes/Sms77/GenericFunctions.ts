@@ -1,34 +1,26 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Sms77
  *
  * @param {IHookFunctions | IExecuteFunctions} this
- * @param {string} method
- * @param {Endpoint} endpoint
  * @param {object | undefined} data
- * @returns {Promise<any>}
  */
-export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, qs: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('sms77Api');
-
+export async function sms77ApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	qs: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: OptionsWithUri = {
 		headers: {
 			SentWith: 'n8n',
-			'X-Api-Key': credentials.apiKey,
 		},
 		qs,
 		uri: `https://gateway.sms77.io/api${endpoint}`,
@@ -41,10 +33,12 @@ export async function sms77ApiRequest(this: IHookFunctions | IExecuteFunctions, 
 		body.json = 1;
 	}
 
-	const response = await this.helpers.request(options);
+	const response = await this.helpers.requestWithAuthentication.call(this, 'sms77Api', options);
 
 	if (response.success !== '100') {
-		throw new NodeApiError(this.getNode(), response, { message: 'Invalid sms77 credentials or API error!' });
+		throw new NodeApiError(this.getNode(), response, {
+			message: 'Invalid sms77 credentials or API error!',
+		});
 	}
 
 	return response;

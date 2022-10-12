@@ -9,6 +9,7 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable no-param-reassign */
+import { In } from 'typeorm';
 import {
 	IDataObject,
 	IExecuteData,
@@ -18,8 +19,12 @@ import {
 	IRunExecutionData,
 	ITaskData,
 	LoggerProxy as Logger,
+	NodeApiError,
+	NodeOperationError,
 	Workflow,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 // eslint-disable-next-line import/no-cycle
 import {
 	CredentialTypes,
@@ -44,12 +49,9 @@ const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 /**
  * Returns the data of the last executed node
  *
- * @export
- * @param {IRun} inputData
- * @returns {(ITaskData | undefined)}
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	const { runData } = inputData.data.resultData;
+	const { runData, pinData = {} } = inputData.data.resultData;
 	const { lastNodeExecuted } = inputData.data.resultData;
 
 	if (lastNodeExecuted === undefined) {
@@ -60,15 +62,32 @@ export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefi
 		return undefined;
 	}
 
-	return runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+	const lastNodeRunData = runData[lastNodeExecuted][runData[lastNodeExecuted].length - 1];
+
+	let lastNodePinData = pinData[lastNodeExecuted];
+
+	if (lastNodePinData) {
+		if (!Array.isArray(lastNodePinData)) lastNodePinData = [lastNodePinData];
+
+		const itemsPerRun = lastNodePinData.map((item, index) => {
+			return { json: item, pairedItem: { item: index } };
+		});
+
+		return {
+			startTime: 0,
+			executionTime: 0,
+			data: { main: [itemsPerRun] },
+			source: lastNodeRunData.source,
+		};
+	}
+
+	return lastNodeRunData;
 }
 
 /**
  * Returns if the given id is a valid workflow id
  *
  * @param {(string | null | undefined)} id The id to check
- * @returns {boolean}
- * @memberof App
  */
 export function isWorkflowIdValid(id: string | null | undefined | number): boolean {
 	if (typeof id === 'string') {
@@ -85,10 +104,8 @@ export function isWorkflowIdValid(id: string | null | undefined | number): boole
 /**
  * Executes the error workflow
  *
- * @export
  * @param {string} workflowId The id of the error workflow
  * @param {IWorkflowErrorData} workflowErrorData The error data
- * @returns {Promise<void>}
  */
 export async function executeErrorWorkflow(
 	workflowId: string,
@@ -188,6 +205,7 @@ export async function executeErrorWorkflow(
 					],
 				],
 			},
+			source: null,
 		});
 
 		const runExecutionData: IRunExecutionData = {
@@ -199,6 +217,7 @@ export async function executeErrorWorkflow(
 				contextData: {},
 				nodeExecutionStack,
 				waitingExecution: {},
+				waitingExecutionSource: {},
 			},
 		};
 
@@ -222,13 +241,11 @@ export async function executeErrorWorkflow(
 /**
  * Returns all the defined NodeTypes
  *
- * @export
- * @returns {ITransferNodeTypes}
  */
 export function getAllNodeTypeData(): ITransferNodeTypes {
 	const nodeTypes = NodeTypes();
 
-	// Get the data of all thenode types that they
+	// Get the data of all the node types that they
 	// can be loaded again in the process
 	const returnData: ITransferNodeTypes = {};
 	for (const nodeTypeName of Object.keys(nodeTypes.nodeTypes)) {
@@ -248,8 +265,6 @@ export function getAllNodeTypeData(): ITransferNodeTypes {
 /**
  * Returns all the defined CredentialTypes
  *
- * @export
- * @returns {ICredentialsTypeData}
  */
 export function getAllCredentalsTypeData(): ICredentialsTypeData {
 	const credentialTypes = CredentialTypes();
@@ -275,9 +290,6 @@ export function getAllCredentalsTypeData(): ICredentialsTypeData {
  * Returns the data of the node types that are needed
  * to execute the given nodes
  *
- * @export
- * @param {INode[]} nodes
- * @returns {ITransferNodeTypes}
  */
 export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	const nodeTypes = NodeTypes();
@@ -307,9 +319,7 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
  * Returns the credentials data of the given type and its parent types
  * it extends
  *
- * @export
  * @param {string} type The credential type to return data off
- * @returns {ICredentialsTypeData}
  */
 export function getCredentialsDataWithParents(type: string): ICredentialsTypeData {
 	const credentialTypes = CredentialTypes();
@@ -344,9 +354,7 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
  * Returns all the credentialTypes which are needed to resolve
  * the given workflow credentials
  *
- * @export
  * @param {IWorkflowCredentials} credentials The credentials which have to be able to be resolved
- * @returns {ICredentialsTypeData}
  */
 export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData {
 	const credentialTypeData: ICredentialsTypeData = {};
@@ -372,9 +380,6 @@ export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData 
  * Returns the names of the NodeTypes which are are needed
  * to execute the gives nodes
  *
- * @export
- * @param {INode[]} nodes
- * @returns {string[]}
  */
 export function getNeededNodeTypes(nodes: INode[]): Array<{ type: string; version: number }> {
 	// Check which node-types have to be loaded
@@ -391,9 +396,6 @@ export function getNeededNodeTypes(nodes: INode[]): Array<{ type: string; versio
 /**
  * Saves the static data if it changed
  *
- * @export
- * @param {Workflow} workflow
- * @returns {Promise <void>}
  */
 export async function saveStaticData(workflow: Workflow): Promise<void> {
 	if (workflow.staticData.__dataChanged === true) {
@@ -417,10 +419,8 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 /**
  * Saves the given static data on workflow
  *
- * @export
  * @param {(string | number)} workflowId The id of the workflow to save data on
  * @param {IDataObject} newStaticData The static data to save
- * @returns {Promise<void>}
  */
 export async function saveStaticDataById(
 	workflowId: string | number,
@@ -434,9 +434,7 @@ export async function saveStaticDataById(
 /**
  * Returns the static data of workflow
  *
- * @export
  * @param {(string | number)} workflowId The id of the workflow to get static data of
- * @returns
  */
 // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 export async function getStaticDataById(workflowId: string | number) {
@@ -450,6 +448,21 @@ export async function getStaticDataById(workflowId: string | number) {
 
 	// eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
 	return workflowData.staticData || {};
+}
+
+/**
+ * Set node ids if not already set
+ *
+ */
+export function addNodeIds(workflow: WorkflowEntity) {
+	const { nodes } = workflow;
+	if (!nodes) return;
+
+	nodes.forEach((node) => {
+		if (!node.id) {
+			node.id = uuid();
+		}
+	});
 }
 
 // Checking if credentials of old format are in use and run a DB check if they might exist uniquely
@@ -595,4 +608,98 @@ export async function getSharedWorkflowIds(user: User): Promise<number[]> {
 	});
 
 	return sharedWorkflows.map(({ workflow }) => workflow.id);
+}
+
+/**
+ * Check if user owns more than 15 workflows or more than 2 workflows with at least 2 nodes.
+ * If user does, set flag in its settings.
+ */
+export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
+	let belowThreshold = true;
+	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
+
+	const workflowOwnerRole = await Db.collections.Role.findOne({
+		name: 'owner',
+		scope: 'workflow',
+	});
+	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
+		user,
+		role: workflowOwnerRole,
+	}).then((ownedWorkflows) => ownedWorkflows.map((wf) => wf.workflowId));
+
+	if (ownedWorkflowsIds.length > 15) {
+		belowThreshold = false;
+	} else {
+		// just fetch workflows' nodes to keep memory footprint low
+		const workflows = await Db.collections.Workflow.find({
+			where: { id: In(ownedWorkflowsIds) },
+			select: ['nodes'],
+		});
+
+		// valid workflow: 2+ nodes without start node
+		const validWorkflowCount = workflows.reduce((counter, workflow) => {
+			if (counter <= 2 && workflow.nodes.length > 2) {
+				const nodes = workflow.nodes.filter((node) => !skippedTypes.includes(node.type));
+				if (nodes.length >= 2) {
+					return counter + 1;
+				}
+			}
+			return counter;
+		}, 0);
+
+		// more than 2 valid workflows required
+		belowThreshold = validWorkflowCount <= 2;
+	}
+
+	// user is above threshold --> set flag in settings
+	if (!belowThreshold) {
+		void Db.collections.User.update(user.id, { settings: { isOnboarded: true } });
+	}
+
+	return belowThreshold;
+}
+
+export function generateFailedExecutionFromError(
+	mode: WorkflowExecuteMode,
+	error: NodeApiError | NodeOperationError,
+	node: INode,
+): IRun {
+	return {
+		data: {
+			startData: {
+				destinationNode: node.name,
+				runNodeFilter: [node.name],
+			},
+			resultData: {
+				error,
+				runData: {
+					[node.name]: [
+						{
+							startTime: 0,
+							executionTime: 0,
+							error,
+							source: [],
+						},
+					],
+				},
+				lastNodeExecuted: node.name,
+			},
+			executionData: {
+				contextData: {},
+				nodeExecutionStack: [
+					{
+						node,
+						data: {},
+						source: null,
+					},
+				],
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			},
+		},
+		finished: false,
+		mode,
+		startedAt: new Date(),
+		stoppedAt: new Date(),
+	};
 }

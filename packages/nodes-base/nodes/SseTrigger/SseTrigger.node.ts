@@ -1,11 +1,6 @@
 import EventSource from 'eventsource';
 import { ITriggerFunctions } from 'n8n-core';
-import {
-	INodeType,
-	INodeTypeDescription,
-	ITriggerResponse,
-} from 'n8n-workflow';
-
+import { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
 
 export class SseTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -36,7 +31,6 @@ export class SseTrigger implements INodeType {
 		],
 	};
 
-
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const url = this.getNodeParameter('url') as string;
 
@@ -54,6 +48,5 @@ export class SseTrigger implements INodeType {
 		return {
 			closeFunction,
 		};
-
 	}
 }

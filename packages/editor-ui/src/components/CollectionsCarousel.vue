@@ -19,7 +19,9 @@
 </template>
 
 <script lang="ts">
-import Card from '@/components/Card.vue';
+import { PropType } from "vue";
+import { ITemplatesCollection } from "@/Interface";
+import Card from '@/components/WorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
 
@@ -30,7 +32,7 @@ export default mixins(genericHelpers).extend({
 	name: 'CollectionsCarousel',
 	props: {
 		collections: {
-			type: Array,
+			type: Array as PropType<ITemplatesCollection[]>,
 		},
 		loading: {
 			type: Boolean,
@@ -142,7 +144,9 @@ export default mixins(genericHelpers).extend({
 
 	&:after {
 		left: 27px;
-		background: linear-gradient(270deg, rgba(255, 255, 255, 0.25) 0%, rgba(248, 249, 251, 1) 86%);
+		background: linear-gradient(270deg,
+			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 50%),
+			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 100%));
 	}
 }
 
@@ -151,7 +155,9 @@ export default mixins(genericHelpers).extend({
 	right: -30px;
 	&:after {
 		right: 27px;
-		background: linear-gradient(270deg,rgba(248, 249, 251, 1) 25%, rgba(255, 255, 255, 0.25) 100%);
+		background: linear-gradient(90deg,
+			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 50%),
+			hsla(var(--color-background-light-h), var(--color-background-light-s), var(--color-background-light-l), 100%));
 	}
 }
 </style>
@@ -161,17 +167,8 @@ export default mixins(genericHelpers).extend({
 	&__list {
 		width: 100%;
 		padding-bottom: var(--spacing-2xs);
-		overflow-x: scroll;
+		overflow-x: auto;
 		transition: all 1s ease-in-out;
-
-		&::-webkit-scrollbar {
-			height: 6px;
-		}
-
-		&::-webkit-scrollbar-thumb {
-			border-radius: 6px;
-			background-color: var(--color-foreground-dark);
-		}
 	}
 
 	&__track {

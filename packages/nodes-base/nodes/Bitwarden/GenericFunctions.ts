@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -9,9 +7,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an authenticated API request to Bitwarden.
@@ -23,8 +19,8 @@ export async function bitwardenApiRequest(
 	qs: IDataObject,
 	body: IDataObject,
 	token: string,
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const baseUrl = await getBaseUrl.call(this);
 	const options: OptionsWithUri = {
 		headers: {
@@ -59,8 +55,8 @@ export async function bitwardenApiRequest(
  */
 export async function getAccessToken(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('bitwardenApi');
 
 	const options: OptionsWithUri = {
@@ -115,13 +111,12 @@ export async function handleGetAll(
 /**
  * Return the access token URL based on the user's environment.
  */
- async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
+async function getTokenUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const { environment, domain } = await this.getCredentials('bitwardenApi');
 
 	return environment === 'cloudHosted'
 		? 'https://identity.bitwarden.com/connect/token'
 		: `${domain}/identity/connect/token`;
-
 }
 
 /**
@@ -130,26 +125,20 @@ export async function handleGetAll(
 async function getBaseUrl(this: IExecuteFunctions | ILoadOptionsFunctions) {
 	const { environment, domain } = await this.getCredentials('bitwardenApi');
 
-	return environment === 'cloudHosted'
-		? 'https://api.bitwarden.com'
-		: `${domain}/api`;
-
+	return environment === 'cloudHosted' ? 'https://api.bitwarden.com' : `${domain}/api`;
 }
 
 /**
  * Load a resource so that it can be selected by name from a dropdown.
  */
-export async function loadResource(
-	this: ILoadOptionsFunctions,
-	resource: string,
-) {
+export async function loadResource(this: ILoadOptionsFunctions, resource: string) {
 	const returnData: INodePropertyOptions[] = [];
 	const token = await getAccessToken.call(this);
 	const endpoint = `/public/${resource}`;
 
 	const { data } = await bitwardenApiRequest.call(this, 'GET', endpoint, {}, {}, token);
 
-	data.forEach(({ id, name, externalId }: { id: string, name: string, externalId?: string }) => {
+	data.forEach(({ id, name, externalId }: { id: string; name: string; externalId?: string }) => {
 		returnData.push({
 			name: externalId || name || id,
 			value: id,

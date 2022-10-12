@@ -1,49 +1,52 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const memberOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a member',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a member',
 			},
 			{
 				name: 'Get',
 				value: 'get',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
+				action: 'Get a member',
 			},
 			{
 				name: 'Get Groups',
 				value: 'getGroups',
+				action: 'Get groups for a member',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				action: 'Get many members',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a member',
 			},
 			{
 				name: 'Update Groups',
 				value: 'updateGroups',
+				action: 'Update groups for a member',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
+				resource: ['member'],
 			},
 		},
 	},
@@ -63,16 +66,8 @@ export const memberFields: INodeProperties[] = [
 		placeholder: '5e59c8c7-e05a-4d17-8e85-acc301343926',
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'delete',
-					'get',
-					'getGroups',
-					'update',
-					'updateGroups',
-				],
+				resource: ['member'],
+				operation: ['delete', 'get', 'getGroups', 'update', 'updateGroups'],
 			},
 		},
 	},
@@ -102,12 +97,8 @@ export const memberFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['member'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -122,12 +113,8 @@ export const memberFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['member'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -135,19 +122,16 @@ export const memberFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
+		typeOptions: {
+			minValue: 1,
+		},
 		default: 10,
 		description: 'Max number of results to return',
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['member'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -158,16 +142,13 @@ export const memberFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		description: 'The email of the member to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['member'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -178,12 +159,8 @@ export const memberFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['member'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -195,10 +172,11 @@ export const memberFields: INodeProperties[] = [
 		default: {},
 		options: [
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this member',
+				description:
+					'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -214,12 +192,8 @@ export const memberFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['member'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -258,10 +232,11 @@ export const memberFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Collections',
+				displayName: 'Collection Names or IDs',
 				name: 'collections',
 				type: 'multiOptions',
-				description: 'The collections to assign to this member',
+				description:
+					'The collections to assign to this member. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getCollections',
@@ -283,12 +258,8 @@ export const memberFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['member'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -303,12 +274,8 @@ export const memberFields: INodeProperties[] = [
 		description: 'Comma-separated list of IDs of groups to set for a member',
 		displayOptions: {
 			show: {
-				resource: [
-					'member',
-				],
-				operation: [
-					'updateGroups',
-				],
+				resource: ['member'],
+				operation: ['updateGroups'],
 			},
 		},
 	},

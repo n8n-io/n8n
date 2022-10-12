@@ -1,43 +1,44 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const meetingOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
+				resource: ['meeting'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a meeting',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a meeting',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a meeting',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many meetings',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a meeting',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -53,12 +54,8 @@ export const meetingFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['meeting'],
+				operation: ['create'],
 			},
 		},
 		description: 'Meeting title. The title can be a maximum of 128 characters long.',
@@ -71,15 +68,12 @@ export const meetingFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['meeting'],
+				operation: ['create'],
 			},
 		},
-		description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
+		description:
+			'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 	},
 	{
 		displayName: 'End',
@@ -89,15 +83,12 @@ export const meetingFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['meeting'],
+				operation: ['create'],
 			},
 		},
-		description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
+		description:
+			'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -105,12 +96,8 @@ export const meetingFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['meeting'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -128,21 +115,24 @@ export const meetingFields: INodeProperties[] = [
 				name: 'allowAnyUserToBeCoHost',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting',
+				description:
+					'Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting',
 			},
 			{
 				displayName: 'Allow Authenticated Devices',
 				name: 'allowAuthenticatedDevices',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow authenticated video devices in the meeting\'s organization to start or join the meeting without a prompt',
+				description:
+					"Whether or not to allow authenticated video devices in the meeting's organization to start or join the meeting without a prompt",
 			},
 			{
 				displayName: 'Allow First User To Be Co-Host',
 				name: 'allowFirstUserToBeCoHost',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host',
+				description:
+					'Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host',
 			},
 			{
 				displayName: 'Auto Accept Request',
@@ -156,7 +146,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'enableConnectAudioBeforeHost',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting',
+				description:
+					'Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting',
 			},
 			{
 				displayName: 'Enabled Auto Record Meeting',
@@ -170,7 +161,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'enabledJoinBeforeHost',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow any attendee to join the meeting before the host joins the meeting',
+				description:
+					'Whether or not to allow any attendee to join the meeting before the host joins the meeting',
 			},
 			{
 				displayName: 'Exclude Password',
@@ -184,14 +176,15 @@ export const meetingFields: INodeProperties[] = [
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
-				description: 'Email address for the meeting host. Can only be set if you\'re an admin.',
+				description: "Email address for the meeting host. Can only be set if you're an admin.",
 			},
 			{
 				displayName: 'Integration Tags',
 				name: 'integrationTags',
 				type: 'string',
 				default: '',
-				description: 'External keys created by an integration application in its own domain. They could be Zendesk ticket IDs, Jira IDs, Salesforce Opportunity IDs, etc.',
+				description:
+					'External keys created by an integration application in its own domain. They could be Zendesk ticket IDs, Jira IDs, Salesforce Opportunity IDs, etc.',
 			},
 			{
 				displayName: 'Invitees',
@@ -211,6 +204,7 @@ export const meetingFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 								description: 'Email address of meeting invitee',
@@ -256,7 +250,8 @@ export const meetingFields: INodeProperties[] = [
 					},
 				],
 				default: 0,
-				description: 'The number of minutes an attendee can join the meeting before the meeting start time and the host joins',
+				description:
+					'The number of minutes an attendee can join the meeting before the meeting start time and the host joins',
 			},
 			{
 				displayName: 'Public Meeting',
@@ -270,12 +265,14 @@ export const meetingFields: INodeProperties[] = [
 				name: 'recurrence',
 				type: 'string',
 				default: '',
-				description: 'Rule for how the meeting should recur. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
+				description:
+					'Rule for how the meeting should recur. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Required Registration Info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Require First Name',
@@ -338,7 +335,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'reminderTime',
 				type: 'number',
 				default: 1,
-				description: 'The number of minutes before the meeting begins, for sending an email reminder to the host',
+				description:
+					'The number of minutes before the meeting begins, for sending an email reminder to the host',
 			},
 			{
 				displayName: 'Send Email',
@@ -348,6 +346,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Whether or not to send emails to host and invitees',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -355,7 +354,8 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site.',
+				description:
+					'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -371,12 +371,8 @@ export const meetingFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['meeting'],
+				operation: ['delete'],
 			},
 		},
 		description: 'ID of the meeting',
@@ -389,12 +385,8 @@ export const meetingFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['meeting'],
+				operation: ['delete'],
 			},
 		},
 		options: [
@@ -403,7 +395,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
-				description: 'Email address for the meeting host. This parameter is only used if the user or application calling the API has the admin-level scopes.',
+				description:
+					'Email address for the meeting host. This parameter is only used if the user or application calling the API has the admin-level scopes.',
 			},
 			{
 				displayName: 'Send Email',
@@ -426,12 +419,8 @@ export const meetingFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['meeting'],
+				operation: ['get'],
 			},
 		},
 		description: 'ID of the meeting',
@@ -444,12 +433,8 @@ export const meetingFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['meeting'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -458,21 +443,25 @@ export const meetingFields: INodeProperties[] = [
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
-				description: 'Email address for the meeting host. This parameter is only used if the user or application calling the API has the admin-level scopes.',
+				description:
+					'Email address for the meeting host. This parameter is only used if the user or application calling the API has the admin-level scopes.',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
-				description: 'Meeting password. It\'s required when the meeting is protected by a password and the current user is not privileged to view it if they are not a host, co-host or invitee of the meeting.',
+				description:
+					"Meeting password. It's required when the meeting is protected by a password and the current user is not privileged to view it if they are not a host, co-host or invitee of the meeting.",
 			},
 			{
 				displayName: 'Send Email',
 				name: 'sendEmail',
 				type: 'boolean',
 				default: true,
-				description: 'Whether or not to send emails to host and invitees. It is an optional field and default value is true.',
+				description:
+					'Whether or not to send emails to host and invitees. It is an optional field and default value is true.',
 			},
 		],
 	},
@@ -488,12 +477,8 @@ export const meetingFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['meeting'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -508,15 +493,9 @@ export const meetingFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['meeting'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -528,12 +507,8 @@ export const meetingFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['meeting'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -542,7 +517,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'from',
 				type: 'dateTime',
 				default: '',
-				description: 'Start date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
+				description:
+					'Start date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Host Email',
@@ -556,14 +532,15 @@ export const meetingFields: INodeProperties[] = [
 				name: 'integrationTag',
 				type: 'string',
 				default: '',
-				description: 'External tag created by another application, e.g. Zendesk ticket ID or Jira ID',
+				description:
+					'External tag created by another application, e.g. Zendesk ticket ID or Jira ID',
 			},
 			{
 				displayName: 'Limit to Current Meetings',
 				name: 'current',
 				type: 'boolean',
 				default: true,
-				description: 'For meeting series, whether to return just the current meeting or all meetings',
+				description: 'Whether to return just the current meeting or all meetings',
 			},
 			{
 				displayName: 'Meeting Number',
@@ -580,7 +557,8 @@ export const meetingFields: INodeProperties[] = [
 					{
 						name: 'Meeting Series',
 						value: 'meetingSeries',
-						description: 'Master of a scheduled series of meetings which consists of one or more scheduled meeting based on a recurrence rule',
+						description:
+							'Master of a scheduled series of meetings which consists of one or more scheduled meeting based on a recurrence rule',
 					},
 					{
 						name: 'Scheduled Meeting',
@@ -603,6 +581,7 @@ export const meetingFields: INodeProperties[] = [
 				description: 'Email of a person that must be a meeting participant',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -610,7 +589,8 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the API lists meetings from',
+				description:
+					'URL of the Webex site which the API lists meetings from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'State',
@@ -622,32 +602,32 @@ export const meetingFields: INodeProperties[] = [
 						value: 'active',
 					},
 					{
-						name: 'Scheduled',
-						value: 'scheduled',
+						name: 'Ended',
+						value: 'ended',
 					},
 					{
-						name: 'Ready',
-						value: 'ready',
-					},
-					{
-						name: 'Lobby',
-						value: 'lobby',
+						name: 'Expired',
+						value: 'expired',
 					},
 					{
 						name: 'In Progress',
 						value: 'inProgress',
 					},
 					{
-						name: 'Ended',
-						value: 'ended',
+						name: 'Lobby',
+						value: 'lobby',
 					},
 					{
 						name: 'Missed',
 						value: 'missed',
 					},
 					{
-						name: 'Expired',
-						value: 'expired',
+						name: 'Ready',
+						value: 'ready',
+					},
+					{
+						name: 'Scheduled',
+						value: 'scheduled',
 					},
 				],
 				default: '',
@@ -658,7 +638,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'to',
 				type: 'dateTime',
 				default: '',
-				description: 'End date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
+				description:
+					'End date and time (inclusive) for the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Weblink',
@@ -681,12 +662,8 @@ export const meetingFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['meeting'],
+				operation: ['update'],
 			},
 		},
 		description: 'ID of the meeting',
@@ -697,12 +674,8 @@ export const meetingFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'meeting',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['meeting'],
+				operation: ['update'],
 			},
 		},
 		default: {},
@@ -713,35 +686,39 @@ export const meetingFields: INodeProperties[] = [
 				name: 'agenda',
 				type: 'string',
 				default: '',
-				description: 'The meeting\'s agenda. Cannot be longer that 1300 characters.',
+				description: "The meeting's agenda. Cannot be longer that 1300 characters.",
 			},
 			{
 				displayName: 'Allow Any User To Be Co-Host',
 				name: 'allowAnyUserToBeCoHost',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting',
+				description:
+					'Whether or not to allow any attendee with a host account on the target site to become a co-host when joining the meeting',
 			},
 			{
 				displayName: 'Allow Authenticated Devices',
 				name: 'allowAuthenticatedDevices',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow authenticated video devices in the meeting\'s organization to start or join the meeting without a prompt',
+				description:
+					"Whether or not to allow authenticated video devices in the meeting's organization to start or join the meeting without a prompt",
 			},
 			{
 				displayName: 'Allow First User To Be Co-Host',
 				name: 'allowFirstUserToBeCoHost',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host',
+				description:
+					'Whether or not to allow the first attendee of the meeting with a host account on the target site to become a co-host',
 			},
 			{
 				displayName: 'Enable Connect Audio Before Host',
 				name: 'enableConnectAudioBeforeHost',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting',
+				description:
+					'Whether or not to allow any attendee to connect audio in the meeting before the host joins the meeting',
 			},
 			{
 				displayName: 'Enabled Auto Record Meeting',
@@ -755,14 +732,16 @@ export const meetingFields: INodeProperties[] = [
 				name: 'enabledJoinBeforeHost',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to allow any attendee to join the meeting before the host joins the meeting',
+				description:
+					'Whether or not to allow any attendee to join the meeting before the host joins the meeting',
 			},
 			{
 				displayName: 'End',
 				name: 'end',
 				type: 'dateTime',
 				default: '',
-				description: 'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
+				description:
+					'Date and time for the end of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Exclude Password',
@@ -776,7 +755,8 @@ export const meetingFields: INodeProperties[] = [
 				name: 'hostEmail',
 				type: 'string',
 				default: '',
-				description: 'Email address for the meeting host. This attribute should only be set if the user or application calling the API has the admin-level scopes.',
+				description:
+					'Email address for the meeting host. This attribute should only be set if the user or application calling the API has the admin-level scopes.',
 			},
 			{
 				displayName: 'Invitees',
@@ -796,6 +776,7 @@ export const meetingFields: INodeProperties[] = [
 								displayName: 'Email',
 								name: 'email',
 								type: 'string',
+								placeholder: 'name@email.com',
 								required: true,
 								default: '',
 								description: 'Email address of meeting invitee',
@@ -841,14 +822,17 @@ export const meetingFields: INodeProperties[] = [
 					},
 				],
 				default: 0,
-				description: 'The number of minutes an attendee can join the meeting before the meeting start time and the host joins',
+				description:
+					'The number of minutes an attendee can join the meeting before the meeting start time and the host joins',
 			},
 			{
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
-				description: 'Meeting password. Must conform to the site\'s password complexity settings. If not specified, a random password conforming to the site\'s password rules will be generated automatically',
+				description:
+					"Meeting password. Must conform to the site's password complexity settings. If not specified, a random password conforming to the site's password rules will be generated automatically",
 			},
 			{
 				displayName: 'Public Meeting',
@@ -862,12 +846,14 @@ export const meetingFields: INodeProperties[] = [
 				name: 'recurrence',
 				type: 'string',
 				default: '',
-				description: 'Meeting series recurrence rule (conforming with RFC 2445), applying only to meeting series',
+				description:
+					'Meeting series recurrence rule (conforming with RFC 2445), applying only to meeting series',
 			},
 			{
 				displayName: 'Required Registration Info',
 				name: 'requireRegistrationInfo',
 				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
 				options: [
 					{
 						name: 'Require First Name',
@@ -930,16 +916,19 @@ export const meetingFields: INodeProperties[] = [
 				name: 'reminderTime',
 				type: 'number',
 				default: 1,
-				description: 'The number of minutes before the meeting begins, for sending an email reminder to the host',
+				description:
+					'The number of minutes before the meeting begins, for sending an email reminder to the host',
 			},
 			{
 				displayName: 'Send Email',
 				name: 'sendEmail',
 				type: 'boolean',
 				default: false,
-				description: 'Whether or not to send emails to host and invitees. It is an optional field and default value is true.',
+				description:
+					'Whether or not to send emails to host and invitees. It is an optional field and default value is true.',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 				displayName: 'Site URL',
 				name: 'siteUrl',
 				type: 'options',
@@ -947,14 +936,16 @@ export const meetingFields: INodeProperties[] = [
 					loadOptionsMethod: 'getSites',
 				},
 				default: '',
-				description: 'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site.',
+				description:
+					'URL of the Webex site which the meeting is created on. If not specified, the meeting is created on user\'s preferred site. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Start',
 				name: 'start',
 				type: 'dateTime',
 				default: '',
-				description: 'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
+				description:
+					'Date and time for the start of the meeting. Acceptable <a href="https://datatracker.ietf.org/doc/html/rfc2445"> format</a>.',
 			},
 			{
 				displayName: 'Title',

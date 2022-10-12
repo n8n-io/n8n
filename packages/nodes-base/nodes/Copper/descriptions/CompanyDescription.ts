@@ -1,52 +1,48 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	isoCountryCodes,
-} from '../utils/isoCountryCodes';
+import { isoCountryCodes } from '../utils/isoCountryCodes';
 
-import {
-	addressFixedCollection,
-	phoneNumbersFixedCollection,
-} from '../utils/sharedFields';
+import { addressFixedCollection, phoneNumbersFixedCollection } from '../utils/sharedFields';
 
 export const companyOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a company',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a company',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a company',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many companies',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a company',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -63,12 +59,8 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -80,12 +72,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -119,12 +107,8 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['company'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -141,12 +125,8 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -162,12 +142,8 @@ export const companyFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -183,15 +159,9 @@ export const companyFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -203,12 +173,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -242,12 +208,8 @@ export const companyFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -259,12 +221,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const ticketFieldOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticketField',
-				],
+				resource: ['ticketField'],
 			},
 		},
 		options: [
@@ -19,23 +16,23 @@ export const ticketFieldOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a ticket field',
+				action: 'Get a ticket field',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all system and custom ticket fields',
+				description: 'Get many system and custom ticket fields',
+				action: 'Get many ticket fields',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const ticketFieldFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 ticketField:get                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ticketField:get                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Ticket Field ID',
 		name: 'ticketFieldId',
@@ -44,32 +41,23 @@ export const ticketFieldFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticketField',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['ticketField'],
+				operation: ['get'],
 			},
 		},
-		description: 'ticketField ID',
 	},
 
-/* -------------------------------------------------------------------------- */
-/*                                 ticketField:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 ticketField:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticketField',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['ticketField'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -81,15 +69,9 @@ export const ticketFieldFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticketField',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['ticketField'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

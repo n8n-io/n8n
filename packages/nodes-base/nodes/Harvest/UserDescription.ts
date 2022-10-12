@@ -1,16 +1,13 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = [
-	'user',
-];
+const resource = ['user'];
 
 export const userOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource,
@@ -21,42 +18,45 @@ export const userOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a user',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a user',
+				action: 'Get data of a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all users',
+				description: 'Get data of many users',
+				action: 'Get data of all users',
 			},
 
 			{
 				name: 'Me',
 				value: 'me',
 				description: 'Get data of authenticated user',
+				action: 'Get data of authenticated user',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
+				action: 'Update a user',
 			},
 		],
 		default: 'me',
-		description: 'The operation to perform.',
 	},
-
 ];
 
 export const userFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                user:getAll                                 */
 	/* -------------------------------------------------------------------------- */
@@ -68,9 +68,7 @@ export const userFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -83,12 +81,8 @@ export const userFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -107,9 +101,7 @@ export const userFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -118,7 +110,7 @@ export const userFields: INodeProperties[] = [
 				name: 'is_active',
 				type: 'boolean',
 				default: true,
-				description: 'Pass true to only return active users and false to return inactive users',
+				description: 'Whether to only return active users and false to return inactive users',
 			},
 			{
 				displayName: 'Updated Since',
@@ -144,16 +136,14 @@ export const userFields: INodeProperties[] = [
 	/*                                user:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 				resource,
 			},
 		},
@@ -164,16 +154,14 @@ export const userFields: INodeProperties[] = [
 	/*                                user:delete                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User Id',
+		displayName: 'User ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 				resource,
 			},
 		},
@@ -189,9 +177,7 @@ export const userFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -205,9 +191,7 @@ export const userFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -219,11 +203,10 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -238,9 +221,7 @@ export const userFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -265,7 +246,8 @@ export const userFields: INodeProperties[] = [
 				name: 'can_see_rates',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user can see billable rates on projects. Only applicable to Project Managers.',
+				description:
+					'Whether the user can see billable rates on projects. Only applicable to Project Managers.',
 			},
 			{
 				displayName: 'Cost Rate',
@@ -275,7 +257,8 @@ export const userFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount',
+				description:
+					'The cost rate to use for this user when calculating a project’s costs vs billable amount',
 			},
 			{
 				displayName: 'Default Hourly Rate',
@@ -332,7 +315,8 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-url-missing-protocol
-				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
+				description:
+					'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{
 				displayName: 'Weekly Capacity',
@@ -342,7 +326,8 @@ export const userFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 126000,
-				description: 'The number of hours per week this person is available to work in seconds. Defaults to <code class="language-plaintext highlighter-rouge">126000</code> seconds (35 hours).',
+				description:
+					'The number of hours per week this person is available to work in seconds. Defaults to <code class="language-plaintext highlighter-rouge">126000</code> seconds (35 hours).',
 			},
 		],
 	},
@@ -351,16 +336,14 @@ export const userFields: INodeProperties[] = [
 	/*                                user:update                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Time Entry Id',
+		displayName: 'Time Entry ID',
 		name: 'id',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -373,9 +356,7 @@ export const userFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -400,7 +381,8 @@ export const userFields: INodeProperties[] = [
 				name: 'can_see_rates',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the user can see billable rates on projects. Only applicable to Project Managers.',
+				description:
+					'Whether the user can see billable rates on projects. Only applicable to Project Managers.',
 			},
 			{
 				displayName: 'Cost Rate',
@@ -410,7 +392,8 @@ export const userFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'The cost rate to use for this user when calculating a project’s costs vs billable amount',
+				description:
+					'The cost rate to use for this user when calculating a project’s costs vs billable amount',
 			},
 			{
 				displayName: 'Default Hourly Rate',
@@ -423,6 +406,7 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				default: '',
 				description: 'The user email',
 			},
@@ -488,7 +472,8 @@ export const userFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-url-missing-protocol
-				description: 'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
+				description:
+					'The user’s timezone. Defaults to the company’s timezone. See a list of <a href="/api-v2/introduction/overview/supported-timezones/">supported time zones</a>.',
 			},
 			{
 				displayName: 'Weekly Capacity',
@@ -498,9 +483,9 @@ export const userFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 126000,
-				description: 'The number of hours per week this person is available to work in seconds. Defaults to <code class="language-plaintext highlighter-rouge">126000</code> seconds (35 hours).',
+				description:
+					'The number of hours per week this person is available to work in seconds. Defaults to <code class="language-plaintext highlighter-rouge">126000</code> seconds (35 hours).',
 			},
 		],
 	},
-
 ];

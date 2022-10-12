@@ -1,41 +1,39 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	vendorAdditionalFieldsOptions,
-} from './VendorAdditionalFieldsOptions';
+import { vendorAdditionalFieldsOptions } from './VendorAdditionalFieldsOptions';
 
 export const vendorOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		default: 'get',
-		description: 'Operation to perform',
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a vendor',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a vendor',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many vendors',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a vendor',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
+				resource: ['vendor'],
 			},
 		},
 	},
@@ -54,12 +52,8 @@ export const vendorFields: INodeProperties[] = [
 		description: 'The display name of the vendor to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['vendor'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -71,12 +65,8 @@ export const vendorFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['vendor'],
+				operation: ['create'],
 			},
 		},
 		options: vendorAdditionalFieldsOptions,
@@ -94,12 +84,8 @@ export const vendorFields: INodeProperties[] = [
 		description: 'The ID of the vendor to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['vendor'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -115,12 +101,8 @@ export const vendorFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['vendor'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -128,7 +110,7 @@ export const vendorFields: INodeProperties[] = [
 		displayName: 'Limit',
 		name: 'limit',
 		type: 'number',
-		default: 5,
+		default: 50,
 		description: 'Max number of results to return',
 		typeOptions: {
 			minValue: 1,
@@ -136,15 +118,9 @@ export const vendorFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['vendor'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -160,8 +136,9 @@ export const vendorFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting vendors. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting vendors. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -169,12 +146,8 @@ export const vendorFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['vendor'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -191,12 +164,8 @@ export const vendorFields: INodeProperties[] = [
 		description: 'The ID of the vendor to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['vendor'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -209,12 +178,8 @@ export const vendorFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'vendor',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['vendor'],
+				operation: ['update'],
 			},
 		},
 		options: vendorAdditionalFieldsOptions,

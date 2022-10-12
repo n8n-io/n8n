@@ -5,6 +5,7 @@ export const siteOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
 				resource: ['site'],
@@ -15,26 +16,31 @@ export const siteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a site',
+				action: 'Create a site',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a site',
+				action: 'Delete a site',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a site',
+				action: 'Get a site',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all sites',
+				description: 'Get many sites',
+				action: 'Get many sites',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a site',
+				action: 'Update a site',
 			},
 		],
 		default: 'create',
@@ -87,9 +93,11 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Client Name',
+		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		required: true,
 		typeOptions: {
@@ -156,11 +164,11 @@ export const siteFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Simplify Output',
+		displayName: 'Simplify',
 		name: 'simplify',
 		type: 'boolean',
 		default: true,
-		description: 'Whether output should be simplified',
+		description: 'Whether to return a simplified version of the response instead of the raw data',
 		displayOptions: {
 			show: {
 				resource: ['site'],
@@ -222,7 +230,7 @@ export const siteFields: INodeProperties[] = [
 				default: 'all',
 				options: [
 					{
-						name: 'Active only',
+						name: 'Active Only',
 						value: 'active',
 						description: 'Whether to include active sites in the response',
 					},
@@ -232,7 +240,7 @@ export const siteFields: INodeProperties[] = [
 						description: 'Whether to include active and inactive sites in the response',
 					},
 					{
-						name: 'Inactive only',
+						name: 'Inactive Only',
 						value: 'inactive',
 						description: 'Whether to include inactive sites in the response',
 					},

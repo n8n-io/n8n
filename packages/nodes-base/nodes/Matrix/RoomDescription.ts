@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const roomOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
+				resource: ['room'],
 			},
 		},
 		options: [
@@ -19,33 +16,36 @@ export const roomOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'New chat room with defined settings',
+				action: 'Create a room',
 			},
 			{
 				name: 'Invite',
 				value: 'invite',
 				description: 'Invite a user to a room',
+				action: 'Invite a room',
 			},
 			{
 				name: 'Join',
 				value: 'join',
 				description: 'Join a new room',
+				action: 'Join a room',
 			},
 			{
 				name: 'Kick',
 				value: 'kick',
 				description: 'Kick a user from a room',
+				action: 'Kick a user from a room',
 			},
 			{
 				name: 'Leave',
 				value: 'leave',
 				description: 'Leave a room',
+				action: 'Leave a room',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
-
 
 export const roomFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
@@ -57,17 +57,12 @@ export const roomFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['room'],
+				operation: ['create'],
 			},
 		},
 		default: '',
 		placeholder: 'My new room',
-		description: 'The operation to perform.',
 		required: true,
 	},
 	{
@@ -76,19 +71,14 @@ export const roomFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['room'],
+				operation: ['create'],
 			},
 		},
 		options: [
 			{
 				name: 'Private Chat',
 				value: 'private_chat',
-				description: 'Private chat',
 			},
 			{
 				name: 'Public Chat',
@@ -98,7 +88,6 @@ export const roomFields: INodeProperties[] = [
 		],
 		default: 'public_chat',
 		placeholder: 'My new room',
-		description: 'The operation to perform.',
 		required: true,
 	},
 	{
@@ -107,17 +96,12 @@ export const roomFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['room'],
+				operation: ['create'],
 			},
 		},
 		default: '',
 		placeholder: 'coolest-room-around',
-		description: 'The operation to perform.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                  room:join                                 */
@@ -129,12 +113,8 @@ export const roomFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'join',
-				],
+				resource: ['room'],
+				operation: ['join'],
 			},
 		},
 		default: '',
@@ -145,20 +125,18 @@ export const roomFields: INodeProperties[] = [
 	/*                                  room:leave                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'leave',
-				],
+				resource: ['room'],
+				operation: ['leave'],
 			},
 		},
 		default: '',
@@ -169,20 +147,18 @@ export const roomFields: INodeProperties[] = [
 	/*                                 room:invite                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'invite',
-				],
+				resource: ['room'],
+				operation: ['invite'],
 			},
 		},
 		default: '',
@@ -195,12 +171,8 @@ export const roomFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'invite',
-				],
+				resource: ['room'],
+				operation: ['invite'],
 			},
 		},
 		default: '',
@@ -209,25 +181,22 @@ export const roomFields: INodeProperties[] = [
 		required: true,
 	},
 
-
 	/* -------------------------------------------------------------------------- */
 	/*                                  room:kick                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getChannels',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'kick',
-				],
+				resource: ['room'],
+				operation: ['kick'],
 			},
 		},
 		default: '',
@@ -239,12 +208,8 @@ export const roomFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'kick',
-				],
+				resource: ['room'],
+				operation: ['kick'],
 			},
 		},
 		default: '',
@@ -258,12 +223,8 @@ export const roomFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'room',
-				],
-				operation: [
-					'kick',
-				],
+				resource: ['room'],
+				operation: ['kick'],
 			},
 		},
 		default: '',

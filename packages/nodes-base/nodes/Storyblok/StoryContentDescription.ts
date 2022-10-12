@@ -1,20 +1,15 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const storyContentOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
+				source: ['contentApi'],
+				resource: ['story'],
 			},
 		},
 		options: [
@@ -22,20 +17,20 @@ export const storyContentOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a story',
+				action: 'Get a story',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all stories',
+				description: 'Get many stories',
+				action: 'Get many stories',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const storyContentFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                story:get                                   */
 	/* -------------------------------------------------------------------------- */
@@ -47,15 +42,9 @@ export const storyContentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'get',
-				],
+				source: ['contentApi'],
+				resource: ['story'],
+				operation: ['get'],
 			},
 		},
 		description: 'The ID or slug of the story to get',
@@ -70,15 +59,9 @@ export const storyContentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
+				source: ['contentApi'],
+				resource: ['story'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -90,18 +73,10 @@ export const storyContentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				source: ['contentApi'],
+				resource: ['story'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -119,15 +94,9 @@ export const storyContentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				source: [
-					'contentApi',
-				],
-				resource: [
-					'story',
-				],
-				operation: [
-					'getAll',
-				],
+				source: ['contentApi'],
+				resource: ['story'],
+				operation: ['getAll'],
 			},
 		},
 		options: [

@@ -5,11 +5,10 @@ export const fileOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
+				resource: ['file'],
 			},
 		},
 		options: [
@@ -17,25 +16,26 @@ export const fileOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a file info',
+				action: 'Get a file',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get & filters team files',
+				action: 'Get many files',
 			},
 			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Create or upload an existing file',
+				action: 'Upload a file',
 			},
 		],
 		default: 'upload',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const fileFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                file:upload                                 */
 	/* -------------------------------------------------------------------------- */
@@ -46,15 +46,11 @@ export const fileFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
-		description: 'If the data to upload should be taken from binary field',
+		description: 'Whether the data to upload should be taken from binary field',
 	},
 	{
 		displayName: 'File Content',
@@ -63,17 +59,10 @@ export const fileFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				binaryData: [
-					false,
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				binaryData: [false],
 			},
-
 		},
 		placeholder: '',
 		description: 'The text content of the file to upload',
@@ -86,17 +75,10 @@ export const fileFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
-				binaryData: [
-					true,
-				],
+				operation: ['upload'],
+				resource: ['file'],
+				binaryData: [true],
 			},
-
 		},
 		placeholder: '',
 		description: 'Name of the binary property which contains the data for the file to be uploaded',
@@ -107,12 +89,8 @@ export const fileFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['upload'],
+				resource: ['file'],
 			},
 		},
 		default: {},
@@ -120,14 +98,15 @@ export const fileFields: INodeProperties[] = [
 		placeholder: 'Add options',
 		options: [
 			{
-				displayName: 'Channels',
+				displayName: 'Channel Names or IDs',
 				name: 'channelIds',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getChannels',
 				},
 				default: [],
-				description: 'The channels to send the file to',
+				description:
+					'The channels to send the file to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'File Name',
@@ -148,7 +127,8 @@ export const fileFields: INodeProperties[] = [
 				name: 'threadTs',
 				type: 'string',
 				default: '',
-				description: 'Provide another message\'s ts value to upload this file as a reply. Never use a reply\'s ts value; use its parent instead.',
+				description:
+					"Provide another message's ts value to upload this file as a reply. Never use a reply's ts value; use its parent instead.",
 			},
 			{
 				displayName: 'Title',
@@ -169,12 +149,8 @@ export const fileFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['file'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -186,15 +162,9 @@ export const fileFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['file'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -210,33 +180,31 @@ export const fileFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['getAll'],
+				resource: ['file'],
 			},
 		},
 		default: {},
 		placeholder: 'Add Field',
 		options: [
 			{
-				displayName: 'Channel',
+				displayName: 'Channel Name or ID',
 				name: 'channelId',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getChannels',
 				},
-				description: 'Channel containing the file to be listed',
+				description:
+					'Channel containing the file to be listed. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Show Files Hidden By Limit',
 				name: 'showFilesHidden',
 				type: 'boolean',
 				default: false,
-				description: 'Show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit',
+				description:
+					'Whether to show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit',
 			},
 			{
 				displayName: 'Timestamp From',
@@ -270,6 +238,10 @@ export const fileFields: INodeProperties[] = [
 						value: 'images',
 					},
 					{
+						name: 'PDFs',
+						value: 'pdfs',
+					},
+					{
 						name: 'Snippets',
 						value: 'snippets',
 					},
@@ -278,11 +250,8 @@ export const fileFields: INodeProperties[] = [
 						value: 'spaces',
 					},
 					{
-						name: 'pdfs',
-						value: 'pdfs',
-					},
-					{
-						name: 'Zips',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'zips',
 						value: 'zips',
 					},
 				],
@@ -290,14 +259,15 @@ export const fileFields: INodeProperties[] = [
 				description: 'Filter files by type',
 			},
 			{
-				displayName: 'User',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				default: '',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
-				description: 'Filter files created by a single user',
+				description:
+					'Filter files created by a single user. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -311,12 +281,8 @@ export const fileFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'file',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['file'],
+				operation: ['get'],
 			},
 		},
 		default: '',

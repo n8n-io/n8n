@@ -1,25 +1,18 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	allCurrencies,
-} from './currencies';
+import { allCurrencies } from './currencies';
 
-import {
-	activeCampaignDefaultGetAllProperties,
-} from './GenericFunctions';
+import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
 export const dealOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'deal',
-				],
+				resource: ['deal'],
 			},
 		},
 		options: [
@@ -27,42 +20,47 @@ export const dealOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a deal',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a deal',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get data of a deal',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get data of all deals',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a deal',
+				action: 'Create a deal',
 			},
 			{
 				name: 'Create Note',
 				value: 'createNote',
 				description: 'Create a deal note',
+				action: 'Create a deal note',
 			},
 			{
-				name: 'Update deal note',
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a deal',
+				action: 'Delete a deal',
+			},
+			{
+				name: 'Get',
+				value: 'get',
+				description: 'Get data of a deal',
+				action: 'Get a deal',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get data of many deals',
+				action: 'Get many deals',
+			},
+			{
+				name: 'Update',
+				value: 'update',
+				description: 'Update a deal',
+				action: 'Update a deal',
+			},
+			{
+				name: 'Update Deal Note',
 				value: 'updateNote',
 				description: 'Update a deal note',
+				action: 'Update a deal note',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
-
 ];
 
 export const dealFields: INodeProperties[] = [
@@ -77,48 +75,36 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['create'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The title of the deal',
 	},
 	{
-		displayName: 'Deal\'s contact ID',
+		displayName: "Deal's Contact ID",
 		name: 'contact',
 		type: 'number',
 		default: 0,
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['create'],
+				resource: ['deal'],
 			},
 		},
-		description: 'The ID of the deal\'s contact',
+		description: "The ID of the deal's contact",
 	},
 	{
-		displayName: 'Deal value',
+		displayName: 'Deal Value',
 		name: 'value',
 		type: 'number',
 		default: 0,
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['create'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The value of the deal in cents',
@@ -131,64 +117,48 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['create'],
+				resource: ['deal'],
 			},
 		},
 		options: allCurrencies,
 		description: 'The currency of the deal in 3-character ISO format',
 	},
 	{
-		displayName: 'Deal pipeline ID',
+		displayName: 'Deal Pipeline ID',
 		name: 'group',
 		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['create'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The pipeline ID of the deal',
 	},
 	{
-		displayName: 'Deal stage ID',
+		displayName: 'Deal Stage ID',
 		name: 'stage',
 		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['create'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The stage ID of the deal',
 	},
 	{
-		displayName: 'Deal owner ID',
+		displayName: 'Deal Owner ID',
 		name: 'owner',
 		type: 'string',
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['create'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The owner ID of the deal',
@@ -200,12 +170,8 @@ export const dealFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['create'],
+				resource: ['deal'],
 			},
 		},
 		default: {},
@@ -219,14 +185,14 @@ export const dealFields: INodeProperties[] = [
 			},
 
 			{
-				displayName: 'Deal percentage',
+				displayName: 'Deal Percentage',
 				name: 'percent',
 				type: 'number',
 				default: 0,
 				description: 'The percentage of the deal',
 			},
 			{
-				displayName: 'Deal status',
+				displayName: 'Deal Status',
 				name: 'status',
 				type: 'number',
 				default: 0,
@@ -244,12 +210,8 @@ export const dealFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['update'],
+				resource: ['deal'],
 			},
 		},
 		default: 0,
@@ -264,12 +226,8 @@ export const dealFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['update'],
+				resource: ['deal'],
 			},
 		},
 		default: {},
@@ -282,14 +240,14 @@ export const dealFields: INodeProperties[] = [
 				description: 'The title of the deal',
 			},
 			{
-				displayName: 'Deal\'s contact ID',
+				displayName: "Deal's Contact ID",
 				name: 'contact',
 				type: 'number',
 				default: 0,
-				description: 'The ID of the deal\'s contact',
+				description: "The ID of the deal's contact",
 			},
 			{
-				displayName: 'Deal value',
+				displayName: 'Deal Value',
 				name: 'value',
 				type: 'number',
 				default: 0,
@@ -311,35 +269,35 @@ export const dealFields: INodeProperties[] = [
 				description: 'The description of the deal',
 			},
 			{
-				displayName: 'Deal pipeline ID',
+				displayName: 'Deal Pipeline ID',
 				name: 'group',
 				type: 'string',
 				default: '',
 				description: 'The pipeline ID of the deal',
 			},
 			{
-				displayName: 'Deal stage ID',
+				displayName: 'Deal Stage ID',
 				name: 'stage',
 				type: 'string',
 				default: '',
 				description: 'The stage ID of the deal',
 			},
 			{
-				displayName: 'Deal owner ID',
+				displayName: 'Deal Owner ID',
 				name: 'owner',
 				type: 'string',
 				default: '',
 				description: 'The owner ID of the deal',
 			},
 			{
-				displayName: 'Deal percentage',
+				displayName: 'Deal Percentage',
 				name: 'percent',
 				type: 'number',
 				default: 0,
 				description: 'The percentage of the deal',
 			},
 			{
-				displayName: 'Deal status',
+				displayName: 'Deal Status',
 				name: 'status',
 				type: 'number',
 				default: 0,
@@ -359,12 +317,8 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['delete'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The ID of the deal to delete',
@@ -381,12 +335,8 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['get'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The ID of the deal to get',
@@ -408,12 +358,8 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'createNote',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['createNote'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The ID of the deal note',
@@ -426,12 +372,8 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'createNote',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['createNote'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The content of the deal note',
@@ -448,30 +390,22 @@ export const dealFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'updateNote',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['updateNote'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The ID of the deal note',
 	},
 	{
-		displayName: 'Deal note ID',
+		displayName: 'Deal Note ID',
 		name: 'dealNoteId',
 		type: 'number',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'updateNote',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['updateNote'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The ID of the deal note',
@@ -483,15 +417,10 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'updateNote',
-				],
-				resource: [
-					'deal',
-				],
+				operation: ['updateNote'],
+				resource: ['deal'],
 			},
 		},
 		description: 'The content of the deal note',
 	},
-
 ];

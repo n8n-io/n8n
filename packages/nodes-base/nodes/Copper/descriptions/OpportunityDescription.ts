@@ -1,43 +1,44 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
+				resource: ['opportunity'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an opportunity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an opportunity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many opportunities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an opportunity',
 			},
 		],
 		default: 'create',
-		description: 'Operation to perform',
 	},
 ];
 
@@ -54,12 +55,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -71,12 +68,8 @@ export const opportunityFields: INodeProperties[] = [
 		description: 'ID of the customer source that generated this opportunity',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -88,12 +81,8 @@ export const opportunityFields: INodeProperties[] = [
 		description: 'ID of the primary company associated with this opportunity',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['opportunity'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -110,12 +99,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['opportunity'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -132,12 +117,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['opportunity'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -153,12 +134,8 @@ export const opportunityFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -174,15 +151,9 @@ export const opportunityFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -194,12 +165,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -232,12 +199,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -249,12 +212,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 		options: [

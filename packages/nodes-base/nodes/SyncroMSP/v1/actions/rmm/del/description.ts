@@ -1,6 +1,4 @@
-import {
-	RmmProperties,
-} from '../../Interfaces';
+import { RmmProperties } from '../../Interfaces';
 
 export const rmmDeleteDescription: RmmProperties = [
 	{
@@ -10,12 +8,8 @@ export const rmmDeleteDescription: RmmProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['rmm'],
+				operation: ['delete'],
 			},
 		},
 		default: '',

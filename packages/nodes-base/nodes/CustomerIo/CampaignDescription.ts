@@ -5,29 +5,30 @@ export const campaignOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
+				resource: ['campaign'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a campaign',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many campaigns',
 			},
 			{
 				name: 'Get Metrics',
 				value: 'getMetrics',
+				action: 'Get metrics for a campaign',
 			},
 		],
 		default: 'get',
-		description: 'The operation to perform',
 	},
 ];
 
@@ -43,12 +44,8 @@ export const campaignFields: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['campaign'],
+				operation: ['get'],
 			},
 		},
 		description: 'The unique identifier for the campaign',
@@ -64,12 +61,8 @@ export const campaignFields: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getMetrics',
-				],
+				resource: ['campaign'],
+				operation: ['getMetrics'],
 			},
 		},
 		description: 'The unique identifier for the campaign',
@@ -81,12 +74,8 @@ export const campaignFields: INodeProperties[] = [
 		default: 'days',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getMetrics',
-				],
+				resource: ['campaign'],
+				operation: ['getMetrics'],
 			},
 		},
 		description: 'Specify metric period',
@@ -116,12 +105,8 @@ export const campaignFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getMetrics',
-				],
+				resource: ['campaign'],
+				operation: ['getMetrics'],
 			},
 		},
 	},
@@ -133,15 +118,9 @@ export const campaignFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getMetrics',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['campaign'],
+				operation: ['getMetrics'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -150,7 +129,8 @@ export const campaignFields: INodeProperties[] = [
 				name: 'steps',
 				type: 'number',
 				default: 0,
-				description: 'Integer specifying how many steps to return. Defaults to the maximum number of timeperiods available, or 12 when using the months period. Maximum timeperiods available are 24 hours, 45 days, 12 weeks and 120 months',
+				description:
+					'Integer specifying how many steps to return. Defaults to the maximum number of timeperiods available, or 12 when using the months period. Maximum timeperiods available are 24 hours, 45 days, 12 weeks and 120 months',
 				typeOptions: {
 					minValue: 0,
 					maxValue: 120,
@@ -164,12 +144,12 @@ export const campaignFields: INodeProperties[] = [
 				description: 'Specify metric type',
 				options: [
 					{
-						name: 'Empty',
-						value: 'empty',
-					},
-					{
 						name: 'Email',
 						value: 'email',
+					},
+					{
+						name: 'Empty',
+						value: 'empty',
 					},
 					{
 						name: 'Push',
@@ -180,7 +160,7 @@ export const campaignFields: INodeProperties[] = [
 						value: 'slack',
 					},
 					{
-						name: 'twilio',
+						name: 'Twilio',
 						value: 'twilio',
 					},
 					{

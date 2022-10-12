@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const stockOnHandOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'stockOnHand',
-				],
+				resource: ['stockOnHand'],
 			},
 		},
 		options: [
@@ -19,20 +16,20 @@ export const stockOnHandOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a stock on hand',
+				action: 'Get a stock on hand',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all stocks on hand',
+				description: 'Get many stocks on hand',
+				action: 'Get many stocks on hand',
 			},
 		],
 		default: 'getAll',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const stockOnHandFields: INodeProperties[] = [
-
 	/* ------------------------------------------------------------------------- */
 	/*                                stockOnHand:get                            */
 	/* ------------------------------------------------------------------------- */
@@ -42,12 +39,8 @@ export const stockOnHandFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'stockOnHand',
-				],
+				operation: ['get'],
+				resource: ['stockOnHand'],
 			},
 		},
 		default: '',
@@ -61,12 +54,8 @@ export const stockOnHandFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'stockOnHand',
-				],
+				operation: ['getAll'],
+				resource: ['stockOnHand'],
 			},
 		},
 		default: false,
@@ -78,15 +67,9 @@ export const stockOnHandFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'stockOnHand',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['stockOnHand'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -104,12 +87,8 @@ export const stockOnHandFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'stockOnHand',
-				],
+				operation: ['getAll'],
+				resource: ['stockOnHand'],
 			},
 		},
 		options: [
@@ -125,7 +104,8 @@ export const stockOnHandFields: INodeProperties[] = [
 				name: 'IsAssembled',
 				type: 'boolean',
 				default: false,
-				description: 'If set to True, the AvailableQty will also include the quantity that can be assembled',
+				description:
+					'Whether the AvailableQty will also include the quantity that can be assembled',
 			},
 			{
 				displayName: 'Modified Since',
@@ -139,14 +119,16 @@ export const stockOnHandFields: INodeProperties[] = [
 				name: 'orderBy',
 				type: 'string',
 				default: '',
-				description: 'Orders the list by a specific column, by default the list is ordered by productCode',
+				description:
+					'Orders the list by a specific column, by default the list is ordered by productCode',
 			},
 			{
 				displayName: 'Product ID',
 				name: 'productId',
 				type: 'string',
 				default: '',
-				description: 'Returns products with the specific Product Guid. You can enter multiple product IDs separated by commas.',
+				description:
+					'Returns products with the specific Product Guid. You can enter multiple product IDs separated by commas.',
 			},
 			{
 				displayName: 'Warehouse Code',

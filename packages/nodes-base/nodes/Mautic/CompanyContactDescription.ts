@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const companyContactOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'companyContact',
-				],
+				resource: ['companyContact'],
 			},
 		},
 		options: [
@@ -19,20 +16,20 @@ export const companyContactOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add contact to a company',
+				action: 'Add a company contact',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a contact from a company',
+				action: 'Remove a company contact',
 			},
 		],
 		default: 'create',
-		description: 'The operation to perform.',
 	},
 ];
 
 export const companyContactFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                companyContact:add                          */
 	/* -------------------------------------------------------------------------- */
@@ -42,13 +39,8 @@ export const companyContactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'companyContact',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['companyContact'],
+				operation: ['add', 'remove'],
 			},
 		},
 		default: '',
@@ -60,13 +52,8 @@ export const companyContactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'companyContact',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['companyContact'],
+				operation: ['add', 'remove'],
 			},
 		},
 		default: '',

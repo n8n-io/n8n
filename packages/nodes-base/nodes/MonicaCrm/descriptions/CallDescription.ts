@@ -1,17 +1,14 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const callOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
+				resource: ['call'],
 			},
 		},
 		options: [
@@ -19,26 +16,31 @@ export const callOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a call',
+				action: 'Create a call',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a call',
+				action: 'Delete a call',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a call',
+				action: 'Get a call',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all calls',
+				description: 'Retrieve many calls',
+				action: 'Get many calls',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a call',
+				action: 'Update a call',
 			},
 		],
 		default: 'create',
@@ -58,12 +60,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['call'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -76,12 +74,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['call'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -97,12 +91,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['call'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -119,12 +109,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['call'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -141,12 +127,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['call'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -162,12 +144,8 @@ export const callFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['call'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -182,15 +160,9 @@ export const callFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['call'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -207,12 +179,8 @@ export const callFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['call'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -224,12 +192,8 @@ export const callFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'call',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['call'],
+				operation: ['update'],
 			},
 		},
 		options: [
