@@ -79,5 +79,6 @@ export async function getSheetHeaderRowAndAddColumn(
 		name: 'New column ...',
 		value: 'newColumn',
 	});
-	return returnData;
+	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
+	return returnData.filter((column) => column.value !== columnToMatchOn);
 }

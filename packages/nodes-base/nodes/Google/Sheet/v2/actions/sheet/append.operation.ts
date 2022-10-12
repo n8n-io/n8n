@@ -3,7 +3,7 @@ import { SheetProperties, ValueInputOption } from '../../helpers/GoogleSheets.ty
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { autoMapInputData, mapFields, untilSheetSelected } from '../../helpers/GoogleSheets.utils';
-import { cellFormat } from './commonDescription';
+import { cellFormat, handlingExtraData } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -143,36 +143,7 @@ export const description: SheetProperties = [
 					},
 				],
 			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				displayName: 'Handling extra fields in input',
-				name: 'handlingExtraData',
-				type: 'options',
-				options: [
-					{
-						name: 'Insert in New Column(s)',
-						value: 'insertInNewColumn',
-						description: 'Create a new column for extra data',
-					},
-					{
-						name: 'Ignore Them',
-						value: 'ignoreIt',
-						description: 'Ignore extra data',
-					},
-					{
-						name: 'Error',
-						value: 'error',
-						description: 'Throw an error',
-					},
-				],
-				displayOptions: {
-					show: {
-						'/dataMode': ['autoMapInputData'],
-					},
-				},
-				default: 'insertInNewColumn',
-				description: "What do to with fields that don't match any columns in the Google Sheet",
-			},
+			...handlingExtraData,
 		],
 	},
 ];

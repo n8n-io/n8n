@@ -1,10 +1,10 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { ISheetUpdateData, SheetProperties } from '../../helpers/GoogleSheets.types';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
-import { cellFormat, locationDefine } from './commonDescription';
+import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
@@ -107,7 +107,7 @@ export const description: SheetProperties = [
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: ['sheetName'],
+							loadOptionsDependsOn: ['sheetName', 'columnToMatchOn'],
 							loadOptionsMethod: 'getSheetHeaderRowAndAddColumn',
 						},
 						default: '',
@@ -148,7 +148,7 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		options: [...cellFormat, ...locationDefine],
+		options: [...cellFormat, ...locationDefine, ...handlingExtraData],
 	},
 ];
 
@@ -205,7 +205,29 @@ export async function execute(
 		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 
 		if (dataMode === 'autoMapInputData') {
-			data.push(items[i].json);
+			const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
+			if (handlingExtraData === 'ignoreIt') {
+				data.push(items[i].json);
+			}
+			if (handlingExtraData === 'error') {
+				Object.keys(items[i].json).forEach((key) => {
+					if (columnNames.includes(key) === false) {
+						throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
+							itemIndex: i,
+							description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
+						});
+					}
+				});
+				data.push(items[i].json);
+			}
+			if (handlingExtraData === 'insertInNewColumn') {
+				Object.keys(items[i].json).forEach((key) => {
+					if (columnNames.includes(key) === false) {
+						newColumns.add(key);
+					}
+				});
+				data.push(items[i].json);
+			}
 		} else {
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 

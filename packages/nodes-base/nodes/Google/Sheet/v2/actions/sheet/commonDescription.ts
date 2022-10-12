@@ -238,3 +238,36 @@ export const cellFormat: INodeProperties[] = [
 		description: 'Determines how data should be interpreted',
 	},
 ];
+
+export const handlingExtraData: INodeProperties[] = [
+	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+		displayName: 'Handling extra fields in input',
+		name: 'handlingExtraData',
+		type: 'options',
+		options: [
+			{
+				name: 'Insert in New Column(s)',
+				value: 'insertInNewColumn',
+				description: 'Create a new column for extra data',
+			},
+			{
+				name: 'Ignore Them',
+				value: 'ignoreIt',
+				description: 'Ignore extra data',
+			},
+			{
+				name: 'Error',
+				value: 'error',
+				description: 'Throw an error',
+			},
+		],
+		displayOptions: {
+			show: {
+				'/dataMode': ['autoMapInputData'],
+			},
+		},
+		default: 'insertInNewColumn',
+		description: "What do to with fields that don't match any columns in the Google Sheet",
+	},
+];
