@@ -70,8 +70,7 @@
 				<code-node-editor
 					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
 					:mode="node.parameters.mode"
-					:jsCodeAllItems="node.parameters.jsCodeAllItems"
-					:jsCodeEachItem="node.parameters.jsCodeEachItem"
+					:jsCode="node.parameters.jsCode"
 					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>

@@ -6,11 +6,6 @@ import {
 } from 'n8n-workflow';
 import { getSandboxContext, Sandbox } from './Sandbox';
 import { standardizeOutput } from './utils';
-import {
-	ALL_ITEMS_PLACEHOLDER,
-	EACH_ITEM_PLACEHOLDER,
-	JS_CODE_PARAM_DESCRIPTION,
-} from './placeholders';
 import type { CodeNodeMode } from './utils';
 
 export class Code implements INodeType {
@@ -50,39 +45,19 @@ export class Code implements INodeType {
 			},
 			{
 				displayName: 'JavaScript',
-				name: 'jsCodeAllItems',
+				name: 'jsCode',
 				typeOptions: {
 					editor: 'codeNodeEditor',
 				},
 				type: 'string',
-				default: ALL_ITEMS_PLACEHOLDER,
-				description: JS_CODE_PARAM_DESCRIPTION,
+				default: '', // set by component
+				description:
+					'JavaScript code to execute.<br><br>Tip: You can use luxon vars like <code>$today</code> for dates and <code>$jmespath</code> for querying JSON structures. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.function">Learn more</a>.',
 				noDataExpression: true,
-				displayOptions: {
-					show: {
-						mode: ['runOnceForAllItems'],
-					},
-				},
-			},
-			{
-				displayName: 'JavaScript',
-				name: 'jsCodeEachItem',
-				typeOptions: {
-					editor: 'codeNodeEditor',
-				},
-				type: 'string',
-				default: EACH_ITEM_PLACEHOLDER,
-				description: JS_CODE_PARAM_DESCRIPTION,
-				noDataExpression: true,
-				displayOptions: {
-					show: {
-						mode: ['runOnceForEachItem'],
-					},
-				},
 			},
 			{
 				displayName:
-					'Type <code>$</code> for a list of special vars/functions. Debug using <code>console.log()</code> statements and viewing their output in the browser console. <a>More info</a>',
+					'Type <code>$</code> for a list of special vars/methods. Debug by using <code>console.log()</code> statements and viewing their output in the browser console. <a>More info</a>',
 				name: 'notice',
 				type: 'notice',
 				default: '',
@@ -101,7 +76,7 @@ export class Code implements INodeType {
 		// ----------------------------------
 
 		if (nodeMode === 'runOnceForAllItems') {
-			const jsCodeAllItems = this.getNodeParameter('jsCodeAllItems', 0) as string;
+			const jsCodeAllItems = this.getNodeParameter('jsCode', 0) as string;
 
 			const context = getSandboxContext.call(this);
 			const sandbox = new Sandbox(context, workflowMode, nodeMode);
@@ -133,7 +108,7 @@ export class Code implements INodeType {
 		for (let index = 0; index < items.length; index++) {
 			let item = items[index];
 
-			const jsCodeEachItem = this.getNodeParameter('jsCodeEachItem', index) as string;
+			const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
 
 			const context = getSandboxContext.call(this, index);
 			const sandbox = new Sandbox(context, workflowMode, nodeMode);

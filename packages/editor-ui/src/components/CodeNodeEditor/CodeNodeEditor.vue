@@ -1,5 +1,5 @@
 <template>
-	<div ref="codeNodeEditor" />
+	<div ref="codeNodeEditor" class="ph-no-capture" />
 </template>
 
 <script lang="ts">
@@ -16,6 +16,7 @@ import { CODE_NODE_EDITOR_THEME } from './theme';
 import { workflowHelpers } from '../mixins/workflowHelpers'; // for json field completions
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_TYPE } from '@/constants';
+import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'code-node-editor',
@@ -29,10 +30,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			type: Boolean,
 			default: false,
 		},
-		jsCodeAllItems: {
-			type: String,
-		},
-		jsCodeEachItem: {
+		jsCode: {
 			type: String,
 		},
 	},
@@ -45,6 +43,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	watch: {
 		mode() {
 			this.reloadLinter();
+			this.refreshPlaceholder();
 		},
 	},
 	computed: {
@@ -52,6 +51,18 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			if (!this.editor) return '';
 
 			return this.editor.state.doc.toString();
+		},
+		placeholder(): string {
+			return {
+				runOnceForAllItems: ALL_ITEMS_PLACEHOLDER,
+				runOnceForEachItem: EACH_ITEM_PLACEHOLDER,
+			}[this.mode];
+		},
+		previousPlaceholder(): string {
+			return {
+				runOnceForAllItems: EACH_ITEM_PLACEHOLDER,
+				runOnceForEachItem: ALL_ITEMS_PLACEHOLDER,
+			}[this.mode];
 		},
 	},
 	methods: {
@@ -61,6 +72,15 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			this.editor.dispatch({
 				effects: this.linterCompartment.reconfigure(this.linterExtension()),
 			});
+		},
+		refreshPlaceholder() {
+			if (!this.editor) return;
+
+			if (!this.content.trim() || this.content.trim() === this.previousPlaceholder) {
+				this.editor.dispatch({
+					changes: { from: 0, to: this.content.length, insert: this.placeholder },
+				});
+			}
 		},
 		highlightLine(line: number | 'final') {
 			if (!this.editor) return;
@@ -83,15 +103,25 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 
 			try {
 				// @ts-ignore - undocumented fields
-				const { fromA, toA, toB } = viewUpdate?.changedRanges[0];
-				const context = this.content.slice(fromA, toA);
-				const insertedText = this.content.slice(toA, toB);
-				const fieldName = this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem';
+				const { fromA, toB } = viewUpdate?.changedRanges[0];
+				const full = this.content.slice(fromA, toB);
+				const lastDotIndex = full.lastIndexOf('.');
+
+				let context = null;
+				let insertedText = null;
+
+				if (lastDotIndex === -1) {
+					context = '';
+					insertedText = full;
+				} else {
+					context = full.slice(0, lastDotIndex);
+					insertedText = full.slice(lastDotIndex + 1);
+				}
 
 				this.$telemetry.track('User autocompleted code', {
 					instance_id: this.$store.getters.instanceId,
 					node_type: CODE_NODE_TYPE,
-					field_name: fieldName,
+					field_name: this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
 					field_type: 'code',
 					context,
 					inserted_text: insertedText,
@@ -117,10 +147,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			}),
 		];
 
-		const doc = this.mode === 'runOnceForAllItems' ? this.jsCodeAllItems : this.jsCodeEachItem;
-
 		const state = EditorState.create({
-			doc,
+			doc: this.jsCode !== '' ? this.jsCode : this.placeholder,
 			extensions: [
 				...baseExtensions,
 				...stateBasedExtensions,
