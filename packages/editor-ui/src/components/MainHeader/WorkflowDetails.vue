@@ -64,6 +64,13 @@
 				<span class="activator">
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
+				<n8n-button
+					type="tertiary"
+					class="mr-2xs"
+					@click="onShareButtonClick"
+				>
+					{{ $locale.baseText('workflowDetails.share') }}
+				</n8n-button>
 				<SaveButton
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
@@ -87,6 +94,7 @@ import {
 	MAX_WORKFLOW_NAME_LENGTH,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
 } from "@/constants";
 
 import ShortenName from "@/components/ShortenName.vue";
@@ -202,6 +210,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 		async onSaveButtonClick () {
 			const saved = await this.saveCurrentWorkflow();
 			if (saved) this.$store.dispatch('settings/fetchPromptsData');
+		},
+		onShareButtonClick() {
+			this.$store.dispatch('ui/openModal', WORKFLOW_SHARE_MODAL_KEY);
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;

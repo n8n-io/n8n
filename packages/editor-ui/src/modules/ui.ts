@@ -18,6 +18,7 @@ import {
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
 	VIEWS,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
@@ -89,6 +90,9 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[WORKFLOW_ACTIVE_MODAL_KEY]: {
+				open: false,
+			},
+			[WORKFLOW_SHARE_MODAL_KEY]: {
 				open: false,
 			},
 			[COMMUNITY_PACKAGE_INSTALL_MODAL_KEY]: {

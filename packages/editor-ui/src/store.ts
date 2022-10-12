@@ -990,6 +990,9 @@ export const store = new Vuex.Store({
 			return state.executionWaitingForWebhook;
 		},
 
+		workflow: (state): IWorkflowDb => {
+			return state.workflow;
+		},
 		workflowName: (state): string => {
 			return state.workflow.name;
 		},
