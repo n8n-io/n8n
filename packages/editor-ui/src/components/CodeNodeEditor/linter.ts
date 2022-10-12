@@ -173,7 +173,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.object.type === 'Identifier' &&
 					node.object.name === 'item';
 
-				walk<TargetNode>(ast, isItemAccess).forEach(node => {
+				walk<TargetNode>(ast, isItemAccess).forEach((node) => {
 					const [start, end] = this.getRange(node.object);
 
 					lintings.push({
@@ -186,7 +186,8 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 								name: 'Fix',
 								apply(view, from, to) {
 									// prevent second insertion of unknown origin
-									if (view.state.doc.toString().slice(from, to).includes('$input.item.json')) return;
+									if (view.state.doc.toString().slice(from, to).includes('$input.item.json'))
+										return;
 
 									view.dispatch({ changes: { from: start, to: end } });
 									view.dispatch({ changes: { from, insert: '$input.item.json' } });
@@ -399,6 +400,27 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 				if (found.length === 1) {
 					const itemAlias = found[0].left.declarations[0].id.name;
 
+					/**
+					 * for (const item of $input.all()) {
+					 * 	const item = {}; // shadow item
+					 * }
+					 */
+					const isShadowItemVar = (node: Node) =>
+						node.type === 'VariableDeclarator' &&
+						node.id.type === 'Identifier' &&
+						node.id.name === 'item' &&
+						node.init !== null;
+
+					const shadowFound = walk(ast, isShadowItemVar);
+
+					let shadowStart: undefined | number;
+
+					if (shadowFound.length > 0) {
+						const [shadow] = shadowFound;
+						const [_shadowStart] = this.getRange(shadow);
+						shadowStart = _shadowStart;
+					}
+
 					const isDirectAccessToItem = (node: Node) =>
 						node.type === 'MemberExpression' &&
 						node.object.type === 'Identifier' &&
@@ -407,11 +429,13 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 						!['json', 'binary'].includes(node.property.name);
 
 					walk(ast, isDirectAccessToItem).forEach((node) => {
+						const [start, end] = this.getRange(node);
+
+						if (shadowStart && start > shadowStart) return; // skip shadow item
+
 						const varName = this.getText(node);
 
 						if (!varName) return;
-
-						const [start, end] = this.getRange(node);
 
 						lintings.push({
 							from: start,
