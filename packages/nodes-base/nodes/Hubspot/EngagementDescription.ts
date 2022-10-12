@@ -249,6 +249,8 @@ export const engagementFields: INodeProperties[] = [
 				name: 'endTime',
 				type: 'dateTime',
 				default: '',
+				description:
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 			{
 				displayName: 'Internal Meeting Notes',
@@ -261,6 +263,8 @@ export const engagementFields: INodeProperties[] = [
 				name: 'startTime',
 				type: 'dateTime',
 				default: '',
+				description:
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 			{
 				displayName: 'Title',

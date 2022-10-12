@@ -153,14 +153,16 @@ export const ticketFields: INodeProperties[] = [
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the ticket was closed',
+				description:
+					'The date the ticket was closed. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Create Date',
 				name: 'createDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the ticket was created',
+				description:
+					'The date the ticket was created. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Description',
@@ -312,14 +314,16 @@ export const ticketFields: INodeProperties[] = [
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the ticket was closed',
+				description:
+					'The date the ticket was closed. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Create Date',
 				name: 'createDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the ticket was created',
+				description:
+					'The date the ticket was created. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Description',

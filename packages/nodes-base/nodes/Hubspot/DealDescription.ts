@@ -134,6 +134,8 @@ export const dealFields: INodeProperties[] = [
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
+				description:
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 			{
 				displayName: 'Custom Properties',
@@ -279,6 +281,8 @@ export const dealFields: INodeProperties[] = [
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
+				description:
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 			{
 				displayName: 'Custom Properties',
@@ -616,7 +620,8 @@ export const dealFields: INodeProperties[] = [
 				name: 'since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return deals created after timestamp x',
+				description:
+					'Only return deals created after timestamp x. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Include Property Versions',

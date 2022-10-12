@@ -76,7 +76,8 @@ export const formFields: INodeProperties[] = [
 				name: 'submittedAt',
 				type: 'dateTime',
 				default: '',
-				description: 'Time of the form submission',
+				description:
+					'Time of the form submission. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 		],
 	},

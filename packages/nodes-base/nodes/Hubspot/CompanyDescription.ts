@@ -126,7 +126,8 @@ export const companyFields: INodeProperties[] = [
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the company or organization was closed as a customer',
+				description:
+					'The date the company or organization was closed as a customer. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Company Domain Name',
@@ -518,7 +519,8 @@ export const companyFields: INodeProperties[] = [
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
-				description: 'The date the company or organization was closed as a customer',
+				description:
+					'The date the company or organization was closed as a customer. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Company Domain Name',
@@ -1069,7 +1071,8 @@ export const companyFields: INodeProperties[] = [
 				name: 'since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return companys created after timestamp x',
+				description:
+					'Only return companys created after timestamp x. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
 				displayName: 'Include Property Versions',

@@ -122,6 +122,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'closeDate',
 				type: 'dateTime',
 				default: '',
+				description:
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 			{
 				displayName: 'Company Name',
@@ -199,6 +201,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'dateOfBirth',
 				type: 'dateTime',
 				default: '',
+				description:
+					'When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format.',
 			},
 			{
 				displayName: 'Degree',
@@ -251,7 +255,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					"A contact's graduation date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
+					"A contact's graduation date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format",
 			},
 			{
 				displayName: 'Industry',
@@ -452,7 +456,7 @@ export const contactFields: INodeProperties[] = [
 				type: 'dateTime',
 				default: '',
 				description:
-					"A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
+					"A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format",
 			},
 			{
 				displayName: 'State/Region',
