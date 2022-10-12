@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.container" :style="containerCssVars" ref="container">
-		<n8n-tooltip placement="top" :value="showTooltip" :disabled="isScrimActive" :popper-class="$style.tooltip" :open-delay="700">
+		<n8n-tooltip placement="top" :value="showTooltip" manual :disabled="isScrimActive" :popper-class="$style.tooltip" :open-delay="700">
 			<button :class="$style.button" @click="$emit('click')">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
@@ -8,7 +8,7 @@
 				<p v-text="$locale.baseText('nodeView.canvasAddButton.addATriggerNodeBeforeExecuting')" />
 			</template>
 		</n8n-tooltip>
-		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.chooseATrigger')" />
+		<p :class="$style.label" v-text="$locale.baseText('nodeView.canvasAddButton.addFirstStep')" />
 	</div>
 </template>
 
@@ -35,7 +35,7 @@ export default Vue.extend({
 			};
 		},
 		isScrimActive(): boolean {
-			return this.$store.getters['ui/showCreatorPanelScrim'];
+			return this.$store.getters['nodeCreator/showScrim'];
 		},
 	},
 });

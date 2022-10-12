@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<aside :class="{'node-creator-scrim': true, expanded: !sidebarMenuCollapsed, active: showCreatorPanelScrim}" />
+		<aside :class="{'node-creator-scrim': true, expanded: !sidebarMenuCollapsed, active: showScrim}" />
 
 		<slide-transition>
 			<div
@@ -42,8 +42,8 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		showCreatorPanelScrim(): boolean {
-			return this.$store.getters['ui/showCreatorPanelScrim'];
+		showScrim(): boolean {
+			return this.$store.getters['nodeCreator/showScrim'];
 		},
 		sidebarMenuCollapsed(): boolean {
 			return this.$store.getters['ui/sidebarMenuCollapsed'];
@@ -100,7 +100,7 @@ export default Vue.extend({
 	},
 	watch: {
 		active(isActive) {
-			if(isActive === false) this.$store.commit('ui/setShowCreatorPanelScrim', false);
+			if(isActive === false) this.$store.commit('nodeCreator/setShowScrim', false);
 		},
 	},
 });

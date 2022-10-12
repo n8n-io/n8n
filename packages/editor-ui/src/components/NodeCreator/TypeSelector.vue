@@ -1,5 +1,5 @@
 <template>
-	<div class="type-selector" v-if="showNodeCreatorTabs">
+	<div class="type-selector" v-if="showTabs">
 		<el-tabs stretch :value="selectedType" @input="setType">
 			<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.all')" :name="ALL_NODE_FILTER"></el-tab-pane>
 			<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.regular')" :name="REGULAR_NODE_FILTER"></el-tab-pane>
@@ -23,15 +23,15 @@ export default Vue.extend({
 	},
 	methods: {
 		setType(type: string) {
-			this.$store.commit('ui/setSelectedNodeCreatorType', type);
+			this.$store.commit('nodeCreator/setSelectedType', type);
 		},
 	},
 	computed: {
-		showNodeCreatorTabs(): boolean {
-			return this.$store.getters['ui/showNodeCreatorTabs'];
+		showTabs(): boolean {
+			return this.$store.getters['nodeCreator/showTabs'];
 		},
 		selectedType(): string {
-			return this.$store.getters['ui/selectedNodeCreatorType'];
+			return this.$store.getters['nodeCreator/selectedType'];
 		},
 	},
 });

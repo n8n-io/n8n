@@ -66,10 +66,10 @@
 			@mouseenter="onCreateMenuHoverIn"
 		>
 			<div class="node-creator-button">
-				<n8n-icon-button size="xlarge" icon="plus" @click="() => openNodeCreator('add_node_button')"
+				<n8n-icon-button size="xlarge" icon="plus" class="node-creator-plus" @click="() => openNodeCreator('add_node_button')" type="tertiary"
 					:title="$locale.baseText('nodeView.addNode')" />
 				<div :class="['add-sticky-button', showStickyButton ? 'visible-button' : '']" @click="addStickyNote">
-					<n8n-icon-button size="medium" type="secondary" :icon="['far', 'note-sticky']"
+					<n8n-icon-button size="medium" type="tertiary" :icon="['far', 'note-sticky']"
 						:title="$locale.baseText('nodeView.addSticky')" />
 				</div>
 			</div>
@@ -609,7 +609,7 @@ export default mixins(
 
 				this.createNodeActive = true;
 				// Default to the trigger tab in node creator if there's no trigger node yet
-				if (!this.containsTrigger) this.$store.commit('ui/setSelectedNodeCreatorType', TRIGGER_NODE_FILTER);
+				if (!this.containsTrigger) this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
 
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
@@ -617,10 +617,10 @@ export default mixins(
 			showTriggerCreator(source: string) {
 				if(this.createNodeActive) return;
 
-				this.$store.commit('ui/setSelectedNodeCreatorType', TRIGGER_NODE_FILTER);
-				this.$store.commit('ui/setShowCreatorPanelScrim', true);
+				this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
+				this.$store.commit('nodeCreator/setShowScrim', true);
 				this.openNodeCreator(source);
-				this.$nextTick(() => this.$store.commit('ui/setShowNodeCreatorTabs', false));
+				this.$nextTick(() => this.$store.commit('nodeCreator/setShowTabs', false));
 			},
 			async openExecution(executionId: string) {
 				this.resetWorkspace();
@@ -3372,6 +3372,20 @@ export default mixins(
 	top: 80px;
 	right: 20px;
 	pointer-events: all !important;
+
+	button {
+		border-color: var(--color-foreground-xdark);
+
+		&:hover {
+			border-color: var(--color-primary);
+			color: var(--color-primary);
+			background: transparent;
+		}
+	}
+	.node-creator-plus {
+		border-width: 2px;
+		border-radius: 4px;
+	}
 }
 
 .node-creator-button button {
