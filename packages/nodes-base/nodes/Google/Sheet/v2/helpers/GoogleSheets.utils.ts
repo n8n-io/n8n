@@ -172,11 +172,30 @@ export function prepareSheetData(
 		firstDataRow = parseInt(options.firstDataRow as string, 10) - 1;
 	}
 
+	// if (options.rangeDefinition === 'specifyRangeA1') {
+	// 	const rangeData = getHeaderRowFromRange(options.range as string);
+	// 	headerRow = rangeData.headerRow;
+	// 	firstDataRow = rangeData.firstDataRow;
+	// }
+
 	return { data: returnData, headerRow, firstDataRow };
 }
 
+// export function getHeaderRowFromRange(range: string) {
+// 	let headerRow, firstDataRow;
+// 	const start = (range || '').split(':')[0];
+// 	if (start) {
+// 		headerRow = parseInt(start.replace(/[^0-9]/g, ''), 10) - 1 || 0;
+// 		firstDataRow = headerRow + 1;
+// 	} else {
+// 		headerRow = 0;
+// 		firstDataRow = 1;
+// 	}
+// 	return { headerRow, firstDataRow };
+// }
+
 export function getRangeString(sheetName: string, options: RangeDetectionOptions) {
-	if (options.rangeDefinition === 'specifyRange') {
+	if (options.rangeDefinition === 'specifyRangeA1') {
 		return options.range ? `${sheetName}!${options.range as string}` : sheetName;
 	}
 	return sheetName;

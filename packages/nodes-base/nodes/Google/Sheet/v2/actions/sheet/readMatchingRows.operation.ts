@@ -7,7 +7,7 @@ import {
 	untilSheetSelected,
 } from '../../helpers/GoogleSheets.utils';
 import { SheetProperties } from '../../helpers/GoogleSheets.types';
-import { dataLocationOnSheet, outputDateFormatting, outputFormatting } from './commonDescription';
+import { dataLocationOnSheet, outputFormatting } from './commonDescription';
 import {
 	ILookupValues,
 	RangeDetectionOptions,
@@ -73,7 +73,6 @@ export const description: SheetProperties = [
 		options: [
 			...dataLocationOnSheet,
 			...outputFormatting,
-			...outputDateFormatting,
 			{
 				displayName: 'When Multiple Matches',
 				name: 'whenMultipleMatches',
@@ -108,6 +107,8 @@ export async function execute(
 
 	for (let i = 0; i < items.length; i++) {
 		const options = this.getNodeParameter('options', i, {}) as IDataObject;
+		const outputFormatting =
+			(((options.outputFormatting as IDataObject) || {}).values as IDataObject) || {};
 
 		const dataLocationOnSheetOptions =
 			(((options.dataLocationOnSheet as IDataObject) || {}).values as RangeDetectionOptions) || {};
@@ -118,12 +119,13 @@ export async function execute(
 
 		const range = getRangeString(sheetName, dataLocationOnSheetOptions);
 
-		const valueRenderMode = (options.outputFormatting || 'UNFORMATTED_VALUE') as ValueRenderOption;
+		const valueRenderMode = (outputFormatting.general || 'UNFORMATTED_VALUE') as ValueRenderOption;
+		const dateTimeRenderOption = (outputFormatting.date || 'FORMATTED_STRING') as string;
 
 		const sheetData = (await sheet.getData(
 			range,
 			valueRenderMode,
-			options.dateTimeRenderOption as string,
+			dateTimeRenderOption,
 		)) as SheetRangeData;
 
 		const { data, headerRow, firstDataRow } = prepareSheetData(

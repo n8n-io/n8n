@@ -178,7 +178,7 @@ export async function execute(
 
 		let headerRow = 0;
 		let firstDataRow = 1;
-		let range = `${sheetName}!A:Z`;
+		const range = `${sheetName}!A:Z`;
 
 		if (locationDefine) {
 			if (locationDefine.headerRow) {
@@ -187,9 +187,9 @@ export async function execute(
 			if (locationDefine.firstDataRow) {
 				firstDataRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
 			}
-			if (locationDefine.range) {
-				range = `${sheetName}!${locationDefine.range}`;
-			}
+			// if (locationDefine.range) {
+			// 	range = `${sheetName}!${locationDefine.range}`;
+			// }
 		}
 
 		let columnNames: string[] = [];

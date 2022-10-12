@@ -23,7 +23,12 @@ export const dataLocationOnSheet: INodeProperties[] = [
 								description: 'Automatically detect the data range',
 							},
 							{
-								name: 'Specify Range',
+								name: 'Specify Range (A1 Notation)',
+								value: 'specifyRangeA1',
+								description: 'Manually specify the data range',
+							},
+							{
+								name: 'Specify Range (Rows)',
 								value: 'specifyRange',
 								description: 'Manually specify the data range',
 							},
@@ -96,7 +101,7 @@ export const dataLocationOnSheet: INodeProperties[] = [
 						hint: 'You can specify both the rows and the columns, e.g. C4:E7',
 						displayOptions: {
 							show: {
-								rangeDefinition: ['specifyRange'],
+								rangeDefinition: ['specifyRangeA1'],
 							},
 						},
 					},
@@ -142,16 +147,16 @@ export const locationDefine: INodeProperties[] = [
 							'Index of the first row which contains the actual data and not the keys. Starts with 1.',
 						hint: 'From start of range. First row is row 1',
 					},
-					{
-						displayName: 'Range',
-						name: 'range',
-						type: 'string',
-						default: '',
-						placeholder: 'A:Z',
-						description:
-							'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
-						hint: 'You can specify both the rows and the columns, e.g. C4:E7',
-					},
+					// {
+					// 	displayName: 'Range',
+					// 	name: 'range',
+					// 	type: 'string',
+					// 	default: '',
+					// 	placeholder: 'A:Z',
+					// 	description:
+					// 		'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
+					// 	hint: 'You can specify both the rows and the columns, e.g. C4:E7',
+					// },
 				],
 			},
 		],
@@ -162,55 +167,61 @@ export const outputFormatting: INodeProperties[] = [
 	{
 		displayName: 'Output Formatting',
 		name: 'outputFormatting',
-		type: 'options',
+		type: 'fixedCollection',
+		placeholder: 'Add Formatting',
+		default: { values: { general: 'UNFORMATTED_VALUE', date: 'FORMATTED_STRING' } },
 		options: [
 			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				name: 'Values (unformatted)',
-				value: 'UNFORMATTED_VALUE',
-				description:
-					'Numbers stay as numbers, but any currency signs or special formatting is lost',
+				displayName: 'Values',
+				name: 'values',
+				values: [
+					{
+						displayName: 'General Formatting',
+						name: 'general',
+						type: 'options',
+						options: [
+							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Values (unformatted)',
+								value: 'UNFORMATTED_VALUE',
+								description:
+									'Numbers stay as numbers, but any currency signs or special formatting is lost',
+							},
+							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+								name: 'Values (formatted)',
+								value: 'FORMATTED_VALUE',
+								description:
+									'Numbers are turned to text, and displayed as in Google Sheets (e.g. with commas or currency signs)',
+							},
+							{
+								name: 'Formulas',
+								value: 'FORMULA',
+							},
+						],
+						default: '',
+						description: 'Determines how values should be rendered in the output',
+					},
+					{
+						displayName: 'Date Formatting',
+						name: 'date',
+						type: 'options',
+						default: '',
+						options: [
+							{
+								name: 'Formatted Text',
+								value: 'FORMATTED_STRING',
+								description: "As displayed in Google Sheets, e.g. '01/01/2022'",
+							},
+							{
+								name: 'Serial Number',
+								value: 'SERIAL_NUMBER',
+								description: 'A number representing the number of days since Dec 30, 1899',
+							},
+						],
+					},
+				],
 			},
-			{
-				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-				name: 'Values (formatted)',
-				value: 'FORMATTED_VALUE',
-				description:
-					'Numbers are turned to text, and displayed as in Google Sheets (e.g. with commas or currency signs)',
-			},
-			{
-				name: 'Formulas',
-				value: 'FORMULA',
-			},
-		],
-		default: 'UNFORMATTED_VALUE',
-		description: 'Determines how values should be rendered in the output',
-	},
-];
-
-export const outputDateFormatting: INodeProperties[] = [
-	{
-		displayName: 'Output Date Formatting',
-		name: 'dateTimeRenderOption',
-		type: 'options',
-		default: 'FORMATTED_STRING',
-		options: [
-			{
-				name: 'Formatted Text',
-				value: 'FORMATTED_STRING',
-				description: "As displayed in Google Sheets, e.g. '01/01/2022'",
-			},
-			{
-				name: 'Serial Number',
-				value: 'SERIAL_NUMBER',
-				description: 'A number representing the number of days since Dec 30, 1899',
-			},
-			// {
-			// 	name: 'ISO Date String',
-			// 	value: 'isoDateString',
-			// 	// eslint-disable-next-line n8n-nodes-base/node-param-description-missing-final-period
-			// 	description: "E.g. '2022-01-01'",
-			// },
 		],
 	},
 ];

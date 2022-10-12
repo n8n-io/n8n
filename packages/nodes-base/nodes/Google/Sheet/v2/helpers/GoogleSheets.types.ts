@@ -38,7 +38,7 @@ export type ValueInputOption = 'RAW' | 'USER_ENTERED';
 export type ValueRenderOption = 'FORMATTED_VALUE' | 'FORMULA' | 'UNFORMATTED_VALUE';
 
 export type RangeDetectionOptions = {
-	rangeDefinition: 'detectAutomatically' | 'specifyRange';
+	rangeDefinition: 'detectAutomatically' | 'specifyRange' | 'specifyRangeA1';
 	readRowsUntil?: 'firstEmptyRow' | 'lastRowInSheet';
 	headerRow?: string;
 	firstDataRow?: string;
