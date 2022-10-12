@@ -28,9 +28,8 @@ jobs:
             PR titles in this repo follow our version of the Conventional Commits spec.
             This allows us to automatically generate the changelog for the next release.
             Therefore, we ask you to adjust your PR title to solve the issue(s) below:
-            ```
+
             ${{ steps.validate_pr_title.outputs.validation_issues }}
-            ```
 
       - name: Remove validation issue comment
         if: ${{ steps.validate_pr_title.outputs.validation_issues == null }}
