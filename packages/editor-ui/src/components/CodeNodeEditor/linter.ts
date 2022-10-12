@@ -186,8 +186,9 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 								name: 'Fix',
 								apply(view, from, to) {
 									// prevent second insertion of unknown origin
-									if (view.state.doc.toString().slice(from, to).includes('$input.item.json'))
+									if (view.state.doc.toString().slice(from, to).includes('$input.item.json')) {
 										return;
+									}
 
 									view.dispatch({ changes: { from: start, to: end } });
 									view.dispatch({ changes: { from, insert: '$input.item.json' } });
