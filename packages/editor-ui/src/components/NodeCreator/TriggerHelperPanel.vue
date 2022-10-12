@@ -127,7 +127,7 @@ export default mixins(externalHooks).extend({
 							name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 							displayName: this.$locale.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDisplayName'),
 							description: this.$locale.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDescription'),
-							icon: "fa:network-wired",
+							icon: "fa:sign-out-alt",
 							defaults: {
 								color: "#7D838F",
 							},

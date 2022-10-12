@@ -516,7 +516,7 @@
 	"nodeCreator.triggerHelperPanel.webhookTriggerDisplayName": "On Webhook Call",
 	"nodeCreator.triggerHelperPanel.webhookTriggerDescription": "Runs the flow when another app sends a webhook",
 	"nodeCreator.triggerHelperPanel.manualTriggerDisplayName": "Manually",
-	"nodeCreator.triggerHelperPanel.manualTriggerDescription": "On clicking a button in n8n",
+	"nodeCreator.triggerHelperPanel.manualTriggerDescription": "Runs the flow on clicking a button in n8n",
 	"nodeCreator.triggerHelperPanel.workflowTriggerDisplayName": "Execute Workflow Trigger",
 	"nodeCreator.triggerHelperPanel.workflowTriggerDescription": "Runs the flow when called by the Execute Workflow node from a different workflow",
 	"nodeCredentials.createNew": "Create New",
