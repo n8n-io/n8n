@@ -58,6 +58,7 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 				});
 			}
 		} else {
+			console.log(JSON.stringify(options, undefined, 2));
 			return await this.helpers.requestWithAuthentication.call(this, credentialsType, options);
 		}
 	} catch (error) {

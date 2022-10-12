@@ -16,16 +16,19 @@ export const associationOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an association between two objects',
+				action: 'Create an association',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an association between two objects',
+				action: 'Delete an association',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Read an association',
+				action: 'Get an association',
 			},
 		],
 		default: 'get',
@@ -40,6 +43,7 @@ export const associationFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['association'],
@@ -81,7 +85,7 @@ export const associationFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCustomObjectTypes',
 		},
 		default: '',
-		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Target Object ID',
@@ -101,6 +105,7 @@ export const associationFields: INodeProperties[] = [
 		displayName: 'Association Type Name or ID',
 		name: 'associationType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getAssociationTypes',
@@ -121,6 +126,7 @@ export const associationFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['association'],
@@ -162,7 +168,7 @@ export const associationFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCustomObjectTypes',
 		},
 		default: '',
-		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',

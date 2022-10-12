@@ -16,22 +16,27 @@ export const schemaOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a schema',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a schema',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a schema',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many schemata',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a schema',
 			},
 		],
 		default: 'create',
@@ -51,10 +56,12 @@ export const schemaOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a schema',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a schema',
 			},
 		],
 		default: 'create',
@@ -335,6 +342,7 @@ export const schemaFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['schema'],
@@ -355,6 +363,7 @@ export const schemaFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['schema'],
@@ -411,6 +420,7 @@ export const schemaFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['schema'],
@@ -498,6 +508,7 @@ export const schemaFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['schema'],
@@ -530,7 +541,7 @@ export const schemaFields: INodeProperties[] = [
 			loadOptionsMethod: 'getCustomObjectTypes',
 		},
 		default: '',
-		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The type of the target object. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Association Name',

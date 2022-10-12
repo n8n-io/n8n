@@ -16,27 +16,32 @@ export const propertyOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create and return a copy of a new property for the specified object type',
+				action: 'Create a property',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Move a property identified by {propertyName} to the recycling bin',
+				action: 'Delete a property',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Read a property identified by {propertyName}',
+				action: 'Get a property',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Read all existing properties for the specified object type',
+				description: 'Read many existing properties for the specified object type',
+				action: 'Get many properties',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description:
 					'Perform a partial update of a property identified by {propertyName}. Provided fields will be overwritten.',
+				action: 'Update a property',
 			},
 		],
 		default: 'get',
@@ -53,6 +58,7 @@ export const propertyFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['property'],
@@ -203,7 +209,7 @@ export const propertyFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailablePropertyGroups',
 		},
 		default: '',
-		description: 'The name of the property group the property belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The name of the property group the property belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Options as JSON',
@@ -300,6 +306,7 @@ export const propertyFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['property'],
@@ -331,7 +338,7 @@ export const propertyFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailableProperties',
 		},
 		default: '',
-		description: 'The internal property name, which must be used when referencing the property via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The internal property name, which must be used when referencing the property via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -362,6 +369,7 @@ export const propertyFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['property'],
@@ -404,6 +412,7 @@ export const propertyFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['property'],
@@ -432,7 +441,7 @@ export const propertyFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailableProperties',
 		},
 		default: '',
-		description: 'The internal property name, which must be used when referencing the property via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The internal property name, which must be used when referencing the property via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Update Fields',
@@ -552,7 +561,7 @@ export const propertyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getAvailablePropertyGroups',
 				},
 				default: '',
-				description: 'The name of the property group the property belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description: 'The name of the property group the property belongs to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Hidden',
@@ -607,6 +616,7 @@ export const propertyFields: INodeProperties[] = [
 		displayName: 'Object Type Name or ID',
 		name: 'objectType',
 		type: 'options',
+		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
 				resource: ['property'],
@@ -635,6 +645,6 @@ export const propertyFields: INodeProperties[] = [
 			loadOptionsMethod: 'getAvailableProperties',
 		},
 		default: '',
-		description: 'The internal property name, which must be used when referencing the property via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description: 'The internal property name, which must be used when referencing the property via the API. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

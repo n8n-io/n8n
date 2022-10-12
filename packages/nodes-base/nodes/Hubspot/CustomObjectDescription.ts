@@ -15,7 +15,7 @@ export const customObjectOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create a custom Object',
+				description: 'Create a custom object',
 				action: 'Create a custom object',
 			},
 			{
@@ -25,15 +25,9 @@ export const customObjectOperations: INodeProperties[] = [
 				action: 'Create or Update a custom object',
 			},
 			{
-				name: 'Create or Update (Batch)',
-				value: 'batchUpsert',
-				description: 'Like upsert, but this costs only up to three requests per 100 objects',
-				action: 'Create or Update (Batch) a custom object',
-			},
-			{
 				name: 'Delete',
 				value: 'delete',
-				description: 'Archive a custom Object',
+				description: 'Archive a custom object',
 				action: 'Delete a custom object',
 			},
 			{
@@ -45,7 +39,7 @@ export const customObjectOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get a custom Object',
+				description: 'Get a custom object',
 				action: 'Get a custom object',
 			},
 			{
@@ -57,13 +51,13 @@ export const customObjectOperations: INodeProperties[] = [
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Search custom Objects',
+				description: 'Search custom object',
 				action: 'Search a custom object',
 			},
 			{
 				name: 'Update',
 				value: 'update',
-				description: 'Update a custom Object',
+				description: 'Update a custom object',
 				action: 'Update a custom object',
 			},
 		],
@@ -228,7 +222,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
-				operation: ['upsert', 'batchUpsert'],
+				operation: ['upsert'],
 			},
 		},
 		required: true,
@@ -244,7 +238,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
-				operation: ['upsert', 'batchUpsert'],
+				operation: ['upsert'],
 			},
 		},
 		default: '',
@@ -262,7 +256,7 @@ export const customObjectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['customObject'],
-				operation: ['upsert', 'batchUpsert'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
