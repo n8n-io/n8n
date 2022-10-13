@@ -8,6 +8,8 @@ export class WorkflowOperationError extends Error {
 
 	timestamp: number;
 
+	lineNumber: number | undefined;
+
 	constructor(message: string, node?: INode) {
 		super(message);
 		this.name = this.constructor.name;

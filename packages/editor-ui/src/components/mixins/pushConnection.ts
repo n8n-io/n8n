@@ -20,6 +20,7 @@ import {
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '../helpers';
+import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -214,6 +215,14 @@ export const pushConnection = mixins(
 					const runDataExecuted = pushData.data;
 
 					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
+
+					const lineNumber = runDataExecuted &&
+						runDataExecuted.data &&
+						runDataExecuted.data.resultData &&
+						runDataExecuted.data.resultData.error &&
+						runDataExecuted.data.resultData.error.lineNumber;
+
+					codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
 
 					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
