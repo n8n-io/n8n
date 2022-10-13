@@ -39,6 +39,7 @@
 				:rows="getArgument('rows')"
 				:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
 				:title="displayTitle"
+				:readOnly="isReadOnly"
 				@keydown.stop
 			/>
 			<div
@@ -63,6 +64,7 @@
 					:value="value"
 					:parameter="parameter"
 					:path="path"
+					:isReadOnly="isReadOnly"
 					@closeDialog="closeTextEditDialog"
 					@valueChanged="expressionUpdated"
 				></text-edit>

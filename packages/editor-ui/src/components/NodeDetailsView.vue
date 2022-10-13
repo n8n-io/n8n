@@ -84,6 +84,7 @@
 						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
+						:isReadOnly="readOnly || hasForeignCredential"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@activate="onWorkflowActivate"

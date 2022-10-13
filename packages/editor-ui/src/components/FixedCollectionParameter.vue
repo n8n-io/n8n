@@ -51,6 +51,7 @@
 							:nodeValues="nodeValues"
 							:path="getPropertyPath(property.name, index)"
 							:hideDelete="true"
+							:isReadOnly="isReadOnly"
 							@valueChanged="valueChanged"
 						/>
 					</div>
@@ -70,6 +71,7 @@
 						:parameters="property.values"
 						:nodeValues="nodeValues"
 						:path="getPropertyPath(property.name)"
+						:isReadOnly="isReadOnly"
 						class="parameter-item"
 						@valueChanged="valueChanged"
 						:hideDelete="true"
@@ -107,6 +109,7 @@
 </template>
 
 <script lang="ts">
+import Vue, { Component } from "vue";
 import {
 	IUpdateInformation,
 } from '@/Interface';
@@ -118,19 +121,14 @@ import {
 
 import { get } from 'lodash';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-
-import mixins from 'vue-typed-mixins';
-import {Component} from "vue";
-
-export default mixins(genericHelpers)
-	.extend({
+export default Vue.extend({
 		name: 'FixedCollectionParameter',
 		props: [
 			'nodeValues', // INodeParameters
 			'parameter', // INodeProperties
 			'path', // string
 			'values', // INodeParameters
+			'isReadOnly', // boolean
 		],
 		components: {
 			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,

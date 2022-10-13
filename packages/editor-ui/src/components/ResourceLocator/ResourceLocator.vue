@@ -84,6 +84,7 @@
 									:size="inputSize"
 									:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
 									:title="displayTitle"
+									:disabled="isReadOnly"
 									@keydown.stop
 									ref="input"
 								/>
@@ -172,7 +173,6 @@ import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { nodeHelpers } from '../mixins/nodeHelpers';
 import { getAppNameFromNodeName } from '../helpers';
-import { type } from 'os';
 import { isResourceLocatorValue } from '@/typeGuards';
 
 interface IResourceLocatorQuery {

@@ -16,7 +16,7 @@
 				</div>
 			</div>
 			<div v-if="parameter.type === 'collection'">
-				<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" @valueChanged="valueChanged" />
+				<collection-parameter :parameter="parameter" :values="value" :nodeValues="nodeValues" :path="getPath(index)" :hideDelete="hideDelete" :isReadOnly="isReadOnly" @valueChanged="valueChanged" />
 			</div>
 			<div v-else>
 				<parameter-input-full class="duplicate-parameter-input-item" :parameter="parameter" :value="value" :displayOptions="true" :hideLabel="true" :path="getPath(index)" @valueChanged="valueChanged" inputSize="small" :isReadOnly="isReadOnly" />
@@ -33,6 +33,7 @@
 </template>
 
 <script lang="ts">
+import Vue from "vue";
 import {
 	IUpdateInformation,
 } from '@/Interface';
@@ -42,12 +43,7 @@ import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
 import { get } from 'lodash';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-
-import mixins from 'vue-typed-mixins';
-
-export default mixins(genericHelpers)
-	.extend({
+export default Vue.extend({
 		name: 'MultipleParameter',
 		components: {
 			CollectionParameter,
@@ -58,6 +54,7 @@ export default mixins(genericHelpers)
 			'parameter', // NodeProperties
 			'path', // string
 			'values', // NodeParameters[]
+			'isReadOnly', // boolean
 		],
 		computed: {
 			addButtonText (): string {
