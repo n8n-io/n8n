@@ -124,11 +124,11 @@ export class I18nClass {
 			 * Hint for a top-level param.
 			 */
 			hint(
-				{ name: parameterName, hint }: { name: string; hint: string; },
+				{ name: parameterName, hint }: { name: string; hint?: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.hint`,
-					fallback: hint,
+					fallback: hint || '',
 				});
 			},
 
@@ -174,11 +174,11 @@ export class I18nClass {
 			 * Placeholder for a `string` param.
 			 */
 			placeholder(
-				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
+				{ name: parameterName, placeholder }: { name: string; placeholder?: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
-					fallback: placeholder,
+					fallback: placeholder || '',
 				});
 			},
 		};
@@ -247,7 +247,7 @@ export class I18nClass {
 			 * - For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
 			placeholder(
-				parameter: { name: string; placeholder: string; type: string },
+				parameter: { name: string; placeholder?: string; type: string },
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -259,7 +259,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.placeholder`,
-					fallback: parameter.placeholder,
+					fallback: parameter.placeholder || '',
 				});
 			},
 

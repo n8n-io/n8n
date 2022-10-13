@@ -6,6 +6,7 @@
 		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
 		size="small"
+		color="text-dark"
 	>
 		<template #options>
 			<parameter-options
@@ -34,16 +35,16 @@
 						:buttons="dataMappingTooltipButtons"
 					>
 						<span slot="content" v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })" />
-						<parameter-input
+						<parameter-input-wrapper
 							ref="param"
 							:parameter="parameter"
 							:value="value"
-							:displayOptions="displayOptions"
 							:path="path"
 							:isReadOnly="isReadOnly"
 							:droppable="droppable"
 							:activeDrop="activeDrop"
 							:forceShowExpression="forceShowExpression"
+							:hint="hint"
 							@valueChanged="valueChanged"
 							@focus="onFocus"
 							@blur="onBlur"
@@ -53,7 +54,6 @@
 					</n8n-tooltip>
 				</template>
 			</draggable-target>
-			<input-hint :class="$style.hint" :hint="$locale.nodeText().hint(parameter, path)" />
 		</template>
 	</n8n-input-label>
 </template>
@@ -68,7 +68,6 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
-import ParameterInput from '@/components/ParameterInput.vue';
 import InputHint from './ParameterInputHint.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
@@ -76,6 +75,7 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { hasExpressionMapping } from './helpers';
+import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { hasOnlyListMode } from './ResourceLocator/helpers';
 import { INodePropertyMode } from 'n8n-workflow';
 import { isResourceLocatorValue } from '@/typeGuards';
@@ -87,10 +87,10 @@ export default mixins(
 	.extend({
 		name: 'parameter-input-full',
 		components: {
-			ParameterInput,
 			InputHint,
 			ParameterOptions,
 			DraggableTarget,
+			ParameterInputWrapper,
 		},
 		data() {
 			return {
@@ -124,6 +124,9 @@ export default mixins(
 		computed: {
 			node (): INodeUi | null {
 				return this.$store.getters.activeNode;
+			},
+			hint (): string | null {
+				return this.$locale.nodeText().hint(this.parameter, this.path);
 			},
 			isResourceLocator (): boolean {
 				return  this.parameter.type === 'resourceLocator';
@@ -256,9 +259,3 @@ export default mixins(
 		},
 	});
 </script>
-
-<style lang="scss" module>
-	.hint {
-		margin-top: var(--spacing-4xs);
-	}
-</style>

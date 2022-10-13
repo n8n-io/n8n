@@ -14,6 +14,7 @@
 				:label="$locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
 				size="small"
+				color="text-dark"
 			/>
 			<div v-if="multipleValues === true">
 				<div

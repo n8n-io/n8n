@@ -239,11 +239,6 @@ export interface IStartRunData {
 	pinData?: IPinData;
 }
 
-export interface IRunDataUi {
-	node?: string;
-	workflowData: IWorkflowData;
-}
-
 export interface ITableData {
 	columns: string[];
 	data: GenericValue[][];
@@ -890,6 +885,7 @@ export interface IRootState {
 	oauthCallbackUrls: object;
 	n8nMetadata: object;
 	workflowExecutionData: IExecutionResponse | null;
+	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
 	nodeViewOffsetPosition: XYPosition;
@@ -940,6 +936,13 @@ export interface IModalState {
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
 
+export interface TargetItem {
+	nodeName: string;
+	itemIndex: number;
+	runIndex: number;
+	outputIndex: number;
+}
+
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
@@ -953,11 +956,15 @@ export interface IUiState {
 		sessionId: string;
 		input: {
 			displayMode: IRunDataDisplayMode;
+			nodeName?: string;
+			run?: number;
+			branch?: number;
 			data: {
 				isEmpty: boolean;
 			}
 		};
 		output: {
+			branch?: number;
 			displayMode: IRunDataDisplayMode;
 			data: {
 				isEmpty: boolean;
@@ -969,6 +976,7 @@ export interface IUiState {
 		};
 		focusedMappableInput: string;
 		mappingTelemetry: {[key: string]: string | number | boolean};
+		hoveringItem: null | TargetItem;
 	};
 	mainPanelPosition: number;
 	draggable: {

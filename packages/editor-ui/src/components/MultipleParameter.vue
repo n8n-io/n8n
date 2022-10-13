@@ -5,6 +5,7 @@
 			:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 			:underline="true"
 			size="small"
+			color="text-dark"
 		/>
 
 		<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
