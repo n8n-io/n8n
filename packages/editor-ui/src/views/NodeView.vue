@@ -1391,19 +1391,27 @@ export default mixins(
 					const credentials = {
 						[defaultCredential.type]: selected,
 					};
-					newNodeData.credentials = credentials;
 
 					await this.loadNodesProperties([newNodeData].map(node => ({name: node.type, version: node.typeVersion})));
-					const nodeType = this.$store.getters.nodeType(newNodeData.type, newNodeData.typeVersion) as INodeTypeDescription;
+					const nodeType = this.$store.getters['nodeTypes/getNodeType'](newNodeData.type, newNodeData.typeVersion) as INodeTypeDescription;
 				 	const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, {}, true, false, newNodeData);
 
-					if (nodeTypeData.credentials){
+					if (nodeTypeData.credentials) {
 						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
-						const authDisplayOptions = get(authentication, `displayOptions.show`);
+						if (authentication?.displayOptions?.hide) {
+							return newNodeData;
+						}
 
-						if(
-							authentication && authDisplayOptions
-						) {
+						const authDisplayOptions = authentication?.displayOptions?.show;
+						if (!authDisplayOptions) {
+							newNodeData.credentials = credentials;
+							return newNodeData;
+						}
+
+						if (Object.keys(authDisplayOptions).length === 1 && authDisplayOptions['authentication']) {
+							// ignore complex case when there's multiple dependencies
+							newNodeData.credentials = credentials;
+
 							let parameters: { [key:string]: string } = {};
 							for (const displayOption of Object.keys(authDisplayOptions)) {
 								if (nodeParameters && !nodeParameters[displayOption]) {
