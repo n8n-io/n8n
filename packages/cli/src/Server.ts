@@ -1798,7 +1798,9 @@ class App {
 				const filePath = pathJoin(editorUiDistDir, fileName);
 				if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
 					const srcFile = await readFile(filePath, 'utf8');
-					let payload = srcFile.replace(basePathRegEx, n8nPath);
+					let payload = srcFile
+						.replace(basePathRegEx, n8nPath)
+						.replace(/\/static\//g, pathJoin(n8nPath, 'static/'));
 					if (filePath.endsWith('index.html')) {
 						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
