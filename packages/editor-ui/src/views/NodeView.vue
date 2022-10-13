@@ -95,7 +95,6 @@ import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
 
 import * as CanvasHelpers from './canvasHelpers';
-import get from 'lodash.get';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
