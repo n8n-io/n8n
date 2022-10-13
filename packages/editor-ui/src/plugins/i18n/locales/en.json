@@ -801,6 +801,7 @@
 	"settings.communityNodes.empty.installPackageLabel": "Install a community node",
 	"settings.communityNodes.queueMode.warning": "You need to install community nodes manually because your instance is running in queue mode. <a href=\"{docURL}\" target=\"_blank\" title=\"Read the n8n docs\">More info</a>",
 	"settings.communityNodes.npmUnavailable.warning": "To use this feature, please <a href=\"{npmUrl}\" target=\"_blank\" title=\"How to install npm\">install npm</a> and restart n8n.",
+	"settings.communityNodes.notAvailableOnDesktop": "Feature unavailable on desktop. Please self-host to use community nodes.",
 	"settings.communityNodes.packageNodes.label": "{count} node | {count} nodes",
 	"settings.communityNodes.updateAvailable.tooltip": "A newer version is available",
 	"settings.communityNodes.viewDocsAction.label": "Documentation",

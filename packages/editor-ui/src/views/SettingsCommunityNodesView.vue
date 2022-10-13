@@ -36,7 +36,7 @@
 					:heading="$locale.baseText('settings.communityNodes.empty.title')"
 					:description="getEmptyStateDescription"
 					:buttonText="
-						isNpmAvailable
+						shouldShowInstallButton
 							? $locale.baseText('settings.communityNodes.empty.installPackageLabel')
 							: ''
 					"
@@ -146,7 +146,21 @@ export default mixins(
 					},
 				});
 		},
+		isDesktopDeployment() {
+			return this.$store.getters['settings/isDesktopDeployment'];
+		},
+		shouldShowInstallButton() {
+			return !this.isDesktopDeployment && this.isNpmAvailable;
+		},
 		actionBoxConfig() {
+			if (this.isDesktopDeployment) {
+				return {
+					calloutText: this.$locale.baseText('settings.communityNodes.notAvailableOnDesktop'),
+					calloutTheme: 'warning',
+					hideButton: true,
+				};
+			}
+
 			if (!this.isNpmAvailable) {
 				return {
 					calloutText: this.$locale.baseText(
