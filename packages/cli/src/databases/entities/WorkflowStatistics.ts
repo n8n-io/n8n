@@ -47,5 +47,6 @@ export class WorkflowStatistics {
 	workflow: WorkflowEntity;
 
 	@RelationId((workflowStatistics: WorkflowStatistics) => workflowStatistics.workflow)
+	@PrimaryColumn()
 	workflowId: number;
 }
