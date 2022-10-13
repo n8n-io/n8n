@@ -279,7 +279,7 @@ workflowsController.get(
  * GET /workflows/:id
  */
 workflowsController.get(
-	'/:id',
+	'/:id(\\d+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
