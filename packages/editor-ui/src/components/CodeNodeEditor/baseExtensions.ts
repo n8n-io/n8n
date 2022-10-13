@@ -33,7 +33,7 @@ export const baseExtensions = [
 		{ key: 'Enter', run: insertNewlineAndIndent },
 		{ key: 'Tab', run: acceptCompletion },
 		{ key: 'Enter', run: acceptCompletion },
-		{ key: 'Cmd-/', run: toggleComment },
+		{ key: 'Mod-/', run: toggleComment },
 		indentWithTab,
 	]),
 	EditorView.lineWrapping,
