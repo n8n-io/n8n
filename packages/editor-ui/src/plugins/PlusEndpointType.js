@@ -347,7 +347,6 @@
 			medium: 24,
 			small: 18,
 		};
-		//TODO fix output satlk length
 		const stalkLength = 40;
 
 		DOMElementEndpoint.apply(this, arguments);
