@@ -32,6 +32,7 @@
 				:hideInputAndOutput="activeNodeType === null"
 				:position="isTriggerNode && !showTriggerPanel ? 0 : undefined"
 				:isDraggable="!isTriggerNode"
+				:hasDoubleWidth="activeNodeType && activeNodeType.parameterPane === 'wide'"
 				:nodeType="activeNodeType"
 				@close="close"
 				@init="onPanelsInit"
