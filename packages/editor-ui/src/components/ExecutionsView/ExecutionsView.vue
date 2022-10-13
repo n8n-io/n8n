@@ -38,8 +38,8 @@ export default mixins(restApi, showMessage).extend({
 		}
 	},
 	methods: {
-		onExecutionsLoaded(): void {
-			this.loading = false;
+		onExecutionsLoaded(executionCount: number): void {
+			this.loading = executionCount === 0;
 		},
 		async openWorkflow(workflowId: string): Promise<void> {
 			let data: IWorkflowDb | undefined;

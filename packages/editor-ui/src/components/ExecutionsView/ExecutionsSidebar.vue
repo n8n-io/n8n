@@ -113,9 +113,6 @@ export default mixins(executionHelpers).extend({
 				{ id: 'waiting', name: this.$locale.baseText('executionsList.waiting') },
 			];
 		},
-		showExecutionPreview(): boolean {
-			return this.executions.length > 0;
-		},
 	},
 	watch: {
 		executions(newValue) {
@@ -126,6 +123,7 @@ export default mixins(executionHelpers).extend({
 					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
 				}
 			}
+			this.stopLoading();
 		},
 	},
 	async mounted() {
