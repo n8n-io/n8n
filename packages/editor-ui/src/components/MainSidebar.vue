@@ -281,9 +281,6 @@ export default mixins(
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
-			if (window.innerWidth > 900 && !this.isNodeView) {
-				this.$store.commit('ui/expandSidebarMenu');
-			}
 			this.checkWidthAndAdjustSidebar(window.innerWidth);
 			await Vue.nextTick();
 			this.fullyExpanded = !this.isCollapsed;
@@ -457,8 +454,10 @@ export default mixins(
 				this.checkWidthAndAdjustSidebar(browserWidth);
 			},
 			checkWidthAndAdjustSidebar (width: number) {
-				if (width < 900) {
+				if (width < 900 || this.isNodeView) {
 					this.$store.commit('ui/collapseSidebarMenu');
+				} else {
+					this.$store.commit('ui/expandSidebarMenu');
 				}
 			},
 		},
