@@ -19,21 +19,30 @@ import {
 } from '@/api/executions';
 import { range as _range, sortBy } from 'lodash';
 
+const defaultState = (): IExecutionsState => ({
+	finishedExecutions: {},
+	finishedExecutionsCount: 0,
+	finishedExecutionsCountEstimated: false,
+	stoppingExecutions: [],
+	activeExecutions: {},
+});
+
+const sortExecutions = (
+	executions: {[executionId: string]: IExecutionsSummary | IExecutionsCurrentSummaryExtended},
+) => sortBy(Object.values(executions), (execution) => parseInt(execution.id, 10))?.reverse();
+
 const module: Module<IExecutionsState, IRootState> = {
 	namespaced: true,
-	state: {
-		activeExecutions: [],
-		finishedExecutions: [],
-		finishedExecutionsObj: {},
-		finishedExecutionsCount: 0,
-		finishedExecutionsCountEstimated: false,
-		stoppingExecutions: [],
-		activeExecutionsObj: {},
-	},
+	state: defaultState(),
 	mutations: {
+		resetState(state: IExecutionsState) {
+			const freshState = defaultState();
+
+			Object.keys(freshState).forEach((key: string) => Vue.set(state, key, freshState[key as keyof typeof freshState]));
+		},
 		addActiveExecution(state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
 			// Check if the execution exists already
-			const activeExecution = state.activeExecutionsObj[newActiveExecution.id];
+			const activeExecution = state.activeExecutions[newActiveExecution.id];
 
 			if (activeExecution !== undefined) {
 				// Exists already so no need to add it again
@@ -43,11 +52,11 @@ const module: Module<IExecutionsState, IRootState> = {
 				return;
 			}
 
-			Vue.set(state.activeExecutionsObj, newActiveExecution.id, newActiveExecution);
+			Vue.set(state.activeExecutions, newActiveExecution.id, newActiveExecution);
 		},
 		finishActiveExecution(state, finishedActiveExecution: IPushDataExecutionFinished) {
 			// Find the execution to set to finished
-			const activeExecution = state.activeExecutionsObj[finishedActiveExecution.executionId];
+			const activeExecution = state.activeExecutions[finishedActiveExecution.executionId];
 
 			if (activeExecution === undefined) {
 				// The execution could not be found
@@ -62,22 +71,17 @@ const module: Module<IExecutionsState, IRootState> = {
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
 		},
 		setActiveExecutions(state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
-			Vue.set(state, 'activeExecutions', newActiveExecutions);
-		},
-		setActiveExecutionsObj(state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
-			console.log("🚀 ~ file: executions.ts ~ line 68 ~ setActiveExecutionsObj ~ setActiveExecutionsObj", newActiveExecutions);
-			Vue.set(state, 'activeExecutionsObj', {});
+			Vue.set(state, 'activeExecutions', {});
 			for (const execution of newActiveExecutions) {
-				Vue.set(state.activeExecutionsObj, execution.id, execution);
+				Vue.set(state.activeExecutions, execution.id, execution);
 			}
 		},
 		setFinishedExecutions(
 			state,
 			{ finishedExecutions, finishedExecutionsCount, finishedExecutionsCountEstimated },
 		) {
-			console.log("🚀 ~ file: executions.ts ~ line 78 ~ finishedExecutions", finishedExecutions);
 			for (const execution of finishedExecutions) {
-				Vue.set(state.finishedExecutionsObj, execution.id, execution);
+				Vue.set(state.finishedExecutions, execution.id, execution);
 			}
 			state.finishedExecutionsCount = finishedExecutionsCount;
 			state.finishedExecutionsCountEstimated = finishedExecutionsCountEstimated;
@@ -100,29 +104,19 @@ const module: Module<IExecutionsState, IRootState> = {
 			executionIds: string[],
 		) {
 			for (const executionId of executionIds) {
-				Vue.delete(state.finishedExecutionsObj, executionId);
+				Vue.delete(state.finishedExecutions, executionId);
 			}
 		},
 	},
 	getters: {
-		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
-			return state.activeExecutions;
-		},
-		finishedExecutions: (state): IExecutionsSummary[] => {
+		finishedExecutions: (state): {[executionId: string]: IExecutionsSummary} => {
 			return state.finishedExecutions;
 		},
-		finishedExecutionsObj: (state): {[executionId: string]: IExecutionsSummary} => {
-			return state.finishedExecutionsObj;
+		sortedFinishedExecutions: (state): IExecutionsSummary[] => sortExecutions(state.finishedExecutions),
+		activeExecutions: (state): {[executionId: string]: IExecutionsCurrentSummaryExtended} => {
+			return state.activeExecutions;
 		},
-		sortedFinishedExecutions: (state): IExecutionsSummary[] => {
-			return sortBy(Object.values(state.finishedExecutionsObj), (execution) => parseInt(execution.id, 10));
-		},
-		activeExecutionsObj: (state): {[executionId: string]: IExecutionsCurrentSummaryExtended} => {
-			return state.activeExecutionsObj;
-		},
-		sortedActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
-			return sortBy(Object.values(state.activeExecutionsObj), (execution) => parseInt(execution.id, 10));
-		},
+		sortedActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => sortExecutions(state.activeExecutions),
 		finishedExecutionsCount: (state): number => {
 			return state.finishedExecutionsCount;
 		},
@@ -147,7 +141,7 @@ const module: Module<IExecutionsState, IRootState> = {
 			}
 
 			context.commit('setActiveExecutions', activeExecutions);
-			context.commit('setActiveExecutionsObj', activeExecutions);
+			context.commit('setActiveExecutions', activeExecutions);
 		},
 		async loadAutoRefresh (
 			context: ActionContext<IExecutionsState, IRootState>,
@@ -170,10 +164,9 @@ const module: Module<IExecutionsState, IRootState> = {
 			}
 
 			context.commit('setActiveExecutions', currentExecution);
-			context.commit('setActiveExecutionsObj', currentExecution);
+			context.commit('setActiveExecutions', currentExecution);
 
-			let finishedExecutions = [...Object.values(context.getters.finishedExecutionsObj) as IExecutionsSummary[]];
-			console.log("🚀 ~ file: executions.ts ~ line 174 ~ finishedExecutions", finishedExecutions);
+			let finishedExecutions = [...Object.values(context.getters.sortedFinishedExecutions) as IExecutionsSummary[]];
 			// execution IDs are typed as string, int conversion is necessary so we can order.
 			const alreadyPresentExecutionIds = finishedExecutions.map((exec: IExecutionsSummary) => parseInt(exec.id, 10));
 
@@ -224,7 +217,6 @@ const module: Module<IExecutionsState, IRootState> = {
 					finishedExecutions.unshift(currentItem);
 				}
 			}
-			console.log("🚀 ~ file: executions.ts ~ line 230 ~ lastId", lastId);
 
 			finishedExecutions = finishedExecutions
 				.filter((execution: IExecutionsSummary) => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
@@ -254,10 +246,8 @@ const module: Module<IExecutionsState, IRootState> = {
 			context: ActionContext<IExecutionsState, IRootState>,
 			{ filter, limit },
 		) {
-			console.log('Load more');
 			const sortedFinishedExecutions = context.getters.sortedFinishedExecutions;
 			const lastId = sortedFinishedExecutions[sortedFinishedExecutions.length - 1].id;
-			console.log("🚀 ~ file: executions.ts ~ line 255 ~ lastId", lastId);
 
 			let data: IExecutionsListResponse;
 			try {
@@ -268,7 +258,7 @@ const module: Module<IExecutionsState, IRootState> = {
 
 			data.results = data.results.map((execution) => ({ ...execution, mode: execution.mode }));
 
-			const finishedExecutions = [...context.getters.finishedExecutions, ...data.results];
+			const finishedExecutions = [...context.getters.sortedFinishedExecutions, ...data.results];
 			const finishedExecutionsCount = data.count;
 			const finishedExecutionsCountEstimated = data.estimated;
 
@@ -311,9 +301,15 @@ const module: Module<IExecutionsState, IRootState> = {
 			context: ActionContext<IExecutionsState, IRootState>,
 			filter: IExecutionDeleteFilter,
 		) {
-			await deleteExecutions(context.rootGetters.getRestApiContext, filter);
+			// We need to remove local ger rid of the executions that are going to be deleted
+			// from the local state. So if filter contains `deleteBefore` we assume we're going to
+			// delete all executions.
+			const curentStateIdsToRemove = filter.deleteBefore
+				? Object.keys(context.getters.finishedExecutions)
+				: filter.ids;
 
-			context.commit('removePastExecutions', filter.ids);
+			await deleteExecutions(context.rootGetters.getRestApiContext, filter);
+			context.commit('removePastExecutions', curentStateIdsToRemove);
 		},
 	},
 };

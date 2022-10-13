@@ -226,7 +226,7 @@ export default mixins(
 				workflowId: 'ALL',
 			},
 
-			isDataLoading: false,
+			isDataLoading: true,
 
 			requestItemsPerRequest: 10,
 
@@ -250,6 +250,7 @@ export default mixins(
 			clearInterval(this.autoRefreshInterval);
 			this.autoRefreshInterval = undefined;
 		}
+		this.$store.commit('executions/resetState');
 	},
 	computed: {
 		finishedExecutions(): IExecutionsSummary[] {
@@ -493,7 +494,7 @@ export default mixins(
 
 			await this.$store.dispatch(
 				'executions/loadFinishedExecutions',
-				{ filter: this.workflowFilterPast, limit: 2 },
+				{ filter: this.workflowFilterPast, limit: this.requestItemsPerRequest },
 			);
 		},
 		async loadMore () {
@@ -578,7 +579,6 @@ export default mixins(
 				const finishedExecutionsPromise = this.loadFinishedExecutions();
 				await Promise.all([activeExecutionsPromise, finishedExecutionsPromise]);
 			} catch (error) {
-				console.log("🚀 ~ file: ExecutionsList.vue ~ line 581 ~ refreshData ~ error", error);
 				this.$showError(
 					error,
 					this.$locale.baseText('executionsList.showError.refreshData.title'),
@@ -682,7 +682,7 @@ export default mixins(
 }
 
 .selection-options {
-	height: 2em;
+	padding: var(--spacing-xs) 0;
 }
 
 .status-badge {
