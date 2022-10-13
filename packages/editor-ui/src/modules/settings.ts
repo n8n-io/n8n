@@ -133,7 +133,6 @@ const module: Module<ISettingsState, IRootState> = {
 	actions: {
 		async getSettings(context: ActionContext<ISettingsState, IRootState>) {
 			const settings = await getSettings(context.rootGetters.getRestApiContext);
-			console.log('settings', settings);
 			context.commit('setSettings', settings);
 
 			// todo refactor to this store
