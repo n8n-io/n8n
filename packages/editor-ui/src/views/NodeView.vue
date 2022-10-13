@@ -3012,6 +3012,7 @@ export default mixins(
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 
 			this.startLoading();
+			this.resetWorkspace();
 
 			const loadPromises = [
 				this.loadActiveWorkflows(),
