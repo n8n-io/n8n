@@ -1418,8 +1418,8 @@ export default mixins(
 									newNodeData.credentials = undefined;
 									break;
 								}
-								const optionValue = get(authentication, `displayOptions.show[${displayOption}][0]`);
-								if (optionValue) {
+								const optionValue = authDisplayOptions[displayOption]?.[0];
+								if (optionValue && typeof optionValue === 'string') {
 									parameters[displayOption] = optionValue;
 								}
 								newNodeData.parameters = {
