@@ -16,7 +16,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
+import { BinaryDataManager, eventEmitter, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -642,6 +642,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 							this.retryOf,
 						);
 					}
+				} finally {
+					eventEmitter.emit('saveWorkflowStatistics', this.workflowData, fullRunData);
 				}
 			},
 		],
@@ -735,6 +737,8 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.executionId,
 						this.retryOf,
 					);
+				} finally {
+					eventEmitter.emit('saveWorkflowStatistics', this.workflowData, fullRunData);
 				}
 			},
 		],
