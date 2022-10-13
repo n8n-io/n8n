@@ -45,6 +45,7 @@
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
+					color="text-dark"
 				/>
 				<collection-parameter
 					v-if="parameter.type === 'collection'"

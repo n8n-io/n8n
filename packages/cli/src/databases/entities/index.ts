@@ -13,6 +13,7 @@ import { SharedCredentials } from './SharedCredentials';
 import { InstalledPackages } from './InstalledPackages';
 import { InstalledNodes } from './InstalledNodes';
 import { WorkflowStatistics } from './WorkflowStatistics';
+import { CredentialUsage } from './CredentialUsage';
 
 export const entities = {
 	CredentialsEntity,
@@ -28,4 +29,5 @@ export const entities = {
 	InstalledPackages,
 	InstalledNodes,
 	WorkflowStatistics,
+	CredentialUsage,
 };

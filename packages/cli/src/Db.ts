@@ -203,6 +203,7 @@ export async function init(
 	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
 	collections.WorkflowStatistics = linkRepository(entities.WorkflowStatistics);
+	collections.CredentialUsage = linkRepository(entities.CredentialUsage);
 
 	isInitialized = true;
 

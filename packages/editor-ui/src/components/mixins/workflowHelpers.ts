@@ -43,6 +43,7 @@ import {
 	XYPosition,
 	ITag,
 	IUpdateInformation,
+	TargetItem,
 } from '../../Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -54,6 +55,7 @@ import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
+import { getSourceItems } from '@/pairedItemUtils';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -98,6 +100,7 @@ export const workflowHelpers = mixins(
 
 					if (!workflowRunData[parentNodeName] ||
 						workflowRunData[parentNodeName].length <= runIndex ||
+						!workflowRunData[parentNodeName][runIndex] ||
 						!workflowRunData[parentNodeName][runIndex].hasOwnProperty('data') ||
 						workflowRunData[parentNodeName][runIndex].data === undefined ||
 						!workflowRunData[parentNodeName][runIndex].data!.hasOwnProperty(inputName)
@@ -526,24 +529,47 @@ export const workflowHelpers = mixins(
 			},
 
 
-			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[]) {
-				const itemIndex = 0;
+			resolveParameter(parameter: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[], opts: {targetItem?: TargetItem, inputNodeName?: string, inputRunIndex?: number, inputBranchIndex?: number} = {}): IDataObject | null {
+				let itemIndex = opts?.targetItem?.itemIndex || 0;
+
 				const inputName = 'main';
 				const activeNode = this.$store.getters.activeNode;
 				const workflow = this.getCurrentWorkflow();
-				const parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
+				const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
+				let parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
 				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
 
-				const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
-				let runIndexParent = 0;
-				if (workflowRunData !== null && parentNode.length) {
-					const firstParentWithWorkflowRunData = parentNode.find((parentNodeName) => workflowRunData[parentNodeName]);
-					if (firstParentWithWorkflowRunData) {
-						runIndexParent = workflowRunData[firstParentWithWorkflowRunData].length - 1;
+				if (opts?.inputNodeName && !parentNode.includes(opts.inputNodeName)) {
+					return null;
+				}
+
+				let runIndexParent = opts?.inputRunIndex ?? 0;
+				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
+				if (opts.targetItem && opts?.targetItem?.nodeName === activeNode.name && executionData) {
+					const sourceItems = getSourceItems(executionData, opts.targetItem);
+					if (!sourceItems.length) {
+						return null;
+					}
+					parentNode = [sourceItems[0].nodeName];
+					runIndexParent = sourceItems[0].runIndex;
+					itemIndex = sourceItems[0].itemIndex;
+					if (nodeConnection) {
+						nodeConnection.sourceIndex = sourceItems[0].outputIndex;
+					}
+				} else {
+					parentNode = opts.inputNodeName ? [opts.inputNodeName] : parentNode;
+					if (nodeConnection) {
+						nodeConnection.sourceIndex = opts.inputBranchIndex ?? nodeConnection.sourceIndex;
+					}
+
+					if (opts?.inputRunIndex === undefined && workflowRunData !== null && parentNode.length) {
+						const firstParentWithWorkflowRunData = parentNode.find((parentNodeName) => workflowRunData[parentNodeName]);
+						if (firstParentWithWorkflowRunData) {
+							runIndexParent = workflowRunData[firstParentWithWorkflowRunData].length - 1;
+						}
 					}
 				}
 
-				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]);
 				let connectionInputData = this.connectionInputData(parentNode, activeNode.name, inputName, runIndexParent, nodeConnection);
 
 				let runExecutionData: IRunExecutionData;
@@ -601,8 +627,8 @@ export const workflowHelpers = mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				let runIndexCurrent = 0;
-				if (workflowRunData !== null && workflowRunData[activeNode.name]) {
+				let runIndexCurrent = opts?.targetItem?.runIndex ?? 0;
+				if (opts?.targetItem === undefined && workflowRunData !== null && workflowRunData[activeNode.name]) {
 					runIndexCurrent = workflowRunData[activeNode.name].length -1;
 				}
 				const executeData = this.executeData(parentNode, activeNode.name, inputName, runIndexCurrent);
@@ -610,12 +636,15 @@ export const workflowHelpers = mixins(
 				return workflow.expression.getParameterValue(parameter, runExecutionData, runIndexCurrent, itemIndex, activeNode.name, connectionInputData, 'manual', this.$store.getters.timezone, additionalKeys, executeData, false) as IDataObject;
 			},
 
-			resolveExpression(expression: string, siblingParameters: INodeParameters = {}) {
+			resolveExpression(expression: string, siblingParameters: INodeParameters = {}, opts: {targetItem?: TargetItem, inputNodeName?: string, inputRunIndex?: number, inputBranchIndex?: number, c?: number} = {}) {
 				const parameters = {
 					'__xxxxxxx__': expression,
 					...siblingParameters,
 				};
-				const returnData = this.resolveParameter(parameters) as IDataObject;
+				const returnData: IDataObject | null = this.resolveParameter(parameters, opts);
+				if (!returnData) {
+					return null;
+				}
 
 				if (typeof returnData['__xxxxxxx__'] === 'object') {
 					const workflow = this.getCurrentWorkflow();
