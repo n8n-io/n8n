@@ -14,6 +14,7 @@ export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function Item',
 		name: 'functionItem',
+		hidden: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
@@ -25,6 +26,12 @@ export class FunctionItem implements INodeType {
 		inputs: ['main'],
 		outputs: ['main'],
 		properties: [
+			{
+				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
 			{
 				displayName: 'JavaScript Code',
 				name: 'functionCode',

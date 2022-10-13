@@ -7,6 +7,7 @@ import * as UserManagementHelpers from '../../src/UserManagement/UserManagementH
 
 import type { Role } from '../../src/databases/entities/Role';
 import type { IPinData } from 'n8n-workflow';
+import { makeWorkflow, MOCK_PINDATA } from './shared/utils';
 
 jest.mock('../../src/telemetry');
 
@@ -87,29 +88,3 @@ test('GET /workflows/:id should return pin data', async () => {
 
 	expect(pinData).toMatchObject(MOCK_PINDATA);
 });
-
-function makeWorkflow({ withPinData }: { withPinData: boolean }) {
-	const workflow = new WorkflowEntity();
-
-	workflow.name = 'My Workflow';
-	workflow.active = false;
-	workflow.connections = {};
-	workflow.nodes = [
-		{
-			id: 'uuid-1234',
-			name: 'Spotify',
-			type: 'n8n-nodes-base.spotify',
-			parameters: { resource: 'track', operation: 'get', id: '123' },
-			typeVersion: 1,
-			position: [740, 240],
-		},
-	];
-
-	if (withPinData) {
-		workflow.pinData = MOCK_PINDATA;
-	}
-
-	return workflow;
-}
-
-const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };

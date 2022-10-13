@@ -682,6 +682,18 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 }
 
 // ----------------------------------
+//        credential usage
+// ----------------------------------
+
+export async function getCredentialUsageInWorkflow(workflowId: number) {
+	return Db.collections.CredentialUsage.find({
+		where: {
+			workflowId,
+		},
+	});
+}
+
+// ----------------------------------
 //        connection options
 // ----------------------------------
 
