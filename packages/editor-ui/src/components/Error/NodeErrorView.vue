@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + getErrorMessage() }}</div>
+			<div class="error-message">{{ getErrorMessage() }}</div>
 			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
@@ -108,6 +108,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { sanitizeHtml } from '@/utils';
 
 export default mixins(
 	copyPaste,
@@ -146,16 +147,22 @@ export default mixins(
 		},
 		getErrorDescription (): string {
 			if (!this.error.context || !this.error.context.descriptionTemplate) {
-				return this.error.description;
-			}
-			return this.replacePlaceholders(this.error.context.parameter, this.error.context.descriptionTemplate);
-		},
-		getErrorMessage (): string {
-			if (!this.error.context || !this.error.context.messageTemplate) {
-				return this.error.message;
+				return sanitizeHtml(this.error.description);
 			}
 
-			return this.replacePlaceholders(this.error.context.parameter, this.error.context.messageTemplate);
+			const parameterName = this.parameterDisplayName(this.error.context.parameter);
+			return sanitizeHtml(this.error.context.descriptionTemplate.replace(/%%PARAMETER%%/g, parameterName));
+		},
+		getErrorMessage (): string {
+			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
+
+			if (!this.error.context || !this.error.context.messageTemplate) {
+				return baseErrorMessage + this.error.message;
+			}
+
+			const parameterName = this.parameterDisplayName(this.error.context.parameter);
+
+			return baseErrorMessage + this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
 		},
 		parameterDisplayName(path: string, fullPath = true) {
 			try {

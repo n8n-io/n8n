@@ -726,6 +726,10 @@ export interface IN8nUISettings {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
+	allowedModules: {
+		builtIn?: string[];
+		external?: string[];
+	};
 	enterprise: Record<string, boolean>;
 	deployment?: {
 		type: string;
