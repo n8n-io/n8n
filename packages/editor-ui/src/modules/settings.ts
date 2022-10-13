@@ -57,6 +57,9 @@ const module: Module<ISettingsState, IRootState> = {
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
 		},
+		isDesktopDeployment(state: ISettingsState) {
+			return state.settings.deployment?.type.startsWith('desktop_');
+		},
 		isCloudDeployment(state: ISettingsState) {
 			return state.settings.deployment && state.settings.deployment.type === 'cloud';
 		},
@@ -130,6 +133,7 @@ const module: Module<ISettingsState, IRootState> = {
 	actions: {
 		async getSettings(context: ActionContext<ISettingsState, IRootState>) {
 			const settings = await getSettings(context.rootGetters.getRestApiContext);
+			console.log('settings', settings);
 			context.commit('setSettings', settings);
 
 			// todo refactor to this store
