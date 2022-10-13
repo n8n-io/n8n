@@ -67,20 +67,69 @@ export const databaseFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */
 	/* -------------------------------------------------------------------------- */
+
 	{
-		displayName: 'Database Link or ID',
+		displayName: 'Database',
 		name: 'databaseId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a file...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'https://www.notion.so/([a-z0-9]{2,})?.*',
+							errorMessage: 'Not a valid Notion Database URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https://www.notion.so/([a-z0-9]{2,})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-z0-9]{2,}',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				url: '=https://www.notion.so/{{$value}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['database'],
 				operation: ['get'],
 			},
 		},
-		description:
-			"The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */

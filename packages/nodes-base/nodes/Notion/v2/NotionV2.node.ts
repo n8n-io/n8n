@@ -8,6 +8,7 @@ import {
 	ILoadOptionsFunctions,
 	INodeCredentialTestResult,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
@@ -46,6 +47,42 @@ export class NotionV2 implements INodeType {
 	}
 
 	methods = {
+		listSearch: {
+			async getDatabases(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const returnData: INodePropertyOptions[] = [];
+				const body: IDataObject = {
+					page_size: 100,
+					filter: { property: 'object', value: 'database' },
+				};
+				const databases = await notionApiRequestAllItems.call(
+					this,
+					'results',
+					'POST',
+					`/search`,
+					body,
+				);
+				for (const database of databases) {
+					returnData.push({
+						name: database.title[0]?.plain_text || database.id,
+						value: database.id,
+					});
+				}
+				returnData.sort((a, b) => {
+					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+						return -1;
+					}
+					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+						return 1;
+					}
+					return 0;
+				});
+				return { results: returnData };
+			},
+		},
 		loadOptions: {
 			async getDatabases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
@@ -328,7 +365,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'get') {
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 				for (let i = 0; i < length; i++) {
-					const databaseId = extractDatabaseId(this.getNodeParameter('databaseId', i) as string);
+					const databaseId = extractDatabaseId(this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string);
 					responseData = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, download)[0];
