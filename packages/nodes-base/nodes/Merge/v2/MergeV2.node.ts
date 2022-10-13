@@ -1,5 +1,4 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-/* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { IExecuteFunctions } from 'n8n-core';
 
 import { merge } from 'lodash';
@@ -148,11 +147,6 @@ const versionDescription: INodeTypeDescription = {
 			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
-					name: 'Keep Everything',
-					value: 'keepEverything',
-					description: "Items that match merged together, plus items that don't match (outer join)",
-				},
-				{
 					name: 'Keep Matches',
 					value: 'keepMatches',
 					description: 'Items that match, merged together (inner join)',
@@ -161,6 +155,11 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Keep Non-Matches',
 					value: 'keepNonMatches',
 					description: "Items that don't match",
+				},
+				{
+					name: 'Keep Everything',
+					value: 'keepEverything',
+					description: "Items that match merged together, plus items that don't match (outer join)",
 				},
 				{
 					name: 'Enrich Input 1',
@@ -246,11 +245,6 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Wait for Both Inputs to Arrive',
 					value: 'waitForBoth',
 				},
-				// not MVP
-				// {
-				// 	name: 'Immediately Pass the First Input to Arrive',
-				// 	value: 'passFirst',
-				// },
 			],
 			default: 'waitForBoth',
 			displayOptions: {
