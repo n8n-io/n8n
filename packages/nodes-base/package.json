@@ -747,7 +747,7 @@
     "@types/tmp": "^0.2.0",
     "@types/uuid": "^8.3.2",
     "@types/xml2js": "^0.4.3",
-    "eslint-plugin-n8n-nodes-base": "^1.9.3",
+    "eslint-plugin-n8n-nodes-base": "^1.10.0",
     "gulp": "^4.0.0",
     "jest": "^27.4.7",
     "n8n-workflow": "~0.119.0",
