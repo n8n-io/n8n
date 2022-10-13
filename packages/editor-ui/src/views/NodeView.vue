@@ -77,6 +77,7 @@ import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
+	MAIN_HEADER_TABS,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRMED,
@@ -1145,12 +1146,21 @@ export default mixins(
 					return;
 				}
 			},
-
 			/**
 			 * This method gets called when data got pasted into the window
 			 */
 			async receivedCopyPasteData(plainTextData: string): Promise<void> {
 				let workflowData: IWorkflowDataUpdate | undefined;
+
+				if (this.$route.name !== VIEWS.WORKFLOW && this.$route.name !== VIEWS.NEW_WORKFLOW) {
+					this.$showMessage({
+						title: this.$locale.baseText('executionView.onPaste.title'),
+						message: this.$locale.baseText('executionView.onPaste.message', { interpolate: { workflowTabURL: '/workflow/249'} }),
+						type: 'warning',
+						duration: 0,
+					});
+					return;
+				}
 
 				// Check if it is an URL which could contain workflow data
 				if (plainTextData.match(/^http[s]?:\/\/.*\.json$/i)) {

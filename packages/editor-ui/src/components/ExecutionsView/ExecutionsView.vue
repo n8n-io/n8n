@@ -11,7 +11,7 @@
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeUi, ITag, IWorkflowDb } from '@/Interface';
-import { IConnection, IConnections, INodeIssues, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
+import { IConnection, IConnections, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { restApi } from '../mixins/restApi';
 import { showMessage } from '../mixins/showMessage';
@@ -47,6 +47,8 @@ export default mixins(restApi, showMessage).extend({
 			this.loading = executionCount === 0;
 		},
 		async openWorkflow(workflowId: string): Promise<void> {
+			await this.loadActiveWorkflows();
+
 			let data: IWorkflowDb | undefined;
 				try {
 					data = await this.restApi().getWorkflow(workflowId);
@@ -66,6 +68,7 @@ export default mixins(restApi, showMessage).extend({
 					);
 				}
 				await this.addNodes(data.nodes, data.connections);
+
 				this.$store.commit('setActive', data.active || false);
 				this.$store.commit('setWorkflowId', workflowId);
 				this.$store.commit('setWorkflowName', { newName: data.name, setStateDirty: false });
@@ -176,6 +179,10 @@ export default mixins(restApi, showMessage).extend({
 				// Only call API if node information is actually missing
 				await this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
 			}
+		},
+		async loadActiveWorkflows(): Promise<void> {
+			const activeWorkflows = await this.restApi().getActiveWorkflows();
+			this.$store.commit('setActiveWorkflows', activeWorkflows);
 		},
 		resetMainNodeView(): void {
 			this.$store.commit('removeAllConnections', { setStateDirty: false });
