@@ -106,7 +106,7 @@ const module: Module<IUiState, IRootState> = {
 			},
 		},
 		modalStack: [],
-		sidebarMenuCollapsed: true,
+		sidebarMenuCollapsed: false,
 		isPageLoading: true,
 		currentView: '',
 		mainPanelDimensions: {},

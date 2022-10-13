@@ -410,6 +410,10 @@ export default Vue.extend({
 	visibility: hidden;
 }
 
+.double-width {
+	left: 90%;
+}
+
 .dragButtonContainer {
 	position: absolute;
 	top: -12px;
