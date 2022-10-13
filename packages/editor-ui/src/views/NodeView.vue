@@ -1393,6 +1393,7 @@ export default mixins(
 
 					await this.loadNodesProperties([newNodeData].map(node => ({name: node.type, version: node.typeVersion})));
 					const nodeType = this.$store.getters['nodeTypes/getNodeType'](newNodeData.type, newNodeData.typeVersion) as INodeTypeDescription;
+				 	const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, {}, true, false, newNodeData);
 
 					if (nodeTypeData.credentials) {
 						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
@@ -1406,21 +1407,25 @@ export default mixins(
 							return newNodeData;
 						}
 
-						// ignore complex case when there's multiple dependencies
 						if (Object.keys(authDisplayOptions).length === 1 && authDisplayOptions['authentication']) {
-							const authProperty = (nodeType.properties || []).find((property) => property.name === 'authentication');
-
-							// ignore complex case when auth has dependencies
-							if (authProperty?.displayOptions) {
-								return newNodeData;
-							}
-
+							// ignore complex case when there's multiple dependencies
 							newNodeData.credentials = credentials;
 
-							// set authentication parameter value
-							const optionValue = authDisplayOptions?.authentication[0];
-							if (optionValue) {
-								newNodeData.parameters.authentication = optionValue;
+							let parameters: { [key:string]: string } = {};
+							for (const displayOption of Object.keys(authDisplayOptions)) {
+								if (nodeParameters && !nodeParameters[displayOption]) {
+									parameters = {};
+									newNodeData.credentials = undefined;
+									break;
+								}
+								const optionValue = get(authentication, `displayOptions.show[${displayOption}][0]`);
+								if (optionValue) {
+									parameters[displayOption] = optionValue;
+								}
+								newNodeData.parameters = {
+									...newNodeData.parameters,
+									...parameters,
+								};
 							}
 						}
 					}
