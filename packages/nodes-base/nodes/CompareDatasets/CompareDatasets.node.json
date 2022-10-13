@@ -1,12 +1,12 @@
 {
-	"node": "n8n-nodes-base.compare",
+	"node": "n8n-nodes-base.compareDatasets",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.compare/"
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.compareDatasets/"
 			}
 		],
 		"generic": [
@@ -41,7 +41,7 @@
 			}
 		]
 	},
-	"alias": ["Join", "Concatenate", "Compare", "Split"],
+	"alias": ["Join", "Concatenate", "Compare", "Dataset", "Split"],
 	"subcategories": {
 		"Core Nodes": ["Flow"]
 	}

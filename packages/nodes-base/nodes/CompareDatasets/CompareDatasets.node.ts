@@ -2,21 +2,21 @@ import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 import { checkInput, checkMatchFieldsInput, findMatches } from './GenericFunctions';
 
-export class Compare implements INodeType {
+export class CompareDatasets implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Compare',
-		name: 'compare',
+		displayName: 'Compare Datasets',
+		name: 'compareDatasets',
 		icon: 'file:compare.svg',
 		group: ['transform'],
 		version: 1,
 		description: 'Compare two inputs for changes',
-		defaults: { name: 'Compare' },
+		defaults: { name: 'Compare Datasets' },
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: ['main', 'main'],
 		inputNames: ['Input 1', 'Input 2'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
-		outputNames: ['In 1 only', 'Same', 'Different', 'In 2 only'],
+		outputNames: ["'In 1 only'", "'Same'", "'Different'", "'In 2 only'"],
 		properties: [
 			{
 				displayName: 'Fields to Match',
@@ -71,7 +71,7 @@ export class Compare implements INodeType {
 					{
 						name: 'Use a Mix of Versions',
 						value: 'mix',
-						description: 'Output uses a different input for different fields',
+						description: 'Output uses different inputs for different fields',
 					},
 					{
 						name: 'Include Both Versions',
@@ -108,7 +108,7 @@ export class Compare implements INodeType {
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'e.d. id, country',
-				hint: 'Enter the names of the input fields as text',
+				hint: 'Enter the names of the input fields as text, separated by commas',
 				displayOptions: {
 					show: {
 						resolve: ['mix'],

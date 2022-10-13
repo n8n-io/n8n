@@ -1,5 +1,5 @@
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { difference, get, intersection, isEmpty, isEqual, union } from 'lodash';
+import { difference, get, intersection, isEmpty, isEqual, set, union } from 'lodash';
 
 type PairToMatch = {
 	field1: string;
@@ -62,6 +62,7 @@ function combineItems(
 	item2: INodeExecutionData,
 	prefer: string,
 	except: string,
+	disableDotNotation: boolean,
 ) {
 	let exceptFields: string[];
 	const [entry, match] = prefer === 'input1' ? [item1, item2] : [item2, item1];
@@ -74,6 +75,12 @@ function combineItems(
 
 	exceptFields.forEach((field) => {
 		entry.json[field] = match.json[field];
+		if (disableDotNotation) {
+			entry.json[field] = match.json[field];
+		} else {
+			const value = get(match.json, field) || null;
+			set(entry, `json.${field}`, value);
+		}
 	});
 
 	return entry;
@@ -224,6 +231,7 @@ export function findMatches(
 								match,
 								options.preferWhenMix as string,
 								options.exceptWhenMix as string,
+								disableDotNotation,
 							),
 						);
 						break;
