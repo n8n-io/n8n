@@ -18,6 +18,13 @@ function getTimestampSyntax() {
 	return map[dbType];
 }
 
+export enum StatisticsNames {
+	productionSuccess = 'production_success',
+	productionError = 'production_error',
+	manualSuccess = 'manual_success',
+	manualError = 'manual_error',
+}
+
 @Entity()
 export class WorkflowStatistics {
 	@Column()
@@ -31,7 +38,7 @@ export class WorkflowStatistics {
 	latestEvent: Date;
 
 	@PrimaryColumn({ length: 128 })
-	name: string;
+	name: StatisticsNames;
 
 	@ManyToOne(() => WorkflowEntity, (workflow) => workflow.shared, {
 		primary: true,

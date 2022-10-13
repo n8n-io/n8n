@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 import config from '../../../../config';
 
 export class WorkflowStatistics1664196174001 implements MigrationInterface {
@@ -7,12 +7,7 @@ export class WorkflowStatistics1664196174001 implements MigrationInterface {
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
-
-		let tablePrefix = config.getEnv('database.tablePrefix');
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema) {
-			tablePrefix = schema + '.' + tablePrefix;
-		}
+		const tablePrefix = getTablePrefix();
 
 		// Create statistics table
 		await queryRunner.query(
