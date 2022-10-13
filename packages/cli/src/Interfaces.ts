@@ -518,6 +518,10 @@ export interface IN8nUISettings {
 		type: string;
 	};
 	isNpmAvailable: boolean;
+	allowedModules: {
+		builtIn?: string;
+		external?: string;
+	};
 	enterprise: {
 		sharing: boolean;
 		workflowSharing: boolean;
