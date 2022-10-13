@@ -1800,9 +1800,7 @@ class App {
 					const srcFile = await readFile(filePath, 'utf8');
 					let payload = srcFile.replace(basePathRegEx, n8nPath);
 					if (filePath.endsWith('index.html')) {
-						payload = payload
-							.replace(/\/favicon\.ico/g, `${n8nPath}favicon.ico`)
-							.replace(closingTitleTag, closingTitleTag + scriptsString);
+						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
 					const destFile = pathJoin(generatedStaticDir, fileName);
 					await mkdir(pathDirname(destFile), { recursive: true });
