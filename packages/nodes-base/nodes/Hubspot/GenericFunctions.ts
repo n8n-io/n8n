@@ -38,10 +38,8 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 	};
 
 	try {
-		if (authenticationMethod === 'apiKey') {
-			return this.helpers.requestWithAuthentication.call(this, 'hubspotApi', options);
-		} else if (authenticationMethod === 'appToken') {
-			return this.helpers.requestWithAuthentication.call(this, 'hubspotAppToken', options);
+		if (authenticationMethod === 'apiKey' || authenticationMethod === 'appToken') {
+			return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 		} else if (authenticationMethod === 'developerApi') {
 			if (endpoint.includes('webhooks')) {
 
