@@ -57,6 +57,9 @@ const module: Module<ISettingsState, IRootState> = {
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
 		},
+		isDesktopDeployment(state: ISettingsState) {
+			return state.settings.deployment?.type.startsWith('desktop_');
+		},
 		isCloudDeployment(state: ISettingsState) {
 			return state.settings.deployment && state.settings.deployment.type === 'cloud';
 		},
