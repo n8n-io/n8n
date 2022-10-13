@@ -30,6 +30,7 @@ export const description: SheetProperties = [
 		],
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
 			},
 			hide: {
@@ -47,13 +48,14 @@ export const description: SheetProperties = [
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
-			loadOptionsDependsOn: ['sheetName'],
+			loadOptionsDependsOn: ['sheetName.value'],
 			loadOptionsMethod: 'getSheetHeaderRow',
 		},
 		default: '',
 		hint: "Used to find the correct row to update. Doesn't get changed.",
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
 			},
 			hide: {
@@ -68,6 +70,7 @@ export const description: SheetProperties = [
 		default: '',
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
 				dataMode: ['defineBelow'],
 			},
@@ -86,6 +89,7 @@ export const description: SheetProperties = [
 		},
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['appendOrUpdate'],
 				dataMode: ['defineBelow'],
 			},
@@ -107,7 +111,7 @@ export const description: SheetProperties = [
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: ['sheetName', 'columnToMatchOn'],
+							loadOptionsDependsOn: ['sheetName.value', 'columnToMatchOn'],
 							loadOptionsMethod: 'getSheetHeaderRowAndAddColumn',
 						},
 						default: '',

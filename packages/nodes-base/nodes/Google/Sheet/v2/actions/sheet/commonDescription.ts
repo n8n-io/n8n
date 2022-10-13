@@ -147,16 +147,6 @@ export const locationDefine: INodeProperties[] = [
 							'Index of the first row which contains the actual data and not the keys. Starts with 1.',
 						hint: 'From start of range. First row is row 1',
 					},
-					// {
-					// 	displayName: 'Range',
-					// 	name: 'range',
-					// 	type: 'string',
-					// 	default: '',
-					// 	placeholder: 'A:Z',
-					// 	description:
-					// 		'The table range to read from or to append data to. See the Google <a href="https://developers.google.com/sheets/api/guides/values#writing">documentation</a> for the details.',
-					// 	hint: 'You can specify both the rows and the columns, e.g. C4:E7',
-					// },
 				],
 			},
 		],

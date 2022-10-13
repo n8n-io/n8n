@@ -22,7 +22,7 @@ export const description: SheetProperties = [
 		name: 'columnToMatchOn',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: ['sheetName'],
+			loadOptionsDependsOn: ['sheetName.value'],
 			loadOptionsMethod: 'getSheetHeaderRow',
 		},
 		default: '',

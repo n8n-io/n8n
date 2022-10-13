@@ -29,6 +29,7 @@ export const description: SheetProperties = [
 		],
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['append'],
 			},
 			hide: {
@@ -65,6 +66,7 @@ export const description: SheetProperties = [
 		},
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['append'],
 				dataMode: ['defineBelow'],
 			},
@@ -85,7 +87,7 @@ export const description: SheetProperties = [
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: ['sheetName'],
+							loadOptionsDependsOn: ['sheetName.value'],
 							loadOptionsMethod: 'getSheetHeaderRow',
 						},
 						default: '',

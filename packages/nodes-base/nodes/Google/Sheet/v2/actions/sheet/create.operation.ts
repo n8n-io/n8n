@@ -17,9 +17,6 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['create'],
 			},
-			// hide: {
-			// 	...untilSheetSelected,
-			// },
 		},
 		description: 'The name of the sheet',
 	},
@@ -34,9 +31,6 @@ export const description: SheetProperties = [
 				resource: ['sheet'],
 				operation: ['create'],
 			},
-			// hide: {
-			// 	...untilSheetSelected,
-			// },
 		},
 		options: [
 			{

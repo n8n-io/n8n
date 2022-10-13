@@ -151,17 +151,56 @@ export const descriptions: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Sheet Name or ID',
+		displayName: 'Sheet',
 		name: 'sheetName',
-		type: 'options',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-		description: 'Google Sheet to operate on. Choose from the list.',
-		typeOptions: {
-			loadOptionsDependsOn: ['documentId.value'],
-			loadOptionsMethod: 'getSheets',
-		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				typeOptions: {
+					searchListMethod: 'sheetsSearch',
+					searchable: false,
+				},
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				extractValue: {
+					type: 'regex',
+					regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+				},
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: `https:\\/\\/docs\\.google\\.com\/spreadsheets\\/d\\/[0-9a-zA-Z\\-_]+\\/edit\\#gid=([0-9]+)`,
+							errorMessage: 'Not a valid Sheet URL',
+						},
+					},
+				],
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]{2,}',
+							errorMessage: 'Not a valid Sheet ID',
+						},
+					},
+				],
+				// url: '=https://docs.google.com/spreadsheets/d/{{$parameter["documentId"].value}}/edit#gid={{$value}}',
+				url: '=https://docs.google.com/spreadsheets/d/{{$value}}/edit',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['sheet'],
@@ -176,11 +215,39 @@ export const descriptions: INodeProperties[] = [
 					'update',
 				],
 			},
-			// hide: {
-			// 	...untilSheetSelected,
-			// },
 		},
 	},
+	// {
+	// 	displayName: 'Sheet Name or ID',
+	// 	name: 'sheetName',
+	// 	type: 'options',
+	// 	default: '',
+	// 	required: true,
+	// 	// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
+	// 	description: 'Google Sheet to operate on. Choose from the list.',
+	// 	typeOptions: {
+	// 		loadOptionsDependsOn: ['documentId.value'],
+	// 		loadOptionsMethod: 'getSheets',
+	// 	},
+	// 	displayOptions: {
+	// 		show: {
+	// 			resource: ['sheet'],
+	// 			operation: [
+	// 				'append',
+	// 				'appendOrUpdate',
+	// 				'clear',
+	// 				'delete',
+	// 				'readAllRows',
+	// 				'readMatchingRows',
+	// 				'remove',
+	// 				'update',
+	// 			],
+	// 		},
+	// 		// hide: {
+	// 		// 	...untilSheetSelected,
+	// 		// },
+	// 	},
+	// },
 
 	...append.description,
 	...clear.description,

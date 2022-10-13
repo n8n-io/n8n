@@ -46,7 +46,11 @@ export async function getSheetHeaderRow(
 		const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
 		const sheet = new GoogleSheet(spreadsheetId, this);
-		const sheetWithinDocument = this.getCurrentNodeParameter('sheetName') as string;
+		// const sheetWithinDocument = this.getCurrentNodeParameter('sheetName') as string;
+		const sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {
+			extractValue: true,
+		}) as string;
+
 		const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
 		const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
 

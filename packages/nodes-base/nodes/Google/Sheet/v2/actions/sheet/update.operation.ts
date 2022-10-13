@@ -25,6 +25,7 @@ export const description: SheetProperties = [
 		],
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['update'],
 			},
 			hide: {
@@ -42,13 +43,14 @@ export const description: SheetProperties = [
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
-			loadOptionsDependsOn: ['sheetName'],
+			loadOptionsDependsOn: ['sheetName.value'],
 			loadOptionsMethod: 'getSheetHeaderRow',
 		},
 		default: '',
 		hint: 'This column does not get changed it gets only used to find the correct row to update',
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['update'],
 			},
 			hide: {
@@ -63,6 +65,7 @@ export const description: SheetProperties = [
 		default: '',
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['update'],
 				dataMode: ['defineBelow'],
 			},
@@ -81,6 +84,7 @@ export const description: SheetProperties = [
 		},
 		displayOptions: {
 			show: {
+				resource: ['sheet'],
 				operation: ['update'],
 				dataMode: ['defineBelow'],
 			},
@@ -101,7 +105,7 @@ export const description: SheetProperties = [
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: ['sheetName'],
+							loadOptionsDependsOn: ['sheetName.value'],
 							loadOptionsMethod: 'getSheetHeaderRow',
 						},
 						default: '',
