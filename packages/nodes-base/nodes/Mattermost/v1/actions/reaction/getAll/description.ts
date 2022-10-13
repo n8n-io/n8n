@@ -1,6 +1,4 @@
-import {
-	ReactionProperties,
-} from '../../Interfaces';
+import { ReactionProperties } from '../../Interfaces';
 
 export const reactionGetAllDescription: ReactionProperties = [
 	{
@@ -11,12 +9,8 @@ export const reactionGetAllDescription: ReactionProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['reaction'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'One or more (comma-separated) posts to retrieve reactions from',
@@ -27,12 +21,8 @@ export const reactionGetAllDescription: ReactionProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'reaction',
-				],
+				operation: ['getAll'],
+				resource: ['reaction'],
 			},
 		},
 		default: true,
@@ -44,15 +34,9 @@ export const reactionGetAllDescription: ReactionProperties = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'reaction',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['reaction'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

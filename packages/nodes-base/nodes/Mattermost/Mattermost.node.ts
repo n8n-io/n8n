@@ -1,7 +1,4 @@
-import {
-	INodeTypeBaseDescription,
-	INodeVersionedType,
-} from 'n8n-workflow';
+import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
 
 import { MattermostV1 } from './v1/MattermostV1.node';
 import { NodeVersionedType } from '../../src/NodeVersionedType';

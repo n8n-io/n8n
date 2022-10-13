@@ -1,18 +1,19 @@
-import {
-	OptionsWithUrl,
-} from 'request';
+import { OptionsWithUrl } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function posthogApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, option = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function posthogApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	path: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	option = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('postHogApi');
 
 	const base = credentials.url as string;
@@ -62,7 +63,6 @@ export interface ITrack {
 	properties: { [key: string]: any }; // tslint:disable-line:no-any
 	context: { [key: string]: any }; // tslint:disable-line:no-any
 }
-
 
 export interface IIdentity {
 	event: string;

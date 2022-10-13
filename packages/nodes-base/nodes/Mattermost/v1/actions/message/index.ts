@@ -4,11 +4,7 @@ import * as postEphemeral from './postEphemeral';
 
 import { INodeProperties } from 'n8n-workflow';
 
-export {
-	del as delete,
-	post,
-	postEphemeral,
-};
+export { del as delete, post, postEphemeral };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -18,9 +14,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [

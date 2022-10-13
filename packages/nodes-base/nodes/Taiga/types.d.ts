@@ -1,6 +1,6 @@
 type Resource = 'epic' | 'issue' | 'task' | 'userStory';
 
-type Operation = 'create' | 'delete' | 'update' | 'get' | 'getAll'
+type Operation = 'create' | 'delete' | 'update' | 'get' | 'getAll';
 
 type LoadedResource = {
 	id: string;
@@ -26,7 +26,7 @@ type LoadedEpic = LoadedUserStory;
 
 type LoadedTags = {
 	[tagName: string]: string | null; // hex color
-}
+};
 
 type Operations = 'all' | 'create' | 'delete' | 'change';
 
@@ -38,4 +38,4 @@ type WebhookPayload = {
 	by: Record<string, string | number>;
 	date: string;
 	data: Record<string, string | number | object | string[]>;
-}
+};

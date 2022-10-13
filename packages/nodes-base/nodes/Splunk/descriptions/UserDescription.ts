@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -35,10 +31,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all users',
-				action: 'Get all users',
+				description: 'Retrieve many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
@@ -64,12 +60,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -77,7 +69,8 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Role Names or IDs',
 		name: 'roles',
 		type: 'multiOptions',
-		description: 'Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 		default: [],
 		typeOptions: {
@@ -85,12 +78,8 @@ export const userFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -98,16 +87,13 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -119,12 +105,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -157,12 +139,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -179,12 +157,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -192,7 +166,7 @@ export const userFields: INodeProperties[] = [
 	// ----------------------------------------
 	//               user: getAll
 	// ----------------------------------------
-{
+	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
@@ -200,12 +174,8 @@ export const userFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -220,15 +190,9 @@ export const userFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -245,12 +209,8 @@ export const userFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -262,12 +222,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -289,13 +245,15 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
 			},
 			{
 				displayName: 'Role Names or IDs',
 				name: 'roles',
 				type: 'multiOptions',
-				description: 'Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Comma-separated list of roles to assign to the user. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getRoles',

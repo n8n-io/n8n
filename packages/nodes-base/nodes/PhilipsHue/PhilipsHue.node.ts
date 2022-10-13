@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,15 +9,9 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	getUser,
-	philipsHueApiRequest,
-} from './GenericFunctions';
+import { getUser, philipsHueApiRequest } from './GenericFunctions';
 
-import {
-	lightFields,
-	lightOperations,
-} from './LightDescription';
+import { lightFields, lightOperations } from './LightDescription';
 
 export class PhilipsHue implements INodeType {
 	description: INodeTypeDescription = {
@@ -65,31 +57,21 @@ export class PhilipsHue implements INodeType {
 		loadOptions: {
 			// Get all the lights to display them to user so that he can
 			// select them easily
-			async getLights(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getLights(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
 				const user = await getUser.call(this);
 
-				const lights = await philipsHueApiRequest.call(
-					this,
-					'GET',
-					`/api/${user}/lights`,
-				);
+				const lights = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/lights`);
 
-				const groups = await philipsHueApiRequest.call(
-					this,
-					'GET',
-					`/api/${user}/groups`,
-				);
+				const groups = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/groups`);
 
 				for (const light of Object.keys(lights)) {
 					let lightName = lights[light].name;
 					const lightId = light;
 
 					for (const groupId of Object.keys(groups)) {
-						if(groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
+						if (groups[groupId].type === 'Room' && groups[groupId].lights.includes(lightId)) {
 							lightName = `${groups[groupId].name}: ${lightName}`;
 						}
 					}
@@ -115,7 +97,6 @@ export class PhilipsHue implements INodeType {
 		for (let i = 0; i < length; i++) {
 			if (resource === 'light') {
 				if (operation === 'update') {
-
 					const lightId = this.getNodeParameter('lightId', i) as string;
 
 					const on = this.getNodeParameter('on', i) as boolean;
@@ -127,15 +108,19 @@ export class PhilipsHue implements INodeType {
 					};
 
 					if (additionalFields.transitiontime) {
-						additionalFields.transitiontime = (additionalFields.transitiontime as number * 100);
+						additionalFields.transitiontime = (additionalFields.transitiontime as number) * 100;
 					}
 
 					if (additionalFields.xy) {
-						additionalFields.xy = (additionalFields.xy as string).split(',').map((e: string) => parseFloat(e));
+						additionalFields.xy = (additionalFields.xy as string)
+							.split(',')
+							.map((e: string) => parseFloat(e));
 					}
 
 					if (additionalFields.xy_inc) {
-						additionalFields.xy_inc = (additionalFields.xy_inc as string).split(',').map((e: string) => parseFloat(e));
+						additionalFields.xy_inc = (additionalFields.xy_inc as string)
+							.split(',')
+							.map((e: string) => parseFloat(e));
 					}
 
 					Object.assign(body, additionalFields);
@@ -154,16 +139,17 @@ export class PhilipsHue implements INodeType {
 					for (const response of data) {
 						Object.assign(responseData, response.success);
 					}
-
 				}
 				if (operation === 'delete') {
-
 					const lightId = this.getNodeParameter('lightId', i) as string;
 
 					const user = await getUser.call(this);
 
-					responseData = await philipsHueApiRequest.call(this, 'DELETE', `/api/${user}/lights/${lightId}`);
-
+					responseData = await philipsHueApiRequest.call(
+						this,
+						'DELETE',
+						`/api/${user}/lights/${lightId}`,
+					);
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -184,7 +170,11 @@ export class PhilipsHue implements INodeType {
 
 					const user = await getUser.call(this);
 
-					responseData = await philipsHueApiRequest.call(this, 'GET', `/api/${user}/lights/${lightId}`);
+					responseData = await philipsHueApiRequest.call(
+						this,
+						'GET',
+						`/api/${user}/lights/${lightId}`,
+					);
 				}
 			}
 		}

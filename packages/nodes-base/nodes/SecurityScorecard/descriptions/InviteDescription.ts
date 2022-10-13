@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const inviteOperations: INodeProperties[] = [
 	{
@@ -11,9 +9,7 @@ export const inviteOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
+				resource: ['invite'],
 			},
 		},
 		options: [
@@ -38,12 +34,8 @@ export const inviteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -55,12 +47,8 @@ export const inviteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -72,12 +60,8 @@ export const inviteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -90,12 +74,8 @@ export const inviteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -106,12 +86,8 @@ export const inviteFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'invite',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invite'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -132,7 +108,7 @@ export const inviteFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Grade to Maintain',
-				description: 'Request the invitee\'s organisation to maintain a minimum grade',
+				description: "Request the invitee's organisation to maintain a minimum grade",
 				name: 'grade_to_maintain',
 				type: 'string',
 				default: '',
@@ -140,7 +116,7 @@ export const inviteFields: INodeProperties[] = [
 			{
 				displayName: 'Is Organisation Point of Contact',
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'Is the invitee organisation\'s point of contact',
+				description: "Is the invitee organisation's point of contact",
 				name: 'is_organization_point_of_contact',
 				type: 'boolean',
 				default: false,

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const guestOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const guestOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
+				resource: ['guest'],
 			},
 		},
 		options: [
@@ -46,7 +42,6 @@ export const guestOperations: INodeProperties[] = [
 ];
 
 export const guestFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                guest:create                                */
 	/* -------------------------------------------------------------------------- */
@@ -54,16 +49,13 @@ export const guestFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['guest'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -79,12 +71,8 @@ export const guestFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['guest'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -96,12 +84,8 @@ export const guestFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['guest'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -133,16 +117,13 @@ export const guestFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['guest'],
+				operation: ['delete'],
 			},
 		},
 		typeOptions: {
@@ -157,12 +138,8 @@ export const guestFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['guest'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -175,16 +152,13 @@ export const guestFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['guest'],
+				operation: ['get'],
 			},
 		},
 		typeOptions: {
@@ -199,12 +173,8 @@ export const guestFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['guest'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -217,16 +187,13 @@ export const guestFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'team',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['guest'],
+				operation: ['update'],
 			},
 		},
 		typeOptions: {
@@ -241,12 +208,8 @@ export const guestFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['guest'],
+				operation: ['update'],
 			},
 		},
 		required: true,
@@ -259,12 +222,8 @@ export const guestFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'guest',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['guest'],
+				operation: ['update'],
 			},
 		},
 		options: [

@@ -1,17 +1,13 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from '../../../transport';
+import { apiRequest } from '../../../transport';
 
-export async function update(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function update(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	const body: IDataObject = {};
 	const requestMethod = 'POST';
 
@@ -22,7 +18,11 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	const endpoint = `files/${fileId}`;
 
 	//body parameters
-	const shareWithEmployee = this.getNodeParameter('updateFields.shareWithEmployee', index, true) as boolean;
+	const shareWithEmployee = this.getNodeParameter(
+		'updateFields.shareWithEmployee',
+		index,
+		true,
+	) as boolean;
 
 	body.shareWithEmployee = shareWithEmployee ? 'yes' : 'no';
 

@@ -60,7 +60,7 @@ export const workflowRun = mixins(
 			return response;
 		},
 		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
-			const workflow = this.getWorkflow();
+			const workflow = this.getCurrentWorkflow();
 
 			if (this.$store.getters.isActionActive('workflowRunning') === true) {
 				return;
@@ -101,7 +101,7 @@ export const workflowRun = mixins(
 							};
 
 							for (const nodeIssue of nodeIssues) {
-								errorMessages.push(`${nodeName}: ${nodeIssue}`);
+								errorMessages.push(`<strong>${nodeName}</strong>: ${nodeIssue}`);
 								trackNodeIssue.error = trackNodeIssue.error.concat(', ', nodeIssue);
 							}
 							trackNodeIssues.push(trackNodeIssue);
@@ -109,7 +109,7 @@ export const workflowRun = mixins(
 
 						this.$showMessage({
 							title: this.$locale.baseText('workflowRun.showMessage.title'),
-							message: this.$locale.baseText('workflowRun.showMessage.message') + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
+							message: errorMessages.join('<br />'),
 							type: 'error',
 							duration: 0,
 						});
@@ -151,7 +151,9 @@ export const workflowRun = mixins(
 						// node for each of the branches
 						const parentNodes = workflow.getParentNodes(directParentNode, 'main');
 
-						// Add also the direct parent to be checked
+						// Add also the enabled direct parent to be checked
+						if (workflow.nodes[directParentNode].disabled) continue;
+
 						parentNodes.push(directParentNode);
 
 						for (const parentNode of parentNodes) {
@@ -188,6 +190,7 @@ export const workflowRun = mixins(
 				const startRunData: IStartRunData = {
 					workflowData,
 					runData: newRunData,
+					pinData: workflowData.pinData,
 					startNodes,
 				};
 				if (nodeName) {
@@ -208,6 +211,7 @@ export const workflowRun = mixins(
 					data: {
 						resultData: {
 							runData: newRunData || {},
+							pinData: workflowData.pinData,
 							startNodes,
 							workflowData,
 						},

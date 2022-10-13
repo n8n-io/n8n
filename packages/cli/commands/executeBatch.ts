@@ -98,7 +98,7 @@ export class ExecuteBatch extends Command {
 		}),
 		shallow: flags.boolean({
 			description:
-				'Compares only if attributes output from node are the same, with no regards to neste JSON objects.',
+				'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
 		}),
 		skipList: flags.string({
 			description: 'File containing a comma separated list of workflow IDs to skip.',
@@ -152,7 +152,7 @@ export class ExecuteBatch extends Command {
 			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 		}
 		// We may receive true but when called from `process.on`
-		// we get the signal (SIGNIT, etc.)
+		// we get the signal (SIGINT, etc.)
 		if (skipExit !== true) {
 			process.exit(0);
 		}
@@ -864,7 +864,7 @@ export class ExecuteBatch extends Command {
 							}
 						}
 						// Save snapshots only after comparing - this is to make sure we're updating
-						// After comparing to existing verion.
+						// After comparing to existing version.
 						if (ExecuteBatch.snapshot !== undefined) {
 							const fileName = `${
 								ExecuteBatch.snapshot.endsWith(sep)

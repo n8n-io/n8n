@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const incomingWebhookOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const incomingWebhookOperations: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'incomingWebhook',
-				],
+				resource: ['incomingWebhook'],
 			},
 		},
 		options: [
@@ -27,24 +23,19 @@ export const incomingWebhookOperations: INodeProperties[] = [
 	},
 ];
 
-
 export const incomingWebhookFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 incomingWebhook:create                     */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'See <a href="https://developers.google.com/chat/how-tos/webhooks" target="_blank">Google Chat Guide</a> To Webhooks',
+		displayName:
+			'See <a href="https://developers.google.com/chat/how-tos/webhooks" target="_blank">Google Chat Guide</a> To Webhooks',
 		name: 'jsonNotice',
 		type: 'notice',
 		displayOptions: {
 			show: {
-				resource: [
-					'incomingWebhook',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incomingWebhook'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -56,12 +47,8 @@ export const incomingWebhookFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'incomingWebhook',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incomingWebhook'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -73,12 +60,8 @@ export const incomingWebhookFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'incomingWebhook',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incomingWebhook'],
+				operation: ['create'],
 			},
 		},
 		default: false,
@@ -92,18 +75,12 @@ export const incomingWebhookFields: INodeProperties[] = [
 		placeholder: 'Add Options',
 		displayOptions: {
 			show: {
-				resource: [
-					'incomingWebhook',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['incomingWebhook'],
+				operation: ['create'],
+				jsonParameters: [false],
 			},
 		},
-		default: {'text': ''},
+		default: { text: '' },
 		description: 'The message object',
 		options: [
 			{
@@ -116,20 +93,15 @@ export const incomingWebhookFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'See <a href="https://developers.google.com/chat/reference/rest/v1/spaces.messages#Message" target="_blank">Google Chat Guide</a> To Creating Messages',
+		displayName:
+			'See <a href="https://developers.google.com/chat/reference/rest/v1/spaces.messages#Message" target="_blank">Google Chat Guide</a> To Creating Messages',
 		name: 'jsonNotice',
 		type: 'notice',
 		displayOptions: {
 			show: {
-				resource: [
-					'incomingWebhook',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['incomingWebhook'],
+				operation: ['create'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
@@ -144,15 +116,9 @@ export const incomingWebhookFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'incomingWebhook',
-				],
-				operation: [
-					'create',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['incomingWebhook'],
+				operation: ['create'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
@@ -166,12 +132,8 @@ export const incomingWebhookFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'incomingWebhook',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incomingWebhook'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -180,7 +142,8 @@ export const incomingWebhookFields: INodeProperties[] = [
 				name: 'threadKey',
 				type: 'string',
 				default: '',
-				description: 'Thread identifier which groups messages into a single thread. Has no effect if thread field, corresponding to an existing thread, is set in message. Example: spaces/AAAAMpdlehY/threads/MZ8fXhZXGkk.',
+				description:
+					'Thread identifier which groups messages into a single thread. Has no effect if thread field, corresponding to an existing thread, is set in message. Example: spaces/AAAAMpdlehY/threads/MZ8fXhZXGkk.',
 			},
 		],
 	},

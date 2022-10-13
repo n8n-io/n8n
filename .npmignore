@@ -1,0 +1,28 @@
+dist/test
+dist/**/*.{js.map,d.ts}
+
+.DS_Store
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw*
+
+.editorconfig
+.eslintrc.js
+tsconfig.json
+tslint.json
+
+.turbo

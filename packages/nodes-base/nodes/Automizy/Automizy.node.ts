@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -9,22 +7,14 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
-import {
-	automizyApiRequest,
-	automizyApiRequestAllItems,
-} from './GenericFunctions';
+import { automizyApiRequest, automizyApiRequestAllItems } from './GenericFunctions';
 
-import {
-	contactFields,
-	contactOperations,
-} from './ContactDescription';
+import { contactFields, contactOperations } from './ContactDescription';
 
-import {
-	listFields,
-	listOperations,
-} from './ListDescription';
+import { listFields, listOperations } from './ListDescription';
 
 export class Automizy implements INodeType {
 	description: INodeTypeDescription = {
@@ -78,9 +68,7 @@ export class Automizy implements INodeType {
 		loadOptions: {
 			// Get all the tags to display them to user so that he can
 			// select them easily
-			async getLists(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getLists(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const lists = await automizyApiRequestAllItems.call(
 					this,
@@ -96,9 +84,7 @@ export class Automizy implements INodeType {
 				}
 				return returnData;
 			},
-			async getTags(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getTags(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const tags = await automizyApiRequestAllItems.call(
 					this,
@@ -114,9 +100,7 @@ export class Automizy implements INodeType {
 				}
 				return returnData;
 			},
-			async getCustomFields(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getCustomFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const customFields = await automizyApiRequestAllItems.call(
 					this,
@@ -137,16 +121,14 @@ export class Automizy implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-
 			if (resource === 'contact') {
-
 				if (operation === 'create') {
 					const listId = this.getNodeParameter('listId', i) as string;
 
@@ -161,12 +143,12 @@ export class Automizy implements INodeType {
 					Object.assign(body, additionalFields);
 
 					if (body.customFieldsUi) {
-						const customFieldsValues = (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						const customFieldsValues = (body.customFieldsUi as IDataObject)
+							.customFieldsValues as IDataObject[];
 
 						body.customFields = {};
 
 						for (const customField of customFieldsValues) {
-
 							//@ts-ignore
 							body.customFields[customField.key] = customField.value;
 						}
@@ -180,27 +162,32 @@ export class Automizy implements INodeType {
 						`/smart-lists/${listId}/contacts`,
 						body,
 					);
+					responseData = responseData.contacts;
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'delete') {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 
-					responseData = await automizyApiRequest.call(
-						this,
-						'DELETE',
-						`/contacts/${contactId}`,
-					);
+					responseData = await automizyApiRequest.call(this, 'DELETE', `/contacts/${contactId}`);
 
 					responseData = { success: true };
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'get') {
 					const contactId = this.getNodeParameter('contactId', i) as string;
 
-					responseData = await automizyApiRequest.call(
-						this,
-						'GET',
-						`/contacts/${contactId}`,
+					responseData = await automizyApiRequest.call(this, 'GET', `/contacts/${contactId}`);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -220,7 +207,6 @@ export class Automizy implements INodeType {
 					}
 
 					if (returnAll) {
-
 						responseData = await automizyApiRequestAllItems.call(
 							this,
 							'contacts',
@@ -229,7 +215,6 @@ export class Automizy implements INodeType {
 							{},
 							qs,
 						);
-
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 
@@ -240,9 +225,12 @@ export class Automizy implements INodeType {
 							{},
 							qs,
 						);
-
-						responseData = responseData.contacts;
 					}
+
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'update') {
@@ -255,12 +243,12 @@ export class Automizy implements INodeType {
 					Object.assign(body, updateFields);
 
 					if (body.customFieldsUi) {
-						const customFieldsValues = (body.customFieldsUi as IDataObject).customFieldsValues as IDataObject[];
+						const customFieldsValues = (body.customFieldsUi as IDataObject)
+							.customFieldsValues as IDataObject[];
 
 						body.customFields = {};
 
 						for (const customField of customFieldsValues) {
-
 							//@ts-ignore
 							body.customFields[customField.key] = customField.value;
 						}
@@ -268,17 +256,15 @@ export class Automizy implements INodeType {
 						delete body.customFieldsUi;
 					}
 
-					responseData = await automizyApiRequest.call(
-						this,
-						'PATCH',
-						`/contacts/${email}`,
-						body,
+					responseData = await automizyApiRequest.call(this, 'PATCH', `/contacts/${email}`, body);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 			}
 
 			if (resource === 'list') {
-
 				if (operation === 'create') {
 					const name = this.getNodeParameter('name', i) as string;
 
@@ -286,33 +272,32 @@ export class Automizy implements INodeType {
 						name,
 					};
 
-					responseData = await automizyApiRequest.call(
-						this,
-						'POST',
-						`/smart-lists`,
-						body,
+					responseData = await automizyApiRequest.call(this, 'POST', `/smart-lists`, body);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
 				if (operation === 'delete') {
 					const listId = this.getNodeParameter('listId', i) as string;
 
-					responseData = await automizyApiRequest.call(
-						this,
-						'DELETE',
-						`/smart-lists/${listId}`,
-					);
+					responseData = await automizyApiRequest.call(this, 'DELETE', `/smart-lists/${listId}`);
 
 					responseData = { success: true };
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'get') {
 					const listId = this.getNodeParameter('listId', i) as string;
 
-					responseData = await automizyApiRequest.call(
-						this,
-						'GET',
-						`/smart-lists/${listId}`,
+					responseData = await automizyApiRequest.call(this, 'GET', `/smart-lists/${listId}`);
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
 				}
 
@@ -330,7 +315,6 @@ export class Automizy implements INodeType {
 					}
 
 					if (returnAll) {
-
 						responseData = await automizyApiRequestAllItems.call(
 							this,
 							'smartLists',
@@ -339,20 +323,18 @@ export class Automizy implements INodeType {
 							{},
 							qs,
 						);
-
 					} else {
 						qs.limit = this.getNodeParameter('limit', i) as number;
 
-						responseData = await automizyApiRequest.call(
-							this,
-							'GET',
-							`/smart-lists`,
-							{},
-							qs,
-						);
+						responseData = await automizyApiRequest.call(this, 'GET', `/smart-lists`, {}, qs);
 
 						responseData = responseData.smartLists;
 					}
+
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 
 				if (operation === 'update') {
@@ -370,14 +352,17 @@ export class Automizy implements INodeType {
 						`/smart-lists/${listId}`,
 						body,
 					);
+
+					responseData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
 				}
 			}
 		}
-		if (Array.isArray(responseData)) {
-			returnData.push.apply(returnData, responseData as IDataObject[]);
-		} else if (responseData !== undefined) {
-			returnData.push(responseData as IDataObject);
-		}
-		return [this.helpers.returnJsonArray(returnData)];
+
+		returnData.push(...(responseData as NodeExecutionWithMetadata[]));
+
+		return this.prepareOutputData(returnData);
 	}
 }

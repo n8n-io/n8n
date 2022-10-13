@@ -1,4 +1,4 @@
-import {fireEvent, render} from '@testing-library/vue';
+import { render } from '@testing-library/vue';
 import N8nNotice from "../Notice.vue";
 
 describe('components', () => {

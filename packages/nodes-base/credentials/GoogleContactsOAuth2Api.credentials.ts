@@ -1,17 +1,10 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-const scopes = [
-	'https://www.googleapis.com/auth/contacts',
-];
+const scopes = ['https://www.googleapis.com/auth/contacts'];
 
 export class GoogleContactsOAuth2Api implements ICredentialType {
 	name = 'googleContactsOAuth2Api';
-	extends = [
-		'googleOAuth2Api',
-	];
+	extends = ['googleOAuth2Api'];
 	displayName = 'Google Contacts OAuth2 API';
 	documentationUrl = 'google';
 	properties: INodeProperties[] = [

@@ -18,10 +18,13 @@ export class PushoverApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		if (requestOptions.method === 'GET') {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		if (requestOptions.method === 'GET' && requestOptions.qs) {
 			Object.assign(requestOptions.qs, { token: credentials.apiKey });
-		} else {
+		} else if (requestOptions.body) {
 			Object.assign(requestOptions.body, { token: credentials.apiKey });
 		}
 		return requestOptions;
@@ -31,6 +34,6 @@ export class PushoverApi implements ICredentialType {
 			baseURL: 'https://api.pushover.net/1',
 			url: '=/licenses.json?token={{$credentials?.apiKey}}',
 			method: 'GET',
-		 },
+		},
 	};
 }

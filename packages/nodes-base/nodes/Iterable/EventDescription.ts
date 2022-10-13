@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const eventOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const eventOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
+				resource: ['event'],
 			},
 		},
 		options: [
@@ -28,7 +24,6 @@ export const eventOperations: INodeProperties[] = [
 ];
 
 export const eventFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                event:track                                 */
 	/* -------------------------------------------------------------------------- */
@@ -39,12 +34,8 @@ export const eventFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
+				resource: ['event'],
+				operation: ['track'],
 			},
 		},
 		description: 'The name of the event to track',
@@ -58,12 +49,8 @@ export const eventFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'event',
-				],
-				operation: [
-					'track',
-				],
+				resource: ['event'],
+				operation: ['track'],
 			},
 		},
 		options: [
@@ -119,14 +106,16 @@ export const eventFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'name@email.com',
 				default: '',
-				description: 'Either email or userId must be passed in to identify the user. If both are passed in, email takes precedence.',
+				description:
+					'Either email or userId must be passed in to identify the user. If both are passed in, email takes precedence.',
 			},
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
 				default: '',
-				description: 'Optional event ID. If an event exists with that ID, the event will be updated. If none is specified, a new ID will automatically be generated and returned.',
+				description:
+					'Optional event ID. If an event exists with that ID, the event will be updated. If none is specified, a new ID will automatically be generated and returned.',
 			},
 			{
 				displayName: 'Template ID',

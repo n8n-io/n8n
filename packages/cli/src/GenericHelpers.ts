@@ -8,12 +8,27 @@
 import express from 'express';
 import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
-import { IDataObject } from 'n8n-workflow';
+import {
+	ExecutionError,
+	IDataObject,
+	INode,
+	IRunExecutionData,
+	Workflow,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 import { validate } from 'class-validator';
 import config from '../config';
 
 // eslint-disable-next-line import/no-cycle
-import { Db, ICredentialsDb, IPackageVersions, ResponseHelper } from '.';
+import {
+	Db,
+	ICredentialsDb,
+	IExecutionDb,
+	IExecutionFlattedDb,
+	IPackageVersions,
+	IWorkflowDb,
+	ResponseHelper,
+} from '.';
 // eslint-disable-next-line import/order
 import { Like } from 'typeorm';
 // eslint-disable-next-line import/no-cycle
@@ -27,8 +42,6 @@ let versionCache: IPackageVersions | undefined;
 /**
  * Returns the base URL n8n is reachable from
  *
- * @export
- * @returns {string}
  */
 export function getBaseUrl(): string {
 	const protocol = config.getEnv('protocol');
@@ -45,9 +58,6 @@ export function getBaseUrl(): string {
 /**
  * Returns the session id if one is set
  *
- * @export
- * @param {express.Request} req
- * @returns {(string | undefined)}
  */
 export function getSessionId(req: express.Request): string | undefined {
 	return req.headers.sessionid as string | undefined;
@@ -56,8 +66,6 @@ export function getSessionId(req: express.Request): string | undefined {
 /**
  * Returns information which version of the packages are installed
  *
- * @export
- * @returns {Promise<IPackageVersions>}
  */
 export async function getVersions(): Promise<IPackageVersions> {
 	if (versionCache !== undefined) {
@@ -79,9 +87,6 @@ export async function getVersions(): Promise<IPackageVersions> {
 /**
  * Extracts configuration schema for key
  *
- * @param {string} configKey
- * @param {IDataObject} configSchema
- * @returns {IDataObject} schema of the configKey
  */
 function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDataObject {
 	const configKeyParts = configKey.split('.');
@@ -103,9 +108,7 @@ function extractSchemaForKey(configKey: string, configSchema: IDataObject): IDat
 /**
  * Gets value from config with support for "_FILE" environment variables
  *
- * @export
  * @param {string} configKey The key of the config data to get
- * @returns {(Promise<string | boolean | number | undefined>)}
  */
 export async function getConfigValue(
 	configKey: string,
@@ -121,7 +124,7 @@ export async function getConfigValue(
 		return config.getEnv(configKey);
 	}
 
-	// Check if special file enviroment variable exists
+	// Check if special file environment variable exists
 	const fileEnvironmentVariable = process.env[`${currentSchema.env}_FILE`];
 	if (fileEnvironmentVariable === undefined) {
 		// Does not exist, so return value from config
@@ -212,6 +215,87 @@ export async function validateEntity(
 	if (errorMessages) {
 		throw new ResponseHelper.ResponseError(errorMessages, undefined, 400);
 	}
+}
+
+/**
+ * Create an error execution
+ *
+ * @param {INode} node
+ * @param {IWorkflowDb} workflowData
+ * @param {Workflow} workflow
+ * @param {WorkflowExecuteMode} mode
+ * @returns
+ * @memberof ActiveWorkflowRunner
+ */
+// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
+export async function createErrorExecution(
+	error: ExecutionError,
+	node: INode,
+	workflowData: IWorkflowDb,
+	workflow: Workflow,
+	mode: WorkflowExecuteMode,
+): Promise<void> {
+	const saveDataErrorExecutionDisabled = workflowData?.settings?.saveDataErrorExecution === 'none';
+
+	if (saveDataErrorExecutionDisabled) return;
+
+	const executionData: IRunExecutionData = {
+		startData: {
+			destinationNode: node.name,
+			runNodeFilter: [node.name],
+		},
+		executionData: {
+			contextData: {},
+			nodeExecutionStack: [
+				{
+					node,
+					data: {
+						main: [
+							[
+								{
+									json: {},
+									pairedItem: {
+										item: 0,
+									},
+								},
+							],
+						],
+					},
+					source: null,
+				},
+			],
+			waitingExecution: {},
+			waitingExecutionSource: {},
+		},
+		resultData: {
+			runData: {
+				[node.name]: [
+					{
+						startTime: 0,
+						executionTime: 0,
+						error,
+						source: [],
+					},
+				],
+			},
+			error,
+			lastNodeExecuted: node.name,
+		},
+	};
+
+	const fullExecutionData: IExecutionDb = {
+		data: executionData,
+		mode,
+		finished: false,
+		startedAt: new Date(),
+		workflowData,
+		workflowId: workflow.id,
+		stoppedAt: new Date(),
+	};
+
+	const execution = ResponseHelper.flattenExecutionData(fullExecutionData);
+
+	await Db.collections.Execution.save(execution as IExecutionFlattedDb);
 }
 
 export const DEFAULT_EXECUTIONS_GET_ALL_LIMIT = 20;

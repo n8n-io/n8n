@@ -1,6 +1,4 @@
-import {
-	UserProperties,
-} from '../../Interfaces';
+import { UserProperties } from '../../Interfaces';
 
 export const userGetByIdDescription: UserProperties = [
 	{
@@ -10,16 +8,12 @@ export const userGetByIdDescription: UserProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getById',
-				],
+				resource: ['user'],
+				operation: ['getById'],
 			},
 		},
 		default: '',
-		description: 'User\'s ID',
+		description: "User's ID",
 	},
 	{
 		displayName: 'Additional Fields',
@@ -28,12 +22,8 @@ export const userGetByIdDescription: UserProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getById',
-				],
+				resource: ['user'],
+				operation: ['getById'],
 			},
 		},
 		default: {},
@@ -43,7 +33,8 @@ export const userGetByIdDescription: UserProperties = [
 				name: 'since',
 				type: 'dateTime',
 				default: '',
-				description: 'Only return users that have been modified since the given Unix timestamp (in milliseconds)',
+				description:
+					'Only return users that have been modified since the given Unix timestamp (in milliseconds)',
 			},
 		],
 	},

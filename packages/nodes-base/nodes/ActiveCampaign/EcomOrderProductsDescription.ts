@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	activeCampaignDefaultGetAllProperties,
-} from './GenericFunctions';
+import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
 export const ecomOrderProductsOperations: INodeProperties[] = [
 	{
@@ -14,17 +10,15 @@ export const ecomOrderProductsOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ecommerceOrderProducts',
-				],
+				resource: ['ecommerceOrderProducts'],
 			},
 		},
 		options: [
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all order products',
-				action: 'Get all ecommerce orders',
+				description: 'Get data of many order products',
+				action: 'Get many ecommerce orders',
 			},
 			{
 				name: 'Get by Product ID',
@@ -35,7 +29,7 @@ export const ecomOrderProductsOperations: INodeProperties[] = [
 			{
 				name: 'Get by Order ID',
 				value: 'getByOrderId',
-				description: 'Get data of an order\'s products',
+				description: "Get data of an order's products",
 				action: 'Get an e-commerce order product by order ID',
 			},
 		],
@@ -54,15 +48,11 @@ export const ecomOrderProductsFields: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'getByOrderId',
-				],
-				resource: [
-					'ecommerceOrderProducts',
-				],
+				operation: ['getByOrderId'],
+				resource: ['ecommerceOrderProducts'],
 			},
 		},
-		description: 'The ID of the order whose products you\'d like returned',
+		description: "The ID of the order whose products you'd like returned",
 	},
 
 	// ----------------------------------
@@ -75,15 +65,11 @@ export const ecomOrderProductsFields: INodeProperties[] = [
 		default: 0,
 		displayOptions: {
 			show: {
-				operation: [
-					'getByProductId',
-				],
-				resource: [
-					'ecommerceOrderProducts',
-				],
+				operation: ['getByProductId'],
+				resource: ['ecommerceOrderProducts'],
 			},
 		},
-		description: 'The ID of the product you\'d like returned',
+		description: "The ID of the product you'd like returned",
 	},
 
 	// ----------------------------------

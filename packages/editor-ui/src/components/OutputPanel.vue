@@ -9,15 +9,25 @@
 		:isExecuting="isNodeRunning"
 		:executingMessage="$locale.baseText('ndv.output.executing')"
 		:sessionId="sessionId"
+		:isReadOnly="isReadOnly"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
+		@tableMounted="$emit('tableMounted', $event)"
+		@itemHover="$emit('itemHover', $event)"
+		ref="runData"
 	>
 		<template v-slot:header>
 			<div :class="$style.titleSection">
-				<span :class="$style.title">{{ $locale.baseText('ndv.output') }}</span>
-				<RunInfo v-if="runsCount === 1" :taskData="runTaskData" />
+				<span :class="$style.title">
+					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
+				</span>
+				<RunInfo
+					v-if="!hasPinData && runsCount === 1"
+					v-show="!outputPanelEditMode.enabled"
+					:taskData="runTaskData"
+				/>
 
 				<n8n-info-tip
 					theme="warning"
@@ -26,7 +36,9 @@
 					v-if="hasNodeRun && staleData"
 				>
 					<template>
-						<span v-html="$locale.baseText('ndv.output.staleDataWarning')"></span>
+						<span v-html="$locale.baseText(
+							hasPinData ? 'ndv.output.staleDataWarning.pinData' : 'ndv.output.staleDataWarning.regular'
+						)"></span>
 					</template>
 				</n8n-info-tip>
 			</div>
@@ -34,7 +46,20 @@
 
 		<template v-slot:node-not-run>
 			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
-			<n8n-text v-if="!workflowRunning && (isScheduleTrigger || !isTriggerNode)">{{ $locale.baseText('ndv.output.runNodeHint') }}</n8n-text>
+			<n8n-text v-if="!workflowRunning">
+				{{ $locale.baseText('ndv.output.runNodeHint') }}
+				<span @click="insertTestData" v-if="canPinData">
+					<br>
+					{{ $locale.baseText('generic.or') }}
+					<n8n-text
+						tag="a"
+						size="medium"
+						color="primary"
+					>
+						{{ $locale.baseText('ndv.output.insertTestData') }}
+					</n8n-text>
+				</span>
+			</n8n-text>
 		</template>
 
 		<template v-slot:no-output-data>
@@ -46,7 +71,7 @@
 			</n8n-text>
 		</template>
 
-		<template #run-info v-if="runsCount > 1">
+		<template #run-info v-if="!hasPinData && runsCount > 1">
 			<RunInfo :taskData="runTaskData" />
 		</template>
 	</RunData>
@@ -56,15 +81,24 @@
 import { IExecutionResponse, INodeUi } from '@/Interface';
 import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8n-workflow';
 import Vue from 'vue';
-import RunData from './RunData.vue';
+import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
+import { pinData } from "@/components/mixins/pinData";
+import mixins from 'vue-typed-mixins';
 
-export default Vue.extend({
+type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
+
+export default mixins(
+	pinData,
+).extend({
 	name: 'OutputPanel',
 	components: { RunData, RunInfo },
 	props: {
 		runIndex: {
 			type: Number,
+		},
+		isReadOnly: {
+			type: Boolean,
 		},
 		linkedRuns: {
 			type: Boolean,
@@ -82,7 +116,7 @@ export default Vue.extend({
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
@@ -109,7 +143,10 @@ export default Vue.extend({
 			if (this.workflowExecution === null) {
 				return null;
 			}
-			const executionData: IRunExecutionData = this.workflowExecution.data;
+			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
+			if (!executionData || !executionData.resultData || !executionData.resultData.runData) {
+				return null;
+			}
 			return executionData.resultData.runData;
 		},
 		hasNodeRun(): boolean {
@@ -162,8 +199,29 @@ export default Vue.extend({
 			const runAt = this.runTaskData.startTime;
 			return updatedAt > runAt;
 		},
+		outputPanelEditMode(): { enabled: boolean; value: string; } {
+			return this.$store.getters['ui/outputPanelEditMode'];
+		},
+		canPinData(): boolean {
+			return this.isPinDataNodeType && !this.isReadOnly;
+		},
 	},
 	methods: {
+		insertTestData() {
+			if (this.$refs.runData) {
+				(this.$refs.runData as RunDataRef).enterEditMode({
+					origin: 'insertTestDataLink',
+				});
+
+				this.$telemetry.track('User clicked ndv link', {
+					workflow_id: this.$store.getters.workflowId,
+					session_id: this.sessionId,
+					node_type: this.node.type,
+					pane: 'output',
+					type: 'insert-test-data',
+				});
+			}
+		},
 		onLinkRun() {
 			this.$emit('linkRun');
 		},

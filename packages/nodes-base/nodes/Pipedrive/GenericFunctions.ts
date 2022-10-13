@@ -1,19 +1,8 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodePropertyOptions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodePropertyOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 export interface ICustomInterface {
 	name: string;
@@ -32,13 +21,17 @@ export interface ICustomProperties {
 /**
  * Make an API request to Pipedrive
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: IDataObject, query: IDataObject = {}, formData?: IDataObject, downloadFile?: boolean): Promise<any> { // tslint:disable-line:no-any
+export async function pipedriveApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	query: IDataObject = {},
+	formData?: IDataObject,
+	downloadFile?: boolean,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 	const options: OptionsWithUri = {
@@ -69,8 +62,13 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 	}
 
 	try {
-		const credentialType = authenticationMethod === 'apiToken' ? 'pipedriveApi' : 'pipedriveOAuth2Api';
-		const responseData = await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+		const credentialType =
+			authenticationMethod === 'apiToken' ? 'pipedriveApi' : 'pipedriveOAuth2Api';
+		const responseData = await this.helpers.requestWithAuthentication.call(
+			this,
+			credentialType,
+			options,
+		);
 
 		if (downloadFile === true) {
 			return {
@@ -84,7 +82,7 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
 
 		return {
 			additionalData: responseData.additional_data,
-			data: (responseData.data === null) ? [] : responseData.data,
+			data: responseData.data === null ? [] : responseData.data,
 		};
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
@@ -95,16 +93,16 @@ export async function pipedriveApiRequest(this: IHookFunctions | IExecuteFunctio
  * Make an API request to paginated Pipedrive endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
-export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-
+export async function pipedriveApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	if (query === undefined) {
 		query = {};
 	}
@@ -136,28 +134,28 @@ export async function pipedriveApiRequestAllItems(this: IHookFunctions | IExecut
 	};
 }
 
-
-
 /**
  * Gets the custom properties from Pipedrive
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} resource
- * @returns {Promise<ICustomProperties>}
  */
-export async function pipedriveGetCustomProperties(this: IHookFunctions | IExecuteFunctions, resource: string): Promise<ICustomProperties> {
-
+export async function pipedriveGetCustomProperties(
+	this: IHookFunctions | IExecuteFunctions,
+	resource: string,
+): Promise<ICustomProperties> {
 	const endpoints: { [key: string]: string } = {
-		'activity': '/activityFields',
-		'deal': '/dealFields',
-		'organization': '/organizationFields',
-		'person': '/personFields',
-		'product': '/productFields',
+		activity: '/activityFields',
+		deal: '/dealFields',
+		organization: '/organizationFields',
+		person: '/personFields',
+		product: '/productFields',
 	};
 
 	if (endpoints[resource] === undefined) {
-		throw new NodeOperationError(this.getNode(), `The resource "${resource}" is not supported for resolving custom values!`);
+		throw new NodeOperationError(
+			this.getNode(),
+			`The resource "${resource}" is not supported for resolving custom values!`,
+		);
 	}
 
 	const requestMethod = 'GET';
@@ -165,7 +163,13 @@ export async function pipedriveGetCustomProperties(this: IHookFunctions | IExecu
 	const body = {};
 	const qs = {};
 	// Get the custom properties and their values
-	const responseData = await pipedriveApiRequest.call(this, requestMethod, endpoints[resource], body, qs);
+	const responseData = await pipedriveApiRequest.call(
+		this,
+		requestMethod,
+		endpoints[resource],
+		body,
+		qs,
+	);
 
 	const customProperties: ICustomProperties = {};
 
@@ -175,29 +179,36 @@ export async function pipedriveGetCustomProperties(this: IHookFunctions | IExecu
 	return customProperties;
 }
 
-
-
 /**
  * Converts names and values of custom properties from their actual values to the
  * Pipedrive internal ones
  *
- * @export
- * @param {ICustomProperties} customProperties
- * @param {IDataObject} item
  */
-export function pipedriveEncodeCustomProperties(customProperties: ICustomProperties, item: IDataObject): void {
+export function pipedriveEncodeCustomProperties(
+	customProperties: ICustomProperties,
+	item: IDataObject,
+): void {
 	let customPropertyData;
 
 	for (const key of Object.keys(item)) {
-		customPropertyData = Object.values(customProperties).find(customPropertyData => customPropertyData.name === key);
+		customPropertyData = Object.values(customProperties).find(
+			(customPropertyData) => customPropertyData.name === key,
+		);
 
 		if (customPropertyData !== undefined) {
 			// Is a custom property
 
 			// Check if also the value has to be resolved or just the key
-			if (item[key] !== null && item[key] !== undefined && customPropertyData.options !== undefined && Array.isArray(customPropertyData.options)) {
+			if (
+				item[key] !== null &&
+				item[key] !== undefined &&
+				customPropertyData.options !== undefined &&
+				Array.isArray(customPropertyData.options)
+			) {
 				// Has an option key so get the actual option-value
-				const propertyOption = customPropertyData.options.find(option => option.label.toString() === item[key]!.toString());
+				const propertyOption = customPropertyData.options.find(
+					(option) => option.label.toString() === item[key]!.toString(),
+				);
 
 				if (propertyOption !== undefined) {
 					item[customPropertyData.key as string] = propertyOption.id;
@@ -212,21 +223,18 @@ export function pipedriveEncodeCustomProperties(customProperties: ICustomPropert
 	}
 }
 
-
-
 /**
  * Converts names and values of custom properties to their actual values
  *
- * @export
- * @param {ICustomProperties} customProperties
- * @param {IDataObject} item
  */
-export function pipedriveResolveCustomProperties(customProperties: ICustomProperties, item: IDataObject): void {
+export function pipedriveResolveCustomProperties(
+	customProperties: ICustomProperties,
+	item: IDataObject,
+): void {
 	let customPropertyData;
 
 	// Itterate over all keys and replace the custom ones
 	for (const key of Object.keys(item)) {
-
 		if (customProperties[key] !== undefined) {
 			// Is a custom property
 			customPropertyData = customProperties[key];
@@ -238,28 +246,35 @@ export function pipedriveResolveCustomProperties(customProperties: ICustomProper
 				continue;
 			}
 
-			if ([
-				'date',
-				'address',
-				'double',
-				'monetary',
-				'org',
-				'people',
-				'phone',
-				'text',
-				'time',
-				'user',
-				'varchar',
-				'varchar_auto',
-				'int',
-				'time',
-				'timerange',
-			].includes(customPropertyData.field_type)) {
-					item[customPropertyData.name as string] = item[key];
-					delete item[key];
+			if (
+				[
+					'date',
+					'address',
+					'double',
+					'monetary',
+					'org',
+					'people',
+					'phone',
+					'text',
+					'time',
+					'user',
+					'varchar',
+					'varchar_auto',
+					'int',
+					'time',
+					'timerange',
+				].includes(customPropertyData.field_type)
+			) {
+				item[customPropertyData.name as string] = item[key];
+				delete item[key];
 				// type options
-			} else if (['enum', 'visible_to'].includes(customPropertyData.field_type) && customPropertyData.options) {
-				const propertyOption = customPropertyData.options.find(option => option.id.toString() === item[key]!.toString());
+			} else if (
+				['enum', 'visible_to'].includes(customPropertyData.field_type) &&
+				customPropertyData.options
+			) {
+				const propertyOption = customPropertyData.options.find(
+					(option) => option.id.toString() === item[key]!.toString(),
+				);
 				if (propertyOption !== undefined) {
 					item[customPropertyData.name as string] = propertyOption.label;
 					delete item[key];
@@ -267,9 +282,9 @@ export function pipedriveResolveCustomProperties(customProperties: ICustomProper
 				// type multioptions
 			} else if (['set'].includes(customPropertyData.field_type) && customPropertyData.options) {
 				const selectedIds = (item[key] as string).split(',');
-				const selectedLabels = customPropertyData.options.
-				filter(option => selectedIds.includes(option.id.toString())).
-				map(option => option.label);
+				const selectedLabels = customPropertyData.options
+					.filter((option) => selectedIds.includes(option.id.toString()))
+					.map((option) => option.label);
 				item[customPropertyData.name] = selectedLabels;
 				delete item[key];
 			}
@@ -277,12 +292,18 @@ export function pipedriveResolveCustomProperties(customProperties: ICustomProper
 	}
 }
 
-export function sortOptionParameters(optionParameters: INodePropertyOptions[]): INodePropertyOptions[] {
+export function sortOptionParameters(
+	optionParameters: INodePropertyOptions[],
+): INodePropertyOptions[] {
 	optionParameters.sort((a, b) => {
 		const aName = a.name.toLowerCase();
 		const bName = b.name.toLowerCase();
-		if (aName < bName) { return -1; }
-		if (aName > bName) { return 1; }
+		if (aName < bName) {
+			return -1;
+		}
+		if (aName > bName) {
+			return 1;
+		}
 		return 0;
 	});
 

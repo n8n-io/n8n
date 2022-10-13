@@ -42,10 +42,15 @@ export class ShopifyApi implements ICredentialType {
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.headers = {
 			...requestOptions.headers,
-			Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(BINARY_ENCODING)}`,
+			Authorization: `Basic ${Buffer.from(`${credentials.apiKey}:${credentials.password}`).toString(
+				BINARY_ENCODING,
+			)}`,
 		};
 		return requestOptions;
 	}

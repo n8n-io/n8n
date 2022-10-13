@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import express from 'express';
 
 import { CredentialsHelper } from '../../../../CredentialsHelper';

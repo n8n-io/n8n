@@ -25,10 +25,10 @@ export class Sms77Api implements ICredentialType {
 			},
 		},
 	};
- test: ICredentialTestRequest = {
-	request: {
-		baseURL: 'https://gateway.sms77.io/api',
-		url: '/balance',
-	},
- };
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: 'https://gateway.sms77.io/api',
+			url: '/balance',
+		},
+	};
 }

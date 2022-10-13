@@ -217,19 +217,18 @@ The following properties can be set in the node property options.
 
 All properties are optional. However, most only work when the node-property is of a specfic type.
 
- - **alwaysOpenEditWindow** [type: string]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property.
- - **loadOptionsMethod** [type: options]: Method to use to load options from an external service
- - **maxValue** [type: number]: Maximum value of the number
- - **minValue** [type: number]: Minimum value of the number
- - **multipleValues** [type: all]: If set the property gets turned into an Array and the user can add multiple values
- - **multipleValueButtonText** [type: all]: Custom text for add button in case "multipleValues" got set
- - **numberPrecision** [type: number]: The precision of the number. By default it is "0" and will so only allow integers.
- - **password** [type: string]: If a password field should be displayed (normally only used by credentials because all node data is not encrypted and get saved in clear-text)
- - **rows** [type: string]: Number of rows the input field should have. By default it is "1"
-
+- **alwaysOpenEditWindow** [type: string]: If set then the "Editor Window" will always open when the user tries to edit the field. Helpful if long text is typically used in the property.
+- **loadOptionsMethod** [type: options]: Method to use to load options from an external service
+- **maxValue** [type: number]: Maximum value of the number
+- **minValue** [type: number]: Minimum value of the number
+- **multipleValues** [type: all]: If set the property gets turned into an Array and the user can add multiple values
+- **multipleValueButtonText** [type: all]: Custom text for add button in case "multipleValues" got set
+- **numberPrecision** [type: number]: The precision of the number. By default it is "0" and will so only allow integers.
+- **password** [type: string]: If a password field should be displayed (normally only used by credentials because all node data is not encrypted and get saved in clear-text)
+- **rows** [type: string]: Number of rows the input field should have. By default it is "1"
 
 ## License
 
 n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
-Additional information on the license can be found in the [FAQ](https://docs.n8n.io/reference/faq.html#license)
+Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).

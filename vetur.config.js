@@ -1,5 +1,3 @@
 module.exports = {
-  projects: [
-    './packages/editor-ui',
-  ],
-}
+	projects: ['./packages/editor-ui', './packages/design-system'],
+};

@@ -8,9 +8,7 @@ export const tableOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
+				resource: ['table'],
 			},
 		},
 		options: [
@@ -61,10 +59,9 @@ export const tableOperations: INodeProperties[] = [
 ];
 
 export const tableFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                table:createRow                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                table:createRow                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc Name or ID',
 		name: 'docId',
@@ -76,39 +73,31 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'createRow',
-				],
+				resource: ['table'],
+				operation: ['createRow'],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'docId',
-			],
+			loadOptionsDependsOn: ['docId'],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'createRow',
-				],
+				resource: ['table'],
+				operation: ['createRow'],
 			},
 		},
-		description: 'The table to create the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The table to create the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -118,12 +107,8 @@ export const tableFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'createRow',
-				],
+				resource: ['table'],
+				operation: ['createRow'],
 			},
 		},
 		options: [
@@ -139,13 +124,14 @@ export const tableFields: INodeProperties[] = [
 				name: 'keyColumns',
 				type: 'string',
 				default: '',
-				description: 'Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,).',
+				description:
+					'Optional column IDs, URLs, or names (fragile and discouraged), specifying columns to be used as upsert keys. If more than one separate by a comma (,).',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   table:get                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   table:get                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc Name or ID',
 		name: 'docId',
@@ -157,39 +143,31 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getRow',
-				],
+				resource: ['table'],
+				operation: ['getRow'],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'docId',
-			],
+			loadOptionsDependsOn: ['docId'],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getRow',
-				],
+				resource: ['table'],
+				operation: ['getRow'],
 			},
 		},
-		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Row ID',
@@ -199,15 +177,12 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getRow',
-				],
+				resource: ['table'],
+				operation: ['getRow'],
 			},
 		},
-		description: 'ID or name of the row. Names are discouraged because they\'re easily prone to being changed by users. If you\'re using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected',
+		description:
+			"ID or name of the row. Names are discouraged because they're easily prone to being changed by users. If you're using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected",
 	},
 	{
 		displayName: 'Options',
@@ -217,12 +192,8 @@ export const tableFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getRow',
-				],
+				resource: ['table'],
+				operation: ['getRow'],
 			},
 		},
 		options: [
@@ -238,7 +209,8 @@ export const tableFields: INodeProperties[] = [
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
+				description:
+					'Whether to use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
 			},
 			{
 				displayName: 'ValueFormat',
@@ -263,9 +235,9 @@ export const tableFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   table:getAll                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   table:getAll                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc Name or ID',
 		name: 'docId',
@@ -277,39 +249,31 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getAllRows',
-				],
+				resource: ['table'],
+				operation: ['getAllRows'],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'docId',
-			],
+			loadOptionsDependsOn: ['docId'],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getAllRows',
-				],
+				resource: ['table'],
+				operation: ['getAllRows'],
 			},
 		},
-		description: 'The table to get the rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The table to get the rows from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -317,12 +281,8 @@ export const tableFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getAllRows',
-				],
+				resource: ['table'],
+				operation: ['getAllRows'],
 			},
 		},
 		default: false,
@@ -334,15 +294,9 @@ export const tableFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getAllRows',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['table'],
+				operation: ['getAllRows'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -360,12 +314,8 @@ export const tableFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getAllRows',
-				],
+				resource: ['table'],
+				operation: ['getAllRows'],
 			},
 		},
 		options: [
@@ -377,7 +327,8 @@ export const tableFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you\'d like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you\'d like to use a string, you must surround it in quotes (e.g., "groceries").',
+				description:
+					'Query used to filter returned rows, specified as &lt;column_id_or_name&gt;:&lt;value&gt;. If you\'d like to use a column name instead of an ID, you must quote it (e.g., "My Column":123). Also note that value is a JSON value; if you\'d like to use a string, you must surround it in quotes (e.g., "groceries").',
 			},
 			{
 				displayName: 'RAW Data',
@@ -401,14 +352,16 @@ export const tableFields: INodeProperties[] = [
 						value: 'natural',
 					},
 				],
-				description: 'Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.',
+				description:
+					'Specifies the sort order of the rows returned. If left unspecified, rows are returned by creation time ascending.',
 			},
 			{
 				displayName: 'Use Column Names',
 				name: 'useColumnNames',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
+				description:
+					'Whether to use column names instead of column IDs in the returned output. This is generally discouraged as it is fragile. If columns are renamed, code using original names may throw errors.',
 			},
 			{
 				displayName: 'ValueFormat',
@@ -440,9 +393,9 @@ export const tableFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 row:delete                                 */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 row:delete                                 */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc Name or ID',
 		name: 'docId',
@@ -454,39 +407,31 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'deleteRow',
-				],
+				resource: ['table'],
+				operation: ['deleteRow'],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'docId',
-			],
+			loadOptionsDependsOn: ['docId'],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'deleteRow',
-				],
+				resource: ['table'],
+				operation: ['deleteRow'],
 			},
 		},
-		description: 'The table to delete the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The table to delete the row in. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Row ID',
@@ -496,19 +441,15 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'deleteRow',
-				],
+				resource: ['table'],
+				operation: ['deleteRow'],
 			},
 		},
 		description: 'Row IDs to delete',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   table:pushButton                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   table:pushButton                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc Name or ID',
 		name: 'docId',
@@ -520,39 +461,31 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'pushButton',
-				],
+				resource: ['table'],
+				operation: ['pushButton'],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'docId',
-			],
+			loadOptionsDependsOn: ['docId'],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'pushButton',
-				],
+				resource: ['table'],
+				operation: ['pushButton'],
 			},
 		},
-		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Row ID',
@@ -562,44 +495,35 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'pushButton',
-				],
+				resource: ['table'],
+				operation: ['pushButton'],
 			},
 		},
-		description: 'ID or name of the row. Names are discouraged because they\'re easily prone to being changed by users. If you\'re using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected',
+		description:
+			"ID or name of the row. Names are discouraged because they're easily prone to being changed by users. If you're using a name, be sure to URI-encode it. If there are multiple rows with the same value in the identifying column, an arbitrary one will be selected",
 	},
 	{
 		displayName: 'Column Name or ID',
 		name: 'columnId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getColumns',
-			loadOptionsDependsOn: [
-				'docId',
-				'tableId',
-			],
+			loadOptionsDependsOn: ['docId', 'tableId'],
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'pushButton',
-				],
+				resource: ['table'],
+				operation: ['pushButton'],
 			},
 		},
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   table:getColumn                          */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   table:getColumn                          */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc Name or ID',
 		name: 'docId',
@@ -611,39 +535,31 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getColumn',
-				],
+				resource: ['table'],
+				operation: ['getColumn'],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'docId',
-			],
+			loadOptionsDependsOn: ['docId'],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getColumn',
-				],
+				resource: ['table'],
+				operation: ['getColumn'],
 			},
 		},
-		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Column ID',
@@ -653,19 +569,15 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getColumn',
-				],
+				resource: ['table'],
+				operation: ['getColumn'],
 			},
 		},
 		description: 'The table to get the row from',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   table:getAllColumns                      */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   table:getAllColumns                      */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Doc Name or ID',
 		name: 'docId',
@@ -677,39 +589,31 @@ export const tableFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getAllColumns',
-				],
+				resource: ['table'],
+				operation: ['getAllColumns'],
 			},
 		},
-		description: 'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the doc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
 		typeOptions: {
-			loadOptionsDependsOn: [
-				'docId',
-			],
+			loadOptionsDependsOn: ['docId'],
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getAllColumns',
-				],
+				resource: ['table'],
+				operation: ['getAllColumns'],
 			},
 		},
-		description: 'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The table to get the row from. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Return All',
@@ -717,12 +621,8 @@ export const tableFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getAllColumns',
-				],
+				resource: ['table'],
+				operation: ['getAllColumns'],
 			},
 		},
 		default: false,
@@ -734,15 +634,9 @@ export const tableFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'getAllColumns',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['table'],
+				operation: ['getAllColumns'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,10 +8,7 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	getEvents,
-	lemlistApiRequest,
-} from './GenericFunctions';
+import { getEvents, lemlistApiRequest } from './GenericFunctions';
 
 export class LemlistTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,9 +45,7 @@ export class LemlistTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				default: '',
-				options: [
-					...getEvents(),
-				],
+				options: [...getEvents()],
 			},
 			{
 				displayName: 'Options',
@@ -70,7 +62,8 @@ export class LemlistTrigger implements INodeType {
 							loadOptionsMethod: 'getCampaigns',
 						},
 						default: '',
-						description: 'We\'ll call this hook only for this campaignId. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'We\'ll call this hook only for this campaignId. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Is First',
@@ -88,7 +81,7 @@ export class LemlistTrigger implements INodeType {
 		loadOptions: {
 			async getCampaigns(this: ILoadOptionsFunctions) {
 				const campaigns = await lemlistApiRequest.call(this, 'GET', '/campaigns');
-				return campaigns.map(({ _id, name }: { _id: string, name: string }) => ({
+				return campaigns.map(({ _id, name }: { _id: string; name: string }) => ({
 					name,
 					value: _id,
 				}));
@@ -143,9 +136,7 @@ export class LemlistTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

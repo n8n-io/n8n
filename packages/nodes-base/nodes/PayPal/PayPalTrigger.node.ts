@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,10 +10,7 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import {
-	payPalApiRequest,
-	upperFist
-} from './GenericFunctions';
+import { payPalApiRequest, upperFist } from './GenericFunctions';
 
 export class PayPalTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,7 +46,8 @@ export class PayPalTrigger implements INodeType {
 				type: 'multiOptions',
 				required: true,
 				default: [],
-				description: 'The event to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The event to listen to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				typeOptions: {
 					loadOptionsMethod: 'getEvents',
 				},
@@ -125,7 +120,7 @@ export class PayPalTrigger implements INodeType {
 				const events = this.getNodeParameter('events', []) as string[];
 				const body = {
 					url: webhookUrl,
-					event_types: events.map(event => {
+					event_types: events.map((event) => {
 						return { name: event };
 					}),
 				};
@@ -168,11 +163,13 @@ export class PayPalTrigger implements INodeType {
 		const headerData = this.getHeaderData() as IDataObject;
 		const endpoint = '/notifications/verify-webhook-signature';
 
-		if (headerData['PAYPAL-AUTH-ALGO'] !== undefined
-			&& headerData['PAYPAL-CERT-URL'] !== undefined
-			&& headerData['PAYPAL-TRANSMISSION-ID'] !== undefined
-			&& headerData['PAYPAL-TRANSMISSION-SIG'] !== undefined
-			&& headerData['PAYPAL-TRANSMISSION-TIME'] !== undefined) {
+		if (
+			headerData['PAYPAL-AUTH-ALGO'] !== undefined &&
+			headerData['PAYPAL-CERT-URL'] !== undefined &&
+			headerData['PAYPAL-TRANSMISSION-ID'] !== undefined &&
+			headerData['PAYPAL-TRANSMISSION-SIG'] !== undefined &&
+			headerData['PAYPAL-TRANSMISSION-TIME'] !== undefined
+		) {
 			const body = {
 				auth_algo: headerData['PAYPAL-AUTH-ALGO'],
 				cert_url: headerData['PAYPAL-CERT-URL'],
@@ -194,9 +191,7 @@ export class PayPalTrigger implements INodeType {
 			return {};
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

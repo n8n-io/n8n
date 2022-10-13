@@ -1,13 +1,8 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class HelpScoutOAuth2Api implements ICredentialType {
 	name = 'helpScoutOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'HelpScout OAuth2 API';
 	documentationUrl = 'helpScout';
 	properties: INodeProperties[] = [

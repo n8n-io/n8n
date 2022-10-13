@@ -1,8 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
-
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class FreshdeskApi implements ICredentialType {
 	name = 'freshdeskApi';
@@ -20,7 +16,8 @@ export class FreshdeskApi implements ICredentialType {
 			name: 'domain',
 			type: 'string',
 			placeholder: 'company',
-			description: 'If the URL you get displayed on Freshdesk is "https://company.freshdesk.com" enter "company"',
+			description:
+				'If the URL you get displayed on Freshdesk is "https://company.freshdesk.com" enter "company"',
 			default: '',
 		},
 	];

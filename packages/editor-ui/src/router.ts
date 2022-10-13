@@ -8,7 +8,9 @@ import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
+import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
+import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
@@ -17,11 +19,14 @@ import Router, { Route } from 'vue-router';
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
+import CredentialsView from '@/views/CredentialsView.vue';
 import { Store } from 'vuex';
-import { IPermissions, IRootState } from './Interface';
+import { IPermissions, IRootState, IWorkflowsState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
+import { store } from './store';
+import e from 'express';
 
 Vue.use(Router);
 
@@ -35,6 +40,7 @@ interface IRouteConfig extends RouteConfigSingleView {
 			disabled?: true;
 			getProperties: (route: Route, store: Store<IRootState>) => object;
 		};
+		scrollOffset?: number;
 	};
 }
 
@@ -50,7 +56,14 @@ function getTemplatesRedirect(store: Store<IRootState>) {
 const router = new Router({
 	mode: 'history',
 	// @ts-ignore
-	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
+	base: window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH,
+	scrollBehavior(to, from, savedPosition) {
+		// saved position == null means the page is NOT visited from history (back button)
+		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta) {
+			// for templates view, reset scroll position in this case
+			to.meta.setScrollPosition(0);
+		}
+	},
 	routes: [
 		{
 			path: '/',
@@ -143,6 +156,8 @@ const router = new Router({
 			meta: {
 				templatesEnabled: true,
 				getRedirect: getTemplatesRedirect,
+				// Templates view remembers it's scroll position on back
+				scrollOffset: 0,
 				telemetry: {
 					getProperties(route: Route, store: Store<IRootState>) {
 						return {
@@ -150,6 +165,24 @@ const router = new Router({
 						};
 					},
 				},
+				setScrollPosition(pos: number) {
+					this.scrollOffset = pos;
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/credentials',
+			name: VIEWS.CREDENTIALS,
+			components: {
+				default: CredentialsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],
@@ -272,7 +305,9 @@ const router = new Router({
 						role: [ROLE.Default],
 					},
 					deny: {
-						um: false,
+						shouldDeny: () => {
+							return store.getters['settings/isUserManagementEnabled'] === false;
+						},
 					},
 				},
 			},
@@ -324,13 +359,20 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: 'users',
+						};
+					},
 				},
 				permissions: {
 					allow: {
 						role: [ROLE.Default, ROLE.Owner],
 					},
 					deny: {
-						um: false,
+						shouldDeny: () => {
+							return store.getters['settings/isUserManagementEnabled'] === false;
+						},
 					},
 				},
 			},
@@ -344,6 +386,11 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: 'personal',
+						};
+					},
 				},
 				permissions: {
 					allow: {
@@ -364,13 +411,63 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: 'api',
+						};
+					},
 				},
 				permissions: {
 					allow: {
 						loginStatus: [LOGIN_STATUS.LoggedIn],
 					},
 					deny: {
-						api: false,
+						shouldDeny: () => {
+							return store.getters['settings/isPublicApiEnabled'] === false;
+						},
+					},
+				},
+			},
+		},
+		{
+			path: '/settings/community-nodes',
+			name: VIEWS.COMMUNITY_NODES,
+			components: {
+				default: SettingsCommunityNodesView,
+			},
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+				},
+				permissions: {
+					allow: {
+						role: [ROLE.Default, ROLE.Owner],
+					},
+					deny: {
+						shouldDeny: () => {
+							return store.getters['settings/isCommunityNodesFeatureEnabled'] === false;
+						},
+					},
+				},
+			},
+		},
+		{
+			path: '/settings/coming-soon/:featureId',
+			name: VIEWS.FAKE_DOOR,
+			component: SettingsFakeDoorView,
+			props: true,
+			meta: {
+				telemetry: {
+					pageCategory: 'settings',
+					getProperties(route: Route, store: Store<IRootState>) {
+						return {
+							feature: route.params['featureId'],
+						};
+					},
+				},
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
 					},
 				},
 			},
@@ -392,6 +489,7 @@ const router = new Router({
 				},
 				permissions: {
 					allow: {
+						// TODO: Once custom permissions are merged, this needs to be updated with index validation
 						loginStatus: [LOGIN_STATUS.LoggedIn, LOGIN_STATUS.LoggedOut],
 					},
 				},

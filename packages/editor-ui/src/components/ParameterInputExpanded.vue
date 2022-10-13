@@ -4,49 +4,66 @@
 		:tooltipText="$locale.credText().inputLabelDescription(parameter)"
 		:required="parameter.required"
 		:showTooltip="focused"
+		:showOptions="menuExpanded"
 	>
-		<parameter-input
-			:parameter="parameter"
-			:value="value"
-			:path="parameter.name"
-			:hideIssues="true"
-			:displayOptions="true"
-			:documentationUrl="documentationUrl"
-			:errorHighlight="showRequiredErrors"
-			:isForCredential="true"
-			@focus="onFocus"
-			@blur="onBlur"
-			@textInput="valueChanged"
-			@valueChanged="valueChanged"
-			inputSize="large"
-			:eventSource="eventSource"
-		/>
-		<div :class="$style.errors" v-if="showRequiredErrors">
-			<n8n-text color="danger" size="small">
-				{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
-				<n8n-link v-if="documentationUrl" :to="documentationUrl" size="small" :underline="true" @click="onDocumentationUrlClick">
-					{{ $locale.baseText('parameterInputExpanded.openDocs') }}
-				</n8n-link>
-			</n8n-text>
-		</div>
-		<input-hint :class="$style.hint" :hint="$locale.credText().hint(parameter)" />
+		<template #options>
+			<parameter-options
+				:parameter="parameter"
+				:value="value"
+				:isReadOnly="false"
+				:showOptions="true"
+				:isValueExpression="isValueExpression"
+				@optionSelected="optionSelected"
+				@menu-expanded="onMenuExpanded"
+			/>
+		</template>
+		<template>
+			<parameter-input-wrapper
+				ref="param"
+				inputSize="large"
+				:parameter="parameter"
+				:value="value"
+				:path="parameter.name"
+				:hideIssues="true"
+				:documentationUrl="documentationUrl"
+				:errorHighlight="showRequiredErrors"
+				:isForCredential="true"
+				:eventSource="eventSource"
+				:hint="!showRequiredErrors? hint: ''"
+				@focus="onFocus"
+				@blur="onBlur"
+				@textInput="valueChanged"
+				@valueChanged="valueChanged"
+			/>
+			<div :class="$style.errors" v-if="showRequiredErrors">
+				<n8n-text color="danger" size="small">
+					{{ $locale.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+					<n8n-link v-if="documentationUrl" :to="documentationUrl" size="small" :underline="true" @click="onDocumentationUrlClick">
+						{{ $locale.baseText('parameterInputExpanded.openDocs') }}
+					</n8n-link>
+				</n8n-text>
+			</div>
+		</template>
 	</n8n-input-label>
 </template>
 
 <script lang="ts">
 import { IUpdateInformation } from '@/Interface';
-import ParameterInput from './ParameterInput.vue';
-import InputHint from './ParameterInputHint.vue';
-import Vue from 'vue';
+import ParameterOptions from './ParameterOptions.vue';
+import Vue, { PropType } from 'vue';
+import ParameterInputWrapper from './ParameterInputWrapper.vue';
+import { isValueExpression } from './helpers';
+import { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 
 export default Vue.extend({
-	name: 'ParameterInputExpanded',
+	name: 'parameter-input-expanded',
 	components: {
-		ParameterInput,
-		InputHint,
+		ParameterOptions,
+		ParameterInputWrapper,
 	},
 	props: {
 		parameter: {
+			type: Object as PropType<INodeProperties>,
 		},
 		value: {
 		},
@@ -64,6 +81,7 @@ export default Vue.extend({
 		return {
 			focused: false,
 			blurredEver: false,
+			menuExpanded: false,
 		};
 	},
 	computed: {
@@ -84,6 +102,16 @@ export default Vue.extend({
 
 			return false;
 		},
+		hint(): string | null {
+			if (this.isValueExpression) {
+				return null;
+			}
+
+			return this.$locale.credText().hint(this.parameter);
+		},
+		isValueExpression (): boolean {
+			return isValueExpression(this.parameter, this.value as string | INodeParameterResourceLocator);
+		},
 	},
 	methods: {
 		onFocus() {
@@ -92,6 +120,14 @@ export default Vue.extend({
 		onBlur() {
 			this.blurredEver = true;
 			this.focused = false;
+		},
+		onMenuExpanded(expanded: boolean) {
+			this.menuExpanded = expanded;
+		},
+		optionSelected (command: string) {
+			if (this.$refs.param) {
+				(this.$refs.param as Vue).$emit('optionSelected', command);
+			}
 		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.$emit('change', parameterData);

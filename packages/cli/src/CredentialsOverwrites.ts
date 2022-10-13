@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-underscore-dangle */
 import { ICredentialDataDecryptedObject } from 'n8n-workflow';
 

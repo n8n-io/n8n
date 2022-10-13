@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const profileOperations: INodeProperties[] = [
 	{
@@ -10,16 +8,14 @@ export const profileOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'profile',
-				],
+				resource: ['profile'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Get the user\'s personal information',
+				description: "Get the user's personal information",
 				action: 'Get a profile',
 			},
 		],

@@ -15,7 +15,6 @@ export class TodoistApi implements ICredentialType {
 			type: 'string',
 			default: '',
 		},
-
 	];
 
 	authenticate: IAuthenticateGeneric = {

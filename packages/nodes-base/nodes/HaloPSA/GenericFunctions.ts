@@ -66,9 +66,9 @@ export async function haloPSAApiRequest(
 	body: IDataObject | IDataObject[] = {},
 	qs: IDataObject = {},
 	option: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
-	const resourceApiUrl = (await this.getCredentials('haloPSAApi'))
-		.resourceApiUrl as string;
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const resourceApiUrl = (await this.getCredentials('haloPSAApi')).resourceApiUrl as string;
 
 	try {
 		let options: OptionsWithUri = {
@@ -159,8 +159,8 @@ export async function haloPSAApiRequestAllItems(
 	accessToken: string,
 	body = {},
 	query: IDataObject = {},
-): Promise<any> { // tslint:disable-line:no-any
-
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData: IDataObject;

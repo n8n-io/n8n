@@ -1,27 +1,22 @@
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to Twilio
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function twilioApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: IDataObject, query?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-	const credentials = await this.getCredentials('twilioApi') as {
+export async function twilioApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: IDataObject,
+	query?: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const credentials = (await this.getCredentials('twilioApi')) as {
 		accountSid: string;
 		authType: 'authToken' | 'apiKey';
 		authToken: string;
@@ -53,7 +48,7 @@ const XML_CHAR_MAP: { [key: string]: string } = {
 	'>': '&gt;',
 	'&': '&amp;',
 	'"': '&quot;',
-	'\'': '&apos;',
+	"'": '&apos;',
 };
 
 export function escapeXml(str: string) {

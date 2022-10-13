@@ -1,7 +1,4 @@
-import {
-	INodeProperties,
-	INodePropertyOptions,
-} from 'n8n-workflow';
+import { INodeProperties, INodePropertyOptions } from 'n8n-workflow';
 
 export const resource = {
 	name: 'Content Type',
@@ -16,9 +13,7 @@ export const operations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
+				resource: [resource.value],
 			},
 		},
 		options: [
@@ -38,16 +33,13 @@ export const fields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'get',
-				],
+				resource: [resource.value],
+				operation: ['get'],
 			},
 		},
 		default: 'master',
-		description: 'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
+		description:
+			'The ID for the Contentful environment (e.g. master, staging, etc.). Depending on your plan, you might not have environments. In that case use "master".',
 	},
 	{
 		displayName: 'Content Type ID',
@@ -57,12 +49,8 @@ export const fields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'get',
-				],
+				resource: [resource.value],
+				operation: ['get'],
 			},
 		},
 	},
@@ -74,12 +62,8 @@ export const fields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					resource.value,
-				],
-				operation: [
-					'get',
-				],
+				resource: [resource.value],
+				operation: ['get'],
 			},
 		},
 		options: [
