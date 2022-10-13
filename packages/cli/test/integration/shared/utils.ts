@@ -10,6 +10,7 @@ import {
 	ICredentialType,
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeParameters,
 	INodeTypeData,
@@ -65,6 +66,8 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
+import { v4 as uuid } from 'uuid';
 
 /**
  * Initialize a test server.
@@ -698,3 +701,45 @@ export const emptyPackage = () => {
 
 	return Promise.resolve(installedPackage);
 };
+
+// ----------------------------------
+//           workflow
+// ----------------------------------
+
+export function makeWorkflow({
+	withPinData,
+	withCredential,
+}: {
+	withPinData: boolean;
+	withCredential?: { id: string; name: string };
+}) {
+	const workflow = new WorkflowEntity();
+
+	const node: INode = {
+		id: uuid(),
+		name: 'Spotify',
+		type: 'n8n-nodes-base.spotify',
+		parameters: { resource: 'track', operation: 'get', id: '123' },
+		typeVersion: 1,
+		position: [740, 240],
+	};
+
+	if (withCredential) {
+		node.credentials = {
+			spotifyApi: withCredential,
+		};
+	}
+
+	workflow.name = 'My Workflow';
+	workflow.active = false;
+	workflow.connections = {};
+	workflow.nodes = [node];
+
+	if (withPinData) {
+		workflow.pinData = MOCK_PINDATA;
+	}
+
+	return workflow;
+}
+
+export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
