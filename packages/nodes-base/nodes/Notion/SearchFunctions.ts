@@ -35,4 +35,4 @@ export async function getDatabases(
 		return 0;
 	});
 	return { results: returnData };
-};
+}
