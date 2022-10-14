@@ -818,7 +818,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 	.node-parameters-wrapper {
 		height: 100%;
 		overflow-y: auto;
-		padding: 0 20px;
+		padding: 0 20px 200px 20px;
 	}
 
 	&.dragging {

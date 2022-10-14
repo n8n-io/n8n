@@ -28,8 +28,8 @@ const MIN_X_TO_SHOW_OUTPUT_LABEL = 90;
 const MIN_Y_TO_SHOW_OUTPUT_LABEL = 100;
 
 export const NODE_SIZE = 100;
-export const DEFAULT_START_POSITION_X = 175;
-export const DEFAULT_START_POSITION_Y = 235;
+export const DEFAULT_START_POSITION_X = 180;
+export const DEFAULT_START_POSITION_Y = 240;
 export const HEADER_HEIGHT = 65;
 export const SIDEBAR_WIDTH = 65;
 export const SIDEBAR_WIDTH_EXPANDED = 200;
