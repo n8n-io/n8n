@@ -9,6 +9,7 @@ export async function getDatabases(
 	const returnData: INodeListSearchItems[] = [];
 	const body: IDataObject = {
 		page_size: 100,
+		query: filter,
 		filter: { property: 'object', value: 'database' },
 	};
 	const databases = await notionApiRequestAllItems.call(
