@@ -79,7 +79,7 @@ export const databaseFields: INodeProperties[] = [
 				displayName: 'Database',
 				name: 'list',
 				type: 'list',
-				placeholder: 'Select a file...',
+				placeholder: 'Select a Database...',
 				typeOptions: {
 					searchListMethod: 'getDatabases',
 					searchable: true,
