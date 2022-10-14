@@ -1380,7 +1380,8 @@ export class Hubspot implements INodeType {
 					return [];
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ error: (error as JsonObject).message });
+						//@ts-ignore
+						returnData.push({ error: error.message });
 					} else {
 						throw error;
 					}
@@ -1397,7 +1398,7 @@ export class Hubspot implements INodeType {
 				),
 			);
 
-			return [returnData as INodeExecutionData];
+			return [returnData];
 		} else if (resource === 'contactList') {
 			try {
 				//https://legacydocs.hubspot.com/docs/methods/lists/add_contact_to_list
@@ -3769,6 +3770,6 @@ export class Hubspot implements INodeType {
 				}
 			}
 		}
-		return [returnData as INodeExecutionData];
+		return [returnData];
 	}
 }
