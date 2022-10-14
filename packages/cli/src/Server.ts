@@ -34,7 +34,6 @@ import { existsSync, readFileSync } from 'fs';
 import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
 import os from 'os';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
-import { join as posixJoin } from 'path/posix';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
@@ -1801,7 +1800,7 @@ class App {
 					const srcFile = await readFile(filePath, 'utf8');
 					let payload = srcFile
 						.replace(basePathRegEx, n8nPath)
-						.replace(/\/static\//g, posixJoin(n8nPath, 'static/'));
+						.replace(/\/static\//g, n8nPath + 'static/');
 					if (filePath.endsWith('index.html')) {
 						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
