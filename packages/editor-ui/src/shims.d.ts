@@ -1,5 +1,7 @@
 import Vue, { VNode } from 'vue';
 
+import 'n8n-design-system/src/shims-element-ui';
+
 declare module 'markdown-it-link-attributes';
 declare module 'markdown-it-emoji';
 declare module 'markdown-it-task-lists';

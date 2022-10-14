@@ -3,7 +3,7 @@ import { createHtmlPlugin } from 'vite-plugin-html';
 import legacy from '@vitejs/plugin-legacy';
 import monacoEditorPlugin from "vite-plugin-monaco-editor";
 import path, { resolve } from 'path';
-import {defineConfig, PluginOption} from "vite";
+import { PluginOption } from "vite";
 import packageJSON from './package.json';
 
 const vendorChunks = ['vue', 'vue-router', 'vuex'];
@@ -35,7 +35,7 @@ const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map(name 
 	replacement: require.resolve(`lodash-es/${name}`),
 }))
 
-export default defineConfig({
+export default {
 	plugins: [
 		legacy({
 			targets: ['defaults', 'not IE 11'],
@@ -89,7 +89,12 @@ export default defineConfig({
 		assetsInlineLimit: 0,
 		sourcemap: false,
 		rollupOptions: {
+			external: ['vue'],
 			output: {
+				exports: 'named',
+				globals: {
+					vue: 'Vue',
+				},
 				manualChunks: {
 					vendor: vendorChunks,
 					...renderChunks(),
@@ -104,4 +109,4 @@ export default defineConfig({
 			'./src/__tests__/setup.ts',
 		],
 	},
-});
+};
