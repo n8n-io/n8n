@@ -8,10 +8,11 @@
 					{{ data.name }}
 				</n8n-heading>
 			</template>
-			<n8n-text color="text-light" size="small">
-				<span v-show="data">{{$locale.baseText('workflows.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
-				<span v-show="data">{{$locale.baseText('workflows.item.created')}} {{ formattedCreatedAtDate }} </span>
-				<span v-if="areTagsEnabled && data.tags && data.tags.length > 0" v-show="data">
+			<div :class="$style.cardDescription">
+				<n8n-text color="text-light" size="small">
+					<span v-show="data">{{$locale.baseText('workflows.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
+					<span v-show="data" class="mr-2xs">{{$locale.baseText('workflows.item.created')}} {{ formattedCreatedAtDate }} </span>
+					<span v-if="areTagsEnabled && data.tags && data.tags.length > 0" v-show="data">
 					<n8n-tags
 						:tags="data.tags"
 						:truncateAt="3"
@@ -19,7 +20,8 @@
 						@click="onClickTag"
 					/>
 				</span>
-			</n8n-text>
+				</n8n-text>
+			</div>
 			<template #append>
 				<div :class="$style.cardActions">
 					<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-show="false">
@@ -52,8 +54,8 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import {IWorkflowDb, IUser} from "@/Interface";
-import {EnterpriseEditionFeature, VIEWS} from '@/constants';
+import {IWorkflowDb, IUser, ITag} from "@/Interface";
+import {DUPLICATE_MODAL_KEY, EnterpriseEditionFeature, VIEWS} from '@/constants';
 import {showMessage} from "@/components/mixins/showMessage";
 import {getWorkflowPermissions, IPermissions} from "@/permissions";
 import dateformat from "dateformat";
@@ -63,6 +65,7 @@ import Vue from "vue";
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
+	DUPLICATE: 'duplicate',
 	DELETE: 'delete',
 };
 
@@ -115,6 +118,10 @@ export default mixins(
 					label: this.$locale.baseText('workflows.item.open'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.OPEN,
 				},
+				{
+					label: this.$locale.baseText('workflows.item.duplicate'),
+					value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
+				},
 			].concat(this.credentialPermissions.delete ? [{
 				label: this.$locale.baseText('workflows.item.delete'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
@@ -153,7 +160,16 @@ export default mixins(
 		},
 		async onAction(action: string) {
 			if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {
-				this.onClick();
+				await this.onClick();
+			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE) {
+				await this.$store.dispatch('ui/openModalWithData', {
+					name: DUPLICATE_MODAL_KEY,
+					data: {
+						id: this.data.id,
+						name: this.data.name,
+						tags: (this.data.tags || []).map((tag: ITag) => tag.id),
+					},
+				});
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirmMessage(
 					this.$locale.baseText(
@@ -205,6 +221,12 @@ export default mixins(
 .cardHeading {
 	font-size: var(--font-size-s);
 	word-break: break-word;
+}
+
+.cardDescription {
+	min-height: 19px;
+	display: flex;
+	align-items: center;
 }
 
 .cardActions {

@@ -26,8 +26,9 @@
 		</ModalRoot>
 
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
-			<template v-slot:default="{ modalName, active }">
+			<template v-slot:default="{ modalName, active, data }">
 				<DuplicateWorkflowDialog
+					:data="data"
 					:isActive="active"
 					:modalName="modalName"
 				/>

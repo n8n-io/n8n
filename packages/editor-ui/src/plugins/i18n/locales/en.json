@@ -1266,6 +1266,7 @@
 	"workflows.menu.my": "My workflows",
 	"workflows.menu.all": "All workflows",
 	"workflows.item.open": "Open",
+	"workflows.item.duplicate": "Duplicate",
 	"workflows.item.delete": "Delete",
 	"workflows.item.updated": "Last updated",
 	"workflows.item.created": "Created",

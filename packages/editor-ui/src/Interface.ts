@@ -908,6 +908,7 @@ export interface ITagsState {
 export interface IModalState {
 	open: boolean;
 	mode?: string | null;
+	data?: Record<string, unknown>;
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;

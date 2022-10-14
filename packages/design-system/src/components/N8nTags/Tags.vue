@@ -81,6 +81,7 @@ export default mixins(Locale).extend({
 	-ms-overflow-style: none; /* IE and Edge */
 	scrollbar-width: none; /* Firefox */
 
+	margin-top: calc(var(--spacing-4xs) * -1); // Cancel out top margin of first tags row
 
 	* {
 		margin: var(--spacing-4xs) var(--spacing-4xs) 0 0;
