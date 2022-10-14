@@ -325,7 +325,7 @@ export default mixins(externalHooks).extend({
 				return this.$locale.baseText('runData.emptyString');
 			}
 			if (typeof value === 'string') {
-				return value.replaceAll('\n', '\\n');
+				return `"${value.replaceAll('\n', '\\n')}"`;
 			}
 
 			if (Array.isArray(value) && value.length === 0) {
