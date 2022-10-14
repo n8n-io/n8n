@@ -113,7 +113,7 @@ export const messageFields: INodeProperties[] = [
 		description: 'The user ID to send the message to',
 	},
 	{
-		displayName: 'Text',
+		displayName: 'Message Text',
 		name: 'text',
 		type: 'string',
 		typeOptions: {
@@ -126,6 +126,8 @@ export const messageFields: INodeProperties[] = [
 				resource: ['message'],
 			},
 		},
+		description:
+			"The message text to post. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
 	},
 	{
 		displayName: 'Options',
@@ -146,7 +148,8 @@ export const messageFields: INodeProperties[] = [
 				name: 'icon_emoji',
 				type: 'string',
 				default: '',
-				description: 'Emoji to use as the icon for this message. Overrides icon_url.',
+				description:
+					'Emoji to use as the icon for this message. This field only has an effect when using a Bot connection. Add chat:write.customize scope on Slack API',
 			},
 			{
 				displayName: 'Icon URL',
@@ -156,11 +159,11 @@ export const messageFields: INodeProperties[] = [
 				description: 'URL to an image to use as the icon for this message',
 			},
 			{
-				displayName: 'Link Names',
+				displayName: 'Link User and Channel names',
 				name: 'link_names',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to find and link channel names and usernames',
+				description: 'Whether to turn @users and #channels in message text into clickable links',
 			},
 			{
 				displayName: 'Reply to a Message',
@@ -171,7 +174,7 @@ export const messageFields: INodeProperties[] = [
 				},
 				default: {},
 				placeholder: 'Reply to a Message',
-				description: "Provide another message's ts value to make this message a reply",
+				description: "Provide another message's Timestamp value to make this message a reply",
 				options: [
 					{
 						displayName: 'Reply to a Message',
@@ -227,7 +230,7 @@ export const messageFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The message will be sent from this username (i.e. as if this individual sent the message).',
+					'The message will be sent from this username (i.e. as if this individual sent the message). Add chat:write.customize scope on Slack API',
 			},
 		],
 	},
@@ -436,7 +439,7 @@ export const messageFields: INodeProperties[] = [
 			'Channel containing the message to be updated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Text',
+		displayName: 'Message Text',
 		name: 'text',
 		type: 'string',
 		default: '',
@@ -447,10 +450,10 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description:
-			"New text for the message, using the default formatting rules. It's not required when presenting attachments.",
+			"The message text to update. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
 	},
 	{
-		displayName: 'TS',
+		displayName: 'Timestamp',
 		name: 'ts',
 		type: 'string',
 		required: true,
@@ -477,7 +480,7 @@ export const messageFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Link Names',
+				displayName: 'Link User and Channel names',
 				name: 'link_names',
 				type: 'boolean',
 				default: false,

@@ -120,12 +120,12 @@ export const fileFields: INodeProperties[] = [
 				description: 'The message text introducing the file in specified channels',
 			},
 			{
-				displayName: 'Thread TS',
+				displayName: 'Thread Timestamp',
 				name: 'threadTs',
 				type: 'string',
 				default: '',
 				description:
-					"Provide another message's ts value to upload this file as a reply. Never use a reply's ts value; use its parent instead.",
+					"Provide another message's Timestamp value to upload this file as a reply. Never use a reply's Timestamp value; use its parent instead.",
 			},
 			{
 				displayName: 'Title',

@@ -79,7 +79,8 @@ export async function slackApiRequest(
 				'Slack error response: ' + JSON.stringify(response),
 			);
 		}
-
+		Object.assign(response, { message_timestamp: response.ts });
+		delete response.ts;
 		return response;
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error as JsonObject);

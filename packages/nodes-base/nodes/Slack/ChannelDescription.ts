@@ -717,7 +717,7 @@ export const channelFields: INodeProperties[] = [
 			'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'TS',
+		displayName: 'Timestamp',
 		name: 'ts',
 		type: 'string',
 		default: '',
