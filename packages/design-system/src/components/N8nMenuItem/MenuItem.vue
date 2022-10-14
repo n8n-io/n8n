@@ -9,7 +9,7 @@
 			[$style.active]: mode === 'router' && isItemActive(item)
 		}"
 		:index="item.id"
-		:popper-append-to-body="false"
+		popper-append-to-body
 		:popper-class="`${$style.submenuPopper} ${popperClass}`"
 	>
 			<template slot="title">
@@ -253,9 +253,6 @@ export default Vue.extend({
 
 .submenuPopper {
 	display: block;
-	left: 40px !important;
-	bottom: 110px !important;
-	top: auto !important;
 
 	ul {
 		padding: 0 var(--spacing-xs) !important;
@@ -263,6 +260,7 @@ export default Vue.extend({
 	.menuItem {
 		display: flex;
 		padding: var(--spacing-2xs) var(--spacing-xs) !important;
+		margin: var(--spacing-2xs) 0 !important;
 	}
 
 	.icon {

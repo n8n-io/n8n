@@ -22,7 +22,6 @@
 						:key="item.id"
 						:item="item"
 						:compact="collapsed"
-						:popperClass="$style.submenuPopper"
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
@@ -41,7 +40,6 @@
 						:key="item.id"
 						:item="item"
 						:compact="collapsed"
-						:popperClass="$style.submenuPopper"
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
@@ -157,10 +155,6 @@ export default Vue.extend({
 .upperContent {
 	ul {
 		padding-top: 0 !important;
-	}
-	.submenuPopper {
-		bottom: auto !important;
-		top: 0 !important;
 	}
 }
 
