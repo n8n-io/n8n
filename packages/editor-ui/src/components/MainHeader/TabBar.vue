@@ -1,5 +1,5 @@
 <template>
-	<div v-if="items" :class="[$style.container, 'tab-bar-container']">
+	<div v-if="items" :class="{[$style.container]: true, ['tab-bar-container']: true, [$style.menuCollapsed]: mainSidebarCollapsed}">
 		<n8n-radio-buttons
 			:value="activeTab"
 			:options="items"
@@ -30,6 +30,11 @@ export default Vue.extend({
 			default: MAIN_HEADER_TABS.WORKFLOW,
 		},
 	},
+	computed: {
+		mainSidebarCollapsed(): boolean {
+			return this.$store.getters['ui/sidebarMenuCollapsed'];
+		},
+	},
 	methods: {
 		onSelect(tab: string, event: MouseEvent): void {
 			this.$emit('select', tab, event);
@@ -43,13 +48,18 @@ export default Vue.extend({
 .container {
 	position: absolute;
 	top: 47px;
-	left: 50%;
+	left: calc(50% + 100px);
 	transform: translateX(-50%);
 	min-height: 30px;
 	display: flex;
 	padding: var(--spacing-5xs);
 	background-color: var(--color-foreground-base);
-	border-radius: var(--border-radius-base)
+	border-radius: var(--border-radius-base);
+	transition: all 150ms ease-in-out;
+
+	&.menuCollapsed {
+		left: 52%;
+	}
 }
 
 @media screen and (max-width: 430px) {

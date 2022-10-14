@@ -4,12 +4,17 @@
 				<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
 			</n8n-heading>
+		</div>
+		<div :class="$style.controls">
+			<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $locale.baseText('executionsList.autoRefresh') }}</el-checkbox>
 			<n8n-popover trigger="click" >
 				<template slot="reference">
-					<n8n-button icon="filter" type="tertiary" size="small" :active="statusFilterApplied" :class="[$style['filter-button']]">
-						<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
-						{{ $locale.baseText('executionsList.filters') }}
-					</n8n-button>
+					<div :class="$style.filterButton">
+						<n8n-button icon="filter" type="tertiary" size="medium" :active="statusFilterApplied">
+							<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
+							{{ $locale.baseText('executionsList.filters') }}
+						</n8n-button>
+					</div>
 				</template>
 				<div :class="$style['filters-dropdown']">
 					<div class="mb-s">
@@ -36,7 +41,7 @@
 							</n8n-option>
 						</n8n-select>
 					</div>
-					<div :class="[$style['filters-dropdown-footer'], 'mt-s']" v-if="statusFilterApplied">
+					<div :class="[$style.filterMessage, 'mt-s']" v-if="statusFilterApplied">
 						<n8n-link @click="resetFilters">
 							{{ $locale.baseText('generic.reset') }}
 						</n8n-link>
@@ -44,7 +49,7 @@
 				</div>
 			</n8n-popover>
 		</div>
-		<div v-show="statusFilterApplied" class="mt-xs">
+		<div v-show="statusFilterApplied" class="mb-xs">
 			<n8n-info-tip :bold="false">
 				{{ $locale.baseText('generic.filtersApplied') }}
 				<n8n-link @click="resetFilters" size="small">
@@ -140,8 +145,9 @@ export default mixins(executionHelpers).extend({
 		} else {
 			await this.setExecutions();
 		}
-		// Set auto-refresh automatically for now
-		this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4000);
+		if (this.autoRefresh) {
+			this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4000);
+		}
 	},
 	beforeDestroy() {
 		if (this.autoRefreshInterval) {
@@ -150,6 +156,16 @@ export default mixins(executionHelpers).extend({
 		}
 	},
 	methods: {
+		handleAutoRefreshToggle(): void {
+			if (this.autoRefreshInterval) {
+				// Clear any previously existing intervals (if any - there shouldn't)
+				clearInterval(this.autoRefreshInterval);
+				this.autoRefreshInterval = undefined;
+			}
+			if (this.autoRefresh) {
+				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
+			}
+		},
 		async resetFilters(): Promise<void> {
 			this.filter.status = '';
 			await this.setExecutions();
@@ -272,10 +288,23 @@ export default mixins(executionHelpers).extend({
 	padding-right: var(--spacing-l);
 }
 
+.controls {
+	padding: var(--spacing-s) 0 var(--spacing-xs);
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-right: var(--spacing-l);
+
+	button {
+		display: flex;
+		align-items: center;
+	}
+}
+
 .executionList {
 	height: calc(100% - 8em);
 	overflow: auto;
-	margin: var(--spacing-m) 0;
+	margin-bottom: var(--spacing-m);
 	background-color: var(--color-background-xlight) !important;
 
 	// Scrolling fader
@@ -284,7 +313,6 @@ export default mixins(executionHelpers).extend({
 		display: block;
 		width: 270px;
 		height: 6px;
-		content: '';
 		background: linear-gradient(to bottom, rgba(251, 251, 251, 1) 0%, rgba(251, 251, 251, 0) 100%);
 		z-index: 999;
 	}

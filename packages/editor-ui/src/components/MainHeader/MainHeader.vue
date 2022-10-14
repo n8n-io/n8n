@@ -134,6 +134,6 @@ export default mixins(
 	font-size: 0.9em;
 	height: $header-height;
 	font-weight: 400;
-	padding: 0 20px;
+	padding: 0 var(--spacing-m) 0 var(--spacing-xs);
 }
 </style>
