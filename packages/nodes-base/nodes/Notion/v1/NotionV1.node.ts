@@ -28,6 +28,7 @@ import {
 import moment from 'moment-timezone';
 
 import { versionDescription } from './VersionDescription';
+import { getDatabases } from '../SearchFunctions';
 
 export class NotionV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -41,40 +42,7 @@ export class NotionV1 implements INodeType {
 
 	methods = {
 		listSearch: {
-			async getDatabases(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-				paginationToken?: string,
-			): Promise<INodeListSearchResult> {
-				const returnData: INodePropertyOptions[] = [];
-				const body: IDataObject = {
-					page_size: 100,
-					filter: { property: 'object', value: 'database' },
-				};
-				const databases = await notionApiRequestAllItems.call(
-					this,
-					'results',
-					'POST',
-					`/search`,
-					body,
-				);
-				for (const database of databases) {
-					returnData.push({
-						name: database.title[0]?.plain_text || database.id,
-						value: database.id,
-					});
-				}
-				returnData.sort((a, b) => {
-					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
-						return -1;
-					}
-					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
-						return 1;
-					}
-					return 0;
-				});
-				return { results: returnData };
-			},
+			getDatabases,
 		},
 		loadOptions: {
 			async getDatabases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
