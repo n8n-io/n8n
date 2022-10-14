@@ -124,7 +124,7 @@ export default mixins(
 <style lang="scss" module>
 .activeStatusText {
 	width: 64px; // Required to avoid jumping when changing active state
-	padding-right: var(--spacing-xs);
+	padding-right: var(--spacing-2xs);
 	box-sizing: border-box;
 	display: inline-block;
 	text-align: right;

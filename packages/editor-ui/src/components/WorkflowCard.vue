@@ -34,7 +34,7 @@
 					</enterprise-edition>
 
 					<workflow-activator
-						class="mr-xs"
+						class="mr-s"
 						:workflow-active="data.active"
 						:workflow-id="data.id"
 						ref="activator"
