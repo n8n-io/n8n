@@ -614,8 +614,6 @@ export class ExecuteBatch extends Command {
 			coveredNodes: {},
 		};
 
-		const startingNode = findCliWorkflowStart(workflowData.nodes);
-
 		// We have a cool feature here.
 		// On each node, on the Settings tab in the node editor you can change
 		// the `Notes` field to add special cases for comparison and snapshots.
@@ -663,6 +661,8 @@ export class ExecuteBatch extends Command {
 			}, ExecuteBatch.executionTimeout);
 
 			try {
+				const startingNode = findCliWorkflowStart(workflowData.nodes);
+
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
 					startNodes: [startingNode.name],
