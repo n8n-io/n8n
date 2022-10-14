@@ -292,6 +292,7 @@ export default mixins(
 			},
 		},
 		async beforeRouteLeave(to, from, next) {
+			this.$store.commit('setSubworkflowExecutionError', null);
 			const result = this.$store.getters.getStateIsDirty;
 			if (result) {
 				const confirmModal = await this.confirmModal(

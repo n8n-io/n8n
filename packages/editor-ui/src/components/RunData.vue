@@ -186,6 +186,10 @@
 				</div>
 			</div>
 
+			<div v-else-if="paneType === 'output' && hasSubworkflowExecutionError" :class="$style.stretchVertically">
+				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
+			</div>
+
 			<div v-else-if="!hasNodeRun" :class="$style.center">
 				<slot name="node-not-run"></slot>
 			</div>
@@ -543,6 +547,12 @@ export default mixins(
 			},
 			hasNodeRun(): boolean {
 				return Boolean(!this.isExecuting && this.node && (this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name) || this.hasPinData));
+			},
+			subworkflowExecutionError(): Error | null {
+				return this.$store.getters.subworkflowExecutionError;
+			},
+			hasSubworkflowExecutionError(): boolean {
+				return Boolean(this.subworkflowExecutionError);
 			},
 			hasRunError(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);

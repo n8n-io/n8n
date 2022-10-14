@@ -149,6 +149,8 @@ export default mixins(
 			return executionData.resultData.runData;
 		},
 		hasNodeRun(): boolean {
+			if (this.$store.getters.subworkflowExecutionError) return true;
+
 			return Boolean(
 				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
 			);
