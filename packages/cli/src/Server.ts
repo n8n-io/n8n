@@ -1792,7 +1792,7 @@ class App {
 					const srcFile = await readFile(filePath, 'utf8');
 					let payload = srcFile
 						.replace(basePathRegEx, n8nPath)
-						.replace(/\/static\//g, pathJoin(n8nPath, 'static/'));
+						.replace(/\/static\//g, n8nPath + 'static/');
 					if (filePath.endsWith('index.html')) {
 						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
