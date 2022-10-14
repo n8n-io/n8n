@@ -126,6 +126,9 @@ export default mixins(
 		NodeIcon,
 	},
 	computed: {
+		isScheduledGroup (): boolean {
+			return this.nodeType?.group.includes('schedule') === true;
+		},
 		nodeRunData(): ITaskData[] {
 			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
 		},
@@ -375,14 +378,12 @@ export default mixins(
 	},
 	methods: {
 		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
-			if (!this.isTriggerNode) { return; }
+			if (!this.isTriggerNode || this.isScheduledGroup || dataItemsCount === 0) return;
 
-			if (dataItemsCount > 0) {
-				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
+			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 
-				this.pinDataDiscoveryTooltipVisible = true;
-				this.unwatchWorkflowDataItems();
-			}
+			this.pinDataDiscoveryTooltipVisible = true;
+			this.unwatchWorkflowDataItems();
 		},
 		setSubtitle() {
 			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';

@@ -1,9 +1,17 @@
 import express from 'express';
-import { Db, ResponseHelper } from '..';
+import { Db, InternalHooksManager, ResponseHelper, WorkflowHelpers } from '..';
 import config from '../../config';
+import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
+import { validateEntity } from '../GenericHelpers';
 import type { WorkflowRequest } from '../requests';
 import { isSharingEnabled, rightDiff } from '../UserManagement/UserManagementHelper';
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
+import { externalHooks } from '../Server';
+import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
+import { LoggerProxy } from 'n8n-workflow';
+import * as TagHelpers from '../TagHelpers';
+import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
+import { CredentialUsage } from '../databases/entities/CredentialUsage';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -60,14 +68,9 @@ EEWorkflowController.put('/:workflowId/share', async (req: WorkflowRequest.Share
 });
 
 EEWorkflowController.get(
-	'/:id',
-	(req: WorkflowRequest.Get, res, next) => (req.params.id === 'new' ? next('router') : next()), // skip ee router and use free one for naming
+	'/:id(\\d+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
-
-		if (Number.isNaN(Number(workflowId))) {
-			throw new ResponseHelper.ResponseError(`Workflow ID must be a number.`, undefined, 400);
-		}
 
 		const workflow = await EEWorkflows.get(
 			{ id: parseInt(workflowId, 10) },
@@ -90,5 +93,112 @@ EEWorkflowController.get(
 		// @TODO: also return the credentials used by the workflow
 
 		return EEWorkflows.addOwnerAndSharings(workflow);
+	}),
+);
+
+EEWorkflowController.post(
+	'/',
+	ResponseHelper.send(async (req: WorkflowRequest.Create) => {
+		delete req.body.id; // delete if sent
+
+		const newWorkflow = new WorkflowEntity();
+
+		Object.assign(newWorkflow, req.body);
+
+		await validateEntity(newWorkflow);
+
+		await externalHooks.run('workflow.create', [newWorkflow]);
+
+		const { tags: tagIds } = req.body;
+
+		if (tagIds?.length && !config.getEnv('workflowTagsDisabled')) {
+			newWorkflow.tags = await Db.collections.Tag.findByIds(tagIds, {
+				select: ['id', 'name'],
+			});
+		}
+
+		await WorkflowHelpers.replaceInvalidCredentials(newWorkflow);
+
+		WorkflowHelpers.addNodeIds(newWorkflow);
+
+		// This is a new workflow, so we simply check if the user has access to
+		// all used workflows
+
+		const allCredentials = await EECredentials.getAll(req.user);
+
+		try {
+			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);
+		} catch (error) {
+			throw new ResponseHelper.ResponseError(
+				'The workflow contains credentials that you do not have access to',
+				undefined,
+				400,
+			);
+		}
+
+		let savedWorkflow: undefined | WorkflowEntity;
+
+		await Db.transaction(async (transactionManager) => {
+			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
+
+			const role = await Db.collections.Role.findOneOrFail({
+				name: 'owner',
+				scope: 'workflow',
+			});
+
+			const newSharedWorkflow = new SharedWorkflow();
+
+			Object.assign(newSharedWorkflow, {
+				role,
+				user: req.user,
+				workflow: savedWorkflow,
+			});
+
+			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+
+			const credentialUsage: CredentialUsage[] = [];
+			newWorkflow.nodes.forEach((node) => {
+				if (!node.credentials) {
+					return;
+				}
+				Object.keys(node.credentials).forEach((credentialType) => {
+					const credentialId = node.credentials?.[credentialType].id;
+					if (credentialId) {
+						const newCredentialusage = new CredentialUsage();
+						Object.assign(newCredentialusage, {
+							credentialId,
+							nodeId: node.id,
+							workflowId: savedWorkflow?.id,
+						});
+						credentialUsage.push(newCredentialusage);
+					}
+				});
+			});
+
+			if (credentialUsage.length) {
+				await transactionManager.save<CredentialUsage>(credentialUsage);
+			}
+		});
+
+		if (!savedWorkflow) {
+			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
+			throw new ResponseHelper.ResponseError('Failed to save workflow');
+		}
+
+		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
+			savedWorkflow.tags = TagHelpers.sortByRequestOrder(savedWorkflow.tags, {
+				requestOrder: tagIds,
+			});
+		}
+
+		await externalHooks.run('workflow.afterCreate', [savedWorkflow]);
+		void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, newWorkflow, false);
+
+		const { id, ...rest } = savedWorkflow;
+
+		return {
+			id: id.toString(),
+			...rest,
+		};
 	}),
 );

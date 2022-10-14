@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "0.119.0",
+  "version": "0.120.0",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -60,7 +60,7 @@
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
-    "luxon": "^2.3.0",
+    "luxon": "~2.3.0",
     "xml2js": "^0.4.23"
   },
   "jest": {
