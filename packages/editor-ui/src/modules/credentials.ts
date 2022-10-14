@@ -172,7 +172,7 @@ const module: Module<ICredentialsState, IRootState> = {
 			if (context.getters.allCredentialTypes.length > 0 && forceFetch !== true) {
 				return;
 			}
-			const credentialTypes = await getCredentialTypes(context.rootGetters.getRestApiContext);
+			const credentialTypes = await getCredentialTypes(context.rootGetters.getBaseUrl);
 			context.commit('setCredentialTypes', credentialTypes);
 		},
 		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {

@@ -401,6 +401,7 @@ class App {
 			'assets',
 			'healthz',
 			'metrics',
+			'types',
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
@@ -760,6 +761,21 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
 
+		// pre-render all the node and credential types as static json files
+		const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
+		await mkdir(pathJoin(generatedStaticDir, 'types'), { recursive: true });
+
+		const writeStaticJSON = async (name: string, data: any) =>
+			writeFile(pathJoin(generatedStaticDir, `types/${name}.json`), JSON.stringify(data), {
+				encoding: 'utf-8',
+			});
+
+		// TODO: re-render these after a new community package is installed
+		const { allNodeTypes, latestNodeTypes } = NodeTypes().cache;
+		await writeStaticJSON('all-nodes', allNodeTypes);
+		await writeStaticJSON('latest-nodes', latestNodeTypes);
+		await writeStaticJSON('credentials', CredentialTypes().getAll());
+
 		// ----------------------------------------
 		// Metrics
 		// ----------------------------------------
@@ -885,47 +901,6 @@ class App {
 					}
 
 					throw new ResponseError('Parameter methodName is required.', undefined, 400);
-				},
-			),
-		);
-
-		// Returns all the node-types
-		this.app.get(
-			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const returnData: INodeTypeDescription[] = [];
-					const onlyLatest = req.query.onlyLatest === 'true';
-
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
-
-					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
-						if (req.query.includeProperties !== 'true') {
-							// @ts-ignore
-							delete nodeInfo.properties;
-						}
-						return nodeInfo;
-					};
-
-					if (onlyLatest) {
-						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-							returnData.push(nodeInfo);
-						});
-					} else {
-						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-							allNodeTypes.forEach((element) => {
-								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-								returnData.push(nodeInfo);
-							});
-						});
-					}
-
-					return returnData;
 				},
 			),
 		);
@@ -1093,16 +1068,6 @@ class App {
 		// ----------------------------------------
 		// Credential-Types
 		// ----------------------------------------
-
-		// Returns all the credential types which are defined in the loaded n8n-modules
-		this.app.get(
-			`/${this.restEndpoint}/credential-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialType[]> => {
-					return CredentialTypes().getAll();
-				},
-			),
-		);
 
 		this.app.get(
 			`/${this.restEndpoint}/credential-icon/:credentialType`,
@@ -1783,7 +1748,6 @@ class App {
 			}
 
 			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
-			const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
 
 			const closingTitleTag = '</title>';
 			const compileFile = async (fileName: string) => {
@@ -1813,6 +1777,8 @@ class App {
 				res.setHeader('Last-Modified', startTime);
 				next();
 			});
+		} else {
+			this.app.use('/', express.static(generatedStaticDir));
 		}
 	}
 }

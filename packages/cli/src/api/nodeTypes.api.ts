@@ -8,7 +8,6 @@ import type { ICredentialType, INodeTypeDescription, INodeTypeNameVersion } from
 
 import { CredentialTypes, NodeTypes, ResponseHelper } from '..';
 import config from '../../config';
-import { NodeTypesRequest } from '../requests';
 import { getNodeTranslationPath } from '../TranslationHelpers';
 
 function isOAuth(credType: ICredentialType) {
@@ -67,18 +66,6 @@ function injectCustomApiCallOption(description: INodeTypeDescription) {
 }
 
 export const nodeTypesController = express.Router();
-
-// Returns all the node-types
-nodeTypesController.get(
-	'/',
-	ResponseHelper.send(async (req: NodeTypesRequest.GetAll): Promise<INodeTypeDescription[]> => {
-		const nodeTypes = NodeTypes();
-
-		return req.query.onlyLatest === 'true'
-			? nodeTypes.cache.latestNodeTypes
-			: nodeTypes.cache.allNodeTypes;
-	}),
-);
 
 // Returns node information based on node names and versions
 nodeTypesController.post(
