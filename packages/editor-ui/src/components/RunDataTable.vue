@@ -103,7 +103,7 @@
 							@mouseleave="onMouseLeaveCell"
 							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						>
-							<span v-if="isSimple(data)" :class="$style.value">{{ data+'' }}</span>
+							<span v-if="isSimple(data)" :class="$style.value">{{ getValueToRender(data) }}</span>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 								<template v-slot:label="{ label, path }">
 									<span
@@ -146,7 +146,7 @@ import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { shorten } from './helpers';
+import { isString, shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
@@ -336,7 +336,7 @@ export default mixins(externalHooks).extend({
 				return this.$locale.baseText('runData.emptyObject');
 			}
 
-			return value;
+			return value === null || value === undefined ? value+'' : value;
 		},
 		onDragStart() {
 			this.draggedColumn = true;
