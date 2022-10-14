@@ -271,13 +271,19 @@ export default mixins(externalHooks).extend({
 	}
 }
 
-.vjs-key {
+.vjs-key,
+.vjs-value {
 	> span {
 		color: var(--color-text-dark);
 		line-height: 1.7;
 		border-radius: var(--border-radius-base);
+	}
+}
+
+.vjs-value {
+	> span {
 		padding: 0 var(--spacing-5xs) 0 var(--spacing-5xs);
-		margin-right: var(--spacing-5xs);
+		margin-left: var(--spacing-5xs);
 	}
 }
 
