@@ -489,39 +489,6 @@ export const messageFields: INodeProperties[] = [
 		],
 	},
 	{
-		displayName: 'Attachments',
-		name: 'attachmentsJson',
-		type: 'json',
-		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['update'],
-				jsonParameters: [true],
-			},
-		},
-		description: 'The attachments to add',
-	},
-	{
-		displayName: 'Blocks',
-		name: 'blocksJson',
-		type: 'json',
-		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['update'],
-				jsonParameters: [true],
-			},
-		},
-	},
-	{
 		displayName: 'Blocks',
 		name: 'blocksUi',
 		type: 'fixedCollection',
@@ -533,7 +500,6 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				operation: ['post'],
 				resource: ['message'],
-				jsonParameters: [false],
 			},
 		},
 		default: {},
@@ -1355,38 +1321,6 @@ export const messageFields: INodeProperties[] = [
 	},
 	{
 		displayName: 'Attachments',
-		name: 'attachmentsJson',
-		type: 'json',
-		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['post'],
-				jsonParameters: [true],
-			},
-		},
-	},
-	{
-		displayName: 'Blocks',
-		name: 'blocksJson',
-		type: 'json',
-		default: '',
-		typeOptions: {
-			alwaysOpenEditWindow: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['post'],
-				jsonParameters: [true],
-			},
-		},
-	},
-	{
-		displayName: 'Attachments',
 		name: 'attachments',
 		type: 'collection',
 		typeOptions: {
@@ -1395,7 +1329,6 @@ export const messageFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				jsonParameters: [false],
 				operation: ['update'],
 				resource: ['message'],
 			},
