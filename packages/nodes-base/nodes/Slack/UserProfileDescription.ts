@@ -109,27 +109,45 @@ export const userProfileFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Status Emoji',
-				name: 'status_emoji',
-				type: 'string',
-				default: '',
-				description:
-					'Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:',
-			},
-			{
-				displayName: 'Status Expiration',
-				name: 'status_expiration',
-				type: 'dateTime',
-				default: '',
-				description:
-					'Is an integer specifying seconds since the epoch, more commonly known as "UNIX time". Providing 0 or omitting this field results in a custom status that will not expire.',
-			},
-			{
-				displayName: 'Status Text',
-				name: 'status_text',
-				type: 'string',
-				default: '',
-				description: 'Allows up to 100 characters, though we strongly encourage brevity',
+				displayName: 'Set Status',
+				name: 'status',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Set Status',
+				options: [
+					{
+						displayName: 'Set Status',
+						name: 'set_status',
+						values: [
+							{
+								displayName: 'Status Emoji',
+								name: 'status_emoji',
+								type: 'string',
+								default: '',
+								description:
+									'Is a string referencing an emoji enabled for the Slack team, such as :mountain_railway:',
+							},
+							{
+								displayName: 'Status Expiration',
+								name: 'status_expiration',
+								type: 'dateTime',
+								default: '',
+								description:
+									'The number of minutes to wait until this status expires and is cleared. Optional.',
+							},
+							{
+								displayName: 'Status Text',
+								name: 'status_text',
+								type: 'string',
+								default: '',
+								description: 'Allows up to 100 characters, though we strongly encourage brevity',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'User ID',

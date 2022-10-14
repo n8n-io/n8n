@@ -1315,34 +1315,37 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/users.profile.set
 					if (operation === 'update') {
 						const options = this.getNodeParameter('options', i) as IDataObject;
-
 						const timezone = this.getTimezone();
 
 						const body: IDataObject = {};
+						// @ts-ignore
+						const status = options.status?.set_status[0] as IDataObject;
 
-						Object.assign(body, options);
-
-						if (body.status_expiration === undefined) {
-							body.status_expiration = 0;
+						if (status.status_expiration === undefined) {
+							status.status_expiration = 0;
 						} else {
-							body.status_expiration = moment.tz(body.status_expiration as string, timezone).unix();
+							status.status_expiration = moment
+								.tz(status.status_expiration as string, timezone)
+								.unix();
 						}
+						Object.assign(body, status);
+						delete options.status;
 
-						if (body.customFieldUi) {
-							const customFields = (body.customFieldUi as IDataObject)
+						if (options.customFieldUi) {
+							const customFields = (options.customFieldUi as IDataObject)
 								.customFieldValues as IDataObject[];
 
-							body.fields = {};
+							options.fields = {};
 
 							for (const customField of customFields) {
 								//@ts-ignore
-								body.fields[customField.id] = {
+								options.fields[customField.id] = {
 									value: customField.value,
 									alt: customField.alt,
 								};
 							}
 						}
-
+						Object.assign(body, options);
 						responseData = await slackApiRequest.call(
 							this,
 							'POST',
