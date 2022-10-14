@@ -128,18 +128,6 @@ export const messageFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'JSON Parameters',
-		name: 'jsonParameters',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				operation: ['post', 'postEphemeral'],
-				resource: ['message'],
-			},
-		},
-	},
-	{
 		displayName: 'Options',
 		name: 'otherOptions',
 		type: 'collection',
@@ -456,18 +444,6 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description: 'Timestamp of the message to be updated',
-	},
-	{
-		displayName: 'JSON Parameters',
-		name: 'jsonParameters',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-				operation: ['update'],
-				resource: ['message'],
-			},
-		},
 	},
 	{
 		displayName: 'Update Fields',
