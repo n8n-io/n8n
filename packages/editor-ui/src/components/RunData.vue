@@ -845,7 +845,7 @@ export default mixins(
 					return;
 				}
 
-				this.onDataPinningSuccess({ source: 'save-edit' });
+				this.onDataPinningSuccess({ source: 'pin-icon-click' });
 
 				this.$store.commit('pinData', { node: this.node, data });
 
