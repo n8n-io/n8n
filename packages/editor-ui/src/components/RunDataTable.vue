@@ -146,7 +146,7 @@ import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { isString, shorten } from './helpers';
+import { shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
