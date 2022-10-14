@@ -33,13 +33,14 @@ export default mixins(restApi, showMessage).extend({
 		},
 	},
 	async mounted() {
-		if (this.workflowDataNotLoaded) {
+		if (this.workflowDataNotLoaded || (this.$route.params.name !== this.$store.getters.workflowId)) {
 			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
 				await this.$store.dispatch('nodeTypes/getNodeTypes');
 			}
 			await this.openWorkflow(this.$route.params.name);
 			const executions = await await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { status: '' });
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', executions);
+			this.$store.commit('ui/setNodeViewInitialized', false);
 		}
 	},
 	methods: {

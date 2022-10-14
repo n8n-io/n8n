@@ -193,12 +193,21 @@ export default mixins(
 		watch: {
 			// Listen to route changes and load the workflow accordingly
 			'$route' (to, from) {
-				const workflowChanged =  this.$route.params.name !== undefined && (this.$route.params.name !== this.$store.getters.workflowId);
+				const workflowChanged =  from.params.name !== to.params.name;
 				const shouldUpdateWorkflowData =
 					(from.meta.keepWorkflowAlive === undefined || from.meta.keepWorkflowAlive !== true) &&
 					(to.meta.keepWorkflowAlive === undefined || to.meta.keepWorkflowAlive !== true);
-				if (workflowChanged || shouldUpdateWorkflowData) {
-					this.initView();
+				const initNodeView = !this.$store.getters['ui/isNodeViewInitialized'];
+
+				if (workflowChanged || shouldUpdateWorkflowData || initNodeView) {
+					this.startLoading();
+					if(initNodeView) {
+						// this.$destroy();
+						this.resetWorkspace();
+					}
+					this.initView().then(() => {
+						this.stopLoading();
+					});
 				}
 			},
 			activeNode () {
@@ -230,6 +239,10 @@ export default mixins(
 		async beforeRouteLeave(to, from, next) {
 			// Skip check if in the middle of template import or route is configured to keep node view alive
 			if (from.name === VIEWS.TEMPLATE_IMPORT || (to.meta && to.meta.keepWorkflowAlive === true)) {
+				const workflowChanged = from.params.name !== to.params.name;
+				if (workflowChanged) {
+					await this.resetWorkspace();
+				}
 				next();
 				return;
 			}
@@ -1152,23 +1165,13 @@ export default mixins(
 			async receivedCopyPasteData(plainTextData: string): Promise<void> {
 				let workflowData: IWorkflowDataUpdate | undefined;
 
-				if (this.$route.name !== VIEWS.WORKFLOW && this.$route.name !== VIEWS.NEW_WORKFLOW) {
-					this.$showMessage({
-						title: this.$locale.baseText('executionView.onPaste.title'),
-						message: this.$locale.baseText('executionView.onPaste.message', { interpolate: { workflowTabURL: '/workflow/249'} }),
-						type: 'warning',
-						duration: 0,
-					});
+				if (this.editAllowedCheck() === false) {
 					return;
 				}
-
 				// Check if it is an URL which could contain workflow data
 				if (plainTextData.match(/^http[s]?:\/\/.*\.json$/i)) {
 					// Pasted data points to a possible workflow JSON file
 
-					if (this.editAllowedCheck() === false) {
-						return;
-					}
 
 					const importConfirm = await this.confirmMessage(
 						this.$locale.baseText(
@@ -2024,6 +2027,7 @@ export default mixins(
 						await this.newWorkflow();
 					}
 				}
+				this.$store.commit('ui/setNodeViewInitialized', true);
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
 				window.addEventListener("beforeunload", (e) => {

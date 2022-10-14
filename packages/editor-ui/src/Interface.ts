@@ -952,6 +952,7 @@ export interface IUiState {
 	};
 	fakeDoorFeatures: IFakeDoor[];
 	pendingExecuteButtonShake: boolean;
+	nodeViewInitialized: boolean;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';

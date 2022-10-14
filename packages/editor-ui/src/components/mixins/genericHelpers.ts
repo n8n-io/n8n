@@ -36,7 +36,7 @@ export const genericHelpers = mixins(showMessage).extend({
 					// title: 'Workflow can not be changed!',
 					title: this.$locale.baseText('genericHelpers.showMessage.title'),
 					message: this.$locale.baseText('genericHelpers.showMessage.message'),
-					type: 'error',
+					type: 'info',
 					duration: 0,
 				});
 

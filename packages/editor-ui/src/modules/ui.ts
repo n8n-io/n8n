@@ -173,6 +173,7 @@ const module: Module<IUiState, IRootState> = {
 			},
 		],
 		pendingExecuteButtonShake: false,
+		nodeViewInitialized: false,
 	},
 	getters: {
 		areExpressionsDisabled(state: IUiState) {
@@ -233,6 +234,7 @@ const module: Module<IUiState, IRootState> = {
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
 		isPendingExecuteButtonShake: (state: IUiState) => state.pendingExecuteButtonShake,
 		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
+		isNodeViewInitialized: (state: IUiState) => state.nodeViewInitialized,
 	},
 	mutations: {
 		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
@@ -344,6 +346,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setNDVPanelDataIsEmpty(state: IUiState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
 			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
+		},
+		setNodeViewInitialized(state: IUiState, isInitialized: boolean) {
+			state.nodeViewInitialized = isInitialized;
 		},
 	},
 	actions: {
