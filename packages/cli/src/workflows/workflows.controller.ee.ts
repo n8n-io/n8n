@@ -1,5 +1,12 @@
 import express from 'express';
-import { Db, InternalHooksManager, ResponseHelper, WorkflowHelpers } from '..';
+import {
+	ActiveWorkflowRunner,
+	Db,
+	InternalHooksManager,
+	ResponseHelper,
+	whereClause,
+	WorkflowHelpers,
+} from '..';
 import config from '../../config';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { validateEntity } from '../GenericHelpers';
@@ -11,10 +18,12 @@ import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '../TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
-import { CredentialUsage } from '../databases/entities/CredentialUsage';
+import { FindManyOptions } from 'typeorm';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
+
+const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 
 EEWorkflowController.use((req, res, next) => {
 	if (!isSharingEnabled() || !config.getEnv('enterprise.workflowSharingEnabled')) {
@@ -155,29 +164,6 @@ EEWorkflowController.post(
 			});
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-
-			const credentialUsage: CredentialUsage[] = [];
-			newWorkflow.nodes.forEach((node) => {
-				if (!node.credentials) {
-					return;
-				}
-				Object.keys(node.credentials).forEach((credentialType) => {
-					const credentialId = node.credentials?.[credentialType].id;
-					if (credentialId) {
-						const newCredentialusage = new CredentialUsage();
-						Object.assign(newCredentialusage, {
-							credentialId,
-							nodeId: node.id,
-							workflowId: savedWorkflow?.id,
-						});
-						credentialUsage.push(newCredentialusage);
-					}
-				});
-			});
-
-			if (credentialUsage.length) {
-				await transactionManager.save<CredentialUsage>(credentialUsage);
-			}
 		});
 
 		if (!savedWorkflow) {
@@ -199,6 +185,163 @@ EEWorkflowController.post(
 		return {
 			id: id.toString(),
 			...rest,
+		};
+	}),
+);
+
+EEWorkflowController.patch(
+	'/:id(\\d+)',
+	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
+		const { id: workflowId } = req.params;
+
+		let updateData = new WorkflowEntity();
+		const { tags, ...rest } = req.body;
+		Object.assign(updateData, rest);
+
+		const shared = await Db.collections.SharedWorkflow.findOne({
+			relations: ['workflow'],
+			where: whereClause({
+				user: req.user,
+				entityType: 'workflow',
+				entityId: workflowId,
+			}),
+		});
+
+		if (!shared) {
+			LoggerProxy.info('User attempted to update a workflow without permissions', {
+				workflowId,
+				userId: req.user.id,
+			});
+			throw new ResponseHelper.ResponseError(
+				`Workflow with ID "${workflowId}" could not be found to be updated.`,
+				undefined,
+				404,
+			);
+		}
+
+		// check credentials for old format
+		await WorkflowHelpers.replaceInvalidCredentials(updateData);
+
+		WorkflowHelpers.addNodeIds(updateData);
+
+		const allCredentials = await EECredentials.getAll(req.user);
+
+		try {
+			updateData = WorkflowHelpers.validateWorkflowCredentialUsage(
+				updateData,
+				shared.workflow,
+				allCredentials,
+			);
+		} catch (error) {
+			throw new ResponseHelper.ResponseError(
+				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
+				undefined,
+				400,
+			);
+		}
+
+		await externalHooks.run('workflow.update', [updateData]);
+
+		if (shared.workflow.active) {
+			// When workflow gets saved always remove it as the triggers could have been
+			// changed and so the changes would not take effect
+			await activeWorkflowRunner.remove(workflowId);
+		}
+
+		if (updateData.settings) {
+			if (updateData.settings.timezone === 'DEFAULT') {
+				// Do not save the default timezone
+				delete updateData.settings.timezone;
+			}
+			if (updateData.settings.saveDataErrorExecution === 'DEFAULT') {
+				// Do not save when default got set
+				delete updateData.settings.saveDataErrorExecution;
+			}
+			if (updateData.settings.saveDataSuccessExecution === 'DEFAULT') {
+				// Do not save when default got set
+				delete updateData.settings.saveDataSuccessExecution;
+			}
+			if (updateData.settings.saveManualExecutions === 'DEFAULT') {
+				// Do not save when default got set
+				delete updateData.settings.saveManualExecutions;
+			}
+			if (
+				parseInt(updateData.settings.executionTimeout as string, 10) ===
+				config.get('executions.timeout')
+			) {
+				// Do not save when default got set
+				delete updateData.settings.executionTimeout;
+			}
+		}
+
+		if (updateData.name) {
+			updateData.updatedAt = new Date(); // required due to atomic update
+			await validateEntity(updateData);
+		}
+
+		await Db.collections.Workflow.update(workflowId, updateData);
+
+		if (tags && !config.getEnv('workflowTagsDisabled')) {
+			const tablePrefix = config.getEnv('database.tablePrefix');
+			await TagHelpers.removeRelations(workflowId, tablePrefix);
+
+			if (tags.length) {
+				await TagHelpers.createRelations(workflowId, tags, tablePrefix);
+			}
+		}
+
+		const options: FindManyOptions<WorkflowEntity> = {
+			relations: ['tags'],
+		};
+
+		if (config.getEnv('workflowTagsDisabled')) {
+			delete options.relations;
+		}
+
+		// We sadly get nothing back from "update". Neither if it updated a record
+		// nor the new value. So query now the hopefully updated entry.
+		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, options);
+
+		if (updatedWorkflow === undefined) {
+			throw new ResponseHelper.ResponseError(
+				`Workflow with ID "${workflowId}" could not be found to be updated.`,
+				undefined,
+				400,
+			);
+		}
+
+		if (updatedWorkflow.tags?.length && tags?.length) {
+			updatedWorkflow.tags = TagHelpers.sortByRequestOrder(updatedWorkflow.tags, {
+				requestOrder: tags,
+			});
+		}
+
+		await externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
+		void InternalHooksManager.getInstance().onWorkflowSaved(req.user.id, updatedWorkflow, false);
+
+		if (updatedWorkflow.active) {
+			// When the workflow is supposed to be active add it again
+			try {
+				await externalHooks.run('workflow.activate', [updatedWorkflow]);
+				await activeWorkflowRunner.add(workflowId, shared.workflow.active ? 'update' : 'activate');
+			} catch (error) {
+				// If workflow could not be activated set it again to inactive
+				updateData.active = false;
+				await Db.collections.Workflow.update(workflowId, updateData);
+
+				// Also set it in the returned data
+				updatedWorkflow.active = false;
+
+				// Now return the original error for UI to display
+				throw error;
+			}
+		}
+
+		const { id, ...remainder } = updatedWorkflow;
+
+		return {
+			id: id.toString(),
+			...remainder,
 		};
 	}),
 );

@@ -218,12 +218,9 @@ describe('POST /workflows', () => {
 		const response = await authAgent(owner).post('/workflows').send(workflow);
 
 		expect(response.statusCode).toBe(200);
-
-		const usedCredentials = await testDb.getCredentialUsageInWorkflow(response.body.data.id);
-		expect(usedCredentials).toHaveLength(0);
 	});
 
-	it('Should save credential usage when saving a new workflow', async () => {
+	it('Should save a new workflow with credentials', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -235,9 +232,6 @@ describe('POST /workflows', () => {
 		const response = await authAgent(owner).post('/workflows').send(workflow);
 
 		expect(response.statusCode).toBe(200);
-
-		const usedCredentials = await testDb.getCredentialUsageInWorkflow(response.body.data.id);
-		expect(usedCredentials).toHaveLength(1);
 	});
 
 	it('Should not allow saving a workflow using credential you have no access', async () => {
@@ -273,8 +267,6 @@ describe('POST /workflows', () => {
 		const response = await authAgent(owner).post('/workflows').send(workflow);
 
 		expect(response.statusCode).toBe(200);
-		const usedCredentials = await testDb.getCredentialUsageInWorkflow(response.body.data.id);
-		expect(usedCredentials).toHaveLength(1);
 	});
 
 	it('Should allow saving a workflow using a credential owned by others and shared with you', async () => {
@@ -291,7 +283,5 @@ describe('POST /workflows', () => {
 
 		const response = await authAgent(member2).post('/workflows').send(workflow);
 		expect(response.statusCode).toBe(200);
-		const usedCredentials = await testDb.getCredentialUsageInWorkflow(response.body.data.id);
-		expect(usedCredentials).toHaveLength(1);
 	});
 });

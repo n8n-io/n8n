@@ -29,6 +29,7 @@ import { v4 as uuid } from 'uuid';
 import {
 	CredentialTypes,
 	Db,
+	ICredentialsDb,
 	ICredentialsTypeData,
 	ITransferNodeTypes,
 	IWorkflowErrorData,
@@ -702,4 +703,57 @@ export function generateFailedExecutionFromError(
 		startedAt: new Date(),
 		stoppedAt: new Date(),
 	};
+}
+
+export function validateWorkflowCredentialUsage(
+	newWorkflowVersion: WorkflowEntity,
+	previousWorkflowVersion: WorkflowEntity,
+	credentialsUserHasAccessTo: ICredentialsDb[],
+) {
+	// Lets start by isolating all nodes with credentials the current user does not have access to
+
+	const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id.toString());
+
+	const nodesWithCredentialsUserDoesNotHaveAccessTo = newWorkflowVersion.nodes.filter((node) => {
+		// If the node does not have credentials we can skip it
+		if (node.credentials === undefined) {
+			return false;
+		}
+		const credentialIdsUsedByThisNode = Object.values(node.credentials).map((cred) => cred.id);
+
+		return (
+			credentialIdsUsedByThisNode.find((credentialId) => {
+				return !allowedCredentialIds.includes(credentialId as string);
+			}) !== undefined
+		);
+	});
+
+	// If there are no nodes with credentials the user does not have access to we can skip the rest
+	if (nodesWithCredentialsUserDoesNotHaveAccessTo.length === 0) {
+		return newWorkflowVersion;
+	}
+
+	const previouslyExistingNodeIds = previousWorkflowVersion.nodes.map((node) => node.id);
+
+	nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node, position) => {
+		// If the node does not have credentials we can skip it
+		if (node.credentials === undefined) {
+			return;
+		}
+
+		// If the node has credentials the user does not have access to we need to check if it was already inserted
+		if (previouslyExistingNodeIds.includes(node.id)) {
+			// Node was already in workflow, so to be sure, we replace new version with existing
+			newWorkflowVersion.nodes[position] = previousWorkflowVersion.nodes.find(
+				(previousNode) => previousNode.id === node.id,
+			)!;
+		} else {
+			// Node is new, so this is probably a tampering attempt. Throw an error
+			throw new Error(
+				'Workflow contains new nodes with credentials the user does not have access to',
+			);
+		}
+	});
+
+	return newWorkflowVersion;
 }
