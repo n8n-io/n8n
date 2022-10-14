@@ -29,7 +29,7 @@
 					/>
 				</el-menu>
 			</div>
-			<div :class="{[$style.lowerContent]: true, ['pb-xs']: $slots.menuSuffix }">
+			<div :class="{[$style.lowerContent]: true, ['pb-xs']: $slots.menuSuffix || $slots.footer }">
 				<el-menu
 					:defaultActive="defaultActive"
 					:collapse="collapsed"
