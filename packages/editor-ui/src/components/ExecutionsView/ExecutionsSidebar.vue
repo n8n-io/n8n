@@ -82,6 +82,7 @@ import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoA
 import { VIEWS } from '../../constants';
 import { IExecutionsSummary } from '@/Interface';
 import { range as _range } from 'lodash';
+import { Route } from 'vue-router';
 
 export default mixins(executionHelpers).extend({
 	name: 'executions-sidebar',
@@ -125,6 +126,12 @@ export default mixins(executionHelpers).extend({
 			}
 			this.stopLoading();
 		},
+		$route (to: Route, from: Route) {
+			if (from.name === VIEWS.EXECUTION_PREVIEW && to.name === VIEWS.EXECUTION_HOME) {
+				// Skip parent route when navigating through executions with back button
+				this.$router.go(-1);
+			}
+    },
 	},
 	async mounted() {
 		if (!this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) {

@@ -88,7 +88,7 @@ export default mixins(
 					this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 				}
 				const workflowName = route.params.name;
-				if (workflowName) {
+				if (workflowName !== 'new') {
 					this.workflowToReturnTo = workflowName;
 				}
 			},
@@ -107,7 +107,7 @@ export default mixins(
 						break;
 					case MAIN_HEADER_TABS.EXECUTIONS:
 						this.workflowToReturnTo = this.currentWorkflow;
-						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
+						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow} });
 						// this.modalBus.$emit('closeAll');
 						this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 						break;

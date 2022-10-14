@@ -175,7 +175,6 @@ export default mixins(
 						icon: 'network-wired',
 						label: this.$locale.baseText('mainSidebar.workflows'),
 						position: 'top',
-						activateOnRouteNames: [ VIEWS.WORKFLOWS, VIEWS.WORKFLOW ],
 						children: [
 							{
 								id: 'workflow',

@@ -146,7 +146,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 		}),
 		...mapGetters('settings', ['areTagsEnabled']),
 		isNewWorkflow(): boolean {
-			return !this.currentWorkflowId || this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			return !this.currentWorkflowId || (this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID || this.currentWorkflowId === 'new');
 		},
 		isWorkflowSaving(): boolean {
 			return this.$store.getters.isActionActive("workflowSaving");
@@ -185,12 +185,12 @@ export default mixins(workflowHelpers, titleChange).extend({
 				{
 					id: WORKFLOW_MENU_ACTIONS.SETTINGS,
 					label: this.$locale.baseText('generic.settings'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
+					disabled: !this.onWorkflowPage || this.isNewWorkflow,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.DELETE,
 					label: this.$locale.baseText('menuActions.delete'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
+					disabled: !this.onWorkflowPage || this.isNewWorkflow,
 					customClass: this.$style.deleteItem,
 					divided: true,
 				},

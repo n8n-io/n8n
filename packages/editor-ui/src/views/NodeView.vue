@@ -240,12 +240,13 @@ export default mixins(
 			// Skip check if in the middle of template import or route is configured to keep node view alive
 			if (from.name === VIEWS.TEMPLATE_IMPORT || (to.meta && to.meta.keepWorkflowAlive === true)) {
 				const workflowChanged = from.params.name !== to.params.name;
-				if (workflowChanged) {
+					if (workflowChanged) {
 					await this.resetWorkspace();
 				}
 				next();
 				return;
 			}
+
 
 			const result = this.$store.getters.getStateIsDirty;
 			if (result) {

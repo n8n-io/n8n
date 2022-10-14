@@ -9,13 +9,14 @@
 
 <script lang="ts">
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WEBHOOK_NODE_TYPE } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS, WEBHOOK_NODE_TYPE } from '@/constants';
 import { INodeUi, ITag, IWorkflowDb } from '@/Interface';
 import { IConnection, IConnections, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { restApi } from '../mixins/restApi';
 import { showMessage } from '../mixins/showMessage';
 import { v4 as uuid } from 'uuid';
+import { Route } from 'vue-router';
 
 export default mixins(restApi, showMessage).extend({
 	name: 'executions-page',
@@ -32,6 +33,13 @@ export default mixins(restApi, showMessage).extend({
 			return this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID && this.$store.getters.workflowName === '';
 		},
 	},
+	watch:{
+    $route (to: Route, from: Route) {
+			if (to.params.name !== from.params.name) {
+				this.$store.commit('ui/setNodeViewInitialized', false);
+			}
+    },
+	},
 	async mounted() {
 		if (this.workflowDataNotLoaded || (this.$route.params.name !== this.$store.getters.workflowId)) {
 			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
@@ -45,7 +53,7 @@ export default mixins(restApi, showMessage).extend({
 	},
 	methods: {
 		onExecutionsLoaded(executionCount: number): void {
-			this.loading = executionCount === 0;
+			this.loading = false;
 		},
 		async openWorkflow(workflowId: string): Promise<void> {
 			await this.loadActiveWorkflows();
