@@ -275,6 +275,11 @@ export interface IWorkflowTemplate {
 	};
 }
 
+export interface INewWorkflowData {
+	name: string;
+	onboardingFlowEnabled: boolean;
+}
+
 // Almost identical to cli.Interfaces.ts
 export interface IWorkflowDb {
 	id: string;
@@ -963,9 +968,6 @@ export interface IUiState {
 		mappingTelemetry: {[key: string]: string | number | boolean};
 	};
 	mainPanelPosition: number;
-	showNodeCreatorTabs: boolean;
-	showCreatorPanelScrim: boolean;
-	selectedNodeCreatorType: INodeFilterType;
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -993,6 +995,13 @@ export type IFakeDoor = {
 export type IFakeDoorLocation = 'settings' | 'credentialsModal';
 
 export type INodeFilterType = "Regular" | "Trigger" | "All";
+
+export interface INodeCreatorState {
+	itemsFilter: string;
+	showTabs: boolean;
+	showScrim: boolean;
+	selectedType: INodeFilterType;
+}
 
 export interface ISettingsState {
 	settings: IN8nUISettings;

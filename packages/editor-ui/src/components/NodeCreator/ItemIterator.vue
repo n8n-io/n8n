@@ -1,31 +1,30 @@
 <template>
-	<div>
+	<div
+		:is="transitionsEnabled ? 'transition-group' : 'div'"
+		class="item-iterator"
+		name="accordion"
+		@before-enter="beforeEnter"
+		@enter="enter"
+		@before-leave="beforeLeave"
+		@leave="leave"
+	>
 		<div
-			:is="transitionsEnabled ? 'transition-group' : 'div'"
-			name="accordion"
-			@before-enter="beforeEnter"
-			@enter="enter"
-			@before-leave="beforeLeave"
-			@leave="leave"
+			v-for="(item, index) in elements"
+			:key="item.key"
+			:class="item.type"
+			:data-key="item.key"
 		>
-			<div
-				v-for="(item, index) in elements"
-				:key="item.key"
-				:class="item.type"
-				:data-key="item.key"
-			>
-				<creator-item
-					:item="item"
-					:active="activeIndex === index && !disabled"
-					:clickable="!disabled"
-					:lastNode="
-						index === elements.length - 1 || elements[index + 1].type !== 'node'
-					"
-					@click="$emit('selected', item)"
-					@dragstart="emit('dragstart', item, $event)"
-					@dragend="emit('dragend', item, $event)"
-				/>
-			</div>
+			<creator-item
+				:item="item"
+				:active="activeIndex === index && !disabled"
+				:clickable="!disabled"
+				:lastNode="
+					index === elements.length - 1 || elements[index + 1].type !== 'node'
+				"
+				@click="$emit('selected', item)"
+				@dragstart="emit('dragstart', item, $event)"
+				@dragend="emit('dragend', item, $event)"
+			/>
 		</div>
 	</div>
 </template>
@@ -81,6 +80,9 @@ export default Vue.extend({
 
 
 <style lang="scss" scoped>
+.item-iterator > *:last-child {
+	margin-bottom: var(--spacing-2xl);
+}
 .accordion-enter {
 	opacity: 0;
 }

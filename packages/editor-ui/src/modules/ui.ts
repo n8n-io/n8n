@@ -129,10 +129,7 @@ const module: Module<IUiState, IRootState> = {
 			focusedMappableInput: '',
 			mappingTelemetry: {},
 		},
-		showNodeCreatorTabs: true,
-		showCreatorPanelScrim: false,
 		mainPanelPosition: 0.5,
-		selectedNodeCreatorType: ALL_NODE_FILTER,
 		draggable: {
 			isDragging: false,
 			type: '',
@@ -204,9 +201,6 @@ const module: Module<IUiState, IRootState> = {
 		inputPanelDisplayMode: (state: IUiState) => state.ndv.input.displayMode,
 		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
 		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
-		showNodeCreatorTabs: (state: IUiState) => state.showNodeCreatorTabs,
-		showCreatorPanelScrim: (state: IUiState) => state.showCreatorPanelScrim,
-		selectedNodeCreatorType: (state: IUiState) => state.selectedNodeCreatorType,
 		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		getFakeDoorFeatures: (state: IUiState): IFakeDoor[] => {
 			return state.fakeDoorFeatures;
@@ -304,17 +298,8 @@ const module: Module<IUiState, IRootState> = {
 		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
 			Vue.set(state.ndv.output.editMode, 'value', payload);
 		},
-		setShowNodeCreatorTabs(state: IUiState, isVisible: boolean) {
-			state.showNodeCreatorTabs = isVisible;
-		},
-		setShowCreatorPanelScrim(state: IUiState, isVisible: boolean) {
-			state.showCreatorPanelScrim = isVisible;
-		},
 		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
 			state.mainPanelPosition = relativePosition;
-		},
-		setSelectedNodeCreatorType(state: IUiState, selectedNodeType: INodeFilterType) {
-			state.selectedNodeCreatorType = selectedNodeType;
 		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);

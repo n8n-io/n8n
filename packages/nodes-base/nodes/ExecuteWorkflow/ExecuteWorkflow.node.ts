@@ -14,14 +14,14 @@ export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow',
 		name: 'executeWorkflow',
-		icon: 'fa:network-wired',
+		icon: 'fa:sign-in-alt',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
 		description: 'Execute another workflow',
 		defaults: {
 			name: 'Execute Workflow',
-			color: '#ff6d5a',
+			color: '#29a568',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

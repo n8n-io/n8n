@@ -20,7 +20,6 @@
 		<node-item
 			v-else-if="item.type === 'node'"
 			:nodeType="item.properties.nodeType"
-			:bordered="!lastNode"
 			@dragstart="$listeners.dragstart"
 			@dragend="$listeners.dragend"
 		/>

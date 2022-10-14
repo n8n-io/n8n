@@ -9,6 +9,7 @@
 				ref="input"
 				:value="value"
 				@input="onInput"
+				:class="$style.input"
 			/>
 		</div>
 		<div :class="$style.suffix" v-if="value.length > 0" @click="clear">
@@ -72,12 +73,17 @@ export default mixins(externalHooks).extend({
 	height: 40px;
 	padding: var(--spacing-s) var(--spacing-xs);
 	align-items: center;
+	margin: var(--spacing-s);
+	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
+
 	border: 1px solid $node-creator-border-color;
 	background-color: $node-creator-search-background-color;
 	color: $node-creator-search-placeholder-color;
 	border-radius: 4px;
-	margin: var(--spacing-s);
-	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
+
+	&:focus-within {
+		border-color: var(--color-secondary)
+	}
 }
 
 .prefix {

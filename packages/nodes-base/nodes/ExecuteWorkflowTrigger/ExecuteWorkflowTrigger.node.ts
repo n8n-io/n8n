@@ -5,13 +5,13 @@ export class ExecuteWorkflowTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow Trigger',
 		name: 'executeWorkflowTrigger',
-		icon: 'fa:network-wired',
+		icon: 'fa:sign-out-alt',
 		group: ['trigger'],
 		version: 1,
 		description: 'Runs the flow when called by the Execute Workflow node from a different workflow',
 		maxNodes: 1,
 		defaults: {
-			name: 'Execute Workflow Trigger',
+			name: 'When Called By Another Workflow',
 			color: '#ff6d5a',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
@@ -20,7 +20,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					'This node is where the flow execution starts once this workflow is called by another workflow.',
+					'When an ‘execute workflow’ node calls this workflow, the execution starts here. Any data passed into the \'execute workflow\' node will be output by this node.',
 				name: 'notice',
 				type: 'notice',
 				default: '',

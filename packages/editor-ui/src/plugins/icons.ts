@@ -89,6 +89,7 @@ import {
 	faSearchPlus,
 	faServer,
 	faSignInAlt,
+	faSignOutAlt,
 	faSlidersH,
 	faSpinner,
 	faStop,
@@ -208,6 +209,7 @@ addIcon(faSearchMinus);
 addIcon(faSearchPlus);
 addIcon(faServer);
 addIcon(faSignInAlt);
+addIcon(faSignOutAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
 addIcon(faSolidStickyNote);
