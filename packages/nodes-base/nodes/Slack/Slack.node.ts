@@ -23,6 +23,7 @@ import { slackApiRequest, slackApiRequestAllItems, validateJSON } from './Generi
 import { IAttachment } from './MessageInterface';
 
 import moment from 'moment';
+import { consoleTestResultHandler } from 'tslint/lib/test';
 
 interface Attachment {
 	fields: {
@@ -643,6 +644,10 @@ export class Slack implements INodeType {
 						}
 						// Add all the other options to the request
 						const otherOptions = this.getNodeParameter('otherOptions', i) as IDataObject;
+						//@ts-ignore
+						const replyValues = otherOptions.thread_ts.replyValues[0] as IDataObject;
+						Object.assign(body, replyValues);
+						delete otherOptions.thread_ts;
 						Object.assign(body, otherOptions);
 						responseData = await slackApiRequest.call(this, 'POST', `/chat.${action}`, body, qs);
 					}

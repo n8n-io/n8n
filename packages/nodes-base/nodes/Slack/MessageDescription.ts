@@ -163,11 +163,37 @@ export const messageFields: INodeProperties[] = [
 				description: 'Whether to find and link channel names and usernames',
 			},
 			{
-				displayName: 'Make Reply',
+				displayName: 'Reply to a Message',
 				name: 'thread_ts',
-				type: 'string',
-				default: '',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Reply to a Message',
 				description: "Provide another message's ts value to make this message a reply",
+				options: [
+					{
+						displayName: 'Reply to a Message',
+						name: 'replyValues',
+						values: [
+							{
+								displayName: 'Message timestamp to reply to',
+								name: 'timestamp_reply',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Reply to thread',
+								name: 'reply_broadcast',
+								type: 'boolean',
+								default: false,
+								description:
+									'Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts.',
+							},
+						],
+					},
+				],
 			},
 			{
 				displayName: 'Markdown',
@@ -175,14 +201,6 @@ export const messageFields: INodeProperties[] = [
 				type: 'boolean',
 				default: true,
 				description: 'Whether to use Slack Markdown parsing',
-			},
-			{
-				displayName: 'Reply Broadcast',
-				name: 'reply_broadcast',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts.',
 			},
 			{
 				displayName: 'Unfurl Links',
