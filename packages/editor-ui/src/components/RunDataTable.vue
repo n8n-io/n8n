@@ -103,9 +103,7 @@
 							@mouseleave="onMouseLeaveCell"
 							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						>
-							<span v-if="isSimple(data)" :class="$style.value">{{
-								[null, undefined].includes(data) ? '&nbsp;' : data
-							}}</span>
+							<span v-if="isSimple(data)" :class="$style.value">{{ data+'' }}</span>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 								<template v-slot:label="{ label, path }">
 									<span
@@ -386,7 +384,7 @@ export default mixins(externalHooks).extend({
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isSimple(data: unknown): boolean {
-			return typeof data !== 'object';
+			return typeof data !== 'object' || data === null;
 		},
 		hasJsonInColumn(colIndex: number): boolean {
 			return this.tableData.hasJson[this.tableData.columns[colIndex]];
