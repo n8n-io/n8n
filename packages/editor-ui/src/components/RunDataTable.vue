@@ -406,6 +406,24 @@ export default mixins(externalHooks).extend({
 				entryRows = [];
 				leftEntryColumns = Object.keys(entry || {});
 
+				// Go over all the already existing column-keys
+				tableColumns.forEach((key) => {
+					if (entry.hasOwnProperty(key)) {
+						// Entry does have key so add its value
+						entryRows.push(entry[key]);
+						// Remove key so that we know that it got added
+						leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
+
+						hasJson[key] =
+							hasJson[key] ||
+							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
+							false;
+					} else {
+						// Entry does not have key so add null
+						entryRows.push(null);
+					}
+				});
+
 				// Go over all the columns the entry has but did not exist yet
 				leftEntryColumns.forEach((key) => {
 					// Add the key for all runs in the future
