@@ -39,24 +39,21 @@ export class SandboxPython {
 	async runCodeInPython(context: ReturnType<typeof getSandboxContextPython>) {
 		const runCode = `
 def cleanup_proxy_data(data):
-  if type(data) is list:
+  if getattr(data, '__module__', None) == 'proxy':
+    return data.valueOf()
+  elif type(data) is list:
     for id, value in enumerate(data):
-      if getattr(value, '__module__', None) == 'proxy':
-        data[id] = value.valueOf()
+      data[id] = cleanup_proxy_data(value)
   elif type(data) is dict:
     for key in data:
-      if getattr(data[key],'__module__', None) == 'proxy':
-        data[key] = data[key].valueOf()
-      else:
-        cleanup_proxy_data(data[key])
+      data[key] = cleanup_proxy_data(data[key])
+  return data
 def main():
 ${this.code
 	.split('\n')
 	.map((line) => '  ' + line)
 	.join('\n')}
-responseValue = main()
-cleanup_proxy_data(responseValue)
-responseCallback(responseValue)
+responseCallback(cleanup_proxy_data(main()))
 `;
 
 		let executionResult = undefined;
