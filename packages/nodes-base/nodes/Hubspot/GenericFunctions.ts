@@ -39,7 +39,8 @@ export async function hubspotApiRequest(this: IHookFunctions | IExecuteFunctions
 
 	try {
 		if (authenticationMethod === 'apiKey' || authenticationMethod === 'appToken') {
-			return this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
+			const credentialType = authenticationMethod === 'apiKey' ? 'hubspotApi' : 'hubspotAppToken';
+			return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 		} else if (authenticationMethod === 'developerApi') {
 			if (endpoint.includes('webhooks')) {
 
