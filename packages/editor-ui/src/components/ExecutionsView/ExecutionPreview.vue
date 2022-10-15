@@ -55,17 +55,6 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 			VIEWS,
 		};
 	},
-	mounted() {
-		this.syncActiveExecution();
-	},
-	watch: {
-		'$route.params.executionId' (newValue) {
-			this.syncActiveExecution();
-		},
-		currentWorkflowExecutions(newValue) {
-			this.syncActiveExecution();
-		},
-	},
 	computed: {
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
@@ -75,12 +64,6 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 	},
 	methods: {
-		syncActiveExecution() : void {
-			const execution = this.$store.getters['workflows/getExecutionDataById'](this.executionId);
-			if (execution) {
-				this.$store.commit('workflows/setActiveWorkflowExecution', execution);
-			}
-		},
 		async onDeleteExecution(): Promise<void> {
 			const deleteConfirmed = await this.confirmMessage(
 				this.$locale.baseText('executionDetails.confirmMessage.message'),

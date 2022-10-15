@@ -649,9 +649,24 @@ export default mixins(
 				}
 				this.zoomToFit();
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+				await this.loadExecutions();
 				this.stopLoading();
 				return data;
 			},
+			async loadExecutions(): Promise<void> {
+			if (!this.currentWorkflow) {
+				return;
+			}
+			try {
+					const workflowExecutions: IExecutionsSummary[] = await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { finished: true, status: '' });
+					this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.refreshData.title'),
+				);
+			}
+		},
 			touchTap(e: MouseEvent | TouchEvent) {
 				if (this.isTouchDevice) {
 					this.mouseDown(e);

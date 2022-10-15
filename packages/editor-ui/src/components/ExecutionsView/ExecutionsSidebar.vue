@@ -1,12 +1,12 @@
 <template>
-	<div v-if="statusFilterApplied || executions.length > 0" :class="['executions-sidebar', $style.container]">
+	<div :class="['executions-sidebar', $style.container]">
 		<div :class="$style.heading">
 				<n8n-heading tag="h2" size="medium" color="text-dark">
 				{{ $locale.baseText('generic.executions') }}
 			</n8n-heading>
 		</div>
 		<div :class="$style.controls">
-			<el-checkbox v-model="autoRefresh" @change="handleAutoRefreshToggle">{{ $locale.baseText('executionsList.autoRefresh') }}</el-checkbox>
+			<el-checkbox v-model="autoRefresh" @change="onAutoRefreshToggle">{{ $locale.baseText('executionsList.autoRefresh') }}</el-checkbox>
 			<n8n-popover trigger="click" >
 				<template slot="reference">
 					<div :class="$style.filterButton">
@@ -31,7 +31,7 @@
 							ref="typeInput"
 							:class="$style['type-input']"
 							:placeholder="$locale.baseText('generic.any')"
-							@change="setExecutions"
+							@change="onFilterChange"
 						>
 							<n8n-option
 								v-for="item in executionStatuses"
@@ -68,8 +68,7 @@
 				v-for="execution in executions"
 				:key="execution.id"
 				:execution="execution"
-				:highlight="highlightExecutionIds.includes(execution.id)"
-				@refresh="loadAutoRefresh"
+				@refresh="onRefresh"
 			/>
 		</div>
 		<div :class="$style.infoAccordion">
@@ -79,32 +78,39 @@
 </template>
 
 <script lang="ts">
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import mixins from 'vue-typed-mixins';
-import { executionHelpers } from '../mixins/executionsHelpers';
 import ExecutionCard from '@/components/ExecutionsView/ExecutionCard.vue';
 import ExecutionsInfoAccordion from '@/components/ExecutionsView/ExecutionsInfoAccordion.vue';
 import { VIEWS } from '../../constants';
-import { IExecutionsSummary } from '@/Interface';
 import { range as _range } from 'lodash';
+import { IExecutionsSummary } from "@/Interface";
 import { Route } from 'vue-router';
+import Vue from 'vue';
+import { PropType } from 'vue/types/v3-component-props';
 
-export default mixins(executionHelpers).extend({
+export default Vue.extend({
 	name: 'executions-sidebar',
 	components: {
 		ExecutionCard,
 		ExecutionsInfoAccordion,
 	},
+	props: {
+		executions: {
+			type: Array as PropType<IExecutionsSummary[]>,
+			required: true,
+		},
+		loading: {
+			type: Boolean,
+			default: true,
+		},
+	},
 	data() {
 		return {
 			VIEWS,
-			loading: true,
 			filter: {
 				status: '',
 			},
 			autoRefresh: true,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
-			highlightExecutionIds: [] as string[],
 		};
 	},
 	computed: {
@@ -121,16 +127,6 @@ export default mixins(executionHelpers).extend({
 		},
 	},
 	watch: {
-		executions(newValue) {
-			const loadedExecutionId = this.$route.params.executionId;
-			if (!this.activeExecution && loadedExecutionId) {
-				const execution = this.$store.getters['workflows/getExecutionDataById'](loadedExecutionId);
-				if (execution) {
-					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
-				}
-			}
-			this.stopLoading();
-		},
 		$route (to: Route, from: Route) {
 			if (from.name === VIEWS.EXECUTION_PREVIEW && to.name === VIEWS.EXECUTION_HOME) {
 				// Skip parent route when navigating through executions with back button
@@ -138,15 +134,9 @@ export default mixins(executionHelpers).extend({
 			}
     },
 	},
-	async mounted() {
-		if (!this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-			this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
-			this.stopLoading();
-		} else {
-			await this.setExecutions();
-		}
+	mounted() {
 		if (this.autoRefresh) {
-			this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4000);
+			// this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4000);
 		}
 	},
 	beforeDestroy() {
@@ -156,117 +146,40 @@ export default mixins(executionHelpers).extend({
 		}
 	},
 	methods: {
-		handleAutoRefreshToggle(): void {
+		onRefresh (): void {
+			this.$emit('refresh');
+		},
+		onFilterChange (): void {
+			this.$emit('filterUpdated', this.prepareFilter());
+		},
+		reloadExecutions (): void {
+			this.$emit('reloadExecutions');
+		},
+		onAutoRefreshToggle (): void {
 			if (this.autoRefreshInterval) {
 				// Clear any previously existing intervals (if any - there shouldn't)
 				clearInterval(this.autoRefreshInterval);
 				this.autoRefreshInterval = undefined;
 			}
 			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
+				// this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
 			}
 		},
-		async resetFilters(): Promise<void> {
+		async resetFilters (): Promise<void> {
 			this.filter.status = '';
-			await this.setExecutions();
+			this.$emit('filterUpdated', this.prepareFilter());
+			// await this.setExecutions();
 		},
-		prepareFilter(): object {
+		prepareFilter (): object {
 			return {
 				finished: this.filter.status !== 'running',
 				status: this.filter.status,
 			};
 		},
-		async setExecutions(): Promise<void> {
-			this.loading = true;
-			const workflowExecutions = await this.loadExecutions();
-			this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
-			this.setActiveExecution();
-			if (this.executions.length > 0) {
-				this.$router.push({
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
-				}).catch(()=>{});;
-			}
-			this.stopLoading();
-		},
-		async loadAutoRefresh(): Promise<void> {
-			this.highlightExecutionIds = [];
-			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
-			const fetchedExecutions: IExecutionsSummary[] = await this.loadExecutions();
-			let existingExecutions: IExecutionsSummary[] = [ ...this.executions ];
-			const alreadyPresentExecutionIds = existingExecutions.map(exec => parseInt(exec.id, 10));
-			let lastId = 0;
-			const gaps = [] as number[];
-
-			for(let i = fetchedExecutions.length - 1; i >= 0; i--) {
-				const currentItem = fetchedExecutions[i];
-				const currentId = parseInt(currentItem.id, 10);
-				if (lastId !== 0 && isNaN(currentId) === false) {
-					if (currentId - lastId > 1) {
-						const range = _range(lastId + 1, currentId);
-						gaps.push(...range);
-					}
-				}
-				lastId = parseInt(currentItem.id, 10) || 0;
-
-				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
-				if (executionIndex !== -1) {
-					const existingExecution = existingExecutions.find(ex => ex.id === currentItem.id);
-					const existingStillRunning = existingExecution && existingExecution.finished === false || existingExecution?.stoppedAt === undefined;
-					const currentFinished =  currentItem.finished === true || currentItem.stoppedAt !== undefined;
-
-					if (existingStillRunning && currentFinished) {
-						existingExecutions[executionIndex] = currentItem;
-						this.highlightExecutionIds.push(currentItem.id);
-					}
-					continue;
-				}
-
-				let j;
-				for (j = existingExecutions.length - 1; j >= 0; j--) {
-					if (currentId < parseInt(existingExecutions[j].id, 10)) {
-						existingExecutions.splice(j + 1, 0, currentItem);
-						break;
-					}
-				}
-				if (j === -1) {
-					existingExecutions.unshift(currentItem);
-				}
-			}
-
-			existingExecutions = existingExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
-			this.$store.commit('workflows/setCurrentWorkflowExecutions', existingExecutions);
-			this.setActiveExecution();
-		},
-		async loadExecutions(): Promise<IExecutionsSummary[]> {
-			if (!this.currentWorkflow) {
-				return [];
-			}
-			try {
-				const executions: IExecutionsSummary[] =
-					await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', this.prepareFilter());
-				return executions;
-			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('executionsList.showError.refreshData.title'),
-				);
-				return [];
-			}
-		},
-		setActiveExecution(): void {
-			const activeExecutionId = this.$route.params.executionId;
-			if (activeExecutionId) {
-				const execution = this.$store.getters['workflows/getExecutionDataById'](activeExecutionId);
-				if (execution) {
-					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
-				}
-			}
-		},
-		stopLoading(): void {
-			this.loading = false;
-			this.$emit('loaded', this.executions.length);
-		},
+		// stopLoading(): void {
+		// 	this.loading = false;
+		// 	this.$emit('loaded', this.executions.length);
+		// },
 	},
 });
 </script>

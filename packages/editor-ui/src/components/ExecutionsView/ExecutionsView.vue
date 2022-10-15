@@ -1,7 +1,14 @@
 <template>
 	<div :class="$style.container">
-		<executions-sidebar @loaded="onExecutionsLoaded"/>
-		<div :class="$style.content" v-if="!loading">
+		<executions-sidebar
+			v-if="showSidebar"
+			:executions="executions"
+			:loading="loading"
+			@reloadExecutions="setExecutions"
+			@filterUpdated="onFilterUpdated"
+			@refresh="loadAutoRefresh"
+		/>
+		<div :class="$style.content" v-if="!hidePreview">
 				<router-view name="executionPreview" />
 		</div>
 	</div>
@@ -10,15 +17,16 @@
 <script lang="ts">
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS, WEBHOOK_NODE_TYPE } from '@/constants';
-import { INodeUi, ITag, IWorkflowDb } from '@/Interface';
+import { IExecutionsSummary, INodeUi, ITag, IWorkflowDb } from '@/Interface';
 import { IConnection, IConnections, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { restApi } from '../mixins/restApi';
 import { showMessage } from '../mixins/showMessage';
 import { v4 as uuid } from 'uuid';
 import { Route } from 'vue-router';
+import { executionHelpers } from '../mixins/executionsHelpers';
 
-export default mixins(restApi, showMessage).extend({
+export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'executions-page',
 	components: {
 		ExecutionsSidebar,
@@ -26,21 +34,58 @@ export default mixins(restApi, showMessage).extend({
 	data() {
 		return {
 			loading: true,
+			filter: { finished: true, status: '' },
 		};
 	},
 	computed: {
+		hidePreview (): boolean {
+			return this.loading || (this.executions.length === 0 && this.filterApplied);
+		},
+		showSidebar (): boolean {
+			if (this.executions.length === 0) {
+				return this.filterApplied;
+			}
+			return true;
+		},
+		filterApplied (): boolean {
+			return this.filter.status !== '';
+		},
 		workflowDataNotLoaded (): boolean {
 			return this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID && this.$store.getters.workflowName === '';
 		},
 	},
 	watch:{
+		executions(newValue: IExecutionsSummary[]) {
+			if (newValue.length > 0) {
+				const loadedExecutionId = this.$route.params.executionId;
+				if (!this.activeExecution && loadedExecutionId) {
+					const execution = this.$store.getters['workflows/getExecutionDataById'](loadedExecutionId);
+					if (execution) {
+						this.$store.commit('workflows/setActiveWorkflowExecution', execution);
+					}
+				}
+			}
+		},
     $route (to: Route, from: Route) {
 			if (to.params.name !== from.params.name) {
 				this.$store.commit('ui/setNodeViewInitialized', false);
 			}
+			if (to.params.executionId) {
+				const execution = this.$store.getters['workflows/getExecutionDataById'](to.params.executionId);
+				if (execution) {
+					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
+				}
+		}
     },
 	},
 	async mounted() {
+		this.loading = true;
+		if (!this.currentWorkflow || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
+		} else {
+			await this.setExecutions();
+		}
+		this.loading = false;
 		if (this.workflowDataNotLoaded || (this.$route.params.name !== this.$store.getters.workflowId)) {
 			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
 				await this.$store.dispatch('nodeTypes/getNodeTypes');
@@ -52,8 +97,94 @@ export default mixins(restApi, showMessage).extend({
 		}
 	},
 	methods: {
-		onExecutionsLoaded(executionCount: number): void {
+		onFilterUpdated (newFilter: { finished: boolean, status: string }): void {
+			this.filter = newFilter;
+			this.setExecutions();
+		},
+		async setExecutions(): Promise<void> {
+			this.loading = true;
+			const workflowExecutions = await this.loadExecutions();
+			this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
+			if (workflowExecutions.length > 0) {
+				this.setActiveExecution();
+				this.$router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: this.currentWorkflow, executionId: workflowExecutions[0].id },
+				}).catch(()=>{});;
+			}
 			this.loading = false;
+		},
+		async loadAutoRefresh(): Promise<void> {
+			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
+			const fetchedExecutions: IExecutionsSummary[] = await this.loadExecutions();
+			let existingExecutions: IExecutionsSummary[] = [ ...this.executions ];
+			const alreadyPresentExecutionIds = existingExecutions.map(exec => parseInt(exec.id, 10));
+			let lastId = 0;
+			const gaps = [] as number[];
+
+			for(let i = fetchedExecutions.length - 1; i >= 0; i--) {
+				const currentItem = fetchedExecutions[i];
+				const currentId = parseInt(currentItem.id, 10);
+				if (lastId !== 0 && isNaN(currentId) === false) {
+					if (currentId - lastId > 1) {
+						const range = _range(lastId + 1, currentId);
+						gaps.push(...range);
+					}
+				}
+				lastId = parseInt(currentItem.id, 10) || 0;
+
+				const executionIndex = alreadyPresentExecutionIds.indexOf(currentId);
+				if (executionIndex !== -1) {
+					const existingExecution = existingExecutions.find(ex => ex.id === currentItem.id);
+					const existingStillRunning = existingExecution && existingExecution.finished === false || existingExecution?.stoppedAt === undefined;
+					const currentFinished =  currentItem.finished === true || currentItem.stoppedAt !== undefined;
+
+					if (existingStillRunning && currentFinished) {
+						existingExecutions[executionIndex] = currentItem;
+					}
+					continue;
+				}
+
+				let j;
+				for (j = existingExecutions.length - 1; j >= 0; j--) {
+					if (currentId < parseInt(existingExecutions[j].id, 10)) {
+						existingExecutions.splice(j + 1, 0, currentItem);
+						break;
+					}
+				}
+				if (j === -1) {
+					existingExecutions.unshift(currentItem);
+				}
+			}
+
+			existingExecutions = existingExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
+			this.$store.commit('workflows/setCurrentWorkflowExecutions', existingExecutions);
+			this.setActiveExecution();
+		},
+		async loadExecutions(): Promise<IExecutionsSummary[]> {
+			if (!this.currentWorkflow) {
+				return [];
+			}
+			try {
+				const executions: IExecutionsSummary[] =
+					await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', this.filter);
+				return executions;
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.refreshData.title'),
+				);
+				return [];
+			}
+		},
+		setActiveExecution(): void {
+			const activeExecutionId = this.$route.params.executionId;
+			if (activeExecutionId) {
+				const execution = this.$store.getters['workflows/getExecutionDataById'](activeExecutionId);
+				if (execution) {
+					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
+				}
+			}
 		},
 		async openWorkflow(workflowId: string): Promise<void> {
 			await this.loadActiveWorkflows();
