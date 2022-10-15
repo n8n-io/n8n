@@ -57,11 +57,11 @@
 import {getNewNodePosition, NODE_SIZE} from '@/views/canvasHelpers';
 import Vue from 'vue';
 
-import NodeIcon from '../NodeIcon.vue';
-import TriggerIcon from '../TriggerIcon.vue';
+import NodeIcon from '../../NodeIcon.vue';
+import TriggerIcon from '../../TriggerIcon.vue';
 
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '../../constants';
-import { isCommunityPackageName } from '../helpers';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
+import { isCommunityPackageName } from '../../helpers';
 
 Vue.component('NodeIcon', NodeIcon);
 Vue.component('TriggerIcon', TriggerIcon);

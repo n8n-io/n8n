@@ -188,12 +188,19 @@ export class WorkflowExecute {
 					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
 						connection = connections[inputIndex];
 
-						if (workflow.getNode(connection.node)?.disabled) continue;
+						const node = workflow.getNode(connection.node);
 
-						incomingData.push(
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-							runData[connection.node][runIndex].data![connection.type][connection.index]!,
-						);
+						if (node?.disabled) continue;
+
+						if (node && pinData && pinData[node.name]) {
+							incomingData.push(pinData[node.name]);
+						} else {
+							incomingData.push(
+								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+								runData[connection.node][runIndex].data![connection.type][connection.index]!,
+							);
+						}
+
 						incomingSourceData.main.push({
 							previousNode: connection.node,
 						});

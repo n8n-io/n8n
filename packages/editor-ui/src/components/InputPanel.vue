@@ -14,6 +14,7 @@
 		:showMappingHint="draggableHintShown"
 		:distanceFromActive="currentNodeDepth"
 		paneType="input"
+		@itemHover="$emit('itemHover', $event)"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"

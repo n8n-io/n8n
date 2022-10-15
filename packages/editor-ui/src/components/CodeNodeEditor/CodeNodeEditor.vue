@@ -1,5 +1,5 @@
 <template>
-	<div ref="codeNodeEditor" />
+	<div ref="codeNodeEditor" class="ph-no-capture" />
 </template>
 
 <script lang="ts">
@@ -12,11 +12,11 @@ import { javascript } from '@codemirror/lang-javascript';
 import { baseExtensions } from './baseExtensions';
 import { linterExtension } from './linter';
 import { completerExtension } from './completer';
-import { workflowHelpers } from '../mixins/workflowHelpers';
-import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_EDITOR_THEME } from './theme';
-import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
+import { workflowHelpers } from '../mixins/workflowHelpers'; // for json field completions
+import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_TYPE } from '@/constants';
+import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'code-node-editor',
@@ -42,8 +42,8 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 	},
 	watch: {
 		mode() {
-			this.refreshPlaceholder();
 			this.reloadLinter();
+			this.refreshPlaceholder();
 		},
 	},
 	computed: {
@@ -66,6 +66,13 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	methods: {
+		reloadLinter() {
+			if (!this.editor) return;
+
+			this.editor.dispatch({
+				effects: this.linterCompartment.reconfigure(this.linterExtension()),
+			});
+		},
 		refreshPlaceholder() {
 			if (!this.editor) return;
 
@@ -74,13 +81,6 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 					changes: { from: 0, to: this.content.length, insert: this.placeholder },
 				});
 			}
-		},
-		reloadLinter() {
-			if (!this.editor) return;
-
-			this.editor.dispatch({
-				effects: this.linterCompartment.reconfigure(this.linterExtension()),
-			});
 		},
 		highlightLine(line: number | 'final') {
 			if (!this.editor) return;
@@ -96,6 +96,38 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				selection: { anchor: this.editor.state.doc.line(line).from },
 			});
 		},
+		trackCompletion(viewUpdate: ViewUpdate) {
+			const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
+
+			if (!completionTx) return;
+
+			try {
+				// @ts-ignore - undocumented fields
+				const { fromA, toB } = viewUpdate?.changedRanges[0];
+				const full = this.content.slice(fromA, toB);
+				const lastDotIndex = full.lastIndexOf('.');
+
+				let context = null;
+				let insertedText = null;
+
+				if (lastDotIndex === -1) {
+					context = '';
+					insertedText = full;
+				} else {
+					context = full.slice(0, lastDotIndex);
+					insertedText = full.slice(lastDotIndex + 1);
+				}
+
+				this.$telemetry.track('User autocompleted code', {
+					instance_id: this.$store.getters.instanceId,
+					node_type: CODE_NODE_TYPE,
+					field_name: this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
+					field_type: 'code',
+					context,
+					inserted_text: insertedText,
+				});
+			} catch (_) {}
+		},
 	},
 	destroyed() {
 		codeNodeEditorEventBus.$off('error-line-number', this.highlightLine);
@@ -109,30 +141,13 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			EditorView.updateListener.of((viewUpdate: ViewUpdate) => {
 				if (!viewUpdate.docChanged) return;
 
-				const completionTx = viewUpdate.transactions.find((tx) => tx.isUserEvent('input.complete'));
-
-				if (completionTx) {
-					try {
-						// @ts-ignore - undocumented field
-						const { fromA, toA, toB } = viewUpdate?.changedRanges[0];
-						const context = this.content.slice(fromA, toA);
-						const insertedText = this.content.slice(toA, toB);
-
-						this.$telemetry.track('User autocompleted code', {
-							instance_id: this.$store.getters.instanceId,
-							node_type: CODE_NODE_TYPE,
-							field_name: 'jsCode',
-							field_type: 'code',
-							context,
-							inserted_text: insertedText,
-						});
-					} catch (_) {}
-				}
+				this.trackCompletion(viewUpdate);
 
 				this.$emit('valueChanged', this.content);
 			}),
 		];
 
+		// empty on first load, default param value
 		if (this.jsCode === '') {
 			this.$emit('valueChanged', this.placeholder);
 		}

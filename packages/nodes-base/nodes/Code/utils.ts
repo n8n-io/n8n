@@ -1,7 +1,5 @@
 import type { IDataObject } from 'n8n-workflow';
 
-export const deepCopy = <T>(toCopy: T): T => JSON.parse(JSON.stringify(toCopy));
-
 /**
  * Stringify any non-standard JS objects (e.g. `Date`, `RegExp`) inside output items at any depth.
  */

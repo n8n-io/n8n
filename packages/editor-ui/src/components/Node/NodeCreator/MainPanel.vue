@@ -67,7 +67,7 @@ import SearchBar from './SearchBar.vue';
 import SubcategoryPanel from './SubcategoryPanel.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps } from '@/Interface';
 import { ALL_NODE_FILTER, CORE_NODES_CATEGORY, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
-import SlideTransition from '../transitions/SlideTransition.vue';
+import SlideTransition from '../../transitions/SlideTransition.vue';
 import { matchesNodeType, matchesSelectType } from './helpers';
 
 export default mixins(externalHooks).extend({

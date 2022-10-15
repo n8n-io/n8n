@@ -6,7 +6,7 @@ import {
 } from 'n8n-workflow';
 import { getSandboxContext, Sandbox } from './Sandbox';
 import { getSandboxContextPython, SandboxPython } from './SandboxPython';
-import { deepCopy, standardizeOutput } from './utils';
+import { standardizeOutput } from './utils';
 import type { CodeNodeMode } from './utils';
 
 export class Code implements INodeType {
@@ -82,7 +82,7 @@ export class Code implements INodeType {
 			},
 			{
 				displayName:
-					'Type <code>$</code> for a list of special vars/functions. Debug using <code>console.log()</code> statements and viewing their output in the browser console. <a>More info</a>',
+					'Type <code>$</code> for a list of <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">special vars/methods</a>. Debug by using <code>console.log()</code> statements and viewing their output in the browser console.',
 				name: 'notice',
 				type: 'notice',
 				displayOptions: {
@@ -115,7 +115,7 @@ export class Code implements INodeType {
 			},
 			{
 				displayName:
-					'Type <code>_</code> for a list of special vars/functions. Debug using <code>print()</code> statements and viewing their output in the browser console. <a>More info</a>',
+					'Type <code>_</code> for a list of <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">special vars/methods</a>. Debug by using <code>print()</code> statements and viewing their output in the browser console.',
 				name: 'notice',
 				type: 'notice',
 				displayOptions: {
@@ -215,9 +215,7 @@ export class Code implements INodeType {
 		// ----------------------------------
 
 		if (nodeMode === 'runOnceForAllItems') {
-			items = deepCopy(items);
-
-			const jsCode = this.getNodeParameter('jsCode', 0) as string;
+			const jsCodeAllItems = this.getNodeParameter('jsCode', 0) as string;
 
 			const context = getSandboxContext.call(this);
 			const sandbox = new Sandbox(context, workflowMode, nodeMode);
@@ -227,7 +225,7 @@ export class Code implements INodeType {
 			}
 
 			try {
-				items = await sandbox.runCode(jsCode);
+				items = await sandbox.runCode(jsCodeAllItems);
 			} catch (error) {
 				if (!this.continueOnFail()) return Promise.reject(error);
 				items = [{ json: { error: error.message } }];
@@ -247,9 +245,9 @@ export class Code implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		for (let index = 0; index < items.length; index++) {
-			let item = deepCopy(items[index]);
+			let item = items[index];
 
-			const jsCode = this.getNodeParameter('jsCode', index) as string;
+			const jsCodeEachItem = this.getNodeParameter('jsCode', index) as string;
 
 			const context = getSandboxContext.call(this, index);
 			const sandbox = new Sandbox(context, workflowMode, nodeMode);
@@ -259,7 +257,7 @@ export class Code implements INodeType {
 			}
 
 			try {
-				item = await sandbox.runCode(jsCode, index);
+				item = await sandbox.runCode(jsCodeEachItem, index);
 			} catch (error) {
 				if (!this.continueOnFail()) return Promise.reject(error);
 				returnData.push({ json: { error: error.message } });
