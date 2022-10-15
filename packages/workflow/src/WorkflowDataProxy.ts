@@ -589,16 +589,6 @@ export class WorkflowDataProxy {
 	getDataProxy(): IWorkflowDataProxyData {
 		const that = this;
 
-		const isScriptingNode = (nodeName: string) => {
-			const node = that.workflow.getNode(nodeName);
-			return (
-				node &&
-				['n8n-nodes-base.function', 'n8n-nodes-base.functionItem', 'n8n-nodes-base.code'].includes(
-					node.type,
-				)
-			);
-		};
-
 		const getNodeOutput = (nodeName?: string, branchIndex?: number, runIndex?: number) => {
 			let executionData: INodeExecutionData[];
 
@@ -912,10 +902,6 @@ export class WorkflowDataProxy {
 			return taskData.data!.main[previousNodeOutput]![pairedItem.item];
 		};
 
-		const connectionInputData = isScriptingNode(that.activeNodeName)
-			? (JSON.parse(JSON.stringify(that.connectionInputData)) as object[])
-			: that.connectionInputData;
-
 		const base = {
 			$: (nodeName: string) => {
 				if (!nodeName) {
@@ -1051,7 +1037,7 @@ export class WorkflowDataProxy {
 					},
 					get(target, property, receiver) {
 						if (property === 'item') {
-							return connectionInputData[that.itemIndex];
+							return that.connectionInputData[that.itemIndex];
 						}
 						if (property === 'first') {
 							return (...args: unknown[]) => {
@@ -1059,9 +1045,11 @@ export class WorkflowDataProxy {
 									throw createExpressionError('$input.first() should have no arguments');
 								}
 
-								if (!connectionInputData[0]) return undefined;
-
-								return connectionInputData[0];
+								const result = that.connectionInputData;
+								if (result[0]) {
+									return result[0];
+								}
+								return undefined;
 							};
 						}
 						if (property === 'last') {
@@ -1070,20 +1058,20 @@ export class WorkflowDataProxy {
 									throw createExpressionError('$input.last() should have no arguments');
 								}
 
-								if (
-									!connectionInputData.length ||
-									!connectionInputData[connectionInputData.length - 1]
-								)
-									return undefined;
-
-								return connectionInputData[connectionInputData.length - 1];
+								const result = that.connectionInputData;
+								if (result.length && result[result.length - 1]) {
+									return result[result.length - 1];
+								}
+								return undefined;
 							};
 						}
 						if (property === 'all') {
 							return () => {
-								if (!connectionInputData.length) return [];
-
-								return connectionInputData;
+								const result = that.connectionInputData;
+								if (result.length) {
+									return result;
+								}
+								return [];
 							};
 						}
 

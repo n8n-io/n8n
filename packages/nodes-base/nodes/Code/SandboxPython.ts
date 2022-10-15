@@ -37,12 +37,27 @@ export class SandboxPython {
 	}
 
 	async runCodeInPython(context: ReturnType<typeof getSandboxContextPython>) {
-		const runCode = `def main():
+		const runCode = `
+def cleanup_proxy_data(data):
+  if type(data) is list:
+    for id, value in enumerate(data):
+      if getattr(value, '__module__', None) == 'proxy':
+        data[id] = value.valueOf()
+  elif type(data) is dict:
+    for key in data:
+      if getattr(data[key],'__module__', None) == 'proxy':
+        data[key] = data[key].valueOf()
+      else:
+        cleanup_proxy_data(data[key])
+def main():
 ${this.code
 	.split('\n')
 	.map((line) => '  ' + line)
 	.join('\n')}
-responseCallback(main())`;
+responseValue = main()
+cleanup_proxy_data(responseValue)
+responseCallback(responseValue)
+`;
 
 		let executionResult = undefined;
 
@@ -104,8 +119,8 @@ responseCallback(main())`;
 			for (const item of executionResult) {
 				if (item.json !== undefined && !isObject(item.json)) {
 					throw new ValidationError({
-						message: "A 'json' property isn't an object",
-						description: "In the returned data, every key named 'json' must point to an object",
+						message: "A 'json' property isn't a dictionary",
+						description: "In the returned data, every key named 'json' must point to a dictionary",
 						itemIndex: this.itemIndex,
 					});
 				}
