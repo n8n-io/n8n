@@ -8,25 +8,30 @@
 		</n8n-text>
 	</div>
 	<div v-else :class="$style.previewContainer">
-		<div :class="$style.executionDetails" v-if="activeExecution">
-			<n8n-text size="medium" color="text-base" :bold="true">{{ executionUIDetails.startTime }}</n8n-text><br>
-			<n8n-spinner v-if="executionUIDetails.name === 'running'" size="small" :class="[$style.spinner, 'mr-4xs']"/>
-			<n8n-text size="small" :class="[$style.status, $style[executionUIDetails.name]]">{{ executionUIDetails.label }}</n8n-text>
-			<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="small">
-				{{ $locale.baseText('executionDetails.runningTimeRunning', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
-			</n8n-text>
-			<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="small">
-				{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
-			</n8n-text>
-			<br><n8n-text v-if="activeExecution.mode === 'retry'" color="text-base" size= "small">
-				{{ $locale.baseText('executionDetails.retry') }}
-				<router-link
-					:class="$style.executionLink"
-					:to="{ name: VIEWS.EXECUTION_PREVIEW, params: { workflowId: activeExecution.workflowId, executionId: activeExecution.retryOf }}"
-				>
-					#{{ activeExecution.retryOf }}
-				</router-link>
-			</n8n-text>
+		<div :class="{[$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }" v-if="activeExecution">
+			<div>
+				<n8n-text size="large" color="text-base" :bold="true">{{ executionUIDetails.startTime }}</n8n-text><br>
+				<n8n-spinner v-if="executionUIDetails.name === 'running'" size="small" :class="[$style.spinner, 'mr-4xs']"/>
+				<n8n-text size="medium" :class="[$style.status, $style[executionUIDetails.name]]">{{ executionUIDetails.label }}</n8n-text>
+				<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="medium">
+					{{ $locale.baseText('executionDetails.runningTimeRunning', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
+				</n8n-text>
+				<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="medium">
+					{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
+				</n8n-text>
+				<br><n8n-text v-if="activeExecution.mode === 'retry'" color="text-base" size= "medium">
+					{{ $locale.baseText('executionDetails.retry') }}
+					<router-link
+						:class="$style.executionLink"
+						:to="{ name: VIEWS.EXECUTION_PREVIEW, params: { workflowId: activeExecution.workflowId, executionId: activeExecution.retryOf }}"
+					>
+						#{{ activeExecution.retryOf }}
+					</router-link>
+				</n8n-text>
+			</div>
+			<div>
+				<n8n-icon-button :title="$locale.baseText('executionDetails.deleteExecution')" icon="trash" size="large" type="tertiary" @click="onDeleteExecution" />
+			</div>
 		</div>
 		<workflow-preview mode="execution" loaderType="spinner" :executionId="executionId"/>
 	</div>
@@ -65,6 +70,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
+		sidebarCollapsed(): boolean {
+			return this.$store.getters['ui/sidebarMenuCollapsed'];
+		},
 	},
 	methods: {
 		syncActiveExecution() : void {
@@ -72,6 +80,22 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 			if (execution) {
 				this.$store.commit('workflows/setActiveWorkflowExecution', execution);
 			}
+		},
+		async onDeleteExecution(): Promise<void> {
+			const deleteConfirmed = await this.confirmMessage(
+				this.$locale.baseText('executionDetails.confirmMessage.message'),
+				this.$locale.baseText('executionDetails.confirmMessage.headline'),
+				'warning',
+				this.$locale.baseText('executionDetails.confirmMessage.confirmButtonText'),
+				'',
+			);
+
+			if (!deleteConfirmed) {
+				return;
+			}
+
+			console.log('DELETE IT!');
+
 		},
 	},
 });
@@ -87,6 +111,14 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 .executionDetails {
 	position: absolute;
 	padding: var(--spacing-m);
+	width: calc(100% - 510px);
+	display: flex;
+	justify-content: space-between;
+	transition: all 150ms ease-in-out;
+
+	&.sidebarCollapsed {
+		width: calc(100% - 375px);
+	}
 }
 
 .unknown, .running, .spinner { color: var(--color-warning); }

@@ -5,10 +5,10 @@
 				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ $locale.baseText('executionsLandingPage.emptyState.noTrigger.heading') }}
 				</n8n-heading>
-				<n8n-text size="small">
+				<n8n-text size="medium">
 					{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
 				</n8n-text>
-				<n8n-button class="mt-l" type="tertiary" @click="onSetupTriggerButtonClick">
+				<n8n-button class="mt-l" type="tertiary" size="large" @click="onSetupTriggerButtonClick">
 					{{ $locale.baseText('executionsLandingPage.emptyState.noTrigger.buttonText') }}
 				</n8n-button>
 			</div>
@@ -16,10 +16,10 @@
 				<n8n-heading tag="h2" size="xlarge" color="text-dark" class="mb-2xs">
 					{{ $locale.baseText('executionsLandingPage.emptyState.heading') }}
 				</n8n-heading>
-				<n8n-text size="small">
+				<n8n-text size="medium">
 					{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
 				</n8n-text>
-				<n8n-button class="mt-l" type="tertiary" @click="onExecuteWorkflowButtonClick">
+				<n8n-button class="mt-l" type="tertiary" size="large" @click="onExecuteWorkflowButtonClick">
 					{{ $locale.baseText('nodeView.runButtonText.executeWorkflow') }}
 				</n8n-button>
 				<executions-info-accordion />
