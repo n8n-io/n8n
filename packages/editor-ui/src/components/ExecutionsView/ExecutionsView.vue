@@ -9,7 +9,7 @@
 			@refresh="loadAutoRefresh"
 		/>
 		<div :class="$style.content" v-if="!hidePreview">
-				<router-view name="executionPreview" />
+				<router-view name="executionPreview" @deleteCurrentExecution="onDeleteCurrentExecution"/>
 		</div>
 	</div>
 </template>
@@ -25,6 +25,7 @@ import { showMessage } from '../mixins/showMessage';
 import { v4 as uuid } from 'uuid';
 import { Route } from 'vue-router';
 import { executionHelpers } from '../mixins/executionsHelpers';
+import { range as _range } from 'lodash';
 
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'executions-page',
@@ -97,6 +98,26 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		}
 	},
 	methods: {
+		async onDeleteCurrentExecution (): void {
+			this.loading = true;
+			try {
+				await this.restApi().deleteExecutions({ ids: [ this.$route.params.executionId ] });
+				await this.setExecutions();
+			} catch (error) {
+				this.loading = false;
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.handleDeleteSelected.title'),
+				);
+				return;
+			}
+			this.loading = false;
+
+			this.$showMessage({
+				title: this.$locale.baseText('executionsList.showMessage.handleDeleteSelected.title'),
+				type: 'success',
+			});
+		},
 		onFilterUpdated (newFilter: { finished: boolean, status: string }): void {
 			this.filter = newFilter;
 			this.setExecutions();

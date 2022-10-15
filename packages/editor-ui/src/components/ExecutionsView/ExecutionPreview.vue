@@ -72,13 +72,10 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 				this.$locale.baseText('executionDetails.confirmMessage.confirmButtonText'),
 				'',
 			);
-
 			if (!deleteConfirmed) {
 				return;
 			}
-
-			console.log('DELETE IT!');
-
+			this.$emit('deleteCurrentExecution');
 		},
 	},
 });

@@ -136,7 +136,7 @@ export default Vue.extend({
 	},
 	mounted() {
 		if (this.autoRefresh) {
-			// this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4000);
+			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
 		}
 	},
 	beforeDestroy() {
@@ -162,13 +162,12 @@ export default Vue.extend({
 				this.autoRefreshInterval = undefined;
 			}
 			if (this.autoRefresh) {
-				// this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
+				this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4 * 1000); // refresh data every 4 secs
 			}
 		},
 		async resetFilters (): Promise<void> {
 			this.filter.status = '';
 			this.$emit('filterUpdated', this.prepareFilter());
-			// await this.setExecutions();
 		},
 		prepareFilter (): object {
 			return {
@@ -176,10 +175,6 @@ export default Vue.extend({
 				status: this.filter.status,
 			};
 		},
-		// stopLoading(): void {
-		// 	this.loading = false;
-		// 	this.$emit('loaded', this.executions.length);
-		// },
 	},
 });
 </script>
