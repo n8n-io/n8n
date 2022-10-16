@@ -18,7 +18,7 @@ import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, STICKY_NODE_TYPE, VIEWS, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { INodeUi, ITabBarItem } from '@/Interface';
+import { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { Route } from 'vue-router';
 
@@ -66,6 +66,9 @@ export default mixins(
 			onWorkflowPage(): boolean {
 				return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 			},
+			activeExecution(): IExecutionsSummary {
+				return this.$store.getters['workflows/getActiveWorkflowExecution'];
+			},
 		},
 		mounted() {
 			this.syncTabsWithRoute(this.$route);
@@ -107,7 +110,14 @@ export default mixins(
 						break;
 					case MAIN_HEADER_TABS.EXECUTIONS:
 						this.workflowToReturnTo = this.currentWorkflow;
-						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow} });
+						if (this.activeExecution) {
+							this.$router.push({
+								name: VIEWS.EXECUTION_PREVIEW,
+								params: { name: this.currentWorkflow, executionId: this.activeExecution.id },
+							}).catch(()=>{});;
+						} else {
+							this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow} });
+						}
 						// this.modalBus.$emit('closeAll');
 						this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
 						break;

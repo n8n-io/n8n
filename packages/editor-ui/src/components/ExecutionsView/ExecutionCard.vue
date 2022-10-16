@@ -3,7 +3,7 @@
 		:class="{
 			['execution-card']: true,
 			[$style.executionCard]: true,
-			[$style.active]: activeExecution && execution.id === activeExecution.id,
+			[$style.active]: activeExecution && execution.id === $route.params.executionId,
 			[$style[executionUIDetails.name]]: true,
 			[$style.highlight]: highlight,
 		}"

@@ -657,11 +657,15 @@ export default mixins(
 			},
 			async loadExecutions(): Promise<void> {
 			if (!this.currentWorkflow) {
+				this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
 				return;
 			}
 			try {
 					const workflowExecutions: IExecutionsSummary[] = await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { finished: true, status: '' });
 					this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
+					if (workflowExecutions.length > 0) {
+						this.$store.commit('workflows/setActiveWorkflowExecution', workflowExecutions[0]);
+					}
 			} catch (error) {
 				this.$showError(
 					error,
