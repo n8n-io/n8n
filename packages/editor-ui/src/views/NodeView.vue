@@ -1988,6 +1988,7 @@ export default mixins(
 						}
 					}, 0);
 				}
+				await this.loadExecutions();
 				this.stopLoading();
 			},
 			async initView(): Promise<void> {
