@@ -85,7 +85,7 @@ import { range as _range } from 'lodash';
 import { IExecutionsSummary } from "@/Interface";
 import { Route } from 'vue-router';
 import Vue from 'vue';
-import { PropType } from 'vue/types/v3-component-props';
+import { PropType } from 'vue';
 
 export default Vue.extend({
 	name: 'executions-sidebar',

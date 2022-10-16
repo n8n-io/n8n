@@ -199,7 +199,7 @@ export default mixins(
 					(to.meta.keepWorkflowAlive === undefined || to.meta.keepWorkflowAlive !== true);
 				const initNodeView = !this.$store.getters['ui/isNodeViewInitialized'];
 
-				if (workflowChanged || shouldUpdateWorkflowData || initNodeView) {
+				if (this.currentWorkflow !== 'new' && (workflowChanged || shouldUpdateWorkflowData || initNodeView)) {
 					this.startLoading();
 					if(initNodeView) {
 						// this.$destroy();
@@ -240,7 +240,9 @@ export default mixins(
 			// Skip check if in the middle of template import or route is configured to keep node view alive
 			if (from.name === VIEWS.TEMPLATE_IMPORT || (to.meta && to.meta.keepWorkflowAlive === true)) {
 				const workflowChanged = from.params.name !== to.params.name;
-					if (workflowChanged) {
+				const isNewWorkflow = to.params.name === PLACEHOLDER_EMPTY_WORKFLOW_ID || to.params.name === 'new';
+
+				if (workflowChanged && !isNewWorkflow) {
 					await this.resetWorkspace();
 				}
 				next();
