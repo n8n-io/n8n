@@ -12,7 +12,7 @@
 			<div v-if="items.length > 0" :class="$style.accordionItems">
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
 					<n8n-icon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs"/>
-					<n8n-text size="small">{{ item.label }}</n8n-text>
+					<n8n-text size="small" color="text-base">{{ item.label }}</n8n-text>
 				</div>
 			</div>
 			<n8n-text color="text-base" size="small" align="left">

@@ -125,6 +125,7 @@ export default Vue.extend({
 		padding: var(--spacing-xs);
 		width: 100%;
 		user-select: none;
+		color: var(--color-text-base) !important;
 	}
 
 	// Accordion description
@@ -132,7 +133,7 @@ export default Vue.extend({
 		display: flex;
 		flex-direction: column;
 		width: 100%;
-		padding: var(--spacing-s) !important;
+		padding: 0 var(--spacing-s) var(--spacing-s) !important;
 
 		span { width: 100%; }
 	}

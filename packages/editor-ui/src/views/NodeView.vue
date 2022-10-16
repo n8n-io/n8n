@@ -658,6 +658,7 @@ export default mixins(
 			async loadExecutions(): Promise<void> {
 			if (!this.currentWorkflow) {
 				this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
+				this.$store.commit('workflows/setActiveWorkflowExecution', null);
 				return;
 			}
 			try {

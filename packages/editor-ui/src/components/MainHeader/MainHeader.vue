@@ -110,13 +110,14 @@ export default mixins(
 						break;
 					case MAIN_HEADER_TABS.EXECUTIONS:
 						this.workflowToReturnTo = this.currentWorkflow;
+						const routeWorkflowId = this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
 						if (this.activeExecution) {
 							this.$router.push({
 								name: VIEWS.EXECUTION_PREVIEW,
-								params: { name: this.currentWorkflow, executionId: this.activeExecution.id },
+								params: { name: routeWorkflowId, executionId: this.activeExecution.id },
 							}).catch(()=>{});;
 						} else {
-							this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow} });
+							this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: routeWorkflowId } });
 						}
 						// this.modalBus.$emit('closeAll');
 						this.activeHeaderTab = MAIN_HEADER_TABS.EXECUTIONS;
