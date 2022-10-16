@@ -1,5 +1,5 @@
 import { DeleteResult, EntityManager, In, Not } from 'typeorm';
-import { Db } from '..';
+import { Db, ICredentialsDb } from '..';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
@@ -93,5 +93,25 @@ export class EEWorkflowsService extends WorkflowsService {
 		delete workflow.shared;
 
 		return workflow;
+	}
+
+	static validateCredentialPermissionsToUser(
+		workflow: WorkflowEntity,
+		allowedCredentials: ICredentialsDb[],
+	) {
+		workflow.nodes.forEach((node) => {
+			if (!node.credentials) {
+				return;
+			}
+			Object.keys(node.credentials).forEach((credentialType) => {
+				const credentialId = parseInt(node.credentials?.[credentialType].id ?? '', 10);
+				const matchedCredential = allowedCredentials.find(
+					(credential) => credential.id === credentialId,
+				);
+				if (!matchedCredential) {
+					throw new Error('The workflow contains credentials that you do not have access to');
+				}
+			});
+		});
 	}
 }
