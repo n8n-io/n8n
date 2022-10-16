@@ -42,7 +42,7 @@
 		},
 		reload() {
 			if (window.top) {
-				window.top.location.reload()
+				window.top.location.reload();
 			} else {
 				window.location.reload();
 			}
