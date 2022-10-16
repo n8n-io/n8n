@@ -56,32 +56,21 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 	},
 	watch:{
-		executions(newValue: IExecutionsSummary[]) {
-			if (newValue.length > 0) {
-				const loadedExecutionId = this.$route.params.executionId;
-				if (!this.activeExecution && loadedExecutionId) {
-					const execution = this.$store.getters['workflows/getExecutionDataById'](loadedExecutionId);
-					if (execution) {
-						this.$store.commit('workflows/setActiveWorkflowExecution', execution);
-					}
-				}
-			}
-		},
     $route (to: Route, from: Route) {
 			if (to.params.name !== from.params.name) {
 				this.$store.commit('ui/setNodeViewInitialized', false);
 			}
     },
 	},
-	activated() {
+	async mounted() {
+		const workflowExecutions = await this.loadExecutions();
+		this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
 		if (this.activeExecution) {
 			this.$router.push({
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: this.currentWorkflow, executionId: this.activeExecution.id },
 			}).catch(()=>{});;
 		}
-	},
-	async mounted() {
 		if (this.workflowDataNotLoaded || (this.$route.params.name !== this.$store.getters.workflowId)) {
 			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
 				await this.$store.dispatch('nodeTypes/getNodeTypes');
@@ -93,7 +82,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		}
 	},
 	methods: {
-		async onDeleteCurrentExecution (): void {
+		async onDeleteCurrentExecution (): Promise<void> {
 			this.loading = true;
 			try {
 				await this.restApi().deleteExecutions({ ids: [ this.$route.params.executionId ] });

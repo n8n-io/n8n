@@ -399,7 +399,7 @@ export default mixins(
 				this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
 				this.runWorkflow(nodeName, source);
 			},
-			onRunWorkflow() {
+			async onRunWorkflow() {
 				this.getWorkflowDataToSave().then((workflowData) => {
 					const telemetryPayload = {
 						workflow_id: this.$store.getters.workflowId,
@@ -410,7 +410,7 @@ export default mixins(
 
 				});
 
-				this.runWorkflow();
+				await this.runWorkflow();
 			},
 			clearExecutionData() {
 				this.$store.commit('setWorkflowExecutionData', null);
@@ -656,24 +656,26 @@ export default mixins(
 				return data;
 			},
 			async loadExecutions(): Promise<void> {
-			if (!this.currentWorkflow) {
-				this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
-				this.$store.commit('workflows/setActiveWorkflowExecution', null);
-				return;
-			}
-			try {
-					const workflowExecutions: IExecutionsSummary[] = await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { finished: true, status: '' });
-					this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
-					if (workflowExecutions.length > 0) {
-						this.$store.commit('workflows/setActiveWorkflowExecution', workflowExecutions[0]);
-					}
-			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('executionsList.showError.refreshData.title'),
-				);
-			}
-		},
+				if (!this.currentWorkflow) {
+					this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
+					this.$store.commit('workflows/setActiveWorkflowExecution', null);
+					return;
+				}
+				try {
+						const workflowExecutions: IExecutionsSummary[] = await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { finished: true, status: '' });
+						this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
+						if (workflowExecutions.length > 0) {
+							this.$store.commit('workflows/setActiveWorkflowExecution', workflowExecutions[0]);
+						} else {
+							this.$store.commit('workflows/setActiveWorkflowExecution', null);
+						}
+				} catch (error) {
+					this.$showError(
+						error,
+						this.$locale.baseText('executionsList.showError.refreshData.title'),
+					);
+				}
+			},
 			touchTap(e: MouseEvent | TouchEvent) {
 				if (this.isTouchDevice) {
 					this.mouseDown(e);

@@ -3,7 +3,7 @@
 		:class="{
 			['execution-card']: true,
 			[$style.executionCard]: true,
-			[$style.active]: activeExecution && execution.id === $route.params.executionId,
+			[$style.active]: isActive,
 			[$style[executionUIDetails.name]]: true,
 			[$style.highlight]: highlight,
 		}"
@@ -14,18 +14,18 @@
 		>
 			<div :class="$style.description">
 				<n8n-text color="text-dark" :bold="true" size="medium">{{ executionUIDetails.startTime }}</n8n-text>
-				<div>
+				<div :class="$style.executionStatus">
 					<n8n-spinner v-if="executionUIDetails.name === 'running'" size="small" :class="[$style.spinner, 'mr-4xs']"/>
 					<n8n-text :class="$style.statusLabel" size="small">{{ executionUIDetails.label }}</n8n-text>
-					<n8n-text v-if="executionUIDetails.name === 'running'" color="text-base" size="small">
+					<n8n-text v-if="executionUIDetails.name === 'running'" :color="isActive? 'text-dark' : 'text-base'" size="small">
 						{{ $locale.baseText('executionDetails.runningTimeRunning', { interpolate: { time: executionUIDetails.runningTime } }) }}
 					</n8n-text>
-					<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="small">
+					<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" :color="isActive? 'text-dark' : 'text-base'" size="small">
 						{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }}
 					</n8n-text>
 				</div>
 				<div v-if="execution.mode === 'retry'">
-					<n8n-text color="text-base" size="small">
+					<n8n-text :color="isActive? 'text-dark' : 'text-base'" size="small">
 						{{ $locale.baseText('executionDetails.retry') }} #{{ execution.retryOf }}
 					</n8n-text>
 				</div>
@@ -88,6 +88,9 @@ export default mixins(
 		executionUIDetails(): IExecutionUIData {
 			return this.getExecutionUIDetails(this.execution);
 		},
+		isActive(): boolean {
+			return this.execution.id === this.$route.params.executionId;
+		},
 	},
 	methods: {
 		async onRetryMenuItemSelect(action: string): void {
@@ -133,10 +136,18 @@ export default mixins(
 <style module lang="scss">
 .executionCard {
 	display: flex;
-	padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) 0;
+	padding-right: var(--spacing-2xs);
+
+	&.active {
+		padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) 0;
+		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
+
+		.executionStatus {
+			color: var(--color-text-dark) !important;
+		}
+	}
 
 	&:hover, &.active {
-		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
 		.executionLink {
 			background-color: var(--color-foreground-base);
 		}
@@ -148,27 +159,27 @@ export default mixins(
 			top: 1px;
 		}
 		&, & .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-warning);
+			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-warning-h), 94%, 80%);
 		}
 		.statusLabel, .spinner { color: var(--color-warning); }
 	}
 
 	&.success {
 		&, & .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-success);
+			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-success-h), 60%, 70%);
 		}
 	}
 
 	&.waiting {
 		&, & .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-secondary);
+			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-secondary-h), 94%, 80%);
 		}
 		.statusLabel { color: var(--color-secondary); }
 	}
 
 	&.error {
 		&, & .executionLink {
-			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-danger);
+			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-danger-h), 94%, 80%);
 		}
 		.statusLabel { color: var(--color-danger ); }
 	}
