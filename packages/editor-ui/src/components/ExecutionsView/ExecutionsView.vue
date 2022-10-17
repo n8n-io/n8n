@@ -41,7 +41,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	computed: {
 		hidePreview (): boolean {
 			const nothingToShow = this.executions.length === 0 && this.filterApplied;
-			const activeNotPresent = (this.executions as IExecutionsSummary[]).find(ex => ex.id === this.activeExecution.id) === undefined;
+			const activeNotPresent = this.filterApplied && (this.executions as IExecutionsSummary[]).find(ex => ex.id === this.activeExecution.id) === undefined;
 			return this.loading || nothingToShow || activeNotPresent;
 		},
 		showSidebar (): boolean {
@@ -59,7 +59,8 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	},
 	watch:{
     $route (to: Route, from: Route) {
-			if (to.params.name !== from.params.name) {
+			const nodeViewAlreadyInitialized = this.$store.getters['ui/isNodeViewInitialized'];
+			if (!nodeViewAlreadyInitialized && to.params.name !== from.params.name) {
 				this.$store.commit('ui/setNodeViewInitialized', false);
 			}
     },
@@ -80,7 +81,11 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 			await this.openWorkflow(this.$route.params.name);
 			const executions = await await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { status: '' });
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', executions);
-			this.$store.commit('ui/setNodeViewInitialized', false);
+
+			const nodeViewAlreadyInitialized = this.$store.getters['ui/isNodeViewInitialized'];
+			if (!nodeViewAlreadyInitialized) {
+				this.$store.commit('ui/setNodeViewInitialized', false);
+			}
 		}
 	},
 	methods: {

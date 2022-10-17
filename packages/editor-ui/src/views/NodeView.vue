@@ -198,8 +198,9 @@ export default mixins(
 					(from.meta.keepWorkflowAlive === undefined || from.meta.keepWorkflowAlive !== true) &&
 					(to.meta.keepWorkflowAlive === undefined || to.meta.keepWorkflowAlive !== true);
 				const initNodeView = !this.$store.getters['ui/isNodeViewInitialized'];
+				const isNewWorkflow = this.currentWorkflow === 'new' || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 
-				if (this.currentWorkflow !== 'new' && (workflowChanged || shouldUpdateWorkflowData || initNodeView)) {
+				if (shouldUpdateWorkflowData || (!isNewWorkflow && workflowChanged) || initNodeView) {
 					this.startLoading();
 					if(initNodeView) {
 						// this.$destroy();
@@ -241,14 +242,12 @@ export default mixins(
 			if (from.name === VIEWS.TEMPLATE_IMPORT || (to.meta && to.meta.keepWorkflowAlive === true)) {
 				const workflowChanged = from.params.name !== to.params.name;
 				const isNewWorkflow = to.params.name === PLACEHOLDER_EMPTY_WORKFLOW_ID || to.params.name === 'new';
-
 				if (workflowChanged && !isNewWorkflow) {
 					await this.resetWorkspace();
 				}
 				next();
 				return;
 			}
-
 
 			const result = this.$store.getters.getStateIsDirty;
 			if (result) {
@@ -580,6 +579,9 @@ export default mixins(
 				this.startLoading();
 				this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
 				this.resetWorkspace();
+
+				this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
+				this.$store.commit('workflows/setActiveWorkflowExecution', null);
 
 				let data: IWorkflowTemplate | undefined;
 				try {
@@ -1989,6 +1991,7 @@ export default mixins(
 					}, 0);
 				}
 				await this.loadExecutions();
+				this.$store.commit('ui/setNodeViewInitialized', true);
 				this.stopLoading();
 			},
 			async initView(): Promise<void> {
