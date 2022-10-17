@@ -26,13 +26,13 @@
 			<div class="text-center mt-2xl">
 				<n8n-card :class="[$style.emptyStateCard, 'mr-s']" hoverable @click="addWorkflow">
 					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
-					<n8n-text size="large" class="mt-xs">
+					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{ $locale.baseText('workflows.empty.startFromScratch') }}
 					</n8n-text>
 				</n8n-card>
 				<n8n-card :class="$style.emptyStateCard" hoverable @click="goToTemplates">
 					<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
-					<n8n-text size="large" class="mt-xs">
+					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{ $locale.baseText('workflows.empty.browseTemplates') }}
 					</n8n-text>
 				</n8n-card>

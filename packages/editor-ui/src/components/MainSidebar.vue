@@ -173,7 +173,7 @@ export default mixins(
 						icon: 'network-wired',
 						label: this.$locale.baseText('mainSidebar.workflows'),
 						position: 'top',
-						activateOnRouteNames: [ VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOWS, VIEWS.WORKFLOW ],
+						activateOnRouteNames: [ VIEWS.WORKFLOWS ],
 					},
 					{
 						id: 'templates',

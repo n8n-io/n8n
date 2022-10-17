@@ -47,8 +47,10 @@ import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
 import { mapGetters } from "vuex";
+import {restApi} from "@/components/mixins/restApi";
+import {IWorkflowDb} from "@/Interface";
 
-export default mixins(showMessage, workflowHelpers).extend({
+export default mixins(showMessage, workflowHelpers, restApi).extend({
 	components: { TagsDropdown, Modal },
 	name: "DuplicateWorkflow",
 	props: ["modalName", "isActive", "data"],
@@ -115,8 +117,10 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 			this.isSaving = true;
 
+			const workflow = await this.restApi().getWorkflow(this.data.id);
 			const saved = await this.saveAsNewWorkflow({
 				name,
+				data: workflow,
 				tags: this.currentTagIds,
 				resetWebhookUrls: true,
 				openInNewWindow: true,

@@ -194,6 +194,9 @@ export const store = new Vuex.Store({
 
 			state.workflowsById = workflows;
 		},
+		addWorkflow: (state: IRootState, workflow: IWorkflowDb) => {
+			Vue.set(state.workflowsById, workflow.id, workflow);
+		},
 
 		// Active Workflows
 		setActiveWorkflows(state, newActiveWorkflows: string[]) {
