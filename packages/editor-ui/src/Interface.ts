@@ -18,7 +18,6 @@ import {
 	IWorkflowSettings as IWorkflowSettingsWorkflow,
 	WorkflowExecuteMode,
 	PublicInstalledPackage,
-	IResourceLocatorResult,
 	INodeTypeNameVersion,
 	ILoadOptions,
 	INodeCredentials,
@@ -211,11 +210,6 @@ export interface IStartRunData {
 	destinationNode?: string;
 	runData?: IRunData;
 	pinData?: IPinData;
-}
-
-export interface IRunDataUi {
-	node?: string;
-	workflowData: IWorkflowData;
 }
 
 export interface ITableData {
@@ -737,6 +731,10 @@ export interface IN8nUISettings {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
+	allowedModules: {
+		builtIn?: string[];
+		external?: string[];
+	};
 	enterprise: Record<string, boolean>;
 	deployment?: {
 		type: string;
@@ -759,23 +757,6 @@ export interface ITimeoutHMS {
 }
 
 export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
-
-export type MenuItemType = 'link';
-export type MenuItemPosition = 'top' | 'bottom';
-
-export interface IMenuItem {
-	id: string;
-	type: MenuItemType;
-	position?: MenuItemPosition;
-	properties: ILinkMenuItemProperties;
-}
-
-export interface ILinkMenuItemProperties {
-	title: string;
-	icon: string;
-	href: string;
-	newWindow?: boolean;
-}
 
 export interface ISubcategoryItemProps {
 	subcategory: string;
@@ -893,6 +874,7 @@ export interface IRootState {
 	oauthCallbackUrls: object;
 	n8nMetadata: object;
 	workflowExecutionData: IExecutionResponse | null;
+	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
 	lastSelectedNode: string | null;
 	lastSelectedNodeOutputIndex: number | null;
 	nodeViewOffsetPosition: XYPosition;
@@ -943,6 +925,13 @@ export interface IModalState {
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
 
+export interface TargetItem {
+	nodeName: string;
+	itemIndex: number;
+	runIndex: number;
+	outputIndex: number;
+}
+
 export interface IUiState {
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
@@ -956,9 +945,19 @@ export interface IUiState {
 		sessionId: string;
 		input: {
 			displayMode: IRunDataDisplayMode;
+			nodeName?: string;
+			run?: number;
+			branch?: number;
+			data: {
+				isEmpty: boolean;
+			}
 		};
 		output: {
+			branch?: number;
 			displayMode: IRunDataDisplayMode;
+			data: {
+				isEmpty: boolean;
+			}
 			editMode: {
 				enabled: boolean;
 				value: string;
@@ -966,6 +965,7 @@ export interface IUiState {
 		};
 		focusedMappableInput: string;
 		mappingTelemetry: {[key: string]: string | number | boolean};
+		hoveringItem: null | TargetItem;
 	};
 	mainPanelPosition: number;
 	draggable: {

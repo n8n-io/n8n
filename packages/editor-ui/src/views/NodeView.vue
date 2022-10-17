@@ -59,25 +59,17 @@
 				</div>
 			</div>
 		</div>
-		<node-details-view :readOnly="isReadOnly" :renaming="renamingActive" @valueChanged="valueChanged"/>
-		<div
-			:class="['node-buttons-wrapper', showStickyButton ? 'no-events' : '']"
-			v-if="!createNodeActive && !isReadOnly"
-			@mouseenter="onCreateMenuHoverIn"
-		>
-			<div class="node-creator-button">
-				<n8n-icon-button icon="plus" class="node-creator-plus" @click="() => openNodeCreator('add_node_button')" type="tertiary"
-					:title="$locale.baseText('nodeView.addNode')" />
-				<div :class="['add-sticky-button', showStickyButton ? 'visible-button' : '']" @click="addStickyNote">
-					<n8n-icon-button size="medium" type="tertiary" :icon="['far', 'note-sticky']"
-						:title="$locale.baseText('nodeView.addSticky')" />
-				</div>
-			</div>
-		</div>
-		<node-creator
-			:active="createNodeActive"
-			@nodeTypeSelected="nodeTypeSelected"
-			@closeNodeCreator="closeNodeCreator"
+		<node-details-view
+			:readOnly="isReadOnly"
+			:renaming="renamingActive"
+			@valueChanged="valueChanged"
+		/>
+		<node-creation
+			v-if="!isReadOnly"
+			:create-node-active="createNodeActive"
+			:node-view-scale="nodeViewScale"
+			@toggleNodeCreator="onToggleNodeCreator"
+			@addNode="onAddNode"
 		/>
 		<div
 			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
@@ -137,8 +129,6 @@ import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
 import once from 'lodash/once';
 
 import {
-	DEFAULT_STICKY_HEIGHT,
-	DEFAULT_STICKY_WIDTH,
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -171,7 +161,6 @@ import { workflowRun } from '@/components/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
-import NodeCreator from '@/components/NodeCreator/NodeCreator.vue';
 import NodeSettings from '@/components/NodeSettings.vue';
 import Sticky from '@/components/Sticky.vue';
 import CanvasAddButton from './CanvasAddButton.vue';
@@ -214,9 +203,8 @@ import {
 	IWorkflowTemplate,
 	IExecutionsSummary,
 	IWorkflowToShare,
-} from '../Interface';
+} from '@/Interface';
 import { mapGetters } from 'vuex';
-
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
@@ -249,10 +237,11 @@ export default mixins(
 		components: {
 			NodeDetailsView,
 			Node,
-			NodeCreator,
+			NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
 			NodeSettings,
 			Sticky,
 			CanvasAddButton,
+			NodeCreation: () => import('@/components/Node/NodeCreation.vue'),
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -504,29 +493,6 @@ export default mixins(
 					}, 0),
 				});
 			},
-			onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
-				const buttonsWrapper = mouseinEvent.target as Element;
-
-				// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.
-				this.showStickyButton = true;
-				const moveCallback = (mousemoveEvent: MouseEvent) => {
-					if (buttonsWrapper) {
-						const wrapperBounds = buttonsWrapper.getBoundingClientRect();
-						const wrapperH = wrapperBounds.height;
-						const wrapperW = wrapperBounds.width;
-						const wrapperLeftNear = wrapperBounds.left;
-						const wrapperLeftFar = wrapperLeftNear + wrapperW;
-						const wrapperTopNear = wrapperBounds.top;
-						const wrapperTopFar = wrapperTopNear + wrapperH;
-						const inside = ((mousemoveEvent.pageX > wrapperLeftNear && mousemoveEvent.pageX < wrapperLeftFar) && (mousemoveEvent.pageY > wrapperTopNear && mousemoveEvent.pageY < wrapperTopFar));
-						if (!inside) {
-							this.showStickyButton = false;
-							document.removeEventListener('mousemove', moveCallback, false);
-						}
-					}
-				};
-				document.addEventListener('mousemove', moveCallback, false);
-			},
 			clearExecutionData() {
 				this.$store.commit('setWorkflowExecutionData', null);
 				this.updateNodesExecutionIssues();
@@ -605,22 +571,12 @@ export default mixins(
 				const saved = await this.saveCurrentWorkflow();
 				if (saved) this.$store.dispatch('settings/fetchPromptsData');
 			},
-			openNodeCreator (source: string) {
-				if (this.createNodeActive) return;
-
-				this.createNodeActive = true;
-				// Default to the trigger tab in node creator if there's no trigger node yet
-				if (!this.containsTrigger) this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
-
-				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive: this.createNodeActive });
-				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
-			},
 			showTriggerCreator(source: string) {
 				if(this.createNodeActive) return;
 
 				this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
 				this.$store.commit('nodeCreator/setShowScrim', true);
-				this.openNodeCreator(source);
+				this.onToggleNodeCreator({ source, createNodeActive: true });
 				this.$nextTick(() => this.$store.commit('nodeCreator/setShowTabs', false));
 			},
 			async openExecution(executionId: string) {
@@ -883,10 +839,7 @@ export default mixins(
 					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 
 				} else if (e.key === 'Tab') {
-					this.createNodeActive = !this.createNodeActive && !this.isReadOnly;
-					this.$externalHooks().run('nodeView.createNodeActiveChanged', { source: 'tab', createNodeActive: this.createNodeActive });
-					this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source: 'tab', workflow_id: this.$store.getters.workflowId, createNodeActive: this.createNodeActive });
-
+					this.onToggleNodeCreator({ source: 'tab', createNodeActive: !this.createNodeActive && !this.isReadOnly });
 				} else if (e.key === this.controlKeyCode) {
 					this.ctrlKeyPressed = true;
 				} else if (e.key === 'F2' && !this.isReadOnly) {
@@ -1520,32 +1473,6 @@ export default mixins(
 					);
 				}
 			},
-
-			closeNodeCreator() {
-				this.createNodeActive = false;
-			},
-
-			addStickyNote() {
-				if (document.activeElement) {
-					(document.activeElement as HTMLElement).blur();
-				}
-
-				const offset: [number, number] = [...(this.getNodeViewOffsetPosition as [number, number])];
-
-				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
-				position[0] -= DEFAULT_STICKY_WIDTH / 2;
-				position[1] -= DEFAULT_STICKY_HEIGHT / 2;
-
-				this.addNodeButton(STICKY_NODE_TYPE, {
-					position,
-				});
-			},
-
-			nodeTypeSelected(nodeTypeName: string) {
-				this.addNodeButton(nodeTypeName);
-				this.createNodeActive = false;
-			},
-
 			onDragOver(event: DragEvent) {
 				event.preventDefault();
 			},
@@ -1559,7 +1486,7 @@ export default mixins(
 				if (nodeTypeName) {
 					const mousePosition = this.getMousePositionWithinNodeView(event);
 
-					this.addNodeButton(nodeTypeName, {
+					this.addNode(nodeTypeName, {
 						position: [
 							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2,
 							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2,
@@ -1767,7 +1694,7 @@ export default mixins(
 
 				this.__addConnection(connectionData, true);
 			},
-			async addNodeButton(nodeTypeName: string, options: AddNodeOptions = {}) {
+			async addNode(nodeTypeName: string, options: AddNodeOptions = {}) {
 				if (this.editAllowedCheck() === false) {
 					return;
 				}
@@ -1827,7 +1754,7 @@ export default mixins(
 						this.lastSelectedConnection = info.connection;
 					}
 
-					this.openNodeCreator(info.eventSource);
+					this.onToggleNodeCreator({ source: info.eventSource, createNodeActive: true});
 				};
 
 				this.instance.bind('connectionAborted', (connection) => {
@@ -2478,6 +2405,10 @@ export default mixins(
 				});
 			},
 			onNodeRun({ name, data, waiting }: { name: string, data: ITaskData[] | null, waiting: boolean }) {
+				const pinData = this.$store.getters.pinData;
+
+				if (pinData && pinData[name]) return;
+
 				const sourceNodeName = name;
 				const sourceNode = this.$store.getters.getNodeByName(sourceNodeName);
 				const sourceId = sourceNode.id;
@@ -3196,6 +3127,19 @@ export default mixins(
 					connections.forEach(CanvasHelpers.resetConnection);
 				});
 			},
+			onToggleNodeCreator({ source, createNodeActive }: { source?: string; createNodeActive: boolean }) {
+				if (createNodeActive === this.createNodeActive) return;
+
+				// Default to the trigger tab in node creator if there's no trigger node yet
+				if (!this.containsTrigger) this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
+
+				this.createNodeActive = createNodeActive;
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
+				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.$store.getters.workflowId });
+			},
+			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
+				this.addNode(nodeTypeName, { position });
+			},
 		},
 
 		async mounted() {
@@ -3340,60 +3284,6 @@ export default mixins(
 .demo-zoom-menu {
 	left: 10px;
 	bottom: 10px;
-}
-
-.no-events {
-	pointer-events: none;
-}
-
-.node-buttons-wrapper {
-	position: fixed;
-	width: 150px;
-	height: 200px;
-	top: 0;
-	right: 0;
-	display: flex;
-
-	.add-sticky-button {
-		margin-top: var(--spacing-2xs);
-		opacity: 0;
-		transition: .1s;
-		transition-timing-function: linear;
-	}
-
-	.visible-button {
-		opacity: 1;
-		pointer-events: all;
-	}
-}
-
-.node-creator-button {
-	position: fixed;
-	text-align: center;
-	top: calc(#{$header-height} + var(--spacing-s));
-	right: var(--spacing-s);
-	pointer-events: all !important;
-
-	button {
-		border-color: var(--color-foreground-xdark);
-		color: var(--color-foreground-xdark);
-
-		&:hover {
-			border-color: var(--color-primary);
-			color: var(--color-primary);
-			background: var(--color-background-xlight);
-		}
-	}
-	.node-creator-plus {
-		border-width: 2px;
-		border-radius: var(--border-radius-base);
-		width: 36px;
-		height: 36px;
-	}
-}
-
-.node-creator-button button {
-	position: relative;
 }
 
 .node-view-root {

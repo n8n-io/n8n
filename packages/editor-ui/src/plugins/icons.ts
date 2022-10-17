@@ -53,6 +53,7 @@ import {
 	faFolderOpen,
 	faGlobeAmericas,
 	faGift,
+	faGlobe,
 	faGraduationCap,
 	faGripVertical,
 	faHdd,
@@ -173,6 +174,7 @@ addIcon(faFilePdf);
 addIcon(faFilter);
 addIcon(faFolderOpen);
 addIcon(faGift);
+addIcon(faGlobe);
 addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
 addIcon(faHdd);

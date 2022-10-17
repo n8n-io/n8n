@@ -74,6 +74,7 @@ export const CUSTOM_NODES_DOCS_URL = `https://docs.n8n.io/integrations/creating-
 // node types
 export const BAMBOO_HR_NODE_TYPE = 'n8n-nodes-base.bambooHr';
 export const CALENDLY_TRIGGER_NODE_TYPE = 'n8n-nodes-base.calendlyTrigger';
+export const CODE_NODE_TYPE = 'n8n-nodes-base.code';
 export const CRON_NODE_TYPE = 'n8n-nodes-base.cron';
 export const CLEARBIT_NODE_TYPE = 'n8n-nodes-base.clearbit';
 export const FUNCTION_NODE_TYPE = 'n8n-nodes-base.function';

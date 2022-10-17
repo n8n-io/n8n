@@ -1034,7 +1034,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 		pushInstance.send(
 			'sendConsoleMessage',
 			{
-				source: `Node: "${source}"`,
+				source: `[Node: "${source}"]`,
 				messages,
 			},
 			this.sessionId,

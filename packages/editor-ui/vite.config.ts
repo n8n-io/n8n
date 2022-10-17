@@ -1,4 +1,4 @@
-import { createVuePlugin } from 'vite-plugin-vue2';
+import vue from '@vitejs/plugin-vue2';
 import { createHtmlPlugin } from 'vite-plugin-html';
 import legacy from '@vitejs/plugin-legacy';
 import monacoEditorPlugin from "vite-plugin-monaco-editor";
@@ -9,6 +9,8 @@ import packageJSON from './package.json';
 const vendorChunks = ['vue', 'vue-router', 'vuex'];
 const ignoreChunks = ['vue2-boring-avatars', 'vue-template-compiler', 'jquery', '@fontsource/open-sans'];
 
+const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);
+
 function renderChunks() {
 	const { dependencies } = packageJSON;
 	const chunks: Record<string, string[]> = {};
@@ -17,6 +19,8 @@ function renderChunks() {
 		if ([...vendorChunks, ...ignoreChunks].includes(key)) {
 			return;
 		}
+
+		if (isScopedPackageToIgnore(key)) return;
 
 		chunks[key] = [key];
 	});
@@ -36,7 +40,7 @@ export default defineConfig({
 		legacy({
 			targets: ['defaults', 'not IE 11'],
 		}),
-		createVuePlugin(),
+		vue(),
 		...createHtmlPlugin({
 			inject: {
 				data: {
