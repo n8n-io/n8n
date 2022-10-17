@@ -1,11 +1,3 @@
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-
 import {
 	INode,
 	INodeCredentials,
@@ -17,8 +9,8 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
 import { NodeExecuteFunctions } from '.';
+import { requireDistNode } from './utils';
 
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
@@ -108,26 +100,46 @@ export class LoadNodeListSearch {
 	): Promise<INodeListSearchResult> {
 		const node = this.workflow.getNode(TEMP_NODE_NAME);
 
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node!.type, node?.typeVersion);
+		if (!node) {
+			throw new Error(`Failed to find node ${TEMP_NODE_NAME}`);
+		}
 
-		if (
-			!nodeType ||
-			nodeType.methods === undefined ||
-			nodeType.methods.listSearch === undefined ||
-			nodeType.methods.listSearch[methodName] === undefined
-		) {
+		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node?.typeVersion);
+
+		if (!nodeType?.methods?.listSearch || !nodeType.methods.listSearch[methodName]) {
 			throw new Error(
-				`The node-type "${node!.type}" does not have the method "${methodName}" defined!`,
+				`The node-type "${node.type}" does not have the method "${methodName}" defined!`,
 			);
 		}
 
-		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(
+		const loadOptionsFunctions = NodeExecuteFunctions.getLoadOptionsFunctions(
 			this.workflow,
-			node!,
+			node,
 			this.path,
 			additionalData,
 		);
 
-		return nodeType.methods.listSearch[methodName].call(thisArgs, filter, paginationToken);
+		const listSearchMethod = nodeType.methods.listSearch[methodName];
+
+		const isCachedNode = typeof listSearchMethod === 'string';
+
+		if (!isCachedNode) {
+			return nodeType.methods.listSearch[methodName].call(
+				loadOptionsFunctions,
+				filter,
+				paginationToken,
+			);
+		}
+
+		// cached node contains stub method, so require dist node at runtime
+
+		const distNode = requireDistNode(nodeType, this.workflow);
+
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return distNode.methods.listSearch[methodName].call(
+			loadOptionsFunctions,
+			filter,
+			paginationToken,
+		);
 	}
 }
