@@ -662,7 +662,10 @@ export interface ILoadOptionsFunctions {
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	getCurrentNodeParameter(parameterName: string): NodeParameterValueType | object | undefined;
+	getCurrentNodeParameter(
+		parameterName: string,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 	getTimezone(): string;
 	getRestApiUrl(): string;
