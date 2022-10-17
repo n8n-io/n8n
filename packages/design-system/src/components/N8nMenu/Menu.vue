@@ -22,7 +22,6 @@
 						:key="item.id"
 						:item="item"
 						:compact="collapsed"
-						:popperClass="$style.submenuPopper"
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
@@ -30,7 +29,7 @@
 					/>
 				</el-menu>
 			</div>
-			<div :class="{[$style.lowerContent]: true, ['pb-xs']: $slots.menuSuffix }">
+			<div :class="[$style.lowerContent, 'pb-2xs']">
 				<el-menu
 					:defaultActive="defaultActive"
 					:collapse="collapsed"
@@ -41,7 +40,6 @@
 						:key="item.id"
 						:item="item"
 						:compact="collapsed"
-						:popperClass="$style.submenuPopper"
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
@@ -157,10 +155,6 @@ export default Vue.extend({
 .upperContent {
 	ul {
 		padding-top: 0 !important;
-	}
-	.submenuPopper {
-		bottom: auto !important;
-		top: 0 !important;
 	}
 }
 
