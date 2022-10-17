@@ -37,7 +37,7 @@ export const description: SheetProperties = [
 						type: 'options',
 						typeOptions: {
 							loadOptionsDependsOn: ['sheetName.value'],
-							loadOptionsMethod: 'getSheetHeaderRow',
+							loadOptionsMethod: 'getSheetHeaderRowWithGeneratedColumnNames',
 						},
 						default: '',
 						description:

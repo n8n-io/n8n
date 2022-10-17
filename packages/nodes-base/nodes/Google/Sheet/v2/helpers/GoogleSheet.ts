@@ -7,10 +7,12 @@ import {
 	ILookupValues,
 	ISheetUpdateData,
 	SheetCellDecoded,
+	SheetRangeData,
 	SheetRangeDecoded,
 	ValueInputOption,
 	ValueRenderOption,
 } from './GoogleSheets.types';
+import { removeEmptyColumns } from './GoogleSheets.utils';
 
 export class GoogleSheet {
 	id: string;
@@ -240,7 +242,7 @@ export class GoogleSheet {
 	 * Returns the given sheet data in a structured way
 	 */
 	convertSheetDataArrayToObjectArray(
-		data: string[][],
+		data: SheetRangeData,
 		startRow: number,
 		columnKeys: string[],
 		addEmpty?: boolean,
@@ -476,7 +478,7 @@ export class GoogleSheet {
 
 		// Create the keys array
 		for (let columnIndex = 0; columnIndex < inputData[keyRowIndex].length; columnIndex++) {
-			keys.push(inputData[keyRowIndex][columnIndex]);
+			keys.push(inputData[keyRowIndex][columnIndex] || `col_${columnIndex}`);
 		}
 
 		// Standardise values array, if rows is [[]], map it to [['']] (Keep the columns into consideration)
@@ -498,7 +500,8 @@ export class GoogleSheet {
 		let returnColumnIndex: number;
 		const addedRows: number[] = [];
 
-		const returnData = [inputData[keyRowIndex]];
+		// const returnData = [inputData[keyRowIndex]];
+		const returnData = [keys];
 
 		lookupLoop: for (const lookupValue of lookupValues) {
 			returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
@@ -527,7 +530,7 @@ export class GoogleSheet {
 			}
 		}
 
-		return this.convertSheetDataArrayToObjectArray(returnData, 1, keys, true);
+		return this.convertSheetDataArrayToObjectArray(removeEmptyColumns(returnData), 1, keys, true);
 	}
 
 	private async convertObjectArrayToSheetDataArray(

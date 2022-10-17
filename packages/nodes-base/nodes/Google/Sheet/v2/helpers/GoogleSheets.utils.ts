@@ -93,11 +93,19 @@ export function addRowNumber(data: SheetRangeData) {
 
 export function trimToFirstEmptyRow(data: SheetRangeData, includesRowNumber = true) {
 	const baseLength = includesRowNumber ? 1 : 0;
-	const emtyRowIndex = data.findIndex((row) => row.length === baseLength);
+	const emtyRowIndex = data.findIndex((row) => row.slice(baseLength).every((cell) => cell === ''));
 	if (emtyRowIndex === -1) {
 		return data;
 	}
 	return data.slice(0, emtyRowIndex);
+}
+
+export function removeEmptyRows(data: SheetRangeData, includesRowNumber = true) {
+	const baseLength = includesRowNumber ? 1 : 0;
+	const notEmptyRows = data.filter((row) =>
+		row.slice(baseLength).some((cell) => cell || typeof cell === 'number'),
+	);
+	return notEmptyRows;
 }
 
 export function trimLeadingEmptyRows(
@@ -107,8 +115,9 @@ export function trimLeadingEmptyRows(
 ) {
 	const baseLength = includesRowNumber ? 1 : 0;
 	const [firstRow, ...rest] = [...data];
-	const firstNotEmptyRowIndex = rest.findIndex((row) => row.length > baseLength);
-
+	const firstNotEmptyRowIndex = rest.findIndex((row) =>
+		row.slice(baseLength).some((cell) => cell || typeof cell === 'number'),
+	);
 	let returnData: SheetDataRow[] = [];
 	if (firstRow && firstRow.length > baseLength) {
 		returnData = [firstRow];
@@ -126,19 +135,17 @@ export function trimLeadingEmptyRows(
 	return returnData;
 }
 
-export function trimLeadingEmptyColumns(data: SheetRangeData, includesRowNumber = true) {
-	const firstColumnIndex = includesRowNumber ? 1 : 0;
-	const returnData = [...data];
+export function removeEmptyColumns(data: SheetRangeData) {
+	const returnData: SheetRangeData = [];
 	const longestRow = data.reduce((a, b) => (a.length > b.length ? a : b), []).length;
-	for (let columnIndex = 1; columnIndex < longestRow; columnIndex++) {
-		for (const row of returnData) {
-			if (row[firstColumnIndex] || typeof row[firstColumnIndex] === 'number') {
-				return returnData;
-			}
+	for (let col = 0; col < longestRow; col++) {
+		const column = data.map((row) => row[col]);
+		const hasData = column.slice(1).some((cell) => cell || typeof cell === 'number');
+		if (hasData) {
+			returnData.push(column);
 		}
-		returnData.forEach((row) => row.splice(firstColumnIndex, 1));
 	}
-	return returnData;
+	return returnData[0].map((_, i) => returnData.map((row) => row[i] || ''));
 }
 
 export function prepareSheetData(
@@ -146,7 +153,7 @@ export function prepareSheetData(
 	options: RangeDetectionOptions,
 	addRowNumbersToData = true,
 ) {
-	let returnData = [...(data || [])];
+	let returnData: SheetRangeData = [...(data || [])];
 
 	let headerRow = 0;
 	let firstDataRow = 1;
@@ -156,15 +163,17 @@ export function prepareSheetData(
 	}
 
 	if (options.rangeDefinition === 'detectAutomatically') {
-		returnData = trimLeadingEmptyRows(returnData, addRowNumbersToData);
-		returnData = trimLeadingEmptyColumns(returnData, addRowNumbersToData);
+		returnData = removeEmptyColumns(returnData);
 	}
 
 	if (
 		options.readRowsUntil === 'firstEmptyRow' &&
 		options.rangeDefinition === 'detectAutomatically'
 	) {
+		returnData = trimLeadingEmptyRows(returnData, addRowNumbersToData);
 		returnData = trimToFirstEmptyRow(returnData, addRowNumbersToData);
+	} else {
+		returnData = removeEmptyRows(returnData, addRowNumbersToData);
 	}
 
 	if (options.rangeDefinition === 'specifyRange') {
@@ -172,27 +181,8 @@ export function prepareSheetData(
 		firstDataRow = parseInt(options.firstDataRow as string, 10) - 1;
 	}
 
-	// if (options.rangeDefinition === 'specifyRangeA1') {
-	// 	const rangeData = getHeaderRowFromRange(options.range as string);
-	// 	headerRow = rangeData.headerRow;
-	// 	firstDataRow = rangeData.firstDataRow;
-	// }
-
 	return { data: returnData, headerRow, firstDataRow };
 }
-
-// export function getHeaderRowFromRange(range: string) {
-// 	let headerRow, firstDataRow;
-// 	const start = (range || '').split(':')[0];
-// 	if (start) {
-// 		headerRow = parseInt(start.replace(/[^0-9]/g, ''), 10) - 1 || 0;
-// 		firstDataRow = headerRow + 1;
-// 	} else {
-// 		headerRow = 0;
-// 		firstDataRow = 1;
-// 	}
-// 	return { headerRow, firstDataRow };
-// }
 
 export function getRangeString(sheetName: string, options: RangeDetectionOptions) {
 	if (options.rangeDefinition === 'specifyRangeA1') {

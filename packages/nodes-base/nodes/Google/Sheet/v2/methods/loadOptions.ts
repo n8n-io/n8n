@@ -78,3 +78,17 @@ export async function getSheetHeaderRowAndAddColumn(
 	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
 	return returnData.filter((column) => column.value !== columnToMatchOn);
 }
+
+export async function getSheetHeaderRowWithGeneratedColumnNames(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData = await getSheetHeaderRow.call(this);
+	return returnData.map((column, i) => {
+		if (column.value !== '') return column;
+		const indexBasedValue = `col_${i + 1}`;
+		return {
+			name: indexBasedValue,
+			value: indexBasedValue,
+		};
+	});
+}
