@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.code",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "The Code node allows you to execute JavaScript in your workflow.",
+	"categories": ["Development", "Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.code/"
+			}
+		]
+	},
+	"alias": ["cpde", "Javascript", "JS", "Script", "Custom Code", "Function"],
+	"subcategories": {
+		"Core Nodes": ["Data Transformation"]
+	}
+}

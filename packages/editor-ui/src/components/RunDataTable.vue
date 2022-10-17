@@ -5,8 +5,13 @@
 				<th :class="$style.emptyCell"></th>
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
-			<tr v-for="(row, index1) in tableData.data" :key="index1">
-				<td>
+			<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+				<td
+					:data-row="index1"
+					:data-col="0"
+					@mouseenter="onMouseEnterCell"
+					@mouseleave="onMouseLeaveCell"
+				>
 					<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
 				</td>
 				<td :class="$style.tableRightMargin"></td>
@@ -88,10 +93,11 @@
 					</div>
 				</template>
 				<template>
-					<tr v-for="(row, index1) in tableData.data" :key="index1">
+					<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
 						<td
 							v-for="(data, index2) in row"
 							:key="index2"
+							:data-row="index1"
 							:data-col="index2"
 							@mouseenter="onMouseEnterCell"
 							@mouseleave="onMouseLeaveCell"
@@ -136,9 +142,10 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 
+import { INodeUi, IRootState, ITableData, IUiState } from '@/Interface';
+import { getPairedItemId } from '@/pairedItemUtils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import { INodeUi, ITableData } from '@/Interface';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from './helpers';
@@ -163,8 +170,17 @@ export default mixins(externalHooks).extend({
 		runIndex: {
 			type: Number,
 		},
+		outputIndex: {
+			type: Number,
+		},
 		totalRuns: {
 			type: Number,
+		},
+		pageOffset: {
+			type: Number,
+		},
+		hasDefaultHoverState: {
+			type: Boolean,
 		},
 	},
 	data() {
@@ -174,6 +190,7 @@ export default mixins(externalHooks).extend({
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
+			activeRow: null as number | null,
 		};
 	},
 	mounted() {
@@ -187,12 +204,35 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
+		hoveringItem(): IUiState['ndv']['hoveringItem'] {
+			return this.$store.getters['ui/hoveringItem'];
+		},
+		pairedItemMappings(): IRootState['workflowExecutionPairedItemMappings'] {
+			return this.$store.getters['workflowExecutionPairedItemMappings'];
+		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
 		},
 	},
 	methods: {
 		shorten,
+		isHoveringRow(row: number): boolean {
+			if (row === this.activeRow) {
+				return true;
+			}
+
+			const itemIndex = this.pageOffset + row;
+			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
+				return true;
+			}
+			const itemNodeId = getPairedItemId(this.node.name, this.runIndex || 0, this.outputIndex || 0, itemIndex);
+			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
+				return false;
+			}
+
+			const hoveringItemId = getPairedItemId(this.hoveringItem.nodeName, this.hoveringItem.runIndex, this.hoveringItem.outputIndex, this.hoveringItem.itemIndex);
+			return this.pairedItemMappings[itemNodeId].has(hoveringItemId);
+		},
 		onMouseEnterCell(e: MouseEvent) {
 			const target = e.target;
 			if (target && this.mappingEnabled) {
@@ -201,9 +241,19 @@ export default mixins(externalHooks).extend({
 					this.activeColumn = parseInt(col, 10);
 				}
 			}
+
+			if (target) {
+				const row = (target as HTMLElement).dataset.row;
+				if (row && !isNaN(parseInt(row, 10))) {
+					this.activeRow = parseInt(row, 10);
+					this.$emit('activeRowChanged', this.pageOffset + this.activeRow);
+				}
+			}
 		},
 		onMouseLeaveCell() {
 			this.activeColumn = -1;
+			this.activeRow = null;
+			this.$emit('activeRowChanged', null);
 		},
 		onMouseEnterKey(path: string[], colIndex: number) {
 			this.hoveringPath = this.getCellExpression(path, colIndex);
@@ -438,6 +488,7 @@ export default mixins(externalHooks).extend({
 		position: sticky;
 		top: 0;
 		color: var(--color-text-dark);
+		z-index: 1;
 	}
 
 	td {
@@ -447,6 +498,27 @@ export default mixins(externalHooks).extend({
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
+	}
+
+	td:first-child, td:nth-last-child(2) {
+		position: relative;
+		z-index: 0;
+
+		&:after { // add border without shifting content
+			content: '';
+			position: absolute;
+			height: 100%;
+			width: 2px;
+			top: 0;
+		}
+	}
+
+	td:nth-last-child(2):after {
+		right: -1px;
+	}
+
+	td:first-child:after {
+		left: -1px;
 	}
 
 	th:last-child,
@@ -565,9 +637,16 @@ export default mixins(externalHooks).extend({
 
 .tableRightMargin {
 	// becomes necessary with large tables
+	background-color: var(--color-background-base) !important;
 	width: var(--spacing-s);
 	border-right: none !important;
 	border-top: none !important;
 	border-bottom: none !important;
+}
+
+.hoveringRow {
+	td:first-child:after, td:nth-last-child(2):after {
+		background-color: var(--color-secondary);
+	}
 }
 </style>

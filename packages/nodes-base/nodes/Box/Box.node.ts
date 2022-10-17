@@ -388,8 +388,6 @@ export class Box implements INodeType {
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', '/folders', body, qs);
-
-						returnData.push(responseData);
 					}
 					// https://developer.box.com/reference/delete-folders-id
 					if (operation === 'delete') {

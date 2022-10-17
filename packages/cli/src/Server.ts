@@ -90,7 +90,7 @@ import { WEBHOOK_METHODS } from './WebhookHelpers';
 import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 
 import { nodesController } from './api/nodes.api';
-import { workflowsController } from './api/workflows.api';
+import { workflowsController } from './workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './credentials/credentials.controller';
 import { oauth2CredentialController } from './credentials/oauth2Credential.api';
@@ -108,12 +108,12 @@ import { resolveJwt } from './UserManagement/auth/jwt';
 import { executionsController } from './api/executions.api';
 import { nodeTypesController } from './api/nodeTypes.api';
 import { tagsController } from './api/tags.api';
-import { isCredentialsSharingEnabled } from './credentials/helpers';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
+	isSharingEnabled,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import {
@@ -328,8 +328,13 @@ class App {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
+			allowedModules: {
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+			},
 			enterprise: {
 				sharing: false,
+				workflowSharing: false,
 			},
 		};
 	}
@@ -357,7 +362,8 @@ class App {
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
-			sharing: isCredentialsSharingEnabled(),
+			sharing: isSharingEnabled(),
+			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -1792,11 +1798,11 @@ class App {
 				const filePath = pathJoin(editorUiDistDir, fileName);
 				if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
 					const srcFile = await readFile(filePath, 'utf8');
-					let payload = srcFile.replace(basePathRegEx, n8nPath);
+					let payload = srcFile
+						.replace(basePathRegEx, n8nPath)
+						.replace(/\/static\//g, n8nPath + 'static/');
 					if (filePath.endsWith('index.html')) {
-						payload = payload
-							.replace(/\/favicon\.ico/g, `${n8nPath}favicon.ico`)
-							.replace(closingTitleTag, closingTitleTag + scriptsString);
+						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
 					const destFile = pathJoin(generatedStaticDir, fileName);
 					await mkdir(pathDirname(destFile), { recursive: true });
