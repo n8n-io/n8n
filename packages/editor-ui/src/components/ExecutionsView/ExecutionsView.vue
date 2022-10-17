@@ -78,6 +78,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 				params: { name: this.currentWorkflow, executionId: this.activeExecution.id },
 			}).catch(()=>{});;
 		}
+
 		if (this.workflowDataNotLoaded || (this.$route.params.name !== this.$store.getters.workflowId)) {
 			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
 				await this.$store.dispatch('nodeTypes/getNodeTypes');
@@ -87,6 +88,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', executions);
 
 			const nodeViewAlreadyInitialized = this.$store.getters['ui/isNodeViewInitialized'];
+
 			if (!nodeViewAlreadyInitialized) {
 				this.$store.commit('ui/setNodeViewInitialized', false);
 			}
@@ -270,6 +272,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 				this.$store.commit('setWorkflowTagIds', tagIds || []);
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+				this.$store.commit('setStateDirty', false);
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections) {
 			if (!nodes || !nodes.length) {

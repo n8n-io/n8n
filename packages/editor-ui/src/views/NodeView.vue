@@ -203,7 +203,6 @@ export default mixins(
 				if (shouldUpdateWorkflowData || (!isNewWorkflow && workflowChanged) || initNodeView) {
 					this.startLoading();
 					if(initNodeView) {
-						// this.$destroy();
 						this.resetWorkspace();
 					}
 					this.initView().then(() => {
@@ -244,6 +243,7 @@ export default mixins(
 				const isNewWorkflow = to.params.name === PLACEHOLDER_EMPTY_WORKFLOW_ID || to.params.name === 'new';
 				if (workflowChanged && !isNewWorkflow) {
 					await this.resetWorkspace();
+					this.$store.commit('ui/setNodeViewInitialized', false);
 				}
 				next();
 				return;
@@ -271,7 +271,6 @@ export default mixins(
 				} else if (confirmModal === MODAL_CLOSE) {
 					next(false);
 				}
-
 			} else {
 				next();
 			}
@@ -2058,6 +2057,7 @@ export default mixins(
 				this.stopLoading();
 			},
 			async initView(): Promise<void> {
+				const isOnCanvas = this.$route.name === VIEWS.WORKFLOW || this.$route.name === VIEWS.NEW_WORKFLOW;
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
@@ -2075,7 +2075,7 @@ export default mixins(
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
-				} else {
+				} else if (isOnCanvas) {
 					const result = this.$store.getters.getStateIsDirty;
 					if (result) {
 						const confirmModal = await this.confirmModal(
@@ -2118,8 +2118,8 @@ export default mixins(
 						// Create new workflow
 						await this.newWorkflow();
 					}
+					this.$store.commit('ui/setNodeViewInitialized', true);
 				}
-				this.$store.commit('ui/setNodeViewInitialized', true);
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
 				window.addEventListener("beforeunload", (e) => {

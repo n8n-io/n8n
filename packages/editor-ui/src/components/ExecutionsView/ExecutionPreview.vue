@@ -91,6 +91,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 .executionDetails {
 	position: absolute;
 	padding: var(--spacing-m);
+	padding-right: var(--spacing-xl);
 	width: calc(100% - 510px);
 	display: flex;
 	justify-content: space-between;
