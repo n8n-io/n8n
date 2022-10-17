@@ -103,7 +103,7 @@
 							@mouseleave="onMouseLeaveCell"
 							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						>
-							<span v-if="isSimple(data)" :class="$style.value">{{ getValueToRender(data) }}</span>
+							<span v-if="isSimple(data)" :class="{[$style.value]: true, [$style.empty]: isEmpty(data)}">{{ getValueToRender(data) }}</span>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 								<template v-slot:label="{ label, path }">
 									<span
@@ -313,11 +313,12 @@ export default mixins(externalHooks).extend({
 
 			return `{{ $node["${this.node.name}"].json["${column}"]${expr} }}`;
 		},
-		isEmpty(value: unknown) {
+		isEmpty(value: unknown): boolean {
 			return (
 				value === '' ||
 				(Array.isArray(value) && value.length === 0) ||
-				(typeof value === 'object' && value !== null && Object.keys(value).length === 0)
+				(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
+				(value === null || value === undefined)
 			);
 		},
 		getValueToRender(value: unknown) {
@@ -325,7 +326,7 @@ export default mixins(externalHooks).extend({
 				return this.$locale.baseText('runData.emptyString');
 			}
 			if (typeof value === 'string') {
-				return `"${value.replaceAll('\n', '\\n')}"`;
+				return value.replaceAll('\n', '\\n');
 			}
 
 			if (Array.isArray(value) && value.length === 0) {
@@ -336,7 +337,11 @@ export default mixins(externalHooks).extend({
 				return this.$locale.baseText('runData.emptyObject');
 			}
 
-			return value === null || value === undefined ? value+'' : value;
+			if (value === null || value === undefined) {
+				return `[${value}]`;
+			}
+
+			return value;
 		},
 		onDragStart() {
 			this.draggedColumn = true;
@@ -384,7 +389,9 @@ export default mixins(externalHooks).extend({
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isSimple(data: unknown): boolean {
-			return typeof data !== 'object' || data === null;
+			return (typeof data !== 'object' || data === null) ||
+				(Array.isArray(data) && data.length === 0) ||
+				(typeof data === 'object' && Object.keys(data).length === 0);
 		},
 		hasJsonInColumn(colIndex: number): boolean {
 			return this.tableData.hasJson[this.tableData.columns[colIndex]];
