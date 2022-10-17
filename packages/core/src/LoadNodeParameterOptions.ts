@@ -25,10 +25,10 @@ import {
 	RoutingNode,
 	Workflow,
 } from 'n8n-workflow';
-import path from 'node:path';
 
 // eslint-disable-next-line import/no-cycle
 import { NodeExecuteFunctions } from '.';
+import { requireDistNode } from './utils';
 
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
@@ -133,30 +133,9 @@ export class LoadNodeParameterOptions {
 
 		// for cached node, method is stub so require it at runtime
 
-		const sourcePath = this.workflow.nodeTypes.getSourcePath(nodeType.description.name);
+		const distNode = requireDistNode(nodeType, this.workflow);
 
-		const nodeFilePath =
-			nodeType.description.defaultVersion !== undefined
-				? this.getVersionedNodeFilePath(sourcePath, nodeType.description.version)
-				: sourcePath;
-
-		const _module = require(nodeFilePath);
-		const _className = nodeFilePath.split('/').pop()?.split('.').shift();
-
-		if (!_className) {
-			throw new Error(`Failed to find class in path: ${nodeFilePath}`);
-		}
-
-		return new _module[_className]().methods.loadOptions[methodName].call(loadOptionsFunctions);
-	}
-
-	private getVersionedNodeFilePath(sourcePath: string, version: number | number[]) {
-		if (Array.isArray(version)) return sourcePath;
-
-		const { dir, base } = path.parse(sourcePath);
-		const versionedNodeFilename = base.replace('.node.js', `V${version}.node.js`);
-
-		return path.resolve(dir, `v${version}`, versionedNodeFilename);
+		return distNode.methods.loadOptions[methodName].call(loadOptionsFunctions);
 	}
 
 	/**
