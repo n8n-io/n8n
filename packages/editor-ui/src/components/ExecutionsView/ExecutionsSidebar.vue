@@ -57,7 +57,7 @@
 				</n8n-link>
 			</n8n-info-tip>
 		</div>
-		<div :class="$style.executionList">
+		<div :class="$style.executionList" ref="executionList" @scroll="loadMore">
 			<div v-if="loading" class="mr-m">
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
@@ -70,6 +70,9 @@
 				:execution="execution"
 				@refresh="onRefresh"
 			/>
+			<div v-if="loadingMore" class="mr-m">
+				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
+			</div>
 		</div>
 		<div :class="$style.infoAccordion">
 			<executions-info-accordion :initiallyExpanded="false" />
@@ -101,6 +104,10 @@ export default Vue.extend({
 		loading: {
 			type: Boolean,
 			default: true,
+		},
+		loadingMore: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
@@ -146,6 +153,17 @@ export default Vue.extend({
 		}
 	},
 	methods: {
+		loadMore (): void {
+			if (!this.loading) {
+				const executionsList = this.$refs.executionList as HTMLElement;
+				if (executionsList) {
+					const diff = executionsList.offsetHeight - (executionsList.scrollHeight - executionsList.scrollTop);
+					if (diff > -10  && diff < 10) {
+						this.$emit('loadMore');
+					}
+				}
+			}
+		},
 		onRefresh (): void {
 			this.$emit('refresh');
 		},

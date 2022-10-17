@@ -4,9 +4,11 @@
 			v-if="showSidebar"
 			:executions="executions"
 			:loading="loading"
+			:loadingMore="loadingMore"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
 			@refresh="loadAutoRefresh"
+			@loadMore="loadMore"
 		/>
 		<div :class="$style.content" v-if="!hidePreview">
 			<router-view name="executionPreview" @deleteCurrentExecution="onDeleteCurrentExecution"/>
@@ -17,8 +19,8 @@
 <script lang="ts">
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS, WEBHOOK_NODE_TYPE } from '@/constants';
-import { IExecutionsSummary, INodeUi, ITag, IWorkflowDb } from '@/Interface';
-import { IConnection, IConnections, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
+import { IExecutionsListResponse, IExecutionsSummary, INodeUi, ITag, IWorkflowDb } from '@/Interface';
+import { IConnection, IConnections, IDataObject, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { restApi } from '../mixins/restApi';
 import { showMessage } from '../mixins/showMessage';
@@ -26,8 +28,9 @@ import { v4 as uuid } from 'uuid';
 import { Route } from 'vue-router';
 import { executionHelpers } from '../mixins/executionsHelpers';
 import { range as _range } from 'lodash';
+import { debounceHelper } from '../mixins/debounce';
 
-export default mixins(restApi, showMessage, executionHelpers).extend({
+export default mixins(restApi, showMessage, executionHelpers, debounceHelper).extend({
 	name: 'executions-page',
 	components: {
 		ExecutionsSidebar,
@@ -35,6 +38,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	data() {
 		return {
 			loading: false,
+			loadingMore: false,
 			filter: { finished: true, status: '' },
 		};
 	},
@@ -89,6 +93,47 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		}
 	},
 	methods: {
+		async onLoadMore (): Promise<void> {
+			this.callDebounced("loadMore", { debounceTime: 100 });
+		},
+		async loadMore (): Promise<void> {
+			if (this.filter.status === 'running') {
+				return;
+			}
+			this.loadingMore = true;
+
+			let lastId: string | number | undefined;
+			if (this.executions.length !== 0) {
+				const lastItem = this.executions.slice(-1)[0];
+				lastId = lastItem.id;
+			}
+
+			const requestFilter: IDataObject = { workflowId: this.currentWorkflow };
+			if (this.filter.status === 'waiting') {
+				requestFilter.waitTill = true;
+			} else if (this.filter.status !== '')  {
+				requestFilter.finished = this.filter.status === 'success';
+			}
+			let data: IExecutionsListResponse;
+			try {
+				data = await this.restApi().getPastExecutions(requestFilter, 20, lastId);
+			} catch (error) {
+				this.loadingMore = false;
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.loadMore.title'),
+				);
+				return;
+			}
+
+			data.results = data.results.map((execution) => {
+				// @ts-ignore
+				return { ...execution, mode: execution.mode };
+			});
+
+			this.$store.commit('workflows/setCurrentWorkflowExecutions', [ ...this.executions, ...data.results ]);
+			this.loadingMore = false;
+		},
 		async onDeleteCurrentExecution (): Promise<void> {
 			this.loading = true;
 			try {

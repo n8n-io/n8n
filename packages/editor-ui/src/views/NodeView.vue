@@ -327,7 +327,11 @@ export default mixins(
 				};
 			},
 			backgroundStyle(): object {
-				return CanvasHelpers.getBackgroundStyles(this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
+				return CanvasHelpers.getBackgroundStyles(
+					this.nodeViewScale,
+					this.$store.getters.getNodeViewOffsetPosition,
+					this.isExecutionPreview,
+				);
 			},
 			workflowClasses() {
 				const returnClasses = [];
