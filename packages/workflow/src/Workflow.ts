@@ -50,6 +50,7 @@ import {
 	NodeParameterValueType,
 } from './Interfaces';
 import { IDeferredPromise } from './DeferredPromise';
+import { requireDistNode } from './utils';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
@@ -953,10 +954,10 @@ export class Workflow {
 	/**
 	 * Executes the Webhooks method of the node
 	 *
-	 * @param {WebhookSetupMethodNames} method The name of the method to execute
+	 * @param {WebhookSetupMethodNames} methodName The name of the method to execute
 	 */
 	async runWebhookMethod(
-		method: WebhookSetupMethodNames,
+		methodName: WebhookSetupMethodNames,
 		webhookData: IWebhookData,
 		nodeExecuteFunctions: INodeExecuteFunctions,
 		mode: WorkflowExecuteMode,
@@ -974,11 +975,11 @@ export class Workflow {
 			return;
 		}
 
-		if (nodeType.webhookMethods[webhookData.webhookDescription.name][method] === undefined) {
-			return;
-		}
+		const webhookMethod = nodeType.webhookMethods[webhookData.webhookDescription.name][methodName];
 
-		const thisArgs = nodeExecuteFunctions.getExecuteHookFunctions(
+		if (!webhookMethod) return;
+
+		const executeHookFunctions = nodeExecuteFunctions.getExecuteHookFunctions(
 			this,
 			node,
 			webhookData.workflowExecuteAdditionalData,
@@ -987,8 +988,20 @@ export class Workflow {
 			isTest,
 			webhookData,
 		);
-		// eslint-disable-next-line consistent-return
-		return nodeType.webhookMethods[webhookData.webhookDescription.name][method]!.call(thisArgs);
+
+		const isCachedNode = typeof webhookMethod === 'string';
+
+		if (!isCachedNode) {
+			return webhookMethod.call(executeHookFunctions);
+		}
+
+		// cached node contains stub method, so require dist node at runtime
+
+		const distNode = requireDistNode(nodeType, this);
+
+		return distNode.webhookMethods[webhookData.webhookDescription.name][methodName].call(
+			executeHookFunctions,
+		);
 	}
 
 	/**
@@ -1116,14 +1129,31 @@ export class Workflow {
 			throw new Error(`The node "${node.name}" does not have any webhooks defined.`);
 		}
 
-		const thisArgs = nodeExecuteFunctions.getExecuteWebhookFunctions(
+		const executeWebhookFunctions = nodeExecuteFunctions.getExecuteWebhookFunctions(
 			this,
 			node,
 			additionalData,
 			mode,
 			webhookData,
 		);
-		return nodeType.webhook.call(thisArgs);
+
+		// @TODO: nodeType.webhook not being found when calling via tunnel
+
+		// const isCachedNode = typeof webhookMethod === 'string';
+
+		// if (!isCachedNode) {
+		// 	return webhookMethod.call(executeHookFunctions);
+		// }
+
+		// // cached node contains stub method, so require dist node at runtime
+
+		// const distNode = requireDistNode(nodeType, this);
+
+		// return distNode.webhookMethods[webhookData.webhookDescription.name][methodName].call(
+		// 	executeHookFunctions,
+		// );
+
+		return nodeType.webhook.call(executeWebhookFunctions);
 	}
 
 	/**

@@ -307,7 +307,13 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 		}
 
 		returnData[nodeTypeName.type] = {
-			className: nodeTypes.nodeTypes[nodeTypeName.type].type.constructor.name,
+			// className: nodeTypes.nodeTypes[nodeTypeName.type].type.constructor.name,
+			// @TODO: Improve class name detection
+			className: nodeTypes.nodeTypes[nodeTypeName.type].sourcePath
+				.split('/')
+				.pop()!
+				.split('.')
+				.shift()!,
 			sourcePath: nodeTypes.nodeTypes[nodeTypeName.type].sourcePath,
 		};
 	}
