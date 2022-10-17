@@ -23,14 +23,14 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message permalink',
 			},
 			{
-				name: 'Post',
+				name: 'Send',
 				value: 'post',
-				action: 'Post a message',
+				action: 'Send a message',
 			},
 			{
-				name: 'Post (Ephemeral)',
+				name: 'Send (Ephemeral)',
 				value: 'postEphemeral',
-				action: 'Post an ephemeral message',
+				action: 'Send an ephemeral message',
 			},
 			{
 				name: 'Update',
