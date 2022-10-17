@@ -210,7 +210,7 @@ export default Vue.extend({
 }
 
 .executionList {
-	height: calc(100% - 8em);
+	height: calc(100% - 10.5em);
 	overflow: auto;
 	margin-bottom: var(--spacing-m);
 	background-color: var(--color-background-xlight) !important;

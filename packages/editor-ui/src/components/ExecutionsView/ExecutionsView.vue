@@ -9,7 +9,7 @@
 			@refresh="loadAutoRefresh"
 		/>
 		<div :class="$style.content" v-if="!hidePreview">
-				<router-view name="executionPreview" @deleteCurrentExecution="onDeleteCurrentExecution"/>
+			<router-view name="executionPreview" @deleteCurrentExecution="onDeleteCurrentExecution"/>
 		</div>
 	</div>
 </template>
@@ -40,7 +40,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	},
 	computed: {
 		hidePreview (): boolean {
-			return this.loading || (this.executions.length === 0 && this.filterApplied);
+			const nothingToShow = this.executions.length === 0 && this.filterApplied;
+			const activeNotPresent = (this.executions as IExecutionsSummary[]).find(ex => ex.id === this.activeExecution.id) === undefined;
+			return this.loading || nothingToShow || activeNotPresent;
 		},
 		showSidebar (): boolean {
 			if (this.executions.length === 0) {
