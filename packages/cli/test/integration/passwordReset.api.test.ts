@@ -13,15 +13,14 @@ import {
 } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { Role } from '../../src/databases/entities/Role';
-import { SMTP_TEST_TIMEOUT } from './shared/constants';
 
 jest.mock('../../src/telemetry');
+jest.mock('../../src/UserManagement/email/NodeMailer');
 
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
-let isSmtpAvailable = false;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['passwordReset'], applyAuth: true });
@@ -33,9 +32,7 @@ beforeAll(async () => {
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
-
-	isSmtpAvailable = await utils.isTestSmtpServiceAvailable();
-}, SMTP_TEST_TIMEOUT);
+});
 
 beforeEach(async () => {
 	await testDb.truncate(['User'], testDbName);
@@ -50,36 +47,30 @@ afterAll(async () => {
 	await testDb.terminate(testDbName);
 });
 
-test(
-	'POST /forgot-password should send password reset email',
-	async () => {
-		if (!isSmtpAvailable) utils.skipSmtpTest(expect);
+test('POST /forgot-password should send password reset email', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
-		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const authlessAgent = utils.createAgent(app);
+	const member = await testDb.createUser({
+		email: 'test@test.com',
+		globalRole: globalMemberRole,
+	});
 
-		const authlessAgent = utils.createAgent(app);
-		const member = await testDb.createUser({
-			email: 'test@test.com',
-			globalRole: globalMemberRole,
-		});
+	config.set('userManagement.emails.mode', 'smtp');
 
-		await utils.configureSmtp();
+	await Promise.all(
+		[{ email: owner.email }, { email: member.email.toUpperCase() }].map(async (payload) => {
+			const response = await authlessAgent.post('/forgot-password').send(payload);
 
-		await Promise.all(
-			[{ email: owner.email }, { email: member.email.toUpperCase() }].map(async (payload) => {
-				const response = await authlessAgent.post('/forgot-password').send(payload);
+			expect(response.statusCode).toBe(200);
+			expect(response.body).toEqual({});
 
-				expect(response.statusCode).toBe(200);
-				expect(response.body).toEqual({});
-
-				const user = await Db.collections.User.findOneOrFail({ email: payload.email });
-				expect(user.resetPasswordToken).toBeDefined();
-				expect(user.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
-			}),
-		);
-	},
-	SMTP_TEST_TIMEOUT,
-);
+			const user = await Db.collections.User.findOneOrFail({ email: payload.email });
+			expect(user.resetPasswordToken).toBeDefined();
+			expect(user.resetPasswordTokenExpiration).toBeGreaterThan(Math.ceil(Date.now() / 1000));
+		}),
+	);
+});
 
 test('POST /forgot-password should fail if emailing is not set up', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });

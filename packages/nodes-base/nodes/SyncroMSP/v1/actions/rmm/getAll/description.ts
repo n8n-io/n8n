@@ -1,6 +1,4 @@
-import {
-	RmmProperties,
-} from '../../Interfaces';
+import { RmmProperties } from '../../Interfaces';
 
 export const rmmGetAllDescription: RmmProperties = [
 	{
@@ -9,12 +7,8 @@ export const rmmGetAllDescription: RmmProperties = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['rmm'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -30,15 +24,9 @@ export const rmmGetAllDescription: RmmProperties = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['rmm'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 25,
@@ -51,12 +39,8 @@ export const rmmGetAllDescription: RmmProperties = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['rmm'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},

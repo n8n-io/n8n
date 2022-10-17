@@ -8,9 +8,7 @@ export const threadOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -18,11 +16,13 @@ export const threadOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new chat thread',
+				action: 'Create a thread',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all chat threads',
+				description: 'Get many chat threads',
+				action: 'Get many threads',
 			},
 		],
 		default: 'create',
@@ -30,9 +30,9 @@ export const threadOperations: INodeProperties[] = [
 ];
 
 export const threadFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                thread:create                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                thread:create                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Conversation ID',
 		name: 'conversationId',
@@ -41,12 +41,8 @@ export const threadFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['thread'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -57,12 +53,8 @@ export const threadFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['thread'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -100,12 +92,8 @@ export const threadFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['thread'],
+				operation: ['create'],
 			},
 		},
 		description: 'The chat text',
@@ -118,12 +106,8 @@ export const threadFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['create'],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -152,9 +136,7 @@ export const threadFields: INodeProperties[] = [
 				default: false,
 				displayOptions: {
 					show: {
-						'/type': [
-							'note',
-						],
+						'/type': ['note'],
 					},
 				},
 				description: 'Whether a draft reply is created',
@@ -178,12 +160,8 @@ export const threadFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['create'],
+				resource: ['thread'],
 			},
 		},
 		options: [
@@ -224,7 +202,8 @@ export const threadFields: INodeProperties[] = [
 						name: 'property',
 						type: 'string',
 						default: 'data',
-						description: 'Name of the binary properties which contain data which should be added to email as attachment',
+						description:
+							'Name of the binary properties which contain data which should be added to email as attachment',
 					},
 				],
 			},
@@ -232,9 +211,9 @@ export const threadFields: INodeProperties[] = [
 		default: {},
 		description: 'Array of supported attachments to add to the message',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                thread:getAll                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                thread:getAll                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Conversation ID',
 		name: 'conversationId',
@@ -243,12 +222,8 @@ export const threadFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'thread',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['thread'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -258,12 +233,8 @@ export const threadFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
 			},
 		},
 		default: false,
@@ -275,15 +246,9 @@ export const threadFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'thread',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['thread'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

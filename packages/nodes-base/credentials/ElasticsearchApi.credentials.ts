@@ -1,8 +1,7 @@
 import {
-	ICredentialDataDecryptedObject,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -32,28 +31,31 @@ export class ElasticsearchApi implements ICredentialType {
 			type: 'string',
 			default: '',
 			placeholder: 'https://mydeployment.es.us-central1.gcp.cloud.es.io:9243',
-			description: 'Referred to as Elasticsearch \'endpoint\' in the Elastic deployment dashboard',
+			description: "Referred to as Elasticsearch 'endpoint' in the Elastic deployment dashboard",
+		},
+		{
+			displayName: 'Ignore SSL Issues',
+			name: 'ignoreSSLIssues',
+			type: 'boolean',
+			default: false,
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
-		const token = Buffer.from(`${credentials.username}:${credentials.password}`).toString('base64');
 
-		requestOptions.headers = {
-			...requestOptions.headers,
-			Authorization: `Basic ${token}`,
-		};
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			auth: {
+				username: '={{$credentials.username}}',
+				password: '={{$credentials.password}}',
+			},
+			skipSslCertificateValidation: '={{$credentials.ignoreSSLIssues}}',
+		},
+	};
 
-		if (requestOptions.body && Object.keys(requestOptions.body).length === 0) {
-			delete requestOptions.body;
-		}
-
-		return requestOptions;
-	}
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL: '={{$credentials.baseUrl}}',
-			url: '/_aliases',
-			method: 'GET',
+			url: '/_xpack?human=false',
 		},
 	};
 }

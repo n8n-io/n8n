@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	NodePropertyTypes,
-} from 'n8n-workflow';
+import { ICredentialType, NodePropertyTypes } from 'n8n-workflow';
 
 export class NetlifyApi implements ICredentialType {
 	name = 'netlifyApi';

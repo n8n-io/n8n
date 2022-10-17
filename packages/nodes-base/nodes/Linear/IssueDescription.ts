@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const issueOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const issueOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
+				resource: ['issue'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const issueOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an issue',
+				action: 'Create an issue',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an issue',
+				action: 'Delete an issue',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an issue',
+				action: 'Get an issue',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all issues',
+				description: 'Get many issues',
+				action: 'Get many issues',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an issue',
+				action: 'Update an issue',
 			},
 		],
 		default: 'create',
@@ -47,7 +48,6 @@ export const issueOperations: INodeProperties[] = [
 ];
 
 export const issueFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 issue:create                               */
 	/* -------------------------------------------------------------------------- */
@@ -55,16 +55,13 @@ export const issueFields: INodeProperties[] = [
 		displayName: 'Team Name or ID',
 		name: 'teamId',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -79,12 +76,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -97,12 +90,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -110,7 +99,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Assignee Name or ID',
 				name: 'assigneeId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -158,7 +148,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'State Name or ID',
 				name: 'stateId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStates',
 				},
@@ -176,13 +167,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['issue'],
+				operation: ['get', 'delete'],
 			},
 		},
 		default: '',
@@ -197,12 +183,8 @@ export const issueFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -218,15 +200,9 @@ export const issueFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		description: 'Max number of results to return',
@@ -241,12 +217,8 @@ export const issueFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -259,12 +231,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -272,7 +240,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Assignee Name or ID',
 				name: 'assigneeId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -320,7 +289,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'State Name or ID',
 				name: 'stateId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getStates',
 				},
@@ -330,7 +300,8 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Team Name or ID',
 				name: 'teamId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},

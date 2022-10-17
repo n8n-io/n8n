@@ -34,7 +34,7 @@ export class ClassNameReplace implements INodeType {
 		let item: INodeExecutionData;
 		let myString: string;
 
-		// Itterates over all input items and add the key "myString" with the
+		// Iterates over all input items and add the key "myString" with the
 		// value the parameter "myString" resolves to.
 		// (This could be a different value for each item in case it contains an expression)
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {

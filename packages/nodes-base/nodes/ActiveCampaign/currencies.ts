@@ -144,7 +144,7 @@ export const allCurrencies = [
 	{ name: 'Tajikistani Somoni', value: 'tjs' },
 	{ name: 'Turkmenistani Manat', value: 'tmt' },
 	{ name: 'Tunisian Dinar', value: 'tnd' },
-	{ name: 'Tongan Pa\'anga', value: 'top' },
+	{ name: "Tongan Pa'anga", value: 'top' },
 	{ name: 'Turkish Lira', value: 'try' },
 	{ name: 'Trinidad and Tobago Dollar', value: 'ttd' },
 	{ name: 'New Taiwan Dollar', value: 'twd' },

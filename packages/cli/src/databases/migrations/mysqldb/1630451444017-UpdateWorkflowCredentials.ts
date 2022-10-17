@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
-import { runChunked } from '../../utils/migrationHelpers';
+import { runInBatches } from '../../utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`
@@ -22,7 +22,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 		`;
 
 		// @ts-ignore
-		await runChunked(queryRunner, workflowsQuery, (workflows) => {
+		await runInBatches(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = workflow.nodes;
 				let credentialsUpdated = false;
@@ -65,7 +65,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 			WHERE waitTill IS NOT NULL AND finished = 0
 		`;
 		// @ts-ignore
-		await runChunked(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
+		await runInBatches(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
 			waitingExecutions.forEach(async (execution) => {
 				const data = execution.workflowData;
 				let credentialsUpdated = false;
@@ -158,7 +158,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 			FROM ${tablePrefix}workflow_entity
 		`;
 		// @ts-ignore
-		await runChunked(queryRunner, workflowsQuery, (workflows) => {
+		await runInBatches(queryRunner, workflowsQuery, (workflows) => {
 			workflows.forEach(async (workflow) => {
 				const nodes = workflow.nodes;
 				let credentialsUpdated = false;
@@ -206,7 +206,7 @@ export class UpdateWorkflowCredentials1630451444017 implements MigrationInterfac
 			WHERE waitTill IS NOT NULL AND finished = 0
 		`;
 		// @ts-ignore
-		await runChunked(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
+		await runInBatches(queryRunner, waitingExecutionsQuery, (waitingExecutions) => {
 			waitingExecutions.forEach(async (execution) => {
 				const data = execution.workflowData;
 				let credentialsUpdated = false;

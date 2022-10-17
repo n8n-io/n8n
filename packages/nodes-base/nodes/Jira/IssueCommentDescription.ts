@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const issueCommentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const issueCommentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
+				resource: ['issueComment'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const issueCommentOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add comment to issue',
+				action: 'Add a comment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a comment',
+				action: 'Get a comment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all comments',
+				description: 'Get many comments',
+				action: 'Get many comments',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a comment',
+				action: 'Remove a comment',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a comment',
+				action: 'Update a comment',
 			},
 		],
 		default: 'add',
@@ -47,7 +48,6 @@ export const issueCommentOperations: INodeProperties[] = [
 ];
 
 export const issueCommentFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                issueComment:add                            */
 	/* -------------------------------------------------------------------------- */
@@ -58,12 +58,8 @@ export const issueCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['issueComment'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -77,12 +73,8 @@ export const issueCommentFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['issueComment'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -93,18 +85,12 @@ export const issueCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'add',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['issueComment'],
+				operation: ['add'],
+				jsonParameters: [false],
 			},
 		},
-		description: 'Comment\'s text',
+		description: "Comment's text",
 	},
 	{
 		displayName: 'Document Format (JSON)',
@@ -113,18 +99,13 @@ export const issueCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'add',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['issueComment'],
+				operation: ['add'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
+		description:
+			'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -134,12 +115,8 @@ export const issueCommentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['issueComment'],
+				operation: ['add'],
 			},
 		},
 		options: [
@@ -154,7 +131,8 @@ export const issueCommentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+				description:
+					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
@@ -169,12 +147,8 @@ export const issueCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issueComment'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -188,12 +162,8 @@ export const issueCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issueComment'],
+				operation: ['get'],
 			},
 		},
 		description: 'The ID of the comment',
@@ -206,12 +176,8 @@ export const issueCommentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issueComment'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -226,7 +192,8 @@ export const issueCommentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+				description:
+					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
@@ -241,12 +208,8 @@ export const issueCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issueComment'],
+				operation: ['getAll'],
 			},
 		},
 		default: '',
@@ -258,12 +221,8 @@ export const issueCommentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issueComment'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -275,15 +234,9 @@ export const issueCommentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['issueComment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -301,12 +254,8 @@ export const issueCommentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issueComment'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -321,7 +270,8 @@ export const issueCommentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+				description:
+					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},
@@ -336,12 +286,8 @@ export const issueCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['issueComment'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
@@ -355,12 +301,8 @@ export const issueCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['issueComment'],
+				operation: ['remove'],
 			},
 		},
 		description: 'The ID of the comment',
@@ -376,12 +318,8 @@ export const issueCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issueComment'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -395,12 +333,8 @@ export const issueCommentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issueComment'],
+				operation: ['update'],
 			},
 		},
 		description: 'The ID of the comment',
@@ -412,12 +346,8 @@ export const issueCommentFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issueComment'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -428,18 +358,12 @@ export const issueCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['issueComment'],
+				operation: ['update'],
+				jsonParameters: [false],
 			},
 		},
-		description: 'Comment\'s text',
+		description: "Comment's text",
 	},
 	{
 		displayName: 'Document Format (JSON)',
@@ -448,18 +372,13 @@ export const issueCommentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['issueComment'],
+				operation: ['update'],
+				jsonParameters: [true],
 			},
 		},
-		description: 'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
+		description:
+			'The Atlassian Document Format (ADF). Online builder can be found <a href="https://developer.atlassian.com/cloud/jira/platform/apis/document/playground/">here</a>.',
 	},
 	{
 		displayName: 'Options',
@@ -469,12 +388,8 @@ export const issueCommentFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issueComment',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issueComment'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -489,7 +404,8 @@ export const issueCommentFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
+				description:
+					'Use expand to include additional information about comments in the response. This parameter accepts Rendered Body, which returns the comment body rendered in HTML.',
 			},
 		],
 	},

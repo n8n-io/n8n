@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const userOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a user',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user',
+				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all users',
+				description: 'Get many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
+				action: 'Update a user',
 			},
 		],
 		default: 'create',
@@ -57,12 +58,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 		default: '',
@@ -74,12 +71,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 		default: '',
@@ -94,34 +87,28 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 		default: '',
-		description: 'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
+		description:
+			'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
 	},
 	{
 		displayName: 'Domain Name or ID',
 		name: 'domain',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getDomains',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 		default: '',
@@ -132,16 +119,13 @@ export const userFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 		default: '',
-		description: 'The username that will be set to the user. Example: If you domain is example.com and you set the username to jhon then the user\'s final email address will be jhon@example.com.',
+		description:
+			"The username that will be set to the user. Example: If you domain is example.com and you set the username to jhon then the user's final email address will be jhon@example.com.",
 	},
 	{
 		displayName: 'Make Admin',
@@ -150,12 +134,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 		default: false,
@@ -169,12 +149,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create'],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -305,7 +281,8 @@ export const userFields: INodeProperties[] = [
 								name: 'primary',
 								type: 'boolean',
 								default: false,
-								description: 'Whether this is the user\'s primary phone number. A user may only have one primary phone number.',
+								description:
+									"Whether this is the user's primary phone number. A user may only have one primary phone number.",
 							},
 						],
 					},
@@ -368,16 +345,13 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['delete'],
+				resource: ['user'],
 			},
 		},
 		default: '',
-		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
+		description:
+			"The value can be the user's primary email address, alias email address, or unique user ID",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:get                                   */
@@ -389,16 +363,13 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['get'],
+				resource: ['user'],
 			},
 		},
 		default: '',
-		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
+		description:
+			"The value can be the user's primary email address, alias email address, or unique user ID",
 	},
 	{
 		displayName: 'Projection',
@@ -424,12 +395,8 @@ export const userFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['get'],
+				resource: ['user'],
 			},
 		},
 		default: 'basic',
@@ -443,12 +410,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['get'],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -458,16 +421,15 @@ export const userFields: INodeProperties[] = [
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						'/projection': [
-							'custom',
-						],
+						'/projection': ['custom'],
 					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'View Type',
@@ -477,16 +439,19 @@ export const userFields: INodeProperties[] = [
 					{
 						name: 'Admin View',
 						value: 'admin_view',
-						description: 'Results include both administrator-only and domain-public fields for the user',
+						description:
+							'Results include both administrator-only and domain-public fields for the user',
 					},
 					{
 						name: 'Descending',
 						value: 'DESCENDING',
-						description: 'Results only include fields for the user that are publicly visible to other users in the domain',
+						description:
+							'Results only include fields for the user that are publicly visible to other users in the domain',
 					},
 				],
 				default: 'admin_view',
-				description: 'Whether to fetch the administrator-only or domain-wide public view of the user. For more information, see Retrieve a user as a non-administrator.',
+				description:
+					'Whether to fetch the administrator-only or domain-wide public view of the user. For more information, see Retrieve a user as a non-administrator.',
 			},
 		],
 	},
@@ -499,12 +464,8 @@ export const userFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['getAll'],
+				resource: ['user'],
 			},
 		},
 		default: false,
@@ -516,15 +477,9 @@ export const userFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'user',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['user'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -558,12 +513,8 @@ export const userFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['getAll'],
+				resource: ['user'],
 			},
 		},
 		default: 'basic',
@@ -577,12 +528,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['getAll'],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -592,23 +539,23 @@ export const userFields: INodeProperties[] = [
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						'/projection': [
-							'custom',
-						],
+						'/projection': ['custom'],
 					},
 				},
 				typeOptions: {
 					loadOptionsMethod: 'getSchemas',
 				},
 				default: [],
-				description: 'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'A comma-separated list of schema names. All fields from these schemas are fetched. This should only be set when projection=custom. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Customer',
 				name: 'customer',
 				type: 'string',
 				default: '',
-				description: 'The unique ID for the customer\'s G Suite account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.',
+				description:
+					"The unique ID for the customer's Google Workspace account. In case of a multi-domain account, to fetch all groups for a customer, fill this field instead of domain.",
 			},
 			{
 				displayName: 'Domain',
@@ -643,7 +590,8 @@ export const userFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				description: 'Free text search terms to find users that match these terms in any field, except for extended properties. For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>.',
+				description:
+					'Free text search terms to find users that match these terms in any field, except for extended properties. For more information on constructing user queries, see <a href="https://developers.google.com/admin-sdk/directory/v1/guides/search-users">Search for Users</a>.',
 			},
 			{
 				displayName: 'Show Deleted',
@@ -677,16 +625,19 @@ export const userFields: INodeProperties[] = [
 					{
 						name: 'Admin View',
 						value: 'admin_view',
-						description: 'Results include both administrator-only and domain-public fields for the user',
+						description:
+							'Results include both administrator-only and domain-public fields for the user',
 					},
 					{
 						name: 'Descending',
 						value: 'DESCENDING',
-						description: 'Results only include fields for the user that are publicly visible to other users in the domain',
+						description:
+							'Results only include fields for the user that are publicly visible to other users in the domain',
 					},
 				],
 				default: 'admin_view',
-				description: 'Whether to fetch the administrator-only or domain-wide public view of the user. For more information, see Retrieve a user as a non-administrator.',
+				description:
+					'Whether to fetch the administrator-only or domain-wide public view of the user. For more information, see Retrieve a user as a non-administrator.',
 			},
 		],
 	},
@@ -700,16 +651,13 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['update'],
+				resource: ['user'],
 			},
 		},
 		default: '',
-		description: 'The value can be the user\'s primary email address, alias email address, or unique user ID',
+		description:
+			"The value can be the user's primary email address, alias email address, or unique user ID",
 	},
 	{
 		displayName: 'Update Fields',
@@ -719,12 +667,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['update'],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -758,8 +702,10 @@ export const userFields: INodeProperties[] = [
 				displayName: 'Password',
 				name: 'password',
 				type: 'string',
+				typeOptions: { password: true },
 				default: '',
-				description: 'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
+				description:
+					'Stores the password for the user account. A minimum of 8 characters is required. The maximum length is 100 characters.',
 			},
 			{
 				displayName: 'Phones',
@@ -879,7 +825,8 @@ export const userFields: INodeProperties[] = [
 								name: 'primary',
 								type: 'boolean',
 								default: false,
-								description: 'Whether this is the user\'s primary phone number. A user may only have one primary phone number.',
+								description:
+									"Whether this is the user's primary phone number. A user may only have one primary phone number.",
 							},
 						],
 					},
@@ -890,7 +837,8 @@ export const userFields: INodeProperties[] = [
 				name: 'primaryEmail',
 				type: 'string',
 				default: '',
-				description: 'The user\'s primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.',
+				description:
+					"The user's primary email address. This property is required in a request to create a user account. The primaryEmail must be unique and cannot be an alias of another user.",
 			},
 			{
 				displayName: 'Secondary Emails',

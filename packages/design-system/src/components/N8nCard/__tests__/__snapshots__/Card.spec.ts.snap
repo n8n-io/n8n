@@ -1,0 +1,25 @@
+// Vitest Snapshot v1
+
+exports[`components > N8nCard > should render correctly 1`] = `
+"<div class=\\"card _card_nk81s_1\\">
+  <!---->
+  <div class=\\"_content_nk81s_20\\">
+    <!---->
+    <div class=\\"_body_nk81s_28\\">This is a card.</div>
+    <!---->
+  </div>
+  <!---->
+</div>"
+`;
+
+exports[`components > N8nCard > should render correctly with header and footer 1`] = `
+"<div class=\\"card _card_nk81s_1\\">
+  <!---->
+  <div class=\\"_content_nk81s_20\\">
+    <div class=\\"_header_nk81s_12\\">Header</div>
+    <div class=\\"_body_nk81s_28\\">This is a card.</div>
+    <div class=\\"_footer_nk81s_13\\">Footer</div>
+  </div>
+  <!---->
+</div>"
+`;

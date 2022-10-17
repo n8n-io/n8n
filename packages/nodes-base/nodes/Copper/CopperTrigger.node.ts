@@ -1,19 +1,8 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	copperApiRequest,
-	getAutomaticSecret,
-} from './GenericFunctions';
+import { copperApiRequest, getAutomaticSecret } from './GenericFunctions';
 
 export class CopperTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -166,9 +155,7 @@ export class CopperTrigger implements INodeType {
 		}
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

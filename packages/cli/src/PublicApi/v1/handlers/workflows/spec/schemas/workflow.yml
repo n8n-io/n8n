@@ -1,4 +1,5 @@
 type: object
+additionalProperties: false
 required:
   - name
   - nodes
@@ -33,9 +34,14 @@ properties:
   settings:
     $ref: './workflowSettings.yml'
   staticData:
-    type: string
+    example: { lastId: 1 }
     nullable: true
-    example: '{ iterationId: 2 }'
+    anyOf:
+      - type: string
+        format: 'jsonString'
+        nullable: true
+      - type: object
+        nullable: true
   tags:
     type: array
     items:

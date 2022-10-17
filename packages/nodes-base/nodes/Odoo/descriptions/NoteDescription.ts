@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const noteOperations: INodeProperties[] = [
 	{
@@ -11,9 +9,7 @@ export const noteOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
+				resource: ['note'],
 			},
 		},
 		options: [
@@ -21,26 +17,31 @@ export const noteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new note',
+				action: 'Create a note',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a note',
+				action: 'Delete a note',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a note',
+				action: 'Get a note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all notes',
+				description: 'Get many notes',
+				action: 'Get many notes',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a note',
+				action: 'Update a note',
 			},
 		],
 	},
@@ -58,12 +59,8 @@ export const noteDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'note',
-				],
+				operation: ['create'],
+				resource: ['note'],
 			},
 		},
 	},
@@ -104,13 +101,8 @@ export const noteDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-					'delete',
-				],
-				resource: [
-					'note',
-				],
+				operation: ['get', 'delete'],
+				resource: ['note'],
 			},
 		},
 	},
@@ -124,12 +116,8 @@ export const noteDescription: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['note'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -143,15 +131,9 @@ export const noteDescription: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['note'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -168,13 +150,8 @@ export const noteDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'get',
-				],
-				resource: [
-					'note',
-				],
+				operation: ['getAll', 'get'],
+				resource: ['note'],
 			},
 		},
 		options: [
@@ -183,7 +160,8 @@ export const noteDescription: INodeProperties[] = [
 				displayName: 'Fields to Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
-				description: 'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
@@ -202,12 +180,8 @@ export const noteDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'note',
-				],
+				operation: ['update'],
+				resource: ['note'],
 			},
 		},
 	},
@@ -219,12 +193,8 @@ export const noteDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'note',
-				],
+				operation: ['update'],
+				resource: ['note'],
 			},
 		},
 	},

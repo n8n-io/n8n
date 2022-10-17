@@ -10,8 +10,8 @@
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						$locale.baseText('ndv.trigger.webhookNode.listening')
 					}}</n8n-text>
-					<div :class="$style.shake">
-						<n8n-text class="mb-xs">
+					<div :class="[$style.shake, 'mb-xs']">
+						<n8n-text>
 							{{
 								$locale.baseText('ndv.trigger.webhookNode.requestHint', {
 									interpolate: { type: this.webhookHttpMethod },
@@ -33,8 +33,8 @@
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
 						$locale.baseText('ndv.trigger.webhookBasedNode.listening')
 					}}</n8n-text>
-					<div :class="$style.shake">
-						<n8n-text class="mb-xs" tag="div">
+					<div :class="[$style.shake, 'mb-xs']">
+						<n8n-text tag="div">
 							{{
 								$locale.baseText('ndv.trigger.webhookBasedNode.serviceHint', {
 									interpolate: { service: serviceName },
@@ -55,7 +55,7 @@
 							{{ header }}
 						</n8n-heading>
 						<n8n-text v-if="subheader">
-							<span v-html="subheader"></span>
+							<span v-text="subheader" />
 						</n8n-text>
 					</div>
 
@@ -125,7 +125,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters.nodeType(this.node.type, this.node.typeVersion);
+				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 			}
 
 			return null;

@@ -1,6 +1,4 @@
-import {
-	EmployeeDocumentProperties,
-} from '../../Interfaces';
+import { EmployeeDocumentProperties } from '../../Interfaces';
 
 export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 	{
@@ -10,12 +8,8 @@ export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['upload'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: '',
@@ -28,12 +22,8 @@ export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['upload'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: '',
@@ -45,16 +35,13 @@ export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['upload'],
+				resource: ['employeeDocument'],
 			},
 		},
 		required: true,
-		description: 'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
+		description:
+			'The name of the input field containing the binary file data to be uploaded. Supported file types: PNG, JPEG.',
 	},
 	{
 		displayName: 'Options',
@@ -63,12 +50,8 @@ export const employeeDocumentUploadDescription: EmployeeDocumentProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'employeeDocument',
-				],
+				operation: ['upload'],
+				resource: ['employeeDocument'],
 			},
 		},
 		default: {},

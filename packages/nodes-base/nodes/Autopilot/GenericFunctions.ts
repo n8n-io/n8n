@@ -1,22 +1,21 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
 
-export async function autopilotApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
-	const credentials = await this.getCredentials('autopilotApi') as IDataObject;
+export async function autopilotApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const credentials = (await this.getCredentials('autopilotApi')) as IDataObject;
 
 	const apiKey = `${credentials.apiKey}`;
 
@@ -47,8 +46,16 @@ export async function autopilotApiRequest(this: IExecuteFunctions | IWebhookFunc
 	}
 }
 
-export async function autopilotApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function autopilotApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 
@@ -62,8 +69,6 @@ export async function autopilotApiRequestAllItems(this: IExecuteFunctions | ILoa
 		if (query.limit && returnData.length >= query.limit && returnAll === false) {
 			return returnData;
 		}
-	} while (
-		responseData.bookmark !== undefined
-	);
+	} while (responseData.bookmark !== undefined);
 	return returnData;
 }

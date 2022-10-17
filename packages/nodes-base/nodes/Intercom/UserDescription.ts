@@ -8,9 +8,7 @@ export const userOpeations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -18,26 +16,31 @@ export const userOpeations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new user',
+				action: 'Create a user',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a user',
+				action: 'Delete a user',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a user',
+				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all users',
+				description: 'Get data of many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user',
+				action: 'Update a user',
 			},
 		],
 		default: 'create',
@@ -45,7 +48,6 @@ export const userOpeations: INodeProperties[] = [
 ];
 
 export const userFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:delete                                */
 	/* -------------------------------------------------------------------------- */
@@ -56,12 +58,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['user'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -77,12 +75,8 @@ export const userFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -94,15 +88,9 @@ export const userFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -120,12 +108,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['user'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -161,7 +145,6 @@ export const userFields: INodeProperties[] = [
 		],
 	},
 
-
 	/* -------------------------------------------------------------------------- */
 	/*                                  user:get                                 */
 	/* -------------------------------------------------------------------------- */
@@ -171,12 +154,8 @@ export const userFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -204,12 +183,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		description: 'View by value',
@@ -224,12 +199,8 @@ export const userFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -248,7 +219,6 @@ export const userFields: INodeProperties[] = [
 				value: 'userId',
 				description: 'Automatically generated identifier for the user',
 			},
-
 		],
 		default: 'id',
 		description: 'The property via which to query the user',
@@ -261,12 +231,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		description: 'Value of the property to identify the user to update',
@@ -281,24 +247,22 @@ export const userFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		options: [
 			{
 				name: 'User ID',
 				value: 'userId',
-				description: 'A unique string identifier for the user. It is required on creation if an email is not supplied.',
+				description:
+					'A unique string identifier for the user. It is required on creation if an email is not supplied.',
 			},
 			{
 				name: 'Email',
 				value: 'email',
-				description: 'The user\'s email address. It is required on creation if a user_id is not supplied.',
+				description:
+					"The user's email address. It is required on creation if a user_id is not supplied.",
 			},
 		],
 		default: '',
@@ -312,12 +276,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		description: 'Unique string identifier value',
@@ -329,13 +289,8 @@ export const userFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create', 'update'],
+				resource: ['user'],
 			},
 		},
 	},
@@ -347,13 +302,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-					'update',
-				],
-				resource: [
-					'user',
-				],
+				operation: ['create', 'update'],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -372,24 +322,19 @@ export const userFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: [],
-				description: 'Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Identifies the companies this user belongs to. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Email',
 				name: 'email',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'update',
-						],
-						'/resource': [
-							'user',
-						],
+						'/operation': ['update'],
+						'/resource': ['user'],
 					},
 					hide: {
-						'/updateBy': [
-							'email',
-						],
+						'/updateBy': ['email'],
 					},
 				},
 				type: 'string',
@@ -425,18 +370,11 @@ export const userFields: INodeProperties[] = [
 				name: 'userId',
 				displayOptions: {
 					show: {
-						'/operation': [
-							'update',
-						],
-						'/resource': [
-							'user',
-						],
+						'/operation': ['update'],
+						'/resource': ['user'],
 					},
 					hide: {
-						'/updateBy': [
-							'email',
-							'userId',
-						],
+						'/updateBy': ['email', 'userId'],
 					},
 				},
 				type: 'string',
@@ -457,7 +395,8 @@ export const userFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				options: [],
-				description: 'Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC',
+				description:
+					'Whether to instruct Intercom to update the users last_request_at value to the current API service time in UTC',
 			},
 			{
 				displayName: 'UTM Campaign',
@@ -505,20 +444,14 @@ export const userFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-					'update',
-				],
-				jsonParameters: [
-					true,
-				],
+				resource: ['user'],
+				operation: ['create', 'update'],
+				jsonParameters: [true],
 			},
 		},
 		default: '',
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
+		description:
+			'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 	{
 		displayName: 'Custom Attributes',
@@ -531,16 +464,9 @@ export const userFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-					'update',
-				],
-				jsonParameters: [
-					false,
-				],
+				resource: ['user'],
+				operation: ['create', 'update'],
+				jsonParameters: [false],
 			},
 		},
 		options: [
@@ -563,6 +489,7 @@ export const userFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'A hash of key/value pairs to represent custom data you want to attribute to a user',
+		description:
+			'A hash of key/value pairs to represent custom data you want to attribute to a user',
 	},
 ];

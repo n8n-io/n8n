@@ -27,7 +27,10 @@ export class GhostAdminApi implements ICredentialType {
 		},
 	];
 
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		const [id, secret] = (credentials.apiKey as string).split(':');
 		const token = jwt.sign({}, Buffer.from(secret, 'hex'), {
 			keyid: id,

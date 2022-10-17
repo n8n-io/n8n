@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const attachmentOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const attachmentOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
+				resource: ['attachment'],
 			},
 		},
 		options: [
@@ -20,21 +16,25 @@ export const attachmentOperations: INodeProperties[] = [
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload an attachment to a specific table record',
+				action: 'Upload an attachment',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an attachment',
+				action: 'Delete an attachment',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an attachment',
+				action: 'Get an attachment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all attachments on a table',
+				description: 'Get many attachments on a table',
+				action: 'Get many attachments',
 			},
 		],
 		default: 'upload',
@@ -42,7 +42,6 @@ export const attachmentOperations: INodeProperties[] = [
 ];
 
 export const attachmentFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                            attachment common fields                        */
 	/* -------------------------------------------------------------------------- */
@@ -51,20 +50,16 @@ export const attachmentFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'tableName',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'upload',
-					'getAll',
-				],
+				resource: ['attachment'],
+				operation: ['upload', 'getAll'],
 			},
 		},
 		required: true,
@@ -80,16 +75,13 @@ export const attachmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['attachment'],
+				operation: ['upload'],
 			},
 		},
 		required: true,
-		description: 'Sys_id of the record in the table specified in Table Name that you want to attach the file to',
+		description:
+			'Sys_id of the record in the table specified in Table Name that you want to attach the file to',
 	},
 	{
 		displayName: 'Input Data Field Name',
@@ -99,12 +91,8 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['attachment'],
+				operation: ['upload'],
 			},
 		},
 		description: 'Name of the binary property that contains the data to upload',
@@ -116,12 +104,8 @@ export const attachmentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['attachment'],
+				operation: ['upload'],
 			},
 		},
 		default: {},
@@ -145,12 +129,8 @@ export const attachmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['attachment'],
+				operation: ['delete'],
 			},
 		},
 		required: true,
@@ -166,12 +146,8 @@ export const attachmentFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['attachment'],
+				operation: ['get'],
 			},
 		},
 		required: true,
@@ -186,12 +162,8 @@ export const attachmentFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['attachment'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -203,15 +175,9 @@ export const attachmentFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['attachment'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -229,13 +195,8 @@ export const attachmentFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'get',
-					'getAll',
-				],
+				resource: ['attachment'],
+				operation: ['get', 'getAll'],
 			},
 		},
 	},
@@ -247,16 +208,9 @@ export const attachmentFields: INodeProperties[] = [
 		description: 'Field name where downloaded data will be placed',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'get',
-					'getAll',
-				],
-				download: [
-					true,
-				],
+				resource: ['attachment'],
+				operation: ['get', 'getAll'],
+				download: [true],
 			},
 		},
 	},
@@ -267,12 +221,8 @@ export const attachmentFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'attachment',
-				],
-				operation: [
-					'get', 'getAll',
-				],
+				resource: ['attachment'],
+				operation: ['get', 'getAll'],
 			},
 		},
 		default: {},

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const companyOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const companyOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -20,41 +16,49 @@ export const companyOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a company',
+				action: 'Create a company',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a company',
+				action: 'Delete a company',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a company',
+				action: 'Get a company',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all companies',
+				description: 'Get many companies',
+				action: 'Get many companies',
 			},
 			{
 				name: 'Get Recently Created',
 				value: 'getRecentlyCreated',
 				description: 'Get recently created companies',
+				action: 'Get a recently created company',
 			},
 			{
 				name: 'Get Recently Modified',
 				value: 'getRecentlyModified',
 				description: 'Get recently modified companies',
+				action: 'Get a recently modified company',
 			},
 			{
 				name: 'Search By Domain',
 				value: 'searchByDomain',
 				description: 'Search companies by domain',
+				action: 'Search for a company by Domain',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a company',
+				action: 'Update a company',
 			},
 		],
 		default: 'create',
@@ -62,7 +66,6 @@ export const companyOperations: INodeProperties[] = [
 ];
 
 export const companyFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                company:create                              */
 	/* -------------------------------------------------------------------------- */
@@ -73,12 +76,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -91,12 +90,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['company'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -148,7 +143,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Country/Region',
@@ -179,7 +175,8 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -197,7 +194,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'A short statement about the company\'s mission and goals',
+				description: "A short statement about the company's mission and goals",
 			},
 			{
 				displayName: 'Facebook Fans',
@@ -224,7 +221,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
-				description: 'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Is Public',
@@ -241,7 +239,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyleadStatuses',
 				},
 				default: '',
-				description: 'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Lifecycle Stage Name or ID',
@@ -251,7 +250,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanylifecycleStages',
 				},
 				default: '',
-				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'LinkedIn Bio',
@@ -285,42 +285,47 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanySourceTypes',
 				},
 				default: '',
-				description: 'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone Number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
-				description: 'A company\'s primary phone number. Powered by HubSpot Insights.',
+				description: "A company's primary phone number. Powered by HubSpot Insights.",
 			},
 			{
 				displayName: 'Postal Code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
-				description: 'The postal or zip code of the company or organization. Powered by HubSpot Insights.',
+				description:
+					'The postal or zip code of the company or organization. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'State/Region',
 				name: 'stateRegion',
 				type: 'string',
 				default: '',
-				description: 'The state or region in which the company or organization is located. Powered by HubSpot Insights.',
+				description:
+					'The state or region in which the company or organization is located. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Street Address',
 				name: 'streetAddress',
 				type: 'string',
 				default: '',
-				description: 'The street address of the company or organization, including unit number. Powered by HubSpot Insights.',
+				description:
+					'The street address of the company or organization, including unit number. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Street Address 2',
 				name: 'streetAddress2',
 				type: 'string',
 				default: '',
-				description: 'The additional address of the company or organization. Powered by HubSpot Insights.',
+				description:
+					'The additional address of the company or organization. Powered by HubSpot Insights.',
 			},
 
 			{
@@ -331,14 +336,16 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTargetAccounts',
 				},
 				default: '',
-				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'string',
 				default: '',
-				description: 'The time zone where the company or organization is located. Powered by HubSpot Insights.',
+				description:
+					'The time zone where the company or organization is located. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Total Money Raised',
@@ -348,7 +355,8 @@ export const companyFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'The total amount of money raised by the company. Powered by HubSpot Insights.',
+				description:
+					'The total amount of money raised by the company. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Twitter Bio',
@@ -385,7 +393,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTypes',
 				},
 				default: '',
-				description: 'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Web Technologies Name or ID',
@@ -395,14 +404,16 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyWebTechnologies',
 				},
 				default: '',
-				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Website URL',
 				name: 'websiteUrl',
 				type: 'string',
 				default: '',
-				description: 'The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights.',
+				description:
+					'The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Year Founded',
@@ -424,12 +435,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -443,12 +450,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['company'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -500,7 +503,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getOwners',
 				},
 				default: '',
-				description: 'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The owner of the company. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Country/Region',
@@ -531,7 +535,8 @@ export const companyFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCompanyCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -549,7 +554,7 @@ export const companyFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'A short statement about the company\'s mission and goals',
+				description: "A short statement about the company's mission and goals",
 			},
 			{
 				displayName: 'Facebook Fans',
@@ -576,7 +581,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyIndustries',
 				},
 				default: '',
-				description: 'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The type of business the company performs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Is Public',
@@ -593,7 +599,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyleadStatuses',
 				},
 				default: '',
-				description: 'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The company\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Lifecycle Stage Name or ID',
@@ -603,7 +610,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanylifecycleStages',
 				},
 				default: '',
-				description: 'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The most advanced lifecycle stage across all contacts associated with this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Linkedin Bio',
@@ -643,42 +651,47 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanySourceTypes',
 				},
 				default: '',
-				description: 'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Original source for the contact with the earliest activity for this company or organization. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone Number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
-				description: 'A company\'s primary phone number. Powered by HubSpot Insights.',
+				description: "A company's primary phone number. Powered by HubSpot Insights.",
 			},
 			{
 				displayName: 'Postal Code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
-				description: 'The postal or zip code of the company or organization. Powered by HubSpot Insights.',
+				description:
+					'The postal or zip code of the company or organization. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'State/Region',
 				name: 'stateRegion',
 				type: 'string',
 				default: '',
-				description: 'The state or region in which the company or organization is located. Powered by HubSpot Insights.',
+				description:
+					'The state or region in which the company or organization is located. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Street Address',
 				name: 'streetAddress',
 				type: 'string',
 				default: '',
-				description: 'The street address of the company or organization, including unit number. Powered by HubSpot Insights.',
+				description:
+					'The street address of the company or organization, including unit number. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Street Address 2',
 				name: 'streetAddress2',
 				type: 'string',
 				default: '',
-				description: 'The additional address of the company or organization. Powered by HubSpot Insights.',
+				description:
+					'The additional address of the company or organization. Powered by HubSpot Insights.',
 			},
 
 			{
@@ -689,14 +702,16 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTargetAccounts',
 				},
 				default: '',
-				description: 'The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The Target Account property is a means to flag high priority companies if you are following an account based strategy. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Timezone',
 				name: 'timezone',
 				type: 'string',
 				default: '',
-				description: 'The time zone where the company or organization is located. Powered by HubSpot Insights.',
+				description:
+					'The time zone where the company or organization is located. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Total Money Raised',
@@ -706,7 +721,8 @@ export const companyFields: INodeProperties[] = [
 					minValue: 0,
 				},
 				default: 0,
-				description: 'The total amount of money raised by the company. Powered by HubSpot Insights.',
+				description:
+					'The total amount of money raised by the company. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Twitter Bio',
@@ -743,7 +759,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyTypes',
 				},
 				default: '',
-				description: 'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The optional classification of this company record - prospect, partner, etc. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Web Technologies Name or ID',
@@ -753,14 +770,16 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyWebTechnologies',
 				},
 				default: '',
-				description: 'The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The web technologies used by the company or organization. Powered by HubSpot Insights. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Website URL',
 				name: 'websiteUrl',
 				type: 'string',
 				default: '',
-				description: 'The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights.',
+				description:
+					'The main website of the company or organization. This property is used to identify unique companies. Powered by HubSpot Insights.',
 			},
 			{
 				displayName: 'Year Founded',
@@ -782,12 +801,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -801,12 +816,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['company'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -815,7 +826,8 @@ export const companyFields: INodeProperties[] = [
 				name: 'includeMergeAudits',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return any merge history if the company has been previously merged with another company record. Defaults to false.',
+				description:
+					'Whether to return any merge history if the company has been previously merged with another company record. Defaults to false.',
 			},
 		],
 	},
@@ -829,12 +841,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -846,15 +854,9 @@ export const companyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -872,12 +874,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['company'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -886,7 +884,8 @@ export const companyFields: INodeProperties[] = [
 				name: 'includeMergeAudits',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to return any merge history if a company has been previously merged with another company record. Defaults to false.',
+				description:
+					'Whether to return any merge history if a company has been previously merged with another company record. Defaults to false.',
 			},
 			{
 				displayName: 'Property Names or IDs',
@@ -896,14 +895,16 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companies.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companies.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Properties With History',
 				name: 'propertiesWithHistory',
 				type: 'string',
 				default: '',
-				description: 'Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property\'s value.',
+				description:
+					"Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.",
 			},
 		],
 	},
@@ -918,12 +919,8 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['company'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -939,13 +936,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getRecentlyCreated',
-					'getRecentlyModified',
-				],
+				resource: ['company'],
+				operation: ['getRecentlyCreated', 'getRecentlyModified'],
 			},
 		},
 		default: false,
@@ -957,16 +949,9 @@ export const companyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getRecentlyCreated',
-					'getRecentlyModified',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getRecentlyCreated', 'getRecentlyModified'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -984,12 +969,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getRecentlyModified',
-				],
+				resource: ['company'],
+				operation: ['getRecentlyModified'],
 			},
 		},
 		options: [
@@ -1006,7 +987,8 @@ export const companyFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
+				description:
+					'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
 		],
 	},
@@ -1020,12 +1002,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'searchByDomain',
-				],
+				resource: ['company'],
+				operation: ['searchByDomain'],
 			},
 		},
 		required: true,
@@ -1037,12 +1015,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'searchByDomain',
-				],
+				resource: ['company'],
+				operation: ['searchByDomain'],
 			},
 		},
 		default: false,
@@ -1054,15 +1028,9 @@ export const companyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'searchByDomain',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['searchByDomain'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -1080,12 +1048,8 @@ export const companyFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'searchByDomain',
-				],
+				resource: ['company'],
+				operation: ['searchByDomain'],
 			},
 		},
 		options: [
@@ -1097,7 +1061,8 @@ export const companyFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanyProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

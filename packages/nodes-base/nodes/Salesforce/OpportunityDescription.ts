@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const opportunityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
+				resource: ['opportunity'],
 			},
 		},
 		options: [
@@ -20,41 +16,50 @@ export const opportunityOperations: INodeProperties[] = [
 				name: 'Add Note',
 				value: 'addNote',
 				description: 'Add note to an opportunity',
+				action: 'Add a note to an opportunity',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create an opportunity',
+				action: 'Create an opportunity',
 			},
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new opportunity, or update the current one if it already exists (upsert)',
+				description:
+					'Create a new opportunity, or update the current one if it already exists (upsert)',
+				action: 'Create or update an opportunity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an opportunity',
+				action: 'Delete an opportunity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an opportunity',
+				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all opportunities',
+				description: 'Get many opportunities',
+				action: 'Get many opportunities',
 			},
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: 'Returns an overview of opportunity\'s metadata',
+				description: "Returns an overview of opportunity's metadata",
+				action: 'Get an opportunity summary',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an opportunity',
+				action: 'Update an opportunity',
 			},
 		],
 		default: 'create',
@@ -62,7 +67,6 @@ export const opportunityOperations: INodeProperties[] = [
 ];
 
 export const opportunityFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                opportunity:create                          */
 	/* -------------------------------------------------------------------------- */
@@ -73,23 +77,18 @@ export const opportunityFields: INodeProperties[] = [
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getExternalIdFields',
-			loadOptionsDependsOn: [
-				'resource',
-			],
+			loadOptionsDependsOn: ['resource'],
 		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['opportunity'],
+				operation: ['upsert'],
 			},
 		},
-		description: 'The field to check to see if the opportunity already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'The field to check to see if the opportunity already exists. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Value to Match',
@@ -99,15 +98,12 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['opportunity'],
+				operation: ['upsert'],
 			},
 		},
-		description: 'If this value exists in the \'match against\' field, update the opportunity. Otherwise create a new one.',
+		description:
+			"If this value exists in the 'match against' field, update the opportunity. Otherwise create a new one.",
 	},
 	{
 		displayName: 'Name',
@@ -117,13 +113,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['opportunity'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		description: 'Required. Last name of the opportunity. Limited to 80 characters.',
@@ -136,13 +127,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['opportunity'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		description: 'Required. Date when the opportunity is expected to close.',
@@ -158,16 +144,12 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['opportunity'],
+				operation: ['create', 'upsert'],
 			},
 		},
-		description: 'Required. Date when the opportunity is expected to close. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'Required. Date when the opportunity is expected to close. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -177,13 +159,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'create',
-					'upsert',
-				],
+				resource: ['opportunity'],
+				operation: ['create', 'upsert'],
 			},
 		},
 		options: [
@@ -195,7 +172,8 @@ export const opportunityFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this opportunity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the account associated with this opportunity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Amount',
@@ -215,7 +193,8 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCampaigns',
 				},
 				default: '',
-				description: 'ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Custom Fields',
@@ -240,7 +219,8 @@ export const opportunityFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -258,7 +238,8 @@ export const opportunityFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'A description of the opportunity. Label is Contact Description. Limit: 32 KB.',
+				description:
+					'A description of the opportunity. Label is Contact Description. Limit: 32 KB.',
 			},
 			{
 				displayName: 'Forecast Category Name',
@@ -275,7 +256,8 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Next Step',
@@ -292,7 +274,8 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the opportunity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The owner of the opportunity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
@@ -333,7 +316,8 @@ export const opportunityFields: INodeProperties[] = [
 						value: 'New Business',
 					},
 				],
-				description: 'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
+				description:
+					'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
 			},
 		],
 	},
@@ -349,12 +333,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 		description: 'ID of opportunity that needs to be fetched',
@@ -367,12 +347,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['opportunity'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -384,7 +360,8 @@ export const opportunityFields: INodeProperties[] = [
 				typeOptions: {
 					loadOptionsMethod: 'getAccounts',
 				},
-				description: 'ID of the account associated with this opportunity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the account associated with this opportunity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Amount',
@@ -404,7 +381,8 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCampaigns',
 				},
 				default: '',
-				description: 'ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the campaign that needs to be fetched. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Close Date',
@@ -436,7 +414,8 @@ export const opportunityFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -454,7 +433,8 @@ export const opportunityFields: INodeProperties[] = [
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'A description of the opportunity. Label is Contact Description. Limit: 32 KB.',
+				description:
+					'A description of the opportunity. Label is Contact Description. Limit: 32 KB.',
 			},
 			{
 				displayName: 'Forecast Category Name',
@@ -471,7 +451,8 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLeadSources',
 				},
 				default: '',
-				description: 'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Source from which the lead was obtained. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Name',
@@ -495,7 +476,8 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The owner of the opportunity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The owner of the opportunity. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone',
@@ -529,7 +511,8 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getStages',
 				},
 				default: '',
-				description: 'Required. Date when the opportunity is expected to close. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Required. Date when the opportunity is expected to close. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Type',
@@ -546,7 +529,8 @@ export const opportunityFields: INodeProperties[] = [
 						value: 'New Business',
 					},
 				],
-				description: 'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
+				description:
+					'Type of opportunity. For example, Existing Business or New Business. Label is Opportunity Type.',
 			},
 		],
 	},
@@ -562,12 +546,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['opportunity'],
+				operation: ['get'],
 			},
 		},
 		description: 'ID of opportunity that needs to be fetched',
@@ -584,12 +564,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['opportunity'],
+				operation: ['delete'],
 			},
 		},
 		description: 'ID of opportunity that needs to be fetched',
@@ -604,12 +580,8 @@ export const opportunityFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -621,15 +593,9 @@ export const opportunityFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -647,12 +613,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -679,7 +641,8 @@ export const opportunityFields: INodeProperties[] = [
 									loadOptionsMethod: 'getOpportunityFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
@@ -741,12 +704,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'addNote',
-				],
+				resource: ['opportunity'],
+				operation: ['addNote'],
 			},
 		},
 		description: 'ID of opportunity that needs to be fetched',
@@ -759,12 +718,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'addNote',
-				],
+				resource: ['opportunity'],
+				operation: ['addNote'],
 			},
 		},
 		description: 'Title of the note',
@@ -777,12 +732,8 @@ export const opportunityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'addNote',
-				],
+				resource: ['opportunity'],
+				operation: ['addNote'],
 			},
 		},
 		options: [
@@ -801,7 +752,8 @@ export const opportunityFields: INodeProperties[] = [
 				name: 'isPrivate',
 				type: 'boolean',
 				default: false,
-				description: 'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
+				description:
+					'Whether true, only the note owner or a user with the “Modify All Data” permission can view the note or query it via the API',
 			},
 			{
 				displayName: 'Owner Name or ID',
@@ -811,7 +763,8 @@ export const opportunityFields: INodeProperties[] = [
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user who owns the note. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the user who owns the note. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

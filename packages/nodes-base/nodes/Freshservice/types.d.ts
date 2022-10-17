@@ -22,11 +22,11 @@ export type RolesParameter = IDataObject & {
 		role: number;
 		assignment_scope: 'entire_helpdesk' | 'member_groups' | 'specified_groups' | 'assigned_items';
 		groups?: number[];
-	}>
+	}>;
 };
 
 export type AddressFixedCollection = {
 	address?: {
-		addressFields: object
-	}
-}
+		addressFields: object;
+	};
+};

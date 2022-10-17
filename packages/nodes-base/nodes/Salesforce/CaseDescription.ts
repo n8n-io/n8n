@@ -8,9 +8,7 @@ export const caseOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
+				resource: ['case'],
 			},
 		},
 		options: [
@@ -18,36 +16,43 @@ export const caseOperations: INodeProperties[] = [
 				name: 'Add Comment',
 				value: 'addComment',
 				description: 'Add a comment to a case',
+				action: 'Add a comment to a case',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a case',
+				action: 'Create a case',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a case',
+				action: 'Delete a case',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a case',
+				action: 'Get a case',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all cases',
+				description: 'Get many cases',
+				action: 'Get many cases',
 			},
 			{
 				name: 'Get Summary',
 				value: 'getSummary',
-				description: 'Returns an overview of case\'s metadata',
+				description: "Returns an overview of case's metadata",
+				action: 'Get a case summary',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a case',
+				action: 'Update a case',
 			},
 		],
 		default: 'create',
@@ -55,7 +60,6 @@ export const caseOperations: INodeProperties[] = [
 ];
 
 export const caseFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                case:create                                 */
 	/* -------------------------------------------------------------------------- */
@@ -69,16 +73,13 @@ export const caseFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['case'],
+				operation: ['create'],
 			},
 		},
 		default: '',
-		description: 'The type of case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'The type of case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -88,12 +89,8 @@ export const caseFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['case'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -134,7 +131,8 @@ export const caseFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -169,7 +167,8 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseOrigins',
 				},
 				default: '',
-				description: 'The source of the case, such as Email, Phone, or Web. Label is Case Origin. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The source of the case, such as Email, Phone, or Web. Label is Case Origin. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Owner Name or ID',
@@ -179,7 +178,8 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseOwners',
 				},
 				default: '',
-				description: 'The owner of the case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The owner of the case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Parent ID',
@@ -196,7 +196,8 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCasePriorities',
 				},
 				default: '',
-				description: 'The importance or urgency of the case, such as High, Medium, or Low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The importance or urgency of the case, such as High, Medium, or Low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Reason Name or ID',
@@ -206,13 +207,15 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseReasons',
 				},
 				default: '',
-				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The reason why the case was created, such as Instructions not clear, or User didn’t attend training. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getRecordTypes',
 				},
@@ -226,7 +229,8 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseStatuses',
 				},
 				default: '',
-				description: 'The status of the case, such as “New,” “Closed,” or “Escalated.” This field directly controls the IsClosed flag. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The status of the case, such as “New,” “Closed,” or “Escalated.” This field directly controls the IsClosed flag. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Subject',
@@ -240,28 +244,32 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedCompany',
 				type: 'string',
 				default: '',
-				description: 'The company name that was entered when the case was created. This field can\'t be updated after the case has been created..',
+				description:
+					"The company name that was entered when the case was created. This field can't be updated after the case has been created..",
 			},
 			{
 				displayName: 'Supplied Email',
 				name: 'suppliedEmail',
 				type: 'string',
 				default: '',
-				description: 'The email address that was entered when the case was created. This field can\'t be updated after the case has been created.',
+				description:
+					"The email address that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
 				displayName: 'Supplied Name',
 				name: 'suppliedName',
 				type: 'string',
 				default: '',
-				description: 'The name that was entered when the case was created. This field can\'t be updated after the case has been created.',
+				description:
+					"The name that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
 				displayName: 'Supplied Phone',
 				name: 'suppliedPhone',
 				type: 'string',
 				default: '',
-				description: 'The phone number that was entered when the case was created. This field can\'t be updated after the case has been created.',
+				description:
+					"The phone number that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 		],
 	},
@@ -277,12 +285,8 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['case'],
+				operation: ['update'],
 			},
 		},
 		description: 'ID of case that needs to be fetched',
@@ -295,12 +299,8 @@ export const caseFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['case'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -341,7 +341,8 @@ export const caseFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCustomFields',
 								},
 								default: '',
-								description: 'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'The ID of the field to add custom field to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -376,7 +377,8 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseOrigins',
 				},
 				default: '',
-				description: 'The source of the case, such as Email, Phone, or Web. Label is Case Origin. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The source of the case, such as Email, Phone, or Web. Label is Case Origin. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Owner Name or ID',
@@ -386,7 +388,8 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseOwners',
 				},
 				default: '',
-				description: 'The owner of the case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The owner of the case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Parent ID',
@@ -403,7 +406,8 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCasePriorities',
 				},
 				default: '',
-				description: 'The importance or urgency of the case, such as High, Medium, or Low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The importance or urgency of the case, such as High, Medium, or Low. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Reason Name or ID',
@@ -413,13 +417,15 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseReasons',
 				},
 				default: '',
-				description: 'The reason why the case was created, such as Instructions not clear, or User didn’t attend training. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The reason why the case was created, such as Instructions not clear, or User didn’t attend training. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Record Type Name or ID',
 				name: 'recordTypeId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getRecordTypes',
 				},
@@ -433,7 +439,8 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseStatuses',
 				},
 				default: '',
-				description: 'The status of the case, such as “New,” “Closed,” or “Escalated.” This field directly controls the IsClosed flag. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The status of the case, such as “New,” “Closed,” or “Escalated.” This field directly controls the IsClosed flag. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Subject',
@@ -447,28 +454,32 @@ export const caseFields: INodeProperties[] = [
 				name: 'suppliedCompany',
 				type: 'string',
 				default: '',
-				description: 'The company name that was entered when the case was created. This field can\'t be updated after the case has been created..',
+				description:
+					"The company name that was entered when the case was created. This field can't be updated after the case has been created..",
 			},
 			{
 				displayName: 'Supplied Email',
 				name: 'suppliedEmail',
 				type: 'string',
 				default: '',
-				description: 'The email address that was entered when the case was created. This field can\'t be updated after the case has been created.',
+				description:
+					"The email address that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
 				displayName: 'Supplied Name',
 				name: 'suppliedName',
 				type: 'string',
 				default: '',
-				description: 'The name that was entered when the case was created. This field can\'t be updated after the case has been created.',
+				description:
+					"The name that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
 				displayName: 'Supplied Phone',
 				name: 'suppliedPhone',
 				type: 'string',
 				default: '',
-				description: 'The phone number that was entered when the case was created. This field can\'t be updated after the case has been created.',
+				description:
+					"The phone number that was entered when the case was created. This field can't be updated after the case has been created.",
 			},
 			{
 				displayName: 'Type Name or ID',
@@ -478,7 +489,8 @@ export const caseFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCaseTypes',
 				},
 				default: '',
-				description: 'The type of case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The type of case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -494,12 +506,8 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['case'],
+				operation: ['get'],
 			},
 		},
 		description: 'ID of case that needs to be fetched',
@@ -516,12 +524,8 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['case'],
+				operation: ['delete'],
 			},
 		},
 		description: 'ID of case that needs to be fetched',
@@ -536,12 +540,8 @@ export const caseFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['case'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -553,15 +553,9 @@ export const caseFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['case'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -579,12 +573,8 @@ export const caseFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['case'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -611,7 +601,8 @@ export const caseFields: INodeProperties[] = [
 									loadOptionsMethod: 'getCaseFields',
 								},
 								default: '',
-								description: 'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'For date, number, or boolean, please use expressions. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							// eslint-disable-next-line n8n-nodes-base/node-param-operation-without-no-data-expression
 							{
@@ -673,12 +664,8 @@ export const caseFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'addComment',
-				],
+				resource: ['case'],
+				operation: ['addComment'],
 			},
 		},
 		description: 'ID of case that needs to be fetched',
@@ -691,12 +678,8 @@ export const caseFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'case',
-				],
-				operation: [
-					'addComment',
-				],
+				resource: ['case'],
+				operation: ['addComment'],
 			},
 		},
 		options: [
@@ -708,14 +691,16 @@ export const caseFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'Text of the CaseComment. The maximum size of the comment body is 4,000 bytes. Label is Body.',
+				description:
+					'Text of the CaseComment. The maximum size of the comment body is 4,000 bytes. Label is Body.',
 			},
 			{
 				displayName: 'Is Published',
 				name: 'isPublished',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false)',
+				description:
+					'Whether the CaseComment is visible to customers in the Self-Service portal (true) or not (false)',
 			},
 		],
 	},

@@ -38,25 +38,38 @@
 			@click="$emit('retest')"
 		/>
 
-		<n8n-info-tip v-if="documentationUrl && credentialProperties.length">
-			{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
-			<n8n-link :to="documentationUrl" size="small" :bold="true" @click="onDocumentationUrlClick">
-				{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
-			</n8n-link>
-		</n8n-info-tip>
+		<template v-if="credentialPermissions.updateConnection">
+			<n8n-notice v-if="documentationUrl && credentialProperties.length" theme="warning">
+				{{ $locale.baseText('credentialEdit.credentialConfig.needHelpFillingOutTheseFields') }}
+				<span class="ml-4xs">
+					<n8n-link :to="documentationUrl" size="small" bold @click="onDocumentationUrlClick">
+						{{ $locale.baseText('credentialEdit.credentialConfig.openDocs') }}
+					</n8n-link>
+				</span>
+			</n8n-notice>
 
-		<CopyInput
-			v-if="isOAuthType && credentialProperties.length"
-			:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
-			:value="oAuthCallbackUrl"
-			:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
-			:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
-			:toastTitle="$locale.baseText('credentialEdit.credentialEdit.showMessage.title')"
-			:toastMessage="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
-		/>
+			<CopyInput
+				v-if="isOAuthType && credentialProperties.length"
+				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
+				:value="oAuthCallbackUrl"
+				:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
+				:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
+				:toastTitle="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
+			/>
+		</template>
+		<enterprise-edition
+			v-else
+			:features="[EnterpriseEditionFeature.Sharing]"
+		>
+			<div class="ph-no-capture">
+				<n8n-info-tip :bold="false">
+					{{ $locale.baseText('credentialEdit.credentialEdit.info.sharee', { interpolate: { credentialOwnerName } }) }}
+				</n8n-info-tip>
+			</div>
+		</enterprise-edition>
 
 		<CredentialInputs
-			v-if="credentialType"
+			v-if="credentialType && credentialPermissions.updateConnection"
 			:credentialData="credentialData"
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"
@@ -65,18 +78,21 @@
 		/>
 
 		<OauthButton
-			v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected"
+			v-if="isOAuthType && requiredPropertiesFilled && !isOAuthConnected && credentialPermissions.isOwner"
 			:isGoogleOAuthType="isGoogleOAuthType"
 			@click="$emit('oauth')"
 		/>
+
+		<n8n-text v-if="!credentialType" color="text-base" size="medium">
+			{{ $locale.baseText('credentialEdit.credentialConfig.missingCredentialType') }}
+		</n8n-text>
 	</div>
 </template>
 
 <script lang="ts">
-import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
-import { getAppNameFromCredType } from '../helpers';
+import { ICredentialType } from 'n8n-workflow';
+import { getAppNameFromCredType, isCommunityPackageName } from '../helpers';
 
-import Vue from 'vue';
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';
 import CredentialInputs from './CredentialInputs.vue';
@@ -84,6 +100,8 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
+import { BUILTIN_CREDENTIALS_DOCS_URL, EnterpriseEditionFeature } from '@/constants';
+import { IPermissions } from "@/permissions";
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -105,6 +123,10 @@ export default mixins(restApi).extend({
 		},
 		credentialData: {
 		},
+		credentialId: {
+			type: [String, Number],
+			default: '',
+		},
 		showValidationWarning: {
 			type: Boolean,
 			default: false,
@@ -124,9 +146,18 @@ export default mixins(restApi).extend({
 		isRetesting: {
 			type: Boolean,
 		},
+		credentialPermissions: {
+			type: Object,
+			default: (): IPermissions => ({}),
+		},
 		requiredPropertiesFilled: {
 			type: Boolean,
 		},
+	},
+	data() {
+		return {
+			EnterpriseEditionFeature,
+		};
 	},
 	async beforeMount() {
 		if (this.$store.getters.defaultLocale === 'en') return;
@@ -150,8 +181,6 @@ export default mixins(restApi).extend({
 				return '';
 			}
 
-
-
 			const appName = getAppNameFromCredType(
 				(this.credentialType as ICredentialType).displayName,
 			);
@@ -161,8 +190,13 @@ export default mixins(restApi).extend({
 		credentialTypeName(): string {
 			return (this.credentialType as ICredentialType).name;
 		},
+		credentialOwnerName(): string {
+			return this.$store.getters['credentials/getCredentialOwnerName'](this.credentialId);
+		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;
+			const activeNode = this.$store.getters.activeNode;
+			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 			if (!type || !type.documentationUrl) {
 				return '';
@@ -172,7 +206,9 @@ export default mixins(restApi).extend({
 				return type.documentationUrl;
 			}
 
-			return `https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
+			return isCommunityNode ?
+				'' : // Don't show documentation link for community nodes if the URL is not an absolute path
+				`${BUILTIN_CREDENTIALS_DOCS_URL}${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
 		},
 		isGoogleOAuthType(): boolean {
 			return this.credentialTypeName === 'googleOAuth2Api' || this.parentTypes.includes('googleOAuth2Api');
@@ -190,16 +226,6 @@ export default mixins(restApi).extend({
 		},
 	},
 	methods: {
-		/**
-		 * Get the current version for a node type.
-		 */
-		async getCurrentNodeVersion(targetNodeType: string) {
-			const { allNodeTypes }: { allNodeTypes: INodeTypeDescription[] } = this.$store.getters;
-			const found = allNodeTypes.find(nodeType => nodeType.name === targetNodeType);
-
-			return found ? found.version : 1;
-		},
-
 		onDataChange (event: { name: string; value: string | number | boolean | Date | null }): void {
 			this.$emit('change', event);
 		},
@@ -224,6 +250,7 @@ export default mixins(restApi).extend({
 
 <style lang="scss" module>
 .container {
+	--notice-margin: 0;
 	> * {
 		margin-bottom: var(--spacing-l);
 	}

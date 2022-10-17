@@ -1,21 +1,10 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	flow,
-	omit,
-} from 'lodash';
+import { flow, omit } from 'lodash';
 
 import {
 	AllFieldsUi,
@@ -71,7 +60,7 @@ export async function handleListing(
 	qs.perPage = 25; // max
 	qs.page = 1;
 
-	const returnAll = options?.returnAll ?? this.getNodeParameter('returnAll', 0, false) as boolean;
+	const returnAll = options?.returnAll ?? (this.getNodeParameter('returnAll', 0, false) as boolean);
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	const itemsKey = toItemsKey(endpoint);
@@ -102,7 +91,6 @@ export async function handleListing(
  * Convert an endpoint to the key needed to access data in the response.
  */
 const toItemsKey = (endpoint: string) => {
-
 	// handle two-resource endpoint
 	if (
 		endpoint.includes('/signatures') ||
@@ -131,7 +119,6 @@ export const makeOsdiLink = (personId: string) => {
 
 export const isPrimary = (field: FieldWithPrimaryField) => field.primary;
 
-
 // ----------------------------------------
 //           field adjusters
 // ----------------------------------------
@@ -150,9 +137,7 @@ function adjustPhoneNumbers(allFields: AllFieldsUi) {
 
 	return {
 		...omit(allFields, ['phone_numbers']),
-		phone_numbers: [
-			allFields.phone_numbers.phone_numbers_fields,
-		],
+		phone_numbers: [allFields.phone_numbers.phone_numbers_fields],
 	};
 }
 
@@ -209,14 +194,13 @@ function adjustLocation(allFields: AllFieldsUi) {
 function adjustTargets(allFields: AllFieldsUi) {
 	if (!allFields.target) return allFields;
 
-	const adjusted = allFields.target.split(',').map(value => ({ name: value }));
+	const adjusted = allFields.target.split(',').map((value) => ({ name: value }));
 
 	return {
 		...omit(allFields, ['target']),
 		target: adjusted,
 	};
 }
-
 
 // ----------------------------------------
 //           payload adjusters
@@ -232,7 +216,6 @@ export const adjustPetitionPayload = adjustTargets;
 
 export const adjustEventPayload = adjustLocation;
 
-
 // ----------------------------------------
 //           resource loaders
 // ----------------------------------------
@@ -242,9 +225,10 @@ async function loadResource(this: ILoadOptionsFunctions, resource: string) {
 }
 
 export const resourceLoaders = {
-
 	async getTags(this: ILoadOptionsFunctions) {
-		const tags = await loadResource.call(this, 'tags') as Array<{ name: string } & LinksFieldContainer>;
+		const tags = (await loadResource.call(this, 'tags')) as Array<
+			{ name: string } & LinksFieldContainer
+		>;
 
 		return tags.map((tag) => ({ name: tag.name, value: extractId(tag) }));
 	},
@@ -254,9 +238,14 @@ export const resourceLoaders = {
 		const endpoint = `/tags/${tagId}/taggings`;
 
 		// two-resource endpoint, so direct call
-		const taggings = await handleListing.call(
-			this, 'GET', endpoint, {}, {}, { returnAll: true },
-		) as LinksFieldContainer[];
+		const taggings = (await handleListing.call(
+			this,
+			'GET',
+			endpoint,
+			{},
+			{},
+			{ returnAll: true },
+		)) as LinksFieldContainer[];
 
 		return taggings.map((tagging) => {
 			const taggingId = extractId(tagging);
@@ -269,7 +258,6 @@ export const resourceLoaders = {
 	},
 };
 
-
 // ----------------------------------------
 //          response simplifiers
 // ----------------------------------------
@@ -281,12 +269,7 @@ export const simplifyResponse = (response: Response, resource: Resource) => {
 		return simplifyPetitionResponse(response as PetitionResponse);
 	}
 
-	const fieldsToSimplify = [
-		'identifiers',
-		'_links',
-		'action_network:sponsor',
-		'reminders',
-	];
+	const fieldsToSimplify = ['identifiers', '_links', 'action_network:sponsor', 'reminders'];
 
 	return {
 		id: extractId(response),
@@ -294,14 +277,8 @@ export const simplifyResponse = (response: Response, resource: Resource) => {
 	};
 };
 
-
 const simplifyPetitionResponse = (response: PetitionResponse) => {
-	const fieldsToSimplify = [
-		'identifiers',
-		'_links',
-		'action_network:hidden',
-		'_embedded',
-	];
+	const fieldsToSimplify = ['identifiers', '_links', 'action_network:hidden', '_embedded'];
 
 	return {
 		id: extractId(response),
@@ -331,7 +308,7 @@ const simplifyPersonResponse = (response: PersonResponse) => {
 		...{ phone_number: phoneNumber[0].number || '' },
 		...{
 			postal_address: {
-				...postalAddress && omit(postalAddress[0], 'address_lines'),
+				...(postalAddress && omit(postalAddress[0], 'address_lines')),
 				address_lines: postalAddress[0].address_lines ?? '',
 			},
 		},

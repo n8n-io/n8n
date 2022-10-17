@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	invoiceAdditionalFieldsOptions
-} from './InvoiceAdditionalFieldsOptions';
+import { invoiceAdditionalFieldsOptions } from './InvoiceAdditionalFieldsOptions';
 
 export const invoiceOperations: INodeProperties[] = [
 	{
@@ -17,37 +13,42 @@ export const invoiceOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an invoice',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete an invoice',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an invoice',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many invoices',
 			},
 			{
 				name: 'Send',
 				value: 'send',
+				action: 'Send an invoice',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update an invoice',
 			},
 			{
 				name: 'Void',
 				value: 'void',
+				action: 'Void an invoice',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
+				resource: ['invoice'],
 			},
 		},
 	},
@@ -62,19 +63,16 @@ export const invoiceFields: INodeProperties[] = [
 		name: 'CustomerRef',
 		type: 'options',
 		required: true,
-		description: 'The ID of the customer who the invoice is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'The ID of the customer who the invoice is for. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: [],
 		typeOptions: {
 			loadOptionsMethod: 'getCustomers',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -90,12 +88,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -132,7 +126,8 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Item Name or ID',
 				name: 'itemId',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getItems',
@@ -149,7 +144,8 @@ export const invoiceFields: INodeProperties[] = [
 				displayName: 'Tax Code Ref Name or ID',
 				name: 'TaxCodeRef',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getTaxCodeRefs',
@@ -165,12 +161,8 @@ export const invoiceFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['invoice'],
+				operation: ['create'],
 			},
 		},
 		options: invoiceAdditionalFieldsOptions,
@@ -188,12 +180,8 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'The ID of the invoice to delete',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['invoice'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -210,12 +198,8 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'The ID of the invoice to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['invoice'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -228,12 +212,8 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'Whether to download the invoice as a PDF file',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['invoice'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -246,15 +226,9 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'Name of the binary property to which to write to',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
-				download: [
-					true,
-				],
+				resource: ['invoice'],
+				operation: ['get'],
+				download: [true],
 			},
 		},
 	},
@@ -268,15 +242,9 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'Name of the file that will be downloaded',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'get',
-				],
-				download: [
-					true,
-				],
+				resource: ['invoice'],
+				operation: ['get'],
+				download: [true],
 			},
 		},
 	},
@@ -292,12 +260,8 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -313,15 +277,9 @@ export const invoiceFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -337,8 +295,9 @@ export const invoiceFields: INodeProperties[] = [
 				name: 'query',
 				type: 'string',
 				default: '',
-				placeholder: 'WHERE Metadata.LastUpdatedTime > \'2021-01-01\'',
-				description: 'The condition for selecting invoices. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
+				placeholder: "WHERE Metadata.LastUpdatedTime > '2021-01-01'",
+				description:
+					'The condition for selecting invoices. See the <a href="https://developer.intuit.com/app/developer/qbo/docs/develop/explore-the-quickbooks-online-api/data-queries">guide</a> for supported syntax.',
 				typeOptions: {
 					alwaysOpenEditWindow: true,
 				},
@@ -346,12 +305,8 @@ export const invoiceFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['invoice'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -368,12 +323,8 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'The ID of the invoice to send',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['invoice'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -387,12 +338,8 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'The email of the recipient of the invoice',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['invoice'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -409,12 +356,8 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'The ID of the invoice to void',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'void',
-				],
+				resource: ['invoice'],
+				operation: ['void'],
 			},
 		},
 	},
@@ -431,12 +374,8 @@ export const invoiceFields: INodeProperties[] = [
 		description: 'The ID of the invoice to update',
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['invoice'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -449,15 +388,13 @@ export const invoiceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'invoice',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['invoice'],
+				operation: ['update'],
 			},
 		},
 		// filter out fields that cannot be updated
-		options: invoiceAdditionalFieldsOptions.filter(property => property.name !== 'TotalAmt' && property.name !== 'Balance'),
+		options: invoiceAdditionalFieldsOptions.filter(
+			(property) => property.name !== 'TotalAmt' && property.name !== 'Balance',
+		),
 	},
 ];

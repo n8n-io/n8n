@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	activeCampaignDefaultGetAllProperties,
-} from './GenericFunctions';
+import { activeCampaignDefaultGetAllProperties } from './GenericFunctions';
 
 export const ecomCustomerOperations: INodeProperties[] = [
 	{
@@ -14,9 +10,7 @@ export const ecomCustomerOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ecommerceCustomer',
-				],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		options: [
@@ -24,26 +18,31 @@ export const ecomCustomerOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a E-commerce Customer',
+				action: 'Create an e-commerce customer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a E-commerce Customer',
+				action: 'Delete an e-commerce customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a E-commerce Customer',
+				action: 'Get an e-commerce customer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all E-commerce Customer',
+				description: 'Get data of many E-commerce Customers',
+				action: 'Get many e-commerce customers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a E-commerce Customer',
+				action: 'Update an e-commerce customer',
 			},
 		],
 		default: 'create',
@@ -62,12 +61,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['create'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		description: 'The ID of the connection object for the service where the customer originates',
@@ -80,12 +75,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['create'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		description: 'The ID of the customer in the external service',
@@ -99,12 +90,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['create'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		description: 'The email address of the customer',
@@ -116,12 +103,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['create'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: {},
@@ -145,12 +128,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['update'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: 0,
@@ -165,12 +144,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['update'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: {},
@@ -180,7 +155,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 				name: 'connectionid',
 				type: 'string',
 				default: '',
-				description: 'The ID of the connection object for the service where the customer originates',
+				description:
+					'The ID of the connection object for the service where the customer originates',
 			},
 			{
 				displayName: 'Customer ID',
@@ -216,12 +192,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['delete'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: 0,
@@ -238,12 +210,8 @@ export const ecomCustomerFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'ecommerceCustomer',
-				],
+				operation: ['get'],
+				resource: ['ecommerceCustomer'],
 			},
 		},
 		default: 0,

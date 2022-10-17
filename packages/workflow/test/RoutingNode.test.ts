@@ -2,7 +2,7 @@ import {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRequestOptionsFromParameters,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	RoutingNode,
 	Workflow,
@@ -46,7 +46,7 @@ describe('RoutingNode', () => {
 				nodeParameters: INodeParameters;
 				nodeTypeProperties: INodeProperties;
 			};
-			output: IRequestOptionsFromParameters | undefined;
+			output: DeclarativeRestApiSettings.ResultOptions | undefined;
 		}> = [
 			{
 				description: 'single parameter, only send defined, fixed value',
@@ -72,6 +72,7 @@ describe('RoutingNode', () => {
 						body: {
 							toEmail: 'fixedValue',
 						},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -104,6 +105,7 @@ describe('RoutingNode', () => {
 						body: {
 							toEmail: 'TEST@TEST.COM',
 						},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -146,6 +148,7 @@ describe('RoutingNode', () => {
 						body: {
 							toEmail: 'fixedValue',
 						},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -164,7 +167,7 @@ describe('RoutingNode', () => {
 				},
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					nodeParameters: {
 						multipleFields: {
@@ -527,6 +530,7 @@ describe('RoutingNode', () => {
 								},
 							],
 						},
+						headers: {},
 					},
 					preSend: [preSendFunction1, preSendFunction1],
 					postReceive: [
@@ -609,6 +613,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -627,10 +632,8 @@ describe('RoutingNode', () => {
 		};
 
 		for (const testData of tests) {
-			test(testData.description, () => {
+			test(testData.description, async () => {
 				node.parameters = testData.input.nodeParameters;
-
-				// @ts-ignore
 				nodeType.description.properties = [testData.input.nodeTypeProperties];
 
 				const workflow = new Workflow({
@@ -666,7 +669,7 @@ describe('RoutingNode', () => {
 					mode,
 				);
 
-				const result = routingNode.getRequestOptionsFromParameters(
+				const result = await routingNode.getRequestOptionsFromParameters(
 					executeSingleFunctions,
 					testData.input.nodeTypeProperties,
 					itemIndex,
@@ -732,6 +735,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/test-url',
+									headers: {},
 									qs: {},
 									body: {
 										toEmail: 'fixedValue',
@@ -780,6 +784,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/test-url',
+									headers: {},
 									qs: {},
 									body: {
 										toEmail: 'fixedValue',
@@ -834,6 +839,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/overwritten',
+									headers: {},
 									qs: {},
 									body: {
 										toEmail: 'TEST@TEST.COM',
@@ -888,6 +894,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/custom-overwritten',
+									headers: {},
 									qs: {},
 									body: {
 										theProperty: 'custom-overwritten',
@@ -944,6 +951,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									qs: {},
+									headers: {},
 									body: {
 										toEmail: 'fixedValue',
 										limit: 10,
@@ -957,7 +965,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					node: {
 						parameters: {
@@ -1462,6 +1470,7 @@ describe('RoutingNode', () => {
 										headers: {},
 										statusCode: 200,
 										requestOptions: {
+											headers: {},
 											qs: {},
 											body: {
 												jsonData: {
@@ -1562,7 +1571,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'single parameter, mutliple postReceive: rootProperty, setKeyValue, sort',
+				description: 'single parameter, multiple postReceive: rootProperty, setKeyValue, sort',
 				input: {
 					nodeType: {
 						requestDefaults: {
@@ -1649,6 +1658,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1821,6 +1831,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 

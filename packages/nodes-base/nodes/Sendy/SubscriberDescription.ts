@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const subscriberOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const subscriberOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
+				resource: ['subscriber'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const subscriberOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Add a subscriber to a list',
+				action: 'Add a subscriber',
 			},
 			{
 				name: 'Count',
 				value: 'count',
 				description: 'Count subscribers',
+				action: 'Count a subscriber',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a subscriber from a list',
+				action: 'Delete a subscriber',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Unsubscribe user from a list',
+				action: 'Remove a subscriber',
 			},
 			{
 				name: 'Status',
 				value: 'status',
 				description: 'Get the status of subscriber',
+				action: "Get subscriber's status",
 			},
 		],
 		default: 'add',
@@ -47,10 +48,9 @@ export const subscriberOperations: INodeProperties[] = [
 ];
 
 export const subscriberFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                subscriber:add                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                subscriber:add                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -58,12 +58,8 @@ export const subscriberFields: INodeProperties[] = [
 		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['subscriber'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -75,16 +71,13 @@ export const subscriberFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['subscriber'],
+				operation: ['add'],
 			},
 		},
 		default: '',
-		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
+		description:
+			'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -94,12 +87,8 @@ export const subscriberFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['subscriber'],
+				operation: ['add'],
 			},
 		},
 		options: [
@@ -108,14 +97,14 @@ export const subscriberFields: INodeProperties[] = [
 				name: 'country',
 				type: 'string',
 				default: '',
-				description: 'User\'s 2 letter country code',
+				description: "User's 2 letter country code",
 			},
 			{
 				displayName: 'GDPR',
 				name: 'gdpr',
 				type: 'boolean',
 				default: false,
-				description: 'Whether you\'re signing up EU users in a GDPR compliant manner',
+				description: "Whether you're signing up EU users in a GDPR compliant manner",
 			},
 			{
 				displayName: 'Honeypot',
@@ -123,21 +112,22 @@ export const subscriberFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'Include this \'honeypot\' field to prevent spambots from signing up via this API call. When spambots fills in this field, this API call will exit, preventing them from signing up fake addresses to your form. This parameter is only supported in Sendy 3.0 onwards.',
+				description:
+					"Include this 'honeypot' field to prevent spambots from signing up via this API call. When spambots fills in this field, this API call will exit, preventing them from signing up fake addresses to your form. This parameter is only supported in Sendy 3.0 onwards.",
 			},
 			{
 				displayName: 'IP Address',
 				name: 'ipaddress',
 				type: 'string',
 				default: '',
-				description: 'User\'s IP address',
+				description: "User's IP address",
 			},
 			{
 				displayName: 'Name',
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'User\'s name',
+				description: "User's name",
 			},
 			{
 				displayName: 'Referrer',
@@ -152,33 +142,31 @@ export const subscriberFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'Set to "true" if your list is \'Double opt-in\' but you want to bypass that and signup the user to the list as \'Single Opt-in instead\' (optional)',
+				description:
+					"Set to \"true\" if your list is 'Double opt-in' but you want to bypass that and signup the user to the list as 'Single Opt-in instead' (optional)",
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                subscriber:count                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                subscriber:count                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'List ID',
 		name: 'listId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'count',
-				],
+				resource: ['subscriber'],
+				operation: ['count'],
 			},
 		},
 		default: '',
-		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
+		description:
+			'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                subscriber:delete                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                subscriber:delete                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -186,12 +174,8 @@ export const subscriberFields: INodeProperties[] = [
 		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['subscriber'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -203,20 +187,17 @@ export const subscriberFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['subscriber'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
-		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
+		description:
+			'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                subscriber:remove                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                subscriber:remove                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -224,12 +205,8 @@ export const subscriberFields: INodeProperties[] = [
 		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['subscriber'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
@@ -241,20 +218,17 @@ export const subscriberFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['subscriber'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
-		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
+		description:
+			'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                subscriber:status                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                subscriber:status                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Email',
 		name: 'email',
@@ -262,12 +236,8 @@ export const subscriberFields: INodeProperties[] = [
 		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'status',
-				],
+				resource: ['subscriber'],
+				operation: ['status'],
 			},
 		},
 		default: '',
@@ -279,15 +249,12 @@ export const subscriberFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'subscriber',
-				],
-				operation: [
-					'status',
-				],
+				resource: ['subscriber'],
+				operation: ['status'],
 			},
 		},
 		default: '',
-		description: 'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
+		description:
+			'The list ID you want to subscribe a user to. This encrypted & hashed ID can be found under View all lists section named ID.',
 	},
 ];

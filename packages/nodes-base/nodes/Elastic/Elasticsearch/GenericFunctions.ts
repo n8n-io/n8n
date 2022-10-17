@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 
 import { ElasticsearchApiCredentials } from './types';
 
@@ -13,19 +13,17 @@ export async function elasticsearchApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const { baseUrl } = (await this.getCredentials(
+	const { baseUrl, ignoreSSLIssues } = (await this.getCredentials(
 		'elasticsearchApi',
 	)) as ElasticsearchApiCredentials;
 
 	const options: OptionsWithUri = {
-		headers: {
-			'Content-Type': 'application/json',
-		},
 		method,
 		body,
 		qs,
 		uri: `${baseUrl}${endpoint}`,
 		json: true,
+		rejectUnauthorized: !ignoreSSLIssues,
 	};
 
 	if (!Object.keys(body).length) {
@@ -102,6 +100,6 @@ export async function elasticsearchApiRequestAllItems(
 
 		return returnData;
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }

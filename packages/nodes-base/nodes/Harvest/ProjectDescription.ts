@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = [
-	'project',
-];
+const resource = ['project'];
 
 export const projectOperations: INodeProperties[] = [
 	{
@@ -22,35 +18,38 @@ export const projectOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a project',
+				action: 'Create a project',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a project',
+				action: 'Delete a project',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a project',
+				action: 'Get data of a project',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all projects',
+				description: 'Get data of many projects',
+				action: 'Get data of all projects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a project',
+				action: 'Update a project',
 			},
 		],
 		default: 'getAll',
 	},
-
 ];
 
 export const projectFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                projects:getAll                             */
 	/* -------------------------------------------------------------------------- */
@@ -62,9 +61,7 @@ export const projectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -77,12 +74,8 @@ export const projectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -101,9 +94,7 @@ export const projectFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -152,9 +143,7 @@ export const projectFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 				resource,
 			},
 		},
@@ -172,9 +161,7 @@ export const projectFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 				resource,
 			},
 		},
@@ -190,9 +177,7 @@ export const projectFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -206,9 +191,7 @@ export const projectFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -222,9 +205,7 @@ export const projectFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -238,9 +219,7 @@ export const projectFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -272,9 +251,7 @@ export const projectFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -290,9 +267,7 @@ export const projectFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -328,7 +303,8 @@ export const projectFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
+				description:
+					'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
 			},
 			{
 				displayName: 'Ends On',
@@ -342,7 +318,8 @@ export const projectFields: INodeProperties[] = [
 				name: 'fee',
 				type: 'string',
 				default: '',
-				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.',
+				description:
+					'The amount you plan to invoice for the project. Only used by fixed-fee projects.',
 			},
 			{
 				displayName: 'Hourly Rate',
@@ -377,21 +354,24 @@ export const projectFields: INodeProperties[] = [
 				name: 'notify_when_over_budget',
 				type: 'boolean',
 				default: false,
-				description: 'Whether project managers should be notified when the project goes over budget. Defaults to false.',
+				description:
+					'Whether project managers should be notified when the project goes over budget. Defaults to false.',
 			},
 			{
 				displayName: 'Over Budget Notification Percentage',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.',
+				description:
+					'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Show Budget To All',
 				name: 'show_budget_to_all',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
+				description:
+					'Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
 			{
 				displayName: 'Starts On',
@@ -414,9 +394,7 @@ export const projectFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -429,9 +407,7 @@ export const projectFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -503,7 +479,8 @@ export const projectFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
+				description:
+					'Option for budget of Total Project Fees projects to include tracked expenses. Defaults to false.',
 			},
 			{
 				displayName: 'Ends On',
@@ -517,7 +494,8 @@ export const projectFields: INodeProperties[] = [
 				name: 'fee',
 				type: 'string',
 				default: '',
-				description: 'The amount you plan to invoice for the project. Only used by fixed-fee projects.',
+				description:
+					'The amount you plan to invoice for the project. Only used by fixed-fee projects.',
 			},
 			{
 				displayName: 'Hourly Rate',
@@ -566,21 +544,24 @@ export const projectFields: INodeProperties[] = [
 				name: 'notify_when_over_budget',
 				type: 'boolean',
 				default: false,
-				description: 'Whether project managers should be notified when the project goes over budget. Defaults to false.',
+				description:
+					'Whether project managers should be notified when the project goes over budget. Defaults to false.',
 			},
 			{
 				displayName: 'Over Budget Notification Percentage',
 				name: 'over_budget_notification_percentage',
 				type: 'string',
 				default: '',
-				description: 'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.',
+				description:
+					'Percentage value used to trigger over budget email alerts. Example: use 10.0 for 10.0%.',
 			},
 			{
 				displayName: 'Show Budget To All',
 				name: 'show_budget_to_all',
 				type: 'boolean',
 				default: false,
-				description: 'Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
+				description:
+					'Whether to show project budget to all employees. Does not apply to Total Project Fee projects. Defaults to false.',
 			},
 			{
 				displayName: 'Starts On',
@@ -591,5 +572,4 @@ export const projectFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];

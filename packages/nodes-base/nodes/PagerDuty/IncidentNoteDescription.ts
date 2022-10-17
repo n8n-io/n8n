@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const incidentNoteOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const incidentNoteOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
+				resource: ['incidentNote'],
 			},
 		},
 		options: [
@@ -20,11 +16,13 @@ export const incidentNoteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a incident note',
+				action: 'Create an incident note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all incident\'s notes',
+				description: 'Get many incident\'s notes',
+				action: 'Get many incident notes',
 			},
 		],
 		default: 'create',
@@ -32,10 +30,9 @@ export const incidentNoteOperations: INodeProperties[] = [
 ];
 
 export const incidentNoteFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                incidentNote:create                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                incidentNote:create                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Incident ID',
 		name: 'incidentId',
@@ -44,12 +41,8 @@ export const incidentNoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incidentNote'],
+				operation: ['create'],
 			},
 		},
 		description: 'Unique identifier for the incident',
@@ -65,12 +58,8 @@ export const incidentNoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incidentNote'],
+				operation: ['create'],
 			},
 		},
 		description: 'The note content',
@@ -84,19 +73,15 @@ export const incidentNoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['incidentNote'],
+				operation: ['create'],
 			},
 		},
 		description: 'The email address of a valid user associated with the account making the request',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 incidentNote:getAll                        */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 incidentNote:getAll                        */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Incident ID',
 		name: 'incidentId',
@@ -105,12 +90,8 @@ export const incidentNoteFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'incidentNote',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['incidentNote'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Unique identifier for the incident',
@@ -121,12 +102,8 @@ export const incidentNoteFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'incidentNote',
-				],
+				operation: ['getAll'],
+				resource: ['incidentNote'],
 			},
 		},
 		default: false,
@@ -138,15 +115,9 @@ export const incidentNoteFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'incidentNote',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['incidentNote'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

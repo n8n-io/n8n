@@ -1,7 +1,14 @@
 <template>
-	<div :class="$style.container">
-		<div
+	<div class='ph-no-capture' :class="$style.container">
+		<span
+			v-if="readonly"
 			:class="$style.headline"
+		>
+			{{ name }}
+		</span>
+		<div
+			v-else
+			:class="[$style.headline, $style['headline-editable']]"
 			@keydown.stop
 			@click="enableNameEdit"
 			v-click-outside="disableNameEdit"
@@ -21,7 +28,9 @@
 				/>
 			</div>
 		</div>
-		<div :class="$style.subtitle" v-if="!isNameEdit">{{ subtitle }}</div>
+		<div :class="$style.subtitle" v-if="!isNameEdit && subtitle">
+			{{ subtitle }}
+		</div>
 	</div>
 </template>
 
@@ -40,6 +49,10 @@ export default mixins(showMessage).extend({
 		},
 		type: {
 			type: String,
+		},
+		readonly: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
@@ -81,6 +94,10 @@ export default mixins(showMessage).extend({
 
 <style module lang="scss">
 .container {
+	display: flex;
+	align-items: flex-start;
+	justify-content: center;
+	flex-direction: column;
 	min-height: 36px;
 }
 
@@ -89,7 +106,6 @@ export default mixins(showMessage).extend({
 	line-height: 1.4;
 	margin-bottom: var(--spacing-5xs);
 	display: inline-block;
-	cursor: pointer;
 	padding: 0 var(--spacing-4xs);
 	border-radius: var(--border-radius-base);
 	position: relative;
@@ -103,6 +119,10 @@ export default mixins(showMessage).extend({
 		margin-left: 8px;
 		color: var(--color-text-base);
 	}
+}
+
+.headline-editable {
+	cursor: pointer;
 
 	&:hover {
 		background-color: var(--color-background-base);
@@ -113,9 +133,11 @@ export default mixins(showMessage).extend({
 .nameInput {
 	z-index: 1;
 	position: absolute;
-	top: -13px;
-	left: -9px;
+	margin-top: 1px;
+	top: 50%;
+	left: 0;
 	width: 400px;
+	transform: translateY(-50%);
 }
 
 .subtitle {

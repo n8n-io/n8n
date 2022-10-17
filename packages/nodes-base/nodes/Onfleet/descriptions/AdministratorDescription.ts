@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const adminOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const adminOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'admin',
-				],
+				resource: ['admin'],
 			},
 		},
 		options: [
@@ -20,21 +16,25 @@ export const adminOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet admin',
+				action: 'Create an admin',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet admin',
+				action: 'Delete an admin',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all Onfleet admins',
+				description: 'Get many Onfleet admins',
+				action: 'Get many admins',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet admin',
+				action: 'Update an admin',
 			},
 		],
 		default: 'getAll',
@@ -46,7 +46,7 @@ const adminNameField = {
 	name: 'name',
 	type: 'string',
 	default: '',
-	description: 'The administrator\'s name',
+	description: "The administrator's name",
 } as INodeProperties;
 
 const adminEmailField = {
@@ -55,7 +55,7 @@ const adminEmailField = {
 	type: 'string',
 	placeholder: 'name@email.com',
 	default: '',
-	description: 'The administrator\'s email address',
+	description: "The administrator's email address",
 } as INodeProperties;
 
 const adminPhoneField = {
@@ -63,7 +63,7 @@ const adminPhoneField = {
 	name: 'phone',
 	type: 'string',
 	default: '',
-	description: 'The administrator\'s phone number',
+	description: "The administrator's phone number",
 } as INodeProperties;
 
 const adminReadOnlyField = {
@@ -81,15 +81,10 @@ export const adminFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'admin',
-				],
+				resource: ['admin'],
 			},
 			hide: {
-				operation: [
-					'create',
-					'getAll',
-				],
+				operation: ['create', 'getAll'],
 			},
 		},
 		default: '',
@@ -102,12 +97,8 @@ export const adminFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'admin',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['admin'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -119,15 +110,9 @@ export const adminFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'admin',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['admin'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -140,12 +125,8 @@ export const adminFields: INodeProperties[] = [
 	{
 		displayOptions: {
 			show: {
-				resource: [
-					'admin',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['admin'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -154,12 +135,8 @@ export const adminFields: INodeProperties[] = [
 	{
 		displayOptions: {
 			show: {
-				resource: [
-					'admin',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['admin'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -173,18 +150,11 @@ export const adminFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'admin',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['admin'],
+				operation: ['create'],
 			},
 		},
-		options: [
-			adminPhoneField,
-			adminReadOnlyField,
-		],
+		options: [adminPhoneField, adminReadOnlyField],
 	},
 	{
 		displayName: 'Update Fields',
@@ -194,18 +164,10 @@ export const adminFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'admin',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['admin'],
+				operation: ['update'],
 			},
 		},
-		options: [
-			adminNameField,
-			adminPhoneField,
-			adminReadOnlyField,
-		],
+		options: [adminNameField, adminPhoneField, adminReadOnlyField],
 	},
 ];

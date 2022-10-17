@@ -1,13 +1,13 @@
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { IDataObject } from 'n8n-workflow';
 import { IForm } from './FormInterface';
 import { cockpitApiRequest } from './GenericFunctions';
 
-export async function submitForm(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, form: IDataObject) {
+export async function submitForm(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	resourceName: string,
+	form: IDataObject,
+) {
 	const body: IForm = {
 		form,
 	};

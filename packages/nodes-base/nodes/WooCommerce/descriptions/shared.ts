@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 const customerAddressOptions: INodeProperties[] = [
 	{
@@ -127,14 +125,11 @@ const customerUpdateOptions: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		displayOptions: {
 			show: {
-				'/resource': [
-					'customer',
-				],
-				'/operation': [
-					'create',
-				],
+				'/resource': ['customer'],
+				'/operation': ['create'],
 			},
 		},
 		default: '',
@@ -167,12 +162,8 @@ export const customerCreateFields: INodeProperties = {
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'customer',
-			],
-			operation: [
-				'create',
-			],
+			resource: ['customer'],
+			operation: ['create'],
 		},
 	},
 	options: customerCreateOptions,
@@ -186,12 +177,8 @@ export const customerUpdateFields: INodeProperties = {
 	default: {},
 	displayOptions: {
 		show: {
-			resource: [
-				'customer',
-			],
-			operation: [
-				'update',
-			],
+			resource: ['customer'],
+			operation: ['update'],
 		},
 	},
 	options: customerUpdateOptions,

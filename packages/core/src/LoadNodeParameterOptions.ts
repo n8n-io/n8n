@@ -58,6 +58,7 @@ export class LoadNodeParameterOptions {
 
 		const nodeData: INode = {
 			parameters: currentNodeParameters,
+			id: 'uuid-1234',
 			name: TEMP_NODE_NAME,
 			type: nodeTypeNameAndVersion.name,
 			typeVersion: nodeTypeNameAndVersion.version,
@@ -83,8 +84,6 @@ export class LoadNodeParameterOptions {
 	/**
 	 * Returns data of a fake workflow
 	 *
-	 * @returns
-	 * @memberof LoadNodeParameterOptions
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	getWorkflowData() {
@@ -102,9 +101,6 @@ export class LoadNodeParameterOptions {
 	 * Returns the available options via a predefined method
 	 *
 	 * @param {string} methodName The name of the method of which to get the data from
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @returns {Promise<INodePropertyOptions[]>}
-	 * @memberof LoadNodeParameterOptions
 	 */
 	async getOptionsViaMethodName(
 		methodName: string,
@@ -136,12 +132,9 @@ export class LoadNodeParameterOptions {
 	}
 
 	/**
-	 * Returns the available options via a load request informatoin
+	 * Returns the available options via a load request information
 	 *
 	 * @param {ILoadOptions} loadOptions The load options which also contain the request information
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @returns {Promise<INodePropertyOptions[]>}
-	 * @memberof LoadNodeParameterOptions
 	 */
 	async getOptionsViaRequestProperty(
 		loadOptions: ILoadOptions,

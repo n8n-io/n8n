@@ -8,9 +8,7 @@ export const workbookOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'workbook',
-				],
+				resource: ['workbook'],
 			},
 		},
 		options: [
@@ -18,11 +16,13 @@ export const workbookOperations: INodeProperties[] = [
 				name: 'Add Worksheet',
 				value: 'addWorksheet',
 				description: 'Adds a new worksheet to the workbook',
+				action: 'Add a worksheet to a workbook',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all workbooks',
+				description: 'Get data of many workbooks',
+				action: 'Get many workbooks',
 			},
 		],
 		default: 'create',
@@ -30,27 +30,23 @@ export const workbookOperations: INodeProperties[] = [
 ];
 
 export const workbookFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 workbook:addWorksheet                      */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 workbook:addWorksheet                      */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'addWorksheet',
-				],
-				resource: [
-					'workbook',
-				],
+				operation: ['addWorksheet'],
+				resource: ['workbook'],
 			},
 		},
 		default: '',
@@ -63,12 +59,8 @@ export const workbookFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'addWorksheet',
-				],
-				resource: [
-					'workbook',
-				],
+				operation: ['addWorksheet'],
+				resource: ['workbook'],
 			},
 		},
 		options: [
@@ -77,25 +69,22 @@ export const workbookFields: INodeProperties[] = [
 				name: 'name',
 				type: 'string',
 				default: '',
-				description: 'The name of the worksheet to be added. If specified, name should be unqiue. If not specified, Excel determines the name of the new worksheet.',
+				description:
+					'The name of the worksheet to be added. If specified, name should be unqiue. If not specified, Excel determines the name of the new worksheet.',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 workbook:getAll                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 workbook:getAll                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'workbook',
-				],
+				operation: ['getAll'],
+				resource: ['workbook'],
 			},
 		},
 		default: false,
@@ -107,15 +96,9 @@ export const workbookFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'workbook',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['workbook'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -133,12 +116,8 @@ export const workbookFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'workbook',
-				],
+				operation: ['getAll'],
+				resource: ['workbook'],
 			},
 		},
 		options: [

@@ -8,9 +8,7 @@ export const reactionOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
+				resource: ['reaction'],
 			},
 		},
 		options: [
@@ -18,16 +16,19 @@ export const reactionOperations: INodeProperties[] = [
 				name: 'Add',
 				value: 'add',
 				description: 'Adds a reaction to a message',
+				action: 'Add a reaction',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get the reactions of a message',
+				action: 'Get a reaction',
 			},
 			{
 				name: 'Remove',
 				value: 'remove',
 				description: 'Remove a reaction of a message',
+				action: 'Remove a reaction',
 			},
 		],
 		default: 'add',
@@ -46,17 +47,12 @@ export const reactionFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'add',
-					'get',
-					'remove',
-				],
+				resource: ['reaction'],
+				operation: ['add', 'get', 'remove'],
 			},
 		},
-		description: 'Channel containing the message. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'Channel containing the message. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Emoji',
@@ -66,13 +62,8 @@ export const reactionFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'add',
-					'remove',
-				],
+				resource: ['reaction'],
+				operation: ['add', 'remove'],
 			},
 		},
 		description: 'Name of emoji',
@@ -86,14 +77,8 @@ export const reactionFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'add',
-					'get',
-					'remove',
-				],
+				resource: ['reaction'],
+				operation: ['add', 'get', 'remove'],
 			},
 		},
 		description: 'Timestamp of the message',

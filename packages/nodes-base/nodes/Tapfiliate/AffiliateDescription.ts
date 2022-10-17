@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const affiliateOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const affiliateOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
+				resource: ['affiliate'],
 			},
 		},
 		options: [
@@ -20,21 +16,25 @@ export const affiliateOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an affiliate',
+				action: 'Create an affiliate',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an affiliate',
+				action: 'Delete an affiliate',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an affiliate by ID',
+				action: 'Get an affiliate',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all affiliates',
+				description: 'Get many affiliates',
+				action: 'Get many affiliates',
 			},
 		],
 		default: 'create',
@@ -54,12 +54,8 @@ export const affiliateFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'affiliate',
-				],
+				operation: ['create'],
+				resource: ['affiliate'],
 			},
 		},
 		description: 'The affiliate’s email',
@@ -71,12 +67,8 @@ export const affiliateFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'affiliate',
-				],
+				operation: ['create'],
+				resource: ['affiliate'],
 			},
 		},
 		default: '',
@@ -89,12 +81,8 @@ export const affiliateFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'affiliate',
-				],
+				operation: ['create'],
+				resource: ['affiliate'],
 			},
 		},
 		default: '',
@@ -108,12 +96,8 @@ export const affiliateFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['affiliate'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -166,7 +150,8 @@ export const affiliateFields: INodeProperties[] = [
 								name: 'country',
 								type: 'string',
 								default: '',
-								description: 'The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.',
+								description:
+									'The country’s ISO_3166-1 code. <a href="https://en.wikipedia.org/wiki/ISO_3166-1">Codes</a>.',
 							},
 						],
 					},
@@ -193,12 +178,8 @@ export const affiliateFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['affiliate'],
+				operation: ['delete'],
 			},
 		},
 		description: 'The ID of the affiliate',
@@ -215,12 +196,8 @@ export const affiliateFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['affiliate'],
+				operation: ['get'],
 			},
 		},
 		description: 'The ID of the affiliate',
@@ -235,12 +212,8 @@ export const affiliateFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['affiliate'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -252,15 +225,9 @@ export const affiliateFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['affiliate'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -278,12 +245,8 @@ export const affiliateFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'affiliate',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['affiliate'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -320,7 +283,8 @@ export const affiliateFields: INodeProperties[] = [
 				name: 'referral_code',
 				type: 'string',
 				default: '',
-				description: 'An affiliate’s referral code. This corresponds to the value of ref= in their referral link.',
+				description:
+					'An affiliate’s referral code. This corresponds to the value of ref= in their referral link.',
 			},
 			{
 				displayName: 'Source ID',

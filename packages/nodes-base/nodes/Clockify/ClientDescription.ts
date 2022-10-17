@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const clientOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const clientOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
+				resource: ['client'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const clientOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a client',
+				action: 'Create a client',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a client',
+				action: 'Delete a client',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a client',
+				action: 'Get a client',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all clients',
+				description: 'Get many clients',
+				action: 'Get many clients',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a client',
+				action: 'Update a client',
 			},
 		],
 		default: 'create',
@@ -47,7 +48,6 @@ export const clientOperations: INodeProperties[] = [
 ];
 
 export const clientFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 client:create                              */
 	/* -------------------------------------------------------------------------- */
@@ -60,12 +60,8 @@ export const clientFields: INodeProperties[] = [
 		description: 'Name of client being created',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['client'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -79,12 +75,8 @@ export const clientFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['client'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -98,12 +90,8 @@ export const clientFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['client'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -116,12 +104,8 @@ export const clientFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['getAll'],
+				resource: ['client'],
 			},
 		},
 		default: false,
@@ -133,15 +117,9 @@ export const clientFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'client',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['client'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -158,12 +136,8 @@ export const clientFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['client'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -210,12 +184,8 @@ export const clientFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['client'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -227,12 +197,8 @@ export const clientFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'client',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['client'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -243,12 +209,8 @@ export const clientFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'client',
-				],
+				operation: ['update'],
+				resource: ['client'],
 			},
 		},
 		default: {},

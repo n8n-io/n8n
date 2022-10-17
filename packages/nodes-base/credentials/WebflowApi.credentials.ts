@@ -21,7 +21,7 @@ export class WebflowApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				'Authorization': '=Bearer {{$credentials.accessToken}}',
+				Authorization: '=Bearer {{$credentials.accessToken}}',
 			},
 		},
 	};

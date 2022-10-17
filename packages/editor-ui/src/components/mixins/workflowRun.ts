@@ -7,7 +7,9 @@ import {
 import {
 	IRunData,
 	IRunExecutionData,
+	IWorkflowBase,
 	NodeHelpers,
+	TelemetryHelpers,
 } from 'n8n-workflow';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -58,7 +60,7 @@ export const workflowRun = mixins(
 			return response;
 		},
 		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
-			const workflow = this.getWorkflow();
+			const workflow = this.getCurrentWorkflow();
 
 			if (this.$store.getters.isActionActive('workflowRunning') === true) {
 				return;
@@ -77,21 +79,53 @@ export const workflowRun = mixins(
 					if (workflowIssues !== null) {
 						const errorMessages = [];
 						let nodeIssues: string[];
+						const trackNodeIssues: Array<{
+							node_type: string;
+							error: string;
+						}> = [];
+						const trackErrorNodeTypes: string[] = [];
 						for (const nodeName of Object.keys(workflowIssues)) {
 							nodeIssues = NodeHelpers.nodeIssuesToString(workflowIssues[nodeName]);
-							for (const nodeIssue of nodeIssues) {
-								errorMessages.push(`${nodeName}: ${nodeIssue}`);
+							let issueNodeType = 'UNKNOWN';
+							const issueNode = this.$store.getters.getNodeByName(nodeName);
+
+							if (issueNode) {
+								issueNodeType = issueNode.type;
 							}
+
+							trackErrorNodeTypes.push(issueNodeType);
+							const trackNodeIssue = {
+								node_type: issueNodeType,
+								error: '',
+								caused_by_credential: !!workflowIssues[nodeName].credentials,
+							};
+
+							for (const nodeIssue of nodeIssues) {
+								errorMessages.push(`<strong>${nodeName}</strong>: ${nodeIssue}`);
+								trackNodeIssue.error = trackNodeIssue.error.concat(', ', nodeIssue);
+							}
+							trackNodeIssues.push(trackNodeIssue);
 						}
 
 						this.$showMessage({
 							title: this.$locale.baseText('workflowRun.showMessage.title'),
-							message: this.$locale.baseText('workflowRun.showMessage.message') + ':<br />&nbsp;&nbsp;- ' + errorMessages.join('<br />&nbsp;&nbsp;- '),
+							message: errorMessages.join('<br />'),
 							type: 'error',
 							duration: 0,
 						});
 						this.$titleSet(workflow.name as string, 'ERROR');
 						this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
+
+						this.getWorkflowDataToSave().then((workflowData) => {
+							this.$telemetry.track('Workflow execution preflight failed', {
+								workflow_id: workflow.id,
+								workflow_name: workflow.name,
+								execution_type: nodeName ? 'node' : 'workflow',
+								node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
+								error_node_types: JSON.stringify(trackErrorNodeTypes),
+								errors: JSON.stringify(trackNodeIssues),
+							});
+						});
 						return;
 					}
 				}
@@ -117,7 +151,9 @@ export const workflowRun = mixins(
 						// node for each of the branches
 						const parentNodes = workflow.getParentNodes(directParentNode, 'main');
 
-						// Add also the direct parent to be checked
+						// Add also the enabled direct parent to be checked
+						if (workflow.nodes[directParentNode].disabled) continue;
+
 						parentNodes.push(directParentNode);
 
 						for (const parentNode of parentNodes) {
@@ -154,6 +190,7 @@ export const workflowRun = mixins(
 				const startRunData: IStartRunData = {
 					workflowData,
 					runData: newRunData,
+					pinData: workflowData.pinData,
 					startNodes,
 				};
 				if (nodeName) {
@@ -174,6 +211,7 @@ export const workflowRun = mixins(
 					data: {
 						resultData: {
 							runData: newRunData || {},
+							pinData: workflowData.pinData,
 							startNodes,
 							workflowData,
 						},

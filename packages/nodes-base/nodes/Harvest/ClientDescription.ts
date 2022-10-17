@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-const resource = [
-	'client',
-];
+const resource = ['client'];
 
 export const clientOperations: INodeProperties[] = [
 	{
@@ -22,36 +18,39 @@ export const clientOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a client',
+				action: 'Create a client',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a client',
+				action: 'Delete a client',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get data of a client',
+				action: 'Get data of a client',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get data of all clients',
+				description: 'Get data of many clients',
+				action: 'Get data of all clients',
 			},
 
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a client',
+				action: 'Update a client',
 			},
 		],
 		default: 'getAll',
 	},
-
 ];
 
 export const clientFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                client:getAll                               */
 	/* -------------------------------------------------------------------------- */
@@ -63,9 +62,7 @@ export const clientFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -78,12 +75,8 @@ export const clientFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -102,9 +95,7 @@ export const clientFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource,
-				operation: [
-					'getAll',
-				],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -136,9 +127,7 @@ export const clientFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
+				operation: ['get'],
 				resource,
 			},
 		},
@@ -156,9 +145,7 @@ export const clientFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
+				operation: ['delete'],
 				resource,
 			},
 		},
@@ -174,9 +161,7 @@ export const clientFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -191,9 +176,7 @@ export const clientFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
+				operation: ['create'],
 				resource,
 			},
 		},
@@ -204,14 +187,16 @@ export const clientFields: INodeProperties[] = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: 'A textual representation of the client’s physical address. May include new line characters.',
+				description:
+					'A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
+				description:
+					'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Is Active',
@@ -234,9 +219,7 @@ export const clientFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -249,9 +232,7 @@ export const clientFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
+				operation: ['update'],
 				resource,
 			},
 		},
@@ -262,14 +243,16 @@ export const clientFields: INodeProperties[] = [
 				name: 'address',
 				type: 'string',
 				default: '',
-				description: 'A textual representation of the client’s physical address. May include new line characters.',
+				description:
+					'A textual representation of the client’s physical address. May include new line characters.',
 			},
 			{
 				displayName: 'Currency',
 				name: 'currency',
 				type: 'string',
 				default: '',
-				description: 'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
+				description:
+					'The currency used by the estimate. If not provided, the client’s currency will be used. See a list of supported currencies',
 			},
 			{
 				displayName: 'Is Active',
@@ -287,5 +270,4 @@ export const clientFields: INodeProperties[] = [
 			},
 		],
 	},
-
 ];
