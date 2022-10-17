@@ -89,6 +89,9 @@ export default Vue.extend({
 				return;
 			}
 
+			e.preventDefault();
+			e.stopPropagation();
+
 			this.isDragging = false;
 			this.draggablePosition = { x: e.pageX, y: e.pageY };
 			this.setDraggableStyle();
