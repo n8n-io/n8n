@@ -4,23 +4,12 @@ import * as appendOrUpdate from './appendOrUpdate.operation';
 import * as clear from './clear.operation';
 import * as create from './create.operation';
 import * as del from './delete.operation';
-import * as readMatchingRows from './readMatchingRows.operation';
-import * as readAllRows from './readAllRows.operation';
+import * as read from './read.operation';
 import * as remove from './remove.operation';
 import * as update from './update.operation';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 
-export {
-	append,
-	appendOrUpdate,
-	clear,
-	create,
-	del as delete,
-	readAllRows,
-	readMatchingRows,
-	remove,
-	update,
-};
+export { append, appendOrUpdate, clear, create, del as delete, read, remove, update };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -66,16 +55,10 @@ export const descriptions: INodeProperties[] = [
 				action: 'Delete a sheet',
 			},
 			{
-				name: 'Read All Rows',
-				value: 'readAllRows',
+				name: 'Read Rows',
+				value: 'read',
 				description: 'Read all rows in a sheet',
 				action: 'Read all rows',
-			},
-			{
-				name: 'Read Matching Row(s)',
-				value: 'readMatchingRows',
-				description: 'Read rows that match a value',
-				action: 'Read rows that match a value',
 			},
 			{
 				name: 'Remove',
@@ -90,7 +73,7 @@ export const descriptions: INodeProperties[] = [
 				action: 'Update a sheet',
 			},
 		],
-		default: 'readAllRows',
+		default: 'read',
 	},
 	{
 		displayName: 'Document',
@@ -154,7 +137,8 @@ export const descriptions: INodeProperties[] = [
 		displayName: 'Sheet',
 		name: 'sheetName',
 		type: 'resourceLocator',
-		default: { mode: 'list', value: '' },
+		// default: { mode: 'list', value: '' },
+		default: '', //empty string set to progresivly reveal fields
 		required: true,
 		modes: [
 			{
@@ -204,57 +188,15 @@ export const descriptions: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['sheet'],
-				operation: [
-					'append',
-					'appendOrUpdate',
-					'clear',
-					'delete',
-					'readAllRows',
-					'readMatchingRows',
-					'remove',
-					'update',
-				],
+				operation: ['append', 'appendOrUpdate', 'clear', 'delete', 'read', 'remove', 'update'],
 			},
 		},
 	},
-	// {
-	// 	displayName: 'Sheet Name or ID',
-	// 	name: 'sheetName',
-	// 	type: 'options',
-	// 	default: '',
-	// 	required: true,
-	// 	// eslint-disable-next-line n8n-nodes-base/node-param-description-wrong-for-dynamic-options
-	// 	description: 'Google Sheet to operate on. Choose from the list.',
-	// 	typeOptions: {
-	// 		loadOptionsDependsOn: ['documentId.value'],
-	// 		loadOptionsMethod: 'getSheets',
-	// 	},
-	// 	displayOptions: {
-	// 		show: {
-	// 			resource: ['sheet'],
-	// 			operation: [
-	// 				'append',
-	// 				'appendOrUpdate',
-	// 				'clear',
-	// 				'delete',
-	// 				'readAllRows',
-	// 				'readMatchingRows',
-	// 				'remove',
-	// 				'update',
-	// 			],
-	// 		},
-	// 		// hide: {
-	// 		// 	...untilSheetSelected,
-	// 		// },
-	// 	},
-	// },
-
 	...append.description,
 	...clear.description,
 	...create.description,
 	...del.description,
-	...readMatchingRows.description,
-	...readAllRows.description,
+	...read.description,
 	...update.description,
 	...appendOrUpdate.description,
 ];

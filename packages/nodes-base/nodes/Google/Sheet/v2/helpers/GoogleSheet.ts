@@ -479,8 +479,6 @@ export class GoogleSheet {
 			keys.push(inputData[keyRowIndex][columnIndex]);
 		}
 
-		const returnData = [inputData[keyRowIndex]];
-
 		// Standardise values array, if rows is [[]], map it to [['']] (Keep the columns into consideration)
 		for (let rowIndex = 0; rowIndex < inputData?.length; rowIndex++) {
 			if (inputData[rowIndex].length === 0) {
@@ -498,6 +496,9 @@ export class GoogleSheet {
 		// Loop over all the lookup values and try to find a row to return
 		let rowIndex: number;
 		let returnColumnIndex: number;
+		const addedRows: number[] = [];
+
+		const returnData = [inputData[keyRowIndex]];
 
 		lookupLoop: for (const lookupValue of lookupValues) {
 			returnColumnIndex = keys.indexOf(lookupValue.lookupColumn);
@@ -514,18 +515,15 @@ export class GoogleSheet {
 				if (
 					inputData[rowIndex][returnColumnIndex]?.toString() === lookupValue.lookupValue.toString()
 				) {
-					returnData.push(inputData[rowIndex]);
+					if (addedRows.indexOf(rowIndex) === -1) {
+						returnData.push(inputData[rowIndex]);
+						addedRows.push(rowIndex);
+					}
 
 					if (returnAllMatches !== true) {
 						continue lookupLoop;
 					}
 				}
-			}
-
-			// If value could not be found add an empty one that the order of
-			// the returned items stays the same
-			if (returnAllMatches !== true) {
-				returnData.push([]);
 			}
 		}
 

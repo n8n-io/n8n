@@ -51,16 +51,7 @@ export type SheetRangeData = SheetDataRow[];
 // delete is del
 type GoogleSheetsMap = {
 	spreadsheet: 'create' | 'deleteSpreadsheet';
-	sheet:
-		| 'append'
-		| 'clear'
-		| 'create'
-		| 'delete'
-		| 'readMatchingRows'
-		| 'readAllRows'
-		| 'remove'
-		| 'update'
-		| 'appendOrUpdate';
+	sheet: 'append' | 'clear' | 'create' | 'delete' | 'read' | 'remove' | 'update' | 'appendOrUpdate';
 };
 
 export type GoogleSheets = AllEntities<GoogleSheetsMap>;
