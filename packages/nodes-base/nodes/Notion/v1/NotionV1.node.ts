@@ -77,7 +77,7 @@ export class NotionV1 implements INodeType {
 			},
 			async getDatabaseProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
+				const databaseId = this.getCurrentNodeParameter('databaseId', { extractValue: true }) as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					//remove parameters that cannot be set from the API.
@@ -111,7 +111,7 @@ export class NotionV1 implements INodeType {
 			},
 			async getFilterProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
+				const databaseId = this.getCurrentNodeParameter('databaseId', { extractValue: true }) as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				for (const key of Object.keys(properties)) {
 					returnData.push({
@@ -135,7 +135,7 @@ export class NotionV1 implements INodeType {
 			},
 			async getPropertySelectValues(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
-				const databaseId = this.getCurrentNodeParameter('databaseId') as string;
+				const databaseId = this.getCurrentNodeParameter('databaseId', { extractValue: true }) as string;
 				const resource = this.getCurrentNodeParameter('resource') as string;
 				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
@@ -364,7 +364,7 @@ export class NotionV1 implements INodeType {
 						parent: {},
 						properties: {},
 					};
-					body.parent['database_id'] = this.getNodeParameter('databaseId', i) as string;
+					body.parent['database_id'] = this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string;
 					const properties = this.getNodeParameter(
 						'propertiesUi.propertyValues',
 						i,
@@ -392,7 +392,7 @@ export class NotionV1 implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
-					const databaseId = this.getNodeParameter('databaseId', i) as string;
+					const databaseId = this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const filters = this.getNodeParameter('options.filter', i, {}) as IDataObject;
 					const sort = this.getNodeParameter('options.sort.sortValue', i, []) as IDataObject[];

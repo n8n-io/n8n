@@ -86,22 +86,71 @@ export const databasePageFields = [
 	/*                                databasePage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database Name or ID',
+		displayName: 'Database',
 		name: 'databaseId',
-		type: 'options',
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getDatabases',
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Database...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([a-z0-9]{2,})\??.*',
+							errorMessage: 'Not a valid Notion Database URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([a-z0-9]{2,})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '([a-z0-9]{2,}).*',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '([a-z0-9]{2,})',
+				},
+				url: '=https://www.notion.so/{{$value}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['databasePage'],
 				operation: ['create'],
 			},
 		},
-		description:
-			"The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>.",
+		description: "Choose from the list or use the URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	{
 		displayName: 'Title',
@@ -870,22 +919,71 @@ export const databasePageFields = [
 	/*                                databasePage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database Name or ID',
+		displayName: 'Database',
 		name: 'databaseId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getDatabases',
-		},
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Database...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([a-z0-9]{2,})\??.*',
+							errorMessage: 'Not a valid Notion Database URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([a-z0-9]{2,})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '([a-z0-9]{2,}).*',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '([a-z0-9]{2,})',
+				},
+				url: '=https://www.notion.so/{{$value}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['databasePage'],
 				operation: ['getAll'],
 			},
 		},
+		description: "Choose from the list or use the URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	{
 		displayName: 'Return All',
