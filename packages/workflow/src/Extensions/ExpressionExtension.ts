@@ -1,39 +1,38 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable import/first */
-/* eslint-disable max-classes-per-file */
-/* eslint-disable import/no-cycle */
-/* eslint-disable no-param-reassign */
-
 import * as BabelCore from '@babel/core';
 import * as BabelTypes from '@babel/types';
-import { DateTime, Interval, Duration } from 'luxon';
+import { DateTime } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
-import { NumberExtensions } from './NumberExtensions';
 
-import { DateExtensions } from './DateExtensions';
-import { StringExtensions } from './StringExtensions';
-import { ArrayExtensions } from './ArrayExtensions';
+import { arrayExtensions } from './ArrayExtensions';
+import { dateExtensions } from './DateExtensions';
+import { numberExtensions } from './NumberExtensions';
+import { stringExtensions } from './StringExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
-const stringExtensions = new StringExtensions();
-const dateExtensions = new DateExtensions();
-const arrayExtensions = new ArrayExtensions();
-const numberExtensions = new NumberExtensions();
+function isBlank(value: unknown) {
+	return value === null || value === undefined || !value;
+}
+
+function isPresent(value: unknown) {
+	return !isBlank(value);
+}
+
+const EXTENSION_OBJECTS = [arrayExtensions, dateExtensions, numberExtensions, stringExtensions];
+
+// eslint-disable-next-line @typescript-eslint/ban-types
+const genericExtensions: Record<string, Function> = {
+	isBlank,
+	isPresent,
+};
 
 const EXPRESSION_EXTENSION_METHODS = Array.from(
 	new Set([
-		...stringExtensions.listMethods(),
-		...numberExtensions.listMethods(),
-		...dateExtensions.listMethods(),
-		...arrayExtensions.listMethods(),
-		'isBlank',
-		'isPresent',
-		'toDecimal',
-		'toLocaleString',
-		'random',
-		'format',
+		...Object.keys(stringExtensions.functions),
+		...Object.keys(numberExtensions.functions),
+		...Object.keys(dateExtensions.functions),
+		...Object.keys(arrayExtensions.functions),
+		...Object.keys(genericExtensions),
 	]),
 );
 
@@ -65,13 +64,14 @@ export const hasNativeMethod = (method: string): boolean => {
 
 /**
  * Babel plugin to inject an extender function call into the AST of an expression.
+ * After doing that it will collapse all nested extend calls into 1 call.
  *
  * ```ts
  * 'a'.method('x') // becomes
- * extend('a', 'x').method();
+ * extend('a', 'method', ['x']);
  *
  * 'a'.first('x').second('y') // becomes
- * extend(extend('a', 'x').first(), 'y').second();
+ * extend(extend('a', 'first', ['x']), 'second', ['y']));
  * ```
  */
 export function expressionExtensionPlugin(): {
@@ -89,12 +89,13 @@ export function expressionExtensionPlugin(): {
 
 					if (!callPath || !BabelTypes.isCallExpression(callPath.node)) return;
 
-					path.parent.object = BabelTypes.callExpression(
-						BabelTypes.identifier(EXPRESSION_EXTENDER),
-						[path.parent.object, ...callPath.node.arguments],
+					callPath.replaceWith(
+						BabelTypes.callExpression(BabelTypes.identifier(EXPRESSION_EXTENDER), [
+							path.parent.object,
+							BabelTypes.stringLiteral(path.node.name),
+							BabelTypes.arrayExpression(callPath.node.arguments as BabelTypes.Expression[]),
+						]),
 					);
-
-					callPath.node.arguments = [];
 				}
 			},
 		},
@@ -105,127 +106,69 @@ export function expressionExtensionPlugin(): {
  * Extender function injected by expression extension plugin to allow calls to extensions.
  *
  * ```ts
- * extend(mainArg, ...extraArgs).method();
+ * extend(input, "functionName", [...args]);
  * ```
  */
-type StringExtMethods = () => string;
-type BooleanExtMethods = () => boolean;
-type DateTimeMethods = () => typeof DateTime;
-type IntervalMethods = () => Interval | typeof Interval;
-type DurationMethods = () => Duration | typeof Duration;
-type ExtMethods = {
-	[k: string]:
-		| StringExtMethods
-		| BooleanExtMethods
-		| DateTimeMethods
-		| IntervalMethods
-		| DurationMethods;
-};
+export function extend(input: unknown, functionName: string, args: unknown[]) {
+	// eslint-disable-next-line @typescript-eslint/ban-types
+	let foundFunction: Function | undefined;
+	if (Array.isArray(input)) {
+		foundFunction = arrayExtensions.functions[functionName];
+	} else if (typeof input === 'string') {
+		foundFunction = stringExtensions.functions[functionName];
+	} else if (typeof input === 'number') {
+		foundFunction = numberExtensions.functions[functionName];
+	} else if ('isLuxonDateTime' in (input as DateTime) || input instanceof Date) {
+		foundFunction = dateExtensions.functions[functionName];
+	}
 
-export function extend(mainArg: unknown, ...extraArgs: unknown[]): ExtMethods {
-	const higherLevelExtensions: ExtMethods = {
-		/*
-		 *	Methods that are defined here are executing extended methods
-		 *  based on specific types. i.e. Array .random() & Number.random()
-		 */
-		format(): string {
-			if (typeof mainArg === 'number') {
-				return numberExtensions.format(Number(mainArg), extraArgs);
-			}
+	// Look for generic or builtin
+	if (!foundFunction) {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		const inputAny: any = input;
+		// This is likely a builtin we're implementing for another type
+		// (e.g. toLocaleString). We'll just call it
+		if (
+			inputAny &&
+			functionName &&
+			functionName in inputAny &&
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			typeof inputAny[functionName] === 'function'
+		) {
+			// I was having weird issues with eslint not finding rules on this line.
+			// Just disabling all eslint rules for now.
+			// eslint-disable-next-line
+			return inputAny[functionName](...args);
+		}
 
-			if ('isLuxonDateTime' in (mainArg as any) || mainArg instanceof Date) {
-				const date = new Date(mainArg as string);
-				return dateExtensions.format(date, extraArgs);
-			}
+		// Use a generic version if available
+		foundFunction = genericExtensions[functionName];
+	}
 
-			throw new ExpressionExtensionError('format() is only callable on types "Number" and "Date"');
-		},
-		getOnlyFirstCharacters(): string {
-			const [end] = extraArgs as number[];
+	// No type specific or generic function found. Check to see if
+	// any types have a function with that name. Then throw an error
+	// letting the user know the available types.
+	if (!foundFunction) {
+		const haveFunction = EXTENSION_OBJECTS.filter((v) => functionName in v.functions);
+		if (!haveFunction.length) {
+			// This shouldn't really be possible but we should cover it anyway
+			throw new ExpressionExtensionError(`Unknown expression function: ${functionName}`);
+		}
 
-			if (!end || extraArgs.length > 1) {
-				throw new ExpressionExtensionError('getOnlyFirstCharacters() requires a single argument');
-			}
-
-			if (typeof mainArg === 'string' || typeof mainArg === 'number') {
-				return stringExtensions.getOnlyFirstCharacters(String(mainArg), end);
-			}
-
-			if ('isLuxonDateTime' in (mainArg as DateTime) || mainArg instanceof Date) {
-				throw new ExpressionExtensionError(
-					"getOnlyFirstCharacters() is only callable on type 'String'",
-				);
-			}
-
-			return mainArg as string;
-		},
-		isBlank(): boolean {
-			if (typeof mainArg === 'string') {
-				return stringExtensions.isBlank(mainArg);
-			}
-
-			if (typeof mainArg === 'number') {
-				return numberExtensions.isBlank(Number(mainArg));
-			}
-
-			if (Array.isArray(mainArg)) {
-				return arrayExtensions.isBlank(mainArg);
-			}
-
+		if (haveFunction.length > 1) {
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			const lastType = `"${haveFunction.pop()!.typeName}"`;
+			const typeNames = `${haveFunction.map((v) => `"${v.typeName}"`).join(', ')}, and ${lastType}`;
 			throw new ExpressionExtensionError(
-				'isBlank() is only callable on types "String", "Array", and "Number"',
+				`${functionName}() is only callable on types ${typeNames}`,
 			);
-		},
-		isPresent(): boolean {
-			if (typeof mainArg === 'string') {
-				return stringExtensions.isPresent(mainArg);
-			}
-
-			if (typeof mainArg === 'number') {
-				return numberExtensions.isPresent(Number(mainArg));
-			}
-
-			if (Array.isArray(mainArg)) {
-				return arrayExtensions.isPresent(mainArg);
-			}
-
+		} else {
 			throw new ExpressionExtensionError(
-				'isPresent() is only callable on types "String", "Array", and "Number"',
+				`${functionName}() is only callable on type "${haveFunction[0].typeName}"`,
 			);
-		},
-		random(): number | any {
-			if (typeof mainArg === 'number') {
-				return numberExtensions.random(Number(mainArg));
-			}
+		}
+	}
 
-			if (Array.isArray(mainArg)) {
-				return arrayExtensions.random(mainArg);
-			}
-
-			throw new ExpressionExtensionError('random() is only callable on types "Number" and "Array"');
-		},
-		toLocaleString(): string {
-			if ('isLuxonDateTime' in (mainArg as DateTime) || mainArg instanceof Date) {
-				return dateExtensions.toLocaleString(new Date(mainArg as string), extraArgs);
-			}
-			throw new ExpressionExtensionError('toLocaleString() is only callable on a "Date" type');
-		},
-
-		/*
-		 * Type specific extensions and bound to the data
-		 * and are added to the higherLevelExtensions object 'exposed' at this point
-		 */
-		...stringExtensions.bind(mainArg as string, extraArgs as string[] | undefined),
-		...numberExtensions.bind(Number(mainArg), extraArgs as any[] | undefined),
-		...dateExtensions.bind(
-			new Date(mainArg as string),
-			extraArgs as number[] | string[] | boolean[] | undefined,
-		),
-		...arrayExtensions.bind(
-			Array.isArray(mainArg) ? mainArg : ([mainArg] as unknown[]),
-			extraArgs as string[] | undefined,
-		),
-	};
-
-	return higherLevelExtensions;
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+	return foundFunction(input, args);
 }
