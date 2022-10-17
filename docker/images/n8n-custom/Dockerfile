@@ -3,6 +3,10 @@ ARG NODE_VERSION=16
 # 1. Create an image to build n8n
 FROM n8nio/base:${NODE_VERSION} as builder
 
+# Install turbo libc6-compat dependency.
+# https://github.com/vercel/turborepo/issues/2198#issuecomment-1275867758
+RUN apk add --no-cache libc6-compat
+
 RUN npm install -g run-script-os turbo
 
 COPY turbo.json package.json package-lock.json tsconfig.json ./
