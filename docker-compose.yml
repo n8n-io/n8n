@@ -1,0 +1,14 @@
+version: "3.9"
+services:
+  connect:
+    build: .
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - 5679:5678
+  redis:
+    image: "redis:alpine"
+    expose:
+      - 6379
+    restart: always

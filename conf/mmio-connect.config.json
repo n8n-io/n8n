@@ -1,0 +1,38 @@
+{
+    "database": {
+        "type": "mariadb",
+        "mysqldb": {
+            "database": "connect",
+            "host": "host.docker.internal",
+            "password": "gfKSVgDJ4XTQMLtR",
+            "port": 5050,
+            "user": "marketingmaster_main"
+        }
+    },
+    "generic": {
+        "timezone": "Asia/Manila"
+    },
+	"queue": {
+		"bull": {
+			"redis": {
+				"host": "redis"
+			}
+		}
+	},
+    "userManagement": {
+        "emails": {
+            "smtp": {
+                "host": "smtp.gmail.com",
+                "port": 587,
+                "secure": false,
+                "auth": {
+                    "user": "colin@marketingmaster.io",
+                    "pass": "fyhgqzgmmtzsbazi"
+                },
+                "sender": "colin@marketingmaster.io"
+            }
+        }
+    },
+    "editorBaseUrl": "https://connect.marketingmaster.io",
+	"host": "s1.marketingmaster.io"
+}
