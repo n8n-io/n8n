@@ -160,6 +160,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 		onWorkflowPage(): boolean {
 			return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 		},
+		onExecutionsTab(): boolean {
+			return this.$route.name === VIEWS.EXECUTION_PREVIEW || this.$route.name === VIEWS.EXECUTIONS;
+		},
 		workflowMenuItems(): Array<{}> {
 			return [
 				{
@@ -175,12 +178,12 @@ export default mixins(workflowHelpers, titleChange).extend({
 				{
 					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
 					label: this.$locale.baseText('menuActions.importFromUrl'),
-					disabled: !this.onWorkflowPage,
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 					label: this.$locale.baseText('menuActions.importFromFile'),
-					disabled: !this.onWorkflowPage,
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.SETTINGS,
