@@ -161,7 +161,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 		},
 		onExecutionsTab(): boolean {
-			return this.$route.name === VIEWS.EXECUTION_PREVIEW || this.$route.name === VIEWS.EXECUTIONS;
+			return [ VIEWS.EXECUTION_HOME.toString(), VIEWS.EXECUTIONS.toString(), VIEWS.EXECUTION_PREVIEW ].includes(this.$route.name || '');
 		},
 		workflowMenuItems(): Array<{}> {
 			return [
