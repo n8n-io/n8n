@@ -115,7 +115,8 @@ import {
 import {
 	deepCopy,
 	INodeParameters,
-	INodePropertyCollection, NodeParameterValue,
+	INodePropertyCollection,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import { get } from 'lodash';
