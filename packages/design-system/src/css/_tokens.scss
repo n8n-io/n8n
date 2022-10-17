@@ -1,9 +1,9 @@
 @use 'sass:math';
 
 @mixin theme {
-	--color-primary-h: 6.9;
-	--color-primary-s: 100%;
-	--color-primary-l: 67.6%;
+	--color-primary-h: 245;
+	--color-primary-s: 82%;
+	--color-primary-l: 67%;
 	--color-primary: hsl(
 		var(--color-primary-h),
 		var(--color-primary-s),

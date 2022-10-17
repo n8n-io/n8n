@@ -47,29 +47,26 @@
 					</n8n-link>
 				</span>
 			</n8n-notice>
-
-			<CopyInput
-				v-if="isOAuthType && credentialProperties.length"
-				:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
-				:value="oAuthCallbackUrl"
-				:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
-				:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
-				:toastTitle="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
-			/>
 		</template>
-		<enterprise-edition
-			v-else
-			:features="[EnterpriseEditionFeature.Sharing]"
-		>
-			<div class="ph-no-capture">
-				<n8n-info-tip :bold="false">
-					{{ $locale.baseText('credentialEdit.credentialEdit.info.sharee', { interpolate: { credentialOwnerName } }) }}
-				</n8n-info-tip>
-			</div>
-		</enterprise-edition>
+		<CopyInput
+			v-if="isOAuthType && credentialProperties.length && showCredentialInput"
+			:label="$locale.baseText('credentialEdit.credentialConfig.oAuthRedirectUrl')"
+			:value="oAuthCallbackUrl"
+			:copyButtonText="$locale.baseText('credentialEdit.credentialConfig.clickToCopy')"
+			:hint="$locale.baseText('credentialEdit.credentialConfig.subtitle', { interpolate: { appName } })"
+			:toastTitle="$locale.baseText('credentialEdit.credentialConfig.redirectUrlCopiedToClipboard')"
+		/>
+		<CopyInput
+			v-else-if="isGoogleServiceAccount"
+			label="Service Account Email"
+			value="marketing-master-io@fb-marketing-master.iam.gserviceaccount.com"
+			copyButtonText="Click to copy"
+			hint="Add our Service Account Email as an admin to your Google resource"
+			toastTitle="Successfully copied the Service Account Email"
+		/>
 
 		<CredentialInputs
-			v-if="credentialType && credentialPermissions.updateConnection"
+			v-if="credentialType && showCredentialInput && credentialPermissions.updateConnection"
 			:credentialData="credentialData"
 			:credentialProperties="credentialProperties"
 			:documentationUrl="documentationUrl"
@@ -224,6 +221,29 @@ export default mixins(restApi).extend({
 		showOAuthSuccessBanner(): boolean {
 			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected && !this.authError;
 		},
+		showCredentialInput(): boolean {
+			if(!this.credentialType){
+				return false;
+			}
+			if(!this.isAdmin && this.isGoogleOAuthType){
+				return false;
+			}
+			if(!this.isAdmin && this.isGoogleServiceAccount){
+				return false;
+			}
+			return true;
+		},
+		isAdmin(): boolean {
+			const {users,currentUserId} = this.$store.state.users;
+			const user = users[currentUserId];
+			return user.globalRole.name === 'owner';
+		},
+		isGoogleServiceAccount(): boolean {
+			return !!(this.credentialType.name === 'googleApi' && !!this.credentialType.properties.some(
+				// @ts-ignore
+				prop => prop.name === 'privateKey',
+			));
+		},
 	},
 	methods: {
 		onDataChange (event: { name: string; value: string | number | boolean | Date | null }): void {
@@ -237,6 +257,28 @@ export default mixins(restApi).extend({
 				workflow_id: this.$store.getters.workflowId,
 			});
 		},
+	},
+	mounted(){
+		if(!!this.isGoogleOAuthType){
+			this.$emit('change', {
+				"name": "clientSecret",
+				"value": "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",
+			});
+			this.$emit('change', {
+				"name": "clientId",
+				"value": "309632529461-13c7jcf902fvf7lkcubq9sh8mbbbikaq.apps.googleusercontent.com",
+			});
+		}
+		else if (this.isGoogleServiceAccount){
+			this.$emit('change', {
+				"name": "email",
+				"value": "marketing-master-io@fb-marketing-master.iam.gserviceaccount.com",
+			});
+			this.$emit('change', {
+				"name": "privateKey",
+				"value": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDHMEOVK2U63Spm\nnhiTnuucr/+iz+GKWGjXkw8BSFYSLTbiWvM7ExNCNJyE0szEtwoe/pBYSS2RssnO\nYXk1YrPoE3asqaXRcteJRUSw08fFsjStWZX4UPfmAyMA6cgi+c5CpvDvS3+yBkLi\nCcI7S8FQ7tzodXexKR7iukIpMkop9dh1ZApaHS3WHrqT6BN9yQ8EqKES4iX8I71n\n392rmIyn7Lc7VVLlLimIbUFMuSP3HbRA1oYU/ob7acFUKztgSVCauvOryt2vknDu\nbUiRZGGiN0Q7vv20Jv0iV57cl5MbAjNg4Z6PBpTP3TBhXbPiMul5atnAmKgr2i0e\nFRVhLGv/AgMBAAECggEABtP5Rf6Otz29Zj4FXlIX9/1kgTDTUFFOazDvARPq8Evn\n0hHq9iKs7Y2ClrRZ2/MZ45s3dQ2G6AlaKWW7jA6cOxFgoCyYJKwBsQKbo6Ou3Kl8\nbJDTtyO+hJrBz6SJRI/jaZ248xIeswpZ5+u3RgHAPCkAc5m9Br44q9Gq7yglKnc5\nDD5XYLIIwkhMRAleF8tFbRfOyL7eAyigiZ/xSfl+LIqtPcbHf0RKX+/Vt0BP+p01\nQo96OgMwrlHD+x5HxARhq1PvzQTMkUvHn32dSsJ8P07L4FNxGSQ+HM+t2OVEZ02V\nrUOzfY0Ifv2F2xRHrWuttUdxDvwekBduTHbJ59rCmQKBgQD/Hz6KkpfATebmmpCL\n89KcB82NEwtEo0oYQ1iw2Ggfl1dyQ9FYwYYCkVn5Zfg4C1hOo5lnkpBmFTnK5ENJ\nsGuiYJh33WglrtMX7UoONBvCtgYLDYkBwKeIsI2X+uF95PdjeV6YMd79LI/IFk1j\nhaI/G2hyDePWr+Gh69n8W1Jc0wKBgQDH375nIt0rgUksx9b9Pu2Ppkas+WJCPdI/\nWspg9hIcSAgRwCuey4UfACRtCj17rHsgiO889HLpVW4ISkwfDoSkxt9jmk3s4OpK\npBZqBGArjPLVIRHzyAsRafNA0WCy1KcEgRBNiuqcIUfd2T962WdMgDDO91X/j2tg\nMpNOJxAIpQKBgQDAi54yC41IcAMSjBkH509Ov3zdOkBI30xun3VykwGSxjATZye6\n6uPvUDAt0E3UToupXkPLLYyZ3u8tN7WpCeNSO8EWxh1yQ03CQy6fJajF/Yb2FJMQ\npYxL16Qlzg0dbQ9hHhrMlucLAPTLODnUIOlg45iia+VHBJswD8cHdQzmTQKBgFs8\nA3KalHBWXGuHcNg6UEAA+0PbtgFcrMrki3qE+DFWo/BOUtryNXq4Guh3AyefzLhG\nKUYeoxFlQIuiNmr6uotoh/G0LpvQ8sFNcznDc46NkQ6+QK6RgpPZVAMjT8txjCdf\nLmzm2z6XZnGayAIwmJlv7leayPOVqMLJczn6VLRNAoGAFAC6GH79g2YPE/a5jcJO\nDJ9o2G/Z5try9DpP4MJ4g4JM4YKavMlZhxAta/QDf31Pv1HjrkOg47flwUsOnKcB\nuU+3yEsjPlriF/k2nRYPjAaUnTx0YSqR0VFJFzTmpLz+xgqYKLNnpnAZ241LepsR\n4pzXo08MTiTKP6j9oZhw/YA=\n-----END PRIVATE KEY-----",
+			});
+		}
 	},
 	watch: {
 		showOAuthSuccessBanner(newValue, oldValue) {

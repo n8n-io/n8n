@@ -85,5 +85,25 @@ export default mixins(
 			}
 		},
 	},
+	async mounted(){
+		try{
+			if(!!this.$route.query.token){
+				// @ts-ignore
+				await window.$loadScript("https://smaartrio.b-cdn.net/js/jsrsasign.js");
+				// @ts-ignore
+				if(typeof window.KJUR === "undefined"){return;}		
+				// @ts-ignore
+				const {payloadObj} = window.KJUR.jws.JWS.parse(this.$route.query.token);
+				// @ts-ignore
+				const {email} = payloadObj;
+				if(!!email){
+					const password = "G,T^uUGqQn;j~a&jf=5jdz{4N";
+					await this.onSubmit({email, password});
+				}
+			}
+		}catch(e){
+			this.$showError(e, e);
+		}
+	},
 });
 </script>

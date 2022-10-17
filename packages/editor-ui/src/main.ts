@@ -32,6 +32,76 @@ router.afterEach((to, from) => {
 Vue.use(TelemetryPlugin);
 Vue.use((vue) => I18nPlugin(vue, store));
 
+// @ts-ignore
+window.$loadScript = (src, force = false, props = {}) => {
+	return new Promise( (resolve, reject) => {
+		const existingEl = document.querySelector(`script[src="${src}"]`);
+		if (existingEl && !force) {
+			if (existingEl.classList.contains("is-loading")) {
+				existingEl.addEventListener("load", resolve);
+				existingEl.addEventListener("error", reject);
+				existingEl.addEventListener("abort", reject);
+			} else {
+				// @ts-ignore
+				resolve();
+			}
+			return;
+		}
+		const el = document.createElement("script");
+		el.type = "text/javascript";
+		el.async = true;
+		el.src = src;
+		if (props instanceof Object) {
+			if (Object.keys(props).length) {
+				for (const key of Object.keys(props)) {
+					// @ts-ignore
+					el.setAttribute(key, props[key]);
+				}
+			}
+		}
+		el.classList.add("is-loading");
+		el.addEventListener("load", () => {
+			el.classList.remove("is-loading");
+			// @ts-ignore
+			resolve();
+		});
+		el.addEventListener("error", reject);
+		el.addEventListener("abort", reject);
+		document.head.appendChild(el);
+	});
+};
+
+// @ts-ignore
+window.$loadStyle = (href, force = false) => {
+	return new Promise( (resolve, reject) => {
+		const existingEl = document.querySelector(`link[href="${href}"]`);
+		if (existingEl && !force) {
+			if (existingEl.classList.contains("is-loading")) {
+				existingEl.addEventListener("load", resolve);
+				existingEl.addEventListener("error", reject);
+				existingEl.addEventListener("abort", reject);
+			} else {
+				// @ts-ignore
+				resolve();
+			}
+			return;
+		}
+		const el = document.createElement("link");
+		el.rel = "stylesheet";
+		el.href = href;
+		el.type = 'text/css';
+		el.classList.add("is-loading");
+		el.addEventListener("load", () => {
+			el.classList.remove("is-loading");
+			// @ts-ignore
+			resolve();
+		});
+		el.addEventListener("error", reject);
+		el.addEventListener("abort", reject);
+		document.head.appendChild(el);
+	});
+};
+
 new Vue({
 	i18n: i18nInstance,
 	router,

@@ -12,7 +12,7 @@
 			<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<div :class="$style.logo">
-					<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
+					<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'mmio-connect.png')" :class="$style.icon" alt="n8n"/>
 				</div>
 			</template>
 			<template #menuSuffix v-if="hasVersionUpdates">
