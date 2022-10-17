@@ -27,7 +27,6 @@ import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { pushConnection } from "@/components/mixins/pushConnection";
 import { IFakeDoor } from '@/Interface';
-import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import { IMenuItem } from 'n8n-design-system';
 import { BaseTextKey } from '@/plugins/i18n';
 
@@ -36,9 +35,6 @@ export default mixins(
 	pushConnection,
 ).extend({
 	name: 'SettingsSidebar',
-	components: {
-		GiftNotificationIcon,
-	},
 	computed: {
 		...mapGetters('settings', ['versionCli']),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
