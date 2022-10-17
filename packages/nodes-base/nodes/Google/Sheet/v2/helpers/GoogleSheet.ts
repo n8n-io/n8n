@@ -190,22 +190,26 @@ export class GoogleSheet {
 	 * Appends the cell values
 	 */
 	async appendData(range: string, data: string[][], valueInputMode: ValueInputOption) {
-		const body = {
-			range,
-			values: data,
-		};
+		// const body = {
+		// 	range,
+		// 	values: data,
+		// };
 
-		const query = {
-			valueInputOption: valueInputMode,
-		};
+		// const query = {
+		// 	valueInputOption: valueInputMode,
+		// };
 
-		const response = await apiRequest.call(
-			this.executeFunctions,
-			'POST',
-			`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
-			body,
-			query,
-		);
+		// const response = await apiRequest.call(
+		// 	this.executeFunctions,
+		// 	'POST',
+		// 	`/v4/spreadsheets/${this.id}/values/${this.encodeRange(range)}:append`,
+		// 	body,
+		// 	query,
+		// );
+
+		const lastRow =
+			(((await this.getData(range, 'UNFORMATTED_VALUE')) as string[][]) || []).length + 1;
+		const response = await this.updateRow(range, data, valueInputMode, lastRow, data.length);
 
 		return response;
 	}
@@ -215,8 +219,10 @@ export class GoogleSheet {
 		data: string[][],
 		valueInputMode: ValueInputOption,
 		row: number,
+		rowsLength?: number,
 	) {
-		const range = `${sheetName}!${row}:${row}`;
+		const [name, sheetRange] = sheetName.split('!');
+		const range = `${name}!${row}:${rowsLength ? row + rowsLength - 1 : row}`;
 
 		const body = {
 			range,

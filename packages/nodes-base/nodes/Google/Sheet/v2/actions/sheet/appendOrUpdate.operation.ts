@@ -163,7 +163,27 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
 	const updateData: ISheetUpdateData[] = [];
+	const appendData: IDataObject[] = [];
 	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
+	const range = `${sheetName}!A:Z`;
+
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+
+	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
+
+	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+
+	let headerRow = 0;
+	let firstDataRow = 1;
+
+	if (locationDefine) {
+		if (locationDefine.headerRow) {
+			headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
+		}
+		if (locationDefine.firstDataRow) {
+			firstDataRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
+		}
+	}
 
 	for (let i = 0; i < items.length; i++) {
 		const dataMode = this.getNodeParameter('dataMode', i) as
@@ -172,29 +192,6 @@ export async function execute(
 			| 'nothing';
 
 		if (dataMode === 'nothing') continue;
-
-		const options = this.getNodeParameter('options', i, {}) as IDataObject;
-
-		const valueInputMode = (options.cellFormat || 'RAW') as ValueInputOption;
-		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
-
-		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
-
-		let headerRow = 0;
-		let firstDataRow = 1;
-		const range = `${sheetName}!A:Z`;
-
-		if (locationDefine) {
-			if (locationDefine.headerRow) {
-				headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
-			}
-			if (locationDefine.firstDataRow) {
-				firstDataRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
-			}
-			// if (locationDefine.range) {
-			// 	range = `${sheetName}!${locationDefine.range}`;
-			// }
-		}
 
 		let columnNames: string[] = [];
 		const response = await sheet.getData(
@@ -278,20 +275,14 @@ export async function execute(
 		);
 
 		updateData.push(...preparedData.updateData);
-
-		if (preparedData.appendData.length) {
-			await sheet.appendSheetData(
-				preparedData.appendData,
-				range,
-				headerRow + 1,
-				valueInputMode,
-				false,
-			);
-		}
+		appendData.push(...preparedData.appendData);
 	}
 
 	if (updateData.length) {
 		await sheet.batchUpdate(updateData, valueInputMode);
+	}
+	if (appendData.length) {
+		await sheet.appendSheetData(appendData, range, headerRow + 1, valueInputMode, false);
 	}
 	return items;
 }
