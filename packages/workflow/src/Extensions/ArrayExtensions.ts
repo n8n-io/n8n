@@ -3,120 +3,79 @@
 /* eslint-disable @typescript-eslint/explicit-member-accessibility */
 // eslint-disable-next-line import/no-cycle
 import { ExpressionError } from '../ExpressionError';
-import { BaseExtension, ExtensionMethodHandler } from './Extensions';
+import { ExtensionMap } from './Extensions';
+// import { BaseExtension, ExtensionMethodHandler } from './Extensions';
 
-export class ArrayExtensions extends BaseExtension<any> {
-	methodMapping = new Map<string, ExtensionMethodHandler<any>>();
-
-	constructor() {
-		super();
-		this.initializeMethodMap();
+function filter(value: any[], extraArgs?: any[]): any[] {
+	if (!Array.isArray(extraArgs)) {
+		throw new ExpressionError('arguments must be passed to filter');
 	}
-
-	count(mainArg: any[]): number {
-		return this.length(mainArg);
-	}
-
-	bind(mainArg: any[], extraArgs?: number[] | string[] | boolean[] | undefined) {
-		return Array.from(this.methodMapping).reduce((p, c) => {
-			const [key, method] = c;
-			Object.assign(p, {
-				[key]: () => {
-					return method.call(this, mainArg, extraArgs) as
-						| number
-						| boolean
-						| typeof mainArg
-						| Array<typeof mainArg>;
-				},
-			});
-			return p;
-		}, {} as object);
-	}
-
-	private initializeMethodMap(): void {
-		this.methodMapping = new Map<
-			string,
-			(
-				value: any[],
-				extraArgs?: number[] | string[] | boolean[] | undefined,
-			) => any[] | boolean | string | Date | number
-		>([
-			['count', this.count],
-			['duplicates', this.unique],
-			['filter', this.filter],
-			['first', this.first],
-			['last', this.last],
-			['length', this.length],
-			['pluck', this.pluck],
-			['unique', this.unique],
-			['randomItem', this.randomItem],
-			['remove', this.unique],
-			['size', this.size],
-		]);
-	}
-
-	filter(value: any[], extraArgs?: any[]): any[] {
-		if (!Array.isArray(extraArgs)) {
-			throw new ExpressionError('arguments must be passed to filter');
-		}
-		const terms = extraArgs as string[] | number[];
-		return value.filter((v: string | number) => (terms as Array<typeof v>).includes(v));
-	}
-
-	first(value: any[]): any {
-		return value[0];
-	}
-
-	isBlank(value: any[]): boolean {
-		return Array.isArray(value) && value.length === 0;
-	}
-
-	isPresent(value: any[], extraArgs?: any): boolean {
-		const comparators = Array.isArray(extraArgs) ? extraArgs : [extraArgs];
-		return value.some((v: string | number) => {
-			return (comparators as Array<typeof v>).includes(v);
-		});
-	}
-
-	last(value: any[]): any {
-		return value[value.length - 1];
-	}
-
-	length(value: any[]): number {
-		return Array.isArray(value) ? value.length : 0;
-	}
-
-	pluck(value: any[], extraArgs: any[]): any[] {
-		if (!Array.isArray(extraArgs)) {
-			throw new ExpressionError('arguments must be passed to pluck');
-		}
-		const fieldsToPluck = extraArgs;
-		return value.map((element: object) => {
-			const entries = Object.entries(element);
-			return entries.reduce((p, c) => {
-				const [key, val] = c as [string, Date | string | number];
-				if (fieldsToPluck.includes(key)) {
-					Object.assign(p, { [key]: val });
-				}
-				return p;
-			}, {});
-		});
-	}
-
-	random(value: any[]): any {
-		const length = value === undefined ? 0 : value.length;
-		return length ? value[Math.floor(Math.random() * length)] : undefined;
-	}
-
-	randomItem(value: any[]): any {
-		return this.random(value);
-	}
-
-	unique(value: any[]): any[] {
-		return Array.from(new Set(value));
-	}
-
-	size(value: any[]): number {
-		return this.length(value);
-	}
+	const terms = extraArgs as string[] | number[];
+	return value.filter((v: string | number) => (terms as Array<typeof v>).includes(v));
 }
+
+function first(value: any[]): any {
+	return value[0];
+}
+
+function isBlank(value: any[]): boolean {
+	return value.length === 0;
+}
+
+function isPresent(value: any[]): boolean {
+	return value.length > 0;
+}
+
+function last(value: any[]): any {
+	return value[value.length - 1];
+}
+
+function length(value: any[]): number {
+	return Array.isArray(value) ? value.length : 0;
+}
+
+function pluck(value: any[], extraArgs: any[]): any[] {
+	if (!Array.isArray(extraArgs)) {
+		throw new ExpressionError('arguments must be passed to pluck');
+	}
+	const fieldsToPluck = extraArgs;
+	return value.map((element: object) => {
+		const entries = Object.entries(element);
+		return entries.reduce((p, c) => {
+			const [key, val] = c as [string, Date | string | number];
+			if (fieldsToPluck.includes(key)) {
+				Object.assign(p, { [key]: val });
+			}
+			return p;
+		}, {});
+	});
+}
+
+function random(value: any[]): any {
+	const len = value === undefined ? 0 : value.length;
+	return len ? value[Math.floor(Math.random() * len)] : undefined;
+}
+
+function unique(value: any[]): any[] {
+	return Array.from(new Set(value));
+}
+
+export const arrayExtensions: ExtensionMap = {
+	typeName: 'Array',
+	functions: {
+		count: length,
+		duplicates: unique,
+		filter,
+		first,
+		last,
+		length,
+		pluck,
+		unique,
+		random,
+		randomItem: random,
+		remove: unique,
+		size: length,
+		isPresent,
+		isBlank,
+	},
+};
