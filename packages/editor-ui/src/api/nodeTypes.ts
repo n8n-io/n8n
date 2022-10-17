@@ -14,15 +14,12 @@ import type {
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
-import axios from 'axios';
 
 export async function getNodeTypes(
-	baseUrl: string,
+	context: IRestApiContext,
 	{ onlyLatest } = { onlyLatest: false },
 ) {
-	const url = onlyLatest ? 'latest-nodes.json' : 'all-nodes.json';
-	const { data } = await axios.get(baseUrl + 'types/' + url);
-	return data;
+	return makeRestApiRequest(context, 'GET', '/node-types', { onlyLatest });
 }
 
 export async function getNodeTranslationHeaders(
@@ -58,3 +55,4 @@ export async function getResourceLocatorResults(
 ): Promise<INodeListSearchResult> {
 	return makeRestApiRequest(context, 'GET', '/nodes-list-search', sendData as unknown as IDataObject);
 }
+

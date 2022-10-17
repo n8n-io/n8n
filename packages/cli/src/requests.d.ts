@@ -331,6 +331,14 @@ export declare namespace NodeRequest {
 }
 
 // ----------------------------------
+//          /node-types
+// ----------------------------------
+
+export declare namespace NodeTypesRequest {
+	type GetAll = AuthenticatedRequest<{}, {}, {}, { onlyLatest?: string }>;
+}
+
+// ----------------------------------
 //           /curl-to-json
 // ----------------------------------
 

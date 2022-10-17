@@ -103,7 +103,7 @@ const module: Module<INodeTypesState, IRootState> = {
 			context.commit('setNodeTypes', nodesInformation);
 		},
 		async getNodeTypes(context: ActionContext<INodeTypesState, IRootState>) {
-			const nodeTypes = await getNodeTypes(context.rootGetters.getBaseUrl);
+			const nodeTypes = await getNodeTypes(context.rootGetters.getRestApiContext);
 			if (nodeTypes.length) {
 				context.commit('setNodeTypes', nodeTypes);
 			}
