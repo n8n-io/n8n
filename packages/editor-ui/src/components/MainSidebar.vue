@@ -9,44 +9,44 @@
 			:class="{ ['clickable']: true, [$style.sideMenuCollapseButton]: true, [$style.expandedButton]: !isCollapsed }"
 			@click="toggleCollapse">
 		</div>
-			<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
-				<template #header>
-					<div :class="$style.logo">
-						<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
-					</div>
-				</template>
-				<template #menuSuffix v-if="hasVersionUpdates">
-					<div :class="$style.updates" @click="openUpdatesPanel">
-							<div :class="$style.giftContainer">
-								<GiftNotificationIcon />
+		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+			<template #header>
+				<div :class="$style.logo">
+					<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
+				</div>
+			</template>
+			<template #menuSuffix v-if="hasVersionUpdates">
+				<div :class="$style.updates" @click="openUpdatesPanel">
+						<div :class="$style.giftContainer">
+							<GiftNotificationIcon />
+						</div>
+						<n8n-text :class="{['ml-xs']: true, [$style.expanded]: fullyExpanded }" color="text-base">
+							{{ nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : '' }}
+						</n8n-text>
+				</div>
+			</template>
+			<template #footer v-if="showUserArea">
+				<div :class="$style.userArea">
+					<div class="ml-3xs">
+						<!-- This dropdown is only enabled when sidebar is collapsed -->
+						<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
+							<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
+								<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+								<el-dropdown-menu slot="dropdown">
+									<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
+									<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
+								</el-dropdown-menu>
 							</div>
-							<n8n-text :class="{['ml-xs']: true, [$style.expanded]: fullyExpanded }" color="text-base">
-								{{ nextVersions.length > 99 ? '99+' : nextVersions.length}} update{{nextVersions.length > 1 ? 's' : '' }}
-							</n8n-text>
+						</el-dropdown>
 					</div>
-				</template>
-				<template #footer v-if="showUserArea">
-					<div :class="$style.userArea">
-						<div class="ml-3xs">
-							<!-- This dropdown is only enabled when sidebar is collapsed -->
-							<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
-								<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
-									<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
-									<el-dropdown-menu slot="dropdown">
-										<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
-										<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
-									</el-dropdown-menu>
-								</div>
-							</el-dropdown>
-						</div>
-						<div :class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }">
-							<n8n-text size="small" :bold="true" color="text-dark">{{currentUser.fullName}}</n8n-text>
-						</div>
-						<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
-							<n8n-action-dropdown :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
-						</div>
+					<div :class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }">
+						<n8n-text size="small" :bold="true" color="text-dark">{{currentUser.fullName}}</n8n-text>
 					</div>
-				</template>
+					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
+						<n8n-action-dropdown :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
+					</div>
+				</div>
+			</template>
 		</n8n-menu>
 	</div>
 </template>
