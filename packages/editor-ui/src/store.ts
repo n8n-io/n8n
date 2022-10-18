@@ -1,5 +1,5 @@
 import Vue from 'vue';
-import Vuex from 'vuex';
+import Vuex, {ActionContext} from 'vuex';
 
 import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -32,6 +32,8 @@ import {
 	IWorkflowDb,
 	XYPosition,
 	IRestApiContext,
+	IWorkflowsState,
+	IWorkflowsMap,
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
@@ -48,6 +50,7 @@ import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
 import nodeCreator from './modules/nodeCreator';
 import { isJsonKeyObject } from './utils';
+import {getActiveWorkflows, getWorkflows} from "@/api/workflows";
 import { getPairedItemsMapping } from './pairedItemUtils';
 
 Vue.use(Vuex);
@@ -100,6 +103,7 @@ const state: IRootState = {
 		tags: [],
 		pinData: {},
 	},
+	workflowsById: {},
 	sidebarMenuItems: [],
 	instanceId: '',
 	nodeMetadata: {},
@@ -181,6 +185,25 @@ export const store = new Vuex.Store({
 			Vue.set(state, 'activeExecutions', newActiveExecutions);
 		},
 
+		// Workflows
+		setWorkflows: (state: IRootState, workflows: IWorkflowDb[]) => {
+			state.workflowsById = workflows.reduce<IWorkflowsMap>((acc, workflow: IWorkflowDb) => {
+				if (workflow.id) {
+					acc[workflow.id] = workflow;
+				}
+
+				return acc;
+			}, {});
+		},
+		deleteWorkflow: (state: IRootState, id: string) => {
+			const { [id]: deletedWorkflow, ...workflows } = state.workflowsById;
+
+			state.workflowsById = workflows;
+		},
+		addWorkflow: (state: IRootState, workflow: IWorkflowDb) => {
+			Vue.set(state.workflowsById, workflow.id, workflow);
+		},
+
 		// Active Workflows
 		setActiveWorkflows(state, newActiveWorkflows: string[]) {
 			state.activeWorkflows = newActiveWorkflows;
@@ -191,11 +214,19 @@ export const store = new Vuex.Store({
 			if (index === -1) {
 				state.activeWorkflows.push(workflowId);
 			}
+
+			if (state.workflowsById[workflowId]) {
+				Vue.set(state.workflowsById[workflowId], 'active', true);
+			}
 		},
 		setWorkflowInactive(state, workflowId: string) {
 			const index = state.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
 				state.activeWorkflows.splice(index, 1);
+			}
+
+			if (state.workflowsById[workflowId]) {
+				Vue.set(state.workflowsById[workflowId], 'active', false);
 			}
 		},
 		// Set state condition dirty or not
@@ -831,6 +862,12 @@ export const store = new Vuex.Store({
 			return state.sessionId;
 		},
 
+		// Workflows
+		allWorkflows(state: IRootState): IWorkflowDb[] {
+			return Object.values(state.workflowsById)
+				.sort((a, b) => a.name.localeCompare(b.name));
+		},
+
 		// Active Workflows
 		getActiveWorkflows: (state): string[] => {
 			return state.activeWorkflows;
@@ -1009,6 +1046,20 @@ export const store = new Vuex.Store({
 
 		sidebarMenuItems: (state): IMenuItem[] => {
 			return state.sidebarMenuItems;
+		},
+	},
+	actions: {
+		fetchAllWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<IWorkflowDb[]> => {
+			const workflows = await getWorkflows(context.rootGetters.getRestApiContext);
+			context.commit('setWorkflows', workflows);
+
+			return workflows;
+		},
+		fetchActiveWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string[]> => {
+			const activeWorkflows = await getActiveWorkflows(context.rootGetters.getRestApiContext);
+			context.commit('setActiveWorkflows', activeWorkflows);
+
+			return activeWorkflows;
 		},
 	},
 });
