@@ -121,7 +121,7 @@ export default mixins(
 			return null;
 		},
 		isTriggerNode (): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
 		},
 		isPollingTypeNode (): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
@@ -150,6 +150,8 @@ export default mixins(
 			return executionData.resultData.runData;
 		},
 		hasNodeRun(): boolean {
+			if (this.$store.getters.subworkflowExecutionError) return true;
+
 			return Boolean(
 				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
 			);
