@@ -99,6 +99,7 @@ import * as CanvasHelpers from './canvasHelpers';
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import {
+	deepCopy,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -459,7 +460,7 @@ export default mixins(
 				this.$store.commit('setWorkflowExecutionData', data);
 				this.$store.commit('setWorkflowPinData', data.workflowData.pinData);
 
-				await this.addNodes(JSON.parse(JSON.stringify(data.workflowData.nodes)), JSON.parse(JSON.stringify(data.workflowData.connections)));
+				await this.addNodes(deepCopy(data.workflowData.nodes), deepCopy(data.workflowData.connections));
 				this.$nextTick(() => {
 					this.zoomToFit();
 					this.$store.commit('setStateDirty', false);
@@ -2193,7 +2194,7 @@ export default mixins(
 
 				// Deep copy the data so that data on lower levels of the node-properties do
 				// not share objects
-				const newNodeData = JSON.parse(JSON.stringify(this.getNodeDataToSave(node)));
+				const newNodeData = deepCopy(this.getNodeDataToSave(node));
 				newNodeData.id = uuid();
 
 				// Check if node-name is unique else find one that is
