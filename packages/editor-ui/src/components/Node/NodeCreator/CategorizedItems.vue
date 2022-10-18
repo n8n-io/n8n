@@ -47,7 +47,7 @@
 					<!-- There are results in other sub-categories/tabs  -->
 					<template v-if="filteredAllNodeTypes.length > 0">
 						<p
-							v-html="$locale.baseText('nodeCreator.noResults.seeResultsHere')"
+							v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')"
 							slot="title"
 						/>
 					</template>
