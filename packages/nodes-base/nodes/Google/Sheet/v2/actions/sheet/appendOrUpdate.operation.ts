@@ -311,6 +311,5 @@ export async function execute(
 			lastRow,
 		);
 	}
-	console.log('==> end');
 	return items;
 }

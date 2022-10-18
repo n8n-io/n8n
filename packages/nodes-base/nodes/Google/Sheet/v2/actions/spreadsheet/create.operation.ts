@@ -26,40 +26,11 @@ export const description: SpreadSheetProperties = [
 			multipleValues: true,
 		},
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['spreadsheet'],
-				operation: ['create'],
-			},
-		},
 		options: [
 			{
 				name: 'sheetValues',
 				displayName: 'Sheet',
 				values: [
-					// {
-					// 	displayName: 'Sheet',
-					// 	name: 'propertiesUi',
-					// 	placeholder: 'Add Property',
-					// 	type: 'collection',
-					// 	default: {},
-					// 	options: [
-					// 		{
-					// 			displayName: 'Title',
-					// 			name: 'title',
-					// 			type: 'string',
-					// 			default: '',
-					// 			description: 'Title of the property to create',
-					// 		},
-					// 		{
-					// 			displayName: 'Hidden',
-					// 			name: 'hidden',
-					// 			type: 'boolean',
-					// 			default: false,
-					// 			description: 'Whether the Sheet should be hidden in the UI',
-					// 		},
-					// 	],
-					// },
 					{
 						displayName: 'Title',
 						name: 'title',
@@ -77,6 +48,12 @@ export const description: SpreadSheetProperties = [
 				],
 			},
 		],
+		displayOptions: {
+			show: {
+				resource: ['spreadsheet'],
+				operation: ['create'],
+			},
+		},
 	},
 	{
 		displayName: 'Options',

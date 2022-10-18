@@ -9,61 +9,73 @@ import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
 import { ResourceLocator } from '../helpers/GoogleSheets.types';
 
 export async function getSheets(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	try {
+		const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
+		const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
-	const sheet = new GoogleSheet(spreadsheetId, this);
-	const responseData = await sheet.spreadsheetGetSheets();
+		const sheet = new GoogleSheet(spreadsheetId, this);
+		const responseData = await sheet.spreadsheetGetSheets();
 
-	if (responseData === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No data got returned');
-	}
-
-	const returnData: INodePropertyOptions[] = [];
-	for (const sheet of responseData.sheets!) {
-		if (sheet.properties!.sheetType !== 'GRID') {
-			continue;
+		if (responseData === undefined) {
+			throw new NodeOperationError(this.getNode(), 'No data got returned');
 		}
 
-		returnData.push({
-			name: sheet.properties!.title as string,
-			value: sheet.properties!.sheetId as unknown as string,
-		});
-	}
+		const returnData: INodePropertyOptions[] = [];
+		for (const sheet of responseData.sheets!) {
+			if (sheet.properties!.sheetType !== 'GRID') {
+				continue;
+			}
 
-	return returnData;
+			returnData.push({
+				name: sheet.properties!.title as string,
+				value: sheet.properties!.sheetId as unknown as string,
+			});
+		}
+
+		return returnData;
+	} catch (error) {
+		return [];
+	}
 }
 
 export async function getSheetHeaderRow(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {
-	const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
-	const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
+	try {
+		const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;
+		const spreadsheetId = getSpreadsheetId(mode as ResourceLocator, value as string);
 
-	const sheet = new GoogleSheet(spreadsheetId, this);
-	const sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {
-		extractValue: true,
-	}) as string;
+		const sheet = new GoogleSheet(spreadsheetId, this);
+		let sheetWithinDocument = this.getNodeParameter('sheetName', undefined, {
+			extractValue: true,
+		}) as string;
 
-	const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
-	const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
+		if (sheetWithinDocument === 'gid=0') {
+			sheetWithinDocument = '0';
+		}
 
-	if (sheetData === undefined) {
-		throw new NodeOperationError(this.getNode(), 'No data got returned');
+		const sheetName = await sheet.spreadsheetGetSheetNameById(sheetWithinDocument);
+		const sheetData = await sheet.getData(`${sheetName}!1:1`, 'FORMATTED_VALUE');
+
+		if (sheetData === undefined) {
+			throw new NodeOperationError(this.getNode(), 'No data got returned');
+		}
+
+		const columns = sheet.testFilter(sheetData, 0, 0);
+
+		const returnData: INodePropertyOptions[] = [];
+
+		for (const column of columns) {
+			returnData.push({
+				name: column as unknown as string,
+				value: column as unknown as string,
+			});
+		}
+
+		return returnData;
+	} catch (error) {
+		return [];
 	}
-
-	const columns = sheet.testFilter(sheetData, 0, 0);
-
-	const returnData: INodePropertyOptions[] = [];
-
-	for (const column of columns) {
-		returnData.push({
-			name: column as unknown as string,
-			value: column as unknown as string,
-		});
-	}
-
-	return returnData;
 }
 
 export async function getSheetHeaderRowAndAddColumn(

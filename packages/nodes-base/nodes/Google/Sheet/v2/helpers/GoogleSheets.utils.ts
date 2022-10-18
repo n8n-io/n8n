@@ -84,10 +84,10 @@ export function hexToRgb(hex: string) {
 	}
 }
 
-export function addRowNumber(data: SheetRangeData) {
+export function addRowNumber(data: SheetRangeData, headerRow: number) {
 	if (data.length === 0) return data;
 	const sheetData = data.map((row, i) => [i + 1, ...row]);
-	sheetData[0][0] = ROW_NUMBER;
+	sheetData[headerRow][0] = ROW_NUMBER;
 	return sheetData;
 }
 
@@ -105,6 +105,9 @@ export function removeEmptyRows(data: SheetRangeData, includesRowNumber = true) 
 	const notEmptyRows = data.filter((row) =>
 		row.slice(baseLength).some((cell) => cell || typeof cell === 'number'),
 	);
+	if (includesRowNumber) {
+		notEmptyRows[0][0] = ROW_NUMBER;
+	}
 	return notEmptyRows;
 }
 
@@ -114,20 +117,11 @@ export function trimLeadingEmptyRows(
 	rowNumbersColumnName = ROW_NUMBER,
 ) {
 	const baseLength = includesRowNumber ? 1 : 0;
-	const [firstRow, ...rest] = [...data];
-	const firstNotEmptyRowIndex = rest.findIndex((row) =>
+	const firstNotEmptyRowIndex = data.findIndex((row) =>
 		row.slice(baseLength).some((cell) => cell || typeof cell === 'number'),
 	);
-	let returnData: SheetDataRow[] = [];
-	if (firstRow && firstRow.length > baseLength) {
-		returnData = [firstRow];
-	}
 
-	if (firstNotEmptyRowIndex === -1) {
-		return returnData.concat(rest);
-	} else {
-		returnData = returnData.concat(rest.slice(firstNotEmptyRowIndex));
-	}
+	const returnData = data.slice(firstNotEmptyRowIndex);
 	if (includesRowNumber) {
 		returnData[0][0] = rowNumbersColumnName;
 	}
@@ -158,27 +152,24 @@ export function prepareSheetData(
 	let headerRow = 0;
 	let firstDataRow = 1;
 
+	if (options.rangeDefinition === 'specifyRange') {
+		headerRow = parseInt(options.headerRow as string, 10) - 1;
+		firstDataRow = parseInt(options.firstDataRow as string, 10) - 1;
+	}
+
 	if (addRowNumbersToData) {
-		returnData = addRowNumber(returnData);
+		returnData = addRowNumber(returnData, headerRow);
 	}
 
 	if (options.rangeDefinition === 'detectAutomatically') {
 		returnData = removeEmptyColumns(returnData);
-	}
-
-	if (
-		options.readRowsUntil === 'firstEmptyRow' &&
-		options.rangeDefinition === 'detectAutomatically'
-	) {
 		returnData = trimLeadingEmptyRows(returnData, addRowNumbersToData);
-		returnData = trimToFirstEmptyRow(returnData, addRowNumbersToData);
-	} else {
-		returnData = removeEmptyRows(returnData, addRowNumbersToData);
-	}
 
-	if (options.rangeDefinition === 'specifyRange') {
-		headerRow = parseInt(options.headerRow as string, 10) - 1;
-		firstDataRow = parseInt(options.firstDataRow as string, 10) - 1;
+		if (options.readRowsUntil === 'firstEmptyRow') {
+			returnData = trimToFirstEmptyRow(returnData, addRowNumbersToData);
+		} else {
+			returnData = removeEmptyRows(returnData, addRowNumbersToData);
+		}
 	}
 
 	return { data: returnData, headerRow, firstDataRow };
