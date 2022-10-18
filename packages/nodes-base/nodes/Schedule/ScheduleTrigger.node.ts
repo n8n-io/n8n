@@ -466,7 +466,6 @@ export class ScheduleTrigger implements INodeType {
 				const cronTimes: ICronExpression = [minute, `*/${hour}`, '*', '*', '*'];
 				const cronExpression: string = cronTimes.join(' ');
 				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
-				console.log(cronJob.nextDates(5));
 				cronJobs.push(cronJob);
 			}
 
