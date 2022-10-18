@@ -344,9 +344,9 @@ export class NotionV1 implements INodeType {
 					if (properties.length !== 0) {
 						body.properties = mapProperties(properties, timezone) as IDataObject;
 					}
-					body.children = formatBlocks(
-						this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[],
-					);
+					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
+					extractDatabaseMentionRLC(blockValues);
+					body.children = formatBlocks(blockValues);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, false, 1);
@@ -499,9 +499,9 @@ export class NotionV1 implements INodeType {
 					};
 					body.parent['page_id'] = extractPageId(this.getNodeParameter('pageId', i) as string);
 					body.properties = formatTitle(this.getNodeParameter('title', i) as string);
-					body.children = formatBlocks(
-						this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[],
-					);
+					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
+					extractDatabaseMentionRLC(blockValues);
+					body.children = formatBlocks(blockValues);
 					responseData = await notionApiRequest.call(this, 'POST', '/pages', body);
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, false, 1);
