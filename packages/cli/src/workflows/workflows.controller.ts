@@ -329,6 +329,7 @@ workflowsController.patch(
 	`/:id`,
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
+		const { forceSave } = req.query;
 
 		const updateData = new WorkflowEntity();
 		const { tags, ...rest } = req.body;
@@ -352,6 +353,17 @@ workflowsController.patch(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 				undefined,
 				404,
+			);
+		}
+
+		const lastKnownDate = new Date(req.body.updatedAt).getTime();
+		const storedDate = shared.workflow.updatedAt.getTime();
+
+		if (!forceSave && lastKnownDate !== storedDate) {
+			throw new ResponseHelper.ResponseError(
+				`Workflow ID "${workflowId}" cannot be saved because it was changed by another user.`,
+				undefined,
+				400,
 			);
 		}
 
