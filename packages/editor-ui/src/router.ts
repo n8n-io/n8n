@@ -55,8 +55,7 @@ function getTemplatesRedirect(store: Store<IRootState>) {
 
 const router = new Router({
 	mode: 'history',
-	// @ts-ignore
-	base: window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH,
+	base: import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/',
 	scrollBehavior(to, from, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta) {

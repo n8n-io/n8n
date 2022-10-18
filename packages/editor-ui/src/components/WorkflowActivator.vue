@@ -1,7 +1,7 @@
 <template>
 	<div class="workflow-activator">
 		<div :class="$style.activeStatusText">
-			<n8n-text v-if="workflowActive" color="success" size="small" bold>
+			<n8n-text v-if="workflowActive" :color="couldNotBeStarted ? 'danger' : 'success'" size="small" bold>
 				{{ $locale.baseText('workflowActivator.active') }}
 			</n8n-text>
 			<n8n-text v-else color="text-base" size="small" bold>
@@ -124,7 +124,7 @@ export default mixins(
 <style lang="scss" module>
 .activeStatusText {
 	width: 64px; // Required to avoid jumping when changing active state
-	padding-right: var(--spacing-xs);
+	padding-right: var(--spacing-2xs);
 	box-sizing: border-box;
 	display: inline-block;
 	text-align: right;
@@ -133,7 +133,9 @@ export default mixins(
 
 <style lang="scss" scoped>
 .workflow-activator {
-	display: inline-block;
+	display: inline-flex;
+	flex-wrap: nowrap;
+	align-items: center;
 }
 
 .could-not-be-started {

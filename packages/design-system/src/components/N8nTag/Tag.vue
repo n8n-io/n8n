@@ -20,7 +20,7 @@ export default Vue.extend({
 <style lang="scss" module>
 .tag {
 	min-width: max-content;
-	padding: 2px var(--spacing-4xs);
+	padding: 1px var(--spacing-4xs);
 	color: var(--color-text-dark);
 	background-color: var(--color-background-base);
 	border-radius: var(--border-radius-base);

@@ -909,11 +909,22 @@ export class Workflow {
 			}
 		}
 
-		// Check if there is the actual "start" node
-		const startNodeType = 'n8n-nodes-base.start';
-		for (const nodeName of nodeNames) {
+		const startingNodeTypes = [
+			'n8n-nodes-base.manualTrigger',
+			'n8n-nodes-base.executeWorkflowTrigger',
+			'n8n-nodes-base.start',
+		];
+
+		const sortedNodeNames = Object.values(this.nodes)
+			.sort((a, b) => startingNodeTypes.indexOf(a.type) - startingNodeTypes.indexOf(b.type))
+			.map((n) => n.name);
+
+		for (const nodeName of sortedNodeNames) {
 			node = this.nodes[nodeName];
-			if (node.type === startNodeType) {
+			if (startingNodeTypes.includes(node.type)) {
+				if (node.disabled === true) {
+					continue;
+				}
 				return node;
 			}
 		}

@@ -38,6 +38,7 @@ import {
 } from '@/Interface';
 
 import {
+	deepCopy,
 	INodeProperties,
 	INodePropertyOptions,
 } from 'n8n-workflow';
@@ -161,7 +162,7 @@ export default mixins(
 					} else {
 						// Everything else saves them directly as an array.
 						newValue = get(this.nodeValues, `${this.path}.${optionName}`, []);
-						newValue.push(JSON.parse(JSON.stringify(option.default)));
+						newValue.push(deepCopy(option.default));
 					}
 
 					parameterData = {
@@ -172,7 +173,7 @@ export default mixins(
 					// Add a new option
 					parameterData = {
 						name,
-						value: JSON.parse(JSON.stringify(option.default)),
+						value: deepCopy(option.default),
 					};
 				}
 
