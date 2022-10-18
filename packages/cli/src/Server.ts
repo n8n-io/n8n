@@ -283,6 +283,7 @@ class App {
 			saveManualExecutions: this.saveManualExecutions,
 			executionTimeout: this.executionTimeout,
 			maxExecutionTimeout: this.maxExecutionTimeout,
+			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
 			timezone: this.timezone,
 			urlBaseWebhook,
 			urlBaseEditor: instanceBaseUrl,
