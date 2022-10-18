@@ -1218,7 +1218,7 @@ export default mixins(
 					return;
 				}
 
-				const { zoomLevel, offset } = CanvasHelpers.getZoomToFit(nodes, false);
+				const { zoomLevel, offset } = CanvasHelpers.getZoomToFit(nodes);
 
 				this.setZoomLevel(zoomLevel);
 				this.$store.commit('setNodeViewOffsetPosition', { newOffset: offset });
@@ -3255,7 +3255,7 @@ export default mixins(
 	color: #444;
 	padding-right: 5px;
 
-	&.expanded {
+	&:not(.demo-zoom-menu).expanded {
 		left: $sidebar-expanded-width + $--zoom-menu-margin;
 	}
 

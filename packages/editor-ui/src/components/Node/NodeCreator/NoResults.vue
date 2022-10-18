@@ -1,6 +1,6 @@
 <template>
 	<div :class="$style.noResults">
-		<div :class="$style.icon">
+		<div :class="$style.icon" v-if="showIcon">
 			<no-results-icon />
 		</div>
 		<div :class="$style.title">
@@ -38,6 +38,9 @@ export default Vue.extend({
 	name: 'NoResults',
 	props: {
 		showRequest: {
+			type: Boolean,
+		},
+		showIcon: {
 			type: Boolean,
 		},
 	},

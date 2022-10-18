@@ -43,14 +43,13 @@
 					@selected="selected"
 				/>
 			</div>
-			<no-results v-else :showRequest="activeSubcategory === null">
+			<no-results v-else :showRequest="activeSubcategory === null" :show-icon="filteredAllNodeTypes.length === 0">
 					<!-- There are results in other sub-categories/tabs  -->
 					<template v-if="filteredAllNodeTypes.length > 0">
 						<p
-							v-text="$locale.baseText('nodeCreator.noResults.noResultsHere')"
+							v-html="$locale.baseText('nodeCreator.noResults.seeResultsHere')"
 							slot="title"
 						/>
-						<p slot="action" v-html="$locale.baseText('nodeCreator.noResults.maybeOtherSubcategories')" />
 					</template>
 
 					<!-- Regular Search -->
