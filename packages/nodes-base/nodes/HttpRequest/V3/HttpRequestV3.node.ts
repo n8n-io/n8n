@@ -1208,7 +1208,7 @@ export class HttpRequestV3 implements INodeType {
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
 					response.body = JSON.parse(Buffer.from(response.body).toString());
-				} else if (['image', 'audio', 'video'].some((e) => responseContentType.includes(e))) {
+				} else if (['image', 'audio', 'video', 'application/octet-stream'].some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
