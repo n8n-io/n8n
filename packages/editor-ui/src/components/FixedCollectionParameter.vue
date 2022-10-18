@@ -282,7 +282,7 @@ export default Vue.extend({
 						}
 					} else {
 						// Add a new option
-						newParameterValue[optionParameter.name] = JSON.parse(JSON.stringify(optionParameter.default));
+						newParameterValue[optionParameter.name] = deepCopy(optionParameter.default);
 					}
 				}
 

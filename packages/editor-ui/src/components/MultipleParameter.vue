@@ -38,7 +38,7 @@ import Vue from "vue";
 import {
 	IUpdateInformation,
 } from '@/Interface';
-
+import { deepCopy } from "n8n-workflow";
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
@@ -84,7 +84,7 @@ export default Vue.extend({
 					currentValue = [];
 				}
 
-				currentValue.push(JSON.parse(JSON.stringify(this.parameter.default)));
+				currentValue.push(deepCopy(this.parameter.default));
 
 				const parameterData = {
 					name,

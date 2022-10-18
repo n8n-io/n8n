@@ -124,6 +124,7 @@ import {
 	INodeProperties,
 	NodeHelpers,
 	NodeParameterValue,
+	deepCopy,
 } from 'n8n-workflow';
 import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 
@@ -431,7 +432,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					// Value should be set
 					if (typeof value === 'object') {
 						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, JSON.parse(JSON.stringify(value)));
+						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, deepCopy(value));
 					} else {
 						// @ts-ignore
 						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, value);
@@ -504,7 +505,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 				// Copy the data because it is the data of vuex so make sure that
 				// we do not edit it directly
-				nodeParameters = JSON.parse(JSON.stringify(nodeParameters));
+				nodeParameters = deepCopy(nodeParameters);
 
 				for (const parameterName of Object.keys(parameterData.value)) {
 					//@ts-ignore
@@ -595,7 +596,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 				// Copy the data because it is the data of vuex so make sure that
 				// we do not edit it directly
-				nodeParameters = JSON.parse(JSON.stringify(nodeParameters));
+				nodeParameters = deepCopy(nodeParameters);
 
 				// Remove the 'parameters.' from the beginning to just have the
 				// actual parameter name
@@ -738,7 +739,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					}
 				}
 
-				Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
+				Vue.set(this.nodeValues, 'parameters', deepCopy(this.node.parameters));
 			} else {
 				this.nodeValid = false;
 			}
@@ -822,7 +823,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	.node-parameters-wrapper {
 		height: 100%;
 		overflow-y: auto;
-		padding: 0 20px;
+		padding: 0 20px 200px 20px;
 	}
 
 	&.dragging {
