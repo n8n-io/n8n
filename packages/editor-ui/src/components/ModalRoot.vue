@@ -8,6 +8,7 @@
 			:open="isOpen(name)"
 			:activeId="getActiveId(name)"
 			:mode="getMode(name)"
+			:data="getData(name)"
 		></slot>
 	</div>
 </template>
@@ -24,6 +25,9 @@ export default Vue.extend({
 		},
 		isOpen(name: string) {
 			return this.$store.getters['ui/isModalOpen'](name);
+		},
+		getData(name: string) {
+			return this.$store.getters['ui/getModalData'](name);
 		},
 		getMode(name: string) {
 			return this.$store.getters['ui/getModalMode'](name);
