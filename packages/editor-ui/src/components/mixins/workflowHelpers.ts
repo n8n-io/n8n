@@ -31,6 +31,7 @@ import {
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
+	deepCopy,
 } from 'n8n-workflow';
 
 import {
@@ -361,8 +362,8 @@ export const workflowHelpers = mixins(
 				cachedWorkflow = new Workflow({
 					id: workflowId,
 					name: workflowName,
-					nodes: copyData ? JSON.parse(JSON.stringify(nodes)) : nodes,
-					connections: copyData? JSON.parse(JSON.stringify(connections)): connections,
+					nodes: copyData ? deepCopy(nodes) : nodes,
+					connections: copyData? deepCopy(connections): connections,
 					active: false,
 					nodeTypes,
 					settings: this.$store.getters.workflowSettings,

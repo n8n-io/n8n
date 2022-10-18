@@ -63,6 +63,7 @@ import {
 	NodeParameterValueType,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
+	deepCopy,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -1641,7 +1642,7 @@ export async function getCredentials(
  *
  */
 export function getNode(node: INode): INode {
-	return JSON.parse(JSON.stringify(node));
+	return deepCopy(node);
 }
 
 /**

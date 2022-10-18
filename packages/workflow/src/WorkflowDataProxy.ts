@@ -613,6 +613,7 @@ export class WorkflowDataProxy {
 				causeDetailed?: string;
 				description?: string;
 				descriptionTemplate?: string;
+				functionality?: 'pairedItem';
 				functionOverrides?: {
 					// Custom data to display for Function-Nodes
 					message?: string;
@@ -663,7 +664,6 @@ export class WorkflowDataProxy {
 				runIndex: that.runIndex,
 				itemIndex: that.itemIndex,
 				failExecution: true,
-				functionality: 'pairedItem',
 				...context,
 			});
 		};
@@ -717,6 +717,7 @@ export class WorkflowDataProxy {
 				if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+						functionality: 'pairedItem',
 						functionOverrides: {
 							message: 'Can’t get data',
 						},
@@ -741,6 +742,7 @@ export class WorkflowDataProxy {
 				if (itemPreviousNode.pairedItem === undefined) {
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+						functionality: 'pairedItem',
 						functionOverrides: {
 							message: 'Can’t get data',
 						},
@@ -776,6 +778,7 @@ export class WorkflowDataProxy {
 					if (results.length !== 1) {
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
+							functionality: 'pairedItem',
 							functionOverrides: {
 								description: `The code uses data in the node ‘<strong>${destinationNodeName}</strong>’ but there is more than one matching item in that node`,
 								message: 'Invalid code',
@@ -805,6 +808,7 @@ export class WorkflowDataProxy {
 						// A trigger node got reached, so looks like that that item can not be resolved
 						throw createExpressionError('Invalid expression', {
 							messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
+							functionality: 'pairedItem',
 							functionOverrides: {
 								description: `The code uses data in the node ‘<strong>${destinationNodeName}</strong>’ but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
 								message: 'Invalid code',
@@ -816,6 +820,7 @@ export class WorkflowDataProxy {
 					}
 					throw createExpressionError('Can’t get data for expression', {
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+						functionality: 'pairedItem',
 						functionOverrides: {
 							message: `Can’t get data`,
 						},
@@ -838,6 +843,7 @@ export class WorkflowDataProxy {
 			if (sourceData === null) {
 				throw createExpressionError('Can’t get data for expression', {
 					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+					functionality: 'pairedItem',
 					functionOverrides: {
 						message: `Can’t get data`,
 					},
@@ -857,6 +863,7 @@ export class WorkflowDataProxy {
 			if (previousNodeOutput >= taskData.data!.main.length) {
 				throw createExpressionError('Can’t get data for expression', {
 					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+					functionality: 'pairedItem',
 					functionOverrides: {
 						message: `Can’t get data`,
 					},
@@ -869,6 +876,7 @@ export class WorkflowDataProxy {
 			if (pairedItem.item >= taskData.data!.main[previousNodeOutput]!.length) {
 				throw createExpressionError('Can’t get data for expression', {
 					messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+					functionality: 'pairedItem',
 					functionOverrides: {
 						message: `Can’t get data`,
 					},
@@ -926,6 +934,7 @@ export class WorkflowDataProxy {
 									if (pairedItem === undefined) {
 										throw createExpressionError('Can’t get data for expression', {
 											messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’ field`,
+											functionality: 'pairedItem',
 											functionOverrides: {
 												description: `To fetch the data from other nodes that this code needs, more information is needed from the node ‘<strong>${that.activeNodeName}</strong>‘`,
 												message: `Can’t get data`,
@@ -939,6 +948,7 @@ export class WorkflowDataProxy {
 									if (!that.executeData?.source) {
 										throw createExpressionError('Can’t get data for expression', {
 											messageTemplate: 'Can’t get data for expression under ‘%%PARAMETER%%’ field',
+											functionality: 'pairedItem',
 											functionOverrides: {
 												message: `Can’t get data`,
 											},
@@ -954,6 +964,7 @@ export class WorkflowDataProxy {
 									if (!parentNodes.includes(nodeName)) {
 										throw createExpressionError('Invalid expression', {
 											messageTemplate: 'Invalid expression under ‘%%PARAMETER%%’',
+											functionality: 'pairedItem',
 											functionOverrides: {
 												description: `The code uses data in the node <strong>‘${nodeName}’</strong> but there is no path back to it. Please check this node is connected to it (there can be other nodes in between).`,
 												message: `No path back to node ‘${nodeName}’`,

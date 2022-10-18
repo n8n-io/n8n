@@ -269,6 +269,11 @@ export interface IWorkflowTemplate {
 	};
 }
 
+export interface INewWorkflowData {
+	name: string;
+	onboardingFlowEnabled: boolean;
+}
+
 // Almost identical to cli.Interfaces.ts
 export interface IWorkflowDb {
 	id: string;
@@ -758,6 +763,13 @@ export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
+	icon?: string;
+	defaults?: INodeParameters;
+	iconData?: {
+		type: string;
+		icon?: string;
+		fileBuffer?: string;
+	};
 }
 
 export interface INodeItemProps {
@@ -879,6 +891,7 @@ export interface IRootState {
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
 	isNpmAvailable: boolean;
+	subworkflowExecutionError: Error | null;
 }
 
 export interface ICommunityPackageMap {
@@ -984,6 +997,15 @@ export type IFakeDoor = {
 };
 
 export type IFakeDoorLocation = 'settings' | 'credentialsModal';
+
+export type INodeFilterType = "Regular" | "Trigger" | "All";
+
+export interface INodeCreatorState {
+	itemsFilter: string;
+	showTabs: boolean;
+	showScrim: boolean;
+	selectedType: INodeFilterType;
+}
 
 export interface ISettingsState {
 	settings: IN8nUISettings;
