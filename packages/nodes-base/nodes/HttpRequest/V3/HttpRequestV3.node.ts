@@ -1204,7 +1204,7 @@ export class HttpRequestV3 implements INodeType {
 			) as boolean;
 
 			if (autoDetectResponseFormat) {
-				const responseContentType = response.headers['content-type'];
+				const responseContentType = response.headers['content-type'] ?? '';
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
 					response.body = JSON.parse(Buffer.from(response.body).toString());
