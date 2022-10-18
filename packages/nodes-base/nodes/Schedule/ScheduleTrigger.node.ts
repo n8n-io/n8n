@@ -415,7 +415,7 @@ export class ScheduleTrigger implements INodeType {
 		const timezone = this.getTimezone();
 		const date = moment.tz(timezone).week();
 		const cronJobs: CronJob[] = [];
-		let intervalObj: NodeJS.Timeout;
+		const intervalArr: NodeJS.Timeout[] = [];
 		const executeTrigger = () => {
 			const resultData = {
 				timestamp: moment.tz(timezone).toISOString(true),
@@ -449,13 +449,15 @@ export class ScheduleTrigger implements INodeType {
 			if (interval[i].field === 'seconds') {
 				const seconds = interval[i].secondsInterval as number;
 				intervalValue *= seconds;
-				intervalObj = setInterval(executeTrigger, intervalValue);
+				const intervalObj = setInterval(executeTrigger, intervalValue) as NodeJS.Timeout;
+				intervalArr.push(intervalObj);
 			}
 
 			if (interval[i].field === 'minutes') {
 				const minutes = interval[i].minutesInterval as number;
 				intervalValue *= 60 * minutes;
-				intervalObj = setInterval(executeTrigger, intervalValue);
+				const intervalObj = setInterval(executeTrigger, intervalValue);
+				intervalArr.push(intervalObj);
 			}
 
 			if (interval[i].field === 'hours') {
@@ -505,7 +507,9 @@ export class ScheduleTrigger implements INodeType {
 			for (const cronJob of cronJobs) {
 				cronJob.stop();
 			}
-			clearInterval(intervalObj);
+			for (const interval of intervalArr) {
+				clearInterval(interval);
+			}
 		}
 
 		async function manualTriggerFunction() {
