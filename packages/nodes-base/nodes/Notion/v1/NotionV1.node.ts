@@ -4,7 +4,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeBaseDescription,
