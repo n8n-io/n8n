@@ -1,5 +1,5 @@
 <template>
-	<div :class="['card', $style.card]" v-on="$listeners">
+	<div :class="classes" v-on="$listeners">
 		<div :class="$style.icon" v-if="$slots.prepend">
 			<slot name="prepend"/>
 		</div>
@@ -26,6 +26,21 @@ import Vue from 'vue';
 export default Vue.extend({
 	name: 'n8n-card',
 	inheritAttrs: true,
+	props: {
+		hoverable: {
+			type: Boolean,
+			default: false,
+		},
+	},
+	computed: {
+		classes(): Record<string, boolean> {
+			return {
+				card: true,
+				[this.$style.card]: true,
+				[this.$style.hoverable]: this.hoverable,
+			};
+		},
+	},
 });
 </script>
 
@@ -72,5 +87,18 @@ export default Vue.extend({
 	justify-content: center;
 	align-items: center;
 	margin-right: var(--spacing-s);
+}
+
+.hoverable {
+  cursor: pointer;
+  transition-property: border, color;
+  transition-duration: 0.3s;
+  transition-timing-function: ease;
+
+  &:hover,
+  &:focus {
+	color: var(--color-primary);
+	border-color: var(--color-primary);
+  }
 }
 </style>

@@ -946,7 +946,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'json';
+export type EditorTypes = 'code' | 'codeNodeEditor' | 'json';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1212,6 +1212,7 @@ export interface INodeTypeBaseDescription {
 	subtitle?: string;
 	defaultVersion?: number;
 	codex?: CodexData;
+	parameterPane?: 'wide';
 
 	/**
 	 * Whether the node must be hidden in the node creator panel,

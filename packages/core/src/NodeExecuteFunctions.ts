@@ -63,6 +63,7 @@ import {
 	NodeParameterValueType,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
+	deepCopy,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -964,18 +965,16 @@ export async function requestOAuth2(
 	// Signs the request by adding authorization headers or query parameters depending
 	// on the token-type used.
 	const newRequestOptions = token.sign(requestOptions as clientOAuth2.RequestObject);
+	const newRequestHeaders = (newRequestOptions.headers = newRequestOptions.headers ?? {});
 	// If keep bearer is false remove the it from the authorization header
 	if (oAuth2Options?.keepBearer === false) {
-		// @ts-ignore
-		newRequestOptions?.headers?.Authorization =
+		newRequestHeaders.Authorization =
 			// @ts-ignore
-			newRequestOptions?.headers?.Authorization.split(' ')[1];
+			newRequestHeaders.Authorization.split(' ')[1];
 	}
 
-	// @ts-ignore
 	if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-		Object.assign(newRequestOptions.headers, {
-			// @ts-ignore
+		Object.assign(newRequestHeaders, {
 			[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 		});
 	}
@@ -1030,10 +1029,8 @@ export async function requestOAuth2(
 				);
 				const refreshedRequestOption = newToken.sign(requestOptions as clientOAuth2.RequestObject);
 
-				// @ts-ignore
 				if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
-					Object.assign(newRequestOptions.headers, {
-						// @ts-ignore
+					Object.assign(newRequestHeaders, {
 						[oAuth2Options.keyToIncludeInAccessTokenHeader]: token.accessToken,
 					});
 				}
@@ -1108,6 +1105,7 @@ export async function requestOAuth2(
 
 			// Make the request again with the new token
 			const newRequestOptions = newToken.sign(requestOptions as clientOAuth2.RequestObject);
+			newRequestOptions.headers = newRequestOptions.headers ?? {};
 
 			// @ts-ignore
 			if (oAuth2Options?.keyToIncludeInAccessTokenHeader) {
@@ -1348,8 +1346,10 @@ export function constructExecutionMetaData(
 export function normalizeItems(
 	executionData: INodeExecutionData | INodeExecutionData[],
 ): INodeExecutionData[] {
-	if (typeof executionData === 'object' && !Array.isArray(executionData))
-		executionData = [{ json: executionData as IDataObject }];
+	if (typeof executionData === 'object' && !Array.isArray(executionData)) {
+		executionData = executionData.json ? [executionData] : [{ json: executionData as IDataObject }];
+	}
+
 	if (executionData.every((item) => typeof item === 'object' && 'json' in item))
 		return executionData;
 
@@ -1642,7 +1642,7 @@ export async function getCredentials(
  *
  */
 export function getNode(node: INode): INode {
-	return JSON.parse(JSON.stringify(node));
+	return deepCopy(node);
 }
 
 /**
@@ -2300,6 +2300,17 @@ export function getExecuteFunctions(
 				}
 				try {
 					if (additionalData.sendMessageToUI) {
+						args = args.map((arg) => {
+							// prevent invalid dates from being logged as null
+							if (arg.isLuxonDateTime && arg.invalidReason) return { ...arg };
+
+							// log valid dates in human readable format, as in browser
+							if (arg.isLuxonDateTime) return new Date(arg.ts).toString();
+							if (arg instanceof Date) return arg.toString();
+
+							return arg;
+						});
+
 						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {

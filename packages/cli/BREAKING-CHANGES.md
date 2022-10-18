@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.198.0
+
+### What changed?
+
+The Merge node list of operations was rearranged.
+
+### When is action necessary?
+
+If you are using the overhauled Merge node and 'Merge By Fields', 'Merge By Position' or 'Multiplex' operation.
+
+### How to upgrade:
+
+Go to the workflows that use the Merge node, select 'Combine' operation and then choose an option from 'Combination Mode' that matches an operation that was previously used. If you want to continue even on error, you can set "Continue on Fail" to true.
+
 ## 0.171.0
 
 ### What changed?
