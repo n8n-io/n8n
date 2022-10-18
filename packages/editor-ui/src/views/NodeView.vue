@@ -142,7 +142,6 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
-	WORKFLOW_OPEN_MODAL_KEY,
 	TRIGGER_NODE_FILTER,
 } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
@@ -869,15 +868,6 @@ export default mixins(
 					e.preventDefault();
 
 					this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
-				} else if (e.key === 'o' && this.isCtrlKeyPressed(e) === true) {
-					// Open workflow dialog
-					e.stopPropagation();
-					e.preventDefault();
-					if (this.isDemo) {
-						return;
-					}
-
-					this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
 					// Create a new workflow
 					e.stopPropagation();
