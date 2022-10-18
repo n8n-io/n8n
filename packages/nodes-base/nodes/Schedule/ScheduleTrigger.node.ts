@@ -222,10 +222,10 @@ export class ScheduleTrigger implements INodeType {
 									},
 									{
 										name: 'Sunday',
-										value: 7,
+										value: 0,
 									},
 								],
-								default: [7],
+								default: [0],
 							},
 							{
 								displayName: 'Trigger at Hour',
@@ -461,12 +461,12 @@ export class ScheduleTrigger implements INodeType {
 			}
 
 			if (interval[i].field === 'hours') {
-				const hour = interval[i].triggerAtHour?.toString() as string;
+				const hour = interval[i].hoursInterval?.toString() as string;
 				const minute = interval[i].triggerAtMinute?.toString() as string;
-				const week = interval[i].triggerAtWeek as number;
-				const cronTimes: ICronExpression = [minute, hour, `*/${week * 7}`, '*', '*'];
-				const cronExpression = cronTimes.join(' ');
+				const cronTimes: ICronExpression = [minute, `*/${hour}`, '*', '*', '*'];
+				const cronExpression: string = cronTimes.join(' ');
 				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+				console.log(cronJob.nextDates(5));
 				cronJobs.push(cronJob);
 			}
 
@@ -481,12 +481,13 @@ export class ScheduleTrigger implements INodeType {
 			}
 
 			if (interval[i].field === 'weeks') {
-				const days = interval[i].triggerAtDay as IDataObject[];
-				const day = days.join(',') as string;
 				const hour = interval[i].triggerAtHour?.toString() as string;
 				const minute = interval[i].triggerAtMinute?.toString() as string;
-				const cronTimes: ICronExpression = [minute, hour, '*', '*', day];
-				const cronExpression: string = cronTimes.join(' ');
+				const week = interval[i].weeksInterval as number;
+				const days = interval[i].triggerAtDay as IDataObject[];
+				const day = days.length === 0 ? '*' : (days.join(',') as string);
+				const cronTimes: ICronExpression = [minute, hour, `*/${week * 7}`, '*', day];
+				const cronExpression = cronTimes.join(' ');
 				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
 				cronJobs.push(cronJob);
 			}
