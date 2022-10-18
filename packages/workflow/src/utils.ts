@@ -1,30 +1,32 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-export const deepCopy = <T>(obj: T): T => {
-	let newObject: any;
-	let iterator: any;
-	if (obj instanceof Date) {
-		return new Date(obj.getTime()) as T;
+export const deepCopy = <T>(source: T): T => {
+	let clone: any;
+	let i: any;
+	const hasOwnProp = Object.prototype.hasOwnProperty.bind(source);
+	// Primitives & Null
+	if (typeof source !== 'object' || source === null) {
+		return source;
 	}
-	// if not array or object or is null return self
-	if (typeof obj !== 'object' || obj === null) {
-		return obj;
+	// Date
+	if (source instanceof Date) {
+		return new Date(source.getTime()) as T;
 	}
-	// handle case: array
-	if (Array.isArray(obj)) {
-		const length = obj.length;
-		newObject = [];
-		for (iterator = 0; iterator < length; iterator++) {
-			newObject[iterator] = deepCopy(obj[iterator]);
+	// Array
+	if (Array.isArray(source)) {
+		clone = [];
+		const len = source.length;
+		for (i = 0; i < len; i++) {
+			clone[i] = deepCopy(source[i]);
 		}
-		return newObject;
+		return clone;
 	}
-	// handle case: object
-	newObject = {};
-	for (iterator in obj) {
-		if (obj.hasOwnProperty(iterator)) {
-			newObject[iterator] = deepCopy((obj as any)[iterator]);
+	// Object
+	clone = {};
+	for (i in source) {
+		if (hasOwnProp(i)) {
+			clone[i] = deepCopy((source as any)[i]);
 		}
 	}
-	return newObject;
+	return clone;
 };
 // eslint-enable
