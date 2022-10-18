@@ -43,7 +43,7 @@
 					@selected="selected"
 				/>
 			</div>
-			<no-results v-else :showRequest="activeSubcategory === null" :show-icon="filteredAllNodeTypes.length === 0">
+			<no-results v-else :showRequest="filteredAllNodeTypes.length === 0" :show-icon="filteredAllNodeTypes.length === 0">
 					<!-- There are results in other sub-categories/tabs  -->
 					<template v-if="filteredAllNodeTypes.length > 0">
 						<p
