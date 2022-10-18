@@ -1,7 +1,7 @@
 <template>
 	<div class="workflow-activator">
 		<div :class="$style.activeStatusText">
-			<n8n-text v-if="workflowActive" color="success" size="small" bold>
+			<n8n-text v-if="workflowActive" :color="couldNotBeStarted ? 'danger' : 'success'" size="small" bold>
 				{{ $locale.baseText('workflowActivator.active') }}
 			</n8n-text>
 			<n8n-text v-else color="text-base" size="small" bold>
