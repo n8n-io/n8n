@@ -497,7 +497,7 @@ export class NotionV1 implements INodeType {
 						parent: {},
 						properties: {},
 					};
-					body.parent['page_id'] = extractPageId(this.getNodeParameter('pageId', i) as string);
+					body.parent['page_id'] = extractPageId(this.getNodeParameter('pageId', i, '', { extractValue: true }) as string);
 					body.properties = formatTitle(this.getNodeParameter('title', i) as string);
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
 					extractDatabaseMentionRLC(blockValues);
