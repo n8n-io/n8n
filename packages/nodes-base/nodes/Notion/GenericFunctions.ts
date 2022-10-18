@@ -939,3 +939,28 @@ export function validateJSON(json: string | undefined): any {
 	}
 	return result;
 }
+
+/**
+ * Manually extract a richtext's database mention RLC parameter.
+ * @param blockValues the blockUi.blockValues node parameter.
+ */
+export function extractDatabaseMentionRLC(blockValues: IDataObject[]) {
+	blockValues.forEach(bv => {
+		if (bv.richText && bv.text) {
+			const texts = (bv.text as { text: [{ textType: string, mentionType: string, database: string | { value: string, mode: string, __rl: boolean, __regex: string } }] }).text;
+			texts.forEach(txt => {
+				if (txt.textType === 'mention' && txt.mentionType === 'database') {
+					if (typeof txt.database === 'object' && txt.database.__rl) {
+						if (txt.database.__regex) {
+							const regex = new RegExp(txt.database.__regex);
+							const extracted = regex.exec(txt.database.value);
+							txt.database = extracted![1];
+						} else {
+							txt.database = txt.database.value;
+						}
+					}
+				}
+			});
+		}
+	});
+}

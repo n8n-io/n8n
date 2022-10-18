@@ -20,6 +20,7 @@ import {
 import {
 	downloadFiles,
 	extractDatabaseId,
+	extractDatabaseMentionRLC,
 	extractPageId,
 	formatBlocks,
 	formatTitle,
@@ -270,10 +271,10 @@ export class NotionV2 implements INodeType {
 			if (operation === 'append') {
 				for (let i = 0; i < length; i++) {
 					const blockId = extractPageId(this.getNodeParameter('blockId', i) as string);
+					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
+					extractDatabaseMentionRLC(blockValues);
 					const body: IDataObject = {
-						children: formatBlocks(
-							this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[],
-						),
+						children: formatBlocks(blockValues),
 					};
 					const block = await notionApiRequest.call(
 						this,
