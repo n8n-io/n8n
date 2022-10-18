@@ -64,32 +64,32 @@ export class ScheduleTrigger implements INodeType {
 								default: 'days',
 								options: [
 									{
-										name: 'Custom (Cron)',
-										value: 'cronExpression',
-									},
-									{
-										name: 'Days',
-										value: 'days',
-									},
-									{
-										name: 'Hours',
-										value: 'hours',
+										name: 'Seconds',
+										value: 'seconds',
 									},
 									{
 										name: 'Minutes',
 										value: 'minutes',
 									},
 									{
-										name: 'Months',
-										value: 'months',
+										name: 'Hours',
+										value: 'hours',
 									},
 									{
-										name: 'Seconds',
-										value: 'seconds',
+										name: 'Days',
+										value: 'days',
 									},
 									{
 										name: 'Weeks',
 										value: 'weeks',
+									},
+									{
+										name: 'Months',
+										value: 'months',
+									},
+									{
+										name: 'Custom (Cron)',
+										value: 'cronExpression',
 									},
 								],
 							},
