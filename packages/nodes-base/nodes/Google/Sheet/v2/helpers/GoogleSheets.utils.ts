@@ -238,7 +238,7 @@ export async function autoMapInputData(
 
 	if (handlingExtraData === 'insertInNewColumn') {
 		if (!columnNames.length) {
-			await sheet.updateRow(
+			await sheet.updateRows(
 				sheetName,
 				[Object.keys(items[0].json).filter((key) => key !== ROW_NUMBER)],
 				(options.cellFormat as ValueInputOption) || 'RAW',
@@ -261,7 +261,7 @@ export async function autoMapInputData(
 			returnData.push(item.json);
 		});
 		if (newColumns.size) {
-			await sheet.updateRow(
+			await sheet.updateRows(
 				sheetName,
 				[columnNames.concat([...newColumns])],
 				(options.cellFormat as ValueInputOption) || 'RAW',

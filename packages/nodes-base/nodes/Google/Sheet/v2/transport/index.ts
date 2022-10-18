@@ -35,6 +35,7 @@ export async function apiRequest(
 		uri: uri || `https://sheets.googleapis.com${resource}`,
 		json: true,
 	};
+	console.log('api ---> ', options.uri);
 	try {
 		if (Object.keys(headers).length !== 0) {
 			options.headers = Object.assign({}, options.headers, headers);

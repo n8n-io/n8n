@@ -1,26 +1,31 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { ISheetUpdateData, SheetProperties } from '../../helpers/GoogleSheets.types';
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import { GoogleSheet } from '../../helpers/GoogleSheet';
 import { ValueInputOption, ValueRenderOption } from '../../helpers/GoogleSheets.types';
 import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
-import { cellFormat, locationDefine } from './commonDescription';
+import { cellFormat, handlingExtraData, locationDefine } from './commonDescription';
 
 export const description: SheetProperties = [
 	{
-		displayName: 'Data to Send',
+		displayName: 'Data Mode',
 		name: 'dataMode',
 		type: 'options',
 		options: [
 			{
-				name: 'Auto-Match',
-				value: 'autoMatch',
-				description: 'Attempt to automatically find the field',
+				name: 'Auto-Map Input Data to Columns',
+				value: 'autoMapInputData',
+				description: 'Use when node input properties match destination column names',
 			},
 			{
-				name: 'Define Below',
+				name: 'Map Each Column Below',
 				value: 'defineBelow',
 				description: 'Set the value for each destination column',
+			},
+			{
+				name: 'Nothing',
+				value: 'nothing',
+				description: 'Do not send anything',
 			},
 		],
 		displayOptions: {
@@ -44,10 +49,10 @@ export const description: SheetProperties = [
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
-			loadOptionsMethod: 'getSheetHeaderRow',
+			loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
 		},
 		default: '',
-		hint: 'This column does not get changed it gets only used to find the correct row to update',
+		hint: "Used to find the correct row to update. Doesn't get changed.",
 		displayOptions: {
 			show: {
 				resource: ['sheet'],
@@ -75,7 +80,7 @@ export const description: SheetProperties = [
 		},
 	},
 	{
-		displayName: 'Fields',
+		displayName: 'Values to Send',
 		name: 'fieldsUi',
 		placeholder: 'Add Field',
 		type: 'fixedCollection',
@@ -99,19 +104,31 @@ export const description: SheetProperties = [
 				name: 'values',
 				values: [
 					{
-						displayName: 'Field Name or ID',
-						name: 'fieldId',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+						displayName: 'Column',
+						name: 'column',
 						type: 'options',
 						description:
 							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: ['sheetName.value'],
-							loadOptionsMethod: 'getSheetHeaderRow',
+							loadOptionsDependsOn: ['sheetName.value', 'columnToMatchOn'],
+							loadOptionsMethod: 'getSheetHeaderRowAndAddColumn',
 						},
 						default: '',
 					},
 					{
-						displayName: 'Field Value',
+						displayName: 'Column Name',
+						name: 'columnName',
+						type: 'string',
+						default: '',
+						displayOptions: {
+							show: {
+								column: ['newColumn'],
+							},
+						},
+					},
+					{
+						displayName: 'Value',
 						name: 'fieldValue',
 						type: 'string',
 						default: '',
@@ -135,7 +152,7 @@ export const description: SheetProperties = [
 				...untilSheetSelected,
 			},
 		},
-		options: [...cellFormat, ...locationDefine],
+		options: [...cellFormat, ...locationDefine, ...handlingExtraData],
 	},
 ];
 
@@ -145,46 +162,104 @@ export async function execute(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const updateData: ISheetUpdateData[] = [];
 	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
+	const range = `${sheetName}!A:Z`;
+
+	const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+
+	const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
+
+	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+
+	let headerRow = 0;
+	let firstDataRow = 1;
+
+	if (locationDefine) {
+		if (locationDefine.headerRow) {
+			headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
+		}
+		if (locationDefine.firstDataRow) {
+			firstDataRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
+		}
+	}
+
+	let columnNames: string[] = [];
+
+	const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
+
+	if (sheetData === undefined || sheetData[headerRow] === undefined) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Could not retrieve the column names from row ${headerRow + 1}`,
+		);
+	}
+
+	columnNames = sheetData[headerRow];
+	const newColumns = new Set<string>();
+
+	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
+	const keyIndex = columnNames.indexOf(columnToMatchOn);
+
+	const columnValues = await sheet.getColumnValues(
+		range,
+		keyIndex,
+		firstDataRow,
+		valueRenderMode,
+		sheetData,
+	);
+
+	const updateData: ISheetUpdateData[] = [];
 
 	for (let i = 0; i < items.length; i++) {
-		const options = this.getNodeParameter('options', i, {}) as IDataObject;
+		const dataMode = this.getNodeParameter('dataMode', i) as
+			| 'defineBelow'
+			| 'autoMapInputData'
+			| 'nothing';
 
-		// const valueInputMode = (options.cellFormat || 'RAW') as ValueInputOption;
-		const valueRenderMode = (options.valueRenderMode || 'UNFORMATTED_VALUE') as ValueRenderOption;
-
-		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
-
-		let headerRow = 0;
-		let firstDataRow = 1;
-		const range = `${sheetName}!A:Z`;
-
-		if (locationDefine) {
-			if (locationDefine.headerRow) {
-				headerRow = parseInt(locationDefine.headerRow as string, 10) - 1;
-			}
-			if (locationDefine.firstDataRow) {
-				firstDataRow = parseInt(locationDefine.firstDataRow as string, 10) - 1;
-			}
-			// if (locationDefine.range) {
-			// 	range = `${sheetName}!${locationDefine.range}`;
-			// }
-		}
-
-		const dataMode = this.getNodeParameter('dataMode', i) as 'defineBelow' | 'autoMatch';
+		if (dataMode === 'nothing') continue;
 
 		const data: IDataObject[] = [];
-		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 
-		if (dataMode === 'autoMatch') {
-			data.push(items[i].json);
+		if (dataMode === 'autoMapInputData') {
+			const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
+			if (handlingExtraData === 'ignoreIt') {
+				data.push(items[i].json);
+			}
+			if (handlingExtraData === 'error') {
+				Object.keys(items[i].json).forEach((key) => {
+					if (columnNames.includes(key) === false) {
+						throw new NodeOperationError(this.getNode(), `Unexpected fields in node input`, {
+							itemIndex: i,
+							description: `The input field '${key}' doesn't match any column in the Sheet. You can ignore this by changing the 'Handling extra data' field, which you can find under 'Options'.`,
+						});
+					}
+				});
+				data.push(items[i].json);
+			}
+			if (handlingExtraData === 'insertInNewColumn') {
+				Object.keys(items[i].json).forEach((key) => {
+					if (columnNames.includes(key) === false) {
+						newColumns.add(key);
+					}
+				});
+				data.push(items[i].json);
+			}
 		} else {
 			const valueToMatchOn = this.getNodeParameter('valueToMatchOn', i) as string;
 
 			const fields = (this.getNodeParameter('fieldsUi.values', i, {}) as IDataObject[]).reduce(
 				(acc, entry) => {
-					acc[entry.fieldId as string] = entry.fieldValue as string;
+					if (entry.column === 'newColumn') {
+						const columnName = entry.columnName as string;
+
+						if (columnNames.includes(columnName) === false) {
+							newColumns.add(columnName);
+						}
+
+						acc[columnName] = entry.fieldValue as string;
+					} else {
+						acc[entry.column as string] = entry.fieldValue as string;
+					}
 					return acc;
 				},
 				{} as IDataObject,
@@ -195,6 +270,15 @@ export async function execute(
 			data.push(fields);
 		}
 
+		if (newColumns.size) {
+			await sheet.updateRows(
+				sheetName,
+				[columnNames.concat([...newColumns])],
+				(options.cellFormat as ValueInputOption) || 'RAW',
+				headerRow + 1,
+			);
+		}
+
 		const preparedData = await sheet.prepareDataForUpdateOrUpsert(
 			data,
 			columnToMatchOn,
@@ -203,6 +287,8 @@ export async function execute(
 			firstDataRow,
 			valueRenderMode,
 			false,
+			[columnNames.concat([...newColumns])],
+			columnValues,
 		);
 
 		updateData.push(...preparedData.updateData);

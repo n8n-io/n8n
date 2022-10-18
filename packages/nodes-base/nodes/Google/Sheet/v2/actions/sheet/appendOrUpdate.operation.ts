@@ -49,7 +49,7 @@ export const description: SheetProperties = [
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsDependsOn: ['sheetName.value'],
-			loadOptionsMethod: 'getSheetHeaderRow',
+			loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
 		},
 		default: '',
 		hint: "Used to find the correct row to update. Doesn't get changed.",
@@ -162,8 +162,6 @@ export async function execute(
 	sheetName: string,
 ): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const updateData: ISheetUpdateData[] = [];
-	const appendData: IDataObject[] = [];
 	const valueInputMode = this.getNodeParameter('options.cellFormat', 0, 'RAW') as ValueInputOption;
 	const range = `${sheetName}!A:Z`;
 
@@ -185,6 +183,34 @@ export async function execute(
 		}
 	}
 
+	let columnNames: string[] = [];
+
+	const sheetData = await sheet.getData(sheetName, 'FORMATTED_VALUE');
+
+	if (sheetData === undefined || sheetData[headerRow] === undefined) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`Could not retrieve the column names from row ${headerRow + 1}`,
+		);
+	}
+
+	columnNames = sheetData[headerRow];
+	const newColumns = new Set<string>();
+
+	const columnToMatchOn = this.getNodeParameter('columnToMatchOn', 0) as string;
+	const keyIndex = columnNames.indexOf(columnToMatchOn);
+
+	const columnValues = await sheet.getColumnValues(
+		range,
+		keyIndex,
+		firstDataRow,
+		valueRenderMode,
+		sheetData,
+	);
+
+	const updateData: ISheetUpdateData[] = [];
+	const appendData: IDataObject[] = [];
+
 	for (let i = 0; i < items.length; i++) {
 		const dataMode = this.getNodeParameter('dataMode', i) as
 			| 'defineBelow'
@@ -193,17 +219,7 @@ export async function execute(
 
 		if (dataMode === 'nothing') continue;
 
-		let columnNames: string[] = [];
-		const response = await sheet.getData(
-			`${sheetName}!${headerRow + 1}:${headerRow + 1}`,
-			'FORMATTED_VALUE',
-		);
-
-		columnNames = response ? response[0] : [];
-		const newColumns = new Set<string>();
-
 		const data: IDataObject[] = [];
-		const columnToMatchOn = this.getNodeParameter('columnToMatchOn', i) as string;
 
 		if (dataMode === 'autoMapInputData') {
 			const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
@@ -256,7 +272,7 @@ export async function execute(
 		}
 
 		if (newColumns.size) {
-			await sheet.updateRow(
+			await sheet.updateRows(
 				sheetName,
 				[columnNames.concat([...newColumns])],
 				(options.cellFormat as ValueInputOption) || 'RAW',
@@ -272,6 +288,8 @@ export async function execute(
 			firstDataRow,
 			valueRenderMode,
 			true,
+			[columnNames.concat([...newColumns])],
+			columnValues,
 		);
 
 		updateData.push(...preparedData.updateData);
@@ -282,7 +300,17 @@ export async function execute(
 		await sheet.batchUpdate(updateData, valueInputMode);
 	}
 	if (appendData.length) {
-		await sheet.appendSheetData(appendData, range, headerRow + 1, valueInputMode, false);
+		const lastRow = sheetData.length + 1;
+		await sheet.appendSheetData(
+			appendData,
+			range,
+			headerRow + 1,
+			valueInputMode,
+			false,
+			[columnNames.concat([...newColumns])],
+			lastRow,
+		);
 	}
+	console.log('==> end');
 	return items;
 }

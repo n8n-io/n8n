@@ -200,7 +200,7 @@ export async function execute(
 		if (keepFirstRow) {
 			const firstRow = await sheet.getData(`${range}!1:1`, 'FORMATTED_VALUE');
 			await sheet.clearData(range);
-			await sheet.updateRow(range, firstRow as string[][], 'RAW', 1);
+			await sheet.updateRows(range, firstRow as string[][], 'RAW', 1);
 		} else {
 			await sheet.clearData(range);
 		}

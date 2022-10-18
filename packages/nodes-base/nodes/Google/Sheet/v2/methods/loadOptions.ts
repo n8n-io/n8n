@@ -91,3 +91,10 @@ export async function getSheetHeaderRowWithGeneratedColumnNames(
 		};
 	});
 }
+
+export async function getSheetHeaderRowAndSkipEmpty(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData = await getSheetHeaderRow.call(this);
+	return returnData.filter((column) => column.value);
+}
