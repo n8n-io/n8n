@@ -15,7 +15,11 @@
 				>
 					{{ t('nds.auth.roles.owner') }}
 				</n8n-badge>
-				<slot name="actions" :user="user" />
+				<slot
+					v-if="!user.isOwner && !readonly"
+					name="actions"
+					:user="user"
+				/>
 				<n8n-action-toggle
 					v-if="!user.isOwner && !readonly && getActions(user).length > 0 && actions.length > 0"
 					placement="bottom"

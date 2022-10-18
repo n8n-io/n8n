@@ -1,6 +1,6 @@
 <template>
 	<Modal
-		width="540px"
+		width="460px"
 		:title="$locale.baseText('workflows.shareModal.title', { interpolate: { name: workflow.name } })"
 		:eventBus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
@@ -8,52 +8,84 @@
 	>
 		<template slot="content">
 			<div :class="$style.container">
-				<n8n-user-select
-					v-if="workflowPermissions.updateSharing"
-					size="large"
-					:users="usersList"
-					:currentUserId="currentUser.id"
-					:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
-					@input="onAddSharee"
-				>
-					<template #prefix>
-						<n8n-icon icon="search" />
+				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+					<n8n-user-select
+						v-if="workflowPermissions.updateSharing"
+						size="large"
+						:users="usersList"
+						:currentUserId="currentUser.id"
+						:placeholder="$locale.baseText('workflows.shareModal.select.placeholder')"
+						@input="onAddSharee"
+					>
+						<template #prefix>
+							<n8n-icon icon="search" />
+						</template>
+					</n8n-user-select>
+					<n8n-users-list
+						:actions="[]"
+						:users="sharedWithList"
+						:currentUserId="currentUser.id"
+						:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
+						:readonly="!workflowPermissions.updateSharing"
+						@delete="onRemoveSharee"
+					>
+						<template v-slot:actions="{ user }">
+							<n8n-select
+								:class="$style.roleSelect"
+								value="editor"
+								size="small"
+								@change="onRoleAction(user, $event)"
+							>
+								<n8n-option
+									:label="$locale.baseText('workflows.roles.editor')"
+									value="editor" />
+								<n8n-option
+									:class="$style.roleSelectRemoveOption"
+									value="remove"
+								>
+									<n8n-text color="danger">{{ $locale.baseText('workflows.shareModal.list.delete') }}</n8n-text>
+								</n8n-option>
+							</n8n-select>
+						</template>
+					</n8n-users-list>
+					<template #fallback>
+						<n8n-text>
+							{{ $locale.baseText('workflows.shareModal.notAvailable') }}
+						</n8n-text>
 					</template>
-				</n8n-user-select>
-				<n8n-users-list
-					:users="sharedWithList"
-					:currentUserId="currentUser.id"
-					:delete-label="$locale.baseText('workflows.shareModal.list.delete')"
-					:readonly="!workflowPermissions.updateSharing"
-					@delete="onRemoveSharee"
-				>
-					<template v-slot:actions="{ user }">
-						<n8n-select v-model="selectedOption" :placeholder="getPlaceholderText" size="small"  @change="optionSelected" filterable>
-							<n8n-option
-								v-for="item in parameterOptions"
-								:key="item.name"
-								:label="$locale.nodeText().collectionOptionDisplayName(parameter, item, path)"
-								:value="item.name">
-							</n8n-option>
-						</n8n-select>
-					</template>
-				</n8n-users-list>
+				</enterprise-edition>
 			</div>
 		</template>
 
-		<template slot="footer" v-if="dirty">
-			<div :class="$style.actionButtons">
-				<n8n-text color="text-light" size="small" class="mr-xs">
+		<template slot="footer">
+			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.actionButtons">
+				<n8n-text
+					v-show="dirty"
+					color="text-light"
+					size="small"
+					class="mr-xs"
+				>
 					{{ $locale.baseText('workflows.shareModal.changesHint') }}
 				</n8n-text>
 				<n8n-button
+					v-show="dirty"
 					@click="onSave"
 					:loading="loading"
 					size="medium"
 				>
 					{{ $locale.baseText('workflows.shareModal.save') }}
 				</n8n-button>
-			</div>
+
+				<template #fallback>
+					<n8n-button
+						@click="onSave"
+						:loading="loading"
+						size="medium"
+					>
+						{{ $locale.baseText('workflows.shareModal.notAvailable.button') }}
+					</n8n-button>
+				</template>
+			</enterprise-edition>
 		</template>
 	</Modal>
 </template>
@@ -61,7 +93,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import { WORKFLOW_SHARE_MODAL_KEY } from '../constants';
+import {EnterpriseEditionFeature, WORKFLOW_SHARE_MODAL_KEY} from '../constants';
 import {IUser, IWorkflowDb} from "@/Interface";
 import { getWorkflowPermissions, IPermissions } from "@/permissions";
 import mixins from "vue-typed-mixins";
@@ -81,6 +113,7 @@ export default mixins(
 			loading: false,
 			modalBus: new Vue(),
 			sharedWith: [...(this.$store.getters.workflow.sharedWith || [])],
+			EnterpriseEditionFeature,
 		};
 	},
 	computed: {
@@ -111,6 +144,9 @@ export default mixins(
 		},
 		workflowPermissions(): IPermissions {
 			return getWorkflowPermissions(this.currentUser, this.workflow, this.$store);
+		},
+		isSharingAvailable(): boolean {
+			return this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing) === true;
 		},
 	},
 	methods: {
@@ -152,12 +188,19 @@ export default mixins(
 				this.dirty = true;
 			}
 		},
+		onRoleAction(user: IUser, action: string) {
+			if (action === 'remove') {
+				this.onRemoveSharee(user.id);
+			}
+		},
 		async loadUsers() {
 			await this.$store.dispatch('users/fetchUsers');
 		},
 	},
 	mounted() {
-		this.loadUsers();
+		if (this.isSharingAvailable) {
+			this.loadUsers();
+		}
 	},
 });
 </script>
@@ -172,5 +215,13 @@ export default mixins(
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;
+}
+
+.roleSelect {
+	max-width: 100px;
+}
+
+.roleSelectRemoveOption {
+	border-top: 1px solid var(--color-foreground-base);
 }
 </style>
