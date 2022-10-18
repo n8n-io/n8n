@@ -18,7 +18,7 @@
 			/>
 			<div v-if="multipleValues === true">
 				<div
-					v-for="(value, index) in values[property.name]"
+					v-for="(value, index) in mutableValues[property.name]"
 					:key="property.name + index"
 					class="parameter-item"
 				>
@@ -39,7 +39,7 @@
 									@click="moveOptionUp(property.name, index)"
 								/>
 								<font-awesome-icon
-									v-if="index !== (values[property.name].length - 1)"
+									v-if="index !== (mutableValues[property.name].length - 1)"
 									icon="angle-down"
 									class="clickable"
 									:title="$locale.baseText('fixedCollectionParameter.moveDown')"
@@ -110,36 +110,66 @@
 </template>
 
 <script lang="ts">
-import Vue, { Component } from "vue";
+import Vue, { Component, PropType } from "vue";
 import {
 	IUpdateInformation,
 } from '@/Interface';
 
 import {
 	INodeParameters,
+	INodeProperties,
 	INodePropertyCollection,
+	NodeParameterValue,
+	deepCopy,
+	isINodePropertyCollectionList,
 } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
 export default Vue.extend({
 		name: 'FixedCollectionParameter',
-		props: [
-			'nodeValues', // INodeParameters
-			'parameter', // INodeProperties
-			'path', // string
-			'values', // INodeParameters
-			'isReadOnly', // boolean
-		],
+	  props: {
+			nodeValues: {
+				type: Object as PropType<Record<string, INodeParameters[]>>,
+				required: true,
+			},
+			parameter: {
+				type: Object as PropType<INodeProperties>,
+				required: true,
+			},
+			path: {
+				type: String,
+				required: true,
+			},
+			values: {
+				type: Object as PropType<Record<string, INodeParameters[]>>,
+				required: true,
+			},
+			isReadOnly: {
+				type: Boolean,
+				default: false,
+			},
+		},
 		components: {
 			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
 		},
 		data() {
 			return {
 				selectedOption: undefined,
+				mutableValues: {} as Record<string, INodeParameters[]>,
 			};
 		},
-
+		watch: {
+			values: {
+				handler(newValues: Record<string, INodeParameters[]>) {
+					this.mutableValues = deepCopy(newValues);
+				},
+				deep: true,
+			},
+		},
+	  created(){
+			this.mutableValues = deepCopy(this.values);
+		},
 		computed: {
 			getPlaceholderText(): string {
 				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
@@ -157,14 +187,11 @@ export default Vue.extend({
 				return returnProperties;
 			},
 			multipleValues(): boolean {
-				if (this.parameter.typeOptions !== undefined && this.parameter.typeOptions.multipleValues === true) {
-					return true;
-				}
-				return false;
+				return this.parameter.typeOptions !== undefined && this.parameter.typeOptions.multipleValues === true;
 			},
 
 			parameterOptions(): INodePropertyCollection[] {
-				if (this.multipleValues === true) {
+				if (this.multipleValues && isINodePropertyCollectionList(this.parameter.options)) {
 					return this.parameter.options;
 				}
 
@@ -173,18 +200,15 @@ export default Vue.extend({
 				});
 			},
 			propertyNames(): string[] {
-				if (this.values) {
-					return Object.keys(this.values);
-				}
-				return [];
+				return Object.keys(this.mutableValues || {});
 			},
-			sortable(): string {
-				return this.parameter.typeOptions && this.parameter.typeOptions.sortable;
+			sortable(): boolean {
+				return !!this.parameter.typeOptions?.sortable;
 			},
 		},
 		methods: {
 			deleteOption(optionName: string, index?: number) {
-				const currentOptionsOfSameType = this.values[optionName];
+				const currentOptionsOfSameType = this.mutableValues[optionName];
 				if (!currentOptionsOfSameType || currentOptionsOfSameType.length > 1) {
 					// it's not the only option of this type, so just remove it.
 					this.$emit('valueChanged', {
@@ -203,30 +227,35 @@ export default Vue.extend({
 				return `${this.path}.${name}` + (index !== undefined ? `[${index}]` : '');
 			},
 			getOptionProperties(optionName: string): INodePropertyCollection | undefined {
-				for (const option of this.parameter.options) {
-					if (option.name === optionName) {
-						return option;
+				if(isINodePropertyCollectionList(this.parameter.options)){
+					for (const option of this.parameter.options) {
+						if (option.name === optionName) {
+							return option;
+						}
 					}
 				}
-
 				return undefined;
 			},
 			moveOptionDown(optionName: string, index: number) {
-				this.values[optionName].splice(index + 1, 0, this.values[optionName].splice(index, 1)[0]);
+				if(Array.isArray(this.mutableValues[optionName])){
+					this.mutableValues[optionName].splice(index + 1, 0, this.mutableValues[optionName].splice(index, 1)[0]);
+				}
 
 				const parameterData = {
 					name: this.getPropertyPath(optionName),
-					value: this.values[optionName],
+					value: this.mutableValues[optionName],
 				};
 
 				this.$emit('valueChanged', parameterData);
 			},
 			moveOptionUp(optionName: string, index: number) {
-				this.values[optionName].splice(index - 1, 0, this.values[optionName].splice(index, 1)[0]);
+				if(Array.isArray(this.mutableValues[optionName])) {
+					this.mutableValues?.[optionName].splice(index - 1, 0, this.mutableValues[optionName].splice(index, 1)[0]);
+				}
 
 				const parameterData = {
 					name: this.getPropertyPath(optionName),
-					value: this.values[optionName],
+					value: this.mutableValues[optionName],
 				};
 
 				this.$emit('valueChanged', parameterData);
@@ -247,9 +276,9 @@ export default Vue.extend({
 						// Multiple values are allowed so append option to array
 						newParameterValue[optionParameter.name] = get(this.nodeValues, `${this.path}.${optionParameter.name}`, []);
 						if (Array.isArray(optionParameter.default)) {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...JSON.parse(JSON.stringify(optionParameter.default)));
+							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...deepCopy(optionParameter.default as INodeParameters[]));
 						} else if (optionParameter.default !== '' && typeof optionParameter.default !== 'object') {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(JSON.parse(JSON.stringify(optionParameter.default)));
+							(newParameterValue[optionParameter.name] as NodeParameterValue[]).push(deepCopy(optionParameter.default));
 						}
 					} else {
 						// Add a new option
@@ -258,8 +287,8 @@ export default Vue.extend({
 				}
 
 				let newValue;
-				if (this.multipleValues === true) {
-					newValue = get(this.nodeValues, name, []);
+				if (this.multipleValues) {
+					newValue = get(this.nodeValues, name, [] as INodeParameters[]);
 
 					newValue.push(newParameterValue);
 				} else {
