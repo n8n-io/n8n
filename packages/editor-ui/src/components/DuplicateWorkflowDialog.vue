@@ -117,7 +117,7 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 
 			this.isSaving = true;
 
-			const workflow = await this.restApi().getWorkflow(this.data.id);
+			const { createdAt, updatedAt, ...workflow } = await this.restApi().getWorkflow(this.data.id);
 			const saved = await this.saveAsNewWorkflow({
 				name,
 				data: workflow,
