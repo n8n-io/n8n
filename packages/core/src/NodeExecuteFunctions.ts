@@ -952,7 +952,7 @@ export async function requestOAuth2(
 		await additionalData.credentialsHelper.updateCredentials(
 			nodeCredentials,
 			credentialsType,
-			credentials as unknown as ICredentialDataDecryptedObject,
+			Object.assign(credentials, { oauthTokenData: data }),
 		);
 
 		oauthTokenData = data;
