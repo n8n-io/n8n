@@ -1,5 +1,5 @@
 {
-	"node": "n8n-nodes-base.venafiTlsProtectDatacenter",
+	"node": "n8n-nodes-base.venafiTlsProtectDatacenterTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Development"],
