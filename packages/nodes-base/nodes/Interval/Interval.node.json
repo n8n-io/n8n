@@ -24,6 +24,9 @@
 	},
 	"alias": ["Time", "Scheduler", "Polling"],
 	"subcategories": {
-		"Core Nodes": ["Flow"]
+		"Core Nodes": [
+			"Flow",
+			"Other Trigger Nodes"
+		]
 	}
 }
