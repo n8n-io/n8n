@@ -621,7 +621,7 @@ export class NotionV2 implements INodeType {
 		if (resource === 'page') {
 			if (operation === 'archive') {
 				for (let i = 0; i < length; i++) {
-					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
+					const pageId = extractPageId(this.getNodeParameter('pageId', i, '', { extractValue: true }) as string);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					responseData = await notionApiRequest.call(this, 'PATCH', `/pages/${pageId}`, {
 						archived: true,

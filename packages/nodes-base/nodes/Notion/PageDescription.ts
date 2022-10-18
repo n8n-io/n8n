@@ -76,11 +76,54 @@ export const pageFields = [
 	/*                                page:archive                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Page Link or ID',
+		displayName: 'Page',
 		name: 'pageId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'url', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/My-Page-b4eeb113e118403aa450af65ac25f0b9',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})\??.*',
+							errorMessage: 'Not a valid Notion Page URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+							errorMessage: 'Not a valid Notion Page ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+				},
+				url: '=https://www.notion.so/{{$value}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				version: [2],
@@ -88,8 +131,7 @@ export const pageFields = [
 				operation: ['archive'],
 			},
 		},
-		description:
-			"The Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
 	},
 	{
 		displayName: 'Simplify',
