@@ -23,17 +23,17 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+	ALL_NODE_FILTER,
 	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
-	IExecutionResponse,
-	IFakeDoor,
 	IFakeDoorLocation,
 	IRootState,
 	IRunDataDisplayMode,
 	IUiState,
+	INodeFilterType,
 	XYPosition,
 } from '../Interface';
 
@@ -328,6 +328,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
 			Vue.set(state.ndv.output.editMode, 'value', payload);
+		},
+		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
+			state.mainPanelPosition = relativePosition;
 		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);
