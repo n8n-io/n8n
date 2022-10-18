@@ -46,36 +46,6 @@ export class NotionV1 implements INodeType {
 			getDatabases,
 		},
 		loadOptions: {
-			async getDatabases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const body: IDataObject = {
-					page_size: 100,
-					filter: { property: 'object', value: 'database' },
-				};
-				const databases = await notionApiRequestAllItems.call(
-					this,
-					'results',
-					'POST',
-					`/search`,
-					body,
-				);
-				for (const database of databases) {
-					returnData.push({
-						name: database.title[0]?.plain_text || database.id,
-						value: database.id,
-					});
-				}
-				returnData.sort((a, b) => {
-					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
-						return -1;
-					}
-					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
-						return 1;
-					}
-					return 0;
-				});
-				return returnData;
-			},
 			async getDatabaseProperties(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const databaseId = this.getCurrentNodeParameter('databaseId', { extractValue: true }) as string;

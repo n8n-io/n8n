@@ -147,31 +147,6 @@ export class NotionTrigger implements INodeType {
 		listSearch: {
 			getDatabases,
 		},
-		loadOptions: {
-			async getDatabases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const { results: databases } = await notionApiRequest.call(this, 'POST', `/search`, {
-					page_size: 100,
-					filter: { property: 'object', value: 'database' },
-				});
-				for (const database of databases) {
-					returnData.push({
-						name: database.title[0]?.plain_text || database.id,
-						value: database.id,
-					});
-				}
-				returnData.sort((a, b) => {
-					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
-						return -1;
-					}
-					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
-						return 1;
-					}
-					return 0;
-				});
-				return returnData;
-			},
-		},
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
