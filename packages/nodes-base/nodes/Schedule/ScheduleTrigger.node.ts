@@ -15,7 +15,7 @@ export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Schedule Trigger',
 		name: 'scheduleTrigger',
-		icon: 'file:schedule.svg',
+		icon: 'fa:clock',
 		group: ['trigger', 'schedule'],
 		version: 1,
 		description: 'Triggers the workflow on a given schedule',

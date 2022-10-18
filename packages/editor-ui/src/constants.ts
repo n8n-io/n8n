@@ -101,6 +101,7 @@ export const PAGERDUTY_NODE_TYPE = 'n8n-nodes-base.pagerDuty';
 export const SALESFORCE_NODE_TYPE = 'n8n-nodes-base.salesforce';
 export const SEGMENT_NODE_TYPE = 'n8n-nodes-base.segment';
 export const SET_NODE_TYPE = 'n8n-nodes-base.set';
+export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
 export const SERVICENOW_NODE_TYPE = 'n8n-nodes-base.serviceNow';
 export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
