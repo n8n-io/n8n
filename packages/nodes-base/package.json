@@ -630,6 +630,7 @@
       "dist/nodes/S3/S3.node.js",
       "dist/nodes/Salesforce/Salesforce.node.js",
       "dist/nodes/Salesmate/Salesmate.node.js",
+      "dist/nodes/Schedule/ScheduleTrigger.node.js",
       "dist/nodes/SeaTable/SeaTable.node.js",
       "dist/nodes/SeaTable/SeaTableTrigger.node.js",
       "dist/nodes/SecurityScorecard/SecurityScorecard.node.js",
