@@ -328,6 +328,10 @@ class App {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
+			allowedModules: {
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+			},
 			enterprise: {
 				sharing: false,
 				workflowSharing: false,
@@ -1794,11 +1798,11 @@ class App {
 				const filePath = pathJoin(editorUiDistDir, fileName);
 				if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
 					const srcFile = await readFile(filePath, 'utf8');
-					let payload = srcFile.replace(basePathRegEx, n8nPath);
+					let payload = srcFile
+						.replace(basePathRegEx, n8nPath)
+						.replace(/\/static\//g, n8nPath + 'static/');
 					if (filePath.endsWith('index.html')) {
-						payload = payload
-							.replace(/\/favicon\.ico/g, `${n8nPath}favicon.ico`)
-							.replace(closingTitleTag, closingTitleTag + scriptsString);
+						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
 					const destFile = pathJoin(generatedStaticDir, fileName);
 					await mkdir(pathDirname(destFile), { recursive: true });

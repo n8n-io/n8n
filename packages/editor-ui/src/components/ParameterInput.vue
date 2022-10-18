@@ -68,7 +68,15 @@
 					@valueChanged="expressionUpdated"
 				></text-edit>
 
-				<div v-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
+				<code-node-editor
+					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
+					:mode="node.parameters.mode"
+					:jsCode="node.parameters.jsCode"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChanged"
+				/>
+
+				<div v-else-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
 					<prism-editor
 						v-if="!codeEditDialogVisible"
 						:lineNumbers="true"
@@ -315,6 +323,7 @@ import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
+import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
@@ -325,6 +334,7 @@ import { isResourceLocatorValue } from '@/typeGuards';
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
+import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 
 export default mixins(
@@ -337,6 +347,7 @@ export default mixins(
 		name: 'parameter-input',
 		components: {
 			CodeEdit,
+			CodeNodeEditor,
 			ExpressionEdit,
 			NodeCredentials,
 			CredentialsSelect,
@@ -889,6 +900,9 @@ export default mixins(
 
 				this.$emit('focus');
 			},
+			isCodeNode(node: INodeUi): boolean {
+				return node.type === CODE_NODE_TYPE;
+			},
 			rgbaToHex (value: string): string | null {
 				// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
 				const valueMatch = (value as string).match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+(\.\d+)?)\)$/);
@@ -1148,7 +1162,6 @@ export default mixins(
 }
 
 .list-option {
-	max-width: 340px;
 	margin: 6px 0;
 	white-space: normal;
 	padding-right: 20px;

@@ -1365,7 +1365,75 @@ export default mixins(
 					duration: 0,
 				});
 			},
-			async injectNode(nodeTypeName: string, options: AddNodeOptions = {}) {
+
+			async getNewNodeWithDefaultCredential(nodeTypeData: INodeTypeDescription) {
+				const newNodeData: INodeUi = {
+					id: uuid(),
+					name: nodeTypeData.defaults.name as string,
+					type: nodeTypeData.name,
+					typeVersion: Array.isArray(nodeTypeData.version)
+						? nodeTypeData.version.slice(-1)[0]
+						: nodeTypeData.version,
+					position: [0, 0],
+					parameters: {},
+				};
+
+				const credentialPerType = nodeTypeData.credentials && nodeTypeData.credentials
+					.map(type => this.$store.getters['credentials/getCredentialsByType'](type.name))
+					.flat();
+
+				if (credentialPerType && credentialPerType.length === 1) {
+					const defaultCredential = credentialPerType[0];
+
+					const selectedCredentials = this.$store.getters['credentials/getCredentialById'](defaultCredential.id);
+					const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
+					const credentials = {
+						[defaultCredential.type]: selected,
+					};
+
+					await this.loadNodesProperties([newNodeData].map(node => ({name: node.type, version: node.typeVersion})));
+					const nodeType = this.$store.getters['nodeTypes/getNodeType'](newNodeData.type, newNodeData.typeVersion) as INodeTypeDescription;
+				 	const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, {}, true, false, newNodeData);
+
+					if (nodeTypeData.credentials) {
+						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
+						if (authentication?.displayOptions?.hide) {
+							return newNodeData;
+						}
+
+						const authDisplayOptions = authentication?.displayOptions?.show;
+						if (!authDisplayOptions) {
+							newNodeData.credentials = credentials;
+							return newNodeData;
+						}
+
+						if (Object.keys(authDisplayOptions).length === 1 && authDisplayOptions['authentication']) {
+							// ignore complex case when there's multiple dependencies
+							newNodeData.credentials = credentials;
+
+							let parameters: { [key:string]: string } = {};
+							for (const displayOption of Object.keys(authDisplayOptions)) {
+								if (nodeParameters && !nodeParameters[displayOption]) {
+									parameters = {};
+									newNodeData.credentials = undefined;
+									break;
+								}
+								const optionValue = authDisplayOptions[displayOption]?.[0];
+								if (optionValue && typeof optionValue === 'string') {
+									parameters[displayOption] = optionValue;
+								}
+								newNodeData.parameters = {
+									...newNodeData.parameters,
+									...parameters,
+								};
+							}
+						}
+					}
+				}
+				return newNodeData;
+			},
+
+			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
 				const nodeTypeData: INodeTypeDescription | null = this.$store.getters['nodeTypes/getNodeType'](nodeTypeName);
 
 				if (nodeTypeData === null) {
@@ -1385,16 +1453,7 @@ export default mixins(
 					return;
 				}
 
-				const newNodeData: INodeUi = {
-					id: uuid(),
-					name: nodeTypeData.defaults.name as string,
-					type: nodeTypeData.name,
-					typeVersion: Array.isArray(nodeTypeData.version)
-						? nodeTypeData.version.slice(-1)[0]
-						: nodeTypeData.version,
-					position: [0, 0],
-					parameters: {},
-				};
+				const newNodeData = await this.getNewNodeWithDefaultCredential(nodeTypeData);
 
 				// when pulling new connection from node or injecting into a connection
 				const lastSelectedNode = this.lastSelectedNode;

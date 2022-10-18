@@ -58,7 +58,7 @@ const state: IRootState = {
 	activeNode: null,
 	activeCredentialType: null,
 	// @ts-ignore
-	baseUrl: import.meta.env.VUE_APP_URL_BASE_API ? import.meta.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH),
+	baseUrl: import.meta.env.VUE_APP_URL_BASE_API ?? window.BASE_PATH ?? '/',
 	defaultLocale: 'en',
 	endpointWebhook: 'webhook',
 	endpointWebhookTest: 'webhook-test',
