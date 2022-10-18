@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.scheduleTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Core Nodes"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.scheduleTrigger/"
+			}
+		],
+		"generic": []
+	},
+	"alias": ["Time", "Scheduler", "Polling", "Cron", "Interval"],
+	"subcategories": {
+		"Core Nodes": ["Flow"]
+	}
+}

@@ -16,6 +16,7 @@ import {
 	USER_SETTINGS_FILE_NAME,
 	USER_SETTINGS_SUBFOLDER,
 } from '.';
+import { deepCopy } from 'n8n-workflow';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { promisify } = require('util');
@@ -173,7 +174,7 @@ export async function writeUserSettings(
 	}
 
 	await fsWriteFile(settingsPath, JSON.stringify(settingsToWrite, null, '\t'));
-	settingsCache = JSON.parse(JSON.stringify(userSettings));
+	settingsCache = deepCopy(userSettings);
 
 	return userSettings;
 }
