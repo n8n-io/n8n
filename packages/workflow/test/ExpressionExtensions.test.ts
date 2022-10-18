@@ -6,10 +6,10 @@ import { Expression, Workflow } from '../src';
 import * as Helpers from './Helpers';
 import { DateTime } from 'luxon';
 import { extend } from '../src/Extensions';
-import { DateExtensions } from '../src/Extensions/DateExtensions';
-import { StringExtensions } from '../src/Extensions/StringExtensions';
-import { ArrayExtensions } from '../src/Extensions/ArrayExtensions';
-import { NumberExtensions } from '../src/Extensions/NumberExtensions';
+import { dateExtensions } from '../src/Extensions/DateExtensions';
+import { stringExtensions } from '../src/Extensions/StringExtensions';
+import { arrayExtensions } from '../src/Extensions/ArrayExtensions';
+import { numberExtensions } from '../src/Extensions/NumberExtensions';
 
 const nodeTypes = Helpers.NodeTypes();
 const workflow = new Workflow({
@@ -32,27 +32,11 @@ const expression = new Expression(workflow);
 const evaluate = (value: string) =>
 	expression.getParameterValue(value, null, 0, 0, 'node', [], 'manual', 'America/New_York', {});
 
-const dateExtensions = (...args: any[]) => {
-	return extend(DateTime.now(), ...args) as unknown as DateExtensions;
-};
-
-const stringExtensions = (data = '', ...args: any[]) => {
-	return extend(data, ...args) as unknown as StringExtensions;
-};
-
-const arrayExtensions = (data: any[], ...args: any[]) => {
-	return extend(data, ...args) as unknown as ArrayExtensions;
-};
-
-const numberExtensions = (data: number, ...args: any[]) => {
-	return extend(data, ...args) as unknown as NumberExtensions;
-};
-
 describe('Data Transformation Functions', () => {
 	describe('Date Data Transformation Functions', () => {
 		test('.isWeekend() should work correctly on a date', () => {
 			expect(evaluate('={{DateTime.now().isWeekend()}}')).toEqual(
-				dateExtensions().isWeekend(new Date()),
+				extend(new Date(), 'isWeekend', []),
 			);
 		});
 
@@ -61,46 +45,41 @@ describe('Data Transformation Functions', () => {
 			expect(evaluate('={{DateTime.now().toTimeFromNow()}}')).toEqual(JUST_NOW_STRING_RESULT);
 		});
 
-		test('.begginingOf("week") should work correctly on a date', () => {
-			expect(evaluate('={{DateTime.now().begginingOf("week")}}')).toEqual(
-				dateExtensions('week').begginingOf(new Date(), 'week'),
+		test('.beginningOf("week") should work correctly on a date', () => {
+			expect(evaluate('={{DateTime.now().beginningOf("week")}}')).toEqual(
+				dateExtensions.functions.beginningOf(new Date(), ['week']),
 			);
 		});
 
 		test('.endOfMonth() should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.now().endOfMonth() }}')).toEqual(
-				dateExtensions().endOfMonth(new Date()),
+				dateExtensions.functions.endOfMonth(new Date()),
 			);
 		});
 
 		test('.extract("day") should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.now().extract("day") }}')).toEqual(
-				dateExtensions('day').extract(new Date(), 'day'),
+				dateExtensions.functions.extract(new Date(), ['day']),
 			);
 		});
 
 		test('.format("yyyy LLL dd") should work correctly on a date', () => {
 			expect(evaluate('={{ DateTime.now().format("yyyy LLL dd") }}')).toEqual(
-				dateExtensions('yyyy LLL dd').format(new Date(), 'yyyy LLL dd'),
+				dateExtensions.functions.format(new Date(), ['yyyy LLL dd']),
 			);
 			expect(evaluate('={{ DateTime.now().format("yyyy LLL dd") }}')).not.toEqual(
-				dateExtensions("HH 'hours and' mm 'minutes'").format(
-					new Date(),
-					"HH 'hours and' mm 'minutes'",
-				),
+				dateExtensions.functions.format(new Date(), ["HH 'hours and' mm 'minutes'"]),
 			);
 		});
 	});
 
 	describe('String Data Transformation Functions', () => {
 		test('.isBlank() should work correctly on a string that is not empty', () => {
-			expect(evaluate('={{"NotBlank".isBlank()}}')).toEqual(
-				stringExtensions('NotBlank').isBlank('NotBlank'),
-			);
+			expect(evaluate('={{"NotBlank".isBlank()}}')).toEqual(false);
 		});
 
 		test('.isBlank() should work correctly on a string that is empty', () => {
-			expect(evaluate('={{"".isBlank()}}')).toEqual(stringExtensions('').isBlank(''));
+			expect(evaluate('={{"".isBlank()}}')).toEqual(true);
 		});
 
 		test('.getOnlyFirstCharacters() should work correctly on a string', () => {
@@ -110,15 +89,13 @@ describe('Data Transformation Functions', () => {
 
 			expect(
 				evaluate('={{"myNewField".getOnlyFirstCharacters(5).length >= "myNewField".length}}'),
-			).toEqual(
-				stringExtensions('myNewField', 5).getOnlyFirstCharacters('myNewField', 5).length >=
-					'myNewField'.length,
-			);
+			).toEqual(false);
 
 			expect(evaluate('={{DateTime.now().toLocaleString().getOnlyFirstCharacters(2)}}')).toEqual(
-				stringExtensions(dateExtensions().toLocaleString(new Date()), 2).getOnlyFirstCharacters(
-					dateExtensions().toLocaleString(new Date()),
-					2,
+				stringExtensions.functions.getOnlyFirstCharacters(
+					// @ts-ignore
+					dateExtensions.functions.toLocaleString(new Date(), []),
+					[2],
 				),
 			);
 		});
@@ -192,9 +169,7 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.isPresent() should work correctly on an array', () => {
-			expect(evaluate('={{ [1,2,3, "imhere"].isPresent("imhere") }}')).toEqual(
-				arrayExtensions([1, 2, 3, 'imhere'], 'imhere').isPresent([1, 2, 3, 'imhere'], 'imhere'),
-			);
+			expect(evaluate('={{ [1,2,3, "imhere"].isPresent() }}')).toEqual(true);
 		});
 
 		test('.pluck() should work correctly on an array', () => {
@@ -226,19 +201,23 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.isBlank() should work correctly on an array', () => {
-			expect(evaluate('={{ [].isBlank() }}')).toEqual(arrayExtensions([]).isBlank([]));
+			expect(evaluate('={{ [].isBlank() }}')).toEqual(true);
+		});
+
+		test('.isBlank() should work correctly on an array', () => {
+			expect(evaluate('={{ [1].isBlank() }}')).toEqual(false);
 		});
 
 		test('.length() should work correctly on an array', () => {
-			expect(evaluate('={{ [].length() }}')).toEqual(arrayExtensions([]).length([]));
+			expect(evaluate('={{ [].length() }}')).toEqual(0);
 		});
 
 		test('.count() should work correctly on an array', () => {
-			expect(evaluate('={{ [1].count() }}')).toEqual(arrayExtensions([1]).length([1]));
+			expect(evaluate('={{ [1].count() }}')).toEqual(1);
 		});
 
 		test('.size() should work correctly on an array', () => {
-			expect(evaluate('={{ [1,2].size() }}')).toEqual(arrayExtensions([1, 2]).length([1, 2]));
+			expect(evaluate('={{ [1,2].size() }}')).toEqual(2);
 		});
 
 		test('.last() should work correctly on an array', () => {
@@ -267,12 +246,14 @@ describe('Data Transformation Functions', () => {
 
 		test('.isPresent() should work correctly on a number', () => {
 			expect(evaluate('={{ Number(100).isPresent() }}')).toEqual(
-				numberExtensions(100).isPresent(100),
+				numberExtensions.functions.isPresent(100),
 			);
 		});
 
 		test('.format() should work correctly on a number', () => {
-			expect(evaluate('={{ Number(100).format() }}')).toEqual(numberExtensions(100).format(100));
+			expect(evaluate('={{ Number(100).format() }}')).toEqual(
+				numberExtensions.functions.format(100, []),
+			);
 		});
 	});
 });

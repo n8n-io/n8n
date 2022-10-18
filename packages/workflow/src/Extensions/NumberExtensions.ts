@@ -14,13 +14,13 @@ function format(value: number, extraArgs: unknown[]): string {
 	}).format(value);
 }
 
-// function isBlank(value: number): boolean {
-// 	return typeof value !== 'number';
-// }
+function isBlank(value: number): boolean {
+	return typeof value !== 'number';
+}
 
-// function isPresent(value: number): boolean {
-// 	return !isBlank(value);
-// }
+function isPresent(value: number): boolean {
+	return !isBlank(value);
+}
 
 function random(value: number): number {
 	return Math.floor(Math.random() * value);
@@ -31,5 +31,7 @@ export const numberExtensions: ExtensionMap = {
 	functions: {
 		format,
 		random,
+		isBlank,
+		isPresent,
 	},
 };
