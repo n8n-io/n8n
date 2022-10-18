@@ -1,4 +1,4 @@
-import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER } from '@/constants';
+import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER, NON_ACTIVATABLE_TRIGGER_NODE_TYPES } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import { isResourceLocatorValue } from '@/typeGuards';
 import dateformat from 'dateformat';
@@ -49,10 +49,7 @@ export function getTriggerNodeServiceName(nodeType: INodeTypeDescription): strin
 }
 
 export function getActivatableTriggerNodes(nodes: INodeUi[]) {
-	return nodes.filter((node: INodeUi) => {
-		// Error Trigger does not behave like other triggers and workflows using it can not be activated
-		return !node.disabled && node.type !== ERROR_TRIGGER_NODE_TYPE;
-	});
+	return nodes.filter((node: INodeUi) => !node.disabled && !NON_ACTIVATABLE_TRIGGER_NODE_TYPES.includes(node.type));
 }
 
 export function filterTemplateNodes(nodes: ITemplatesNode[]) {

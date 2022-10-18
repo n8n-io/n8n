@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts">
-import { WEBHOOK_NODE_TYPE } from '@/constants';
+import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
@@ -72,7 +72,10 @@ export default mixins(
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
 		isTriggerNode (): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
+		},
+		isManualTriggerNode (): boolean {
+			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
 		},
 		isPollingTypeNode (): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
@@ -138,7 +141,7 @@ export default mixins(
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
-			if (this.isTriggerNode && !this.isScheduleTrigger) {
+			if (this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode) {
 				return this.$locale.baseText('ndv.execute.listenForEvent');
 			}
 
