@@ -636,7 +636,7 @@
 	"nodeCreator.noResults.requestTheNode": "Request the node",
 	"nodeCreator.noResults.wantUsToMakeItFaster": "Want us to make it faster?",
 	"nodeCreator.noResults.weDidntMakeThatYet": "We didn't make that... yet",
-	"nodeCreator.noResults.notFoundInSubcategory": "No results in '{subcategory}' category",
+	"nodeCreator.noResults.noResultsHere": "No results here",
 	"nodeCreator.noResults.maybeOtherSubcategories": "There are results in <a data-action='showAllNodeCreatorNodes'>other categories</a>",
 	"nodeCreator.noResults.webhook": "Webhook",
 	"nodeCreator.searchBar.searchNodes": "Search nodes...",

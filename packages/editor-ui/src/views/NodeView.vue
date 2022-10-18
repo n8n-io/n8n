@@ -573,7 +573,6 @@ export default mixins(
 			},
 			showTriggerCreator(source: string) {
 				if(this.createNodeActive) return;
-
 				this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
 				this.$store.commit('nodeCreator/setShowScrim', true);
 				this.onToggleNodeCreator({ source, createNodeActive: true });

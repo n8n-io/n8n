@@ -44,10 +44,10 @@
 				/>
 			</div>
 			<no-results v-else :showRequest="activeSubcategory === null">
-					<!-- Subcategory search -->
-					<template v-if="activeSubcategory && filteredAllNodeTypes.length > 0">
+					<!-- There are results in other sub-categories/tabs  -->
+					<template v-if="filteredAllNodeTypes.length > 0">
 						<p
-							v-text="$locale.baseText('nodeCreator.noResults.notFoundInSubcategory', { interpolate: { subcategory: activeSubcategoryTitle}})"
+							v-text="$locale.baseText('nodeCreator.noResults.noResultsHere')"
 							slot="title"
 						/>
 						<p slot="action" v-html="$locale.baseText('nodeCreator.noResults.maybeOtherSubcategories')" />
