@@ -685,12 +685,15 @@ export interface ITemplatesCategory {
 	name: string;
 }
 
+export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	workflowCallerPolicyDefaultOption: WorkflowCallerPolicyDefaultOption;
 	timezone: string;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
@@ -743,6 +746,8 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
+	callerIds?: string;
+	callerPolicy?: WorkflowCallerPolicyDefaultOption;
 }
 
 export interface ITimeoutHMS {
