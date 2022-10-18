@@ -142,7 +142,7 @@ export class NotionV1 implements INodeType {
 			},
 			async getDatabaseIdFromPage(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const pageId = this.getCurrentNodeParameter('pageId') as string;
+				const pageId = extractPageId(this.getCurrentNodeParameter('pageId') as string);
 				const {
 					parent: { database_id: databaseId },
 				} = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
@@ -180,7 +180,7 @@ export class NotionV1 implements INodeType {
 			async getDatabaseOptionsFromPage(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				const pageId = this.getCurrentNodeParameter('pageId') as string;
+				const pageId = extractPageId(this.getCurrentNodeParameter('pageId') as string);
 				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
 				const {
 					parent: { database_id: databaseId },
