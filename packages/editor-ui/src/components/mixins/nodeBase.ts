@@ -13,6 +13,20 @@ import { getStyleTokenValue } from '../helpers';
 export const nodeBase = mixins(
 	deviceSupportHelpers,
 ).extend({
+	mounted () {
+		// Initialize the node
+		if (this.data !== null) {
+			this.__addNode(this.data);
+		}
+	},
+	computed: {
+		data (): INodeUi {
+			return this.$store.getters.getNodeByName(this.name);
+		},
+		nodeId (): string {
+			return this.data.id;
+		},
+	},
 	props: {
 		name: {
 			type: String,
@@ -29,19 +43,11 @@ export const nodeBase = mixins(
 		hideActions: {
 			type: Boolean,
 		},
-	},
-	mounted () {
-		// Initialize the node
-		if (this.data !== null) {
-			this.__addNode(this.data);
-		}
-	},
-	computed: {
-		data (): INodeUi {
-			return this.$store.getters.getNodeByName(this.name);
+		disableSelecting: {
+			type: Boolean,
 		},
-		nodeId (): string {
-			return this.data.id;
+		showCustomTooltip: {
+			type: Boolean,
 		},
 	},
 	methods: {

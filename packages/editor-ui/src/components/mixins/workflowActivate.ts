@@ -35,7 +35,6 @@ export const workflowActivate = mixins(
 					}
 					currWorkflowId = this.$store.getters.workflowId as string;
 				}
-
 				const isCurrentWorkflow = currWorkflowId === this.$store.getters['workflowId'];
 
 				const activeWorkflows = this.$store.getters.getActiveWorkflows;
