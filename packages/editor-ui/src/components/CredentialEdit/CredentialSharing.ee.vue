@@ -34,8 +34,6 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
-import { mapGetters } from 'vuex';
 import {IUser} from "@/Interface";
 import mixins from "vue-typed-mixins";
 import {showMessage} from "@/components/mixins/showMessage";
@@ -46,7 +44,12 @@ export default mixins(
 	name: 'CredentialSharing',
 	props: ['credential', 'credentialId', 'credentialData', 'sharedWith', 'credentialPermissions'],
 	computed: {
-		...mapGetters('users', ['allUsers', 'currentUser']),
+		allUsers(): IUser[] {
+			return this.$store.getters['users/allUsers'];
+		},
+		currentUser(): IUser {
+			return this.$store.getters['users/currentUser'];
+		},
 		usersList(): IUser[] {
 			return this.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.currentUser.id;

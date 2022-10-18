@@ -51,6 +51,7 @@ import communityNodes from './modules/communityNodes';
 import { isJsonKeyObject } from './utils';
 import {getActiveWorkflows, getWorkflows} from "@/api/workflows";
 import { getPairedItemsMapping } from './pairedItemUtils';
+import {workflowsEEModule} from "@/modules/workflows.ee";
 
 Vue.use(Vuex);
 
@@ -740,6 +741,8 @@ export const store = new Vuex.Store({
 			const updated = state.sidebarMenuItems.concat(menuItems);
 			Vue.set(state, 'sidebarMenuItems', updated);
 		},
+
+		...workflowsEEModule.mutations,
 	},
 	getters: {
 		workflowExecutionPairedItemMappings: (state): IRootState['workflowExecutionPairedItemMappings'] => {
@@ -1051,5 +1054,7 @@ export const store = new Vuex.Store({
 
 			return activeWorkflows;
 		},
+
+		...workflowsEEModule.actions,
 	},
 });

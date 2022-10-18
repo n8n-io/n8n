@@ -295,6 +295,14 @@ export interface IWorkflowShortResponse {
 	tags: ITag[];
 }
 
+export interface IWorkflowsShareResponse {
+	id: string;
+	createdAt: number | string;
+	updatedAt: number | string;
+	sharedWith?: Array<Partial<IUser>>;
+	ownedBy?: Partial<IUser>;
+}
+
 
 // Identical or almost identical to cli.Interfaces.ts
 
@@ -306,6 +314,10 @@ export interface IActivationError {
 }
 
 export interface IShareCredentialsPayload {
+	shareWithIds: string[];
+}
+
+export interface IShareWorkflowsPayload {
 	shareWithIds: string[];
 }
 
