@@ -86,7 +86,7 @@ export const dealFields: INodeProperties[] = [
 		default: '',
 		options: [],
 		description:
-			'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			'The deal stage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Deal Properties',
@@ -347,7 +347,7 @@ export const dealFields: INodeProperties[] = [
 				},
 				default: '',
 				description:
-					'The dealstage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					'The deal stage is required when creating a deal. See the CRM Pipelines API for details on managing pipelines and stages. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Deal Type',
@@ -494,32 +494,48 @@ export const dealFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Deal Properties to Include',
-				name: 'properties',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getDealProperties',
-				},
-				default: [],
-				description:
-					'<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Property Mode',
-				name: 'propertyMode',
-				type: 'options',
+				name: 'propertiesCollection',
+				type: 'fixedCollection',
+				default: {},
 				options: [
 					{
-						name: 'Value And History',
-						value: 'valueAndHistory',
-					},
-					{
-						name: 'Value Only',
-						value: 'valueOnly',
+						name: 'propertiesValues',
+						displayName: 'Deal Properties to Include',
+						values: [
+							{
+								displayName: 'Deal Properties to Include',
+								name: 'properties',
+								type: 'multiOptions',
+								typeOptions: {
+									loadOptionsMethod: 'getDealProperties',
+								},
+								default: [],
+								description:
+									'<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Include',
+								name: 'propertyMode',
+								type: 'options',
+								options: [
+									{
+										name: 'Value And History',
+										value: 'valueAndHistory',
+									},
+									{
+										name: 'Value Only',
+										value: 'valueOnly',
+									},
+								],
+								default: 'valueAndHistory',
+								description:
+									'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+							},
+						],
 					},
 				],
-				default: 'valueAndHistory',
 				description:
-					'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+					'<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

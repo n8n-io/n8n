@@ -526,12 +526,6 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Simplify Output',
 				name: 'resolveData',
 				type: 'boolean',
-				displayOptions: {
-					// show: {
-					// 	resource: ['contact'],
-					// 	operation: ['upsert'],
-					// },
-				},
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 				description:
@@ -582,7 +576,8 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
+		description:
+			"The Unique identifier in which to operate on, This is not a contact's email but a number like 1485.",
 	},
 	{
 		displayName: 'Options',
@@ -631,32 +626,48 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Contact Properties to Include',
-				name: 'properties',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getContactProperties',
-				},
-				default: [],
-				description:
-					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Property Mode',
-				name: 'propertyMode',
-				type: 'options',
+				name: 'propertiesCollection',
+				type: 'fixedCollection',
+				default: {},
 				options: [
 					{
-						name: 'Value And History',
-						value: 'valueAndHistory',
-					},
-					{
-						name: 'Value Only',
-						value: 'valueOnly',
+						name: 'propertiesValues',
+						displayName: 'Contact Properties to Include',
+						values: [
+							{
+								displayName: 'Contact Properties to Include',
+								name: 'properties',
+								type: 'multiOptions',
+								typeOptions: {
+									loadOptionsMethod: 'getContactProperties',
+								},
+								default: [],
+								description:
+									'<p>Used to include specific contact properties in the results. By default, the results will only include Contact ID and will not include the values for any properties for your Contact.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Include',
+								name: 'propertyMode',
+								type: 'options',
+								options: [
+									{
+										name: 'Value And History',
+										value: 'valueAndHistory',
+									},
+									{
+										name: 'Value Only',
+										value: 'valueOnly',
+									},
+								],
+								default: 'valueAndHistory',
+								description:
+									'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+							},
+						],
 					},
 				],
-				default: 'valueAndHistory',
 				description:
-					'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+					'<p>Used to include specific contact properties in the results. By default, the results will only include Contact ID and will not include the values for any properties for your Contact.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -742,32 +753,48 @@ export const contactFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Contact Properties to Include',
-				name: 'properties',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getContactProperties',
-				},
-				default: [],
-				description:
-					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Property Mode',
-				name: 'propertyMode',
-				type: 'options',
+				name: 'propertiesCollection',
+				type: 'fixedCollection',
+				default: {},
 				options: [
 					{
-						name: 'Value And History',
-						value: 'valueAndHistory',
-					},
-					{
-						name: 'Value Only',
-						value: 'valueOnly',
+						name: 'propertiesValues',
+						displayName: 'Contact Properties to Include',
+						values: [
+							{
+								displayName: 'Contact Properties to Include',
+								name: 'properties',
+								type: 'multiOptions',
+								typeOptions: {
+									loadOptionsMethod: 'getContactProperties',
+								},
+								default: [],
+								description:
+									'<p>Used to include specific contact properties in the results. By default, the results will only include Contact ID and will not include the values for any properties for your Contact.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Include',
+								name: 'propertyMode',
+								type: 'options',
+								options: [
+									{
+										name: 'Value And History',
+										value: 'valueAndHistory',
+									},
+									{
+										name: 'Value Only',
+										value: 'valueOnly',
+									},
+								],
+								default: 'valueAndHistory',
+								description:
+									'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+							},
+						],
 					},
 				],
-				default: 'valueAndHistory',
 				description:
-					'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+					'<p>Used to include specific contact properties in the results. By default, the results will only include Contact ID and will not include the values for any properties for your Contact.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},
@@ -814,7 +841,8 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
+		description:
+			"The Unique identifier in which to operate on, This is not a contact's email but a number like 1485.",
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1088,7 +1116,7 @@ export const contactFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Direction',
+				displayName: 'Sort Order',
 				name: 'direction',
 				type: 'options',
 				options: [

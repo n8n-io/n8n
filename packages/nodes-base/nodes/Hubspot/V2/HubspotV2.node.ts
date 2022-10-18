@@ -1439,11 +1439,14 @@ export class HubspotV2 implements INodeType {
 							if (additionalFields.listMerberships) {
 								qs.showListMemberships = additionalFields.listMerberships as boolean;
 							}
-							if (additionalFields.properties) {
-								qs.property = additionalFields.properties as string[];
-							}
-							if (additionalFields.propertyMode) {
-								qs.propertyMode = snakeCase(additionalFields.propertyMode as string);
+							if (additionalFields.propertiesCollection) {
+								const propertiesValues = additionalFields.propertiesCollection // @ts-ignore
+									.propertiesValues as IDataObject;
+								const properties = propertiesValues.properties as string | string[];
+								qs.properties = !Array.isArray(propertiesValues.properties)
+									? (properties as string).split(',')
+									: properties;
+								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
 							const endpoint = `/contacts/v1/contact/vid/${contactId}/profile`;
 							responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
@@ -1458,11 +1461,14 @@ export class HubspotV2 implements INodeType {
 							if (additionalFields.listMerberships) {
 								qs.showListMemberships = additionalFields.listMerberships as boolean;
 							}
-							if (additionalFields.properties) {
-								qs.property = additionalFields.properties as string[];
-							}
-							if (additionalFields.propertyMode) {
-								qs.propertyMode = snakeCase(additionalFields.propertyMode as string);
+							if (additionalFields.propertiesCollection) {
+								const propertiesValues = additionalFields.propertiesCollection // @ts-ignore
+									.propertiesValues as IDataObject;
+								const properties = propertiesValues.properties as string | string[];
+								qs.properties = !Array.isArray(propertiesValues.properties)
+									? (properties as string).split(',')
+									: properties;
+								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
 							const endpoint = '/contacts/v1/lists/all/contacts/all';
 							if (returnAll) {
@@ -2304,14 +2310,15 @@ export class HubspotV2 implements INodeType {
 							if (filters.includeAssociations) {
 								qs.includeAssociations = filters.includeAssociations as boolean;
 							}
-							if (filters.properties) {
-								const properties = filters.properties as string | string[];
-								qs.properties = !Array.isArray(filters.properties)
+
+							if (filters.propertiesCollection) {
+								const propertiesValues = filters.propertiesCollection // @ts-ignore
+									.propertiesValues as IDataObject;
+								const properties = propertiesValues.properties as string | string[];
+								qs.properties = !Array.isArray(propertiesValues.properties)
 									? (properties as string).split(',')
 									: properties;
-							}
-							if (filters.propertyMode) {
-								qs.propertyMode = snakeCase(filters.propertyMode as string);
+								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
 
 							const endpoint = `/deals/v1/deal/paged`;
