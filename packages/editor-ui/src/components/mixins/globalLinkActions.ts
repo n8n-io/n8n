@@ -30,6 +30,9 @@
 		registerCustomAction(key: string, action: Function) {
 			this.customActions[key] = action;
 		},
+		unregisterCustomAction(key: string) {
+			Vue.delete(this.customActions, key);
+		},
 		delegateClick(e: MouseEvent) {
 			const clickedElement = e.target;
 			if (!(clickedElement instanceof Element) || clickedElement.tagName !== 'A') return;

@@ -66,6 +66,7 @@
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId"/>
 				</span>
 				<SaveButton
+					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
 					@click="onSaveButtonClick"

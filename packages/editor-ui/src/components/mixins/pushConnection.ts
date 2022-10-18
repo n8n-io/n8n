@@ -14,6 +14,7 @@ import {
 	IDataObject,
 	INodeTypeNameVersion,
 	IWorkflowBase,
+	SubworkflowOperationError,
 	TelemetryHelpers,
 } from 'n8n-workflow';
 
@@ -291,19 +292,34 @@ export const pushConnection = mixins(
 
 						}
 
-						let title: string;
-						if (runDataExecuted.data.resultData.lastNodeExecuted) {
-							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+						if (runDataExecuted.data.resultData.error?.name === 'SubworkflowOperationError') {
+							const error = runDataExecuted.data.resultData.error as SubworkflowOperationError;
+
+							this.$store.commit('setSubworkflowExecutionError', error);
+
+							this.$showMessage({
+								title: error.message,
+								message: error.description,
+								type: 'error',
+								duration: 0,
+							});
+
 						} else {
-							title = 'Problem executing workflow';
+							let title: string;
+							if (runDataExecuted.data.resultData.lastNodeExecuted) {
+								title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+							} else {
+								title = 'Problem executing workflow';
+							}
+
+							this.$showMessage({
+								title,
+								message: runDataExecutedErrorMessage,
+								type: 'error',
+								duration: 0,
+							});
 						}
 
-						this.$showMessage({
-							title,
-							message: runDataExecutedErrorMessage,
-							type: 'error',
-							duration: 0,
-						});
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');

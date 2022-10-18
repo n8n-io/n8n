@@ -46,6 +46,7 @@ import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
+import nodeCreator from './modules/nodeCreator';
 import { isJsonKeyObject } from './utils';
 import { getPairedItemsMapping } from './pairedItemUtils';
 
@@ -102,6 +103,7 @@ const state: IRootState = {
 	sidebarMenuItems: [],
 	instanceId: '',
 	nodeMetadata: {},
+	subworkflowExecutionError: null,
 };
 
 const modules = {
@@ -115,6 +117,7 @@ const modules = {
 	users,
 	ui,
 	communityNodes,
+	nodeCreator,
 };
 
 export const store = new Vuex.Store({
@@ -170,6 +173,9 @@ export const store = new Vuex.Store({
 
 			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
+		},
+		setSubworkflowExecutionError(state, subworkflowExecutionError: Error | null) {
+			state.subworkflowExecutionError = subworkflowExecutionError;
 		},
 		setActiveExecutions(state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
 			Vue.set(state, 'activeExecutions', newActiveExecutions);
@@ -722,6 +728,10 @@ export const store = new Vuex.Store({
 		},
 		activeCredentialType: (state): string | null => {
 			return state.activeCredentialType;
+		},
+
+		subworkflowExecutionError: (state): Error | null => {
+			return state.subworkflowExecutionError;
 		},
 
 		isActionActive: (state) => (action: string): boolean => {
