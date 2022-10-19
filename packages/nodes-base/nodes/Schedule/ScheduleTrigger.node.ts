@@ -62,6 +62,7 @@ export class ScheduleTrigger implements INodeType {
 								name: 'field',
 								type: 'options',
 								default: 'days',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
 										name: 'Seconds',
