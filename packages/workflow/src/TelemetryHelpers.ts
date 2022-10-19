@@ -208,8 +208,6 @@ export function generateNodesGraph(
 				nodeItem.resource = node.parameters.resource?.toString() ?? nodeItem.resource;
 				nodeItem.mode = node.parameters.mode?.toString() ?? nodeItem.mode;
 			}
-			// console.log('node.typeVersion', node.typeVersion);
-			console.log('nodeItem', nodeItem);
 			nodesGraph.nodes[`${index}`] = nodeItem;
 			nodeNameAndIndex[node.name] = index.toString();
 		});
