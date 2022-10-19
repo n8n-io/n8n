@@ -1,8 +1,4 @@
-import {
-	IDataObject,
-	IExecuteFunctions,
-	ITriggerFunctions,
-} from 'n8n-workflow';
+import { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
 
 import * as amqplib from 'amqplib';
 
@@ -12,19 +8,16 @@ declare module 'amqplib' {
 	}
 }
 
-export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunctions, options: IDataObject): Promise<amqplib.Channel> {
+export async function rabbitmqConnect(
+	this: IExecuteFunctions | ITriggerFunctions,
+	options: IDataObject,
+): Promise<amqplib.Channel> {
 	const credentials = await this.getCredentials('rabbitmq');
 
-	const credentialKeys = [
-		'hostname',
-		'port',
-		'username',
-		'password',
-		'vhost',
-	];
+	const credentialKeys = ['hostname', 'port', 'username', 'password', 'vhost'];
 
 	const credentialData: IDataObject = {};
-	credentialKeys.forEach(key => {
+	credentialKeys.forEach((key) => {
 		credentialData[key] = credentials[key] === '' ? undefined : credentials[key];
 	});
 
@@ -41,7 +34,6 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 		}
 	}
 
-
 	return new Promise(async (resolve, reject) => {
 		try {
 			const connection = await amqplib.connect(credentialData, optsData);
@@ -50,13 +42,18 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 				reject(error);
 			});
 
-			const channel = await connection.createChannel().catch(console.warn) as amqplib.Channel;
+			const channel = (await connection.createChannel().catch(console.warn)) as amqplib.Channel;
 
-			if (options.arguments && ((options.arguments as IDataObject).argument! as IDataObject[]).length) {
+			if (
+				options.arguments &&
+				((options.arguments as IDataObject).argument! as IDataObject[]).length
+			) {
 				const additionalArguments: IDataObject = {};
-				((options.arguments as IDataObject).argument as IDataObject[]).forEach((argument: IDataObject) => {
-					additionalArguments[argument.key as string] = argument.value;
-				});
+				((options.arguments as IDataObject).argument as IDataObject[]).forEach(
+					(argument: IDataObject) => {
+						additionalArguments[argument.key as string] = argument.value;
+					},
+				);
 				options.arguments = additionalArguments;
 			}
 
@@ -67,7 +64,11 @@ export async function rabbitmqConnect(this: IExecuteFunctions | ITriggerFunction
 	});
 }
 
-export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFunctions, queue: string, options: IDataObject): Promise<amqplib.Channel> {
+export async function rabbitmqConnectQueue(
+	this: IExecuteFunctions | ITriggerFunctions,
+	queue: string,
+	options: IDataObject,
+): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
 	return new Promise(async (resolve, reject) => {
@@ -80,7 +81,12 @@ export async function rabbitmqConnectQueue(this: IExecuteFunctions | ITriggerFun
 	});
 }
 
-export async function rabbitmqConnectExchange(this: IExecuteFunctions | ITriggerFunctions, exchange: string, type: string, options: IDataObject): Promise<amqplib.Channel> {
+export async function rabbitmqConnectExchange(
+	this: IExecuteFunctions | ITriggerFunctions,
+	exchange: string,
+	type: string,
+	options: IDataObject,
+): Promise<amqplib.Channel> {
 	const channel = await rabbitmqConnect.call(this, options);
 
 	return new Promise(async (resolve, reject) => {
@@ -106,7 +112,7 @@ export class MessageTracker {
 			return;
 		}
 
-		const index = this.messages.findIndex(value => value !== message.fields.deliveryTag);
+		const index = this.messages.findIndex((value) => value !== message.fields.deliveryTag);
 		this.messages.splice(index);
 	}
 

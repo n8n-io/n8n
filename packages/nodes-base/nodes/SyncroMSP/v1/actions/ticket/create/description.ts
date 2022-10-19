@@ -1,6 +1,4 @@
-import {
-	TicketProperties,
-} from '../../Interfaces';
+import { TicketProperties } from '../../Interfaces';
 
 export const ticketCreateDescription: TicketProperties = [
 	{
@@ -10,12 +8,8 @@ export const ticketCreateDescription: TicketProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -27,12 +21,8 @@ export const ticketCreateDescription: TicketProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -44,12 +34,8 @@ export const ticketCreateDescription: TicketProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'ticket',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['ticket'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -134,7 +120,6 @@ export const ticketCreateDescription: TicketProperties = [
 						name: 'Waiting on Customer',
 						value: 'Waiting on Customer',
 					},
-
 				],
 				default: 'New',
 				description: 'If used along the parameter Search Query, only Search Query will be applied',

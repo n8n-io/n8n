@@ -21,7 +21,7 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.expression') }}
 						</div>
-						<div class="expression-editor">
+						<div class="expression-editor ph-no-capture">
 							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
 						</div>
 					</div>
@@ -30,7 +30,9 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.result') }}
 						</div>
-						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
+						<div class="ph-no-capture">
+							<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
+						</div>
 					</div>
 
 				</el-col>
@@ -51,10 +53,12 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { hasExpressionMapping } from './helpers';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
 	genericHelpers,
+	debounceHelper,
 ).extend({
 	name: 'ExpressionEdit',
 	props: [
@@ -167,14 +171,16 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
-				this.$telemetry.track('User closed Expression Editor', {
+				const telemetryPayload = {
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
 					workflow_id: this.$store.getters.workflowId,
 					source: this.eventSource,
 					session_id: this.$store.getters['ui/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),
 					has_mapping: hasExpressionMapping(this.value),
-				});
+				};
+				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
+				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},
@@ -223,7 +229,7 @@ export default mixins(
 
 	background-color: var(--color-background-base);
 	color: var(--color-text-dark);
-	border-bottom: 1px solid $--color-primary;
+	border-bottom: 1px solid $color-primary;
 	margin-bottom: 1em;
 
 	.headline {
@@ -238,7 +244,7 @@ export default mixins(
 		text-align: center;
 		line-height: 1.5;
 		padding-top: 1.5em;
-		color: $--color-primary;
+		color: $color-primary;
 	}
 }
 

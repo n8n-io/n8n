@@ -9,9 +9,11 @@
 </template>
 
 <script>
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-pulse',
-};
+});
 </script>
 
 <style lang="scss" module>

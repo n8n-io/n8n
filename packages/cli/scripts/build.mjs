@@ -14,7 +14,12 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 shell.rm('-rf', path.resolve(ROOT_DIR, 'dist'));
 
-shell.exec('tsc');
+const tscCompilation = shell.exec('tsc', { silent: true })
+if (tscCompilation.code !== 0) {
+	shell.echo('Typescript Compilation failed:');
+	shell.echo(tscCompilation.stdout);
+	shell.exit(1);
+}
 
 if (userManagementEnabled) {
 	copyUserManagementEmailTemplates();

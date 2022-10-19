@@ -1,7 +1,8 @@
 /* eslint-disable no-await-in-loop */
 import { readFileSync, rmSync } from 'fs';
 import { UserSettings } from 'n8n-core';
-import { QueryRunner } from 'typeorm/query-runner/QueryRunner';
+import type { QueryRunner } from 'typeorm/query-runner/QueryRunner';
+import config from '../../../config';
 import { getLogger } from '../../Logger';
 
 const PERSONALIZATION_SURVEY_FILENAME = 'personalizationSurvey.json';
@@ -35,28 +36,36 @@ export function loadSurveyFromDisk(): string | null {
 }
 
 let logFinishTimeout: NodeJS.Timeout;
-const disableLogging = process.argv[1].split('/').includes('jest');
 
-export function logMigrationStart(migrationName: string): void {
+export function logMigrationStart(
+	migrationName: string,
+	disableLogging = process.env.NODE_ENV === 'test',
+): void {
 	if (disableLogging) return;
-	const logger = getLogger();
+
 	if (!logFinishTimeout) {
-		logger.warn('Migrations in progress, please do NOT stop the process.');
+		getLogger().warn('Migrations in progress, please do NOT stop the process.');
 	}
-	logger.debug(`Starting migration ${migrationName}`);
+
+	getLogger().debug(`Starting migration ${migrationName}`);
+
 	clearTimeout(logFinishTimeout);
 }
 
-export function logMigrationEnd(migrationName: string): void {
+export function logMigrationEnd(
+	migrationName: string,
+	disableLogging = process.env.NODE_ENV === 'test',
+): void {
 	if (disableLogging) return;
-	const logger = getLogger();
-	logger.debug(`Finished migration ${migrationName}`);
+
+	getLogger().debug(`Finished migration ${migrationName}`);
+
 	logFinishTimeout = setTimeout(() => {
-		logger.warn('Migrations finished.');
+		getLogger().warn('Migrations finished.');
 	}, 100);
 }
 
-export function chunkQuery(query: string, limit: number, offset = 0): string {
+export function batchQuery(query: string, limit: number, offset = 0): string {
 	return `
 			${query}
 			LIMIT ${limit}
@@ -64,7 +73,7 @@ export function chunkQuery(query: string, limit: number, offset = 0): string {
 		`;
 }
 
-export async function runChunked(
+export async function runInBatches(
 	queryRunner: QueryRunner,
 	query: string,
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -72,14 +81,42 @@ export async function runChunked(
 	limit = 100,
 ): Promise<void> {
 	let offset = 0;
-	let chunkedQuery: string;
-	let chunkedQueryResults: unknown[];
+	let batchedQuery: string;
+	let batchedQueryResults: unknown[];
+
+	// eslint-disable-next-line no-param-reassign
+	if (query.trim().endsWith(';')) query = query.trim().slice(0, -1);
 
 	do {
-		chunkedQuery = chunkQuery(query, limit, offset);
-		chunkedQueryResults = (await queryRunner.query(chunkedQuery)) as unknown[];
+		batchedQuery = batchQuery(query, limit, offset);
+		batchedQueryResults = (await queryRunner.query(batchedQuery)) as unknown[];
 		// pass a copy to prevent errors from mutation
-		await operation([...chunkedQueryResults]);
+		await operation([...batchedQueryResults]);
 		offset += limit;
-	} while (chunkedQueryResults.length === limit);
+	} while (batchedQueryResults.length === limit);
 }
+
+export const getTablePrefix = () => {
+	const tablePrefix = config.getEnv('database.tablePrefix');
+
+	if (config.getEnv('database.type') === 'postgresdb') {
+		const schema = config.getEnv('database.postgresdb.schema');
+		return [schema, tablePrefix].join('.');
+	}
+
+	return tablePrefix;
+};
+
+export const escapeQuery = (
+	queryRunner: QueryRunner,
+	query: string,
+	params: { [property: string]: unknown },
+): [string, unknown[]] =>
+	queryRunner.connection.driver.escapeQueryWithParameters(
+		query,
+		{
+			pinData: params.pinData,
+			id: params.id,
+		},
+		{},
+	);

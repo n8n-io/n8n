@@ -1,6 +1,4 @@
-import {
-	ReactionProperties,
-} from '../../Interfaces';
+import { ReactionProperties } from '../../Interfaces';
 
 export const reactionCreateDescription: ReactionProperties = [
 	{
@@ -15,15 +13,12 @@ export const reactionCreateDescription: ReactionProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['reaction'],
+				operation: ['create'],
 			},
 		},
-		description: 'ID of the user sending the reaction. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the user sending the reaction. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Post ID',
@@ -34,15 +29,12 @@ export const reactionCreateDescription: ReactionProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['reaction'],
+				operation: ['create'],
 			},
 		},
-		description: 'ID of the post to react to. Obtainable from the post link: <code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
+		description:
+			'ID of the post to react to. Obtainable from the post link: <code>https://mattermost.internal.n8n.io/[server]/pl/[postId]</code>',
 	},
 	{
 		displayName: 'Emoji Name',
@@ -52,12 +44,8 @@ export const reactionCreateDescription: ReactionProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'reaction',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['reaction'],
+				operation: ['create'],
 			},
 		},
 		description: 'Emoji to use for this reaction',

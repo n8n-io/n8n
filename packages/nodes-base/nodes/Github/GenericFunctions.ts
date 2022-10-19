@@ -1,25 +1,22 @@
 import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 /**
  * Make an API request to Github
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
-export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: object, query?: object, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function githubApiRequest(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	body: object,
+	query?: object,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
 		headers: {
@@ -36,7 +33,11 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 	}
 
 	try {
-		const authenticationMethod = this.getNodeParameter('authentication', 0, 'accessToken') as string;
+		const authenticationMethod = this.getNodeParameter(
+			'authentication',
+			0,
+			'accessToken',
+		) as string;
 		let credentialType = '';
 
 		if (authenticationMethod === 'accessToken') {
@@ -59,20 +60,19 @@ export async function githubApiRequest(this: IHookFunctions | IExecuteFunctions,
 	}
 }
 
-
-
 /**
  * Returns the SHA of the given file
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} owner
- * @param {string} repository
- * @param {string} filePath
- * @param {string} [branch]
- * @returns {Promise<any>}
  */
-export async function getFileSha(this: IHookFunctions | IExecuteFunctions, owner: string, repository: string, filePath: string, branch?: string): Promise<any> { // tslint:disable-line:no-any
+export async function getFileSha(
+	this: IHookFunctions | IExecuteFunctions,
+	owner: string,
+	repository: string,
+	filePath: string,
+	branch?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const getBody: IDataObject = {};
 	if (branch !== undefined) {
 		getBody.branch = branch;
@@ -86,8 +86,15 @@ export async function getFileSha(this: IHookFunctions | IExecuteFunctions, owner
 	return responseData.sha;
 }
 
-export async function githubApiRequestAllItems(this: IHookFunctions | IExecuteFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function githubApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -96,11 +103,11 @@ export async function githubApiRequestAllItems(this: IHookFunctions | IExecuteFu
 	query.page = 1;
 
 	do {
-		responseData = await githubApiRequest.call(this, method, endpoint, body, query, { resolveWithFullResponse: true });
+		responseData = await githubApiRequest.call(this, method, endpoint, body, query, {
+			resolveWithFullResponse: true,
+		});
 		query.page++;
 		returnData.push.apply(returnData, responseData.body);
-	} while (
-		responseData.headers.link && responseData.headers.link.includes('next')
-	);
+	} while (responseData.headers.link && responseData.headers.link.includes('next'));
 	return returnData;
 }

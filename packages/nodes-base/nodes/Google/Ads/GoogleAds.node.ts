@@ -1,12 +1,6 @@
-import {
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	campaignFields,
-	campaignOperations,
-} from './CampaignDescription';
+import { campaignFields, campaignOperations } from './CampaignDescription';
 
 export class GoogleAds implements INodeType {
 	description: INodeTypeDescription = {
@@ -61,15 +55,14 @@ export class GoogleAds implements INodeType {
 			//-------------------------------
 			...campaignOperations,
 			{
-				displayName: 'Divide field names expressed with <i>micros</i> by 1,000,000 to get the actual value',
+				displayName:
+					'Divide field names expressed with <i>micros</i> by 1,000,000 to get the actual value',
 				name: 'campaigsNotice',
 				type: 'notice',
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'campaign',
-						],
+						resource: ['campaign'],
 					},
 				},
 			},

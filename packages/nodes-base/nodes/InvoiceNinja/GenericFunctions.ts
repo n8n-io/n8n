@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,18 +7,11 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
-	JsonObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	get,
-} from 'lodash';
+import { get } from 'lodash';
 
-export const eventID: {[key: string]: string} = {
+export const eventID: { [key: string]: string } = {
 	create_client: '1',
 	create_invoice: '2',
 	create_quote: '3',
@@ -28,7 +19,15 @@ export const eventID: {[key: string]: string} = {
 	create_vendor: '5',
 };
 
-export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query?: IDataObject, uri?: string): Promise<any> { // tslint:disable-line:no-any
+export async function invoiceNinjaApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+): Promise<any> {
+	// tslint:disable-line:no-any
 	const credentials = await this.getCredentials('invoiceNinjaApi');
 
 	if (credentials === undefined) {
@@ -51,11 +50,19 @@ export async function invoiceNinjaApiRequest(this: IHookFunctions | IExecuteFunc
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'invoiceNinjaApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), (error as JsonObject));
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
-export async function invoiceNinjaApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function invoiceNinjaApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	body: any = {},
+	query: IDataObject = {},
+): Promise<any> {
+	// tslint:disable-line:no-any
 
 	const returnData: IDataObject[] = [];
 

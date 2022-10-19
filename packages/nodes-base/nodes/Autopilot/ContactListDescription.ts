@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactListOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const contactListOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
+				resource: ['contactList'],
 			},
 		},
 		options: [
@@ -29,10 +25,10 @@ export const contactListOperations: INodeProperties[] = [
 				action: 'Check if a contact list exists',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts on list',
-				action: 'Get all contact lists',
+				description: 'Get many contacts from a list',
+				action: 'Get many contact lists',
 			},
 			{
 				name: 'Remove',
@@ -46,7 +42,6 @@ export const contactListOperations: INodeProperties[] = [
 ];
 
 export const contactListFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 contactList:add                            */
 	/* -------------------------------------------------------------------------- */
@@ -60,19 +55,13 @@ export const contactListFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-					'remove',
-					'exist',
-					'getAll',
-				],
-				resource: [
-					'contactList',
-				],
+				operation: ['add', 'remove', 'exist', 'getAll'],
+				resource: ['contactList'],
 			},
 		},
 		default: '',
-		description: 'ID of the list to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'ID of the list to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -81,14 +70,8 @@ export const contactListFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'add',
-					'remove',
-					'exist',
-				],
-				resource: [
-					'contactList',
-				],
+				operation: ['add', 'remove', 'exist'],
+				resource: ['contactList'],
 			},
 		},
 		default: '',
@@ -104,12 +87,8 @@ export const contactListFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contactList',
-				],
+				operation: ['getAll'],
+				resource: ['contactList'],
 			},
 		},
 		default: false,
@@ -121,15 +100,9 @@ export const contactListFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contactList',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['contactList'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

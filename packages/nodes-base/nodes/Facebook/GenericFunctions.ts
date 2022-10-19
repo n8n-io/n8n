@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,16 +8,26 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-import {
-	capitalCase,
-} from 'change-case';
+import { capitalCase } from 'change-case';
 
-export async function facebookApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function facebookApiRequest(
+	this:
+		| IHookFunctions
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IWebhookFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let credentials;
 
 	if (this.getNode().name.includes('Trigger')) {
@@ -51,7 +59,7 @@ export async function facebookApiRequest(this: IHookFunctions | IExecuteFunction
 
 export function getFields(object: string) {
 	const data = {
-		'adAccount': [
+		adAccount: [
 			{
 				value: 'in_process_ad_objects',
 			},
@@ -59,7 +67,7 @@ export function getFields(object: string) {
 				value: 'with_issues_ad_objects',
 			},
 		],
-		'page': [
+		page: [
 			{
 				value: 'affiliation',
 				description: `Describes changes to a page's Affliation profile field`,
@@ -224,7 +232,7 @@ export function getFields(object: string) {
 				description: `Describes changes to a page's Website profile field`,
 			},
 		],
-		'application': [
+		application: [
 			{
 				value: 'ad_account',
 			},
@@ -253,7 +261,7 @@ export function getFields(object: string) {
 				value: 'plugin_comment_reply',
 			},
 		],
-		'certificateTransparency': [
+		certificateTransparency: [
 			{
 				value: 'certificate',
 			},
@@ -261,7 +269,7 @@ export function getFields(object: string) {
 				value: 'phishing',
 			},
 		],
-		'instagram': [
+		instagram: [
 			{
 				value: 'comments',
 				description: 'Notifies you when an Instagram User comments on a media object that you own',
@@ -271,7 +279,8 @@ export function getFields(object: string) {
 			},
 			{
 				value: 'mentions',
-				description: 'Notifies you when an Instagram User @mentions you in a comment or caption on a media object that you do not own',
+				description:
+					'Notifies you when an Instagram User @mentions you in a comment or caption on a media object that you do not own',
 			},
 			{
 				value: 'messages',
@@ -286,7 +295,7 @@ export function getFields(object: string) {
 				value: 'story_insights',
 			},
 		],
-		'permissions': [
+		permissions: [
 			{
 				value: 'bookmarked',
 				description: 'Whether the user has added or removed the app bookmark',
@@ -446,7 +455,7 @@ export function getFields(object: string) {
 				value: 'social_ads',
 			},
 		],
-		'users': [
+		users: [
 			{
 				value: 'about',
 			},
@@ -523,7 +532,7 @@ export function getFields(object: string) {
 				value: 'videos',
 			},
 		],
-		'whatsappBusinessAccount': [
+		whatsappBusinessAccount: [
 			{
 				value: 'message_template_status_update',
 			},
@@ -540,14 +549,20 @@ export function getFields(object: string) {
 				value: 'account_update',
 			},
 		],
-	// tslint:disable-next-line: no-any
+		// tslint:disable-next-line: no-any
 	} as { [key: string]: any };
 
-	return [{ name: '*', value: '*' }].concat(data[object as string] || [])
-		.map((fieldObject: IDataObject) =>
-			({ ...fieldObject, name: (fieldObject.value !== '*') ? capitalCase(fieldObject.value as string) : fieldObject.value }));
+	return [{ name: '*', value: '*' }]
+		.concat(data[object as string] || [])
+		.map((fieldObject: IDataObject) => ({
+			...fieldObject,
+			name:
+				fieldObject.value !== '*' ? capitalCase(fieldObject.value as string) : fieldObject.value,
+		}));
 }
 
 export function getAllFields(object: string) {
-	return getFields(object).filter((field: IDataObject) => field.value !== '*').map((field: IDataObject) => field.value);
+	return getFields(object)
+		.filter((field: IDataObject) => field.value !== '*')
+		.map((field: IDataObject) => field.value);
 }

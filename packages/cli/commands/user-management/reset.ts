@@ -1,5 +1,6 @@
 import { Not } from 'typeorm';
 import { Db } from '../../src';
+import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import { BaseCommand } from '../BaseCommand';
 
 export class Reset extends BaseCommand {
@@ -30,6 +31,20 @@ export class Reset extends BaseCommand {
 
 		await Db.collections.User.delete({ id: Not(owner.id) });
 		await Db.collections.User.save(Object.assign(owner, this.defaultUserProps));
+
+		const danglingCredentials: CredentialsEntity[] =
+			(await Db.collections.Credentials.createQueryBuilder('credentials')
+				.leftJoinAndSelect('credentials.shared', 'shared')
+				.where('shared.credentialsId is null')
+				.getMany()) as CredentialsEntity[];
+		const newSharedCredentials = danglingCredentials.map((credentials) =>
+			Db.collections.SharedCredentials.create({
+				credentials,
+				user: owner,
+				role: ownerCredentialRole,
+			}),
+		);
+		await Db.collections.SharedCredentials.save(newSharedCredentials);
 
 		await Db.collections.Settings.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },

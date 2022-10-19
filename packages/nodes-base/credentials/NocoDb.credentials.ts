@@ -11,7 +11,7 @@ export class NocoDb implements ICredentialType {
 	documentationUrl = 'nocoDb';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'API Token',
+			displayName: 'User Token',
 			name: 'apiToken',
 			type: 'string',
 			default: '',

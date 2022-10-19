@@ -1,6 +1,4 @@
-import {
-	RmmProperties,
-} from '../../Interfaces';
+import { RmmProperties } from '../../Interfaces';
 
 export const rmmCreateDescription: RmmProperties = [
 	{
@@ -9,12 +7,8 @@ export const rmmCreateDescription: RmmProperties = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['rmm'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -25,12 +19,8 @@ export const rmmCreateDescription: RmmProperties = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['rmm'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -41,12 +31,8 @@ export const rmmCreateDescription: RmmProperties = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['rmm'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -58,12 +44,8 @@ export const rmmCreateDescription: RmmProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'rmm',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['rmm'],
+				operation: ['create'],
 			},
 		},
 		default: {},

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const mmsOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const mmsOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'mms',
-				],
+				resource: ['mms'],
 			},
 		},
 		options: [
@@ -41,12 +37,8 @@ export const mmsFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'mms',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['mms'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -60,12 +52,8 @@ export const mmsFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'send',
-				],
-				resource: [
-					'mms',
-				],
+				operation: ['send'],
+				resource: ['mms'],
 			},
 		},
 	},
@@ -77,12 +65,8 @@ export const mmsFields: INodeProperties[] = [
 		description: 'Message to send',
 		displayOptions: {
 			show: {
-				resource: [
-					'mms',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['mms'],
+				operation: ['send'],
 			},
 		},
 	},
@@ -93,12 +77,8 @@ export const mmsFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'mms',
-				],
-				operation: [
-					'send',
-				],
+				resource: ['mms'],
+				operation: ['send'],
 			},
 		},
 		description: 'Comma-separated list of media URLs of the files from your file server',

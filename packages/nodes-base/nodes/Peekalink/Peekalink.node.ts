@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	peekalinkApiRequest,
-} from './GenericFunctions';
+import { peekalinkApiRequest } from './GenericFunctions';
 
 export class Peekalink implements INodeType {
 	description: INodeTypeDescription = {

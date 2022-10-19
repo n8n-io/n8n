@@ -77,7 +77,8 @@ export default mixins(showMessage).extend({
 		};
 	},
 	mounted() {
-		const select = this.$refs.select as (Vue | undefined);
+		// @ts-ignore
+		const select = (this.$refs.select && this.$refs.select.$refs && this.$refs.select.$refs.innerSelect) as (Vue | undefined);
 		if (select) {
 			const input = select.$refs.input as (Element | undefined);
 			if (input) {
@@ -179,31 +180,19 @@ export default mixins(showMessage).extend({
 			else if (tags && tags[0] && tags[0].hoverItem) {
 				// @ts-ignore
 				tags[0].hoverItem();
-
-				// @ts-ignore
-				if (tags[0] && tags[0].$el && tags[0].$el.scrollIntoView) {
-					// @ts-ignore
-					tags[0].$el.scrollIntoView();
-				}
 			}
 		},
 		focusOnTag(tagId: string) {
 			const tagOptions = (this.$refs.tag as Vue[]) || [];
 			if (tagOptions && tagOptions.length) {
 				const added = tagOptions.find((ref: any) => ref.value === tagId); // tslint:disable-line:no-any
-				// @ts-ignore // focus on newly created item
-				if (added && added.$el && added.$el.scrollIntoView && added.hoverItem) {
-					// @ts-ignore
-					added.hoverItem();
-					added.$el.scrollIntoView();
-				}
 			}
 		},
 		focusOnInput() {
-			const select = this.$refs.select as Vue;
-			const input = select && select.$refs.input as HTMLElement;
-			if (input && input.focus) {
-				input.focus();
+			const select = (this.$refs.select) as (Vue | undefined);
+			if (select) {
+				// @ts-ignore
+				select.focusOnInput();
 				this.focused = true;
 			}
 		},
@@ -256,6 +245,23 @@ $--max-input-height: 60px;
 </style>
 
 <style lang="scss">
+.tags-container {
+	.el-tag {
+		padding: 1px var(--spacing-4xs);
+		color: var(--color-text-dark);
+		background-color: var(--color-background-base);
+		border-radius: var(--border-radius-base);
+		font-size: var(--font-size-2xs);
+		border: 0;
+
+		.el-tag__close {
+			max-height: 14px;
+			max-width: 14px;
+			line-height: 14px;
+		}
+	}
+}
+
 .tags-dropdown {
 	$--item-font-size: 14px;
 	$--item-line-height: 18px;
@@ -316,7 +322,7 @@ $--max-input-height: 60px;
 		font-size: $--item-font-size;
 
 		&.is-disabled {
-			color: $--custom-font-light;
+			color: $custom-font-light;
 			cursor: default;
 		}
 
@@ -336,7 +342,7 @@ $--max-input-height: 60px;
 		}
 
 		&.ops {
-			color: $--color-primary;
+			color: $color-primary;
 			cursor: pointer;
 
 			:first-child {

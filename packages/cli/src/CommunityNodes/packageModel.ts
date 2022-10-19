@@ -4,24 +4,25 @@ import { Db } from '..';
 import { InstalledNodes } from '../databases/entities/InstalledNodes';
 import { InstalledPackages } from '../databases/entities/InstalledPackages';
 
-export async function searchInstalledPackage(
+export async function findInstalledPackage(
 	packageName: string,
 ): Promise<InstalledPackages | undefined> {
-	const installedPackage = await Db.collections.InstalledPackages.findOne(packageName, {
-		relations: ['installedNodes'],
-	});
-	return installedPackage;
+	return Db.collections.InstalledPackages.findOne(packageName, { relations: ['installedNodes'] });
+}
+
+export async function isPackageInstalled(packageName: string): Promise<boolean> {
+	const installedPackage = await findInstalledPackage(packageName);
+	return installedPackage !== undefined;
 }
 
 export async function getAllInstalledPackages(): Promise<InstalledPackages[]> {
-	const installedPackages = await Db.collections.InstalledPackages.find({
-		relations: ['installedNodes'],
-	});
-	return installedPackages;
+	return Db.collections.InstalledPackages.find({ relations: ['installedNodes'] });
 }
 
-export async function removePackageFromDatabase(packageName: InstalledPackages): Promise<void> {
-	void (await Db.collections.InstalledPackages.remove(packageName));
+export async function removePackageFromDatabase(
+	packageName: InstalledPackages,
+): Promise<InstalledPackages> {
+	return Db.collections.InstalledPackages.remove(packageName);
 }
 
 export async function persistInstalledPackageData(

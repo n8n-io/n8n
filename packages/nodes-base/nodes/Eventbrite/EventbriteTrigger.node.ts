@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,10 +10,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	eventbriteApiRequest,
-	eventbriteApiRequestAllItems,
-} from './GenericFunctions';
+import { eventbriteApiRequest, eventbriteApiRequestAllItems } from './GenericFunctions';
 
 export class EventbriteTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,9 +33,7 @@ export class EventbriteTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'privateKey',
-						],
+						authentication: ['privateKey'],
 					},
 				},
 			},
@@ -50,9 +42,7 @@ export class EventbriteTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -91,7 +81,8 @@ export class EventbriteTrigger implements INodeType {
 					loadOptionsMethod: 'getOrganizations',
 				},
 				default: '',
-				description: 'The Eventbrite Organization to work on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The Eventbrite Organization to work on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Event Name or ID',
@@ -99,13 +90,12 @@ export class EventbriteTrigger implements INodeType {
 				type: 'options',
 				required: true,
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'organization',
-					],
+					loadOptionsDependsOn: ['organization'],
 					loadOptionsMethod: 'getEvents',
 				},
 				default: '',
-				description: 'Limit the triggers to this event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Limit the triggers to this event. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Actions',
@@ -183,7 +173,8 @@ export class EventbriteTrigger implements INodeType {
 				type: 'boolean',
 				default: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically.',
+				description:
+					'By default does the webhook-data only contain the URL to receive the object data manually. If this option gets activated, it will resolve the data automatically.',
 			},
 		],
 	};
@@ -194,7 +185,12 @@ export class EventbriteTrigger implements INodeType {
 			// select them easily
 			async getOrganizations(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const organizations = await eventbriteApiRequestAllItems.call(this, 'organizations', 'GET', '/users/me/organizations');
+				const organizations = await eventbriteApiRequestAllItems.call(
+					this,
+					'organizations',
+					'GET',
+					'/users/me/organizations',
+				);
 				for (const organization of organizations) {
 					const organizationName = organization.name;
 					const organizationId = organization.id;
@@ -210,7 +206,12 @@ export class EventbriteTrigger implements INodeType {
 			async getEvents(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [{ name: 'All', value: 'all' }];
 				const organization = this.getCurrentNodeParameter('organization');
-				const events = await eventbriteApiRequestAllItems.call(this, 'events', 'GET', `/organizations/${organization}/events`);
+				const events = await eventbriteApiRequestAllItems.call(
+					this,
+					'events',
+					'GET',
+					`/organizations/${organization}/events`,
+				);
 				for (const event of events) {
 					const eventName = event.name.text;
 					const eventId = event.id;
@@ -279,7 +280,7 @@ export class EventbriteTrigger implements INodeType {
 				const endpoint = `/webhooks/${webhookData.webhookId}/`;
 				try {
 					responseData = await eventbriteApiRequest.call(this, 'DELETE', endpoint);
-				} catch(error) {
+				} catch (error) {
 					return false;
 				}
 				if (!responseData.success) {
@@ -295,7 +296,9 @@ export class EventbriteTrigger implements INodeType {
 		const req = this.getRequestObject();
 
 		if (req.body.api_url === undefined) {
-			throw new NodeApiError(this.getNode(), req.body, { message: 'The received data does not contain required "api_url" property!' });
+			throw new NodeApiError(this.getNode(), req.body, {
+				message: 'The received data does not contain required "api_url" property!',
+			});
 		}
 
 		const resolveData = this.getNodeParameter('resolveData', false) as boolean;
@@ -303,9 +306,7 @@ export class EventbriteTrigger implements INodeType {
 		if (resolveData === false) {
 			// Return the data as it got received
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray(req.body),
-				],
+				workflowData: [this.helpers.returnJsonArray(req.body)],
 			};
 		}
 
@@ -313,18 +314,24 @@ export class EventbriteTrigger implements INodeType {
 			return {
 				workflowData: [
 					this.helpers.returnJsonArray({
-						placeholder: 'Test received. To display actual data of object get the webhook triggered by performing the action which triggers it.',
+						placeholder:
+							'Test received. To display actual data of object get the webhook triggered by performing the action which triggers it.',
 					}),
 				],
 			};
 		}
 
-		const responseData = await eventbriteApiRequest.call(this, 'GET', '', {}, undefined, req.body.api_url);
+		const responseData = await eventbriteApiRequest.call(
+			this,
+			'GET',
+			'',
+			{},
+			undefined,
+			req.body.api_url,
+		);
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(responseData),
-			],
+			workflowData: [this.helpers.returnJsonArray(responseData)],
 		};
 	}
 }

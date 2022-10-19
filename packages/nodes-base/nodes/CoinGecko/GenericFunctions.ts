@@ -1,22 +1,23 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function coinGeckoApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
-	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function coinGeckoApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -35,14 +36,21 @@ export async function coinGeckoApiRequest(this: IExecuteFunctions | IExecuteSing
 
 		//@ts-ignore
 		return await this.helpers.request.call(this, options);
-
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function coinGeckoRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function coinGeckoRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -58,9 +66,7 @@ export async function coinGeckoRequestAllItems(this: IExecuteFunctions | ILoadOp
 			respData = responseData[propertyName];
 		}
 		returnData.push.apply(returnData, respData);
-	} while (
-		respData.length !== 0
-	);
+	} while (respData.length !== 0);
 
 	return returnData;
 }

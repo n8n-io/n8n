@@ -1,21 +1,9 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	spontitApiRequest,
-} from './GenericFunctions';
+import { spontitApiRequest } from './GenericFunctions';
 
-import {
-	pushFields,
-	pushOperations,
-} from './PushDescription';
+import { pushFields, pushOperations } from './PushDescription';
 
 import moment from 'moment';
 

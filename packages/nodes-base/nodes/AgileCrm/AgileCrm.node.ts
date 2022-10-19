@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -10,42 +8,26 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	contactFields,
-	contactOperations
-} from './ContactDescription';
+import { contactFields, contactOperations } from './ContactDescription';
+
+import { companyFields, companyOperations } from './CompanyDescription';
+
+import { dealFields, dealOperations } from './DealDescription';
+
+import { IContact, IContactUpdate } from './ContactInterface';
 
 import {
-	companyFields,
-	companyOperations
-} from './CompanyDescription';
-
-import {
-	dealFields,
-	dealOperations
-} from './DealDescription';
-
-import {
-	IContact,
-	IContactUpdate,
-} from './ContactInterface';
-
-import {
-	agileCrmApiRequest, agileCrmApiRequestAllItems,
+	agileCrmApiRequest,
+	agileCrmApiRequestAllItems,
 	agileCrmApiRequestUpdate,
 	getFilterRules,
 	simplifyResponse,
 	validateJSON,
 } from './GenericFunctions';
 
-import {
-	IDeal,
-} from './DealInterface';
+import { IDeal } from './DealInterface';
 
-import {
-	IFilter,
-	ISearchConditions,
-} from './FilterInterface';
+import { IFilter, ISearchConditions } from './FilterInterface';
 
 export class AgileCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -104,11 +86,9 @@ export class AgileCrm implements INodeType {
 			...dealOperations,
 			...dealFields,
 		],
-
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		let responseData;
@@ -116,7 +96,6 @@ export class AgileCrm implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
-
 			if (resource === 'contact' || resource === 'company') {
 				const idGetter = resource === 'contact' ? 'contactId' : 'companyId';
 
@@ -125,18 +104,19 @@ export class AgileCrm implements INodeType {
 
 					const endpoint = `api/contacts/${contactId}`;
 					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
-
 				} else if (operation === 'delete') {
 					const contactId = this.getNodeParameter(idGetter, i) as string;
 
 					const endpoint = `api/contacts/${contactId}`;
 					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
-
 				} else if (operation === 'getAll') {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const filterType = this.getNodeParameter('filterType', i) as string;
-					const sort = this.getNodeParameter('options.sort.sort', i, {}) as { direction: string, field: string };
+					const sort = this.getNodeParameter('options.sort.sort', i, {}) as {
+						direction: string;
+						field: string;
+					};
 					const body: IDataObject = {};
 					const filterJson: IFilter = {};
 
@@ -149,21 +129,31 @@ export class AgileCrm implements INodeType {
 					filterJson.contact_type = contactType;
 
 					if (filterType === 'manual') {
-						const conditions = this.getNodeParameter('filters.conditions', i, []) as ISearchConditions[];
+						const conditions = this.getNodeParameter(
+							'filters.conditions',
+							i,
+							[],
+						) as ISearchConditions[];
 						const matchType = this.getNodeParameter('matchType', i) as string;
 						let rules;
 						if (conditions.length !== 0) {
 							rules = getFilterRules(conditions, matchType);
 							Object.assign(filterJson, rules);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'At least one condition must be added.', { itemIndex: i });
+							throw new NodeOperationError(
+								this.getNode(),
+								'At least one condition must be added.',
+								{ itemIndex: i },
+							);
 						}
 					} else if (filterType === 'json') {
 						const filterJsonRules = this.getNodeParameter('filterJson', i) as string;
 						if (validateJSON(filterJsonRules) !== undefined) {
 							Object.assign(filterJson, JSON.parse(filterJsonRules) as IFilter);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'Filter (JSON) must be a valid json', { itemIndex: i });
+							throw new NodeOperationError(this.getNode(), 'Filter (JSON) must be a valid json', {
+								itemIndex: i,
+							});
 						}
 					}
 					body.filterJson = JSON.stringify(filterJson);
@@ -178,16 +168,31 @@ export class AgileCrm implements INodeType {
 
 					if (returnAll) {
 						body.page_size = 100;
-						responseData = await agileCrmApiRequestAllItems.call(this, 'POST', `api/filters/filter/dynamic-filter`, body, undefined, undefined, true);
+						responseData = await agileCrmApiRequestAllItems.call(
+							this,
+							'POST',
+							`api/filters/filter/dynamic-filter`,
+							body,
+							undefined,
+							undefined,
+							true,
+						);
 					} else {
 						body.page_size = this.getNodeParameter('limit', 0) as number;
-						responseData = await agileCrmApiRequest.call(this, 'POST', `api/filters/filter/dynamic-filter`, body, undefined, undefined, true);
+						responseData = await agileCrmApiRequest.call(
+							this,
+							'POST',
+							`api/filters/filter/dynamic-filter`,
+							body,
+							undefined,
+							undefined,
+							true,
+						);
 					}
 
 					if (simple) {
 						responseData = simplifyResponse(responseData);
 					}
-
 				} else if (operation === 'create') {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 					const body: IContact = {};
@@ -197,18 +202,17 @@ export class AgileCrm implements INodeType {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
 						if (additionalFieldsJson !== '') {
-
 							if (validateJSON(additionalFieldsJson) !== undefined) {
-
 								Object.assign(body, JSON.parse(additionalFieldsJson));
-
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									'Additional fields must be a valid JSON',
+									{ itemIndex: i },
+								);
 							}
 						}
-
 					} else {
-
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						// if company, add 'company' as type. default is person
@@ -254,7 +258,7 @@ export class AgileCrm implements INodeType {
 							}
 							if (additionalFields.emailOptions) {
 								//@ts-ignore
-								additionalFields.emailOptions.emailProperties.map(property => {
+								additionalFields.emailOptions.emailProperties.map((property) => {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
@@ -265,7 +269,7 @@ export class AgileCrm implements INodeType {
 							}
 							if (additionalFields.addressOptions) {
 								//@ts-ignore
-								additionalFields.addressOptions.addressProperties.map(property => {
+								additionalFields.addressOptions.addressProperties.map((property) => {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
@@ -277,7 +281,7 @@ export class AgileCrm implements INodeType {
 
 							if (additionalFields.phoneOptions) {
 								//@ts-ignore
-								additionalFields.phoneOptions.phoneProperties.map(property => {
+								additionalFields.phoneOptions.phoneProperties.map((property) => {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
@@ -310,12 +314,11 @@ export class AgileCrm implements INodeType {
 									value: additionalFields.phone as string,
 								} as IDataObject);
 							}
-
 						}
 
 						if (additionalFields.websiteOptions) {
 							//@ts-ignore
-							additionalFields.websiteOptions.websiteProperties.map(property => {
+							additionalFields.websiteOptions.websiteProperties.map((property) => {
 								properties.push({
 									type: 'SYSTEM',
 									subtype: property.subtype as string,
@@ -327,7 +330,7 @@ export class AgileCrm implements INodeType {
 
 						if (additionalFields.customProperties) {
 							//@ts-ignore
-							additionalFields.customProperties.customProperty.map(property => {
+							additionalFields.customProperties.customProperty.map((property) => {
 								properties.push({
 									type: 'CUSTOM',
 									subtype: property.subtype as string,
@@ -337,11 +340,9 @@ export class AgileCrm implements INodeType {
 							});
 						}
 						body.properties = properties;
-
 					}
 					const endpoint = 'api/contacts';
 					responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body);
-
 				} else if (operation === 'update') {
 					const contactId = this.getNodeParameter(idGetter, i) as string;
 					const contactUpdatePayload: IContactUpdate = { id: contactId };
@@ -353,13 +354,14 @@ export class AgileCrm implements INodeType {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
 						if (additionalFieldsJson !== '') {
-
 							if (validateJSON(additionalFieldsJson) !== undefined) {
-
 								Object.assign(body, JSON.parse(additionalFieldsJson));
-
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									'Additional fields must be a valid JSON',
+									{ itemIndex: i },
+								);
 							}
 						}
 					} else {
@@ -374,7 +376,6 @@ export class AgileCrm implements INodeType {
 
 						// Contact specific properties
 						if (resource === 'contact') {
-
 							if (additionalFields.leadScore) {
 								body.lead_score = additionalFields.leadScore as string;
 							}
@@ -409,7 +410,7 @@ export class AgileCrm implements INodeType {
 							}
 							if (additionalFields.emailOptions) {
 								//@ts-ignore
-								additionalFields.emailOptions.emailProperties.map(property => {
+								additionalFields.emailOptions.emailProperties.map((property) => {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
@@ -420,7 +421,7 @@ export class AgileCrm implements INodeType {
 							}
 							if (additionalFields.addressOptions) {
 								//@ts-ignore
-								additionalFields.addressOptions.addressProperties.map(property => {
+								additionalFields.addressOptions.addressProperties.map((property) => {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
@@ -432,7 +433,7 @@ export class AgileCrm implements INodeType {
 
 							if (additionalFields.phoneOptions) {
 								//@ts-ignore
-								additionalFields.phoneOptions.phoneProperties.map(property => {
+								additionalFields.phoneOptions.phoneProperties.map((property) => {
 									properties.push({
 										type: 'SYSTEM',
 										subtype: property.subtype as string,
@@ -465,12 +466,11 @@ export class AgileCrm implements INodeType {
 									value: additionalFields.phone as string,
 								} as IDataObject);
 							}
-
 						}
 
 						if (additionalFields.websiteOptions) {
 							//@ts-ignore
-							additionalFields.websiteOptions.websiteProperties.map(property => {
+							additionalFields.websiteOptions.websiteProperties.map((property) => {
 								properties.push({
 									type: 'SYSTEM',
 									subtype: property.subtype as string,
@@ -481,7 +481,7 @@ export class AgileCrm implements INodeType {
 						}
 						if (additionalFields.customProperties) {
 							//@ts-ignore
-							additionalFields.customProperties.customProperty.map(property => {
+							additionalFields.customProperties.customProperty.map((property) => {
 								properties.push({
 									type: 'CUSTOM',
 									subtype: property.subtype as string,
@@ -496,35 +496,33 @@ export class AgileCrm implements INodeType {
 					Object.assign(contactUpdatePayload, body);
 
 					responseData = await agileCrmApiRequestUpdate.call(this, 'PUT', '', contactUpdatePayload);
-
 				}
-
 			} else if (resource === 'deal') {
-
 				if (operation === 'get') {
 					const dealId = this.getNodeParameter('dealId', i) as string;
 
 					const endpoint = `api/opportunity/${dealId}`;
 					responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, {});
-
 				} else if (operation === 'delete') {
 					const contactId = this.getNodeParameter('dealId', i) as string;
 
 					const endpoint = `api/opportunity/${contactId}`;
 					responseData = await agileCrmApiRequest.call(this, 'DELETE', endpoint, {});
-
 				} else if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 					const endpoint = 'api/opportunity';
 
 					if (returnAll) {
 						const limit = 100;
-						responseData = await agileCrmApiRequestAllItems.call(this, 'GET', endpoint, undefined, { page_size: limit });
+						responseData = await agileCrmApiRequestAllItems.call(this, 'GET', endpoint, undefined, {
+							page_size: limit,
+						});
 					} else {
 						const limit = this.getNodeParameter('limit', 0) as number;
-						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, undefined, { page_size: limit });
+						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, undefined, {
+							page_size: limit,
+						});
 					}
-
 				} else if (operation === 'create') {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
@@ -537,10 +535,13 @@ export class AgileCrm implements INodeType {
 							if (validateJSON(additionalFieldsJson) !== undefined) {
 								Object.assign(body, JSON.parse(additionalFieldsJson));
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									'Additional fields must be a valid JSON',
+									{ itemIndex: i },
+								);
 							}
 						}
-
 					} else {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -558,12 +559,10 @@ export class AgileCrm implements INodeType {
 							// @ts-ignore
 							body.customData = additionalFields.customData.customProperty as IDealCustomProperty[];
 						}
-
 					}
 
 					const endpoint = 'api/opportunity';
 					responseData = await agileCrmApiRequest.call(this, 'POST', endpoint, body);
-
 				} else if (operation === 'update') {
 					const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
@@ -573,16 +572,16 @@ export class AgileCrm implements INodeType {
 						const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
 
 						if (additionalFieldsJson !== '') {
-
 							if (validateJSON(additionalFieldsJson) !== undefined) {
-
 								Object.assign(body, JSON.parse(additionalFieldsJson));
-
 							} else {
-								throw new NodeOperationError(this.getNode(), 'Additional fields must be valid JSON', { itemIndex: i });
+								throw new NodeOperationError(
+									this.getNode(),
+									'Additional fields must be valid JSON',
+									{ itemIndex: i },
+								);
 							}
 						}
-
 					} else {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						body.id = this.getNodeParameter('dealId', i) as number;
@@ -607,7 +606,6 @@ export class AgileCrm implements INodeType {
 							// @ts-ignore
 							body.customData = additionalFields.customData.customProperty as IDealCustomProperty[];
 						}
-
 					}
 
 					const endpoint = 'api/opportunity/partial-update';
@@ -620,10 +618,8 @@ export class AgileCrm implements INodeType {
 			} else {
 				returnData.push(responseData as IDataObject);
 			}
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];
 	}
-
 }

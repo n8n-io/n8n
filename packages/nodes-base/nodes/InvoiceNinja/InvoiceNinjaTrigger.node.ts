@@ -1,14 +1,6 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 import {
 	eventID,
@@ -51,9 +43,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 				isNodeSetting: true,
 				displayOptions: {
 					show: {
-						'@version': [
-							1,
-						],
+						'@version': [1],
 					},
 				},
 				options: [
@@ -75,9 +65,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 				isNodeSetting: true,
 				displayOptions: {
 					show: {
-						'@version': [
-							2,
-						],
+						'@version': [2],
 					},
 				},
 				options: [
@@ -122,7 +110,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 				required: true,
 			},
 		],
-
 	};
 
 	// @ts-ignore (because of request)
@@ -139,10 +126,19 @@ export class InvoiceNinjaTrigger implements INodeType {
 				}
 
 				if (apiVersion === 'v5') {
-					const registeredWebhooks = await invoiceNinjaApiRequestAllItems.call(this, 'data',  'GET', '/webhooks') as IDataObject[];
+					const registeredWebhooks = (await invoiceNinjaApiRequestAllItems.call(
+						this,
+						'data',
+						'GET',
+						'/webhooks',
+					)) as IDataObject[];
 
 					for (const webhook of registeredWebhooks) {
-						if (webhook.target_url === webhookUrl && webhook.is_deleted === false && webhook.event_id === eventID[event]) {
+						if (
+							webhook.target_url === webhookUrl &&
+							webhook.is_deleted === false &&
+							webhook.event_id === eventID[event]
+						) {
 							webhookData.webhookId = webhook.id;
 							return true;
 						}
@@ -167,8 +163,8 @@ export class InvoiceNinjaTrigger implements INodeType {
 						event,
 					};
 
-					 responseData = await invoiceNinjaApiRequest.call(this, 'POST', endpoint, body);
-					 webhookData.webhookId = responseData.id as string;
+					responseData = await invoiceNinjaApiRequest.call(this, 'POST', endpoint, body);
+					webhookData.webhookId = responseData.id as string;
 				}
 
 				if (apiVersion === 'v5') {
@@ -179,8 +175,8 @@ export class InvoiceNinjaTrigger implements INodeType {
 						event_id: eventID[event],
 					};
 
-					 responseData = await invoiceNinjaApiRequest.call(this, 'POST', endpoint, body);
-					 webhookData.webhookId = responseData.data.id as string;
+					responseData = await invoiceNinjaApiRequest.call(this, 'POST', endpoint, body);
+					webhookData.webhookId = responseData.data.id as string;
 				}
 
 				if (webhookData.webhookId === undefined) {
@@ -197,7 +193,6 @@ export class InvoiceNinjaTrigger implements INodeType {
 				const hooksEndpoint = apiVersion === 'v4' ? '/hooks' : '/webhooks';
 
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `${hooksEndpoint}/${webhookData.webhookId}`;
 
 					try {
@@ -219,9 +214,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const bodyData = this.getBodyData();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

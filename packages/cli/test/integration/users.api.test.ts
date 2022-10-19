@@ -1,23 +1,26 @@
 import express from 'express';
 import validator from 'validator';
-import { v4 as uuid } from 'uuid';
 
-import { Db } from '../../src';
 import config from '../../config';
+import { Db } from '../../src';
+import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
+import type { Role } from '../../src/databases/entities/Role';
+import type { User } from '../../src/databases/entities/User';
+import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
+import { compareHash } from '../../src/UserManagement/UserManagementHelper';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
 import {
 	randomEmail,
-	randomValidPassword,
-	randomName,
 	randomInvalidPassword,
+	randomName,
+	randomValidPassword,
 } from './shared/random';
-import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
-import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
-import type { Role } from '../../src/databases/entities/Role';
-import type { User } from '../../src/databases/entities/User';
-import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import { compareHash } from '../../src/UserManagement/UserManagementHelper';
+import type { AuthAgent } from './shared/types';
+import * as utils from './shared/utils';
+
+import * as UserManagementMailer from '../../src/UserManagement/email/UserManagementMailer';
+import { NodeMailer } from '../../src/UserManagement/email/NodeMailer';
 
 jest.mock('../../src/telemetry');
 jest.mock('../../src/UserManagement/email/NodeMailer');
@@ -28,6 +31,7 @@ let globalMemberRole: Role;
 let globalOwnerRole: Role;
 let workflowOwnerRole: Role;
 let credentialOwnerRole: Role;
+let authAgent: AuthAgent;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
@@ -45,6 +49,8 @@ beforeAll(async () => {
 	globalMemberRole = fetchedGlobalMemberRole;
 	workflowOwnerRole = fetchedWorkflowOwnerRole;
 	credentialOwnerRole = fetchedCredentialOwnerRole;
+
+	authAgent = utils.createAuthAgent(app);
 
 	utils.initTestTelemetry();
 	utils.initTestLogger();
@@ -69,11 +75,10 @@ afterAll(async () => {
 
 test('GET /users should return all users', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	await testDb.createUser({ globalRole: globalMemberRole });
 
-	const response = await authOwnerAgent.get('/users');
+	const response = await authAgent(owner).get('/users');
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body.data.length).toBe(2);
@@ -109,7 +114,6 @@ test('GET /users should return all users', async () => {
 
 test('DELETE /users/:id should delete the user', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -147,7 +151,7 @@ test('DELETE /users/:id should delete the user', async () => {
 		credentials: savedCredential,
 	});
 
-	const response = await authOwnerAgent.delete(`/users/${userToDelete.id}`);
+	const response = await authAgent(owner).delete(`/users/${userToDelete.id}`);
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
@@ -178,9 +182,8 @@ test('DELETE /users/:id should delete the user', async () => {
 
 test('DELETE /users/:id should fail to delete self', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const response = await authOwnerAgent.delete(`/users/${owner.id}`);
+	const response = await authAgent(owner).delete(`/users/${owner.id}`);
 
 	expect(response.statusCode).toBe(400);
 
@@ -190,11 +193,10 @@ test('DELETE /users/:id should fail to delete self', async () => {
 
 test('DELETE /users/:id should fail if user to delete is transferee', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const { id: idToDelete } = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const response = await authOwnerAgent.delete(`/users/${idToDelete}`).query({
+	const response = await authAgent(owner).delete(`/users/${idToDelete}`).query({
 		transferId: idToDelete,
 	});
 
@@ -206,83 +208,49 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 
 test('DELETE /users/:id with transferId should perform transfer', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const userToDelete = await Db.collections.User.save({
-		id: uuid(),
-		email: randomEmail(),
-		password: randomValidPassword(),
-		firstName: randomName(),
-		lastName: randomName(),
-		createdAt: new Date(),
-		updatedAt: new Date(),
-		globalRole: workflowOwnerRole,
-	});
+	const userToDelete = await testDb.createUser({ globalRole: globalMemberRole });
 
-	const newWorkflow = new WorkflowEntity();
+	const savedWorkflow = await testDb.createWorkflow(undefined, userToDelete);
 
-	Object.assign(newWorkflow, {
-		name: randomName(),
-		active: false,
-		connections: {},
-		nodes: [],
-	});
-
-	const savedWorkflow = await Db.collections.Workflow.save(newWorkflow);
-
-	await Db.collections.SharedWorkflow.save({
-		role: workflowOwnerRole,
+	const savedCredential = await testDb.saveCredential(undefined, {
 		user: userToDelete,
-		workflow: savedWorkflow,
-	});
-
-	const newCredential = new CredentialsEntity();
-
-	Object.assign(newCredential, {
-		name: randomName(),
-		data: '',
-		type: '',
-		nodesAccess: [],
-	});
-
-	const savedCredential = await Db.collections.Credentials.save(newCredential);
-
-	await Db.collections.SharedCredentials.save({
 		role: credentialOwnerRole,
-		user: userToDelete,
-		credentials: savedCredential,
 	});
 
-	const response = await authOwnerAgent.delete(`/users/${userToDelete.id}`).query({
+	const response = await authAgent(owner).delete(`/users/${userToDelete.id}`).query({
 		transferId: owner.id,
 	});
 
 	expect(response.statusCode).toBe(200);
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
-		relations: ['user'],
+		relations: ['workflow'],
 		where: { user: owner },
 	});
 
+	expect(sharedWorkflow.workflow).toBeDefined();
+	expect(sharedWorkflow.workflow.id).toBe(savedWorkflow.id);
+
 	const sharedCredential = await Db.collections.SharedCredentials.findOneOrFail({
-		relations: ['user'],
+		relations: ['credentials'],
 		where: { user: owner },
 	});
+
+	expect(sharedCredential.credentials).toBeDefined();
+	expect(sharedCredential.credentials.id).toBe(savedCredential.id);
 
 	const deletedUser = await Db.collections.User.findOne(userToDelete);
 
-	expect(sharedWorkflow.user.id).toBe(owner.id);
-	expect(sharedCredential.user.id).toBe(owner.id);
 	expect(deletedUser).toBeUndefined();
 });
 
 test('GET /resolve-signup-token should validate invite token', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	const memberShell = await testDb.createUserShell(globalMemberRole);
 
-	const response = await authOwnerAgent
+	const response = await authAgent(owner)
 		.get('/resolve-signup-token')
 		.query({ inviterId: owner.id })
 		.query({ inviteeId: memberShell.id });
@@ -300,7 +268,7 @@ test('GET /resolve-signup-token should validate invite token', async () => {
 
 test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+	const authOwnerAgent = authAgent(owner);
 
 	const { id: inviteeId } = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -467,20 +435,22 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 
 test('POST /users should fail if emailing is not set up', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-	const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
+	const response = await authAgent(owner)
+		.post('/users')
+		.send([{ email: randomEmail() }]);
 
 	expect(response.statusCode).toBe(500);
 });
 
 test('POST /users should fail if user management is disabled', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	config.set('userManagement.disabled', true);
 
-	const response = await authOwnerAgent.post('/users').send([{ email: randomEmail() }]);
+	const response = await authAgent(owner)
+		.post('/users')
+		.send([{ email: randomEmail() }]);
 
 	expect(response.statusCode).toBe(500);
 });
@@ -489,7 +459,6 @@ test('POST /users should email invites and create user shells but ignore existin
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 	const member = await testDb.createUser({ globalRole: globalMemberRole });
 	const memberShell = await testDb.createUserShell(globalMemberRole);
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -497,7 +466,7 @@ test('POST /users should email invites and create user shells but ignore existin
 
 	const payload = testEmails.map((e) => ({ email: e }));
 
-	const response = await authOwnerAgent.post('/users').send(payload);
+	const response = await authAgent(owner).post('/users').send(payload);
 
 	expect(response.statusCode).toBe(200);
 
@@ -530,7 +499,7 @@ test('POST /users should email invites and create user shells but ignore existin
 
 test('POST /users should fail with invalid inputs', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+	const authOwnerAgent = authAgent(owner);
 
 	config.set('userManagement.emails.mode', 'smtp');
 
@@ -555,11 +524,10 @@ test('POST /users should fail with invalid inputs', async () => {
 
 test('POST /users should ignore an empty payload', async () => {
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
 	config.set('userManagement.emails.mode', 'smtp');
 
-	const response = await authOwnerAgent.post('/users').send([]);
+	const response = await authAgent(owner).post('/users').send([]);
 
 	const { data } = response.body;
 
@@ -571,19 +539,45 @@ test('POST /users should ignore an empty payload', async () => {
 	expect(users.length).toBe(1);
 });
 
-// TODO: /users/:id/reinvite route tests missing
+test('POST /users/:id/reinvite should send reinvite, but fail if user already accepted invite', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
 
-// TODO: UserManagementMailer is a singleton - cannot reinstantiate with wrong creds
-// test('POST /users should error for wrong SMTP config', async () => {
-// 	const owner = await Db.collections.User.findOneOrFail();
-// 	const authOwnerAgent = utils.createAgent(app, { auth: true, user: owner });
+	config.set('userManagement.emails.mode', 'smtp');
 
-// 	config.set('userManagement.emails.mode', 'smtp');
-// 	config.set('userManagement.emails.smtp.host', 'XYZ'); // break SMTP config
+	// those configs are needed to make sure the reinvite email is sent,because of this check isEmailSetUp()
+	config.set('userManagement.emails.smtp.host', 'host');
+	config.set('userManagement.emails.smtp.auth.user', 'user');
+	config.set('userManagement.emails.smtp.auth.pass', 'pass');
 
-// 	const payload = TEST_EMAILS_TO_CREATE_USER_SHELLS.map((e) => ({ email: e }));
+	const email = randomEmail();
+	const payload = [{ email }];
+	const response = await authOwnerAgent.post('/users').send(payload);
 
-// 	const response = await authOwnerAgent.post('/users').send(payload);
+	expect(response.statusCode).toBe(200);
 
-// 	expect(response.statusCode).toBe(500);
-// });
+	const { data } = response.body;
+	const invitedUserId = data[0].user.id;
+	const reinviteResponse = await authOwnerAgent.post(`/users/${invitedUserId}/reinvite`);
+
+	expect(reinviteResponse.statusCode).toBe(200);
+
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
+	const reinviteMemberResponse = await authOwnerAgent.post(`/users/${member.id}/reinvite`);
+
+	expect(reinviteMemberResponse.statusCode).toBe(400);
+});
+
+test('UserManagementMailer expect NodeMailer.verifyConnection have been called', async () => {
+	jest.spyOn(NodeMailer.prototype, 'verifyConnection').mockImplementation(async () => {});
+
+	// NodeMailer.verifyConnection called 1 time
+	const userManagementMailer = UserManagementMailer.getInstance();
+	// NodeMailer.verifyConnection called 2 time
+	(await userManagementMailer).verifyConnection();
+
+	expect(NodeMailer.prototype.verifyConnection).toHaveBeenCalledTimes(2);
+
+	// @ts-ignore
+	NodeMailer.prototype.verifyConnection.mockRestore();
+});

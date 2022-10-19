@@ -1,25 +1,51 @@
 <template>
-	<div>
+	<div :class="$style.dataDisplay">
 		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
 			<tr>
 				<th :class="$style.emptyCell"></th>
+				<th :class="$style.tableRightMargin"></th>
 			</tr>
-			<tr v-for="(row, index1) in tableData.data" :key="index1">
-				<td>
+			<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+				<td
+					:data-row="index1"
+					:data-col="0"
+					@mouseenter="onMouseEnterCell"
+					@mouseleave="onMouseLeaveCell"
+				>
 					<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
 				</td>
+				<td :class="$style.tableRightMargin"></td>
 			</tr>
 		</table>
 		<table :class="$style.table" v-else>
 			<thead>
 				<tr>
 					<th v-for="(column, i) in tableData.columns || []" :key="column">
-						<n8n-tooltip placement="bottom-start" :disabled="!mappingEnabled || showHintWithDelay" :open-delay="1000">
-							<div slot="content">{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}</div>
-							<Draggable type="mapping" :data="getExpression(column)" :disabled="!mappingEnabled" @dragstart="onDragStart" @dragend="(column) => onDragEnd(column)">
+						<n8n-tooltip
+							placement="bottom-start"
+							:disabled="!mappingEnabled"
+							:open-delay="1000"
+						>
+							<div slot="content">
+								<img src='/static/data-mapping-gif.gif'/>
+								{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+							</div>
+							<draggable
+								type="mapping"
+								:data="getExpression(column)"
+								:disabled="!mappingEnabled"
+								@dragstart="onDragStart"
+								@dragend="(column) => onDragEnd(column, 'column')"
+							>
 								<template v-slot:preview="{ canDrop }">
-									<div :class="[$style.dragPill, canDrop ? $style.droppablePill: $style.defaultPill]">
-										{{ $locale.baseText('dataMapping.mapSpecificColumnToField', { interpolate: { name: shorten(column, 16, 2) } }) }}
+									<div
+										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
+									>
+										{{
+											$locale.baseText('dataMapping.mapKeyToField', {
+												interpolate: { name: shorten(column, 16, 2) },
+											})
+										}}
 									</div>
 								</template>
 								<template v-slot="{ isDragging }">
@@ -27,56 +53,111 @@
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
+											[$style.activeHeader]: i === activeColumn && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
-										<span>{{ column || "&nbsp;" }}</span>
-										<n8n-tooltip v-if="mappingEnabled" placement="bottom-start" :manual="true" :value="i === 0 && showHintWithDelay">
-											<div v-if="focusedMappableInput" slot="content" v-html="$locale.baseText('dataMapping.tableHint', { interpolate: { name: focusedMappableInput } })"></div>
-											<div v-else slot="content" v-html="$locale.baseText('dataMapping.dragColumnToFieldHint')"></div>
-											<div :class="$style.dragButton">
-												<font-awesome-icon icon="grip-vertical" />
-											</div>
-										</n8n-tooltip>
+										<span>{{ column || '&nbsp;' }}</span>
+										<div :class="$style.dragButton">
+											<font-awesome-icon icon="grip-vertical" />
+										</div>
 									</div>
 								</template>
-							</Draggable>
+							</draggable>
 						</n8n-tooltip>
 					</th>
+					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
-			<tbody>
-				<tr v-for="(row, index1) in tableData.data" :key="index1">
-					<td
-						v-for="(data, index2) in row"
-						:key="index2"
-						:data-col="index2"
-						@mouseenter="onMouseEnterCell"
-						@mouseleave="onMouseLeaveCell"
-					>{{ [null, undefined].includes(data) ? '&nbsp;' : data }}</td>
-				</tr>
-			</tbody>
+			<draggable
+				tag="tbody"
+				type="mapping"
+				targetDataKey="mappable"
+				:disabled="!mappingEnabled"
+				@dragstart="onCellDragStart"
+				@dragend="onCellDragEnd"
+				ref="draggable"
+			>
+				<template v-slot:preview="{ canDrop, el }">
+					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
+						{{
+							$locale.baseText(
+								tableData.data.length > 1
+									? 'dataMapping.mapAllKeysToField'
+									: 'dataMapping.mapKeyToField',
+								{
+									interpolate: { name: shorten(getPathNameFromTarget(el) || '', 16, 2) },
+								},
+							)
+						}}
+					</div>
+				</template>
+				<template>
+					<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+						<td
+							v-for="(data, index2) in row"
+							:key="index2"
+							:data-row="index1"
+							:data-col="index2"
+							@mouseenter="onMouseEnterCell"
+							@mouseleave="onMouseLeaveCell"
+							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
+						>
+							<span v-if="isSimple(data)" :class="{[$style.value]: true, [$style.empty]: isEmpty(data)}">{{ getValueToRender(data) }}</span>
+							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
+								<template v-slot:label="{ label, path }">
+									<span
+										@mouseenter="() => onMouseEnterKey(path, index2)"
+										@mouseleave="onMouseLeaveKey"
+										:class="{
+											[$style.hoveringKey]: mappingEnabled && isHovering(path, index2),
+											[$style.draggingKey]: isDraggingKey(path, index2),
+											[$style.dataKey]: true,
+											[$style.mappable]: mappingEnabled,
+										}"
+										data-target="mappable"
+										:data-name="getCellPathName(path, index2)"
+										:data-value="getCellExpression(path, index2)"
+										:data-depth="path.length"
+										>{{ label || $locale.baseText('runData.unnamedField') }}</span
+									>
+								</template>
+								<template v-slot:value="{ value }">
+									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">{{
+										getValueToRender(value)
+									}}</span>
+								</template>
+							</n8n-tree>
+						</td>
+						<td :class="$style.tableRightMargin"></td>
+					</tr>
+				</template>
+			</draggable>
 		</table>
 	</div>
 </template>
 
 <script lang="ts">
-import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { INodeUi, ITableData } from '@/Interface';
-import Vue from 'vue';
+/* eslint-disable prefer-spread */
+
+import { INodeUi, IRootState, ITableData, IUiState } from '@/Interface';
+import { getPairedItemId } from '@/pairedItemUtils';
+import Vue, { PropType } from 'vue';
+import mixins from 'vue-typed-mixins';
+import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from './helpers';
+import { externalHooks } from './mixins/externalHooks';
 
-export default Vue.extend({
-	name: 'RunDataTable',
+export default mixins(externalHooks).extend({
+	name: 'run-data-table',
 	components: { Draggable },
 	props: {
 		node: {
-			type: Object as () => INodeUi,
+			type: Object as PropType<INodeUi>,
 		},
-		tableData: {
-			type: Object as () => ITableData,
+		inputData: {
+			type: Array as PropType<INodeExecutionData[]>,
 		},
 		mappingEnabled: {
 			type: Boolean,
@@ -84,42 +165,72 @@ export default Vue.extend({
 		distanceFromActive: {
 			type: Number,
 		},
-		showMappingHint: {
-			type: Boolean,
-		},
 		runIndex: {
+			type: Number,
+		},
+		outputIndex: {
 			type: Number,
 		},
 		totalRuns: {
 			type: Number,
 		},
+		pageOffset: {
+			type: Number,
+		},
+		hasDefaultHoverState: {
+			type: Boolean,
+		},
 	},
 	data() {
 		return {
 			activeColumn: -1,
-			showHintWithDelay: false,
-			forceShowGrip: false,
 			draggedColumn: false,
+			draggingPath: null as null | string,
+			hoveringPath: null as null | string,
+			mappingHintVisible: false,
+			activeRow: null as number | null,
 		};
 	},
 	mounted() {
-		if (this.showMappingHint && this.showHint) {
-			setTimeout(() => {
-				this.showHintWithDelay = this.showHint;
-				this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
-			}, 500);
+		if (this.tableData && this.tableData.columns && this.$refs.draggable) {
+			const tbody = (this.$refs.draggable as Vue).$refs.wrapper as HTMLElement;
+			if (tbody) {
+				this.$emit('mounted', {
+					avgRowHeight: tbody.offsetHeight / this.tableData.data.length,
+				});
+			}
 		}
 	},
 	computed: {
-		focusedMappableInput (): string {
-			return this.$store.getters['ui/focusedMappableInput'];
+		hoveringItem(): IUiState['ndv']['hoveringItem'] {
+			return this.$store.getters['ui/hoveringItem'];
 		},
-		showHint (): boolean {
-			return !this.draggedColumn && (this.showMappingHint || (!!this.focusedMappableInput && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true'));
+		pairedItemMappings(): IRootState['workflowExecutionPairedItemMappings'] {
+			return this.$store.getters['workflowExecutionPairedItemMappings'];
+		},
+		tableData(): ITableData {
+			return this.convertToTable(this.inputData);
 		},
 	},
 	methods: {
 		shorten,
+		isHoveringRow(row: number): boolean {
+			if (row === this.activeRow) {
+				return true;
+			}
+
+			const itemIndex = this.pageOffset + row;
+			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
+				return true;
+			}
+			const itemNodeId = getPairedItemId(this.node.name, this.runIndex || 0, this.outputIndex || 0, itemIndex);
+			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
+				return false;
+			}
+
+			const hoveringItemId = getPairedItemId(this.hoveringItem.nodeName, this.hoveringItem.runIndex, this.hoveringItem.outputIndex, this.hoveringItem.itemIndex);
+			return this.pairedItemMappings[itemNodeId].has(hoveringItemId);
+		},
 		onMouseEnterCell(e: MouseEvent) {
 			const target = e.target;
 			if (target && this.mappingEnabled) {
@@ -128,9 +239,30 @@ export default Vue.extend({
 					this.activeColumn = parseInt(col, 10);
 				}
 			}
+
+			if (target) {
+				const row = (target as HTMLElement).dataset.row;
+				if (row && !isNaN(parseInt(row, 10))) {
+					this.activeRow = parseInt(row, 10);
+					this.$emit('activeRowChanged', this.pageOffset + this.activeRow);
+				}
+			}
 		},
 		onMouseLeaveCell() {
 			this.activeColumn = -1;
+			this.activeRow = null;
+			this.$emit('activeRowChanged', null);
+		},
+		onMouseEnterKey(path: string[], colIndex: number) {
+			this.hoveringPath = this.getCellExpression(path, colIndex);
+		},
+		onMouseLeaveKey() {
+			this.hoveringPath = null;
+		},
+		isHovering(path: string[], colIndex: number) {
+			const expr = this.getCellExpression(path, colIndex);
+
+			return this.hoveringPath === expr;
 		},
 		getExpression(column: string) {
 			if (!this.node) {
@@ -143,57 +275,214 @@ export default Vue.extend({
 
 			return `{{ $node["${this.node.name}"].json["${column}"] }}`;
 		},
+		getPathNameFromTarget(el: HTMLElement) {
+			if (!el) {
+				return '';
+			}
+			return el.dataset.name;
+		},
+		getCellPathName(path: Array<string | number>, colIndex: number) {
+			const lastKey = path[path.length - 1];
+			if (typeof lastKey === 'string') {
+				return lastKey;
+			}
+			if (path.length > 1) {
+				const prevKey = path[path.length - 2];
+				return `${prevKey}[${lastKey}]`;
+			}
+			const column = this.tableData.columns[colIndex];
+			return `${column}[${lastKey}]`;
+		},
+		getCellExpression(path: Array<string | number>, colIndex: number) {
+			if (!this.node) {
+				return '';
+			}
+
+			const expr = path.reduce((accu: string, key: string | number) => {
+				if (typeof key === 'number') {
+					return `${accu}[${key}]`;
+				}
+
+				return `${accu}["${key}"]`;
+			}, '');
+			const column = this.tableData.columns[colIndex];
+
+			if (this.distanceFromActive === 1) {
+				return `{{ $json["${column}"]${expr} }}`;
+			}
+
+			return `{{ $node["${this.node.name}"].json["${column}"]${expr} }}`;
+		},
+		isEmpty(value: unknown): boolean {
+			return (
+				value === '' ||
+				(Array.isArray(value) && value.length === 0) ||
+				(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
+				(value === null || value === undefined)
+			);
+		},
+		getValueToRender(value: unknown) {
+			if (value === '') {
+				return this.$locale.baseText('runData.emptyString');
+			}
+			if (typeof value === 'string') {
+				return value.replaceAll('\n', '\\n');
+			}
+
+			if (Array.isArray(value) && value.length === 0) {
+				return this.$locale.baseText('runData.emptyArray');
+			}
+
+			if (typeof value === 'object' && value !== null && Object.keys(value).length === 0) {
+				return this.$locale.baseText('runData.emptyObject');
+			}
+
+			if (value === null || value === undefined) {
+				return `[${value}]`;
+			}
+
+			return value;
+		},
 		onDragStart() {
 			this.draggedColumn = true;
 
 			this.$store.commit('ui/resetMappingTelemetry');
 		},
-		onDragEnd(column: string) {
+		onCellDragStart(el: HTMLElement) {
+			if (el && el.dataset.value) {
+				this.draggingPath = el.dataset.value;
+			}
+
+			this.onDragStart();
+		},
+		onCellDragEnd(el: HTMLElement) {
+			this.draggingPath = null;
+
+			this.onDragEnd(el.dataset.name || '', 'tree', el.dataset.depth || '0');
+		},
+		isDraggingKey(path: Array<string | number>, colIndex: number) {
+			if (!this.draggingPath) {
+				return;
+			}
+
+			return this.draggingPath === this.getCellExpression(path, colIndex);
+		},
+		onDragEnd(column: string, src: string, depth = '0') {
 			setTimeout(() => {
 				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
-				this.$telemetry.track('User dragged data for mapping', {
+				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: column,
 					src_nodes_back: this.distanceFromActive,
 					src_run_index: this.runIndex,
 					src_runs_total: this.totalRuns,
+					src_field_nest_level: parseInt(depth, 10),
 					src_view: 'table',
-					src_element: 'column',
+					src_element: src,
 					success: false,
 					...mappingTelemetry,
-				});
+				};
+
+				this.$externalHooks().run('runDataTable.onDragEnd', telemetryPayload);
+
+				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop
 		},
-	},
-	watch: {
-		focusedMappableInput (curr: boolean) {
-			setTimeout(() => {
-				this.forceShowGrip = !!this.focusedMappableInput;
-			}, curr? 300: 150);
+		isSimple(data: unknown): boolean {
+			return (typeof data !== 'object' || data === null) ||
+				(Array.isArray(data) && data.length === 0) ||
+				(typeof data === 'object' && Object.keys(data).length === 0);
 		},
-		showHint (curr: boolean, prev: boolean) {
-			if (curr) {
-				setTimeout(() => {
-					this.showHintWithDelay = this.showHint;
-					if (this.showHintWithDelay) {
-						this.$telemetry.track('User viewed data mapping tooltip', { type: 'param focus' });
+		hasJsonInColumn(colIndex: number): boolean {
+			return this.tableData.hasJson[this.tableData.columns[colIndex]];
+		},
+		convertToTable(inputData: INodeExecutionData[]): ITableData {
+			const tableData: GenericValue[][] = [];
+			const tableColumns: string[] = [];
+			let leftEntryColumns: string[], entryRows: GenericValue[];
+			// Go over all entries
+			let entry: IDataObject;
+			const hasJson: { [key: string]: boolean } = {};
+			inputData.forEach((data) => {
+				if (!data.hasOwnProperty('json')) {
+					return;
+				}
+				entry = data.json;
+
+				// Go over all keys of entry
+				entryRows = [];
+				leftEntryColumns = Object.keys(entry || {});
+
+				// Go over all the already existing column-keys
+				tableColumns.forEach((key) => {
+					if (entry.hasOwnProperty(key)) {
+						// Entry does have key so add its value
+						entryRows.push(entry[key]);
+						// Remove key so that we know that it got added
+						leftEntryColumns.splice(leftEntryColumns.indexOf(key), 1);
+
+						hasJson[key] =
+							hasJson[key] ||
+							(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
+							false;
+					} else {
+						// Entry does not have key so add null
+						entryRows.push(null);
 					}
-				}, 1000);
-			}
-			else {
-				this.showHintWithDelay = false;
-			}
+				});
+
+				// Go over all the columns the entry has but did not exist yet
+				leftEntryColumns.forEach((key) => {
+					// Add the key for all runs in the future
+					tableColumns.push(key);
+					// Add the value
+					entryRows.push(entry[key]);
+					hasJson[key] =
+						hasJson[key] ||
+						(typeof entry[key] === 'object' && Object.keys(entry[key] || {}).length > 0) ||
+						false;
+				});
+
+				// Add the data of the entry
+				tableData.push(entryRows);
+			});
+
+			// Make sure that all entry-rows have the same length
+			tableData.forEach((entryRows) => {
+				if (tableColumns.length > entryRows.length) {
+					// Has to less entries so add the missing ones
+					entryRows.push.apply(entryRows, new Array(tableColumns.length - entryRows.length));
+				}
+			});
+
+			return {
+				hasJson,
+				columns: tableColumns,
+				data: tableData,
+			};
 		},
 	},
 });
 </script>
 
 <style lang="scss" module>
+.dataDisplay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	padding-left: var(--spacing-s);
+	right: 0;
+	overflow-y: auto;
+	line-height: 1.5;
+	word-break: normal;
+	height: 100%;
+	padding-bottom: var(--spacing-3xl);
+}
+
 .table {
 	border-collapse: separate;
 	text-align: left;
-	width: calc(100% - var(--spacing-s));
-	margin-right: var(--spacing-s);
+	width: calc(100%);
 	font-size: var(--font-size-s);
 
 	th {
@@ -203,22 +492,48 @@ export default Vue.extend({
 		border-left: var(--border-base);
 		position: sticky;
 		top: 0;
-		max-width: 300px;
+		color: var(--color-text-dark);
+		z-index: 1;
 	}
 
 	td {
-		padding: var(--spacing-2xs);
+		vertical-align: top;
+		padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) var(--spacing-3xs);
 		border-bottom: var(--border-base);
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
-		max-width: 300px;
 		white-space: pre-wrap;
+	}
+
+	td:first-child, td:nth-last-child(2) {
+		position: relative;
+		z-index: 0;
+
+		&:after { // add border without shifting content
+			content: '';
+			position: absolute;
+			height: 100%;
+			width: 2px;
+			top: 0;
+		}
+	}
+
+	td:nth-last-child(2):after {
+		right: -1px;
+	}
+
+	td:first-child:after {
+		left: -1px;
 	}
 
 	th:last-child,
 	td:last-child {
 		border-right: var(--border-base);
 	}
+}
+
+.nodeClass {
+	margin-bottom: var(--spacing-5xs);
 }
 
 .emptyCell {
@@ -281,5 +596,62 @@ export default Vue.extend({
 	background-color: var(--color-primary);
 	transform: translate(-50%, -100%);
 	box-shadow: 0px 2px 6px rgba(68, 28, 23, 0.2);
+}
+
+.dataKey {
+	color: var(--color-text-dark);
+	line-height: 1.7;
+	font-weight: var(--font-weight-bold);
+	border-radius: var(--border-radius-base);
+	padding: 0 var(--spacing-5xs) 0 var(--spacing-5xs);
+	margin-right: var(--spacing-5xs);
+}
+
+.value {
+	line-height: var(--font-line-height-regular);
+}
+
+.nestedValue {
+	composes: value;
+	margin-left: var(--spacing-4xs);
+}
+
+.mappable {
+	cursor: grab;
+}
+
+.empty {
+	color: var(--color-danger);
+}
+
+.limitColWidth {
+	max-width: 300px;
+}
+
+.minColWidth {
+	min-width: 240px;
+}
+
+.hoveringKey {
+	background-color: var(--color-foreground-base);
+}
+
+.draggingKey {
+	background-color: var(--color-primary-tint-2);
+}
+
+.tableRightMargin {
+	// becomes necessary with large tables
+	background-color: var(--color-background-base) !important;
+	width: var(--spacing-s);
+	border-right: none !important;
+	border-top: none !important;
+	border-bottom: none !important;
+}
+
+.hoveringRow {
+	td:first-child:after, td:nth-last-child(2):after {
+		background-color: var(--color-secondary);
+	}
 }
 </style>

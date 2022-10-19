@@ -1,5 +1,5 @@
 /* eslint-disable import/no-cycle */
-import { get as pslGet } from 'psl';
+import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import {
 	INodesGraphResult,
@@ -8,7 +8,7 @@ import {
 	ITelemetryTrackProperties,
 	TelemetryHelpers,
 } from 'n8n-workflow';
-import { snakeCase } from 'change-case';
+import { get as pslGet } from 'psl';
 import {
 	IDiagnosticInfo,
 	IInternalHooksClass,
@@ -16,15 +16,20 @@ import {
 	IWorkflowBase,
 	IWorkflowDb,
 } from '.';
-import { Telemetry } from './telemetry';
 import { IExecutionTrackProperties } from './Interfaces';
+import { Telemetry } from './telemetry';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;
 
 	private nodeTypes: INodeTypes;
 
-	constructor(private telemetry: Telemetry, versionCli: string, nodeTypes: INodeTypes) {
+	constructor(
+		private telemetry: Telemetry,
+		private instanceId: string,
+		versionCli: string,
+		nodeTypes: INodeTypes,
+	) {
 		this.versionCli = versionCli;
 		this.nodeTypes = nodeTypes;
 	}
@@ -73,6 +78,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		return this.telemetry.track(
 			'User responded to personalization questions',
 			personalizationSurveyData,
+			{ withPostHog: true },
 		);
 	}
 
@@ -106,16 +112,20 @@ export class InternalHooksClass implements IInternalHooksClass {
 			(note) => note.overlapping,
 		).length;
 
-		return this.telemetry.track('User saved workflow', {
-			user_id: userId,
-			workflow_id: workflow.id,
-			node_graph_string: JSON.stringify(nodeGraph),
-			notes_count_overlapping: overlappingCount,
-			notes_count_non_overlapping: notesCount - overlappingCount,
-			version_cli: this.versionCli,
-			num_tags: workflow.tags?.length ?? 0,
-			public_api: publicApi,
-		});
+		return this.telemetry.track(
+			'User saved workflow',
+			{
+				user_id: userId,
+				workflow_id: workflow.id,
+				node_graph_string: JSON.stringify(nodeGraph),
+				notes_count_overlapping: overlappingCount,
+				notes_count_non_overlapping: notesCount - overlappingCount,
+				version_cli: this.versionCli,
+				num_tags: workflow.tags?.length ?? 0,
+				public_api: publicApi,
+			},
+			{ withPostHog: true },
+		);
 	}
 
 	async onWorkflowPostExecute(
@@ -150,8 +160,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 			if (!properties.success && runData?.data.resultData.error) {
 				properties.error_message = runData?.data.resultData.error.message;
-				let errorNodeName = runData?.data.resultData.error.node?.name;
-				properties.error_node_type = runData?.data.resultData.error.node?.type;
+				let errorNodeName =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.name
+						: undefined;
+				properties.error_node_type =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.type
+						: undefined;
 
 				if (runData.data.resultData.lastNodeExecuted) {
 					const lastNode = TelemetryHelpers.getNodeTypeForName(
@@ -182,6 +198,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 				}
 
 				const manualExecEventProperties: ITelemetryTrackProperties = {
+					user_id: userId,
 					workflow_id: workflow.id.toString(),
 					status: properties.success ? 'success' : 'failed',
 					error_message: properties.error_message as string,
@@ -197,14 +214,18 @@ export class InternalHooksClass implements IInternalHooksClass {
 				}
 
 				if (runData.data.startData?.destinationNode) {
+					const telemetryPayload = {
+						...manualExecEventProperties,
+						node_type: TelemetryHelpers.getNodeTypeForName(
+							workflow,
+							runData.data.startData?.destinationNode,
+						)?.type,
+						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+					};
+
 					promises.push(
-						this.telemetry.track('Manual node exec finished', {
-							...manualExecEventProperties,
-							node_type: TelemetryHelpers.getNodeTypeForName(
-								workflow,
-								runData.data.startData?.destinationNode,
-							)?.type,
-							node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+						this.telemetry.track('Manual node exec finished', telemetryPayload, {
+							withPostHog: true,
 						}),
 					);
 				} else {
@@ -219,7 +240,9 @@ export class InternalHooksClass implements IInternalHooksClass {
 					});
 
 					promises.push(
-						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties),
+						this.telemetry.track('Manual workflow exec finished', manualExecEventProperties, {
+							withPostHog: true,
+						}),
 					);
 				}
 			}
@@ -333,7 +356,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		public_api: boolean;
 	}): Promise<void> {
 		return this.telemetry.track(
-			'Instance sent transacptional email to user',
+			'Instance sent transactional email to user',
 			userTransactionalEmailData,
 		);
 	}
@@ -385,6 +408,34 @@ export class InternalHooksClass implements IInternalHooksClass {
 			'Instance failed to send transactional email to user',
 			failedEmailData,
 		);
+	}
+
+	/**
+	 * Credentials
+	 */
+
+	async onUserCreatedCredentials(userCreatedCredentialsData: {
+		credential_type: string;
+		credential_id: string;
+		public_api: boolean;
+	}): Promise<void> {
+		return this.telemetry.track('User created credentials', {
+			...userCreatedCredentialsData,
+			instance_id: this.instanceId,
+		});
+	}
+
+	async onUserSharedCredentials(userSharedCredentialsData: {
+		credential_type: string;
+		credential_id: string;
+		user_id_sharer: string;
+		user_ids_sharees_added: string[];
+		sharees_removed: number | null;
+	}): Promise<void> {
+		return this.telemetry.track('User updated cred sharing', {
+			...userSharedCredentialsData,
+			instance_id: this.instanceId,
+		});
 	}
 
 	/**

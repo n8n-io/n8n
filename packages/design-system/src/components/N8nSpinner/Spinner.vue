@@ -1,11 +1,10 @@
-<template functional>
-	<span>
-		<div v-if="props.type === 'ring'" class="lds-ring"><div></div><div></div><div></div><div></div></div>
-		<component
+<template>
+	<span class="n8n-spinner">
+		<div v-if="type === 'ring'" class="lds-ring"><div></div><div></div><div></div><div></div></div>
+		<n8n-icon
 			v-else
-			:is="$options.components.N8nIcon"
 			icon="spinner"
-			:size="props.size"
+			:size="size"
 			spin
 		/>
 	</span>
@@ -14,7 +13,9 @@
 <script lang="ts">
 import N8nIcon from '../N8nIcon';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-spinner',
 	components: {
 		N8nIcon,
@@ -22,19 +23,19 @@ export default {
 	props: {
 		size: {
 			type: String,
-			validator: function (value: string): boolean {
+			validator (value: string): boolean {
 				return ['small', 'medium', 'large'].includes(value);
 			},
 		},
 		type: {
 			type: String,
-			validator: function (value: string): boolean {
+			validator (value: string): boolean {
 				return ['dots', 'ring'].includes(value);
 			},
 			default: 'dots',
 		},
 	},
-};
+});
 </script>
 
 <style lang="scss">

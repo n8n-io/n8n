@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,9 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	lingvaNexApiRequest,
-} from './GenericFunctions';
+import { lingvaNexApiRequest } from './GenericFunctions';
 
 export class LingvaNex implements INodeType {
 	description: INodeTypeDescription = {
@@ -64,9 +60,7 @@ export class LingvaNex implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'translate',
-						],
+						operation: ['translate'],
 					},
 				},
 			},
@@ -79,13 +73,12 @@ export class LingvaNex implements INodeType {
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The language to use for translation of the input text, set to one of the language codes listed in <a href="https://cloud.google.com/translate/docs/languages">Language Support</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				required: true,
 				displayOptions: {
 					show: {
-						operation: [
-							'translate',
-						],
+						operation: ['translate'],
 					},
 				},
 			},
@@ -97,9 +90,7 @@ export class LingvaNex implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'translate',
-						],
+						operation: ['translate'],
 					},
 				},
 				options: [
@@ -112,7 +103,8 @@ export class LingvaNex implements INodeType {
 							loadOptionsMethod: 'getLanguages',
 						},
 						default: '',
-						description: 'The language code in the format “language code_code of the country”. If this parameter is not present, the auto-detect language mode is enabled. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'The language code in the format “language code_code of the country”. If this parameter is not present, the auto-detect language mode is enabled. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Platform',
@@ -125,7 +117,8 @@ export class LingvaNex implements INodeType {
 						name: 'translateMode',
 						type: 'string',
 						default: '',
-						description: 'Describe the input text format. Possible value is "html" for translating and preserving html structure. If value is not specified or is other than "html" than plain text is translating.',
+						description:
+							'Describe the input text format. Possible value is "html" for translating and preserving html structure. If value is not specified or is other than "html" than plain text is translating.',
 					},
 				],
 			},
@@ -134,16 +127,14 @@ export class LingvaNex implements INodeType {
 
 	methods = {
 		loadOptions: {
-			async getLanguages(
-				this: ILoadOptionsFunctions,
-			): Promise<INodePropertyOptions[]> {
+			async getLanguages(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const data = await lingvaNexApiRequest.call(
 					this,
 					'GET',
 					'/getLanguages',
 					{},
-					{'platform': 'api'},
+					{ platform: 'api' },
 				);
 				for (const language of data.result) {
 					returnData.push({

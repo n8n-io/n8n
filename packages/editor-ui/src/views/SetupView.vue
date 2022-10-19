@@ -79,6 +79,13 @@ export default mixins(
 						capitalize: true,
 					},
 				},
+				{
+					name: 'agree',
+					properties: {
+						label: this.$locale.baseText('auth.agreement.label'),
+						type: 'checkbox',
+					},
+				},
 			],
 		};
 
@@ -130,7 +137,7 @@ export default mixins(
 				this.$locale.baseText('auth.setup.goBack'),
 			);
 		},
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit(values: {[key: string]: string | boolean}) {
 			try {
 				const confirmSetup = await this.confirmSetupOrGoBack();
 				if (!confirmSetup) {
@@ -140,6 +147,13 @@ export default mixins(
 				const forceRedirectedHere = this.$store.getters['settings/showSetupPage'];
 				this.loading = true;
 				await this.$store.dispatch('users/createOwner', values);
+
+				if (values.agree === true) {
+					try {
+						await this.$store.dispatch('ui/submitContactEmail', { email: values.email, agree: values.agree });
+					} catch { }
+				}
+
 				if (forceRedirectedHere) {
 					await this.$router.push({ name: VIEWS.HOMEPAGE });
 				}

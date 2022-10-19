@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -8,27 +6,11 @@ import {
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
-import {
-	customerIoApiRequest,
-	validateJSON,
-} from './GenericFunctions';
-import {
-	campaignFields,
-	campaignOperations,
-} from './CampaignDescription';
-import {
-	customerFields,
-	customerOperations,
-} from './CustomerDescription';
-import {
-	eventFields,
-	eventOperations,
-} from './EventDescription';
-import {
-	segmentFields,
-	segmentOperations,
-} from './SegmentDescription';
-
+import { customerIoApiRequest, validateJSON } from './GenericFunctions';
+import { campaignFields, campaignOperations } from './CampaignDescription';
+import { customerFields, customerOperations } from './CustomerDescription';
+import { eventFields, eventOperations } from './EventDescription';
+import { segmentFields, segmentOperations } from './SegmentDescription';
 
 export class CustomerIo implements INodeType {
 	description: INodeTypeDescription = {
@@ -100,9 +82,7 @@ export class CustomerIo implements INodeType {
 
 		let responseData;
 		for (let i = 0; i < items.length; i++) {
-
 			try {
-
 				if (resource === 'campaign') {
 					if (operation === 'get') {
 						const campaignId = this.getNodeParameter('campaignId', i) as number;
@@ -124,16 +104,20 @@ export class CustomerIo implements INodeType {
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
-
 								if (validateJSON(additionalFieldsJson) !== undefined) {
-
 									Object.assign(body, JSON.parse(additionalFieldsJson));
-
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
 						} else {
@@ -162,22 +146,25 @@ export class CustomerIo implements INodeType {
 				}
 
 				if (resource === 'customer') {
-
 					if (operation === 'upsert') {
 						const id = this.getNodeParameter('id', i) as number;
 						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
-
 								if (validateJSON(additionalFieldsJson) !== undefined) {
-
 									Object.assign(body, JSON.parse(additionalFieldsJson));
-
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
 						} else {
@@ -186,7 +173,7 @@ export class CustomerIo implements INodeType {
 							if (additionalFields.customProperties) {
 								const data: any = {}; // tslint:disable-line:no-any
 								//@ts-ignore
-								additionalFields.customProperties.customProperty.map(property => {
+								additionalFields.customProperties.customProperty.map((property) => {
 									data[property.key] = property.value;
 								});
 
@@ -233,14 +220,20 @@ export class CustomerIo implements INodeType {
 						body.name = eventName;
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
-
 								if (validateJSON(additionalFieldsJson) !== undefined) {
 									Object.assign(body, JSON.parse(additionalFieldsJson));
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
 						} else {
@@ -249,7 +242,7 @@ export class CustomerIo implements INodeType {
 
 							if (additionalFields.customAttributes) {
 								//@ts-ignore
-								additionalFields.customAttributes.customAttribute.map(property => {
+								additionalFields.customAttributes.customAttribute.map((property) => {
 									data[property.key] = property.value;
 								});
 							}
@@ -276,16 +269,20 @@ export class CustomerIo implements INodeType {
 						body.name = eventName;
 
 						if (jsonParameters) {
-							const additionalFieldsJson = this.getNodeParameter('additionalFieldsJson', i) as string;
+							const additionalFieldsJson = this.getNodeParameter(
+								'additionalFieldsJson',
+								i,
+							) as string;
 
 							if (additionalFieldsJson !== '') {
-
 								if (validateJSON(additionalFieldsJson) !== undefined) {
-
 									Object.assign(body, JSON.parse(additionalFieldsJson));
-
 								} else {
-									throw new NodeOperationError(this.getNode(), 'Additional fields must be a valid JSON', { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										'Additional fields must be a valid JSON',
+										{ itemIndex: i },
+									);
 								}
 							}
 						} else {
@@ -294,7 +291,7 @@ export class CustomerIo implements INodeType {
 
 							if (additionalFields.customAttributes) {
 								//@ts-ignore
-								additionalFields.customAttributes.customAttribute.map(property => {
+								additionalFields.customAttributes.customAttribute.map((property) => {
 									data[property.key] = property.value;
 								});
 							}
@@ -337,7 +334,6 @@ export class CustomerIo implements INodeType {
 				} else {
 					returnData.push(responseData as unknown as IDataObject);
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

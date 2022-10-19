@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const companyOperations: INodeProperties[] = [
 	{
@@ -11,9 +9,7 @@ export const companyOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 			},
 		},
 		options: [
@@ -26,14 +22,14 @@ export const companyOperations: INodeProperties[] = [
 			{
 				name: 'Get Historical Factor Scores',
 				value: 'getFactorHistorical',
-				description: 'Get company\'s historical factor scores',
-				action: 'Get a company\'s historical factor scores',
+				description: "Get company's historical factor scores",
+				action: "Get a company's historical factor scores",
 			},
 			{
 				name: 'Get Historical Scores',
 				value: 'getHistoricalScore',
-				description: 'Get company\'s historical scores',
-				action: 'Get a company\'s historical scores',
+				description: "Get company's historical scores",
+				action: "Get a company's historical scores",
 			},
 			{
 				name: 'Get Information and Scorecard',
@@ -44,8 +40,8 @@ export const companyOperations: INodeProperties[] = [
 			{
 				name: 'Get Score Plan',
 				value: 'getScorePlan',
-				description: 'Get company\'s score improvement plan',
-				action: 'Get a company\'s score improvement plan',
+				description: "Get company's score improvement plan",
+				action: "Get a company's score improvement plan",
 			},
 		],
 		default: 'getFactor',
@@ -62,9 +58,7 @@ export const companyFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
+				resource: ['company'],
 				operation: [
 					'getScorecard',
 					'getFactor',
@@ -82,12 +76,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getScorePlan',
-				],
+				resource: ['company'],
+				operation: ['getScorePlan'],
 			},
 		},
 		required: true,
@@ -99,15 +89,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactor',
-					'getFactorHistorical',
-					'getHistoricalScore',
-					'getScorePlan',
-				],
+				resource: ['company'],
+				operation: ['getFactor', 'getFactorHistorical', 'getHistoricalScore', 'getScorePlan'],
 			},
 		},
 		default: false,
@@ -119,18 +102,9 @@ export const companyFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactor',
-					'getFactorHistorical',
-					'getHistoricalScore',
-					'getScorePlan',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['company'],
+				operation: ['getFactor', 'getFactorHistorical', 'getHistoricalScore', 'getScorePlan'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -146,13 +120,8 @@ export const companyFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactorHistorical',
-					'getHistoricalScore',
-				],
+				resource: ['company'],
+				operation: ['getFactorHistorical', 'getHistoricalScore'],
 			},
 		},
 		default: true,
@@ -165,12 +134,8 @@ export const companyFields: INodeProperties[] = [
 		name: 'filters',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactor',
-				],
+				resource: ['company'],
+				operation: ['getFactor'],
 			},
 		},
 		type: 'collection',
@@ -202,13 +167,8 @@ export const companyFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'company',
-				],
-				operation: [
-					'getFactorHistorical',
-					'getHistoricalScore',
-				],
+				resource: ['company'],
+				operation: ['getFactorHistorical', 'getHistoricalScore'],
 			},
 		},
 		type: 'collection',
@@ -221,7 +181,6 @@ export const companyFields: INodeProperties[] = [
 				name: 'date_from',
 				type: 'dateTime',
 				default: '',
-
 			},
 			{
 				displayName: 'Date To',

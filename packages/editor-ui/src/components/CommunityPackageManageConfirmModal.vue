@@ -13,7 +13,7 @@
 			<div :class="$style.descriptionContainer" v-if="this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
 				<n8n-info-tip theme="info" type="note" :bold="false">
 					<template>
-						<span v-html="getModalContent.description"></span>
+						<span v-text="getModalContent.description"></span>
 					</template>
 				</n8n-info-tip>
 			</div>

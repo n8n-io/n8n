@@ -1,23 +1,10 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
-import {
-	helpscoutApiRequest,
-	helpscoutApiRequestAllItems,
-} from './GenericFunctions';
+import { helpscoutApiRequest, helpscoutApiRequestAllItems } from './GenericFunctions';
 
-import {
-	createHmac,
-} from 'crypto';
+import { createHmac } from 'crypto';
 
 export class HelpScoutTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -52,7 +39,6 @@ export class HelpScoutTrigger implements INodeType {
 				name: 'events',
 				type: 'multiOptions',
 				options: [
-
 					{
 						name: 'Conversation - Assigned',
 						value: 'convo.assigned',
@@ -106,7 +92,6 @@ export class HelpScoutTrigger implements INodeType {
 				required: true,
 			},
 		],
-
 	};
 
 	// @ts-ignore (because of request)
@@ -120,13 +105,18 @@ export class HelpScoutTrigger implements INodeType {
 				// Check all the webhooks which exist already if it is identical to the
 				// one that is supposed to get created.
 				const endpoint = '/v2/webhooks';
-				const data = await helpscoutApiRequestAllItems.call(this, '_embedded.webhooks', 'GET', endpoint, {});
+				const data = await helpscoutApiRequestAllItems.call(
+					this,
+					'_embedded.webhooks',
+					'GET',
+					endpoint,
+					{},
+				);
 
 				for (const webhook of data) {
 					if (webhook.url === webhookUrl) {
 						for (const event of events) {
-							if (!webhook.events.includes(event)
-								&& webhook.state === 'enabled') {
+							if (!webhook.events.includes(event) && webhook.state === 'enabled') {
 								return false;
 							}
 						}
@@ -150,7 +140,15 @@ export class HelpScoutTrigger implements INodeType {
 					secret: Math.random().toString(36).substring(2, 15),
 				};
 
-				const responseData = await helpscoutApiRequest.call(this, 'POST', endpoint, body, {}, undefined, { resolveWithFullResponse: true });
+				const responseData = await helpscoutApiRequest.call(
+					this,
+					'POST',
+					endpoint,
+					body,
+					{},
+					undefined,
+					{ resolveWithFullResponse: true },
+				);
 
 				if (responseData.headers['resource-id'] === undefined) {
 					// Required data is missing so was not successful
@@ -164,7 +162,6 @@ export class HelpScoutTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				if (webhookData.webhookId !== undefined) {
-
 					const endpoint = `/v2/webhooks/${webhookData.webhookId}`;
 					try {
 						await helpscoutApiRequest.call(this, 'DELETE', endpoint);
@@ -190,15 +187,16 @@ export class HelpScoutTrigger implements INodeType {
 		if (headerData['x-helpscout-signature'] === undefined) {
 			return {};
 		}
-		//@ts-ignore
-		const computedSignature = createHmac('sha1', webhookData.secret as string).update(req.rawBody).digest('base64');
+
+		const computedSignature = createHmac('sha1', webhookData.secret as string)
+			//@ts-ignore
+			.update(req.rawBody)
+			.digest('base64');
 		if (headerData['x-helpscout-signature'] !== computedSignature) {
 			return {};
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

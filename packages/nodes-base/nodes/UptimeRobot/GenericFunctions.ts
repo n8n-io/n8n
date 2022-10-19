@@ -1,18 +1,18 @@
-import {
-	OptionsWithUri
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-export async function uptimeRobotApiRequest(this: IExecuteFunctions, method: string, resource: string, body: IDataObject = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}) {
+export async function uptimeRobotApiRequest(
+	this: IExecuteFunctions,
+	method: string,
+	resource: string,
+	body: IDataObject = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+) {
 	const credentials = await this.getCredentials('uptimeRobotApi');
 
 	let options: OptionsWithUri = {

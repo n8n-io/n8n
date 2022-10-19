@@ -1,0 +1,32 @@
+name: Test Pull Request Semantics
+
+on:
+  pull_request:
+    types:
+      - opened
+      - edited
+      - synchronize
+
+jobs:
+  check-pr-title:
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: read
+      contents: read
+    steps:
+      - uses: amannn/action-semantic-pull-request@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # https://www.notion.so/n8n/Release-Process-fce65faea3d5403a85210f7e7a60d0f8
+          types: |
+            feat
+            fix
+            perf
+            test
+            docs
+            refactor
+            build
+            ci
+          requireScope: false
