@@ -400,7 +400,7 @@
 	"executionsLandingPage.emptyState.accordion.title": "Which executions is this workflow saving?",
 	"executionsLandingPage.emptyState.accordion.productionExecutions": "Production executions",
 	"executionsLandingPage.emptyState.accordion.manualExecutions": "Manual executions",
-	"executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip": "Not all production executions are being saved. Change this in the workflow's <a href=\"#\">Workflow Settings</a>",
+	"executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip": "Not all production executions are being saved. Change this in the workflow's <a href=\"#\">settings</a>",
 	"executionsLandingPage.emptyState.accordion.footer": "You can change this in <a href=\"#\">Workflow Settings</a>",
 	"executionsList.allWorkflows": "All Workflows",
 	"executionsList.anyStatus": "Any Status",

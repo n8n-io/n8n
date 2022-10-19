@@ -26,7 +26,7 @@
 			>
 				<canvas-add-button
 					:style="canvasAddButtonStyle"
-					@click="showTriggerCreator('tirger_placeholder_button')"
+					@click="showTriggerCreator('trigger_placeholder_button')"
 					v-show="showCanvasAddButton"
 					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
 					:position="canvasAddButtonPosition"
@@ -3384,7 +3384,7 @@ export default mixins(
 		activated() {
 			const openSideMenu = this.$store.getters['ui/getAddFirstStepOnLoad'];
 			if (openSideMenu) {
-				this.showTriggerCreator('tirger_placeholder_button');
+				this.showTriggerCreator('trigger_placeholder_button');
 			}
 			this.$store.commit('ui/setAddFirstStepOnLoad', false);
 		},

@@ -85,8 +85,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 					);
 				}
 
-				const allExecutions = [...activeExecutions, ...finishedExecutions.results || []]
-				return allExecutions;
+				return [...activeExecutions, ...finishedExecutions.results || []];
 			} catch (error) {
 				throw(error);
 			}
