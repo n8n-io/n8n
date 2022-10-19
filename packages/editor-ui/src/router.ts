@@ -69,7 +69,9 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect(store: Store<IRootState>) {
-					return { name: VIEWS.WORKFLOWS };
+					const startOnNewWorkflowRouteFlag = window.posthog !== undefined && window.posthog.isFeatureEnabled !== undefined && window.posthog.isFeatureEnabled('start-at-wf-empty-state');
+
+					return { name: startOnNewWorkflowRouteFlag ? VIEWS.NEW_WORKFLOW : VIEWS.WORKFLOWS };
 				},
 				permissions: {
 					allow: {
