@@ -19,9 +19,6 @@
 				<n8n-text size="medium">
 					{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
 				</n8n-text>
-				<n8n-button class="mt-l" type="tertiary" size="large" @click="onExecuteWorkflowButtonClick">
-					{{ $locale.baseText('nodeView.runButtonText.executeWorkflow') }}
-				</n8n-button>
 				<executions-info-accordion />
 			</div>
 		</div>
@@ -59,11 +56,6 @@ export default mixins(restApi).extend({
 	methods: {
 		onSetupTriggerButtonClick(event: MouseEvent): void {
 			const workflowRoute = this.getWorkflowRoute();
-			this.$router.push(workflowRoute);
-		},
-		onExecuteWorkflowButtonClick(event: MouseEvent): void {
-			const workflowRoute = this.getWorkflowRoute();
-			this.$store.commit('ui/setPendingExecuteButtonShake', true);
 			this.$router.push(workflowRoute);
 		},
 		getWorkflowRoute(): { name: string, params: {}} {

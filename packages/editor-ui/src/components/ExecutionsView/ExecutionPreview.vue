@@ -84,7 +84,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 <style module lang="scss">
 
 .previewContainer {
-	height: 100%;
+	height: calc(100% - $header-height);
 	overflow: hidden;
 }
 

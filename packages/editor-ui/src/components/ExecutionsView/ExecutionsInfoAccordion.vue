@@ -5,7 +5,9 @@
 		:items="accordionItems"
 		:description="accordionDescription"
 		:initiallyExpanded="shouldExpandAccordion"
+		:headerIcon="accordionIcon"
 		@click="onAccordionClick"
+		@tooltipClick="onItemTooltipClick"
 	></n8n-info-accordion>
 </template>
 
@@ -54,31 +56,14 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		shouldExpandAccordion(): boolean {
-			if (this.initiallyExpanded === false) {
-				return false;
-			}
-			return this.workflowSaveSettings.saveFailedExecutions === false ||
-				this.workflowSaveSettings.saveSuccessfulExecutions === false ||
-				this.workflowSaveSettings.saveManualExecutions === false;
-		},
-		workflowSettings(): IWorkflowSettings {
-			const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings)) as IWorkflowSettings;
-			return workflowSettings;
-		},
-		accordionItems(): Object[] {
+			accordionItems(): Object[] {
 			return [
 				{
-					id: 'successfulExecutions',
-					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.successfulExecutions'),
-					icon: this.workflowSaveSettings.saveSuccessfulExecutions ? 'check' : 'times',
-					iconColor: this.workflowSaveSettings.saveSuccessfulExecutions ? 'success' : 'danger',
-				},
-				{
-					id: 'failedExecutions',
-					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.failedExecutions'),
-					icon: this.workflowSaveSettings.saveFailedExecutions ? 'check' : 'times',
-					iconColor: this.workflowSaveSettings.saveFailedExecutions ? 'success' : 'danger',
+					id: 'productionExecutions',
+					label: this.$locale.baseText('executionsLandingPage.emptyState.accordion.productionExecutions'),
+					icon: this.productionExecutionsIcon.icon,
+					iconColor: this.productionExecutionsIcon.color,
+					tooltip: this.productionExecutionsStatus === 'unknown' ? this.$locale.baseText('executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip') : null,
 				},
 				{
 					id: 'manualExecutions',
@@ -88,12 +73,48 @@ export default Vue.extend({
 				},
 			];
 		},
+		shouldExpandAccordion(): boolean {
+			if (this.initiallyExpanded === false) {
+				return false;
+			}
+			return this.workflowSaveSettings.saveFailedExecutions === false ||
+				this.workflowSaveSettings.saveSuccessfulExecutions === false ||
+				this.workflowSaveSettings.saveManualExecutions === false;
+		},
+		productionExecutionsIcon(): { icon: string, color: string } {
+			if (this.productionExecutionsStatus === 'saving') {
+				return { icon: 'check', color: 'success' };
+			} else if (this.productionExecutionsStatus === 'not-saving') {
+				return { icon: 'times', color: 'danger' };
+			}
+			return { icon: 'exclamation-triangle', color: 'warning' };
+		},
+		productionExecutionsStatus(): string {
+			if (this.workflowSaveSettings.saveSuccessfulExecutions === this.workflowSaveSettings.saveFailedExecutions) {
+				if (this.workflowSaveSettings.saveSuccessfulExecutions === true) {
+					return 'saving';
+				}
+				return 'not-saving';
+			} else {
+				return 'unknown';
+			}
+		},
+		workflowSettings(): IWorkflowSettings {
+			const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings)) as IWorkflowSettings;
+			return workflowSettings;
+		},
 		accordionDescription(): string {
 			return `
 				<footer class="mt-2xs">
 					${this.$locale.baseText('executionsLandingPage.emptyState.accordion.footer')}
 				</footer>
 			`;
+		},
+		accordionIcon(): { icon: string, color: string }|null {
+			if (this.workflowSaveSettings.saveManualExecutions !== true || this.productionExecutionsStatus !== 'saving') {
+				return { icon: 'exclamation-triangle', color: 'warning' };
+			}
+			return null;
 		},
 	},
 	methods: {
@@ -104,6 +125,12 @@ export default Vue.extend({
 		},
 		onAccordionClick(event: MouseEvent): void {
 			if (event.target instanceof HTMLAnchorElement) {
+				event.preventDefault();
+				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+			}
+		},
+		onItemTooltipClick(item: string, event: MouseEvent) {
+			if (item === 'productionExecutions' && event.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
 				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 			}
@@ -133,7 +160,7 @@ export default Vue.extend({
 		display: flex;
 		flex-direction: column;
 		width: 100%;
-		padding: 0 var(--spacing-s) var(--spacing-s) !important;
+		padding: 0 var(--spacing-l) var(--spacing-s) !important;
 
 		span { width: 100%; }
 	}

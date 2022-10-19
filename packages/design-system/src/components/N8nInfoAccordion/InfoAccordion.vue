@@ -1,19 +1,19 @@
 <template>
 	<div :class="['accordion', $style.container]" >
-		<div :class="{[$style.header]: true, [$style.expanded]: expanded}" @click="toggle">
-			<n8n-text color="text-base" size="small" align="left" bold>{{ title }}</n8n-text>
-			<n8n-icon
-				:icon="expanded? 'chevron-up' : 'chevron-down'"
-				bold
-			/>
-
+		<div :class="{[$style.header]: true, [$style.expanded]: expanded }" @click="toggle">
+			<n8n-icon v-if="headerIcon" :icon="headerIcon.icon" :color="headerIcon.color" size="small" class="mr-2xs"/>
+			<n8n-text :class="$style.headerText" color="text-base" size="small" align="left" bold>{{ title }}</n8n-text>
+			<n8n-icon :icon="expanded? 'chevron-up' : 'chevron-down'" bold />
 		</div>
 		<div v-if="expanded" :class="{[$style.description]: true, [$style.collapsed]: !expanded}" @click="onClick">
 			<div v-if="items.length > 0" :class="$style.accordionItems">
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
-					<n8n-icon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs"/>
+					<n8n-tooltip :disabled="!item.tooltip">
+						<div slot="content" v-html="item.tooltip" @click="onTooltipClick(item.id, $event)"></div>
+						<n8n-icon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs"/>
+					</n8n-tooltip>
 					<n8n-text size="small" color="text-base">{{ item.label }}</n8n-text>
-				</div>
+			</div>
 			</div>
 			<n8n-text color="text-base" size="small" align="left">
 				<span v-html="description"></span>
@@ -56,6 +56,10 @@ export default Vue.extend({
 			type: Boolean,
 			default: false,
 		},
+		headerIcon: {
+			type: Object as () => { icon: string, color: string },
+			required: false,
+		},
 	},
 	mounted() {
 		this.$on('expand', () => {
@@ -75,6 +79,9 @@ export default Vue.extend({
 		onClick(e) {
 			this.$emit('click', e);
 		},
+		onTooltipClick(item: string, event: MouseEvent) {
+			this.$emit('tooltipClick', item, event);
+		},
 	},
 });
 </script>
@@ -88,8 +95,9 @@ export default Vue.extend({
 	cursor: pointer;
 	display: flex;
 	padding: var(--spacing-s);
+	align-items: center;
 
-	*:first-child {
+	.headerText {
 		flex-grow: 1;
 	}
 }

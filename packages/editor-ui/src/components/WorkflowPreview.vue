@@ -223,6 +223,6 @@ export default mixins(showMessage).extend({
 }
 
 .executionPreview {
-	height: calc(100% - $header-height);
+	height: 100%;
 }
 </style>

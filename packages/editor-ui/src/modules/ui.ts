@@ -178,7 +178,6 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['credentialsModal'],
 			},
 		],
-		pendingExecuteButtonShake: false,
 		nodeViewInitialized: false,
 	},
 	getters: {
@@ -247,7 +246,6 @@ const module: Module<IUiState, IRootState> = {
 		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
-		isPendingExecuteButtonShake: (state: IUiState) => state.pendingExecuteButtonShake,
 		hoveringItem: (state: IUiState) => state.ndv.hoveringItem,
 		ndvInputNodeName: (state: IUiState) => state.ndv.input.nodeName,
 		ndvInputRunIndex: (state: IUiState) => state.ndv.input.run,
@@ -365,9 +363,6 @@ const module: Module<IUiState, IRootState> = {
 		},
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
-		},
-		setPendingExecuteButtonShake(state: IUiState, isPending: boolean) {
-			state.pendingExecuteButtonShake = isPending;
 		},
 		setHoveringItem(state: IUiState, item: null | IUiState['ndv']['hoveringItem']) {
 			Vue.set(state.ndv, 'hoveringItem', item);

@@ -3124,15 +3124,6 @@ export default mixins(
 				this.addNode(nodeTypeName, { position });
 			},
 		},
-		activated() {
-			if (this.$store.getters['ui/isPendingExecuteButtonShake'] && this.$refs.executeButtons) {
-				const executeButtons = this.$refs.executeButtons as HTMLElement;
-				setTimeout(() => {
-					executeButtons.classList.add(this.$style.shake);
-					this.$store.commit('ui/setPendingExecuteButtonShake', false);
-				}, 200);
-			}
-		},
 		async mounted() {
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
