@@ -12,7 +12,7 @@
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
 				:minWidth="MIN_PANEL_WIDTH"
 				:gridSize="20"
-				@resize="onResize"
+				@resize="onResizeDebounced"
 				@resizestart="onResizeStart"
 				@resizeend="onResizeEnd"
 				:supportedDirections="supportedResizeDirections"
@@ -85,11 +85,12 @@ export default mixins(debounceHelper).extend({
 			default: () => ({}),
 		},
 	},
-	data(): { windowWidth: number, isDragging: boolean, MIN_PANEL_WIDTH: number} {
+	data(): { windowWidth: number, isDragging: boolean, MIN_PANEL_WIDTH: number, initialized: boolean} {
 		return {
 			windowWidth: 1,
 			isDragging: false,
 			MIN_PANEL_WIDTH,
+			initialized: false,
 		};
 	},
 	mounted() {
@@ -107,6 +108,9 @@ export default mixins(debounceHelper).extend({
 
 		window.addEventListener('resize', this.setTotalWidth);
 		this.$emit('init', { position: this.mainPanelDimensions.relativeLeft });
+		setTimeout(() => {
+			this.initialized = true;
+		}, 0);
 	},
 	destroyed() {
 		window.removeEventListener('resize', this.setTotalWidth);
@@ -298,7 +302,9 @@ export default mixins(debounceHelper).extend({
 			this.storePositionData();
 		},
 		onResizeDebounced(data: { direction: string, x: number, width: number}) {
-			this.callDebounced('onResize', { debounceTime: 50, trailing: true }, data);
+			if (this.initialized) {
+				this.callDebounced('onResize', { debounceTime: 15, trailing: true }, data);
+			}
 		},
 		onResize({ direction, x, width }: { direction: string, x: number, width: number}) {
 			const relativeDistance = this.pxToRelativeWidth(x);
