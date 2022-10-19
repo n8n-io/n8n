@@ -155,6 +155,7 @@ import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
+import { getNodeViewTab } from '@/components/helpers';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -193,21 +194,28 @@ export default mixins(
 		watch: {
 			// Listen to route changes and load the workflow accordingly
 			'$route' (to, from) {
-				const workflowChanged =  from.params.name !== to.params.name;
-				const shouldUpdateWorkflowData =
-					(from.meta.keepWorkflowAlive === undefined || from.meta.keepWorkflowAlive !== true) &&
-					(to.meta.keepWorkflowAlive === undefined || to.meta.keepWorkflowAlive !== true);
-				const initNodeView = !this.$store.getters['ui/isNodeViewInitialized'];
-				const isNewWorkflow = this.currentWorkflow === 'new' || this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+				const currentTab = getNodeViewTab(to);
+				const nodeViewNotInitialized = !this.$store.getters['ui/isNodeViewInitialized'];
+				const workflowChanged =
+					from.params.name !== to.params.name &&
+					// Both 'new' and __EMPTY__ are new workflow names, so ignore them when detecting if wf changed
+					!(from.params.name === 'new' && this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID);
+				const isOpeningTemplate = to.name === VIEWS.TEMPLATE_IMPORT;
 
-				if (shouldUpdateWorkflowData || (!isNewWorkflow && workflowChanged) || initNodeView) {
-					this.startLoading();
-					if(initNodeView) {
-						this.resetWorkspace();
+				// When entering this tab:
+				if (currentTab === MAIN_HEADER_TABS.WORKFLOW || isOpeningTemplate) {
+					if (workflowChanged || nodeViewNotInitialized || isOpeningTemplate) {
+						this.startLoading();
+						if (nodeViewNotInitialized) {
+							this.resetWorkspace();
+						}
+						this.initView().then(() => {
+							this.stopLoading();
+							if (this.blankRedirect) {
+								this.blankRedirect = false;
+							}
+						});
 					}
-					this.initView().then(() => {
-						this.stopLoading();
-					});
 				}
 			},
 			activeNode () {
@@ -237,39 +245,40 @@ export default mixins(
 
 		},
 		async beforeRouteLeave(to, from, next) {
-			// Skip check if in the middle of template import or route is configured to keep node view alive
-			if (from.name === VIEWS.TEMPLATE_IMPORT || (to.meta && to.meta.keepWorkflowAlive === true)) {
-				const workflowChanged = from.params.name !== to.params.name;
-				const isNewWorkflow = to.params.name === PLACEHOLDER_EMPTY_WORKFLOW_ID || to.params.name === 'new';
-				if (workflowChanged && !isNewWorkflow) {
-					await this.resetWorkspace();
-					this.$store.commit('ui/setNodeViewInitialized', false);
+			const previousTab = getNodeViewTab(from);
+			const nextTab = getNodeViewTab(to);
+			// Only react if leaving workflow tab and going to a separate page
+			if (previousTab === MAIN_HEADER_TABS.WORKFLOW && !nextTab) {
+				// Skip check if in the middle of template import
+				if (from.name === VIEWS.TEMPLATE_IMPORT) {
+					next();
+					return;
 				}
-				next();
-				return;
-			}
 
-			const result = this.$store.getters.getStateIsDirty;
-			if (result) {
-				const confirmModal = await this.confirmModal(
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
-					'warning',
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
-					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
-					true,
-				);
+				const result = this.$store.getters.getStateIsDirty;
+				if (result) {
+					const confirmModal = await this.confirmModal(
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+						'warning',
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+						this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+						true,
+					);
 
-				if (confirmModal === MODAL_CONFIRMED) {
-					const saved = await this.saveCurrentWorkflow({}, false);
-					if (saved) this.$store.dispatch('settings/fetchPromptsData');
-					this.$store.commit('setStateDirty', false);
+					if (confirmModal === MODAL_CONFIRMED) {
+						const saved = await this.saveCurrentWorkflow({}, false);
+						if (saved) this.$store.dispatch('settings/fetchPromptsData');
+						this.$store.commit('setStateDirty', false);
+						next();
+					} else if (confirmModal === MODAL_CANCEL) {
+						this.$store.commit('setStateDirty', false);
+						next();
+					} else if (confirmModal === MODAL_CLOSE) {
+						next(false);
+					}
+				} else {
 					next();
-				} else if (confirmModal === MODAL_CANCEL) {
-					this.$store.commit('setStateDirty', false);
-					next();
-				} else if (confirmModal === MODAL_CLOSE) {
-					next(false);
 				}
 			} else {
 				next();
@@ -614,6 +623,7 @@ export default mixins(
 				await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
 				this.$nextTick(() => {
 					this.zoomToFit();
+
 					this.$store.commit('setStateDirty', true);
 				});
 
@@ -2057,7 +2067,6 @@ export default mixins(
 				this.stopLoading();
 			},
 			async initView(): Promise<void> {
-				const isOnCanvas = this.$route.name === VIEWS.WORKFLOW || this.$route.name === VIEWS.NEW_WORKFLOW;
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
@@ -2075,7 +2084,7 @@ export default mixins(
 					// Load an execution
 					const executionId = this.$route.params.id;
 					await this.openExecution(executionId);
-				} else if (isOnCanvas) {
+				} else {
 					const result = this.$store.getters.getStateIsDirty;
 					if (result) {
 						const confirmModal = await this.confirmModal(
@@ -2118,8 +2127,8 @@ export default mixins(
 						// Create new workflow
 						await this.newWorkflow();
 					}
-					this.$store.commit('ui/setNodeViewInitialized', true);
 				}
+				this.$store.commit('ui/setNodeViewInitialized', true);
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
 				window.addEventListener("beforeunload", (e) => {

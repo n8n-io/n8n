@@ -192,7 +192,7 @@ const router = new Router({
 			},
 		},
 		{
-			path: '/workflow',
+			path: '/workflow/new',
 			name: VIEWS.NEW_WORKFLOW,
 			components: {
 				default: NodeView,

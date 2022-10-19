@@ -63,10 +63,6 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 	},
 	watch:{
     $route (to: Route, from: Route) {
-			const nodeViewAlreadyInitialized = this.$store.getters['ui/isNodeViewInitialized'];
-			if (!nodeViewAlreadyInitialized && to.params.name !== from.params.name) {
-				this.$store.commit('ui/setNodeViewInitialized', false);
-			}
 			this.setActiveExecution();
     },
 	},
@@ -79,7 +75,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 			}).catch(()=>{});;
 		}
 		this.setActiveExecution();
-		if (this.workflowDataNotLoaded || (this.$route.params.name !== this.$store.getters.workflowId)) {
+		if (this.workflowDataNotLoaded) {
 			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
 				await this.$store.dispatch('nodeTypes/getNodeTypes');
 			}
@@ -87,11 +83,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 			const executions = await await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { status: '' });
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', executions);
 
-			const nodeViewAlreadyInitialized = this.$store.getters['ui/isNodeViewInitialized'];
-
-			if (!nodeViewAlreadyInitialized) {
-				this.$store.commit('ui/setNodeViewInitialized', false);
-			}
+			this.$store.commit('ui/setNodeViewInitialized', false);
 		}
 	},
 	methods: {

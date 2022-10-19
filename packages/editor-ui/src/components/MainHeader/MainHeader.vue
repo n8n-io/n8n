@@ -36,6 +36,7 @@ export default mixins(
 			return {
 				activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
 				workflowToReturnTo: '',
+				dirtyState: this.$store.getters.getStateIsDirty,
 			};
 		},
 		computed: {
@@ -98,17 +99,19 @@ export default mixins(
 			onTabSelected(tab: string, event: MouseEvent) {
 				switch (tab) {
 					case MAIN_HEADER_TABS.WORKFLOW:
-						if (this.workflowToReturnTo !== '' && this.workflowToReturnTo !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+						if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
 							this.$router.push({
 								name: VIEWS.WORKFLOW,
 								params: { name: this.workflowToReturnTo },
 							});
 						} else {
 							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+							this.$store.commit('setStateDirty', this.dirtyState);
 						}
 						this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 						break;
 					case MAIN_HEADER_TABS.EXECUTIONS:
+						this.dirtyState = this.$store.getters.getStateIsDirty;
 						this.workflowToReturnTo = this.currentWorkflow;
 						const routeWorkflowId = this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
 						if (this.activeExecution) {
