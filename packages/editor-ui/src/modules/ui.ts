@@ -22,7 +22,6 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
-	ALL_NODE_FILTER,
 	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 import Vue from 'vue';
@@ -175,6 +174,7 @@ const module: Module<IUiState, IRootState> = {
 			},
 		],
 		nodeViewInitialized: false,
+		addFirstStepOnLoad: false,
 	},
 	getters: {
 		ndvInputData: (state: IUiState, getters, rootState: IRootState, rootGetters) => {
@@ -251,6 +251,7 @@ const module: Module<IUiState, IRootState> = {
 		ndvInputBranchIndex: (state: IUiState) => state.ndv.input.branch,
 		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
 		isNodeViewInitialized: (state: IUiState) => state.nodeViewInitialized,
+		getAddFirstStepOnLoad: (state: IUiState) => state.addFirstStepOnLoad,
 	},
 	mutations: {
 		setInputNodeName: (state: IUiState, name: string | undefined) => {
@@ -382,6 +383,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setNodeViewInitialized(state: IUiState, isInitialized: boolean) {
 			state.nodeViewInitialized = isInitialized;
+		},
+		setAddFirstStepOnLoad(state: IUiState, addStep: boolean) {
+			state.addFirstStepOnLoad = addStep;
 		},
 	},
 	actions: {

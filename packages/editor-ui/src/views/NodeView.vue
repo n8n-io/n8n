@@ -3379,7 +3379,13 @@ export default mixins(
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},
-
+		activated() {
+			const openSideMenu = this.$store.getters['ui/getAddFirstStepOnLoad'];
+			if (openSideMenu) {
+				this.showTriggerCreator('tirger_placeholder_button');
+			}
+			this.$store.commit('ui/setAddFirstStepOnLoad', false);
+		},
 		destroyed() {
 			this.resetWorkspace();
 			this.$store.commit('setStateDirty', false);

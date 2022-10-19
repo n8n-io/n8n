@@ -8,7 +8,7 @@
 				<n8n-text size="medium">
 					{{ $locale.baseText('executionsLandingPage.emptyState.message') }}
 				</n8n-text>
-				<n8n-button class="mt-l" type="tertiary" size="large" @click="onSetupTriggerButtonClick">
+				<n8n-button class="mt-l" type="tertiary" size="large" @click="onSetupFirstStep">
 					{{ $locale.baseText('executionsLandingPage.emptyState.noTrigger.buttonText') }}
 				</n8n-button>
 			</div>
@@ -54,7 +54,8 @@ export default mixins(restApi).extend({
 		},
 	},
 	methods: {
-		onSetupTriggerButtonClick(event: MouseEvent): void {
+		onSetupFirstStep(event: MouseEvent): void {
+			this.$store.commit('ui/setAddFirstStepOnLoad', true);
 			const workflowRoute = this.getWorkflowRoute();
 			this.$router.push(workflowRoute);
 		},
