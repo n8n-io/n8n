@@ -70,7 +70,11 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 	async mounted() {
 		const workflowUpdated = this.$route.params.name !== this.$store.getters.workflowId;
 		const onNewWorkflow = this.$route.params.name === 'new' && this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID;
-		await this.initView(workflowUpdated && !onNewWorkflow);
+		const shouldUpdate = workflowUpdated && !onNewWorkflow;
+		await this.initView(shouldUpdate);
+		if (!shouldUpdate) {
+			this.setExecutions();
+		}
 	},
 	methods: {
 		async initView (loadWorkflow: boolean) : Promise<void> {
