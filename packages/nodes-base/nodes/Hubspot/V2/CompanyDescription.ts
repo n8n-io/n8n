@@ -175,7 +175,7 @@ export const companyFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCompanyCustomProperties',
 								},
-								default: '',
+								default: {},
 								description:
 									'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
@@ -185,11 +185,6 @@ export const companyFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								required: true,
-								displayOptions: {
-									hide: {
-										operation: ['isEmpty'],
-									},
-								},
 								description: 'Value of the property',
 							},
 						],
@@ -578,11 +573,6 @@ export const companyFields: INodeProperties[] = [
 								type: 'string',
 								default: '',
 								required: true,
-								displayOptions: {
-									hide: {
-										operation: ['isEmpty'],
-									},
-								},
 								description: 'Value of the property',
 							},
 						],
