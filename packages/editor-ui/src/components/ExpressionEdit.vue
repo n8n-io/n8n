@@ -175,7 +175,7 @@ export default mixins(
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
 					workflow_id: this.$store.getters.workflowId,
 					source: this.eventSource,
-					session_id: this.$store.getters['ui/ndvSessionId'],
+					session_id: this.$store.getters['ndv/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),
 					has_mapping: hasExpressionMapping(this.value),
 				};

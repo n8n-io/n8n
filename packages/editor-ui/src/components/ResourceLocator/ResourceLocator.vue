@@ -440,7 +440,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		setWidthOnMainPanelResize(mutation: { type: string }) {
 			// Update the width when main panel dimension change
-			if(mutation.type === 'ui/setMainPanelDimensions') this.setWidth();
+			if(mutation.type === 'ndv/setMainPanelDimensions') this.setWidth();
 		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {

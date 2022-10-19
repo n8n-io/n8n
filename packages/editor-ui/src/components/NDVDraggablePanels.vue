@@ -115,7 +115,7 @@ export default Vue.extend({
 			relativeLeft: number,
 			relativeRight: number
 			} {
-			return this.$store.getters['ui/mainPanelDimensions'](this.currentNodePaneType);
+			return this.$store.getters['ndv/mainPanelDimensions'](this.currentNodePaneType);
 		},
 		supportedResizeDirections() {
 			const supportedDirections = ['right'];
@@ -238,7 +238,7 @@ export default Vue.extend({
 		setMainPanelWidth(relativeWidth?: number) {
 			const mainPanelRelativeWidth = relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
 
-			this.$store.commit('ui/setMainPanelDimensions', {
+			this.$store.commit('ndv/setMainPanelDimensions', {
 				panelType: this.currentNodePaneType,
 				dimensions: {
 					relativeWidth: mainPanelRelativeWidth,
@@ -254,7 +254,7 @@ export default Vue.extend({
 			const isInputless = this.currentNodePaneType === 'inputless';
 
 			if(isMinLeft) {
-				this.$store.commit('ui/setMainPanelDimensions', {
+				this.$store.commit('ndv/setMainPanelDimensions', {
 					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: this.minimumLeftPosition,
@@ -265,7 +265,7 @@ export default Vue.extend({
 			}
 
 			if(isMaxRight) {
-				this.$store.commit('ui/setMainPanelDimensions', {
+				this.$store.commit('ndv/setMainPanelDimensions', {
 					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
@@ -275,7 +275,7 @@ export default Vue.extend({
 				return;
 			}
 
-			this.$store.commit('ui/setMainPanelDimensions', {
+			this.$store.commit('ndv/setMainPanelDimensions', {
 				panelType: this.currentNodePaneType,
 				dimensions: {
 					relativeLeft: isInputless ? this.minimumLeftPosition : mainPanelRelativeLeft,

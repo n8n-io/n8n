@@ -138,10 +138,10 @@ export default mixins(
 				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
 			},
 			isInputDataEmpty (): boolean {
-				return this.$store.getters['ui/getNDVDataIsEmpty']('input');
+				return this.$store.getters['ndv/getNDVDataIsEmpty']('input');
 			},
 			displayMode(): IRunDataDisplayMode {
-				return this.$store.getters['ui/inputPanelDisplayMode'];
+				return this.$store.getters['ndv/inputPanelDisplayMode'];
 			},
 			showMappingTooltip (): boolean {
 				return this.focused && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';

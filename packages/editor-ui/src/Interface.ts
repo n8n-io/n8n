@@ -936,15 +936,8 @@ export interface TargetItem {
 	outputIndex: number;
 }
 
-export interface IUiState {
-	sidebarMenuCollapsed: boolean;
-	modalStack: string[];
-	modals: {
-		[key: string]: IModalState;
-	};
+export interface NDVState {
 	mainPanelDimensions: {[key: string]: {[key: string]: number}};
-	isPageLoading: boolean;
-	currentView: string;
 	ndv: {
 		sessionId: string;
 		input: {
@@ -971,7 +964,6 @@ export interface IUiState {
 		mappingTelemetry: {[key: string]: string | number | boolean};
 		hoveringItem: null | TargetItem;
 	};
-	mainPanelPosition: number;
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -979,6 +971,17 @@ export interface IUiState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+}
+
+
+export interface IUiState {
+	sidebarMenuCollapsed: boolean;
+	modalStack: string[];
+	modals: {
+		[key: string]: IModalState;
+	};
+	isPageLoading: boolean;
+	currentView: string;
 	fakeDoorFeatures: IFakeDoor[];
 }
 

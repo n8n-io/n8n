@@ -112,7 +112,7 @@ export default mixins(
 	},
 	computed: {
 		focusedMappableInput(): string {
-			return this.$store.getters['ui/focusedMappableInput'];
+			return this.$store.getters['ndv/focusedMappableInput'];
 		},
 		isUserOnboarded(): boolean {
 			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';

@@ -37,6 +37,7 @@ import {
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
+import ndv from './modules/ndv';
 import credentials from './modules/credentials';
 import settings from './modules/settings';
 import tags from './modules/tags';
@@ -122,6 +123,7 @@ const modules = {
 	ui,
 	communityNodes,
 	nodeCreator,
+	ndv,
 };
 
 export const store = new Vuex.Store({

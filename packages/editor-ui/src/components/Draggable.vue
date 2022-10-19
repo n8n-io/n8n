@@ -67,10 +67,10 @@ export default Vue.extend({
 	},
 	computed: {
 		canDrop(): boolean {
-			return this.$store.getters['ui/canDraggableDrop'];
+			return this.$store.getters['ndv/canDraggableDrop'];
 		},
 		stickyPosition(): XYPosition | null {
-			return this.$store.getters['ui/draggableStickyPos'];
+			return this.$store.getters['ndv/draggableStickyPos'];
 		},
 	},
 	methods: {

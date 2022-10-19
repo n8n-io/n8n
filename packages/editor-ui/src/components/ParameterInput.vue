@@ -824,7 +824,7 @@ export default mixins(
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
 						workflow_id: this.$store.getters.workflowId,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						session_id: this.$store.getters['ndv/ndvSessionId'],
 						source: this.eventSource || 'ndv',
 					});
 				}
@@ -953,7 +953,7 @@ export default mixins(
 						node_type: this.node && this.node.type,
 						resource: this.node && this.node.parameters.resource,
 						is_custom: value === CUSTOM_API_CALL_KEY,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						session_id: this.$store.getters['ndv/ndvSessionId'],
 						parameter: this.parameter.name,
 					});
 				}

@@ -202,7 +202,7 @@ export default mixins(
 			return updatedAt > runAt;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
-			return this.$store.getters['ui/outputPanelEditMode'];
+			return this.$store.getters['ndv/outputPanelEditMode'];
 		},
 		canPinData(): boolean {
 			return this.isPinDataNodeType && !this.isReadOnly;
