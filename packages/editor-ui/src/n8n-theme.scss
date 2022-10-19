@@ -1,15 +1,11 @@
-@import "./n8n-theme-variables";
-
-@import "~n8n-design-system/theme/dist/index.css";
-
 .clickable {
-	cursor: pointer;
+	cursor: pointer !important;
 }
 .primary-color {
-	color: $--color-primary;
+	color: $color-primary;
 }
 .text-light {
-	color: $--custom-font-light;
+	color: $custom-font-light;
 	font-weight: 400;
 }
 
@@ -52,26 +48,26 @@
 			}
 		}
 		.el-dialog__body {
-			color: $--custom-dialog-text-color;
+			color: $custom-dialog-text-color;
 			padding: 0 20px 20px 20px;
 		}
 		.el-dialog__title {
-			color: $--custom-dialog-text-color;
+			color: $custom-dialog-text-color;
 		}
 	}
 }
 
 .el-message-box {
-	background-color: $--custom-dialog-background;
+	background-color: $custom-dialog-background;
 	border: none;
 	.el-message-box__headerbtn {
 		.el-message-box__close {
-			color: $--custom-dialog-text-color;
+			color: $custom-dialog-text-color;
 		}
 	}
 	.el-message-box__content,
 	.el-message-box__title {
-		color: $--custom-dialog-text-color;
+		color: $custom-dialog-text-color;
 	}
 }
 
@@ -162,23 +158,23 @@
 
 .tags-container {
 	.el-tag {
-		color: $--tag-text-color;
+		color: $tag-text-color;
 		font-size: 12px;
-		background-color: $--tag-background-color;
+		background-color: $tag-background-color;
 		border-radius: 12px;
 		height: auto;
-		border-color: $--tag-background-color;
+		border-color: $tag-background-color;
 		font-weight: 400;
 
 		.el-icon-close {
-			color: $--tag-background-color;
-			background-color: $--tag-close-background-color !important;
+			color: $tag-background-color;
+			background-color: $tag-close-background-color !important;
 			max-height: 15px;
 			max-width: 15px;
 			margin-right: 6px;
 
 			&:hover {
-				background-color: $--tag-close-background-hover-color !important;
+				background-color: $tag-close-background-hover-color !important;
 			}
 		}
 	}

@@ -3,7 +3,7 @@
 		<div :class="$style.container">
 			<div :class="$style.header">
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.personal.personalSettings') }}</n8n-heading>
-				<div :class="$style.user">
+				<div class="ph-no-capture" :class="$style.user">
 					<span :class="$style.username">
 						<n8n-text  color="text-light">{{currentUser.fullName}}</n8n-text>
 					</span>
@@ -14,14 +14,16 @@
 				<div :class="$style.sectionHeader">
 					<n8n-heading size="large">{{ $locale.baseText('settings.personal.basicInformation') }}</n8n-heading>
 				</div>
-				<n8n-form-inputs
-					v-if="formInputs"
-					:inputs="formInputs"
-					:eventBus="formBus"
-					@input="onInput"
-					@ready="onReadyToSubmit"
-					@submit="onSubmit"
-				/>
+				<div>
+					<n8n-form-inputs
+						v-if="formInputs"
+						:inputs="formInputs"
+						:eventBus="formBus"
+						@input="onInput"
+						@ready="onReadyToSubmit"
+						@submit="onSubmit"
+					/>
+				</div>
 			</div>
 			<div v-if="!signInWithLdap">
 				<div :class="$style.sectionHeader">
@@ -174,7 +176,7 @@ export default mixins(
 	display: flex;
 	align-items: center;
 
-	@media (max-width: $--breakpoint-2xs) {
+	@media (max-width: $breakpoint-2xs) {
 		display: none;
 	}
 }
@@ -184,7 +186,7 @@ export default mixins(
 	margin-right: var(--spacing-s);
 	text-align: right;
 
-	@media (max-width: $--breakpoint-sm) {
+	@media (max-width: $breakpoint-sm) {
 		max-width: 100px;
 		overflow: hidden;
 		text-overflow: ellipsis;

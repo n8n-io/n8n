@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const journalEntryOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const journalEntryOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'journalEntry',
-				],
+				resource: ['journalEntry'],
 			},
 		},
 		options: [
@@ -35,10 +31,10 @@ export const journalEntryOperations: INodeProperties[] = [
 				action: 'Get a journal entry',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all journal entries',
-				action: 'Get all journal entries',
+				description: 'Retrieve many journal entries',
+				action: 'Get many journal entries',
 			},
 			{
 				name: 'Update',
@@ -64,12 +60,8 @@ export const journalEntryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'journalEntry',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['journalEntry'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -85,12 +77,8 @@ export const journalEntryFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'journalEntry',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['journalEntry'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -107,12 +95,8 @@ export const journalEntryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'journalEntry',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['journalEntry'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -129,12 +113,8 @@ export const journalEntryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'journalEntry',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['journalEntry'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -150,12 +130,8 @@ export const journalEntryFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'journalEntry',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['journalEntry'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -170,15 +146,9 @@ export const journalEntryFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'journalEntry',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['journalEntry'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -195,12 +165,8 @@ export const journalEntryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'journalEntry',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['journalEntry'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -212,12 +178,8 @@ export const journalEntryFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'journalEntry',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['journalEntry'],
+				operation: ['update'],
 			},
 		},
 		options: [

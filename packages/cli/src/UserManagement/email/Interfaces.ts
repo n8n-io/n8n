@@ -17,7 +17,7 @@ export type PasswordResetData = {
 	lastName?: string;
 	passwordResetUrl: string;
 	domain: string;
-	signInType: string;
+	isLdapUser: boolean;
 };
 
 export type SendEmailResult = {

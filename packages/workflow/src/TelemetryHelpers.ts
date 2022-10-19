@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import {
 	IConnection,
 	INode,
@@ -8,8 +7,8 @@ import {
 	INodesGraphResult,
 	IWorkflowBase,
 	INodeTypes,
-} from '.';
-import { INodeType } from './Interfaces';
+	INodeType,
+} from './Interfaces';
 
 const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 

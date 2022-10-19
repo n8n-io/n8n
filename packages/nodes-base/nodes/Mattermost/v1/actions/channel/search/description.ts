@@ -1,6 +1,4 @@
-import {
-	ChannelProperties,
-} from '../../Interfaces';
+import { ChannelProperties } from '../../Interfaces';
 
 export const channelSearchDescription: ChannelProperties = [
 	{
@@ -15,15 +13,12 @@ export const channelSearchDescription: ChannelProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['search'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The Mattermost Team. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Search Term',
@@ -33,12 +28,8 @@ export const channelSearchDescription: ChannelProperties = [
 		placeholder: 'General',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['search'],
+				resource: ['channel'],
 			},
 		},
 		required: true,
@@ -52,12 +43,8 @@ export const channelSearchDescription: ChannelProperties = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['search'],
+				resource: ['channel'],
 			},
 		},
 	},
@@ -73,15 +60,9 @@ export const channelSearchDescription: ChannelProperties = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'channel',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['search'],
+				resource: ['channel'],
+				returnAll: [false],
 			},
 		},
 	},

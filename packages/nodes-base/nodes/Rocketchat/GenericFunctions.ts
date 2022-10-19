@@ -1,14 +1,18 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { NodeApiError } from 'n8n-workflow';
 
-export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, resource: string, method: string, operation: string, body: any = {}, headers?: object): Promise<any> { // tslint:disable-line:no-any
+export async function rocketchatApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	resource: string,
+	method: string,
+	operation: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	headers?: object,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('rocketchatApi');
 
 	const options: OptionsWithUri = {
@@ -28,7 +32,8 @@ export async function rocketchatApiRequest(this: IExecuteFunctions | ILoadOption
 	}
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);

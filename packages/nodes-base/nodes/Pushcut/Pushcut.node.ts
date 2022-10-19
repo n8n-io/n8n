@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,9 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	pushcutApiRequest,
-} from './GenericFunctions';
+import { pushcutApiRequest } from './GenericFunctions';
 
 export class Pushcut implements INodeType {
 	description: INodeTypeDescription = {
@@ -57,9 +53,7 @@ export class Pushcut implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'notification',
-						],
+						resource: ['notification'],
 					},
 				},
 				options: [
@@ -76,18 +70,15 @@ export class Pushcut implements INodeType {
 				displayName: 'Notification Name or ID',
 				name: 'notificationName',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getNotifications',
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'notification',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['notification'],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -99,12 +90,8 @@ export class Pushcut implements INodeType {
 				placeholder: 'Add Field',
 				displayOptions: {
 					show: {
-						operation: [
-							'send',
-						],
-						resource: [
-							'notification',
-						],
+						operation: ['send'],
+						resource: ['notification'],
 					},
 				},
 				default: {},
@@ -117,7 +104,8 @@ export class Pushcut implements INodeType {
 							loadOptionsMethod: 'getDevices',
 						},
 						default: [],
-						description: 'List of devices this notification is sent to. (default is all devices). Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'List of devices this notification is sent to. (default is all devices). Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Input',
@@ -185,7 +173,6 @@ export class Pushcut implements INodeType {
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
-
 			if (resource === 'notification') {
 				if (operation === 'send') {
 					const notificationName = this.getNodeParameter('notificationName', i) as string;
@@ -207,10 +194,8 @@ export class Pushcut implements INodeType {
 		}
 		if (Array.isArray(responseData)) {
 			returnData.push.apply(returnData, responseData as IDataObject[]);
-
 		} else if (responseData !== undefined) {
 			returnData.push(responseData as IDataObject);
-
 		}
 		return [this.helpers.returnJsonArray(returnData)];
 	}

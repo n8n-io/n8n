@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import {
 	GristCredentials,
@@ -27,16 +18,16 @@ export async function gristApiRequest(
 	body: IDataObject | number[] = {},
 	qs: IDataObject = {},
 ) {
-	const {
-		apiKey,
-		planType,
-		customSubdomain,
-		selfHostedUrl,
-	} = await this.getCredentials('gristApi') as GristCredentials;
+	const { apiKey, planType, customSubdomain, selfHostedUrl } = (await this.getCredentials(
+		'gristApi',
+	)) as GristCredentials;
 
-	const gristapiurl = (planType === 'free') ? `https://docs.getgrist.com/api${endpoint}` :
-	(planType === 'paid') ? `https://${customSubdomain}.getgrist.com/api${endpoint}` :
-		`${selfHostedUrl}/api${endpoint}`;
+	const gristapiurl =
+		planType === 'free'
+			? `https://docs.getgrist.com/api${endpoint}`
+			: planType === 'paid'
+			? `https://${customSubdomain}.getgrist.com/api${endpoint}`
+			: `${selfHostedUrl}/api${endpoint}`;
 
 	const options: OptionsWithUri = {
 		headers: {
@@ -74,7 +65,7 @@ export function parseSortProperties(sortProperties: GristSortProperties) {
 }
 
 export function parseFilterProperties(filterProperties: GristFilterProperties) {
-	return filterProperties.reduce<{ [key: string]: Array<string | number>; }>((acc, cur) => {
+	return filterProperties.reduce<{ [key: string]: Array<string | number> }>((acc, cur) => {
 		acc[cur.field] = acc[cur.field] ?? [];
 		const values = isNaN(Number(cur.values)) ? cur.values : Number(cur.values);
 		acc[cur.field].push(values);
@@ -83,7 +74,7 @@ export function parseFilterProperties(filterProperties: GristFilterProperties) {
 }
 
 export function parseDefinedFields(fieldsToSendProperties: GristDefinedFields) {
-	return fieldsToSendProperties.reduce<{ [key: string]: string; }>((acc, cur) => {
+	return fieldsToSendProperties.reduce<{ [key: string]: string }>((acc, cur) => {
 		acc[cur.fieldId] = cur.fieldValue;
 		return acc;
 	}, {});
@@ -94,7 +85,8 @@ export function parseAutoMappedInputs(
 	inputsToIgnore: string[],
 	item: any, // tslint:disable-line:no-any
 ) {
-	return incomingKeys.reduce<{ [key: string]: any; }>((acc, curKey) => { // tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+	return incomingKeys.reduce<{ [key: string]: any }>((acc, curKey) => {
 		if (inputsToIgnore.includes(curKey)) return acc;
 		acc = { ...acc, [curKey]: item[curKey] };
 		return acc;
@@ -105,7 +97,7 @@ export function throwOnZeroDefinedFields(this: IExecuteFunctions, fields: GristD
 	if (!fields?.length) {
 		throw new NodeOperationError(
 			this.getNode(),
-			'No defined data found. Please specify the data to send in \'Fields to Send\'.',
+			"No defined data found. Please specify the data to send in 'Fields to Send'.",
 		);
 	}
 }

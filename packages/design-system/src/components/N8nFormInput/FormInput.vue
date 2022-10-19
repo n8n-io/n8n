@@ -161,7 +161,7 @@ export default mixins(Locale).extend({
 		this.$emit('validate', !this.validationError);
 
 		if (this.focusInitially && this.$refs.input) {
-			this.$refs.input.focus();
+			(this.$refs.input as HTMLTextAreaElement).focus();
 		}
 	},
 	computed: {
@@ -185,14 +185,14 @@ export default mixins(Locale).extend({
 	},
 	methods: {
 		getValidationError(): ReturnType<IValidator['validate']>  {
-			const rules = (this.validationRules || []) as (Rule | RuleGroup)[];
+			const rules = (this.validationRules || []) as Array<Rule | RuleGroup>;
 			const validators = {
 				...VALIDATORS,
 				...(this.validators || {}),
 			} as { [key: string]: IValidator | RuleGroup };
 
 			if (this.required) {
-				const error = getValidationError(this.value, validators, validators.REQUIRED as Validator);
+				const error = getValidationError(this.value, validators, validators.REQUIRED as IValidator);
 				if (error) {
 					return error;
 				}
@@ -205,7 +205,7 @@ export default mixins(Locale).extend({
 						const error = getValidationError(
 							this.value,
 							validators,
-							validators[rule.name] as Validator,
+							validators[rule.name] as IValidator,
 							rule.config,
 						);
 						if (error) {
@@ -241,9 +241,9 @@ export default mixins(Locale).extend({
 		onFocus() {
 			this.$emit('focus');
 		},
-		onEnter(e) {
-			e.stopPropagation();
-			e.preventDefault();
+		onEnter(event: Event) {
+			event.stopPropagation();
+			event.preventDefault();
 			this.$emit('enter');
 		},
 	},

@@ -1,18 +1,11 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-} from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 import {
 	convertTriggerObjectToStringArray,
 	eventExists,
-	postmarkApiRequest
+	postmarkApiRequest,
 } from './GenericFunctions';
 
 export class PostmarkTrigger implements INodeType {
@@ -93,9 +86,7 @@ export class PostmarkTrigger implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						events: [
-							'open',
-						],
+						events: ['open'],
 					},
 				},
 			},
@@ -107,15 +98,11 @@ export class PostmarkTrigger implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						events: [
-							'bounce',
-							'spamComplaint',
-						],
+						events: ['bounce', 'spamComplaint'],
 					},
 				},
 			},
 		],
-
 	};
 
 	// @ts-ignore (because of request)
@@ -150,7 +137,10 @@ export class PostmarkTrigger implements INodeType {
 
 				// If webhooks exist, check if any match current settings
 				for (const webhook of responseData.Webhooks) {
-					if (webhook.Url === webhookUrl && eventExists(events, convertTriggerObjectToStringArray(webhook))) {
+					if (
+						webhook.Url === webhookUrl &&
+						eventExists(events, convertTriggerObjectToStringArray(webhook))
+					) {
 						webhookData.webhookId = webhook.ID;
 						// webhook identical to current settings. re-assign webhook id to found webhook.
 						return true;
@@ -165,24 +155,24 @@ export class PostmarkTrigger implements INodeType {
 				const endpoint = `/webhooks`;
 
 				// tslint:disable-next-line: no-any
-				const body : any = {
+				const body: any = {
 					Url: webhookUrl,
 					Triggers: {
-						Open:{
+						Open: {
 							Enabled: false,
 							PostFirstOpenOnly: false,
 						},
-						Click:{
+						Click: {
 							Enabled: false,
 						},
-						Delivery:{
+						Delivery: {
 							Enabled: false,
 						},
-						Bounce:{
+						Bounce: {
 							Enabled: false,
 							IncludeContent: false,
 						},
-						SpamComplaint:{
+						SpamComplaint: {
 							Enabled: false,
 							IncludeContent: false,
 						},
@@ -210,7 +200,9 @@ export class PostmarkTrigger implements INodeType {
 				}
 				if (events.includes('spamComplaint')) {
 					body.Triggers.SpamComplaint.Enabled = true;
-					body.Triggers.SpamComplaint.IncludeContent = this.getNodeParameter('includeContent') as boolean;
+					body.Triggers.SpamComplaint.IncludeContent = this.getNodeParameter(
+						'includeContent',
+					) as boolean;
 				}
 				if (events.includes('subscriptionChange')) {
 					body.Triggers.SubscriptionChange.Enabled = true;
@@ -255,9 +247,7 @@ export class PostmarkTrigger implements INodeType {
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

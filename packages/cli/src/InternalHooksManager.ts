@@ -18,6 +18,7 @@ export class InternalHooksManager {
 		if (!this.internalHooksInstance) {
 			this.internalHooksInstance = new InternalHooksClass(
 				new Telemetry(instanceId, versionCli),
+				instanceId,
 				versionCli,
 				nodeTypes,
 			);

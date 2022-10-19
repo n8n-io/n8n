@@ -7,7 +7,7 @@ export interface IUpdateBody extends IDataObject {
 
 export interface IUpdateFields {
 	writeControlObject: {
-		control: string,
-		value: string,
+		control: string;
+		value: string;
 	};
 }

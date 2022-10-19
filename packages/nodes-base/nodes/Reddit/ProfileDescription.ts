@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const profileOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const profileOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'profile',
-				],
+				resource: ['profile'],
 			},
 		},
 		options: [
@@ -25,7 +21,6 @@ export const profileOperations: INodeProperties[] = [
 		default: 'get',
 	},
 ];
-
 
 export const profileFields: INodeProperties[] = [
 	{
@@ -74,12 +69,8 @@ export const profileFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'profile',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['profile'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -91,15 +82,9 @@ export const profileFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'profile',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'saved',
-				],
+				resource: ['profile'],
+				operation: ['get'],
+				details: ['saved'],
 			},
 		},
 	},
@@ -115,18 +100,10 @@ export const profileFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'profile',
-				],
-				operation: [
-					'get',
-				],
-				details: [
-					'saved',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['profile'],
+				operation: ['get'],
+				details: ['saved'],
+				returnAll: [false],
 			},
 		},
 	},

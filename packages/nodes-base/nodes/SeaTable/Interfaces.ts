@@ -72,7 +72,6 @@ export interface IName {
 	name: string;
 }
 
-
 type TOperation = 'cloudHosted' | 'selfHosted';
 
 export interface ICredential {
@@ -91,12 +90,12 @@ export interface ICtx {
 	credentials?: ICredential;
 }
 
-export interface IRowResponse{
+export interface IRowResponse {
 	metadata: [
 		{
-			key: string,
-			name: string,
-		}
+			key: string;
+			name: string;
+		},
 	];
 	results: IRow[];
 }

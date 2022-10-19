@@ -8,9 +8,7 @@ export const postOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'post',
-				],
+				resource: ['post'],
 			},
 		},
 		options: [
@@ -26,9 +24,9 @@ export const postOperations: INodeProperties[] = [
 ];
 
 export const postFields: INodeProperties[] = [
-/* -------------------------------------------------------------------------- */
-/*                                 post:create                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 post:create                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Post As',
 		name: 'postAs',
@@ -55,18 +53,13 @@ export const postFields: INodeProperties[] = [
 		},
 		default: '',
 		required: true,
-		description: 'Person as which the post should be posted as. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Person as which the post should be posted as. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				postAs: [
-					'person',
-				],
-				resource: [
-					'post',
-				],
+				operation: ['create'],
+				postAs: ['person'],
+				resource: ['post'],
 			},
 		},
 	},
@@ -79,15 +72,9 @@ export const postFields: INodeProperties[] = [
 		description: 'URN of Organization as which the post should be posted as',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				postAs: [
-					'organization',
-				],
-				resource: [
-					'post',
-				],
+				operation: ['create'],
+				postAs: ['organization'],
+				resource: ['post'],
 			},
 		},
 	},
@@ -99,12 +86,8 @@ export const postFields: INodeProperties[] = [
 		description: 'The primary content of the post',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'post',
-				],
+				operation: ['create'],
+				resource: ['post'],
 			},
 		},
 	},
@@ -132,12 +115,8 @@ export const postFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'post',
-				],
+				operation: ['create'],
+				resource: ['post'],
 			},
 		},
 	},
@@ -145,15 +124,9 @@ export const postFields: INodeProperties[] = [
 		displayName: 'Binary Property',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'post',
-				],
-				shareMediaCategory: [
-					'IMAGE',
-				],
+				operation: ['create'],
+				resource: ['post'],
+				shareMediaCategory: ['IMAGE'],
 			},
 		},
 		name: 'binaryPropertyName',
@@ -170,12 +143,8 @@ export const postFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'post',
-				],
+				operation: ['create'],
+				resource: ['post'],
 			},
 		},
 		options: [
@@ -187,10 +156,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Provide a short description for your image or article',
 				displayOptions: {
 					show: {
-						'/shareMediaCategory': [
-							'ARTICLE',
-							'IMAGE',
-						],
+						'/shareMediaCategory': ['ARTICLE', 'IMAGE'],
 					},
 				},
 			},
@@ -202,9 +168,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Provide the URL of the article you would like to share here',
 				displayOptions: {
 					show: {
-						'/shareMediaCategory': [
-							'ARTICLE',
-						],
+						'/shareMediaCategory': ['ARTICLE'],
 					},
 				},
 			},
@@ -216,10 +180,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Customize the title of your image or article',
 				displayOptions: {
 					show: {
-						'/shareMediaCategory': [
-							'ARTICLE',
-							'IMAGE',
-						],
+						'/shareMediaCategory': ['ARTICLE', 'IMAGE'],
 					},
 				},
 			},
@@ -231,9 +192,7 @@ export const postFields: INodeProperties[] = [
 				description: 'Dictate if post will be seen by the public or only connections',
 				displayOptions: {
 					show: {
-						'/postAs': [
-							'person',
-						],
+						'/postAs': ['person'],
 					},
 				},
 				options: [

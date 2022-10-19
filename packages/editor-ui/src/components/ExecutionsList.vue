@@ -14,12 +14,14 @@
 					</el-col>
 					<el-col :span="7">
 						<n8n-select v-model="filter.workflowId" :placeholder="$locale.baseText('executionsList.selectWorkflow')" size="medium" filterable @change="handleFilterChanged">
-							<n8n-option
-								v-for="item in workflows"
-								:key="item.id"
-								:label="item.name"
-								:value="item.id">
-							</n8n-option>
+							<div class="ph-no-capture">
+								<n8n-option
+									v-for="item in workflows"
+									:key="item.id"
+									:label="item.name"
+									:value="item.id">
+								</n8n-option>
+							</div>
 						</n8n-select>
 					</el-col>
 					<el-col :span="5" :offset="1">
@@ -63,9 +65,11 @@
 				</el-table-column>
 				<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
 					<template slot-scope="scope">
-						<span class="workflow-name">
-							{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
-						</span>
+						<div class="ph-no-capture">
+							<span class="workflow-name">
+								{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
+							</span>
+						</div>
 
 						<span v-if="scope.row.stoppedAt === undefined">
 							({{ $locale.baseText('executionsList.running') }})
@@ -100,14 +104,16 @@
 						</n8n-tooltip>
 
 						<el-dropdown trigger="click" @command="handleRetryClick">
-							<n8n-icon-button
-								v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
-								:type="scope.row.stoppedAt === null ? 'warning': 'danger'"
-								class="ml-3xs"
-								size="mini"
-								:title="$locale.baseText('executionsList.retryExecution')"
-								icon="redo"
-							/>
+							<span class="retry-button">
+								<n8n-icon-button
+									v-if="scope.row.stoppedAt !== undefined && !scope.row.finished && scope.row.retryOf === undefined && scope.row.retrySuccessId === undefined && !scope.row.waitTill"
+									:type="scope.row.stoppedAt === null ? 'warning': 'danger'"
+									class="ml-3xs"
+									size="mini"
+									:title="$locale.baseText('executionsList.retryExecution')"
+									icon="redo"
+								/>
+							</span>
 							<el-dropdown-menu slot="dropdown">
 								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">
 									{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
@@ -162,6 +168,7 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable prefer-spread */
 import Vue from 'vue';
 
 import ExecutionTime from '@/components/ExecutionTime.vue';
@@ -358,7 +365,7 @@ export default mixins(
 
 
 			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(this.loadAutoRefresh, 4 * 1000); // refresh data every 4 secs
+				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
 			}
 		},
 		handleCheckAllChange () {

@@ -18,7 +18,7 @@ Breakpoints are noted with a red dot in front of the line, meaning that whenever
 
 ## What if I change the code?
 
-You might need to restart the debugger if you make changes to your code, since the running process will be executing an oudated version of the code.
+You might need to restart the debugger if you make changes to your code, since the running process will be executing an outdated version of the code.
 
 In order to make this process easier you can simply run `npm run watch` in another terminal window, so you don't have to fully build the project. Please note that restarting n8n is still required, but this is much faster.
 
@@ -26,13 +26,13 @@ In order to make this process easier you can simply run `npm run watch` in anoth
 
 Docker debugging is currently not functional. We offer 2 other methods:
 
-1) Launch n8n from inside VSCode:
+1. Launch n8n from inside VSCode:
    From the "Run and Debug" section in VSCode you can choose the option named "Launch n8n with debug".
-	 This will start n8n to run as normal, but with debugger attached.
-2) Another possibility is if n8n is already running, say, in your terminal.
+   This will start n8n to run as normal, but with debugger attached.
+2. Another possibility is if n8n is already running, say, in your terminal.
    You can attach the debugger to it.
    This is done by choosing the option "Attach to running n8n".
-	 VSCode will present you with a prompt to select the n8n process. It usually is displayed with `node ./n8n`
+   VSCode will present you with a prompt to select the n8n process. It usually is displayed with `node ./n8n`
 
 ## What can be debugged?
 

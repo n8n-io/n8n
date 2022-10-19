@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	IDataObject,
 	INodeExecutionData,
@@ -9,18 +7,9 @@ import {
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-import {
-	validateJSON,
-	veroApiRequest,
-} from './GenericFunctions';
-import {
-	userFields,
-	userOperations,
-} from './UserDescription';
-import {
-	eventFields,
-	eventOperations,
-} from './EventDescripion';
+import { validateJSON, veroApiRequest } from './GenericFunctions';
+import { userFields, userOperations } from './UserDescription';
+import { eventFields, eventOperations } from './EventDescripion';
 
 export class Vero implements INodeType {
 	description: INodeTypeDescription = {
@@ -93,7 +82,9 @@ export class Vero implements INodeType {
 							body.email = additionalFields.email as string;
 						}
 						if (!jsonActive) {
-							const dataAttributesValues = (this.getNodeParameter('dataAttributesUi', i) as IDataObject).dataAttributesValues as IDataObject[];
+							const dataAttributesValues = (
+								this.getNodeParameter('dataAttributesUi', i) as IDataObject
+							).dataAttributesValues as IDataObject[];
 							if (dataAttributesValues) {
 								const dataAttributes = {};
 								for (let i = 0; i < dataAttributesValues.length; i++) {
@@ -104,7 +95,9 @@ export class Vero implements INodeType {
 								}
 							}
 						} else {
-							const dataAttributesJson = validateJSON(this.getNodeParameter('dataAttributesJson', i) as string);
+							const dataAttributesJson = validateJSON(
+								this.getNodeParameter('dataAttributesJson', i) as string,
+							);
 							if (dataAttributesJson) {
 								// @ts-ignore
 								body.data = dataAttributesJson;
@@ -133,9 +126,11 @@ export class Vero implements INodeType {
 					//https://developers.getvero.com/?bash#users-unsubscribe
 					//https://developers.getvero.com/?bash#users-resubscribe
 					//https://developers.getvero.com/?bash#users-delete
-					if (operation === 'unsubscribe' ||
+					if (
+						operation === 'unsubscribe' ||
 						operation === 'resubscribe' ||
-						operation === 'delete')  {
+						operation === 'delete'
+					) {
 						const id = this.getNodeParameter('id', i) as string;
 						const body = {
 							id,
@@ -148,8 +143,7 @@ export class Vero implements INodeType {
 					}
 					//https://developers.getvero.com/?bash#tags-add
 					//https://developers.getvero.com/?bash#tags-remove
-					if (operation === 'addTags' ||
-						operation === 'removeTags') {
+					if (operation === 'addTags' || operation === 'removeTags') {
 						const id = this.getNodeParameter('id', i) as string;
 						const tags = (this.getNodeParameter('tags', i) as string).split(',') as string[];
 						const body = {
@@ -184,7 +178,9 @@ export class Vero implements INodeType {
 							email,
 						};
 						if (!jsonActive) {
-							const dataAttributesValues = (this.getNodeParameter('dataAttributesUi', i) as IDataObject).dataAttributesValues as IDataObject[];
+							const dataAttributesValues = (
+								this.getNodeParameter('dataAttributesUi', i) as IDataObject
+							).dataAttributesValues as IDataObject[];
 							if (dataAttributesValues) {
 								const dataAttributes = {};
 								for (let i = 0; i < dataAttributesValues.length; i++) {
@@ -194,7 +190,9 @@ export class Vero implements INodeType {
 									body.data = JSON.stringify(dataAttributes);
 								}
 							}
-							const extraAttributesValues = (this.getNodeParameter('extraAttributesUi', i) as IDataObject).extraAttributesValues as IDataObject[];
+							const extraAttributesValues = (
+								this.getNodeParameter('extraAttributesUi', i) as IDataObject
+							).extraAttributesValues as IDataObject[];
 							if (extraAttributesValues) {
 								const extraAttributes = {};
 								for (let i = 0; i < extraAttributesValues.length; i++) {
@@ -205,12 +203,16 @@ export class Vero implements INodeType {
 								}
 							}
 						} else {
-							const dataAttributesJson = validateJSON(this.getNodeParameter('dataAttributesJson', i) as string);
+							const dataAttributesJson = validateJSON(
+								this.getNodeParameter('dataAttributesJson', i) as string,
+							);
 							if (dataAttributesJson) {
 								// @ts-ignore
 								body.data = JSON.stringify(dataAttributesJson);
 							}
-							const extraAttributesJson = validateJSON(this.getNodeParameter('extraAttributesJson', i) as string);
+							const extraAttributesJson = validateJSON(
+								this.getNodeParameter('extraAttributesJson', i) as string,
+							);
 							if (extraAttributesJson) {
 								// @ts-ignore
 								body.extras = JSON.stringify(extraAttributesJson);

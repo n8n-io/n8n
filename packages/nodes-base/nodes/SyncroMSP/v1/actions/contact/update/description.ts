@@ -1,10 +1,6 @@
-import {
-	ContactProperties,
-} from '../../Interfaces';
+import { ContactProperties } from '../../Interfaces';
 
-import {
-	addressFixedCollection
-} from '../../../methods/sharedFields';
+import { addressFixedCollection } from '../../../methods/sharedFields';
 
 export const contactUpdateDescription: ContactProperties = [
 	{
@@ -13,12 +9,8 @@ export const contactUpdateDescription: ContactProperties = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -30,12 +22,8 @@ export const contactUpdateDescription: ContactProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['contact'],
+				operation: ['update'],
 			},
 		},
 		default: {},

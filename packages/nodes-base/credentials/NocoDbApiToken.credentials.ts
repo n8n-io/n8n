@@ -5,7 +5,6 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 
-
 export class NocoDbApiToken implements ICredentialType {
 	name = 'nocoDbApiToken';
 	displayName = 'NocoDB API Token';

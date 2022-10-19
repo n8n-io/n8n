@@ -1,6 +1,4 @@
-import {
-	OptionsWithUrl,
-} from 'request';
+import { OptionsWithUrl } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -17,7 +15,17 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function twitterApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let options: OptionsWithUrl = {
 		method,
 		body,
@@ -42,8 +50,16 @@ export async function twitterApiRequest(this: IExecuteFunctions | IExecuteSingle
 	}
 }
 
-export async function twitterApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function twitterApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -54,10 +70,7 @@ export async function twitterApiRequestAllItems(this: IExecuteFunctions | ILoadO
 		responseData = await twitterApiRequest.call(this, method, endpoint, body, query);
 		query.since_id = responseData.search_metadata.max_id;
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.search_metadata &&
-		responseData.search_metadata.next_results
-	);
+	} while (responseData.search_metadata && responseData.search_metadata.next_results);
 
 	return returnData;
 }
@@ -68,24 +81,31 @@ export function chunks(buffer: Buffer, chunkSize: number) {
 	let i = 0;
 
 	while (i < len) {
-		result.push(buffer.slice(i, i += chunkSize));
+		result.push(buffer.slice(i, (i += chunkSize)));
 	}
 
 	return result;
 }
 
-export async function uploadAttachments(this: IExecuteFunctions, binaryProperties: string[], items: INodeExecutionData[], i: number) {
-
+export async function uploadAttachments(
+	this: IExecuteFunctions,
+	binaryProperties: string[],
+	items: INodeExecutionData[],
+	i: number,
+) {
 	const uploadUri = 'https://upload.twitter.com/1.1/media/upload.json';
 
 	const media: IDataObject[] = [];
 
 	for (const binaryPropertyName of binaryProperties) {
-
 		const binaryData = items[i].binary as IBinaryKeyData;
 
 		if (binaryData === undefined) {
-			throw new NodeOperationError(this.getNode(), 'No binary data set. So file can not be written!', { itemIndex: i });
+			throw new NodeOperationError(
+				this.getNode(),
+				'No binary data set. So file can not be written!',
+				{ itemIndex: i },
+			);
 		}
 
 		if (!binaryData[binaryPropertyName]) {
@@ -96,26 +116,29 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 		let response: IDataObject = {};
 
 		const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
-		const isAnimatedWebp = (dataBuffer.toString().indexOf('ANMF') !== -1);
+		const isAnimatedWebp = dataBuffer.toString().indexOf('ANMF') !== -1;
 
 		const isImage = binaryData[binaryPropertyName].mimeType.includes('image');
 
 		if (isImage && isAnimatedWebp) {
-			throw new NodeOperationError(this.getNode(), 'Animated .webp images are not supported use .gif instead', { itemIndex: i });
+			throw new NodeOperationError(
+				this.getNode(),
+				'Animated .webp images are not supported use .gif instead',
+				{ itemIndex: i },
+			);
 		}
 
 		if (isImage) {
-
 			const attachmentBody = {
 				media_data: binaryData[binaryPropertyName].data,
 			};
 
-			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, { form: attachmentBody });
+			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
+				form: attachmentBody,
+			});
 
 			media.push(response);
-
 		} else {
-
 			// https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-init
 
 			const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
@@ -126,7 +149,9 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 				media_type: binaryData[binaryPropertyName].mimeType,
 			};
 
-			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, { form: attachmentBody });
+			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
+				form: attachmentBody,
+			});
 
 			const mediaId = response.media_id_string;
 
@@ -137,7 +162,6 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 			let index = 0;
 
 			for (const binaryPart of binaryParts) {
-
 				//https://developer.twitter.com/en/docs/media/upload-media/api-reference/post-media-upload-append
 
 				attachmentBody = {
@@ -148,7 +172,9 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 					segment_index: index,
 				};
 
-				response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, { form: attachmentBody });
+				response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
+					form: attachmentBody,
+				});
 
 				index++;
 			}
@@ -160,11 +186,13 @@ export async function uploadAttachments(this: IExecuteFunctions, binaryPropertie
 				media_id: mediaId,
 			};
 
-			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, { form: attachmentBody });
+			response = await twitterApiRequest.call(this, 'POST', '', {}, {}, uploadUri, {
+				form: attachmentBody,
+			});
 
 			// data has not been uploaded yet, so wait for it to be ready
 			if (response.processing_info) {
-				const { check_after_secs } = (response.processing_info as IDataObject);
+				const { check_after_secs } = response.processing_info as IDataObject;
 				await new Promise((resolve, reject) => {
 					setTimeout(() => {
 						// @ts-ignore

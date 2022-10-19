@@ -1,6 +1,4 @@
-import {
-	IPollFunctions,
-} from 'n8n-core';
+import { IPollFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -11,10 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	notionApiRequest,
-	simplifyObjects,
-} from './GenericFunctions';
+import { notionApiRequest, simplifyObjects } from './GenericFunctions';
 
 import moment from 'moment';
 
@@ -59,7 +54,8 @@ export class NotionTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'In Notion, make sure you share your database with your integration. Otherwise it won\'t be accessible, or listed here.',
+				displayName:
+					"In Notion, make sure you share your database with your integration. Otherwise it won't be accessible, or listed here.",
 				name: 'notionNotice',
 				type: 'notice',
 				default: '',
@@ -73,15 +69,13 @@ export class NotionTrigger implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						event: [
-							'pageAddedToDatabase',
-							'pagedUpdatedInDatabase',
-						],
+						event: ['pageAddedToDatabase', 'pagedUpdatedInDatabase'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'The ID of this database. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The ID of this database. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Simplify',
@@ -89,14 +83,12 @@ export class NotionTrigger implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						event: [
-							'pageAddedToDatabase',
-							'pagedUpdatedInDatabase',
-						],
+						event: ['pageAddedToDatabase', 'pagedUpdatedInDatabase'],
 					},
 				},
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 		],
 	};
@@ -105,7 +97,10 @@ export class NotionTrigger implements INodeType {
 		loadOptions: {
 			async getDatabases(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const { results: databases } = await notionApiRequest.call(this, 'POST', `/search`, { page_size: 100, filter: { property: 'object', value: 'database' } });
+				const { results: databases } = await notionApiRequest.call(this, 'POST', `/search`, {
+					page_size: 100,
+					filter: { property: 'object', value: 'database' },
+				});
 				for (const database of databases) {
 					returnData.push({
 						name: database.title[0]?.plain_text || database.id,
@@ -113,8 +108,12 @@ export class NotionTrigger implements INodeType {
 					});
 				}
 				returnData.sort((a, b) => {
-					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) { return -1; }
-					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) { return 1; }
+					if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+						return -1;
+					}
+					if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+						return 1;
+					}
 					return 0;
 				});
 				return returnData;
@@ -130,13 +129,13 @@ export class NotionTrigger implements INodeType {
 
 		const now = moment().utc().format();
 
-		const startDate = webhookData.lastTimeChecked as string || now;
+		const startDate = (webhookData.lastTimeChecked as string) || now;
 
 		const endDate = now;
 
 		webhookData.lastTimeChecked = endDate;
 
-		const sortProperty = (event === 'pageAddedToDatabase') ? 'created_time' : 'last_edited_time';
+		const sortProperty = event === 'pageAddedToDatabase' ? 'created_time' : 'last_edited_time';
 
 		const body: IDataObject = {
 			page_size: 1,
@@ -153,7 +152,12 @@ export class NotionTrigger implements INodeType {
 		let hasMore = true;
 
 		//get last record
-		let { results: data } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
+		let { results: data } = await notionApiRequest.call(
+			this,
+			'POST',
+			`/databases/${databaseId}/query`,
+			body,
+		);
 
 		if (this.getMode() === 'manual') {
 			if (simple === true) {
@@ -168,16 +172,26 @@ export class NotionTrigger implements INodeType {
 		if (Object.keys(data[0]).length !== 0 && webhookData.lastRecordProccesed !== data[0].id) {
 			do {
 				body.page_size = 10;
-				const { results, has_more, next_cursor } = await notionApiRequest.call(this, 'POST', `/databases/${databaseId}/query`, body);
+				const { results, has_more, next_cursor } = await notionApiRequest.call(
+					this,
+					'POST',
+					`/databases/${databaseId}/query`,
+					body,
+				);
 				records.push.apply(records, results);
 				hasMore = has_more;
 				if (next_cursor !== null) {
 					body['start_cursor'] = next_cursor;
 				}
-			} while (!moment(records[records.length - 1][sortProperty] as string).isSameOrBefore(startDate) && hasMore === true);
+			} while (
+				!moment(records[records.length - 1][sortProperty] as string).isSameOrBefore(startDate) &&
+				hasMore === true
+			);
 
 			if (this.getMode() !== 'manual') {
-				records = records.filter((record: IDataObject) => moment(record[sortProperty] as string).isBetween(startDate, endDate));
+				records = records.filter((record: IDataObject) =>
+					moment(record[sortProperty] as string).isBetween(startDate, endDate),
+				);
 			}
 
 			if (simple === true) {

@@ -21,7 +21,7 @@ export default Vue.extend({
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(value),
+			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger', 'success'].includes(value),
 		},
 		align: {
 			type: String,
@@ -54,8 +54,8 @@ export default Vue.extend({
 
 			applied.push(this.bold? 'bold': 'regular');
 
-			return applied.map((c) => this.$style[c]);
-		}
+			return applied.map((c) => (this.$style as { [key: string]: string })[c]);
+		},
 	},
 });
 </script>
@@ -120,6 +120,10 @@ export default Vue.extend({
 
 .danger {
 	color: var(--color-danger);
+}
+
+.success {
+	color: var(--color-success);
 }
 
 .align-left {

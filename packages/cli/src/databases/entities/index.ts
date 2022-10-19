@@ -12,6 +12,7 @@ import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { InstalledPackages } from './InstalledPackages';
 import { InstalledNodes } from './InstalledNodes';
+import { CredentialUsage } from './CredentialUsage';
 import { FeatureConfig } from './FeatureConfig';
 import { LdapSyncHistory } from './LdapSyncHistory';
 
@@ -28,6 +29,7 @@ export const entities = {
 	SharedCredentials,
 	InstalledPackages,
 	InstalledNodes,
+	CredentialUsage,
 	FeatureConfig,
 	LdapSyncHistory,
 };

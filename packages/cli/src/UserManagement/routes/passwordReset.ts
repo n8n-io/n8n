@@ -15,6 +15,7 @@ import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import * as config from '../../../config';
+import { SignInType } from '../../Ldap/constants';
 
 export function passwordResetNamespace(this: N8nApp): void {
 	/**
@@ -55,7 +56,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			// User should just be able to reset password if one is already present
 			const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
 
-			if (!user || !user.password) {
+			if (!user?.password) {
 				Logger.debug(
 					'Request to send password reset email failed because no user was found for the provided email',
 					{ invalidEmail: email },
@@ -84,7 +85,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 					lastName,
 					passwordResetUrl: url.toString(),
 					domain: baseUrl,
-					signInType,
+					isLdapUser: signInType === SignInType.LDAP,
 				});
 			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({
@@ -216,6 +217,13 @@ export function passwordResetNamespace(this: N8nApp): void {
 			Logger.info('User password updated successfully', { userId });
 
 			await issueCookie(res, user);
+
+			void InternalHooksManager.getInstance().onUserUpdate({
+				user_id: userId,
+				fields_changed: ['password'],
+			});
+
+			await this.externalHooks.run('user.password.update', [user.email, password]);
 		}),
 	);
 }

@@ -1,5 +1,5 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId">
+	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId" ref="sticky">
 		<div
 			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
 			:style="stickySize"
@@ -268,7 +268,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				}
 
 				&:hover {
-					color: $--color-primary;
+					color: $color-primary;
 				}
 			}
 		}

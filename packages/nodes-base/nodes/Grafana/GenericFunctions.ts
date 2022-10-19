@@ -1,21 +1,10 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	GrafanaCredentials,
-} from './types';
+import { GrafanaCredentials } from './types';
 
 export async function grafanaApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -24,9 +13,7 @@ export async function grafanaApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const {
-		baseUrl: rawBaseUrl,
-	} = await this.getCredentials('grafanaApi') as GrafanaCredentials;
+	const { baseUrl: rawBaseUrl } = (await this.getCredentials('grafanaApi')) as GrafanaCredentials;
 
 	const baseUrl = tolerateTrailingSlash(rawBaseUrl);
 
@@ -60,8 +47,12 @@ export async function grafanaApiRequest(
 			error.response.data.message += ' with the provided ID';
 		}
 
-		if (error?.response?.data?.message === 'A dashboard with the same name in the folder already exists') {
-			error.response.data.message = 'A dashboard with the same name already exists in the selected folder';
+		if (
+			error?.response?.data?.message ===
+			'A dashboard with the same name in the folder already exists'
+		) {
+			error.response.data.message =
+				'A dashboard with the same name already exists in the selected folder';
 		}
 
 		if (error?.response?.data?.message === 'Team name taken') {
@@ -69,7 +60,8 @@ export async function grafanaApiRequest(
 		}
 
 		if (error?.code === 'ECONNREFUSED') {
-			error.message = 'Invalid credentials or error in establishing connection with given credentials';
+			error.message =
+				'Invalid credentials or error in establishing connection with given credentials';
 		}
 
 		throw new NodeApiError(this.getNode(), error);
@@ -90,9 +82,7 @@ export function throwOnEmptyUpdate(
 }
 
 export function tolerateTrailingSlash(baseUrl: string) {
-	return baseUrl.endsWith('/')
-		? baseUrl.substr(0, baseUrl.length - 1)
-		: baseUrl;
+	return baseUrl.endsWith('/') ? baseUrl.substr(0, baseUrl.length - 1) : baseUrl;
 }
 
 export function deriveUid(this: IExecuteFunctions, uidOrUrl: string) {

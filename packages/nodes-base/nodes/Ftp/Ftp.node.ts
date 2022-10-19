@@ -1,7 +1,10 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -56,6 +59,7 @@ export class Ftp implements INodeType {
 						protocol: ['ftp'],
 					},
 				},
+				testedBy: 'ftpConnectionTest',
 			},
 			{
 				// nodelinter-ignore-next-line
@@ -66,6 +70,7 @@ export class Ftp implements INodeType {
 						protocol: ['sftp'],
 					},
 				},
+				testedBy: 'sftpConnectionTest',
 			},
 		],
 		properties: [
@@ -348,6 +353,63 @@ export class Ftp implements INodeType {
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async ftpConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					let ftp: ftpClient;
+					ftp = new ftpClient();
+					await ftp.connect({
+						host: credentials.host as string,
+						port: credentials.port as number,
+						user: credentials.username as string,
+						password: credentials.password as string,
+					});
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+			async sftpConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					let sftp: sftpClient;
+					sftp = new sftpClient();
+					await sftp.connect({
+						host: credentials.host as string,
+						port: credentials.port as number,
+						username: credentials.username as string,
+						password: credentials.password as string,
+						privateKey: credentials.privateKey as string | undefined,
+						passphrase: credentials.passphrase as string | undefined,
+					});
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+	};
+
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		// const returnData: IDataObject[] = [];
@@ -394,7 +456,7 @@ export class Ftp implements INodeType {
 					binary: {},
 				};
 
-				if (items[i].binary !== undefined) {
+				if (items[i].binary !== undefined && newItem.binary) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.

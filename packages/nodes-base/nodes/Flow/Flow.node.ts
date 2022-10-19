@@ -57,7 +57,7 @@ export class Flow implements INodeType {
 		const credentials = await this.getCredentials('flowApi');
 
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		let responseData;
 		const qs: IDataObject = {};
@@ -258,16 +258,17 @@ export class Flow implements INodeType {
 							responseData = responseData.tasks;
 						}
 					} catch (error) {
-						throw new NodeApiError(this.getNode(), error);
+						throw new NodeApiError(this.getNode(), error, { itemIndex: i });
 					}
 				}
 			}
-			if (Array.isArray(responseData)) {
-				returnData.push.apply(returnData, responseData as IDataObject[]);
-			} else {
-				returnData.push(responseData as IDataObject);
-			}
+
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(responseData),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }
