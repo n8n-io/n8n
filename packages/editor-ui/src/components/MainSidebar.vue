@@ -332,12 +332,10 @@ export default mixins(
 			},
 			async handleSelect (key: string) {
 				switch (key) {
-					case 'workflow': {
-						await this.createNewWorkflow();
-						break;
-					}
-					case 'workflow-open': {
-						this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
+					case 'workflows': {
+						if (this.$router.currentRoute.name !== VIEWS.WORKFLOWS) {
+							this.$router.push({name: VIEWS.WORKFLOWS});
+						}
 						break;
 					}
 					case 'templates': {

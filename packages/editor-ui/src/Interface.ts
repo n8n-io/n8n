@@ -180,7 +180,7 @@ export interface IRestApi {
 	getWorkflow(id: string): Promise<IWorkflowDb>;
 	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
 	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
-	getExecution(id: string): Promise<IExecutionResponse>;
+	getExecution(id: string): Promise<IExecutionResponse | undefined>;
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
@@ -269,6 +269,11 @@ export interface IWorkflowTemplate {
 	};
 }
 
+export interface INewWorkflowData {
+	name: string;
+	onboardingFlowEnabled: boolean;
+}
+
 // Almost identical to cli.Interfaces.ts
 export interface IWorkflowDb {
 	id: string;
@@ -281,6 +286,8 @@ export interface IWorkflowDb {
 	settings?: IWorkflowSettings;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
+	sharedWith?: Array<Partial<IUser>>;
+	ownedBy?: Partial<IUser>;
 }
 
 // Identical to cli.Interfaces.ts
@@ -756,6 +763,13 @@ export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
+	icon?: string;
+	defaults?: INodeParameters;
+	iconData?: {
+		type: string;
+		icon?: string;
+		fileBuffer?: string;
+	};
 }
 
 export interface INodeItemProps {
@@ -872,10 +886,12 @@ export interface IRootState {
 	urlBaseEditor: string;
 	urlBaseWebhook: string;
 	workflow: IWorkflowDb;
+	workflowsById: IWorkflowsMap;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
 	nodeMetadata: {[nodeName: string]: INodeMetadata};
 	isNpmAvailable: boolean;
+	subworkflowExecutionError: Error | null;
 }
 
 export interface ICommunityPackageMap {
@@ -905,6 +921,7 @@ export interface ITagsState {
 export interface IModalState {
 	open: boolean;
 	mode?: string | null;
+	data?: Record<string, unknown>;
 	activeId?: string | null;
 	curlCommand?: string;
 	httpNodeParameters?: string;
@@ -983,6 +1000,15 @@ export type IFakeDoor = {
 
 export type IFakeDoorLocation = 'settings' | 'credentialsModal';
 
+export type INodeFilterType = "Regular" | "Trigger" | "All";
+
+export interface INodeCreatorState {
+	itemsFilter: string;
+	showTabs: boolean;
+	showScrim: boolean;
+	selectedType: INodeFilterType;
+}
+
 export interface ISettingsState {
 	settings: IN8nUISettings;
 	promptsData: IN8nPrompts;
@@ -1039,6 +1065,11 @@ export interface IWorkflowsState {
 	currentWorkflowExecutions: IExecutionsSummary[];
 	activeWorkflowExecution: IExecutionsSummary|null;
 }
+	export interface IWorkflowsMap {
+	[name: string]: IWorkflowDb;
+}
+
+export interface IWorkflowsState {}
 
 export interface ICommunityNodesState {
 	availablePackageCount: number;

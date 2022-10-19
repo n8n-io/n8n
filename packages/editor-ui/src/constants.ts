@@ -30,7 +30,6 @@ export const DELETE_USER_MODAL_KEY = 'deleteUser';
 export const INVITE_USER_MODAL_KEY = 'inviteUser';
 export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
-export const WORKFLOW_OPEN_MODAL_KEY = 'workflowOpen';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
@@ -92,6 +91,7 @@ export const ITEM_LISTS_NODE_TYPE = 'n8n-nodes-base.itemLists';
 export const JIRA_NODE_TYPE = 'n8n-nodes-base.jira';
 export const JIRA_TRIGGER_NODE_TYPE = 'n8n-nodes-base.jiraTrigger';
 export const MICROSOFT_EXCEL_NODE_TYPE = 'n8n-nodes-base.microsoftExcel';
+export const MANUAL_TRIGGER_NODE_TYPE = 'n8n-nodes-base.manualTrigger';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
@@ -100,6 +100,7 @@ export const PAGERDUTY_NODE_TYPE = 'n8n-nodes-base.pagerDuty';
 export const SALESFORCE_NODE_TYPE = 'n8n-nodes-base.salesforce';
 export const SEGMENT_NODE_TYPE = 'n8n-nodes-base.segment';
 export const SET_NODE_TYPE = 'n8n-nodes-base.set';
+export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
 export const SERVICENOW_NODE_TYPE = 'n8n-nodes-base.serviceNow';
 export const SLACK_NODE_TYPE = 'n8n-nodes-base.slack';
 export const SPREADSHEET_FILE_NODE_TYPE = 'n8n-nodes-base.spreadsheetFile';
@@ -110,10 +111,18 @@ export const THE_HIVE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.theHiveTrigger';
 export const QUICKBOOKS_NODE_TYPE = 'n8n-nodes-base.quickbooks';
 export const WEBHOOK_NODE_TYPE = 'n8n-nodes-base.webhook';
 export const WORKABLE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workableTrigger';
+export const WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.workflowTrigger';
+export const EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE = 'n8n-nodes-base.executeWorkflowTrigger';
 export const WOOCOMMERCE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.wooCommerceTrigger';
 export const XERO_NODE_TYPE = 'n8n-nodes-base.xero';
 export const ZENDESK_NODE_TYPE = 'n8n-nodes-base.zendesk';
 export const ZENDESK_TRIGGER_NODE_TYPE = 'n8n-nodes-base.zendeskTrigger';
+
+export const NON_ACTIVATABLE_TRIGGER_NODE_TYPES = [
+	ERROR_TRIGGER_NODE_TYPE,
+	MANUAL_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+];
 
 export const MULTIPLE_OUTPUT_NODE_TYPES = [
 	IF_NODE_TYPE,
@@ -127,6 +136,7 @@ export const PIN_DATA_NODE_TYPES_DENYLIST = [
 
 // Node creator
 export const CORE_NODES_CATEGORY = 'Core Nodes';
+export const COMMUNICATION_CATEGORY = 'Communication';
 export const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 export const SUBCATEGORY_DESCRIPTIONS: {
 	[category: string]: { [subcategory: string]: string };
@@ -144,6 +154,7 @@ export const ALL_NODE_FILTER = 'All';
 export const UNCATEGORIZED_CATEGORY = 'Miscellaneous';
 export const UNCATEGORIZED_SUBCATEGORY = 'Helpers';
 export const PERSONALIZED_CATEGORY = 'Suggested Nodes';
+export const OTHER_TRIGGER_NODES_SUBCATEGORY = 'Other Trigger Nodes';
 
 export const REQUEST_NODE_FORM_URL = 'https://n8n-community.typeform.com/to/K1fBVTZ3';
 
@@ -262,6 +273,11 @@ export const HIRING_BANNER = `
 Love n8n? Help us build the future of automation! https://n8n.io/careers
 `;
 
+export const NODE_TYPE_COUNT_MAPPER = {
+	[REGULAR_NODE_FILTER]: ['regularCount'],
+	[TRIGGER_NODE_FILTER]: ['triggerCount'],
+	[ALL_NODE_FILTER]: ['triggerCount', 'regularCount'],
+};
 export const TEMPLATES_NODES_FILTER = [
 	'n8n-nodes-base.start',
 	'n8n-nodes-base.respondToWebhook',
