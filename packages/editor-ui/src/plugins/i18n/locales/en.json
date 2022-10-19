@@ -219,7 +219,6 @@
 	"codeNodeEditor.completer.selector.last": "@:_reusableBaseText.codeNodeEditor.completer.last",
 	"codeNodeEditor.completer.selector.params": "The parameters of the node",
 	"codeNodeEditor.linter.allItems.firstOrLastCalledWithArg": "expects no argument.",
-	"codeNodeEditor.linter.allItems.allCalledWithArg": "`.all()` expects no argument. To access a specific item, use bracket notation: `.all()[index]`.",
 	"codeNodeEditor.linter.allItems.emptyReturn": "Code doesn't return items properly. Please return an array of objects, one for each item you would like to output.",
 	"codeNodeEditor.linter.allItems.itemCall": "`item` is a property to access, not a method to call. Did you mean `.item` without brackets?",
 	"codeNodeEditor.linter.allItems.itemMatchingNoArg": "`.itemMatching()` expects an item index to be passed in as its argument.",
