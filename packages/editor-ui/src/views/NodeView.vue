@@ -2199,6 +2199,8 @@ export default mixins(
 				this.startLoading();
 				await this.resetWorkspace();
 				this.workflowData = await this.$store.dispatch('workflows/getNewWorkflowData');
+				this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
+				this.$store.commit('workflows/setActiveWorkflowExecution', null);
 
 				this.$store.commit('setStateDirty', false);
 				this.setZoomLevel(1);
