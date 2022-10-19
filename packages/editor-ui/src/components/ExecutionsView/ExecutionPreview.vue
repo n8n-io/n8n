@@ -102,7 +102,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	}
 }
 
-.unknown, .running, .spinner { color: var(--color-warning); }
+.running, .spinner { color: var(--color-warning); }
 .waiting { color: var(--color-secondary); }
 .success { color: var(--color-success); }
 .error { color: var(--color-danger); }

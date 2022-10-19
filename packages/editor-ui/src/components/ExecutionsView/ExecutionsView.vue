@@ -65,8 +65,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
     $route (to: Route, from: Route) {
 			const workflowChanged = from.params.name !== to.params.name;
 			this.initView(workflowChanged);
-			this.setActiveExecution();
-    },
+		},
 	},
 	async mounted() {
 		const workflowUpdated = this.$route.params.name !== this.$store.getters.workflowId;
@@ -82,13 +81,13 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 				}
 				await this.openWorkflow(this.$route.params.name);
 				this.$store.commit('ui/setNodeViewInitialized', false);
-			}
-			this.setExecutions();
-			if (this.activeExecution) {
-				this.$router.push({
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: this.currentWorkflow, executionId: this.activeExecution.id },
-				}).catch(()=>{});;
+				this.setExecutions();
+				if (this.activeExecution) {
+					this.$router.push({
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { name: this.currentWorkflow, executionId: this.activeExecution.id },
+					}).catch(()=>{});;
+				}
 			}
 			this.setActiveExecution();
 			this.loading = false;
@@ -209,7 +208,6 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 
 			existingExecutions = existingExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', existingExecutions);
-			this.setActiveExecution();
 		},
 		async loadExecutions(): Promise<IExecutionsSummary[]> {
 			if (!this.currentWorkflow) {

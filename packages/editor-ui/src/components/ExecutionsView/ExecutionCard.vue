@@ -20,7 +20,7 @@
 					<n8n-text v-if="executionUIDetails.name === 'running'" :color="isActive? 'text-dark' : 'text-base'" size="small">
 						{{ $locale.baseText('executionDetails.runningTimeRunning', { interpolate: { time: executionUIDetails.runningTime } }) }}
 					</n8n-text>
-					<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" :color="isActive? 'text-dark' : 'text-base'" size="small">
+					<n8n-text v-else-if="executionUIDetails.name !== 'waiting' && executionUIDetails.name !== 'unknown'" :color="isActive? 'text-dark' : 'text-base'" size="small">
 						{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }}
 					</n8n-text>
 				</div>
@@ -182,6 +182,12 @@ export default mixins(
 			border-left: var(--spacing-4xs) var(--border-style-base) hsl(var(--color-danger-h), 94%, 80%);
 		}
 		.statusLabel { color: var(--color-danger ); }
+	}
+
+	&.unknown {
+		&, & .executionLink {
+			border-left: var(--spacing-4xs) var(--border-style-base) var(--color-text-light);
+		}
 	}
 }
 

@@ -3157,7 +3157,9 @@ export default mixins(
 
 			this.instance.ready(async () => {
 				try {
-					this.initNodeView();
+					try {
+						this.initNodeView();
+					} catch {} // This will break if mounted after jsplumb has been initiated from executions preview, so continue if it breaks
 					await this.initView();
 					if (window.top) {
 						window.top.postMessage(JSON.stringify({ command: 'n8nReady', version: this.$store.getters.versionCli }), '*');
