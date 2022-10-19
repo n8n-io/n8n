@@ -2,7 +2,7 @@
 	<div class="node-wrapper" :style="nodePosition" :id="nodeId">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
-			<div :class="nodeClass" :style="nodeStyle" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
+			<div :class="nodeClass" :style="nodeStyle" @click.left="onClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
@@ -428,12 +428,12 @@ export default mixins(
 			});
 		},
 
-		onClick(event: MouseEvent, doubleClick = false) {
-			this.callDebounced('onClickDebounced', { deounceTime: 50, trailing: true }, event, doubleClick);
+		onClick(event: MouseEvent) {
+			this.callDebounced('onClickDebounced', { debounceTime: 300, trailing: true }, event);
 		},
 
-		onClickDebounced(event: MouseEvent, doubleClick: boolean) {
-			if (doubleClick) {
+		onClickDebounced(event: MouseEvent) {
+			if (event.detail === 2) {
 				this.setNodeActive();
 			} else {
 				this.mouseLeftClick(event);
