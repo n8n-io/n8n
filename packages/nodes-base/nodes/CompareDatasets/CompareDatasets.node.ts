@@ -16,7 +16,7 @@ export class CompareDatasets implements INodeType {
 		inputNames: ['Input 1', 'Input 2'],
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
 		outputs: ['main', 'main', 'main', 'main'],
-		outputNames: ["'In 1 only'", "'Same'", "'Different'", "'In 2 only'"],
+		outputNames: ['In 1 only', 'Same', 'Different', 'In 2 only'],
 		properties: [
 			{
 				displayName: 'Fields to Match',
