@@ -87,10 +87,12 @@ export class WorkflowEntity implements IWorkflowDb {
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	createdAt: Date;
 
+	/**
+	 * `-1` when workflow first created (never updated), `setUpdateDate()` on update
+	 */
 	@UpdateDateColumn({
 		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
+		default: -1,
 	})
 	updatedAt: Date;
 
