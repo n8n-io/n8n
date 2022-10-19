@@ -938,32 +938,30 @@ export interface TargetItem {
 export interface NDVState {
 	activeNodeName: string | null;
 	mainPanelDimensions: {[key: string]: {[key: string]: number}};
-	ndv: {
-		sessionId: string;
-		input: {
-			displayMode: IRunDataDisplayMode;
-			nodeName?: string;
-			run?: number;
-			branch?: number;
-			data: {
-				isEmpty: boolean;
-			}
-		};
-		output: {
-			branch?: number;
-			displayMode: IRunDataDisplayMode;
-			data: {
-				isEmpty: boolean;
-			}
-			editMode: {
-				enabled: boolean;
-				value: string;
-			};
-		};
-		focusedMappableInput: string;
-		mappingTelemetry: {[key: string]: string | number | boolean};
-		hoveringItem: null | TargetItem;
+	sessionId: string;
+	input: {
+		displayMode: IRunDataDisplayMode;
+		nodeName?: string;
+		run?: number;
+		branch?: number;
+		data: {
+			isEmpty: boolean;
+		}
 	};
+	output: {
+		branch?: number;
+		displayMode: IRunDataDisplayMode;
+		data: {
+			isEmpty: boolean;
+		}
+		editMode: {
+			enabled: boolean;
+			value: string;
+		};
+	};
+	focusedMappableInput: string;
+	mappingTelemetry: {[key: string]: string | number | boolean};
+	hoveringItem: null | TargetItem;
 	draggable: {
 		isDragging: boolean;
 		type: string;

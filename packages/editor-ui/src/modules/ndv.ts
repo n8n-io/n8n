@@ -14,32 +14,30 @@ const module: Module<NDVState, IRootState> = {
 	state: {
 		activeNodeName: null,
 		mainPanelDimensions: {},
-		ndv: {
-			sessionId: '',
-			input: {
-				displayMode: 'table',
-				nodeName: undefined,
-				run: undefined,
-				branch: undefined,
-				data: {
-					isEmpty: true,
-				},
+		sessionId: '',
+		input: {
+			displayMode: 'table',
+			nodeName: undefined,
+			run: undefined,
+			branch: undefined,
+			data: {
+				isEmpty: true,
 			},
-			output: {
-				displayMode: 'table',
-				branch: undefined,
-				data: {
-					isEmpty: true,
-				},
-				editMode: {
-					enabled: false,
-					value: '',
-				},
-			},
-			focusedMappableInput: '',
-			mappingTelemetry: {},
-			hoveringItem: null,
 		},
+		output: {
+			displayMode: 'table',
+			branch: undefined,
+			data: {
+				isEmpty: true,
+			},
+			editMode: {
+				enabled: false,
+				value: '',
+			},
+		},
+		focusedMappableInput: '',
+		mappingTelemetry: {},
+		hoveringItem: null,
 		draggable: {
 			isDragging: false,
 			type: '',
@@ -55,9 +53,9 @@ const module: Module<NDVState, IRootState> = {
 		},
 		ndvInputData: (state: NDVState, getters, rootState: IRootState, rootGetters) => {
 			const executionData = rootGetters.getWorkflowExecution as IExecutionResponse | null;
-			const inputNodeName: string | undefined = state.ndv.input.nodeName;
-			const inputRunIndex: number = state.ndv.input.run ?? 0;
-			const inputBranchIndex: number = state.ndv.input.branch?? 0;
+			const inputNodeName: string | undefined = state.input.nodeName;
+			const inputRunIndex: number = state.input.run ?? 0;
+			const inputBranchIndex: number = state.input.branch?? 0;
 
 			if (!executionData || !inputNodeName || inputRunIndex === undefined || inputBranchIndex === undefined) {
 				return [];
@@ -65,14 +63,14 @@ const module: Module<NDVState, IRootState> = {
 
 			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data?.main?.[inputBranchIndex];
 		},
-		ndvSessionId: (state: NDVState): string => state.ndv.sessionId,
+		ndvSessionId: (state: NDVState): string => state.sessionId,
 		getPanelDisplayMode: (state: NDVState)  => {
-			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
+			return (panel: 'input' | 'output') => state[panel].displayMode;
 		},
-		inputPanelDisplayMode: (state: NDVState) => state.ndv.input.displayMode,
-		outputPanelDisplayMode: (state: NDVState) => state.ndv.output.displayMode,
-		outputPanelEditMode: (state: NDVState): NDVState['ndv']['output']['editMode'] => state.ndv.output.editMode,
-		focusedMappableInput: (state: NDVState) => state.ndv.focusedMappableInput,
+		inputPanelDisplayMode: (state: NDVState) => state.input.displayMode,
+		outputPanelDisplayMode: (state: NDVState) => state.output.displayMode,
+		outputPanelEditMode: (state: NDVState): NDVState['output']['editMode'] => state.output.editMode,
+		focusedMappableInput: (state: NDVState) => state.focusedMappableInput,
 		isDraggableDragging: (state: NDVState) => state.draggable.isDragging,
 		draggableType: (state: NDVState) => state.draggable.type,
 		draggableData: (state: NDVState) => state.draggable.data,
@@ -83,22 +81,22 @@ const module: Module<NDVState, IRootState> = {
 			return {...defaults, ...state.mainPanelDimensions[panelType]};
 		},
 		draggableStickyPos: (state: NDVState) => state.draggable.stickyPosition,
-		mappingTelemetry: (state: NDVState) => state.ndv.mappingTelemetry,
-		hoveringItem: (state: NDVState) => state.ndv.hoveringItem,
-		ndvInputNodeName: (state: NDVState) => state.ndv.input.nodeName,
-		ndvInputRunIndex: (state: NDVState) => state.ndv.input.run,
-		ndvInputBranchIndex: (state: NDVState) => state.ndv.input.branch,
-		getNDVDataIsEmpty: (state: NDVState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
+		mappingTelemetry: (state: NDVState) => state.mappingTelemetry,
+		hoveringItem: (state: NDVState) => state.hoveringItem,
+		ndvInputNodeName: (state: NDVState) => state.input.nodeName,
+		ndvInputRunIndex: (state: NDVState) => state.input.run,
+		ndvInputBranchIndex: (state: NDVState) => state.input.branch,
+		getNDVDataIsEmpty: (state: NDVState) => (panel: 'input' | 'output'): boolean => state[panel].data.isEmpty,
 	},
 	mutations: {
 		setActiveNodeName(state, nodeName: string) {
 			state.activeNodeName = nodeName;
 		},
 		setInputNodeName: (state: NDVState, name: string | undefined) => {
-			Vue.set(state.ndv.input, 'nodeName', name);
+			Vue.set(state.input, 'nodeName', name);
 		},
 		setInputRunIndex: (state: NDVState, run?: string) => {
-			Vue.set(state.ndv.input, 'run', run);
+			Vue.set(state.input, 'run', run);
 		},
 		setMainPanelDimensions: (state: NDVState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
 			Vue.set(
@@ -108,22 +106,22 @@ const module: Module<NDVState, IRootState> = {
 			);
 		},
 		setNDVSessionId: (state: NDVState) => {
-			Vue.set(state.ndv, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
+			Vue.set(state, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
 		},
 		resetNDVSessionId: (state: NDVState) => {
-			Vue.set(state.ndv, 'sessionId', '');
+			Vue.set(state, 'sessionId', '');
 		},
 		setPanelDisplayMode: (state: NDVState, params: {pane: 'input' | 'output', mode: IRunDataDisplayMode}) => {
-			Vue.set(state.ndv[params.pane], 'displayMode', params.mode);
+			Vue.set(state[params.pane], 'displayMode', params.mode);
 		},
 		setOutputPanelEditModeEnabled: (state: NDVState, payload: boolean) => {
-			Vue.set(state.ndv.output.editMode, 'enabled', payload);
+			Vue.set(state.output.editMode, 'enabled', payload);
 		},
 		setOutputPanelEditModeValue: (state: NDVState, payload: string) => {
-			Vue.set(state.ndv.output.editMode, 'value', payload);
+			Vue.set(state.output.editMode, 'value', payload);
 		},
 		setMappableNDVInputFocus(state: NDVState, paramName: string) {
-			Vue.set(state.ndv, 'focusedMappableInput', paramName);
+			Vue.set(state, 'focusedMappableInput', paramName);
 		},
 		draggableStartDragging(state: NDVState, {type, data}: {type: string, data: string}) {
 			state.draggable = {
@@ -150,19 +148,19 @@ const module: Module<NDVState, IRootState> = {
 			Vue.set(state.draggable, 'canDrop', canDrop);
 		},
 		setMappingTelemetry(state: NDVState, telemetry: {[key: string]: string | number | boolean}) {
-			state.ndv.mappingTelemetry = {...state.ndv.mappingTelemetry, ...telemetry};
+			state.mappingTelemetry = {...state.mappingTelemetry, ...telemetry};
 		},
 		resetMappingTelemetry(state: NDVState) {
-			state.ndv.mappingTelemetry = {};
+			state.mappingTelemetry = {};
 		},
-		setHoveringItem(state: NDVState, item: null | NDVState['ndv']['hoveringItem']) {
-			Vue.set(state.ndv, 'hoveringItem', item);
+		setHoveringItem(state: NDVState, item: null | NDVState['hoveringItem']) {
+			Vue.set(state, 'hoveringItem', item);
 		},
 		setNDVBranchIndex(state: NDVState, e: {pane: 'input' | 'output', branchIndex: number}) {
-			Vue.set(state.ndv[e.pane], 'branch', e.branchIndex);
+			Vue.set(state[e.pane], 'branch', e.branchIndex);
 		},
 		setNDVPanelDataIsEmpty(state: NDVState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
-			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
+			Vue.set(state[payload.panel].data, 'isEmpty', payload.isEmpty);
 		},
 	},
 	actions: {
