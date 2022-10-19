@@ -8,12 +8,12 @@
 			color="text-dark"
 		/>
 
-		<div v-for="(value, index) in values" :key="index" class="duplicate-parameter-item" :class="parameter.type">
+		<div v-for="(value, index) in mutableValues" :key="index" class="duplicate-parameter-item" :class="parameter.type">
 			<div class="delete-item clickable" v-if="!isReadOnly">
 				<font-awesome-icon icon="trash" :title="$locale.baseText('multipleParameter.deleteItem')" @click="deleteItem(index)" />
 				<div v-if="sortable">
 					<font-awesome-icon v-if="index !== 0" icon="angle-up" class="clickable" :title="$locale.baseText('multipleParameter.moveUp')" @click="moveOptionUp(index)" />
-					<font-awesome-icon v-if="index !== (values.length -1)" icon="angle-down" class="clickable" :title="$locale.baseText('multipleParameter.moveDown')" @click="moveOptionDown(index)" />
+					<font-awesome-icon v-if="index !== (mutableValues.length - 1)" icon="angle-down" class="clickable" :title="$locale.baseText('multipleParameter.moveDown')" @click="moveOptionDown(index)" />
 				</div>
 			</div>
 			<div v-if="parameter.type === 'collection'">
@@ -25,7 +25,7 @@
 		</div>
 
 		<div class="add-item-wrapper">
-			<div v-if="values && Object.keys(values).length === 0 || isReadOnly" class="no-items-exist">
+			<div v-if="mutableValues && mutableValues.length === 0 || isReadOnly" class="no-items-exist">
 				<n8n-text size="small">{{ $locale.baseText('multipleParameter.currentlyNoItemsExist') }}</n8n-text>
 			</div>
 			<n8n-button v-if="!isReadOnly" type="tertiary" block @click="addItem()" :label="addButtonText" />
@@ -34,11 +34,11 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import {
 	IUpdateInformation,
 } from '@/Interface';
-import { deepCopy } from "n8n-workflow";
+import { deepCopy, INodeParameters, INodeProperties } from "n8n-workflow";
 import CollectionParameter from '@/components/CollectionParameter.vue';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 
@@ -50,13 +50,44 @@ export default Vue.extend({
 			CollectionParameter,
 			ParameterInputFull,
 		},
-		props: [
-			'nodeValues', // NodeParameters
-			'parameter', // NodeProperties
-			'path', // string
-			'values', // NodeParameters[]
-			'isReadOnly', // boolean
-		],
+		props: {
+			nodeValues: {
+				type: Object as PropType<Record<string, INodeParameters[]>>,
+				required: true,
+			},
+			parameter: {
+				type: Object as PropType<INodeProperties>,
+				required: true,
+			},
+			path: {
+				type: String,
+				required: true,
+			},
+			values: {
+				type: Object as PropType<INodeParameters[]>,
+				required: true,
+			},
+			isReadOnly: {
+				type: Boolean,
+				default: false,
+			},
+		},
+		data() {
+			return {
+				mutableValues: {} as INodeParameters[],
+			};
+		},
+		watch: {
+			values: {
+				handler(newValues: INodeParameters[]) {
+					this.mutableValues = deepCopy(newValues);
+				},
+				deep: true,
+			},
+		},
+		created(){
+			this.mutableValues = deepCopy(this.values);
+		},
 		computed: {
 			addButtonText (): string {
 				if (
@@ -69,22 +100,18 @@ export default Vue.extend({
 				return this.$locale.nodeText().multipleValueButtonText(this.parameter);
 			},
 			hideDelete (): boolean {
-				return this.parameter.options.length === 1;
+				return this.parameter.options?.length === 1;
 			},
-			sortable (): string {
-				return this.parameter.typeOptions && this.parameter.typeOptions.sortable;
+			sortable (): boolean {
+				return !!this.parameter.typeOptions?.sortable;
 			},
 		},
 		methods: {
 			addItem () {
 				const name = this.getPath();
-				let currentValue = get(this.nodeValues, name);
+				const currentValue = get(this.nodeValues, name, [] as INodeParameters[]);
 
-				if (currentValue === undefined) {
-					currentValue = [];
-				}
-
-				currentValue.push(deepCopy(this.parameter.default));
+				currentValue.push(deepCopy(this.parameter.default as INodeParameters));
 
 				const parameterData = {
 					name,
@@ -105,21 +132,21 @@ export default Vue.extend({
 				return this.path + (index !== undefined ? `[${index}]` : '');
 			},
 			moveOptionDown (index: number) {
-				this.values.splice(index + 1, 0, this.values.splice(index, 1)[0]);
+				this.mutableValues.splice(index + 1, 0, this.mutableValues.splice(index, 1)[0]);
 
 				const parameterData = {
 					name: this.path,
-					value: this.values,
+					value: this.mutableValues,
 				};
 
 				this.$emit('valueChanged', parameterData);
 			},
 			moveOptionUp (index: number) {
-				this.values.splice(index - 1, 0, this.values.splice(index, 1)[0]);
+				this.mutableValues.splice(index - 1, 0, this.mutableValues.splice(index, 1)[0]);
 
 				const parameterData = {
 					name: this.path,
-					value: this.values,
+					value: this.mutableValues,
 				};
 
 				this.$emit('valueChanged', parameterData);
