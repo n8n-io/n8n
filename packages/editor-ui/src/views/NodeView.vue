@@ -196,7 +196,7 @@ export default mixins(
 			'$route' (to, from) {
 				const currentTab = getNodeViewTab(to);
 				const nodeViewNotInitialized = !this.$store.getters['ui/isNodeViewInitialized'];
-				const workflowChanged =
+				let workflowChanged =
 					from.params.name !== to.params.name &&
 					// Both 'new' and __EMPTY__ are new workflow names, so ignore them when detecting if wf changed
 					!(from.params.name === 'new' && this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID);
@@ -207,7 +207,9 @@ export default mixins(
 					if (workflowChanged || nodeViewNotInitialized || isOpeningTemplate) {
 						this.startLoading();
 						if (nodeViewNotInitialized) {
+							const previousDirtyState = this.$store.getters.getStateIsDirty;
 							this.resetWorkspace();
+							this.$store.commit('setStateDirty', previousDirtyState);
 						}
 						this.initView().then(() => {
 							this.stopLoading();
@@ -215,6 +217,14 @@ export default mixins(
 								this.blankRedirect = false;
 							}
 						});
+					}
+				}
+				// Also, when landing on executions tab, check if workflow data is changed
+				if (currentTab === MAIN_HEADER_TABS.EXECUTIONS) {
+					workflowChanged = from.params.name !== to.params.name && !(to.params.name === 'new' && from.params.name === undefined);
+					if (workflowChanged) {
+						// This will trigger node view to update next time workflow tab is opened
+						this.$store.commit('ui/setNodeViewInitialized', false);
 					}
 				}
 			},
