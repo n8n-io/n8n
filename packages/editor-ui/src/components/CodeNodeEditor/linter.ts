@@ -264,34 +264,6 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
-			 * Lint for `.all()` called with argument in `runOnceForAllItems` mode
-			 *
-			 * $input.itemMatching()
-			 */
-
-			if (this.mode === 'runOnceForAllItems') {
-				type TargetNode = RangeNode & { callee: RangeNode & { property: RangeNode } };
-
-				const isItemMatchingCallWithoutArg = (node: Node) =>
-					node.type === 'CallExpression' &&
-					node.callee.type === 'MemberExpression' &&
-					node.callee.property.type === 'Identifier' &&
-					node.callee.property.name === 'all' &&
-					node.arguments.length !== 0;
-
-				walk<TargetNode>(ast, isItemMatchingCallWithoutArg).forEach((node) => {
-					const [start, end] = this.getRange(node.callee.property);
-
-					lintings.push({
-						from: start,
-						to: end + '()'.length,
-						severity: DEFAULT_LINTER_SEVERITY,
-						message: this.$locale.baseText('codeNodeEditor.linter.allItems.allCalledWithArg'),
-					});
-				});
-			}
-
-			/**
 			 * Lint for `.first()` or `.last()` called with argument in `runOnceForAllItems` mode
 			 *
 			 * $input.itemMatching()
