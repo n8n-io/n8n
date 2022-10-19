@@ -3,7 +3,8 @@ import { createHtmlPlugin } from 'vite-plugin-html';
 import legacy from '@vitejs/plugin-legacy';
 import monacoEditorPlugin from "vite-plugin-monaco-editor";
 import path, { resolve } from 'path';
-import {defineConfig, PluginOption} from "vite";
+import { defineConfig, mergeConfig, PluginOption } from "vite";
+import { defineConfig as defineVitestConfig } from "vitest/config";
 import packageJSON from './package.json';
 
 const vendorChunks = ['vue', 'vue-router', 'vuex'];
@@ -33,9 +34,12 @@ const publicPath = process.env.VUE_APP_PUBLIC_PATH || '/';
 const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map(name => ({
 	find: new RegExp(`^lodash.${name}$`, 'i'),
 	replacement: require.resolve(`lodash-es/${name}`),
-}))
+}));
 
-export default defineConfig({
+export default mergeConfig(defineConfig({
+	define: {
+		'process.env': process.env,
+	},
 	plugins: [
 		legacy({
 			targets: ['defaults', 'not IE 11'],
@@ -47,7 +51,7 @@ export default defineConfig({
 					BASE_PATH: publicPath,
 				},
 			},
-		}) as PluginOption[],
+		}),
 		monacoEditorPlugin({
 			publicPath: 'assets/monaco-editor',
 			customDistPath: (root: string, buildOutDir: string, base: string) => `${root}/${buildOutDir}/assets/monaco-editor`,
@@ -97,6 +101,7 @@ export default defineConfig({
 			},
 		},
 	},
+}), defineVitestConfig({
 	test: {
 		globals: true,
 		environment: 'jsdom',
@@ -104,4 +109,4 @@ export default defineConfig({
 			'./src/__tests__/setup.ts',
 		],
 	},
-});
+}));
