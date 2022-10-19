@@ -14,7 +14,7 @@ export class Cron implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Cron',
 		name: 'cron',
-		icon: 'fa:calendar',
+		icon: 'fa:clock',
 		group: ['trigger', 'schedule'],
 		version: 1,
 		hidden: true,
@@ -24,7 +24,7 @@ export class Cron implements INodeType {
 			'Your cron trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Cron',
-			color: '#00FF00',
+			color: '#29a568',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],

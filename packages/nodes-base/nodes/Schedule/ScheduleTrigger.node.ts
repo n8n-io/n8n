@@ -15,7 +15,7 @@ export class ScheduleTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Schedule Trigger',
 		name: 'scheduleTrigger',
-		icon: 'file:schedule.svg',
+		icon: 'fa:clock',
 		group: ['trigger', 'schedule'],
 		version: 1,
 		description: 'Triggers the workflow on a given schedule',
@@ -24,7 +24,7 @@ export class ScheduleTrigger implements INodeType {
 			'Your schedule trigger will now trigger executions on the schedule you have defined.',
 		defaults: {
 			name: 'Schedule Trigger',
-			color: '#00FF00',
+			color: '#31C49F',
 		},
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
 		inputs: [],
@@ -62,34 +62,35 @@ export class ScheduleTrigger implements INodeType {
 								name: 'field',
 								type: 'options',
 								default: 'days',
+								// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 								options: [
 									{
-										name: 'Custom (Cron)',
-										value: 'cronExpression',
-									},
-									{
-										name: 'Days',
-										value: 'days',
-									},
-									{
-										name: 'Hours',
-										value: 'hours',
+										name: 'Seconds',
+										value: 'seconds',
 									},
 									{
 										name: 'Minutes',
 										value: 'minutes',
 									},
 									{
-										name: 'Months',
-										value: 'months',
+										name: 'Hours',
+										value: 'hours',
 									},
 									{
-										name: 'Seconds',
-										value: 'seconds',
+										name: 'Days',
+										value: 'days',
 									},
 									{
 										name: 'Weeks',
 										value: 'weeks',
+									},
+									{
+										name: 'Months',
+										value: 'months',
+									},
+									{
+										name: 'Custom (Cron)',
+										value: 'cronExpression',
 									},
 								],
 							},

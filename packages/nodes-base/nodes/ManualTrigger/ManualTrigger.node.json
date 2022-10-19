@@ -1,0 +1,16 @@
+{
+	"node": "n8n-nodes-base.manualTrigger",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": [
+		"Core Nodes"
+	],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/trigger-nodes/n8n-nodes-base.manualTrigger/"
+			}
+		],
+		"generic": []
+	}
+}
