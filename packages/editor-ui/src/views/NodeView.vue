@@ -2235,7 +2235,7 @@ export default mixins(
 				await this.loadExecutions();
 				this.$store.commit('ui/setNodeViewInitialized', true);
 				this.stopLoading();
-			},
+			}),
 			async initView(): Promise<void> {
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init

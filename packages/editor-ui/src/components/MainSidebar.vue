@@ -175,18 +175,7 @@ export default mixins(
 						icon: 'network-wired',
 						label: this.$locale.baseText('mainSidebar.workflows'),
 						position: 'top',
-						children: [
-							{
-								id: 'workflow',
-								label: this.$locale.baseText('mainSidebar.new'),
-								icon: 'file',
-							},
-							{
-								id: 'workflow-open',
-								label: this.$locale.baseText('mainSidebar.open'),
-								icon: 'folder-open',
-							},
-						],
+						activateOnRouteNames: [ VIEWS.WORKFLOWS ],
 					},
 					{
 						id: 'templates',
