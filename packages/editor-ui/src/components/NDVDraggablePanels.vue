@@ -47,6 +47,8 @@ import {
 	LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH,
 	MAIN_NODE_PANEL_WIDTH,
 } from '@/constants';
+import mixins from 'vue-typed-mixins';
+import { debounceHelper } from './mixins/debounce';
 
 
 const SIDE_MARGIN = 24;
@@ -63,7 +65,7 @@ const initialMainPanelWidth:{ [key: string]: number } = {
 	wide: MAIN_NODE_PANEL_WIDTH * 2,
 };
 
-export default Vue.extend({
+export default mixins(debounceHelper).extend({
 	name: 'NDVDraggablePanels',
 	components: {
 		PanelDragButton,
@@ -294,6 +296,9 @@ export default Vue.extend({
 		},
 		onResizeEnd() {
 			this.storePositionData();
+		},
+		onResizeDebounced(data: { direction: string, x: number, width: number}) {
+			this.callDebounced('onResize', { debounceTime: 50, trailing: true }, data);
 		},
 		onResize({ direction, x, width }: { direction: string, x: number, width: number}) {
 			const relativeDistance = this.pxToRelativeWidth(x);
