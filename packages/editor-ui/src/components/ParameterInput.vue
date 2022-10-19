@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
-			:value="value"
+			:value="isResourceLocatorParameter && typeof value !== 'string' ? (value ? value.value : '') : value"
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
@@ -14,16 +14,34 @@
 			:style="parameterInputWrapperStyle"
 			@click="openExpressionEdit"
 		>
+			<resource-locator
+				v-if="isResourceLocatorParameter"
+				ref="resourceLocator"
+				:parameter="parameter"
+				:value="value"
+				:displayTitle="displayTitle"
+				:expressionDisplayValue="expressionDisplayValue"
+				:expressionComputedValue="expressionEvaluated"
+				:isValueExpression="isValueExpression"
+				:isReadOnly="isReadOnly"
+				:parameterIssues="getIssues"
+				:droppable="droppable"
+				:node="node"
+				:path="path"
+				@input="valueChanged"
+				@focus="setFocus"
+				@blur="onBlur"
+				@drop="onResourceLocatorDrop"
+			/>
 			<n8n-input
-				v-if="isValueExpression || droppable || forceShowExpression"
+				v-else-if="isValueExpression || droppable || forceShowExpression"
 				:size="inputSize"
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
-				:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
+				:value="expressionDisplayValue"
 				:title="displayTitle"
 				@keydown.stop
 			/>
-
 			<div
 				v-else-if="
 					['json', 'string'].includes(parameter.type) ||
@@ -50,7 +68,15 @@
 					@valueChanged="expressionUpdated"
 				></text-edit>
 
-				<div v-if="isEditor === true" class="code-edit clickable" @click="displayEditDialog()">
+				<code-node-editor
+					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
+					:mode="node.parameters.mode"
+					:jsCode="node.parameters.jsCode"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChanged"
+				/>
+
+				<div v-else-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
 					<prism-editor
 						v-if="!codeEditDialogVisible"
 						:lineNumbers="true"
@@ -80,7 +106,7 @@
 					<div slot="suffix" class="expand-input-icon-container">
 						<font-awesome-icon
 							v-if="!isReadOnly"
-							icon="external-link-alt"
+							icon="expand-alt"
 							class="edit-window-button clickable"
 							:title="$locale.baseText('parameterInput.openEditWindow')"
 							@click="displayEditDialog()"
@@ -202,7 +228,7 @@
 				>
 					<div class="list-option">
 						<div
-							class="option-headline"
+							class="option-headline ph-no-capture"
 							:class="{ 'remote-parameter-option': isRemoteParameterOption(option) }"
 						>
 							{{ getOptionsOptionDisplayName(option) }}
@@ -260,11 +286,13 @@
 			/>
 		</div>
 
-		<parameter-issues v-if="parameter.type !== 'credentialsSelect'" :issues="getIssues" />
+		<parameter-issues v-if="parameter.type !== 'credentialsSelect' && !isResourceLocatorParameter" :issues="getIssues" />
 	</div>
 </template>
 
 <script lang="ts">
+/* eslint-disable prefer-spread */
+
 import { get } from 'lodash';
 
 import {
@@ -274,32 +302,40 @@ import {
 import {
 	NodeHelpers,
 	NodeParameterValue,
-	IHttpRequestOptions,
 	ILoadOptions,
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
+	INodeProperties,
+	INodePropertyCollection,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
+import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
+import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { hasExpressionMapping, isValueExpression } from './helpers';
+import { isResourceLocatorValue } from '@/typeGuards';
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
-import { hasExpressionMapping } from './helpers';
+import { CODE_NODE_TYPE } from '@/constants';
+import { PropType } from 'vue';
 
 export default mixins(
 	externalHooks,
@@ -308,9 +344,10 @@ export default mixins(
 	workflowHelpers,
 )
 	.extend({
-		name: 'ParameterInput',
+		name: 'parameter-input',
 		components: {
 			CodeEdit,
+			CodeNodeEditor,
 			ExpressionEdit,
 			NodeCredentials,
 			CredentialsSelect,
@@ -318,23 +355,60 @@ export default mixins(
 			ScopesNotice,
 			ParameterOptions,
 			ParameterIssues,
+			ResourceLocator,
 			TextEdit,
+			ImportParameter,
 		},
-		props: [
-			'inputSize',
-			'isReadOnly',
-			'documentationUrl',
-			'parameter', // NodeProperties
-			'path', // string
-			'value',
-			'hideIssues', // boolean
-			'errorHighlight',
-			'isForCredential', // boolean
-			'eventSource', // string
-			'activeDrop',
-			'droppable',
-			'forceShowExpression',
-		],
+		props: {
+			isReadOnly: {
+				type: Boolean,
+			},
+			parameter: {
+				type: Object as PropType<INodeProperties>,
+			},
+			path: {
+				type: String,
+			},
+			value: {
+				type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
+			},
+			hideLabel: {
+				type: Boolean,
+			},
+			droppable: {
+				type: Boolean,
+			},
+			activeDrop: {
+				type: Boolean,
+			},
+			forceShowExpression: {
+				type: Boolean,
+			},
+			hint: {
+				type: String as PropType<string | undefined>,
+			},
+			inputSize: {
+				type: String,
+			},
+			hideIssues: {
+				type: Boolean,
+			},
+			documentationUrl: {
+				type: String as PropType<string | undefined>,
+			},
+			errorHighlight: {
+				type: Boolean,
+			},
+			isForCredential: {
+				type: Boolean,
+			},
+			eventSource: {
+				type: String,
+			},
+			expressionEvaluated: {
+				type: String as PropType<string | undefined>,
+			},
+		},
 		data () {
 			return {
 				codeEditDialogVisible: false,
@@ -395,8 +469,20 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes']),
-			areExpressionsDisabled(): boolean {
-				return this.$store.getters['ui/areExpressionsDisabled'];
+			expressionDisplayValue(): string {
+				if (this.activeDrop || this.forceShowExpression) {
+					return '';
+				}
+
+				const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
+				if (typeof value === 'string' && value.startsWith('=')) {
+					return value.slice(1);
+				}
+
+				return '';
+			},
+			isValueExpression(): boolean {
+				return isValueExpression(this.parameter, this.value);
 			},
 			codeAutocomplete (): string | undefined {
 				return this.getArgument('codeAutocomplete') as string | undefined;
@@ -459,9 +545,9 @@ export default mixins(
 
 				let returnValue;
 				if (this.isValueExpression === false) {
-					returnValue = this.value;
+					returnValue = this.isResourceLocatorParameter ? (isResourceLocatorValue(this.value) ? this.value.value: '') : this.value;
 				} else {
-					returnValue = this.expressionValueComputed;
+					returnValue = this.expressionEvaluated;
 				}
 
 				if (this.parameter.type === 'credentialsSelect') {
@@ -492,39 +578,6 @@ export default mixins(
 
 				return returnValue;
 			},
-			expressionDisplayValue (): string {
-				const value = this.displayValue;
-
-				// address type errors for text input
-				if (typeof value === 'number' || typeof value === 'boolean') {
-					return JSON.stringify(value);
-				}
-
-				if (value === null) {
-					return '';
-				}
-
-				return value;
-			},
-			expressionValueComputed (): NodeParameterValue | string[] | null {
-				if (this.areExpressionsDisabled) {
-					return this.value;
-				}
-
-				if (this.node === null) {
-					return null;
-				}
-
-				let computedValue: NodeParameterValue;
-
-				try {
-					computedValue = this.resolveExpression(this.value) as NodeParameterValue;
-				} catch (error) {
-					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
-				}
-
-				return computedValue;
-			},
 			getStringInputType () {
 				if (this.getArgument('password') === true) {
 					return 'password';
@@ -535,7 +588,7 @@ export default mixins(
 					return 'textarea';
 				}
 
-				if (this.parameter.type === 'code') {
+				if (this.parameter.typeOptions && this.parameter.typeOptions.editor === 'code') {
 					return 'textarea';
 				}
 
@@ -560,13 +613,14 @@ export default mixins(
 				} else if (
 					['options', 'multiOptions'].includes(this.parameter.type) &&
 					this.remoteParameterOptionsLoading === false &&
-					this.remoteParameterOptionsLoadingIssues === null
+					this.remoteParameterOptionsLoadingIssues === null &&
+					this.parameterOptions
 				) {
 					// Check if the value resolves to a valid option
 					// Currently it only displays an error in the node itself in
 					// case the value is not valid. The workflow can still be executed
 					// and the error is not displayed on the node in the workflow
-					const validOptions = this.parameterOptions!.map((options: INodePropertyOptions) => options.value);
+					const validOptions = this.parameterOptions.map((options) => (options as INodePropertyOptions).value);
 
 					const checkValues: string[] = [];
 
@@ -610,19 +664,10 @@ export default mixins(
 			isEditor (): boolean {
 				return ['code', 'json'].includes(this.editorType);
 			},
-			isValueExpression () {
-				if (this.parameter.noDataExpression === true) {
-					return false;
-				}
-				if (typeof this.value === 'string' && this.value.charAt(0) === '=') {
-					return true;
-				}
-				return false;
-			},
 			editorType (): string {
 				return this.getArgument('editor') as string;
 			},
-			parameterOptions (): INodePropertyOptions[] {
+			parameterOptions (): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> | undefined {
 				if (this.hasRemoteMethod === false) {
 					// Options are already given
 					return this.parameter.options;
@@ -659,7 +704,7 @@ export default mixins(
 				const styles = {
 					width: '100%',
 				};
-				if (this.parameter.type === 'credentialsSelect') {
+				if (this.parameter.type === 'credentialsSelect' || this.isResourceLocatorParameter) {
 					return styles;
 				}
 				if (this.getIssues.length) {
@@ -682,6 +727,9 @@ export default mixins(
 			},
 			workflow (): Workflow {
 				return this.getCurrentWorkflow();
+			},
+			isResourceLocatorParameter (): boolean {
+				return this.parameter.type === 'resourceLocator';
 			},
 		},
 		methods: {
@@ -730,9 +778,9 @@ export default mixins(
 				this.remoteParameterOptions.length = 0;
 
 				// Get the resolved parameter values of the current node
-				const currentNodeParameters = this.$store.getters.activeNode.parameters;
 
 				try {
+					const currentNodeParameters = (this.$store.getters.activeNode as INodeUi).parameters;
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
@@ -803,13 +851,10 @@ export default mixins(
 				return this.parameter.typeOptions[argumentName];
 			},
 			expressionUpdated (value: string) {
-				this.valueChanged(value);
+				const val: NodeParameterValueType = this.isResourceLocatorParameter ? { __rl: true, value, mode: this.value.mode } : value;
+				this.valueChanged(val);
 			},
 			openExpressionEdit() {
-				if (this.areExpressionsDisabled) {
-					return;
-				}
-
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();
@@ -818,6 +863,9 @@ export default mixins(
 			},
 			onBlur () {
 				this.$emit('blur');
+			},
+			onResourceLocatorDrop(data: string) {
+				this.$emit('drop', data);
 			},
 			setFocus () {
 				if (this.isValueExpression) {
@@ -844,13 +892,16 @@ export default mixins(
 				// Set focus on field
 				setTimeout(() => {
 					// @ts-ignore
-					if (this.$refs.inputField) {
+					if (this.$refs.inputField && this.$refs.inputField.$el) {
 						// @ts-ignore
 						this.$refs.inputField.focus();
 					}
 				});
 
 				this.$emit('focus');
+			},
+			isCodeNode(node: INodeUi): boolean {
+				return node.type === CODE_NODE_TYPE;
 			},
 			rgbaToHex (value: string): string | null {
 				// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
@@ -871,7 +922,7 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
-			valueChanged (value: string[] | string | number | boolean | Date | null) {
+			valueChanged (value: NodeParameterValueType | {} | Date) {
 				if (this.parameter.name === 'nodeCredentialType') {
 					this.activeCredentialType = value as string;
 				}
@@ -880,7 +931,7 @@ export default mixins(
 					value = value.toISOString();
 				}
 
-				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && value !== null && value.toString().charAt(0) !== '#') {
+				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && value !== null && value !== undefined && value.toString().charAt(0) !== '#') {
 					const newValue = this.rgbaToHex(value as string);
 					if (newValue !== null) {
 						this.tempValue = newValue;
@@ -915,7 +966,14 @@ export default mixins(
 				} else if (command === 'openExpression') {
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
-					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+					if (this.isResourceLocatorParameter) {
+						if (isResourceLocatorValue(this.value)) {
+							this.valueChanged({ __rl: true, value: `=${this.value.value}`, mode: this.value.mode });
+						} else {
+							this.valueChanged({ __rl: true, value: `=${this.value}`, mode: '' });
+						}
+					}
+					else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
 						this.valueChanged(`={{${this.value}}}`);
 					}
 					else {
@@ -927,15 +985,25 @@ export default mixins(
 						this.trackExpressionEditOpen();
 					}, 375);
 				} else if (command === 'removeExpression') {
-					let value = this.expressionValueComputed;
+					let value: NodeParameterValueType = this.expressionEvaluated;
 
 					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
 						value = (value || '').split(',')
-							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
+							.filter((value) => (this.parameterOptions || []).find((option) => (option as INodePropertyOptions).value === value));
 					}
 
-					this.valueChanged(typeof value !== 'undefined' ? value : null);
+					if (this.isResourceLocatorParameter && isResourceLocatorValue(this.value)) {
+						this.valueChanged({ __rl: true, value, mode: this.value.mode });
+					} else {
+						this.valueChanged(typeof value !== 'undefined' ? value : null);
+					}
 				} else if (command === 'refreshOptions') {
+					if (this.isResourceLocatorParameter) {
+						const resourceLocator = this.$refs.resourceLocator;
+						if (resourceLocator) {
+							(resourceLocator as Vue).$emit('refreshList');
+						}
+					}
 					this.loadRemoteParameterOptions();
 				}
 
@@ -1094,7 +1162,6 @@ export default mixins(
 }
 
 .list-option {
-	max-width: 340px;
 	margin: 6px 0;
 	white-space: normal;
 	padding-right: 20px;
@@ -1110,7 +1177,7 @@ export default mixins(
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-regular);
 		line-height: var(--font-line-height-xloose);
-		color: $--custom-font-very-light;
+		color: $custom-font-very-light;
 	}
 }
 

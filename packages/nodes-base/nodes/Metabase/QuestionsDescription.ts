@@ -33,7 +33,7 @@ export const questionsOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the questions',
+				description: 'Get many questions',
 				routing: {
 					request: {
 						method: 'GET',
@@ -69,7 +69,7 @@ export const questionsOperations: INodeProperties[] = [
 										binary: {},
 									};
 
-									if (items[i].binary !== undefined) {
+									if (items[i].binary !== undefined && newItem.binary) {
 										Object.assign(newItem.binary, items[i].binary);
 									}
 									items[i] = newItem;

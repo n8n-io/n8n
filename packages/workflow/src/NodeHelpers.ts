@@ -12,7 +12,6 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get, isEqual } from 'lodash';
 
@@ -23,9 +22,13 @@ import {
 	INodeExecutionData,
 	INodeIssueObjectProperty,
 	INodeIssues,
+	INodeParameterResourceLocator,
 	INodeParameters,
 	INodeProperties,
 	INodePropertyCollection,
+	INodePropertyMode,
+	INodePropertyModeValidation,
+	INodePropertyRegexValidation,
 	INodeType,
 	INodeVersionedType,
 	IParameterDependencies,
@@ -36,7 +39,7 @@ import {
 	WebhookHttpMethod,
 } from './Interfaces';
 
-import { Workflow } from './Workflow';
+import type { Workflow } from './Workflow';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
@@ -229,9 +232,6 @@ export const cronNodeOptions: INodePropertyCollection[] = [
  * Gets special parameters which should be added to nodeTypes depending
  * on their type or configuration
  *
- * @export
- * @param {INodeType} nodeType
- * @returns
  */
 export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[] {
 	if (nodeType.description.polling === true) {
@@ -258,12 +258,10 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 /**
  * Returns if the parameter should be displayed or not
  *
- * @export
  * @param {INodeParameters} nodeValues The data on the node which decides if the parameter
  *                                    should be displayed
  * @param {(INodeProperties | INodeCredentialDescription)} parameter The parameter to check if it should be displayed
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
- * @returns
  */
 export function displayParameter(
 	nodeValues: INodeParameters,
@@ -349,12 +347,10 @@ export function displayParameter(
  * Returns if the given parameter should be displayed or not considering the path
  * to the properties
  *
- * @export
  * @param {INodeParameters} nodeValues The data on the node which decides if the parameter
  *                                    should be displayed
  * @param {(INodeProperties | INodeCredentialDescription)} parameter The parameter to check if it should be displayed
  * @param {string} path The path to the property
- * @returns
  */
 export function displayParameterPath(
 	nodeValues: INodeParameters,
@@ -379,11 +375,9 @@ export function displayParameterPath(
 /**
  * Returns the context data
  *
- * @export
  * @param {IRunExecutionData} runExecutionData The run execution data
  * @param {string} type The data type. "node"/"flow"
  * @param {INode} [node] If type "node" is set the node to return the context of has to be supplied
- * @returns {IContextObject}
  */
 export function getContext(
 	runExecutionData: IRunExecutionData,
@@ -418,9 +412,6 @@ export function getContext(
 /**
  * Returns which parameters are dependent on which
  *
- * @export
- * @param {INodeProperties[]} nodePropertiesArray
- * @returns {IParameterDependencies}
  */
 export function getParamterDependencies(
 	nodePropertiesArray: INodeProperties[],
@@ -459,10 +450,6 @@ export function getParamterDependencies(
  * Returns in which order the parameters should be resolved
  * to have the parameters available they depend on
  *
- * @export
- * @param {INodeProperties[]} nodePropertiesArray
- * @param {IParameterDependencies} parameterDependencies
- * @returns {number[]}
  */
 export function getParamterResolveOrder(
 	nodePropertiesArray: INodeProperties[],
@@ -530,7 +517,6 @@ export function getParamterResolveOrder(
  * Returns the node parameter values. Depending on the settings it either just returns the none
  * default values or it applies all the default values.
  *
- * @export
  * @param {INodeProperties[]} nodePropertiesArray The properties which exist and their settings
  * @param {INodeParameters} nodeValues The node parameter data
  * @param {boolean} returnDefaults If default values get added or only none default values returned
@@ -538,7 +524,6 @@ export function getParamterResolveOrder(
  * @param {boolean} [onlySimpleTypes=false] If only simple types should be resolved
  * @param {boolean} [dataIsResolved=false] If nodeValues are already fully resolved (so that all default values got added already)
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
- * @returns {(INodeParameters | null)}
  */
 export function getNodeParameters(
 	nodePropertiesArray: INodeProperties[],
@@ -849,17 +834,13 @@ export function getNodeParameters(
 			}
 		}
 	}
-
 	return nodeParameters;
 }
 
 /**
  * Brings the output data in a format that can be returned from a node
  *
- * @export
- * @param {INodeExecutionData[]} outputData
  * @param {number} [outputIndex=0]
- * @returns {Promise<INodeExecutionData[][]>}
  */
 export async function prepareOutputData(
 	outputData: INodeExecutionData[],
@@ -880,10 +861,7 @@ export async function prepareOutputData(
 /**
  * Returns all the webhooks which should be created for the give node
  *
- * @export
  *
- * @param {INode} node
- * @returns {IWebhookData[]}
  */
 export function getNodeWebhooks(
 	workflow: Workflow,
@@ -996,11 +974,6 @@ export function getNodeWebhooks(
 /**
  * Returns the webhook path
  *
- * @export
- * @param {string} workflowId
- * @param {string} nodeTypeName
- * @param {string} path
- * @returns {string}
  */
 export function getNodeWebhookPath(
 	workflowId: string,
@@ -1027,13 +1000,6 @@ export function getNodeWebhookPath(
 /**
  * Returns the webhook URL
  *
- * @export
- * @param {string} baseUrl
- * @param {string} workflowId
- * @param {string} nodeTypeName
- * @param {string} path
- * @param {boolean} isFullPath
- * @returns {string}
  */
 export function getNodeWebhookUrl(
 	baseUrl: string,
@@ -1055,10 +1021,8 @@ export function getNodeWebhookUrl(
 /**
  * Returns all the parameter-issues of the node
  *
- * @export
  * @param {INodeProperties[]} nodePropertiesArray The properties of the node
  * @param {INode} node The data of the node
- * @returns {(INodeIssues | null)}
  */
 export function getNodeParametersIssues(
 	nodePropertiesArray: INodeProperties[],
@@ -1088,10 +1052,8 @@ export function getNodeParametersIssues(
 /**
  * Returns the issues of the node as string
  *
- * @export
  * @param {INodeIssues} issues The issues of the node
  * @param {INode} node The node
- * @returns {string[]}
  */
 export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
 	const nodeIssues = [];
@@ -1125,10 +1087,40 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 	return nodeIssues;
 }
 
+/*
+ * Validates resource locator node parameters based on validation ruled defined in each parameter mode
+ *
+ */
+export const validateResourceLocatorParameter = (
+	value: INodeParameterResourceLocator,
+	parameterMode: INodePropertyMode,
+): string[] => {
+	const valueToValidate = value?.value?.toString() || '';
+	if (valueToValidate.startsWith('=')) {
+		return [];
+	}
+
+	const validationErrors: string[] = [];
+	// Each mode can have multiple validations specified
+	if (parameterMode.validation) {
+		for (const validation of parameterMode.validation) {
+			if (validation && (validation as INodePropertyModeValidation).type === 'regex') {
+				const regexValidation = validation as INodePropertyRegexValidation;
+				const regex = new RegExp(`^${regexValidation.properties.regex}$`);
+
+				if (!regex.test(valueToValidate)) {
+					validationErrors.push(regexValidation.properties.errorMessage);
+				}
+			}
+		}
+	}
+
+	return validationErrors;
+};
+
 /**
  * Adds an issue if the parameter is not defined
  *
- * @export
  * @param {INodeIssues} foundIssues The already found issues
  * @param {INodeProperties} nodeProperties The properties of the node
  * @param {NodeParameterValue} value The value of the parameter
@@ -1136,14 +1128,16 @@ export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] 
 export function addToIssuesIfMissing(
 	foundIssues: INodeIssues,
 	nodeProperties: INodeProperties,
-	value: NodeParameterValue,
+	value: NodeParameterValue | INodeParameterResourceLocator,
 ) {
 	// TODO: Check what it really has when undefined
 	if (
 		(nodeProperties.type === 'string' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'multiOptions' && Array.isArray(value) && value.length === 0) ||
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
-		(nodeProperties.type === 'options' && (value === '' || value === undefined))
+		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
+		(nodeProperties.type === 'resourceLocator' &&
+			(!value || (typeof value === 'object' && !value.value)))
 	) {
 		// Parameter is required but empty
 		if (foundIssues.parameters === undefined) {
@@ -1162,11 +1156,9 @@ export function addToIssuesIfMissing(
 /**
  * Returns the parameter value
  *
- * @export
  * @param {INodeParameters} nodeValues The values of the node
  * @param {string} parameterName The name of the parameter to return the value of
  * @param {string} path The path to the properties
- * @returns
  */
 export function getParameterValueByPath(
 	nodeValues: INodeParameters,
@@ -1176,14 +1168,16 @@ export function getParameterValueByPath(
 	return get(nodeValues, path ? `${path}.${parameterName}` : parameterName);
 }
 
+function isINodeParameterResourceLocator(value: unknown): value is INodeParameterResourceLocator {
+	return typeof value === 'object' && value !== null && 'value' in value && 'mode' in value;
+}
+
 /**
  * Returns all the issues with the given node-values
  *
- * @export
  * @param {INodeProperties} nodeProperties The properties of the node
  * @param {INodeParameters} nodeValues The values of the node
  * @param {string} path The path to the properties
- * @returns {INodeIssues}
  */
 export function getParameterIssues(
 	nodeProperties: INodeProperties,
@@ -1192,11 +1186,9 @@ export function getParameterIssues(
 	node: INode,
 ): INodeIssues {
 	const foundIssues: INodeIssues = {};
-	let value;
-
 	if (nodeProperties.required === true) {
 		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
-			value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
 
 			if (
 				// eslint-disable-next-line @typescript-eslint/prefer-optional-chain
@@ -1212,6 +1204,28 @@ export function getParameterIssues(
 			} else {
 				// Only one can be set so will be a single value
 				addToIssuesIfMissing(foundIssues, nodeProperties, value as NodeParameterValue);
+			}
+		}
+	}
+
+	if (nodeProperties.type === 'resourceLocator') {
+		if (displayParameterPath(nodeValues, nodeProperties, path, node)) {
+			const value = getParameterValueByPath(nodeValues, nodeProperties.name, path);
+			if (isINodeParameterResourceLocator(value)) {
+				const mode = nodeProperties.modes?.find((option) => option.name === value.mode);
+				if (mode) {
+					const errors = validateResourceLocatorParameter(value, mode);
+					errors.forEach((error) => {
+						if (foundIssues.parameters === undefined) {
+							foundIssues.parameters = {};
+						}
+						if (foundIssues.parameters[nodeProperties.name] === undefined) {
+							foundIssues.parameters[nodeProperties.name] = [];
+						}
+
+						foundIssues.parameters[nodeProperties.name].push(error);
+					});
+				}
 			}
 		}
 	}
@@ -1251,7 +1265,11 @@ export function getParameterIssues(
 		let propertyOptions: INodePropertyCollection;
 		for (propertyOptions of nodeProperties.options as INodePropertyCollection[]) {
 			// Check if the option got set and if not skip it
-			value = getParameterValueByPath(nodeValues, propertyOptions.name, basePath.slice(0, -1));
+			const value = getParameterValueByPath(
+				nodeValues,
+				propertyOptions.name,
+				basePath.slice(0, -1),
+			);
 			if (value === undefined) {
 				continue;
 			}
@@ -1300,10 +1318,8 @@ export function getParameterIssues(
 /**
  * Merges multiple NodeIssues together
  *
- * @export
  * @param {INodeIssues} destination The issues to merge into
  * @param {(INodeIssues | null)} source The issues to merge
- * @returns
  */
 export function mergeIssues(destination: INodeIssues, source: INodeIssues | null) {
 	if (source === null) {
@@ -1346,9 +1362,6 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 /**
  * Merges the given node properties
  *
- * @export
- * @param {INodeProperties[]} mainProperties
- * @param {INodeProperties[]} addProperties
  */
 export function mergeNodeProperties(
 	mainProperties: INodeProperties[],

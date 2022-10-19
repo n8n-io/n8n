@@ -25,7 +25,7 @@
 			</div>
 		</div>
 		<div v-else class="value clickable" @click="selectItem(item)">
-			<div class="item-title" :title="item.key" ref="variableSelectorItem">
+			<div class="item-title ph-no-capture" :title="item.key">
 				{{item.name}}:
 				<font-awesome-icon icon="dot-circle" title="Select Item" />
 			</div>
@@ -87,14 +87,6 @@ export default mixins(externalHooks).extend({
 			extended: false,
 		};
 	},
-	mounted() {
-		if (this.$refs.variableSelectorItem) {
-			this.$externalHooks().run(
-				'variableSelectorItem.mounted',
-				{ variableSelectorItemRef: this.$refs.variableSelectorItem },
-			);
-		}
-	},
 	methods: {
 		optionSelected (command: string, item: IVariableSelectorOption) {
 			// By default it is raw
@@ -140,7 +132,7 @@ export default mixins(externalHooks).extend({
 	position: relative;
 	margin: 2px;
 	margin-top: 10px;
-	color: $--color-primary;
+	color: $color-primary;
 }
 .options-toggle {
 	position: relative;

@@ -875,6 +875,21 @@ export const schema = {
 		},
 	},
 
+	enterprise: {
+		features: {
+			sharing: {
+				format: Boolean,
+				default: false,
+			},
+		},
+		// This is a temporary flag (acting as feature toggle)
+		// Will be removed when feature goes live
+		workflowSharingEnabled: {
+			format: Boolean,
+			default: false,
+		},
+	},
+
 	hiringBanner: {
 		enabled: {
 			doc: 'Whether hiring banner in browser console is enabled.',

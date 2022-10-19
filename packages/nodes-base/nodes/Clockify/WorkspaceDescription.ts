@@ -15,7 +15,7 @@ export const workspaceOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all workspaces',
+				description: 'Get many workspaces',
 				action: 'Get many workspaces',
 			},
 		],

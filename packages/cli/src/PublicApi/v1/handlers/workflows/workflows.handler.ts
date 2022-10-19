@@ -1,6 +1,6 @@
 import express from 'express';
 
-import { FindManyOptions, In } from 'typeorm';
+import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
 
 import { ActiveWorkflowRunner, Db } from '../../../..';
 import config = require('../../../../../config');
@@ -110,7 +110,7 @@ export = {
 			let workflows: WorkflowEntity[];
 			let count: number;
 
-			const query: FindManyOptions<WorkflowEntity> = {
+			const query: FindManyOptions<WorkflowEntity> & { where: ObjectLiteral } = {
 				skip: offset,
 				take: limit,
 				where: {
@@ -198,7 +198,13 @@ export = {
 				await workflowRunner.remove(id.toString());
 			}
 
-			await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			try {
+				await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			} catch (error) {
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+			}
 
 			if (sharedWorkflow.workflow.active) {
 				try {

@@ -28,7 +28,7 @@ export const portfolioOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all portfolios',
+				description: 'Get many portfolios',
 				action: 'Get many portfolios',
 			},
 			{

@@ -53,7 +53,7 @@ export async function upload(this: IExecuteFunctions, index: number) {
 		resolveWithFullResponse: true,
 	};
 
-	if (options.hasOwnProperty('share')) {
+	if (options.hasOwnProperty('share') && body.formData) {
 		Object.assign(body.formData, options.share ? { share: 'yes' } : { share: 'no' });
 	}
 	//endpoint

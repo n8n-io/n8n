@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-underscore-dangle */
-import { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { deepCopy, ICredentialDataDecryptedObject } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import { CredentialTypes, GenericHelpers, ICredentialsOverwrite } from '.';
@@ -19,7 +19,7 @@ class CredentialsOverwritesClass {
 		if (overwriteData !== undefined) {
 			// If data is already given it can directly be set instead of
 			// loaded from environment
-			this.__setData(JSON.parse(JSON.stringify(overwriteData)));
+			this.__setData(deepCopy(overwriteData));
 			return;
 		}
 
@@ -57,14 +57,11 @@ class CredentialsOverwritesClass {
 			return data;
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const returnData = JSON.parse(JSON.stringify(data));
+		const returnData = deepCopy(data);
 		// Overwrite only if there is currently no data set
-		// eslint-disable-next-line no-restricted-syntax
 		for (const key of Object.keys(overwrites)) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			// @ts-ignore
 			if ([null, undefined, ''].includes(returnData[key])) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				returnData[key] = overwrites[key];
 			}
 		}

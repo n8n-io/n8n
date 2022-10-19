@@ -14,6 +14,7 @@
 				:label="$locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
 				size="small"
+				color="text-dark"
 			/>
 			<div v-if="multipleValues === true">
 				<div
@@ -112,8 +113,10 @@ import {
 } from '@/Interface';
 
 import {
+	deepCopy,
 	INodeParameters,
 	INodePropertyCollection,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import { get } from 'lodash';
@@ -121,6 +124,7 @@ import { get } from 'lodash';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
+import {Component} from "vue";
 
 export default mixins(genericHelpers)
 	.extend({
@@ -131,6 +135,9 @@ export default mixins(genericHelpers)
 			'path', // string
 			'values', // INodeParameters
 		],
+		components: {
+			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		},
 		data() {
 			return {
 				selectedOption: undefined,
@@ -235,8 +242,6 @@ export default mixins(genericHelpers)
 				}
 				const name = `${this.path}.${option.name}`;
 
-				let parameterData;
-
 				const newParameterValue: INodeParameters = {};
 
 				for (const optionParameter of option.values) {
@@ -246,13 +251,13 @@ export default mixins(genericHelpers)
 						// Multiple values are allowed so append option to array
 						newParameterValue[optionParameter.name] = get(this.nodeValues, `${this.path}.${optionParameter.name}`, []);
 						if (Array.isArray(optionParameter.default)) {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...JSON.parse(JSON.stringify(optionParameter.default)));
+							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...deepCopy(optionParameter.default as INodeParameters[]));
 						} else if (optionParameter.default !== '' && typeof optionParameter.default !== 'object') {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(JSON.parse(JSON.stringify(optionParameter.default)));
+							(newParameterValue[optionParameter.name] as NodeParameterValue[]).push(deepCopy(optionParameter.default));
 						}
 					} else {
 						// Add a new option
-						newParameterValue[optionParameter.name] = JSON.parse(JSON.stringify(optionParameter.default));
+						newParameterValue[optionParameter.name] = deepCopy(optionParameter.default);
 					}
 				}
 
@@ -265,7 +270,7 @@ export default mixins(genericHelpers)
 					newValue = newParameterValue;
 				}
 
-				parameterData = {
+				const parameterData = {
 					name,
 					value: newValue,
 				};
@@ -276,11 +281,6 @@ export default mixins(genericHelpers)
 			valueChanged(parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
 			},
-		},
-		beforeCreate: function () { // tslint:disable-line
-			// Because we have a circular dependency on ParameterInputList import it here
-			// to not break Vue.
-			this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
 		},
 	});
 </script>

@@ -33,6 +33,7 @@ import {
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
 	LoggerProxy as Logger,
+	SubworkflowOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -67,6 +68,7 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
 import { IWorkflowErrorData } from './Interfaces';
+import { findSubworkflowStart } from './utils';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -235,7 +237,6 @@ function pruneExecutionData(this: WorkflowHooks): void {
 /**
  * Returns hook functions to push data to Editor-UI
  *
- * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsPush(): IWorkflowExecuteHooks {
 	return {
@@ -473,7 +474,6 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 /**
  * Returns hook functions to save workflow execution and call error workflow
  *
- * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 	return {
@@ -655,7 +655,6 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
  * for running with queues. Manual executions should never run on queues as
  * they are always executed in the main process.
  *
- * @returns {IWorkflowExecuteHooks}
  */
 function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 	return {
@@ -751,21 +750,7 @@ export async function getRunData(
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
-	// Find Start-Node
-	const requiredNodeTypes = ['n8n-nodes-base.start'];
-	let startNode: INode | undefined;
-	// eslint-disable-next-line no-restricted-syntax
-	for (const node of workflowData.nodes) {
-		if (requiredNodeTypes.includes(node.type)) {
-			startNode = node;
-			break;
-		}
-	}
-	if (startNode === undefined) {
-		// If the workflow does not contain a start-node we can not know what
-		// should be executed and with what data to start.
-		throw new Error(`The workflow does not contain a "Start" node and can so not be executed.`);
-	}
+	const startingNode = findSubworkflowStart(workflowData.nodes);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [
@@ -777,7 +762,7 @@ export async function getRunData(
 	// Initialize the incoming data
 	const nodeExecutionStack: IExecuteData[] = [];
 	nodeExecutionStack.push({
-		node: startNode,
+		node: startingNode,
 		data: {
 			main: [inputData],
 		},
@@ -866,11 +851,7 @@ export async function getWorkflowData(
 /**
  * Executes the workflow with the given ID
  *
- * @export
  * @param {string} workflowId The id of the workflow to execute
- * @param {IWorkflowExecuteAdditionalData} additionalData
- * @param {INodeExecutionData[]} [inputData]
- * @returns {(Promise<Array<INodeExecutionData[] | null>>)}
  */
 export async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
@@ -1053,7 +1034,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 		pushInstance.send(
 			'sendConsoleMessage',
 			{
-				source: `Node: "${source}"`,
+				source: `[Node: "${source}"]`,
 				messages,
 			},
 			this.sessionId,
@@ -1066,10 +1047,6 @@ export function sendMessageToUI(source: string, messages: any[]) {
 /**
  * Returns the base additional data without webhooks
  *
- * @export
- * @param {userId} string
- * @param {INodeParameters} currentNodeParameters
- * @returns {Promise<IWorkflowExecuteAdditionalData>}
  */
 export async function getBase(
 	userId: string,
@@ -1174,10 +1151,6 @@ export function getWorkflowHooksWorkerMain(
 /**
  * Returns WorkflowHooks instance for running the main workflow
  *
- * @export
- * @param {IWorkflowExecutionDataProcess} data
- * @param {string} executionId
- * @returns {WorkflowHooks}
  */
 export function getWorkflowHooksMain(
 	data: IWorkflowExecutionDataProcess,

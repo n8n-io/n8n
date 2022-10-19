@@ -41,6 +41,7 @@ import {
 	checkPermissionsForExecution,
 	getWorkflowOwner,
 } from '../src/UserManagement/UserManagementHelper';
+import { generateFailedExecutionFromError } from '../src/WorkflowHelpers';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -183,8 +184,6 @@ export class Worker extends Command {
 			settings: currentExecutionDb.workflowData.settings,
 		});
 
-		await checkPermissionsForExecution(workflow, workflowOwner.id);
-
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(
 			workflowOwner.id,
 			undefined,
@@ -196,6 +195,20 @@ export class Worker extends Command {
 			currentExecutionDb.workflowData,
 			{ retryOf: currentExecutionDb.retryOf as string },
 		);
+
+		try {
+			await checkPermissionsForExecution(workflow, workflowOwner.id);
+		} catch (error) {
+			const failedExecution = generateFailedExecutionFromError(
+				currentExecutionDb.mode,
+				error,
+				error.node,
+			);
+			await additionalData.hooks.executeHookFunctions('workflowExecuteAfter', [failedExecution]);
+			return {
+				success: true,
+			};
+		}
 
 		additionalData.hooks.hookFunctions.sendResponse = [
 			async (response: IExecuteResponsePromiseData): Promise<void> => {
@@ -357,6 +370,8 @@ export class Worker extends Command {
 					const port = config.getEnv('queue.health.port');
 
 					const app = express();
+					app.disable('x-powered-by');
+
 					const server = http.createServer(app);
 
 					app.get(

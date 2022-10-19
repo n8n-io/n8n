@@ -24,7 +24,7 @@ import N8nInputLabel from '../N8nInputLabel';
 export default Vue.extend({
 	name: 'n8n-checkbox',
 	components: {
-		ElCheckbox,
+		ElCheckbox, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		N8nInputLabel,
 	},
 	props: {
@@ -59,7 +59,7 @@ export default Vue.extend({
 		onChange(event: Event) {
 			this.$emit("input", event);
 		},
-	}
+	},
 });
 </script>
 

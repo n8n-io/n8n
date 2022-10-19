@@ -33,7 +33,7 @@ export const releaseOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all releases',
+				description: 'Get many releases',
 				action: 'Get many releases',
 			},
 			{
@@ -321,7 +321,7 @@ export const releaseFields: INodeProperties[] = [
 												name: 'type',
 												type: 'options',
 												default: '',
-												description: 'The types of changes that happend in that commit',
+												description: 'The types of changes that happened in that commit',
 												options: [
 													{
 														name: 'Add',
@@ -525,7 +525,7 @@ export const releaseFields: INodeProperties[] = [
 												name: 'type',
 												type: 'options',
 												default: '',
-												description: 'The types of changes that happend in that commit',
+												description: 'The types of changes that happened in that commit',
 												options: [
 													{
 														name: 'Add',

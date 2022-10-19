@@ -16,7 +16,6 @@
 					:description="getEmptyStateDescription"
 					:calloutText="actionBoxConfig.calloutText"
 					:calloutTheme="actionBoxConfig.calloutTheme"
-					@descriptionClick="onDescriptionTextClick"
 				/>
 			</div>
 			<div
@@ -37,14 +36,13 @@
 					:heading="$locale.baseText('settings.communityNodes.empty.title')"
 					:description="getEmptyStateDescription"
 					:buttonText="
-						isNpmAvailable
+						shouldShowInstallButton
 							? $locale.baseText('settings.communityNodes.empty.installPackageLabel')
 							: ''
 					"
 					:calloutText="actionBoxConfig.calloutText"
 					:calloutTheme="actionBoxConfig.calloutTheme"
 					@click="openInstallModal"
-					@descriptionClick="onDescriptionTextClick"
 				/>
 			</div>
 			<div
@@ -148,7 +146,21 @@ export default mixins(
 					},
 				});
 		},
+		isDesktopDeployment() {
+			return this.$store.getters['settings/isDesktopDeployment'];
+		},
+		shouldShowInstallButton() {
+			return !this.isDesktopDeployment && this.isNpmAvailable;
+		},
 		actionBoxConfig() {
+			if (this.isDesktopDeployment) {
+				return {
+					calloutText: this.$locale.baseText('settings.communityNodes.notAvailableOnDesktop'),
+					calloutTheme: 'warning',
+					hideButton: true,
+				};
+			}
+
 			if (!this.isNpmAvailable) {
 				return {
 					calloutText: this.$locale.baseText(
@@ -184,11 +196,6 @@ export default mixins(
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
 			this.$externalHooks().run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
 			this.$store.dispatch('ui/openModal', COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
-		},
-		onDescriptionTextClick(event: MouseEvent) {
-			if ((event.target as Element).localName === 'a') {
-				this.$telemetry.track('user clicked cnr learn more link', { source: 'cnr settings page' });
-			}
 		},
 	},
 });

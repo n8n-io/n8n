@@ -388,8 +388,6 @@ export class Box implements INodeType {
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', '/folders', body, qs);
-
-						returnData.push(responseData);
 					}
 					// https://developer.box.com/reference/delete-folders-id
 					if (operation === 'delete') {
@@ -532,7 +530,7 @@ export class Box implements INodeType {
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
 				);
-				responseData.push(...executionData);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					const executionErrorData = this.helpers.constructExecutionMetaData(

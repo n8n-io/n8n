@@ -1,18 +1,16 @@
 import { randomBytes } from 'crypto';
 import { existsSync } from 'fs';
 
-import express from 'express';
-import superagent from 'superagent';
-import request from 'supertest';
-import { URL } from 'url';
 import bodyParser from 'body-parser';
-import { set } from 'lodash';
 import { CronJob } from 'cron';
+import express from 'express';
+import { set } from 'lodash';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeParameters,
 	INodeTypeData,
@@ -21,20 +19,15 @@ import {
 	ITriggerResponse,
 	LoggerProxy,
 	NodeHelpers,
-	TriggerTime,
 	toCronExpression,
+	TriggerTime,
 } from 'n8n-workflow';
+import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import superagent from 'superagent';
+import request from 'supertest';
+import { URL } from 'url';
 
 import config from '../../../config';
-import {
-	AUTHLESS_ENDPOINTS,
-	COMMUNITY_NODE_VERSION,
-	COMMUNITY_PACKAGE_VERSION,
-	PUBLIC_API_REST_PATH_SEGMENT,
-	REST_PATH_SEGMENT,
-} from './constants';
-import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
-import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
 import {
 	ActiveWorkflowRunner,
 	CredentialTypes,
@@ -48,11 +41,24 @@ import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/ro
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import { getLogger } from '../../../src/Logger';
-import { credentialsController } from '../../../src/api/credentials.api';
-import { loadPublicApiVersions } from '../../../src/PublicApi/';
+import { nodesController } from '../../../src/api/nodes.api';
+import { workflowsController } from '../../../src/workflows/workflows.controller';
+import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
+import { credentialsController } from '../../../src/credentials/credentials.controller';
+import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
 import type { User } from '../../../src/databases/entities/User';
+import { getLogger } from '../../../src/Logger';
+import { loadPublicApiVersions } from '../../../src/PublicApi/';
+import { issueJWT } from '../../../src/UserManagement/auth/jwt';
+import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
+import {
+	AUTHLESS_ENDPOINTS,
+	COMMUNITY_NODE_VERSION,
+	COMMUNITY_PACKAGE_VERSION,
+	PUBLIC_API_REST_PATH_SEGMENT,
+	REST_PATH_SEGMENT,
+} from './constants';
+import { randomName } from './random';
 import type {
 	ApiPath,
 	EndpointGroup,
@@ -60,11 +66,8 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
-import type { N8nApp } from '../../../src/UserManagement/Interfaces';
-import { workflowsController } from '../../../src/api/workflows.api';
-import { nodesController } from '../../../src/api/nodes.api';
-import { randomName } from './random';
-import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
+import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
+import { v4 as uuid } from 'uuid';
 
 /**
  * Initialize a test server.
@@ -152,9 +155,6 @@ export function initTestTelemetry() {
 
 	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
 }
-
-export const createAuthAgent = (app: express.Application) => (user: User) =>
-	createAgent(app, { auth: true, user });
 
 /**
  * Classify endpoint groups into `routerEndpoints` (newest, using `express.Router`),
@@ -309,7 +309,9 @@ export async function initNodeTypes() {
 					const timezone = this.getTimezone();
 
 					// Start the cron-jobs
-					const cronJobs = cronTimes.map(cronTime => new CronJob(cronTime, executeTrigger, undefined, true, timezone));
+					const cronJobs = cronTimes.map(
+						(cronTime) => new CronJob(cronTime, executeTrigger, undefined, true, timezone),
+					);
 
 					// Stop the cron-jobs
 					async function closeFunction() {
@@ -587,6 +589,10 @@ export function createAgent(
 	return agent;
 }
 
+export function createAuthAgent(app: express.Application) {
+	return (user: User) => createAgent(app, { auth: true, user });
+}
+
 /**
  * Plugin to prefix a path segment into a request URL pathname.
  *
@@ -695,3 +701,45 @@ export const emptyPackage = () => {
 
 	return Promise.resolve(installedPackage);
 };
+
+// ----------------------------------
+//           workflow
+// ----------------------------------
+
+export function makeWorkflow({
+	withPinData,
+	withCredential,
+}: {
+	withPinData: boolean;
+	withCredential?: { id: string; name: string };
+}) {
+	const workflow = new WorkflowEntity();
+
+	const node: INode = {
+		id: uuid(),
+		name: 'Spotify',
+		type: 'n8n-nodes-base.spotify',
+		parameters: { resource: 'track', operation: 'get', id: '123' },
+		typeVersion: 1,
+		position: [740, 240],
+	};
+
+	if (withCredential) {
+		node.credentials = {
+			spotifyApi: withCredential,
+		};
+	}
+
+	workflow.name = 'My Workflow';
+	workflow.active = false;
+	workflow.connections = {};
+	workflow.nodes = [node];
+
+	if (withPinData) {
+		workflow.pinData = MOCK_PINDATA;
+	}
+
+	return workflow;
+}
+
+export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };
