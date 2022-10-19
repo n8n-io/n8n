@@ -260,7 +260,8 @@ export const pushConnection = mixins(
 						this.$titleSet(workflow.name as string, 'ERROR');
 
 						if (
-							runDataExecuted.data.resultData.error!.name === 'ExpressionError' &&
+							runDataExecuted.data.resultData.error &&
+							runDataExecuted.data.resultData.error.name === 'ExpressionError' &&
 							(runDataExecuted.data.resultData.error as ExpressionError).context.functionality === 'pairedItem'
 						) {
 							const error = runDataExecuted.data.resultData.error as ExpressionError;
