@@ -193,4 +193,4 @@ export const getNodeViewTab = (route: Route): string|null => {
 			}
 		}
 		return null;
-}
+};
