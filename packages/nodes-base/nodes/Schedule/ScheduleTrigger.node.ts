@@ -413,7 +413,6 @@ export class ScheduleTrigger implements INodeType {
 		const rule = this.getNodeParameter('rule', []) as IDataObject;
 		const interval = rule.interval as IDataObject[];
 		const timezone = this.getTimezone();
-		const date = moment.tz(timezone).week();
 		const cronJobs: CronJob[] = [];
 		const intervalArr: NodeJS.Timeout[] = [];
 		const executeTrigger = () => {
