@@ -2,13 +2,17 @@
 	<div>
 		<div v-if="!createNodeActive" :class="[$style.nodeButtonsWrapper, showStickyButton ? $style.noEvents : '']" @mouseenter="onCreateMenuHoverIn">
 			<div :class="$style.nodeCreatorButton">
-				<n8n-icon-button size="xlarge" icon="plus" @click="openNodeCreator" :title="$locale.baseText('nodeView.addNode')"/>
+				<n8n-icon-button size="xlarge" icon="plus" type="tertiary" :class="$style.nodeCreatorPlus" @click="openNodeCreator" :title="$locale.baseText('nodeView.addNode')"/>
 				<div :class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']" @click="addStickyNote">
-					<n8n-icon-button size="medium" type="secondary" :icon="['far', 'note-sticky']" :title="$locale.baseText('nodeView.addSticky')"/>
+					<n8n-icon-button size="medium" type="tertiary" :icon="['far', 'note-sticky']" :title="$locale.baseText('nodeView.addSticky')"/>
 				</div>
 			</div>
 		</div>
-		<node-creator :active="createNodeActive" @nodeTypeSelected="nodeTypeSelected" @closeNodeCreator="closeNodeCreator" />
+		<node-creator
+			:active="createNodeActive"
+			@nodeTypeSelected="nodeTypeSelected"
+			@closeNodeCreator="closeNodeCreator"
+		/>
 	</div>
 </template>
 
@@ -120,12 +124,25 @@ export default Vue.extend({
 .nodeCreatorButton {
 	position: fixed;
 	text-align: center;
-	top: 80px;
-	right: 20px;
+	top: calc(#{$header-height} + var(--spacing-s));
+	right: var(--spacing-s);
 	pointer-events: all !important;
 
 	button {
-		position: relative;
+		border-color: var(--color-foreground-xdark);
+		color: var(--color-foreground-xdark);
+
+		&:hover {
+			border-color: var(--color-primary);
+			color: var(--color-primary);
+			background: var(--color-background-xlight);
+		}
 	}
+}
+.nodeCreatorPlus {
+	border-width: 2px;
+	border-radius: var(--border-radius-base);
+	width: 36px;
+	height: 36px;
 }
 </style>

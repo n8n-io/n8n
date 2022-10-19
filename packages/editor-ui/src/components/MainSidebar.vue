@@ -78,7 +78,6 @@ import {
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
-	WORKFLOW_OPEN_MODAL_KEY,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
@@ -174,20 +173,7 @@ export default mixins(
 						icon: 'network-wired',
 						label: this.$locale.baseText('mainSidebar.workflows'),
 						position: 'top',
-						activateOnRouteNames: [ VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOWS, VIEWS.WORKFLOW ],
-						children: [
-							{
-								id: 'workflow',
-								label: this.$locale.baseText('mainSidebar.new'),
-								icon: 'file',
-								activateOnRouteNames: [ VIEWS.NEW_WORKFLOW ],
-							},
-							{
-								id: 'workflow-open',
-								label: this.$locale.baseText('mainSidebar.open'),
-								icon: 'folder-open',
-							},
-						],
+						activateOnRouteNames: [ VIEWS.WORKFLOWS ],
 					},
 					{
 						id: 'templates',
@@ -333,12 +319,10 @@ export default mixins(
 			},
 			async handleSelect (key: string) {
 				switch (key) {
-					case 'workflow': {
-						await this.createNewWorkflow();
-						break;
-					}
-					case 'workflow-open': {
-						this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
+					case 'workflows': {
+						if (this.$router.currentRoute.name !== VIEWS.WORKFLOWS) {
+							this.$router.push({name: VIEWS.WORKFLOWS});
+						}
 						break;
 					}
 					case 'templates': {
