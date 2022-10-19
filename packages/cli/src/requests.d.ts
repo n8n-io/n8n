@@ -59,7 +59,7 @@ export declare namespace WorkflowRequest {
 	type Update = AuthenticatedRequest<
 		{ id: string },
 		{},
-		RequestBody & { updatedAt: string | number },
+		RequestBody & { updatedAt: string },
 		{ forceSave?: string }
 	>;
 
