@@ -258,6 +258,10 @@ function rowFormatColumn(input: unknown): boolean | number | string | string[] |
 
 	if (Array.isArray(input) && input.every((i) => typeof i === 'string')) {
 		return input;
+	} else if (Array.isArray(input) && input.every((i) => typeof i === 'object')) {
+		const returnItems = [] as string[];
+		input.every((i) => returnItems.push(i.display_value));
+		return returnItems;
 	}
 
 	return null;

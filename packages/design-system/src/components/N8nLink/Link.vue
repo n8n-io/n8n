@@ -107,6 +107,11 @@ export default Vue.extend({
 	text-decoration: underline;
 }
 
+.text-underline {
+	composes: text;
+	text-decoration: underline;
+}
+
 .danger-underline {
 	composes: danger;
 	text-decoration: underline;
