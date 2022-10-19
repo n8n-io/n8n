@@ -359,7 +359,6 @@ workflowsController.patch(
 		const isFirstUpdate = req.body.updatedAt === -1;
 
 		if (!isFirstUpdate) {
-			console.log('here');
 			const lastKnownDate = new Date(req.body.updatedAt).getTime();
 			const storedDate = shared.workflow.updatedAt.getTime();
 
