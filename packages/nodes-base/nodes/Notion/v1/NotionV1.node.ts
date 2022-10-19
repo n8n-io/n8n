@@ -251,7 +251,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const blockId = extractPageId(this.getNodeParameter('blockId', i) as string);
+					const blockId = extractPageId(this.getNodeParameter('blockId', i, '', { extractValue: true }) as string);
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
