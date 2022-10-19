@@ -142,7 +142,7 @@ export class NotionV1 implements INodeType {
 			},
 			async getDatabaseIdFromPage(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const pageId = extractPageId(this.getCurrentNodeParameter('pageId') as string);
+				const pageId = extractPageId(this.getCurrentNodeParameter('pageId', { extractValue: true }) as string);
 				const {
 					parent: { database_id: databaseId },
 				} = await notionApiRequest.call(this, 'GET', `/pages/${pageId}`);
@@ -180,7 +180,7 @@ export class NotionV1 implements INodeType {
 			async getDatabaseOptionsFromPage(
 				this: ILoadOptionsFunctions,
 			): Promise<INodePropertyOptions[]> {
-				const pageId = extractPageId(this.getCurrentNodeParameter('pageId') as string);
+				const pageId = extractPageId(this.getCurrentNodeParameter('pageId', { extractValue: true }) as string);
 				const [name, type] = (this.getCurrentNodeParameter('&key') as string).split('|');
 				const {
 					parent: { database_id: databaseId },
@@ -426,7 +426,7 @@ export class NotionV1 implements INodeType {
 
 			if (operation === 'update') {
 				for (let i = 0; i < length; i++) {
-					const pageId = extractPageId(this.getNodeParameter('pageId', i) as string);
+					const pageId = extractPageId(this.getNodeParameter('pageId', i, '', { extractValue: true }) as string);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const properties = this.getNodeParameter(
 						'propertiesUi.propertyValues',
