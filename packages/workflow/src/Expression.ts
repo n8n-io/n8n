@@ -1,7 +1,6 @@
 // @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
-import * as BabelCore from '@babel/core';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -22,18 +21,14 @@ import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
 // eslint-disable-next-line import/no-cycle
-import {
-	expressionExtensionPlugin,
-	extend,
-	hasExpressionExtension,
-	hasNativeMethod,
-} from './Extensions';
+import { extend, hasExpressionExtension, hasNativeMethod } from './Extensions';
 import {
 	ExpressionChunk,
 	ExpressionCode,
 	joinExpression,
 	splitExpression,
 } from './Extensions/ExpressionParser';
+import { extendTransform } from './Extensions/ExpressionExtension';
 
 // @ts-ignore
 
@@ -317,15 +312,9 @@ export class Expression {
 
 		const chunks = splitExpression(bracketedExpression);
 
-		// const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
-
 		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
 			if (chunk.type === 'code') {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-				const output = BabelCore.transformSync(chunk.text, {
-					plugins: [expressionExtensionPlugin],
-					ast: true,
-				});
+				const output = extendTransform(chunk.text);
 
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 				if (!output?.code) {
@@ -336,8 +325,8 @@ export class Expression {
 				// We need to cut off any trailing semicolons. These cause issues
 				// with certain types of expression and cause the whole expression
 				// to fail.
-				if (text.endsWith(';')) {
-					text = text.slice(0, -1);
+				if (text.trim().endsWith(';')) {
+					text = text.trim().slice(0, -1);
 				}
 
 				return {

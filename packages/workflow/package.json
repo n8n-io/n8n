@@ -54,16 +54,17 @@
     "typescript": "~4.8.0"
   },
   "dependencies": {
-    "@babel/core": "^7.18.13",
-    "@babel/plugin-transform-arrow-functions": "^7.18.6",
-    "@babel/types": "^7.18.13",
     "@n8n_io/riot-tmpl": "^1.0.1",
+    "@types/crypto-js": "^4.1.1",
+    "crypto-js": "^4.1.1",
     "jmespath": "^0.16.0",
+    "js-base64": "^3.7.2",
     "lodash.get": "^4.4.2",
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
     "lodash.set": "^4.3.2",
     "luxon": "~2.3.0",
+    "recast": "^0.21.5",
     "xml2js": "^0.4.23"
   },
   "jest": {
