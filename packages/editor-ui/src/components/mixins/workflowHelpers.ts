@@ -680,7 +680,7 @@ export const workflowHelpers = mixins(
 			},
 
 			async saveCurrentWorkflow({id, name, tags}: {id?: string, name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
-				const currentWorkflow = id || this.$route.params.name;
+				const currentWorkflow = id || this.$route.params.name === 'new' ? undefined : this.$route.params.name;
 
 				if (!currentWorkflow) {
 					return this.saveAsNewWorkflow({name, tags}, redirect);

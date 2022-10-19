@@ -202,7 +202,12 @@ export default mixins(workflowHelpers, titleChange).extend({
 	},
 	methods: {
 		async onSaveButtonClick () {
-			const currentId = this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID ? this.currentWorkflowId : this.$route.params.name;
+			let currentId = undefined;//this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID ? this.currentWorkflowId : this.$route.params.name;
+			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				currentId = this.currentWorkflowId;
+			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
+				currentId = this.$route.params.name;
+			}
 			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
 			if (saved) this.$store.dispatch('settings/fetchPromptsData');
 		},
