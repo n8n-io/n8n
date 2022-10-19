@@ -112,6 +112,7 @@ import mixins from 'vue-typed-mixins';
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
@@ -119,6 +120,7 @@ export default mixins(
 	nodeHelpers,
 	workflowHelpers,
 	pinData,
+	debounceHelper,
 ).extend({
 	name: 'Node',
 	components: {
@@ -424,6 +426,18 @@ export default mixins(
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
 			});
+		},
+
+		onClick(event: MouseEvent, doubleClick = false) {
+			this.callDebounced('onClickDebounced', { deounceTime: 50, trailing: true }, event, doubleClick);
+		},
+
+		onClickDebounced(event: MouseEvent, doubleClick: boolean) {
+			if (doubleClick) {
+				this.setNodeActive();
+			} else {
+				this.mouseLeftClick(event);
+			}
 		},
 
 		setNodeActive () {
