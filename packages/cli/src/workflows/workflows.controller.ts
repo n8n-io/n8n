@@ -366,7 +366,7 @@ workflowsController.patch(
 			);
 
 			throw new ResponseHelper.ResponseError(
-				`Workflow ID "${workflowId}" cannot be saved because it was changed by another user.`,
+				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
 				undefined,
 				400,
 			);
