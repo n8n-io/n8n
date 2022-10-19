@@ -132,6 +132,10 @@ export async function execute(
 		dateTimeRenderOption,
 	)) as SheetRangeData;
 
+	if (sheetData === undefined || sheetData.length === 0) {
+		return [];
+	}
+
 	const { data, headerRow, firstDataRow } = prepareSheetData(sheetData, dataLocationOnSheetOptions);
 
 	let returnData = [];

@@ -137,8 +137,8 @@ export const descriptions: INodeProperties[] = [
 		displayName: 'Sheet',
 		name: 'sheetName',
 		type: 'resourceLocator',
-		// default: { mode: 'list', value: '' },
-		default: '', //empty string set to progresivly reveal fields
+		default: { mode: 'list', value: '' },
+		// default: '', //empty string set to progresivly reveal fields
 		required: true,
 		modes: [
 			{
@@ -181,8 +181,6 @@ export const descriptions: INodeProperties[] = [
 						},
 					},
 				],
-				// url: '=https://docs.google.com/spreadsheets/d/{{$parameter["documentId"].value}}/edit#gid={{$value}}',
-				url: '=https://docs.google.com/spreadsheets/d/{{$value}}/edit',
 			},
 		],
 		displayOptions: {
