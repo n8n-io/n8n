@@ -425,7 +425,7 @@ test('GET /workflows/:id should retrieve workflow', async () => {
 	expect(tags).toEqual([]);
 	expect(settings).toEqual(workflow.settings);
 	expect(createdAt).toEqual(workflow.createdAt.toISOString());
-	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	expect(updatedAt).toEqual(-1);
 });
 
 test('GET /workflows/:id should retrieve non-owned workflow for owner', async () => {
@@ -457,7 +457,7 @@ test('GET /workflows/:id should retrieve non-owned workflow for owner', async ()
 	expect(nodes).toEqual(workflow.nodes);
 	expect(settings).toEqual(workflow.settings);
 	expect(createdAt).toEqual(workflow.createdAt.toISOString());
-	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	expect(updatedAt).toEqual(-1);
 });
 
 test('DELETE /workflows/:id should fail due to missing API Key', async () => {
@@ -535,7 +535,7 @@ test('DELETE /workflows/:id should delete the workflow', async () => {
 	expect(nodes).toEqual(workflow.nodes);
 	expect(settings).toEqual(workflow.settings);
 	expect(createdAt).toEqual(workflow.createdAt.toISOString());
-	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	expect(updatedAt).toEqual(-1);
 
 	// make sure the workflow actually deleted from the db
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
@@ -574,7 +574,7 @@ test('DELETE /workflows/:id should delete non-owned workflow when owner', async 
 	expect(nodes).toEqual(workflow.nodes);
 	expect(settings).toEqual(workflow.settings);
 	expect(createdAt).toEqual(workflow.createdAt.toISOString());
-	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	expect(updatedAt).toEqual(-1);
 
 	// make sure the workflow actually deleted from the db
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
@@ -675,7 +675,7 @@ test('POST /workflows/:id/activate should set workflow as active', async () => {
 	expect(nodes).toEqual(workflow.nodes);
 	expect(settings).toEqual(workflow.settings);
 	expect(createdAt).toEqual(workflow.createdAt.toISOString());
-	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	expect(updatedAt).toEqual(-1);
 
 	// check whether the workflow is on the database
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
@@ -720,7 +720,7 @@ test('POST /workflows/:id/activate should set non-owned workflow as active when 
 	expect(nodes).toEqual(workflow.nodes);
 	expect(settings).toEqual(workflow.settings);
 	expect(createdAt).toEqual(workflow.createdAt.toISOString());
-	expect(updatedAt).toEqual(workflow.updatedAt.toISOString());
+	expect(updatedAt).toEqual(-1);
 
 	// check whether the workflow is on the database
 	const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
@@ -986,7 +986,7 @@ test('POST /workflows should create workflow', async () => {
 	expect(nodes).toEqual(payload.nodes);
 	expect(active).toBe(false);
 	expect(createdAt).toBeDefined();
-	expect(updatedAt).toEqual(createdAt);
+	expect(updatedAt).toEqual(-1);
 
 	// check if created workflow in DB
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
@@ -1166,7 +1166,7 @@ test('PUT /workflows/:id should update workflow', async () => {
 	expect(nodes).toEqual(payload.nodes);
 	expect(active).toBe(false);
 	expect(createdAt).toBe(workflow.createdAt.toISOString());
-	expect(updatedAt).not.toBe(workflow.updatedAt.toISOString());
+	expect(updatedAt).not.toBe(-1);
 
 	// check updated workflow in DB
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
@@ -1179,7 +1179,7 @@ test('PUT /workflows/:id should update workflow', async () => {
 
 	expect(sharedWorkflow?.workflow.name).toBe(payload.name);
 	expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
-		workflow.updatedAt.getTime(),
+		new Date(workflow.updatedAt).getTime(),
 	);
 });
 
@@ -1243,7 +1243,7 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 	expect(nodes).toEqual(payload.nodes);
 	expect(active).toBe(false);
 	expect(createdAt).toBe(workflow.createdAt.toISOString());
-	expect(updatedAt).not.toBe(workflow.updatedAt.toISOString());
+	expect(updatedAt).not.toBe(-1);
 
 	// check updated workflow in DB
 	const sharedOwnerWorkflow = await Db.collections.SharedWorkflow.findOne({
@@ -1265,7 +1265,7 @@ test('PUT /workflows/:id should update non-owned workflow if owner', async () =>
 
 	expect(sharedWorkflow?.workflow.name).toBe(payload.name);
 	expect(sharedWorkflow?.workflow.updatedAt.getTime()).toBeGreaterThan(
-		workflow.updatedAt.getTime(),
+		new Date(workflow.updatedAt).getTime(),
 	);
 	expect(sharedWorkflow?.role).toEqual(workflowOwnerRole);
 });
