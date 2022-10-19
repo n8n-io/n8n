@@ -228,7 +228,7 @@ export class NotionV1 implements INodeType {
 		if (resource === 'block') {
 			if (operation === 'append') {
 				for (let i = 0; i < length; i++) {
-					const blockId = extractPageId(this.getNodeParameter('blockId', i) as string);
+					const blockId = extractPageId(this.getNodeParameter('blockId', i, '', { extractValue: true }) as string);
 					const blockValues = this.getNodeParameter('blockUi.blockValues', i, []) as IDataObject[];
 					extractDatabaseMentionRLC(blockValues);
 					const body: IDataObject = {

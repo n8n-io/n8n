@@ -37,19 +37,61 @@ export const blockFields = [
 	/*                                block:append                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Block ID or Link',
+		displayName: 'Block',
 		name: 'blockId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'url', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/My-Page-b4eeb113e118403ba450af65ac25f0b9',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})\??.*',
+							errorMessage: 'Not a valid Notion Block URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: 'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+							errorMessage: 'Not a valid Notion Block ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+				},
+				url: '=https://www.notion.so/{{$value}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['block'],
 				operation: ['append'],
 			},
 		},
-		description:
-			"The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.",
+		description: "The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.",
 	},
 	...blocks('block', 'append'),
 	/* -------------------------------------------------------------------------- */
