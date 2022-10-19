@@ -106,15 +106,15 @@ describe('Data Transformation Functions', () => {
 
 		test('.encrypt() should work correctly on a string', () => {
 			expect(evaluate('={{ "12345".encrypt("sha256") }}')).toEqual(
-				stringExtensions('12345', 'sha256').encrypt('12345', 'sha256'),
+				stringExtensions.functions.encrypt('12345', ['sha256']),
 			);
 
 			expect(evaluate('={{ "12345".encrypt("sha256") }}')).not.toEqual(
-				stringExtensions('12345', 'MD5').encrypt('12345', 'MD5'),
+				stringExtensions.functions.encrypt('12345', ['MD5']),
 			);
 
 			expect(evaluate('={{ "12345".encrypt("MD5") }}')).toEqual(
-				stringExtensions('12345', 'MD5').encrypt('12345', 'MD5'),
+				stringExtensions.functions.encrypt('12345', ['MD5']),
 			);
 
 			expect(evaluate('={{ "12345".hash("sha256") }}')).toEqual(

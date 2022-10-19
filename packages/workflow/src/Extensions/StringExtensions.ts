@@ -2,13 +2,38 @@
 // import { createHash } from 'crypto';
 import * as ExpressionError from '../ExpressionError';
 import { ExtensionMap } from './Extensions';
+import CryptoJS from 'crypto-js';
+import { encode } from 'js-base64';
 
-// TODO: hashing functions
+const hashFunctions: Record<string, typeof CryptoJS.MD5> = {
+	md5: CryptoJS.MD5,
+	sha1: CryptoJS.SHA1,
+	sha224: CryptoJS.SHA224,
+	sha256: CryptoJS.SHA256,
+	sha384: CryptoJS.SHA384,
+	sha512: CryptoJS.SHA512,
+	sha3: CryptoJS.SHA3,
+	ripemd160: CryptoJS.RIPEMD160,
+};
 
-// function encrypt(value: string, extraArgs?: any): string {
-// 	const [format = 'MD5'] = extraArgs as string[];
-// 	return createHash(format).update(value.toString()).digest('hex');
-// }
+function encrypt(value: string, extraArgs?: unknown): string {
+	const [format = 'MD5'] = extraArgs as string[];
+	if (format.toLowerCase() === 'base64') {
+		// We're using a library instead of btoa because btoa only
+		// works on ASCII
+		return encode(value);
+	}
+	const hashFunction = hashFunctions[format.toLowerCase()];
+	if (!hashFunction) {
+		throw new ExpressionError.ExpressionExtensionError(
+			`Unknown encrypt type ${format}. Available types are: ${Object.keys(hashFunctions)
+				.map((s) => s.toUpperCase())
+				.join(', ')}, and Base64.`,
+		);
+	}
+	return hashFunction(value.toString()).toString();
+	// return createHash(format).update(value.toString()).digest('hex');
+}
 
 function getOnlyFirstCharacters(value: string, extraArgs: number[]): string {
 	const [end] = extraArgs;
@@ -107,9 +132,9 @@ function urlEncode(value: string, extraArgs: boolean[]): string {
 export const stringExtensions: ExtensionMap = {
 	typeName: 'String',
 	functions: {
-		// ['encrypt', this.encrypt],
+		encrypt,
+		hash: encrypt,
 		getOnlyFirstCharacters,
-		// ['hash', this.encrypt],
 		removeMarkdown,
 		sayHi,
 		stripTags,
