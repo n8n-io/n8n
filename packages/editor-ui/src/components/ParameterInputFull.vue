@@ -123,7 +123,7 @@ export default mixins(
 		},
 		computed: {
 			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			hint (): string | null {
 				return this.$locale.nodeText().hint(this.parameter, this.path);

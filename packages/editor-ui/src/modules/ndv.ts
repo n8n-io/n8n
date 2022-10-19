@@ -6,11 +6,13 @@ import {
 	NDVState,
 	XYPosition,
 	IExecutionResponse,
+	INodeUi,
 } from '../Interface';
 
 const module: Module<NDVState, IRootState> = {
 	namespaced: true,
 	state: {
+		activeNodeName: null,
 		mainPanelDimensions: {},
 		ndv: {
 			sessionId: '',
@@ -47,6 +49,10 @@ const module: Module<NDVState, IRootState> = {
 		},
 	},
 	getters: {
+		activeNodeName: (state: NDVState) => state.activeNodeName,
+		activeNode: (state, getters, rootState, rootGetters): INodeUi | null => {
+			return rootGetters.getNodeByName(state.activeNodeName);
+		},
 		ndvInputData: (state: NDVState, getters, rootState: IRootState, rootGetters) => {
 			const executionData = rootGetters.getWorkflowExecution as IExecutionResponse | null;
 			const inputNodeName: string | undefined = state.ndv.input.nodeName;
@@ -85,6 +91,9 @@ const module: Module<NDVState, IRootState> = {
 		getNDVDataIsEmpty: (state: NDVState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
 	},
 	mutations: {
+		setActiveNodeName(state, nodeName: string) {
+			state.activeNodeName = nodeName;
+		},
 		setInputNodeName: (state: NDVState, name: string | undefined) => {
 			Vue.set(state.ndv.input, 'nodeName', name);
 		},

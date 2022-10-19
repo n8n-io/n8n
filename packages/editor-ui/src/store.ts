@@ -60,7 +60,6 @@ const state: IRootState = {
 	activeExecutions: [],
 	activeWorkflows: [],
 	activeActions: [],
-	activeNode: null,
 	activeCredentialType: null,
 	// @ts-ignore
 	baseUrl: import.meta.env.VUE_APP_URL_BASE_API ?? window.BASE_PATH ?? '/',
@@ -658,13 +657,9 @@ export const store = new Vuex.Store({
 		setIsNpmAvailable(state, isNpmAvailable: boolean) {
 			Vue.set(state, 'isNpmAvailable', isNpmAvailable);
 		},
-		setActiveNode(state, nodeName: string) {
-			state.activeNode = nodeName;
-		},
 		setActiveCredentialType(state, activeCredentialType: string) {
 			state.activeCredentialType = activeCredentialType;
 		},
-
 		setLastSelectedNode(state, nodeName: string) {
 			state.lastSelectedNode = nodeName;
 		},
@@ -951,7 +946,6 @@ export const store = new Vuex.Store({
 		/**
 		 * Pin data
 		 */
-
 		pinData: (state): IPinData | undefined => {
 			return state.workflow.pinData;
 		},
@@ -960,15 +954,21 @@ export const store = new Vuex.Store({
 
 			return state.workflow.pinData[nodeName].map(item => item.json);
 		},
-		pinDataSize: (state) => {
+		pinDataSize: (state, getters, rootState, rootGetters) => {
+			const activeNode = rootGetters['ndv/activeNodeName'];
 			return state.workflow.nodes
 				.reduce((acc, node) => {
-					if (typeof node.pinData !== 'undefined' && node.name !== state.activeNode) {
+					if (typeof node.pinData !== 'undefined' && node.name !== activeNode) {
 						acc += stringSizeInBytes(node.pinData);
 					}
 
 					return acc;
 				}, 0);
+		},
+
+		activeNode: (state, getters, rootState, rootGetters): INodeUi | null => {
+			// kept here for FE hooks
+			return rootGetters['ndv/activeNode'];
 		},
 
 		/**
@@ -983,9 +983,6 @@ export const store = new Vuex.Store({
 				if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
 				return acc;
 			}, []);
-		},
-		activeNode: (state, getters): INodeUi | null => {
-			return getters.getNodeByName(state.activeNode);
 		},
 		lastSelectedNode: (state, getters): INodeUi | null => {
 			return getters.getNodeByName(state.lastSelectedNode);

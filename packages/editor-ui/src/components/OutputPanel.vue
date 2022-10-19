@@ -112,7 +112,7 @@ export default mixins(
 	},
 	computed: {
 		node(): INodeUi {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {

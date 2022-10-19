@@ -147,7 +147,7 @@ export default mixins(
 			return this.workflow as Workflow;
 		},
 		activeNode (): INodeUi | null {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		currentNode (): INodeUi | null {
 			return this.$store.getters.getNodeByName(this.currentNodeName);

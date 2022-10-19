@@ -482,7 +482,7 @@ export default mixins(
 		},
 		computed: {
 			activeNode(): INodeUi {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			dataPinningDocsUrl(): string {
 				return DATA_PINNING_DOCS_URL;
@@ -1096,7 +1096,7 @@ export default mixins(
 			},
 			goToErroredNode() {
 				if (this.node) {
-					this.$store.commit('setActiveNode', this.node.name);
+					this.$store.commit('ndv/setActiveNodeName', this.node.name);
 				}
 			},
 		},

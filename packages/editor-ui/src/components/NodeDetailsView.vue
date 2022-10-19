@@ -203,7 +203,7 @@ export default mixins(
 			);
 		},
 		activeNode(): INodeUi | null {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		inputNodeName(): string | undefined {
 			return this.selectedInput || this.parentNode;
@@ -255,7 +255,7 @@ export default mixins(
 		},
 		isActiveStickyNode(): boolean {
 			return (
-				!!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE
+				!!this.$store.getters['ndv/activeNode'] && this.$store.getters['ndv/activeNode'].type === STICKY_NODE_TYPE
 			);
 		},
 		workflowExecution(): IExecutionResponse | null {
@@ -442,7 +442,7 @@ export default mixins(
 			this.avgOutputRowHeight = e.avgRowHeight;
 		},
 		onWorkflowActivate() {
-			this.$store.commit('setActiveNode', null);
+			this.$store.commit('ndv/setActiveNodeName', null);
 			setTimeout(() => {
 				this.activateCurrentWorkflow('ndv');
 			}, 1000);
@@ -561,7 +561,7 @@ export default mixins(
 				workflow_id: this.$store.getters.workflowId,
 			});
 			this.triggerWaitingWarningEnabled = false;
-			this.$store.commit('setActiveNode', null);
+			this.$store.commit('ndv/setActiveNodeName', null);
 			this.$store.commit('ndv/resetNDVSessionId');
 		},
 		onRunOutputIndexChange(run: number) {

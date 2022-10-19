@@ -120,11 +120,11 @@ export default mixins(
 				node_name: string;
 			} = {
 				event_version: '2',
-				node_type_dest: this.$store.getters.activeNode.type,
+				node_type_dest: this.$store.getters['ndv/activeNode'].type,
 				parameter_name_dest: this.parameter.displayName,
 				is_immediate_input: false,
 				variable_expression: eventData.variable,
-				node_name: this.$store.getters.activeNode.name,
+				node_name: this.$store.getters['ndv/activeNode'].name,
 			};
 
 			if (eventData.variable) {
@@ -144,7 +144,7 @@ export default mixins(
 					const sourceNodeName = splitVar[0].split('"')[1];
 					trackProperties.node_type_source = this.$store.getters.getNodeByName(sourceNodeName).type;
 					const nodeConnections: Array<Array<{ node: string }>> = this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName).main;
-					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.$store.getters.activeNode.name)) ? true : false;
+					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.$store.getters['ndv/activeNode'].name)) ? true : false;
 
 					if (splitVar[1].startsWith('parameter')) {
 						trackProperties.parameter_name_source = splitVar[1].split('"')[1];

@@ -198,7 +198,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			};
 		},
 		node(): INodeUi {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		parametersSetting(): INodeProperties[] {
 			return this.parameters.filter((item) => {

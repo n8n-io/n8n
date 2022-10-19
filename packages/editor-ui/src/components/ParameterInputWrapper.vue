@@ -103,7 +103,7 @@ export default mixins(
 				return isValueExpression(this.parameter, this.value);
 			},
 			activeNode(): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			selectedRLMode(): INodePropertyMode | undefined {
 				if (typeof this.value !== 'object' ||this.parameter.type !== 'resourceLocator' || !isResourceLocatorValue(this.value)) {

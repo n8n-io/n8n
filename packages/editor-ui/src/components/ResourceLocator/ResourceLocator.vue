@@ -279,7 +279,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return this.selectedMode === 'list';
 		},
 		hasCredential(): boolean {
-			const node = this.$store.getters.activeNode as INodeUi | null;
+			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
 			if (!node) {
 				return false;
 			}
@@ -479,7 +479,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return parameter.typeOptions[argumentName];
 		},
 		openCredential(): void {
-			const node = this.$store.getters.activeNode as INodeUi | null;
+			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
 			if (!node || !node.credentials) {
 				return;
 			}

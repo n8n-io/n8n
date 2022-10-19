@@ -856,7 +856,6 @@ export interface IRootState {
 	activeWorkflows: string[];
 	activeActions: string[];
 	activeCredentialType: string | null;
-	activeNode: string | null;
 	baseUrl: string;
 	defaultLocale: string;
 	endpointWebhook: string;
@@ -937,6 +936,7 @@ export interface TargetItem {
 }
 
 export interface NDVState {
+	activeNodeName: string | null;
 	mainPanelDimensions: {[key: string]: {[key: string]: number}};
 	ndv: {
 		sessionId: string;
