@@ -344,16 +344,13 @@ export default mixins(
 		convertToDisplayDate,
 		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({name: VIEWS.EXECUTION, params: {id: execution.id}});
+				const route = this.$router.resolve({ name: VIEWS.EXECUTION_PREVIEW, params: { name: execution.workflowId, executionId: execution.id } });
 				window.open(route.href, '_blank');
 
 				return;
 			}
 
-			this.$router.push({
-				name: VIEWS.EXECUTION,
-				params: { id: execution.id },
-			});
+			this.$router.push({ name: VIEWS.EXECUTION_PREVIEW, params: { name: execution.workflowId, executionId: execution.id } }).catch(()=>{});;
 			this.modalBus.$emit('closeAll');
 		},
 		handleAutoRefreshToggle () {

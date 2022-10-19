@@ -63,32 +63,38 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 	},
 	watch:{
     $route (to: Route, from: Route) {
+			const workflowChanged = from.params.name !== to.params.name;
+			this.initView(workflowChanged);
 			this.setActiveExecution();
     },
 	},
 	async mounted() {
-		this.setExecutions();
-		if (this.activeExecution) {
-			this.$router.push({
-				name: VIEWS.EXECUTION_PREVIEW,
-				params: { name: this.currentWorkflow, executionId: this.activeExecution.id },
-			}).catch(()=>{});;
-		}
-		this.setActiveExecution();
-		if (this.workflowDataNotLoaded) {
-			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
-				await this.$store.dispatch('nodeTypes/getNodeTypes');
-			}
-			await this.openWorkflow(this.$route.params.name);
-			const executions = await await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { status: '' });
-			this.$store.commit('workflows/setCurrentWorkflowExecutions', executions);
-
-			this.$store.commit('ui/setNodeViewInitialized', false);
-		}
+		const workflowUpdated = this.$route.params.name !== this.$store.getters.workflowId;
+		const onNewWorkflow = this.$route.params.name === 'new' && this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+		await this.initView(workflowUpdated && !onNewWorkflow);
 	},
 	methods: {
+		async initView (loadWorkflow: boolean) : Promise<void> {
+			this.loading = true;
+			if (loadWorkflow) {
+				if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
+					await this.$store.dispatch('nodeTypes/getNodeTypes');
+				}
+				await this.openWorkflow(this.$route.params.name);
+				this.$store.commit('ui/setNodeViewInitialized', false);
+			}
+			this.setExecutions();
+			if (this.activeExecution) {
+				this.$router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: this.currentWorkflow, executionId: this.activeExecution.id },
+				}).catch(()=>{});;
+			}
+			this.setActiveExecution();
+			this.loading = false;
+		},
 		async onLoadMore (): Promise<void> {
-			this.callDebounced("loadMore", { debounceTime: 100 });
+			this.callDebounced("loadMore", { debounceTime: 200 });
 		},
 		async loadMore (): Promise<void> {
 			if (this.filter.status === 'running') {
