@@ -279,9 +279,6 @@ export default mixins(
 					to.params.action !== 'workflowSave';
 				const isOpeningTemplate = to.name === VIEWS.TEMPLATE_IMPORT;
 
-				console.log('CHANGED ROUTE...');
-				console.log(to.params.action === 'workflowSave');
-
 				// When entering this tab:
 				if (currentTab === MAIN_HEADER_TABS.WORKFLOW || isOpeningTemplate) {
 					if (workflowChanged || nodeViewNotInitialized || isOpeningTemplate) {
