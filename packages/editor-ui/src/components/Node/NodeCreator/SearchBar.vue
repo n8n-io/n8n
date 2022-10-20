@@ -1,40 +1,46 @@
 <template>
-	<div class="search-container">
-		<div :class="{ prefix: true, active: value.length > 0 }">
-			<font-awesome-icon icon="search" />
+	<div :class="$style.searchContainer">
+		<div :class="{ [$style.prefix]: true, [$style.active]: value.length > 0 }">
+			<font-awesome-icon icon="search" size="sm" />
 		</div>
-		<div class="text">
+		<div :class="$style.text">
 			<input
 				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
 				ref="input"
 				:value="value"
 				@input="onInput"
+				:class="$style.input"
 			/>
 		</div>
-		<div class="suffix" v-if="value.length > 0" @click="clear">
-			<span class="clear el-icon-close clickable"></span>
+		<div :class="$style.suffix" v-if="value.length > 0" @click="clear">
+			<button :class="[$style.clear, $style.clickable]">
+				<font-awesome-icon icon="times-circle" />
+			</button>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-
+import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
 	name: "SearchBar",
-	props: ["value", "eventBus"],
+	props: {
+		value: {
+			type: String,
+		},
+		eventBus: {
+			type: Object as PropType<Vue>,
+		},
+	},
 	mounted() {
-		if (this.$props.eventBus) {
-			this.$props.eventBus.$on("focus", () => {
-				this.focus();
-			});
+		if (this.eventBus) {
+			this.eventBus.$on("focus", this.focus);
 		}
-		setTimeout(() => {
-			this.focus();
-		}, 0);
+		setTimeout(this.focus, 0);
 
 		this.$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: this.$refs['input'] });
 	},
@@ -53,25 +59,37 @@ export default mixins(externalHooks).extend({
 			this.$emit("input", "");
 		},
 	},
+	beforeDestroy() {
+		if (this.eventBus) {
+			this.eventBus.$off("focus", this.focus);
+		}
+	},
 });
 </script>
 
-<style lang="scss" scoped>
-.search-container {
+<style lang="scss" module>
+.searchContainer {
 	display: flex;
-	height: 60px;
+	height: 40px;
+	padding: var(--spacing-s) var(--spacing-xs);
 	align-items: center;
-	padding-left: 14px;
-	padding-right: 20px;
-	border-bottom: 1px solid $node-creator-border-color;
+	margin: var(--spacing-s);
+	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
+
+	border: 1px solid $node-creator-border-color;
 	background-color: $node-creator-search-background-color;
 	color: $node-creator-search-placeholder-color;
+	border-radius: 4px;
+
+	&:focus-within {
+		border-color: var(--color-secondary)
+	}
 }
 
 .prefix {
 	text-align: center;
-	font-size: 16px;
-	margin-right: 14px;
+	font-size: var(--font-size-m);
+	margin-right: var(--spacing-xs);
 
 	&.active {
 		color: $color-primary !important;
@@ -83,10 +101,10 @@ export default mixins(externalHooks).extend({
 
 	input {
 		width: 100%;
-		border: none !important;
+		border: none;
 		outline: none;
-		font-size: 18px;
-		-webkit-appearance: none;
+		font-size: var(--font-size-s);
+		appearance: none;
 		background-color: var(--color-background-xlight);
 		color: var(--color-text-dark);
 
@@ -99,32 +117,22 @@ export default mixins(externalHooks).extend({
 
 .suffix {
 	min-width: 20px;
-	text-align: center;
+	text-align: right;
 	display: inline-block;
 }
 
 .clear {
-	background-color: $node-creator-search-clear-background-color;
-	border-radius: 50%;
-	height: 16px;
-	width: 16px;
-	font-size: 16px;
-	color: $node-creator-search-background-color;
-	display: inline-flex;
-	align-items: center;
+	background-color: $node-creator-search-clear-color;
+	padding: 0;
+	border: none;
+	cursor: pointer;
 
-	&:hover {
-		background-color: $node-creator-search-clear-background-color-hover;
+	svg path {
+		fill: $node-creator-search-clear-background-color;
 	}
 
-	&:before {
-		line-height: 16px;
-		display: flex;
-		height: 16px;
-		width: 16px;
-		font-size: 15px;
-		align-items: center;
-		justify-content: center;
+	&:hover svg path {
+		fill: $node-creator-search-clear-background-color-hover;
 	}
 }
 </style>

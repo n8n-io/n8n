@@ -1,34 +1,34 @@
 <template>
-	<SlideTransition>
-		<div
-			v-if="active"
-			class="node-creator"
-			ref="nodeCreator"
-			v-click-outside="onClickOutside"
-			@dragover="onDragOver"
-			@drop="onDrop"
-		>
-			<MainPanel
-				@nodeTypeSelected="nodeTypeSelected"
-				:categorizedItems="categorizedItems"
-				:categoriesWithNodes="categoriesWithNodes"
-				:searchItems="searchItems"
-			/>
-		</div>
-	</SlideTransition>
+	<div>
+		<aside :class="{'node-creator-scrim': true, expanded: !sidebarMenuCollapsed, active: showScrim}" />
+
+		<slide-transition>
+			<div
+				v-if="active"
+				class="node-creator"
+				ref="nodeCreator"
+			 	v-click-outside="onClickOutside"
+			 	@dragover="onDragOver"
+			 	@drop="onDrop"
+			>
+				<main-panel
+					@nodeTypeSelected="nodeTypeSelected"
+					:searchItems="searchItems"
+				/>
+			</div>
+		</slide-transition>
+	</div>
 </template>
 
 <script lang="ts">
 
 import Vue from 'vue';
 
-import { ICategoriesWithNodes, INodeCreateElement } from '@/Interface';
+import { INodeCreateElement } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import SlideTransition from '../../transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
-import { getCategoriesWithNodes, getCategorizedList } from './helpers';
-import { mapGetters } from 'vuex';
 
 export default Vue.extend({
 	name: 'NodeCreator',
@@ -40,20 +40,16 @@ export default Vue.extend({
 		active: {
 			type: Boolean,
 		},
-  },
+	},
 	computed: {
-		...mapGetters('users', ['personalizedNodeTypes']),
-		allLatestNodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters['nodeTypes/allLatestNodeTypes'];
+		showScrim(): boolean {
+			return this.$store.getters['nodeCreator/showScrim'];
+		},
+		sidebarMenuCollapsed(): boolean {
+			return this.$store.getters['ui/sidebarMenuCollapsed'];
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.allLatestNodeTypes.filter((nodeType) => !nodeType.hidden);
-		},
-		categoriesWithNodes(): ICategoriesWithNodes {
-			return getCategoriesWithNodes(this.visibleNodeTypes, this.personalizedNodeTypes as string[]);
-		},
-		categorizedItems(): INodeCreateElement[] {
-			return getCategorizedList(this.categoriesWithNodes);
+			return this.$store.getters['nodeTypes/visibleNodeTypes'];
 		},
 		searchItems(): INodeCreateElement[] {
 			const sorted = [...this.visibleNodeTypes];
@@ -102,6 +98,11 @@ export default Vue.extend({
 			}
 		},
 	},
+	watch: {
+		active(isActive) {
+			if(isActive === false) this.$store.commit('nodeCreator/setShowScrim', false);
+		},
+	},
 });
 </script>
 
@@ -113,20 +114,31 @@ export default Vue.extend({
 .node-creator {
 	position: fixed;
 	top: $header-height;
+	bottom: 0;
 	right: 0;
-	width: $node-creator-width;
-	height: 100%;
-	background-color: $node-creator-background-color;
 	z-index: 200;
+	width: $node-creator-width;
 	color: $node-creator-text-color;
+}
 
-	&:before {
-		box-sizing: border-box;
-		content: ' ';
-		border-left: 1px solid $node-creator-border-color;
-		width: 1px;
-		position: absolute;
-		height: 100%;
+.node-creator-scrim {
+	position: fixed;
+	top: $header-height;
+	right: 0;
+	bottom: 0;
+	left: $sidebar-width;
+	opacity: 0;
+	z-index: 1;
+	background: var(--color-background-dark);
+	pointer-events: none;
+	transition: opacity 200ms ease-in-out;
+
+	&.expanded {
+		left: $sidebar-expanded-width
+	}
+
+	&.active {
+		opacity: 0.7;
 	}
 }
 </style>

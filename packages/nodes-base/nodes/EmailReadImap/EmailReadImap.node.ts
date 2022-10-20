@@ -1,9 +1,6 @@
 import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
-
 import { NodeVersionedType } from '../../src/NodeVersionedType';
-
 import { EmailReadImapV1 } from './v1/EmailReadImapV1.node';
-
 import { EmailReadImapV2 } from './v2/EmailReadImapV2.node';
 
 export class EmailReadImap extends NodeVersionedType {

@@ -27,9 +27,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 			return workflowData;
 		},
 
-		getDuplicateCurrentWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string> => {
-			const currentWorkflowName = context.rootGetters.workflowName;
-
+		getDuplicateCurrentWorkflowName: async (context: ActionContext<IWorkflowsState, IRootState>, currentWorkflowName: string): Promise<string> => {
 			if (currentWorkflowName && (currentWorkflowName.length + DUPLICATE_POSTFFIX.length) >= MAX_WORKFLOW_NAME_LENGTH) {
 				return currentWorkflowName;
 			}
