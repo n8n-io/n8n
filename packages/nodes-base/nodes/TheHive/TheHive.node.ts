@@ -43,7 +43,7 @@ export class TheHive implements INodeType {
 		name: 'theHive',
 		icon: 'file:thehive.svg',
 		group: ['transform'],
-		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
+		subtitle: '={{$parameter["operation"]}} : {{$parameter["resource"]}}',
 		version: 1,
 		description: 'Consume TheHive API',
 		defaults: {
