@@ -10,7 +10,7 @@ export class GoogleDocsOAuth2Api implements ICredentialType {
 	name = 'googleDocsOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google Docs OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
