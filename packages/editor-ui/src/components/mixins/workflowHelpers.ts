@@ -311,9 +311,6 @@ export const workflowHelpers = mixins(
 
 			getNodeTypes (): INodeTypes {
 				const nodeTypes: INodeTypes = {
-					getSourcePath() {
-						return '';
-					},
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
 					getAll: (): Array<INodeType | IVersionedNodeType> => {

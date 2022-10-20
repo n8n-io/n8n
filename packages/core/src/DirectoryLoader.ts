@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createContext, Context, Script } from 'node:vm';
 import glob from 'fast-glob';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { DocumentationLink, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
 	CodexData,
 	ICredentialType,
@@ -170,29 +170,34 @@ export abstract class DirectoryLoader {
 	 * from the codex data for the node at the given file path.
 	 */
 	private getCodex(filePath: string): CodexData {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		type Codex = {
+			categories: string[];
+			subcategories: { [subcategory: string]: string[] };
+			resources: {
+				primaryDocumentation: DocumentationLink[];
+				credentialDocumentation: DocumentationLink[];
+			};
+			alias: string[];
+		};
+
+		const codexFilePath = `${filePath}on`; // .js to .json
+
 		const {
 			categories,
 			subcategories,
 			resources: allResources,
 			alias,
-		} = module.require(`${filePath}on`); // .js to .json
+		} = module.require(codexFilePath) as Codex;
 
 		const resources = {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 			primaryDocumentation: allResources.primaryDocumentation,
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
 			credentialDocumentation: allResources.credentialDocumentation,
 		};
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+
 		return {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			...(categories && { categories }),
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			...(subcategories && { subcategories }),
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			...(resources && { resources }),
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			...(alias && { alias }),
 		};
 	}
@@ -273,7 +278,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 				this.nodeTypes = cache.nodeTypes;
 				this.credentialTypes = cache.credentialTypes;
 
-				Logger.info(`Loaded nodes and credentials from cache`);
+				Logger.info('Loaded nodes and credentials from cache');
 				Logger.info(`Source directory: ${this.directory}\n`);
 				return;
 			} catch {
@@ -282,7 +287,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 			}
 		}
 
-		// set loadedNodes, nodeTypes and credentialTypes from files in the package)
+		// set loadedNodes, nodeTypes and credentialTypes from files in the package
 
 		const { n8n, name: packageName } = this.packageJson;
 
@@ -328,7 +333,11 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		const filePath = this.resolvePath(file);
 		const fileString = await readFile(filePath, 'utf8');
 
-		return JSON.parse(fileString) as T;
+		try {
+			return JSON.parse(fileString) as T;
+		} catch (error) {
+			throw new Error(`Failed to parse JSON from ${filePath}`);
+		}
 	}
 
 	private writeJSON<T>(file: string, data: T) {

@@ -8,7 +8,7 @@ import type { ICredentialType, INodeTypeDescription, INodeTypeNameVersion } from
 
 import { CredentialTypes, NodeTypes, ResponseHelper } from '..';
 import config from '../../config';
-import { NodeTypesRequest } from '../requests';
+import type { NodeTypesRequest } from '../requests';
 import { getNodeTranslationPath } from '../TranslationHelpers';
 
 function isOAuth(credType: ICredentialType) {

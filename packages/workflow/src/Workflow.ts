@@ -50,12 +50,12 @@ import {
 	NodeParameterValueType,
 } from './Interfaces';
 import { IDeferredPromise } from './DeferredPromise';
-import { requireDistNode } from './utils';
 
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import { RoutingNode } from './RoutingNode';
 import { Expression } from './Expression';
+import { requireDistNode } from './utils';
 
 function dedupe<T>(arr: T[]): T[] {
 	return [...new Set(arr)];

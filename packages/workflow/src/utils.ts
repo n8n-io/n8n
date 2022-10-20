@@ -38,8 +38,6 @@ export const deepCopy = <T>(source: T): T => {
 };
 // eslint-enable
 
-// @TODO: De-duplicate, original in core
-
 type NodeModule = {
 	[className: string]: new () => {
 		methods: { [key: string]: { [key: string]: Function } };
@@ -57,6 +55,10 @@ function getVersionedNodeFilePath(sourcePath: string, version: number | number[]
 }
 
 export function requireDistNode(nodeType: INodeType, workflow: Workflow) {
+	if (!workflow.nodeTypes.getSourcePath) {
+		throw new Error('Expected getSourcePath() to exist in workflow.nodeTypes');
+	}
+
 	const sourcePath = workflow.nodeTypes.getSourcePath(nodeType.description.name);
 
 	const nodeFilePath =

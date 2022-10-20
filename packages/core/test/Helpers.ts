@@ -811,10 +811,6 @@ class NodeTypesClass implements INodeTypes {
 		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
 	}
 
-	getSourcePath() {
-		return '';
-	}
-
 	getByName(nodeType: string): INodeType {
 		return this.getByNameAndVersion(nodeType);
 	}

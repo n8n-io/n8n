@@ -1424,7 +1424,7 @@ export interface INodeTypes {
 	init(nodeTypes?: INodeTypeData): Promise<void>;
 	getAll(): Array<INodeType | IVersionedNodeType>;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
-	getSourcePath(nodeTypeName: string): string;
+	getSourcePath?: (nodeTypeName: string) => string;
 }
 
 export interface ICredentialTypeData {

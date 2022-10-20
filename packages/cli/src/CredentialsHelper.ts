@@ -70,9 +70,6 @@ const mockNodeTypes: INodeTypes = {
 		}
 		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
 	},
-	getSourcePath(_: string) {
-		return '';
-	},
 };
 
 export class CredentialsHelper extends ICredentialsHelper {
@@ -489,7 +486,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			const allNodeTypes: INodeType[] = [];
 			if (node instanceof NodeVersionedType) {
 				// Node is versioned
-				allNodeTypes.push(...Object.values((node as IVersionedNodeType).nodeVersions));
+				allNodeTypes.push(...Object.values(node.nodeVersions));
 			} else {
 				// Node is not versioned
 				allNodeTypes.push(node as INodeType);
@@ -501,16 +498,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 				for (const credential of nodeType.description.credentials ?? []) {
 					if (credential.name === credentialType && !!credential.testedBy) {
 						if (typeof credential.testedBy === 'string') {
-							if (Object.prototype.hasOwnProperty.call(node, 'nodeVersions')) {
+							if (NodeHelpers.isVersioned(node)) {
 								// The node is versioned. So check all versions for test function
 								// starting with the latest
-								const versions = Object.keys((node as IVersionedNodeType).nodeVersions)
-									.sort()
-									.reverse();
+								const versions = Object.keys(node.nodeVersions).sort().reverse();
 								for (const version of versions) {
-									const versionedNode = (node as IVersionedNodeType).nodeVersions[
-										parseInt(version, 10)
-									];
+									const versionedNode = node.nodeVersions[parseInt(version, 10)];
 									if (
 										versionedNode.methods?.credentialTest &&
 										versionedNode.methods?.credentialTest[credential.testedBy]

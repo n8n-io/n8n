@@ -289,7 +289,6 @@ export function getAllCredentalsTypeData(): ICredentialsTypeData {
 /**
  * Returns the data of the node types that are needed
  * to execute the given nodes
- *
  */
 export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	const nodeTypes = NodeTypes();
@@ -297,6 +296,21 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	// Check which node-types have to be loaded
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	const neededNodeTypes = getNeededNodeTypes(nodes);
+
+	/**
+	 * Derive `className` from `sourcePath`. `constructor.name` cannot be used when reading from cache.
+	 */
+	const toClassName = (sourcePath: string) => {
+		const lastSegment = sourcePath.split('/').pop();
+
+		if (!lastSegment) throw new Error('Failed to extract className from sourcePath');
+
+		const className = lastSegment.split('.').shift();
+
+		if (!className) throw new Error('Failed to extract className from sourcePath');
+
+		return className;
+	};
 
 	// Get all the data of the needed node types that they
 	// can be loaded again in the process
@@ -307,13 +321,7 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 		}
 
 		returnData[nodeTypeName.type] = {
-			// className: nodeTypes.nodeTypes[nodeTypeName.type].type.constructor.name,
-			// @TODO: Improve class name detection
-			className: nodeTypes.nodeTypes[nodeTypeName.type].sourcePath
-				.split('/')
-				.pop()!
-				.split('.')
-				.shift()!,
+			className: toClassName(nodeTypes.nodeTypes[nodeTypeName.type].sourcePath),
 			sourcePath: nodeTypes.nodeTypes[nodeTypeName.type].sourcePath,
 		};
 	}

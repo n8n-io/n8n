@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/naming-convention */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
 	INodeType,
 	INodeTypeData,
@@ -65,6 +65,8 @@ class NodeTypesClass implements INodeTypes {
 	/**
 	 * Variant of `getByNameAndVersion` that includes the node's source path,
 	 * used to locate a node's translations.
+	 *
+	 * @TODO: Turn into flag.
 	 */
 	getWithSourcePath(
 		nodeTypeName: string,
@@ -107,6 +109,7 @@ class NodeTypesClass implements INodeTypes {
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
+// eslint-disable-next-line @typescript-eslint/naming-convention
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();

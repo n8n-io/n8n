@@ -22,13 +22,13 @@ import {
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	requireDistNode,
 	RoutingNode,
 	Workflow,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import { NodeExecuteFunctions } from '.';
-import { requireDistNode } from './utils';
 
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';

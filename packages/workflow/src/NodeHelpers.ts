@@ -1403,6 +1403,8 @@ export function getVersionedNodeTypeAll(nodeType: IVersionedNodeType | INodeType
 	return [nodeType];
 }
 
-function isVersioned(nodeType: INodeType | IVersionedNodeType): nodeType is IVersionedNodeType {
+export function isVersioned(
+	nodeType: INodeType | IVersionedNodeType,
+): nodeType is IVersionedNodeType {
 	return 'nodeVersions' in nodeType;
 }

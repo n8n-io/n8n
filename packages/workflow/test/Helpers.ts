@@ -555,9 +555,6 @@ export function getExecuteSingleFunctions(
 }
 
 class NodeTypesClass implements INodeTypes {
-	getSourcePath(_: string) {
-		return '';
-	}
 	nodeTypes: INodeTypeData = {
 		'test.set': {
 			sourcePath: '',
