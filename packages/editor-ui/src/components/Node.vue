@@ -429,7 +429,7 @@ export default mixins(
 		},
 
 		onClick(event: MouseEvent) {
-			this.callDebounced('onClickDebounced', { debounceTime: 300, trailing: false }, event);
+			this.callDebounced('onClickDebounced', { debounceTime: 300, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {
