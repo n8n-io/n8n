@@ -24,6 +24,7 @@
 				:value="nodeFilter"
 				@input="onNodeFilterChange"
 				:eventBus="searchEventBus"
+				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
 			/>
 			<div v-if="searchFilter.length === 0" :class="$style.scrollable">
 				<item-iterator
@@ -99,6 +100,9 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		SearchBar,
 	},
 	props: {
+		flatten: {
+			type: Boolean,
+		},
 		searchItems: {
 			type: Array as PropType<INodeCreateElement[]>,
 		},
@@ -175,12 +179,18 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		searchFilter(): string {
 			return this.nodeFilter.toLowerCase().trim();
 		},
-		filteredNodeTypes(): INodeCreateElement[] {
+		matchedTypeNodes(): INodeCreateElement[] {
 			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
-			const filter = this.searchFilter;
-			const matchedCategorizedNodes = searchableNodes.filter((el: INodeCreateElement) => {
-				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
+
+			return searchableNodes.filter((el: INodeCreateElement) => {
+				return matchesSelectType(el, this.selectedType);
 			});
+		},
+		filteredNodeTypes(): INodeCreateElement[] {
+			// const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
+			const filter = this.searchFilter;
+			const matchedCategorizedNodes = this.matchedTypeNodes
+				.filter((el: INodeCreateElement) => filter && matchesNodeType(el, filter));
 
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
@@ -260,6 +270,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 
 		renderedItems(): INodeCreateElement[] {
 			if(this.firstLevelItems.length > 0 && this.activeSubcategory === null) return this.firstLevelItems;
+			if(this.flatten) return this.matchedTypeNodes;
 			if(this.subcategorizedItems.length === 0) return this.categorized;
 
 			return this.subcategorizedItems;

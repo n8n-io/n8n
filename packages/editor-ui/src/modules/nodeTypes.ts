@@ -150,6 +150,8 @@ const module: Module<INodeTypesState, IRootState> = {
 			});
 
 			context.commit('setNodeTypes', nodesInformation);
+
+			return nodesInformation;
 		},
 		async getNodeParameterOptions(
 			context: ActionContext<INodeTypesState, IRootState>,

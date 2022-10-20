@@ -1,15 +1,23 @@
 <template>
 	<div :class="{ [$style.triggerHelperContainer]: true, [$style.isRoot]: isRoot }">
+		<node-actions
+			v-if="activeNode"
+			:key="activeNode"
+			:nodeTypeName="activeNode"
+			@actionSelected="onActionSelected"
+			@back="onActionsBack"
+		/>
 		<categorized-items
 			ref="categorizedItems"
 			@subcategoryClose="onSubcategoryClose"
 			@onSubcategorySelected="onSubcategorySelected"
-			@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
+			@nodeTypeSelected="onNodeSelected"
 			:initialActiveIndex="0"
 			:searchItems="searchItems"
 			:firstLevelItems="isRoot ? items : []"
 			:excludedCategories="[CORE_NODES_CATEGORY]"
 			:initialActiveCategories="[COMMUNICATION_CATEGORY]"
+			:flatten="true"
 		>
 			<template #header>
 				<slot name="header" />
@@ -30,6 +38,7 @@ import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY
 import ItemIterator from './ItemIterator.vue';
 import CategorizedItems from './CategorizedItems.vue';
 import SearchBar from './SearchBar.vue';
+import NodeActions from './NodeActions.vue';
 
 export default mixins(externalHooks).extend({
 	name: 'TriggerHelperPanel',
@@ -37,6 +46,7 @@ export default mixins(externalHooks).extend({
 		ItemIterator,
 		CategorizedItems,
 		SearchBar,
+		NodeActions,
 	},
 	props: {
 		searchItems: {
@@ -48,6 +58,7 @@ export default mixins(externalHooks).extend({
 			CORE_NODES_CATEGORY,
 			COMMUNICATION_CATEGORY,
 			isRoot: true,
+			activeNode: null as string | null,
 		};
 	},
 	computed: {
@@ -151,6 +162,16 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	methods: {
+		onActionsBack() {
+			this.activeNode = null;
+		},
+		onActionSelected(action: string) {
+			console.log('Action selected!');
+		},
+		onNodeSelected(nodeType: string) {
+			this.activeNode = nodeType;
+			// this.$emit('nodeSelected', nodeType);
+		},
 		isRootSubcategory(subcategory: INodeCreateElement) {
 			return this.items.find(item => item.key === subcategory.key) !== undefined;
 		},

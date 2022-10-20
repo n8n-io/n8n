@@ -5,7 +5,7 @@
 		</div>
 		<div :class="$style.text">
 			<input
-				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
+				:placeholder="placeholder"
 				ref="input"
 				:value="value"
 				@input="onInput"
@@ -34,6 +34,9 @@ export default mixins(externalHooks).extend({
 		},
 		eventBus: {
 			type: Object as PropType<Vue>,
+		},
+		placeholder: {
+			type: String,
 		},
 	},
 	mounted() {
@@ -73,7 +76,7 @@ export default mixins(externalHooks).extend({
 	height: 40px;
 	padding: var(--spacing-s) var(--spacing-xs);
 	align-items: center;
-	margin: var(--spacing-s);
+	margin: var(--search-margin, var(--spacing-s));
 	filter: drop-shadow(0px 2px 5px rgba(46, 46, 50, 0.04));
 
 	border: 1px solid $node-creator-border-color;
