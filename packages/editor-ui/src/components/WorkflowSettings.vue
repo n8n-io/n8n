@@ -286,7 +286,7 @@ export default mixins(
 		...mapGetters(['workflowName', 'workflowId']),
 		isWorkflowSharingEnabled(): boolean {
 			return this.$store.getters['settings/isWorkflowSharingEnabled'];
-		}
+		},
 	},
 
 	async mounted () {
