@@ -336,10 +336,9 @@ export default mixins(
 			},
 		},
 		async beforeRouteLeave(to, from, next) {
-			const previousTab = getNodeViewTab(from);
 			const nextTab = getNodeViewTab(to);
 			// Only react if leaving workflow tab and going to a separate page
-			if (previousTab === MAIN_HEADER_TABS.WORKFLOW && !nextTab) {
+			if (!nextTab) {
 				// Skip check if in the middle of template import
 				if (from.name === VIEWS.TEMPLATE_IMPORT) {
 					next();

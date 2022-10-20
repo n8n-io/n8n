@@ -18,7 +18,7 @@
 
 <script lang="ts">
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS, WEBHOOK_NODE_TYPE } from '@/constants';
+import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS, WEBHOOK_NODE_TYPE } from '@/constants';
 import { IExecutionsListResponse, IExecutionsSummary, INodeUi, ITag, IWorkflowDb } from '@/Interface';
 import { IConnection, IConnections, IDataObject, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
@@ -29,8 +29,10 @@ import { Route } from 'vue-router';
 import { executionHelpers } from '../mixins/executionsHelpers';
 import { range as _range } from 'lodash';
 import { debounceHelper } from '../mixins/debounce';
+import { getNodeViewTab } from '../helpers';
+import { workflowHelpers } from '../mixins/workflowHelpers';
 
-export default mixins(restApi, showMessage, executionHelpers, debounceHelper).extend({
+export default mixins(restApi, showMessage, executionHelpers, debounceHelper, workflowHelpers).extend({
 	name: 'executions-page',
 	components: {
 		ExecutionsSidebar,
@@ -66,6 +68,38 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper).ex
 			const workflowChanged = from.params.name !== to.params.name;
 			this.initView(workflowChanged);
 		},
+	},
+	async beforeRouteLeave(to, from, next) {
+		const nextTab = getNodeViewTab(to);
+		// When leaving for a page that's not a workflow view tab, ask to save changes
+		if (!nextTab) {
+			const result = this.$store.getters.getStateIsDirty;
+			if (result) {
+				const confirmModal = await this.confirmModal(
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.headline'),
+					'warning',
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+					this.$locale.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+					true,
+				);
+
+				if (confirmModal === MODAL_CONFIRMED) {
+					const saved = await this.saveCurrentWorkflow({}, false);
+					if (saved) this.$store.dispatch('settings/fetchPromptsData');
+					this.$store.commit('setStateDirty', false);
+					next();
+				} else if (confirmModal === MODAL_CANCEL) {
+					this.$store.commit('setStateDirty', false);
+					next();
+				} else if (confirmModal === MODAL_CLOSE) {
+					next(false);
+				}
+			} else {
+				next();
+			}
+		}
+		next();
 	},
 	async mounted() {
 		const workflowUpdated = this.$route.params.name !== this.$store.getters.workflowId;
