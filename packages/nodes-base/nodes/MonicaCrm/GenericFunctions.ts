@@ -1,22 +1,10 @@
-import {
-	Credentials,
-	IExecuteFunctions,
-} from 'n8n-core';
+import { Credentials, IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	LoaderGetResponse,
-} from './types';
+import { LoaderGetResponse } from './types';
 
 export async function monicaCrmApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -25,7 +13,11 @@ export async function monicaCrmApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const credentials = await this.getCredentials('monicaCrmApi') as { apiToken: string, environment: string, domain: string };
+	const credentials = (await this.getCredentials('monicaCrmApi')) as {
+		apiToken: string;
+		environment: string;
+		domain: string;
+	};
 
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
@@ -75,6 +67,8 @@ export async function monicaCrmApiRequestAllItems(
 	const limit = this.getNodeParameter('limit', 0, 0) as number;
 
 	let totalItems = 0;
+	qs.page = 1;
+	qs.limit = 100;
 
 	let responseData;
 	const returnData: IDataObject[] = [];
@@ -86,7 +80,7 @@ export async function monicaCrmApiRequestAllItems(
 		if (!forLoader && !returnAll && returnData.length > limit) {
 			return returnData.slice(0, limit);
 		}
-
+		qs.page++;
 		totalItems = responseData.meta.total;
 	} while (totalItems > returnData.length);
 
@@ -96,8 +90,7 @@ export async function monicaCrmApiRequestAllItems(
 /**
  * Get day, month, and year from the n8n UI datepicker.
  */
-export const getDateParts = (date: string) =>
-	date.split('T')[0].split('-').map(Number).reverse();
+export const getDateParts = (date: string) => date.split('T')[0].split('-').map(Number).reverse();
 
 export const toOptions = (response: LoaderGetResponse) =>
 	response.data.map(({ id, name }) => ({ value: id, name }));

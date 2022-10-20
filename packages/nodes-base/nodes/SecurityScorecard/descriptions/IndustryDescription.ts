@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const industryOperations: INodeProperties[] = [
 	{
@@ -11,9 +9,7 @@ export const industryOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'industry',
-				],
+				resource: ['industry'],
 			},
 		},
 		options: [
@@ -68,14 +64,8 @@ export const industryFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'industry',
-				],
-				operation: [
-					'getScore',
-					'getFactor',
-					'getFactorHistorical',
-				],
+				resource: ['industry'],
+				operation: ['getScore', 'getFactor', 'getFactorHistorical'],
 			},
 		},
 	},
@@ -85,13 +75,8 @@ export const industryFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'industry',
-				],
-				operation: [
-					'getFactor',
-					'getFactorHistorical',
-				],
+				resource: ['industry'],
+				operation: ['getFactor', 'getFactorHistorical'],
 			},
 		},
 		default: false,
@@ -103,16 +88,9 @@ export const industryFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'industry',
-				],
-				operation: [
-					'getFactor',
-					'getFactorHistorical',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['industry'],
+				operation: ['getFactor', 'getFactorHistorical'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -128,13 +106,8 @@ export const industryFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'industry',
-				],
-				operation: [
-					'getFactor',
-					'getFactorHistorical',
-				],
+				resource: ['industry'],
+				operation: ['getFactor', 'getFactorHistorical'],
 			},
 		},
 		default: true,
@@ -145,12 +118,8 @@ export const industryFields: INodeProperties[] = [
 		name: 'options',
 		displayOptions: {
 			show: {
-				resource: [
-					'industry',
-				],
-				operation: [
-					'getFactorHistorical',
-				],
+				resource: ['industry'],
+				operation: ['getFactorHistorical'],
 			},
 		},
 		type: 'collection',

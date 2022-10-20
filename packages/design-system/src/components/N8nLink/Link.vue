@@ -1,15 +1,16 @@
-<template functional>
-	<component :is="$options.components.N8nRoute" :to="props.to" :newWindow="props.newWindow"
-		@click="listeners.click"
+<template>
+	<n8n-route :to="to" :newWindow="newWindow"
+		v-on="$listeners"
+		class="n8n-link"
 	>
 		<span
-			:class="$style[`${props.underline ? `${props.theme}-underline` : props.theme}`]"
+			:class="$style[`${underline ? `${theme}-underline` : theme}`]"
 		>
-			<component :is="$options.components.N8nText" :size="props.size" :bold="props.bold">
+			<n8n-text :size="size" :bold="bold">
 				<slot></slot>
-			</component>
+			</n8n-text>
 		</span>
-	</component>
+	</n8n-route>
 </template>
 
 <script lang="ts">
@@ -17,7 +18,7 @@ import Vue from 'vue';
 import N8nText from '../N8nText';
 import N8nRoute from '../N8nRoute';
 
-export default {
+export default Vue.extend({
 	name: 'n8n-link',
 	props: {
 		size: {
@@ -42,14 +43,14 @@ export default {
 			type: String,
 			default: 'primary',
 			validator: (value: string): boolean =>
-				['primary', 'danger', 'text'].includes(value),
+				['primary', 'danger', 'text', 'secondary'].includes(value),
 		},
 	},
 	components: {
 		N8nText,
 		N8nRoute,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
@@ -60,10 +61,10 @@ export default {
 
 	&:active {
 		color: saturation(
-			--color-primary-h,
-			--color-primary-s,
-			--color-primary-l,
-			-(30%)
+				--color-primary-h,
+				--color-primary-s,
+				--color-primary-l,
+				-(30%)
 		);
 	}
 }
@@ -71,13 +72,12 @@ export default {
 .text {
 	color: var(--color-text-base);
 
+	&:hover {
+		color: var(--color-primary);
+	}
+
 	&:active {
-		color: saturation(
-			--color-primary-h,
-			--color-primary-s,
-			--color-primary-l,
-			-(30%)
-		);
+		color: saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
 	}
 }
 
@@ -85,17 +85,30 @@ export default {
 	color: var(--color-danger);
 
 	&:active {
-		color: saturation(
-			--color-danger-h,
-			--color-danger-s,
-			--color-danger-l,
-			-(20%)
-		);
+		color: saturation(--color-danger-h, --color-danger-s, --color-danger-l, -(20%));
 	}
+}
+
+.secondary {
+	color: var(--color-secondary);
+
+	&:active {
+		color: saturation(--color-secondary-h, --color-secondary-s, --color-secondary-l, -(20%));
+	}
+}
+
+.secondary {
+	background-color: var(--color-secondary-tint-2);
+	color: var(--color-secondary);
 }
 
 .primary-underline {
 	composes: primary;
+	text-decoration: underline;
+}
+
+.text-underline {
+	composes: text;
 	text-decoration: underline;
 }
 
@@ -104,5 +117,9 @@ export default {
 	text-decoration: underline;
 }
 
+.secondary-underline {
+	composes: secondary;
+	text-decoration: underline;
+}
 
 </style>

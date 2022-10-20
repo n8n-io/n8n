@@ -1,13 +1,13 @@
 import express from 'express';
 
-import { FindManyOptions, In } from 'typeorm';
+import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
 
 import { ActiveWorkflowRunner, Db } from '../../../..';
 import config = require('../../../../../config');
 import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
 import { InternalHooksManager } from '../../../../InternalHooksManager';
 import { externalHooks } from '../../../../Server';
-import { replaceInvalidCredentials } from '../../../../WorkflowHelpers';
+import { addNodeIds, replaceInvalidCredentials } from '../../../../WorkflowHelpers';
 import { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
@@ -41,6 +41,8 @@ export = {
 			}
 
 			await replaceInvalidCredentials(workflow);
+
+			addNodeIds(workflow);
 
 			const role = await getWorkflowOwnerRole();
 
@@ -108,7 +110,7 @@ export = {
 			let workflows: WorkflowEntity[];
 			let count: number;
 
-			const query: FindManyOptions<WorkflowEntity> = {
+			const query: FindManyOptions<WorkflowEntity> & { where: ObjectLiteral } = {
 				skip: offset,
 				take: limit,
 				where: {
@@ -186,6 +188,7 @@ export = {
 			}
 
 			await replaceInvalidCredentials(updateData);
+			addNodeIds(updateData);
 
 			const workflowRunner = ActiveWorkflowRunner.getInstance();
 
@@ -195,7 +198,13 @@ export = {
 				await workflowRunner.remove(id.toString());
 			}
 
-			await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			try {
+				await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			} catch (error) {
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+			}
 
 			if (sharedWorkflow.workflow.active) {
 				try {
@@ -248,7 +257,7 @@ export = {
 				return res.json(sharedWorkflow.workflow);
 			}
 
-			// nothing to do as the wokflow is already active
+			// nothing to do as the workflow is already active
 			return res.json(sharedWorkflow.workflow);
 		},
 	],
@@ -277,7 +286,7 @@ export = {
 				return res.json(sharedWorkflow.workflow);
 			}
 
-			// nothing to do as the wokflow is already inactive
+			// nothing to do as the workflow is already inactive
 			return res.json(sharedWorkflow.workflow);
 		},
 	],

@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -17,8 +15,17 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, endpoint: string, method: string, body: any = {}, query?: IDataObject, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function jiraSoftwareCloudApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	endpoint: string,
+	method: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query?: IDataObject,
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 	let domain = '';
@@ -64,8 +71,16 @@ export async function jiraSoftwareCloudApiRequest(this: IHookFunctions | IExecut
 	}
 }
 
-export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, endpoint: string, method: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function jiraSoftwareCloudApiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	endpoint: string,
+	method: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -80,14 +95,13 @@ export async function jiraSoftwareCloudApiRequestAllItems(this: IHookFunctions |
 		returnData.push.apply(returnData, responseData[propertyName]);
 		query.startAt = responseData.startAt + responseData.maxResults;
 		body.startAt = responseData.startAt + responseData.maxResults;
-	} while (
-		(responseData.startAt + responseData.maxResults < responseData.total)
-	);
+	} while (responseData.startAt + responseData.maxResults < responseData.total);
 
 	return returnData;
 }
 
-export function validateJSON(json: string | undefined): any { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function validateJSON(json: string | undefined): any {
 	let result;
 	try {
 		result = JSON.parse(json!);
@@ -111,11 +125,11 @@ export function getId(url: string) {
 }
 
 export function simplifyIssueOutput(responseData: {
-	names: { [key: string]: string },
-	fields: IDataObject,
-	id: string,
-	key: string,
-	self: string
+	names: { [key: string]: string };
+	fields: IDataObject;
+	id: string;
+	key: string;
+	self: string;
 }) {
 	const mappedFields: IDataObject = {
 		id: responseData.id,

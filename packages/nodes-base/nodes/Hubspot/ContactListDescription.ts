@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactListOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const contactListOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
+				resource: ['contactList'],
 			},
 		},
 		options: [
@@ -34,7 +30,6 @@ export const contactListOperations: INodeProperties[] = [
 ];
 
 export const contactListFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                contactList:add                             */
 	/* -------------------------------------------------------------------------- */
@@ -55,12 +50,8 @@ export const contactListFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['contactList'],
+				operation: ['add'],
 			},
 		},
 		default: 'email',
@@ -73,15 +64,9 @@ export const contactListFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'add',
-				],
-				by: [
-					'email',
-				],
+				resource: ['contactList'],
+				operation: ['add'],
+				by: ['email'],
 			},
 		},
 		default: '',
@@ -93,15 +78,9 @@ export const contactListFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'add',
-				],
-				by: [
-					'id',
-				],
+				resource: ['contactList'],
+				operation: ['add'],
+				by: ['id'],
 			},
 		},
 		default: '',
@@ -113,12 +92,8 @@ export const contactListFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['contactList'],
+				operation: ['add'],
 			},
 		},
 		default: '',
@@ -134,12 +109,8 @@ export const contactListFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['contactList'],
+				operation: ['remove'],
 			},
 		},
 		default: '',
@@ -151,12 +122,8 @@ export const contactListFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['contactList'],
+				operation: ['remove'],
 			},
 		},
 		default: '',

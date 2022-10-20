@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const monitorOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const monitorOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
+				resource: ['monitor'],
 			},
 		},
 		options: [
@@ -35,10 +31,10 @@ export const monitorOperations: INodeProperties[] = [
 				action: 'Get a monitor',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all monitors',
-				action: 'Get all monitors',
+				description: 'Get many monitors',
+				action: 'Get many monitors',
 			},
 			{
 				name: 'Reset',
@@ -69,12 +65,8 @@ export const monitorFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['monitor'],
+				operation: ['create'],
 			},
 		},
 		description: 'The friendly name of the monitor',
@@ -109,12 +101,8 @@ export const monitorFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['monitor'],
+				operation: ['create'],
 			},
 		},
 		description: 'The type of the monitor',
@@ -127,12 +115,8 @@ export const monitorFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['monitor'],
+				operation: ['create'],
 			},
 		},
 		description: 'The URL/IP of the monitor',
@@ -149,14 +133,8 @@ export const monitorFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'delete',
-					'reset',
-					'get',
-				],
+				resource: ['monitor'],
+				operation: ['delete', 'reset', 'get'],
 			},
 		},
 		description: 'The ID of the monitor',
@@ -171,12 +149,8 @@ export const monitorFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['monitor'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -188,15 +162,9 @@ export const monitorFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['monitor'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -214,12 +182,8 @@ export const monitorFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['monitor'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -337,12 +301,8 @@ export const monitorFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['monitor'],
+				operation: ['update'],
 			},
 		},
 		description: 'The ID of the monitor',
@@ -355,12 +315,8 @@ export const monitorFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'monitor',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['monitor'],
+				operation: ['update'],
 			},
 		},
 		options: [

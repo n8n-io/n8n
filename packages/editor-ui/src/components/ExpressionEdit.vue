@@ -21,7 +21,7 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.expression') }}
 						</div>
-						<div class="expression-editor">
+						<div class="expression-editor ph-no-capture">
 							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
 						</div>
 					</div>
@@ -30,7 +30,9 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.result') }}
 						</div>
-						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
+						<div class="ph-no-capture">
+							<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
+						</div>
 					</div>
 
 				</el-col>
@@ -50,12 +52,13 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-
-const MAPPING_PARAMS = [`$evaluateExpression`, `$item`, `$jmespath`, `$node`, `$binary`, `$data`, `$env`, `$json`, `$now`, `$parameters`, `$position`, `$resumeWebhookUrl`, `$runIndex`, `$today`, `$workflow`];
+import { hasExpressionMapping } from './helpers';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
 	genericHelpers,
+	debounceHelper,
 ).extend({
 	name: 'ExpressionEdit',
 	props: [
@@ -92,9 +95,11 @@ export default mixins(
 		},
 
 		closeDialog () {
-			// Handle the close externally as the visible parameter is an external prop
-			// and is so not allowed to be changed here.
-			this.$emit('valueChanged', this.latestValue);
+			if (this.latestValue !== this.value) {
+				// Handle the close externally as the visible parameter is an external prop
+				// and is so not allowed to be changed here.
+				this.$emit('valueChanged', this.latestValue);
+			}
 			this.$emit('closeDialog');
 			return false;
 		},
@@ -166,14 +171,16 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
-				this.$telemetry.track('User closed Expression Editor', {
+				const telemetryPayload = {
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
 					workflow_id: this.$store.getters.workflowId,
 					source: this.eventSource,
 					session_id: this.$store.getters['ui/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),
-					has_mapping: !!MAPPING_PARAMS.find((param) => this.value.includes(param)),
-				});
+					has_mapping: hasExpressionMapping(this.value),
+				};
+				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
+				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},
@@ -210,7 +217,7 @@ export default mixins(
 	}
 
 	.right-side {
-		background-color: #f9f9f9;
+		background-color: var(--color-background-light);
 		border-top-right-radius: 8px;
 		border-bottom-right-radius: 8px;
 	}
@@ -221,8 +228,8 @@ export default mixins(
 	border-top-left-radius: 8px;
 
 	background-color: var(--color-background-base);
-	color: #555;
-	border-bottom: 1px solid $--color-primary;
+	color: var(--color-text-dark);
+	border-bottom: 1px solid $color-primary;
 	margin-bottom: 1em;
 
 	.headline {
@@ -237,7 +244,7 @@ export default mixins(
 		text-align: center;
 		line-height: 1.5;
 		padding-top: 1.5em;
-		color: $--color-primary;
+		color: $color-primary;
 	}
 }
 

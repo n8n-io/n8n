@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const caseTagOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const caseTagOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'caseTag',
-				],
+				resource: ['caseTag'],
 			},
 		},
 		options: [
@@ -45,12 +41,8 @@ export const caseTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseTag',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['caseTag'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -58,7 +50,8 @@ export const caseTagFields: INodeProperties[] = [
 		displayName: 'Tag Name or ID',
 		name: 'tag',
 		type: 'options',
-		description: 'Tag to attach to the case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'Tag to attach to the case. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -66,12 +59,8 @@ export const caseTagFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'caseTag',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['caseTag'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -87,12 +76,8 @@ export const caseTagFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'caseTag',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['caseTag'],
+				operation: ['remove'],
 			},
 		},
 	},
@@ -100,7 +85,8 @@ export const caseTagFields: INodeProperties[] = [
 		displayName: 'Tag Name or ID',
 		name: 'tag',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		default: '',
 		typeOptions: {
@@ -108,12 +94,8 @@ export const caseTagFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'caseTag',
-				],
-				operation: [
-					'remove',
-				],
+				resource: ['caseTag'],
+				operation: ['remove'],
 			},
 		},
 	},

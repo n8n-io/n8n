@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -22,13 +19,9 @@ import {
 	propertyEvents,
 } from './GenericFunctions';
 
-import {
-	createHash,
-} from 'crypto';
+import { createHash } from 'crypto';
 
-import {
-	capitalCase,
-} from 'change-case';
+import { capitalCase } from 'change-case';
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -86,52 +79,60 @@ export class HubspotTrigger implements INodeType {
 									{
 										name: 'Company Created',
 										value: 'company.creation',
-										description: 'To get notified if any company is created in a customer\'s account',
+										description:
+											"To get notified if any company is created in a customer's account",
 									},
 									{
 										name: 'Company Deleted',
 										value: 'company.deletion',
-										description: 'To get notified if any company is deleted in a customer\'s account',
+										description:
+											"To get notified if any company is deleted in a customer's account",
 									},
 									{
 										name: 'Company Property Changed',
 										value: 'company.propertyChange',
-										description: 'To get notified if a specified property is changed for any company in a customer\'s account',
+										description:
+											"To get notified if a specified property is changed for any company in a customer's account",
 									},
 									{
 										name: 'Contact Created',
 										value: 'contact.creation',
-										description: 'To get notified if any contact is created in a customer\'s account',
+										description:
+											"To get notified if any contact is created in a customer's account",
 									},
 									{
 										name: 'Contact Deleted',
 										value: 'contact.deletion',
-										description: 'To get notified if any contact is deleted in a customer\'s account',
+										description:
+											"To get notified if any contact is deleted in a customer's account",
 									},
 									{
 										name: 'Contact Privacy Deleted',
 										value: 'contact.privacyDeletion',
-										description: 'To get notified if a contact is deleted for privacy compliance reasons',
+										description:
+											'To get notified if a contact is deleted for privacy compliance reasons',
 									},
 									{
 										name: 'Contact Property Changed',
 										value: 'contact.propertyChange',
-										description: 'To get notified if a specified property is changed for any contact in a customer\'s account',
+										description:
+											"To get notified if a specified property is changed for any contact in a customer's account",
 									},
 									{
 										name: 'Deal Created',
 										value: 'deal.creation',
-										description: 'To get notified if any deal is created in a customer\'s account',
+										description: "To get notified if any deal is created in a customer's account",
 									},
 									{
 										name: 'Deal Deleted',
 										value: 'deal.deletion',
-										description: 'To get notified if any deal is deleted in a customer\'s account',
+										description: "To get notified if any deal is deleted in a customer's account",
 									},
 									{
 										name: 'Deal Property Changed',
 										value: 'deal.propertyChange',
-										description: 'To get notified if a specified property is changed for any deal in a customer\'s account',
+										description:
+											"To get notified if a specified property is changed for any deal in a customer's account",
 									},
 								],
 								default: 'contact.creation',
@@ -141,18 +142,15 @@ export class HubspotTrigger implements INodeType {
 								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
-									loadOptionsDependsOn: [
-										'contact.propertyChange',
-									],
+									loadOptionsDependsOn: ['contact.propertyChange'],
 									loadOptionsMethod: 'getContactProperties',
 								},
 								displayOptions: {
 									show: {
-										name: [
-											'contact.propertyChange',
-										],
+										name: ['contact.propertyChange'],
 									},
 								},
 								default: '',
@@ -162,18 +160,15 @@ export class HubspotTrigger implements INodeType {
 								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
-									loadOptionsDependsOn: [
-										'company.propertyChange',
-									],
+									loadOptionsDependsOn: ['company.propertyChange'],
 									loadOptionsMethod: 'getCompanyProperties',
 								},
 								displayOptions: {
 									show: {
-										name: [
-											'company.propertyChange',
-										],
+										name: ['company.propertyChange'],
 									},
 								},
 								default: '',
@@ -183,18 +178,15 @@ export class HubspotTrigger implements INodeType {
 								displayName: 'Property Name or ID',
 								name: 'property',
 								type: 'options',
-								description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
-									loadOptionsDependsOn: [
-										'deal.propertyChange',
-									],
+									loadOptionsDependsOn: ['deal.propertyChange'],
 									loadOptionsMethod: 'getDealProperties',
 								},
 								displayOptions: {
 									show: {
-										name: [
-											'deal.propertyChange',
-										],
+										name: ['deal.propertyChange'],
 									},
 								},
 								default: '',
@@ -288,9 +280,17 @@ export class HubspotTrigger implements INodeType {
 				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 
 				try {
-					const { targetUrl } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/settings`, {});
+					const { targetUrl } = await hubspotApiRequest.call(
+						this,
+						'GET',
+						`/webhooks/v3/${appId}/settings`,
+						{},
+					);
 					if (targetUrl !== currentWebhookUrl) {
-						throw new NodeOperationError(this.getNode(), `The APP ID ${appId} already has a target url ${targetUrl}. Delete it or use another APP ID before executing the trigger. Due to Hubspot API limitations, you can have just one trigger per APP.`);
+						throw new NodeOperationError(
+							this.getNode(),
+							`The APP ID ${appId} already has a target url ${targetUrl}. Delete it or use another APP ID before executing the trigger. Due to Hubspot API limitations, you can have just one trigger per APP.`,
+						);
 					}
 				} catch (error) {
 					if (error.statusCode === 404) {
@@ -299,11 +299,21 @@ export class HubspotTrigger implements INodeType {
 				}
 				// if the app is using the current webhook url. Delete everything and create it again with the current events
 
-				const { results: subscriptions } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/subscriptions`, {});
+				const { results: subscriptions } = await hubspotApiRequest.call(
+					this,
+					'GET',
+					`/webhooks/v3/${appId}/subscriptions`,
+					{},
+				);
 
 				// delete all subscriptions
 				for (const subscription of subscriptions) {
-					await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/subscriptions/${subscription.id}`, {});
+					await hubspotApiRequest.call(
+						this,
+						'DELETE',
+						`/webhooks/v3/${appId}/subscriptions/${subscription.id}`,
+						{},
+					);
 				}
 
 				await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/settings`, {});
@@ -313,7 +323,9 @@ export class HubspotTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookUrl = this.getNodeWebhookUrl('default');
 				const { appId } = await this.getCredentials('hubspotDeveloperApi');
-				const events = (this.getNodeParameter('eventsUi') as IDataObject || {}).eventValues as IDataObject[] || [];
+				const events =
+					(((this.getNodeParameter('eventsUi') as IDataObject) || {})
+						.eventValues as IDataObject[]) || [];
 				const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 				let endpoint = `/webhooks/v3/${appId}/settings`;
 				let body: IDataObject = {
@@ -346,10 +358,20 @@ export class HubspotTrigger implements INodeType {
 			async delete(this: IHookFunctions): Promise<boolean> {
 				const { appId } = await this.getCredentials('hubspotDeveloperApi');
 
-				const { results: subscriptions } = await hubspotApiRequest.call(this, 'GET', `/webhooks/v3/${appId}/subscriptions`, {});
+				const { results: subscriptions } = await hubspotApiRequest.call(
+					this,
+					'GET',
+					`/webhooks/v3/${appId}/subscriptions`,
+					{},
+				);
 
 				for (const subscription of subscriptions) {
-					await hubspotApiRequest.call(this, 'DELETE', `/webhooks/v3/${appId}/subscriptions/${subscription.id}`, {});
+					await hubspotApiRequest.call(
+						this,
+						'DELETE',
+						`/webhooks/v3/${appId}/subscriptions/${subscription.id}`,
+						{},
+					);
 				}
 
 				try {
@@ -363,7 +385,6 @@ export class HubspotTrigger implements INodeType {
 	};
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
-
 		const credentials = await this.getCredentials('hubspotDeveloperApi');
 
 		if (credentials === undefined) {
@@ -399,9 +420,7 @@ export class HubspotTrigger implements INodeType {
 			delete bodyData[i].objectId;
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(bodyData),
-			],
+			workflowData: [this.helpers.returnJsonArray(bodyData)],
 		};
 	}
 }

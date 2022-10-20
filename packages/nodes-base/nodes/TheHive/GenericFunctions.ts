@@ -1,21 +1,23 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IHookFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment';
 import { Eq } from './QueryFunctions';
 
-export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function theHiveApiRequest(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('theHiveApi');
 
 	let options: OptionsWithUri = {
@@ -39,7 +41,7 @@ export async function theHiveApiRequest(this: IHookFunctions | IExecuteFunctions
 		delete options.qs;
 	}
 	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi',options);
+		return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -64,7 +66,7 @@ export function mapResource(resource: string): string {
 }
 
 export function splitTags(tags: string): string[] {
-	return tags.split(',').filter(tag => tag !== ' ' && tag);
+	return tags.split(',').filter((tag) => tag !== ' ' && tag);
 }
 
 export function prepareOptional(optionals: IDataObject): IDataObject {
@@ -73,8 +75,7 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 		if (optionals[key] !== undefined && optionals[key] !== null && optionals[key] !== '') {
 			if (['customFieldsJson', 'customFieldsUi'].indexOf(key) > -1) {
 				continue; // Ignore customFields, they need special treatment
-			}
-			else if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
+			} else if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
 				response[key] = Date.parse(optionals[key] as string);
 			} else if (key === 'artifacts') {
 				response[key] = JSON.parse(optionals[key] as string);
@@ -88,7 +89,11 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 	return response;
 }
 
-export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions, additionalFields: IDataObject, jsonParameters = false): Promise<IDataObject | undefined> {
+export async function prepareCustomFields(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	additionalFields: IDataObject,
+	jsonParameters = false,
+): Promise<IDataObject | undefined> {
 	// Check if the additionalFields object contains customFields
 	if (jsonParameters === true) {
 		let customFieldsJson = additionalFields.customFieldsJson;
@@ -97,14 +102,14 @@ export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctio
 		delete additionalFields.customFieldsJson;
 
 		if (typeof customFieldsJson === 'string') {
-			customFieldsJson =  JSON.parse(customFieldsJson);
+			customFieldsJson = JSON.parse(customFieldsJson);
 		}
 
 		if (typeof customFieldsJson === 'object') {
 			const customFields = Object.keys(customFieldsJson as IDataObject).reduce((acc, curr) => {
-					acc[`customFields.${curr}`] = (customFieldsJson as IDataObject)[curr];
-					return acc;
-				}, {} as IDataObject);
+				acc[`customFields.${curr}`] = (customFieldsJson as IDataObject)[curr];
+				return acc;
+			}, {} as IDataObject);
 
 			return customFields;
 		} else if (customFieldsJson) {
@@ -116,29 +121,34 @@ export async function prepareCustomFields(this: IHookFunctions | IExecuteFunctio
 		const version = credentials.apiVersion;
 		const endpoint = version === 'v1' ? '/customField' : '/list/custom_fields';
 
-		const requestResult = await theHiveApiRequest.call(
-			this,
-			'GET',
-			endpoint as string,
-		);
+		const requestResult = await theHiveApiRequest.call(this, 'GET', endpoint as string);
 
 		// Convert TheHive3 response to the same format as TheHive 4
 		// [{name, reference, type}]
-		const hiveCustomFields = version === 'v1' ? requestResult : Object.keys(requestResult).map(key => requestResult[key]);
+		const hiveCustomFields =
+			version === 'v1'
+				? requestResult
+				: Object.keys(requestResult).map((key) => requestResult[key]);
 		// Build reference to type mapping object
-		const referenceTypeMapping = hiveCustomFields.reduce((acc: IDataObject, curr: IDataObject) => (acc[curr.reference as string] = curr.type, acc), {});
+		const referenceTypeMapping = hiveCustomFields.reduce(
+			(acc: IDataObject, curr: IDataObject) => ((acc[curr.reference as string] = curr.type), acc),
+			{},
+		);
 
 		// Build "fieldName": {"type": "value"} objects
-		const customFieldsUi = (additionalFields.customFieldsUi as IDataObject);
-		const customFields : IDataObject = (customFieldsUi?.customFields as IDataObject[]).reduce((acc: IDataObject, curr: IDataObject) => {
-			const fieldName = curr.field as string;
+		const customFieldsUi = additionalFields.customFieldsUi as IDataObject;
+		const customFields: IDataObject = (customFieldsUi?.customFields as IDataObject[]).reduce(
+			(acc: IDataObject, curr: IDataObject) => {
+				const fieldName = curr.field as string;
 
-			// Might be able to do some type conversions here if needed, TODO
+				// Might be able to do some type conversions here if needed, TODO
 
-			const updatedField = `customFields.${fieldName}.${[referenceTypeMapping[fieldName]]}`;
-			acc[updatedField] = curr.value;
-			return acc;
-		}, {} as IDataObject);
+				const updatedField = `customFields.${fieldName}.${[referenceTypeMapping[fieldName]]}`;
+				acc[updatedField] = curr.value;
+				return acc;
+			},
+			{} as IDataObject,
+		);
 
 		delete additionalFields.customFieldsUi;
 		return customFields;
@@ -159,7 +169,7 @@ export function buildCustomFieldSearch(customFields: IDataObject): IDataObject[]
 
 	// 	searchQueries.push(Eq(`customFields.${customFieldName}.${fieldType}`, fieldValue));
 	// });
-	Object.keys(customFields).forEach(customFieldName => {
+	Object.keys(customFields).forEach((customFieldName) => {
 		searchQueries.push(Eq(customFieldName, customFields[customFieldName]));
 	});
 	return searchQueries;
@@ -171,25 +181,19 @@ export function prepareSortQuery(sort: string, body: { query: [IDataObject] }) {
 		const value = sort.charAt(0) === '+' ? 'asc' : 'desc';
 		const sortOption: IDataObject = {};
 		sortOption[field] = value;
-		body.query.push(
-			{
-				'_name': 'sort',
-				'_fields': [
-					sortOption,
-				],
-			},
-		);
+		body.query.push({
+			_name: 'sort',
+			_fields: [sortOption],
+		});
 	}
 }
 
-export function prepareRangeQuery(range: string, body: { 'query': Array<{}> }) {
+export function prepareRangeQuery(range: string, body: { query: Array<{}> }) {
 	if (range && range !== 'all') {
-		body['query'].push(
-			{
-				'_name': 'page',
-				'from': parseInt(range.split('-')[0], 10),
-				'to': parseInt(range.split('-')[1], 10),
-			},
-		);
+		body['query'].push({
+			_name: 'page',
+			from: parseInt(range.split('-')[0], 10),
+			to: parseInt(range.split('-')[1], 10),
+		});
 	}
 }

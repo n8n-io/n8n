@@ -1,15 +1,8 @@
-import {
-	IDataObject,
-	INodeProperties
-} from 'n8n-workflow';
+import { IDataObject, INodeProperties } from 'n8n-workflow';
 
-import {
-	groups,
-} from './Json/Groups';
+import { groups } from './Json/Groups';
 
-import {
-	tools,
-} from './Json/Tools';
+import { tools } from './Json/Tools';
 
 function capitalize(str: string): string {
 	if (!str) {
@@ -29,9 +22,7 @@ for (const group of (groups as IDataObject).groups as IDataObject[]) {
 		description: 'The Operation to consume',
 		displayOptions: {
 			show: {
-				group: [
-					group.name,
-				],
+				group: [group.name],
 			},
 		},
 		default: '',
@@ -41,7 +32,13 @@ for (const group of (groups as IDataObject).groups as IDataObject[]) {
 	const options = [];
 	for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 		if (tool.g === group.name) {
-			const link = 'https://app.uproc.io/#/tools/processor/' + (tool.k as string).replace(/([A-Z]+)/g, '-$1').toLowerCase().replace('-', '/').replace('-', '/');
+			const link =
+				'https://app.uproc.io/#/tools/processor/' +
+				(tool.k as string)
+					.replace(/([A-Z]+)/g, '-$1')
+					.toLowerCase()
+					.replace('-', '/')
+					.replace('-', '/');
 			const option = {
 				name: tool.d as string,
 				value: tool.k,
@@ -52,8 +49,8 @@ for (const group of (groups as IDataObject).groups as IDataObject[]) {
 	}
 
 	//Tool
-	item.options = (options.sort((a, b) => (a.name > b.name) ? 1 : -1) as any); // tslint:disable-line:no-any
-	item.default = (options[0].value as string);
+	item.options = options.sort((a, b) => (a.name > b.name ? 1 : -1)) as any; // tslint:disable-line:no-any
+	item.default = options[0].value as string;
 	operations.push(item);
 }
 
@@ -81,9 +78,7 @@ for (const tool of (tools as IDataObject).processors as IDataObject[]) {
 						//@ts-ignore
 						tool.g,
 					],
-					tool: [
-						tool.k,
-					],
+					tool: [tool.k],
 				},
 			},
 			description: JSON.parse(JSON.stringify(description)),

@@ -10,80 +10,80 @@
 			class="fixed-collection-parameter-property"
 		>
 			<n8n-input-label
-				:label="property.displayName === '' || parameter.options.length === 1 ? '' : $locale.nodeText().inputLabelDisplayName(property, path)"
+				v-if="property.displayName !== '' && (parameter.options && parameter.options.length !== 1)"
+				:label="$locale.nodeText().inputLabelDisplayName(property, path)"
 				:underline="true"
-				:labelHoverableOnly="true"
 				size="small"
-			>
-				<div v-if="multipleValues === true">
-					<div
-						v-for="(value, index) in values[property.name]"
-						:key="property.name + index"
-						class="parameter-item"
-					>
-						<div class="parameter-item-wrapper">
-							<div class="delete-option" v-if="!isReadOnly">
-								<font-awesome-icon
-									icon="trash"
-									class="reset-icon clickable"
-									:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
-									@click="deleteOption(property.name, index)"
-								/>
-								<div v-if="sortable" class="sort-icon">
-									<font-awesome-icon
-										v-if="index !== 0"
-										icon="angle-up"
-										class="clickable"
-										:title="$locale.baseText('fixedCollectionParameter.moveUp')"
-										@click="moveOptionUp(property.name, index)"
-									/>
-									<font-awesome-icon
-										v-if="index !== (values[property.name].length - 1)"
-										icon="angle-down"
-										class="clickable"
-										:title="$locale.baseText('fixedCollectionParameter.moveDown')"
-										@click="moveOptionDown(property.name, index)"
-									/>
-								</div>
-							</div>
-							<parameter-input-list
-								:parameters="property.values"
-								:nodeValues="nodeValues"
-								:path="getPropertyPath(property.name, index)"
-								:hideDelete="true"
-								@valueChanged="valueChanged"
-							/>
-						</div>
-					</div>
-				</div>
-				<div v-else class="parameter-item">
+				color="text-dark"
+			/>
+			<div v-if="multipleValues === true">
+				<div
+					v-for="(value, index) in values[property.name]"
+					:key="property.name + index"
+					class="parameter-item"
+				>
 					<div class="parameter-item-wrapper">
 						<div class="delete-option" v-if="!isReadOnly">
 							<font-awesome-icon
 								icon="trash"
 								class="reset-icon clickable"
 								:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
-								@click="deleteOption(property.name)"
+								@click="deleteOption(property.name, index)"
 							/>
+							<div v-if="sortable" class="sort-icon">
+								<font-awesome-icon
+									v-if="index !== 0"
+									icon="angle-up"
+									class="clickable"
+									:title="$locale.baseText('fixedCollectionParameter.moveUp')"
+									@click="moveOptionUp(property.name, index)"
+								/>
+								<font-awesome-icon
+									v-if="index !== (values[property.name].length - 1)"
+									icon="angle-down"
+									class="clickable"
+									:title="$locale.baseText('fixedCollectionParameter.moveDown')"
+									@click="moveOptionDown(property.name, index)"
+								/>
+							</div>
 						</div>
 						<parameter-input-list
 							:parameters="property.values"
 							:nodeValues="nodeValues"
-							:path="getPropertyPath(property.name)"
-							class="parameter-item"
-							@valueChanged="valueChanged"
+							:path="getPropertyPath(property.name, index)"
 							:hideDelete="true"
+							@valueChanged="valueChanged"
 						/>
 					</div>
 				</div>
-			</n8n-input-label>
+			</div>
+			<div v-else class="parameter-item">
+				<div class="parameter-item-wrapper">
+					<div class="delete-option" v-if="!isReadOnly">
+						<font-awesome-icon
+							icon="trash"
+							class="reset-icon clickable"
+							:title="$locale.baseText('fixedCollectionParameter.deleteItem')"
+							@click="deleteOption(property.name)"
+						/>
+					</div>
+					<parameter-input-list
+						:parameters="property.values"
+						:nodeValues="nodeValues"
+						:path="getPropertyPath(property.name)"
+						class="parameter-item"
+						@valueChanged="valueChanged"
+						:hideDelete="true"
+					/>
+				</div>
+			</div>
 		</div>
 
 		<div v-if="parameterOptions.length > 0 && !isReadOnly">
 			<n8n-button
 				v-if="parameter.options.length === 1"
 				type="tertiary"
-				fullWidth
+				block
 				@click="optionSelected(parameter.options[0].name)"
 				:label="getPlaceholderText"
 			/>
@@ -113,8 +113,10 @@ import {
 } from '@/Interface';
 
 import {
+	deepCopy,
 	INodeParameters,
 	INodePropertyCollection,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import { get } from 'lodash';
@@ -122,6 +124,7 @@ import { get } from 'lodash';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
+import {Component} from "vue";
 
 export default mixins(genericHelpers)
 	.extend({
@@ -132,6 +135,9 @@ export default mixins(genericHelpers)
 			'path', // string
 			'values', // INodeParameters
 		],
+		components: {
+			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		},
 		data() {
 			return {
 				selectedOption: undefined,
@@ -236,8 +242,6 @@ export default mixins(genericHelpers)
 				}
 				const name = `${this.path}.${option.name}`;
 
-				let parameterData;
-
 				const newParameterValue: INodeParameters = {};
 
 				for (const optionParameter of option.values) {
@@ -247,13 +251,13 @@ export default mixins(genericHelpers)
 						// Multiple values are allowed so append option to array
 						newParameterValue[optionParameter.name] = get(this.nodeValues, `${this.path}.${optionParameter.name}`, []);
 						if (Array.isArray(optionParameter.default)) {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...JSON.parse(JSON.stringify(optionParameter.default)));
+							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...deepCopy(optionParameter.default as INodeParameters[]));
 						} else if (optionParameter.default !== '' && typeof optionParameter.default !== 'object') {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(JSON.parse(JSON.stringify(optionParameter.default)));
+							(newParameterValue[optionParameter.name] as NodeParameterValue[]).push(deepCopy(optionParameter.default));
 						}
 					} else {
 						// Add a new option
-						newParameterValue[optionParameter.name] = JSON.parse(JSON.stringify(optionParameter.default));
+						newParameterValue[optionParameter.name] = deepCopy(optionParameter.default);
 					}
 				}
 
@@ -266,7 +270,7 @@ export default mixins(genericHelpers)
 					newValue = newParameterValue;
 				}
 
-				parameterData = {
+				const parameterData = {
 					name,
 					value: newValue,
 				};
@@ -278,15 +282,17 @@ export default mixins(genericHelpers)
 				this.$emit('valueChanged', parameterData);
 			},
 		},
-		beforeCreate: function () { // tslint:disable-line
-			// Because we have a circular dependency on ParameterInputList import it here
-			// to not break Vue.
-			this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
-		},
 	});
 </script>
 
 <style scoped lang="scss">
+::v-deep {
+	.button {
+		--button-background-color: var(--color-background-base);
+		--button-border-color: var(--color-foreground-base);
+	}
+}
+
 .fixed-collection-parameter {
 	padding-left: var(--spacing-s);
 }

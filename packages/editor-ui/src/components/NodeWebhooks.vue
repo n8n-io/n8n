@@ -1,5 +1,5 @@
 <template>
-	<div v-if="webhooksNode.length" class="webhoooks">
+	<div v-if="webhooksNode.length" class="webhooks">
 		<div class="clickable headline" :class="{expanded: !isMinimized}" @click="isMinimized=!isMinimized" :title="isMinimized ? $locale.baseText('nodeWebhooks.clickToDisplayWebhookUrls') : $locale.baseText('nodeWebhooks.clickToHideWebhookUrls')">
 			<font-awesome-icon icon="angle-down" class="minimize-button minimize-icon" />
 			{{ $locale.baseText('nodeWebhooks.webhookUrls') }}
@@ -110,13 +110,13 @@ export default mixins(
 
 <style scoped lang="scss">
 
-.webhoooks {
+.webhooks {
 	padding-bottom: var(--spacing-xs);
 	margin: var(--spacing-xs) 0;
-	border-bottom: 1px solid #ccc;
+	border-bottom: 1px solid var(--color-text-lighter);
 
 	.headline {
-		color: $--color-primary;
+		color: $color-primary;
 		font-weight: 600;
 		font-size: var(--font-size-2xs);
 	}
@@ -139,7 +139,7 @@ export default mixins(
 	border-radius: 2px;
 	font-size: var(--font-size-2xs);
 	font-weight: var(--font-weight-bold);
-	color: #fff;
+	color: var(--color-foreground-xlight);
 }
 
 .minimize-icon {
@@ -192,7 +192,7 @@ export default mixins(
 	white-space: normal;
 	overflow: visible;
 	text-overflow: initial;
-	color: #404040;
+	color: var(--color-text-dark);
 	text-align: left;
 	direction: ltr;
 	word-break: break-all;
@@ -202,7 +202,7 @@ export default mixins(
 	line-height: 1.5;
 	position: relative;
 	margin-top: var(--spacing-xs);
-	background-color: #fff;
+	background-color: var(--color-foreground-xlight);
 	border-radius: 3px;
 }
 </style>

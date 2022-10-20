@@ -7,9 +7,7 @@ import {
 
 export class ServiceNowBasicApi implements ICredentialType {
 	name = 'serviceNowBasicApi';
-	extends = [
-		'httpBasicAuth',
-	];
+	extends = ['httpBasicAuth'];
 	displayName = 'ServiceNow Basic Auth API';
 	documentationUrl = 'serviceNow';
 	properties: INodeProperties[] = [
@@ -19,7 +17,6 @@ export class ServiceNowBasicApi implements ICredentialType {
 			type: 'string',
 			required: true,
 			default: '',
-
 		},
 		{
 			displayName: 'Password',

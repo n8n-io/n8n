@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
@@ -77,7 +78,7 @@ export class ExportWorkflowsCommand extends Command {
 
 				if (fs.existsSync(flags.output)) {
 					if (!fs.lstatSync(flags.output).isDirectory()) {
-						console.info(`The paramenter --output must be a directory`);
+						console.info(`The parameter --output must be a directory`);
 						return;
 					}
 				} else {
@@ -96,7 +97,7 @@ export class ExportWorkflowsCommand extends Command {
 		} else if (flags.output) {
 			if (fs.existsSync(flags.output)) {
 				if (fs.lstatSync(flags.output).isDirectory()) {
-					console.info(`The paramenter --output must be a writeble file`);
+					console.info(`The parameter --output must be a writeable file`);
 					return;
 				}
 			}

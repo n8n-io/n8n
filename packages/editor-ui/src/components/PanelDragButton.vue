@@ -1,5 +1,5 @@
 <template>
-	<Draggable @drag="onDrag" @dragstart="onDragStart" @dragend="onDragEnd">
+	<Draggable type="panel-resize" @drag="onDrag" @dragstart="onDragStart" @dragend="onDragEnd" :class="$style.dragContainer">
 		<template v-slot="{ isDragging }">
 			<div
 				:class="{ [$style.dragButton]: true }"
@@ -32,11 +32,10 @@
 </template>
 
 <script lang="ts">
-import mixins from 'vue-typed-mixins';
+import Vue from "vue";
 import Draggable from './Draggable.vue';
-import dragging from './Draggable.vue';
 
-export default mixins(dragging).extend({
+export default Vue.extend({
 	components: {
 		Draggable,
 	},
@@ -63,6 +62,9 @@ export default mixins(dragging).extend({
 </script>
 
 <style lang="scss" module>
+.dragContainer {
+	pointer-events: all;
+}
 .dragButton {
 	background-color: var(--color-background-base);
 	width: 64px;
@@ -74,6 +76,8 @@ export default mixins(dragging).extend({
 	align-items: center;
 	justify-content: center;
 	overflow: visible;
+	position: relative;
+	z-index: 3;
 
 	&:hover {
 		.leftArrow, .rightArrow {

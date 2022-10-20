@@ -1,8 +1,6 @@
-import {
-	IDataObject,
- } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
- export interface IComment {
+export interface IComment {
 	body?: string;
 	html_body?: string;
 	public?: boolean;

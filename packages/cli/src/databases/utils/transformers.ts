@@ -1,4 +1,5 @@
 import { ValueTransformer } from 'typeorm';
+import config from '../../../config';
 
 export const idStringifier = {
 	from: (value: number): string | number => (typeof value === 'number' ? value.toString() : value),
@@ -18,3 +19,16 @@ export const objectRetriever: ValueTransformer = {
 	from: (value: string | object): object =>
 		typeof value === 'string' ? (JSON.parse(value) as object) : value,
 };
+
+/**
+ * Transformer for sqlite JSON columns to mimic JSON-as-object behavior
+ * from Postgres and MySQL.
+ */
+const jsonColumn: ValueTransformer = {
+	to: (value: object): string | object =>
+		config.getEnv('database.type') === 'sqlite' ? JSON.stringify(value) : value,
+	from: (value: string | object): object =>
+		typeof value === 'string' ? (JSON.parse(value) as object) : value,
+};
+
+export const sqlite = { jsonColumn };

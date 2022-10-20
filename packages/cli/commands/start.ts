@@ -33,6 +33,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -59,6 +60,10 @@ export class Start extends Command {
 		tunnel: flags.boolean({
 			description:
 				'runs the webhooks via a hooks.n8n.cloud tunnel server. Use only for testing and development!',
+		}),
+		reinstallMissingPackages: flags.boolean({
+			description:
+				'Attempts to self heal n8n if packages with nodes are missing. Might drastically increase startup times.',
 		}),
 	};
 
@@ -87,6 +92,9 @@ export class Start extends Command {
 		getLogger().info('\nStopping n8n...');
 
 		try {
+			// Stop with trying to activate workflows that could not be activated
+			activeWorkflowRunner?.removeAllQueuedWorkflowActivations();
+
 			const externalHooks = ExternalHooks();
 			await externalHooks.run('n8n.stop', []);
 
@@ -206,6 +214,23 @@ export class Start extends Command {
 				// Wait till the database is ready
 				await startDbInitPromise;
 
+				const installedPackages = await getAllInstalledPackages();
+				const missingPackages = new Set<{
+					packageName: string;
+					version: string;
+				}>();
+				installedPackages.forEach((installedpackage) => {
+					installedpackage.installedNodes.forEach((installedNode) => {
+						if (!loadNodesAndCredentials.nodeTypes[installedNode.type]) {
+							// Leave the list ready for installing in case we need.
+							missingPackages.add({
+								packageName: installedpackage.packageName,
+								version: installedpackage.installedVersion,
+							});
+						}
+					});
+				});
+
 				await UserSettings.getEncryptionKey();
 
 				// Load settings from database and set them to config.
@@ -213,6 +238,42 @@ export class Start extends Command {
 				databaseSettings.forEach((setting) => {
 					config.set(setting.key, JSON.parse(setting.value));
 				});
+
+				config.set('nodes.packagesMissing', '');
+				if (missingPackages.size) {
+					LoggerProxy.error(
+						'n8n detected that some packages are missing. For more information, visit https://docs.n8n.io/integrations/community-nodes/troubleshooting/',
+					);
+
+					if (flags.reinstallMissingPackages || process.env.N8N_REINSTALL_MISSING_PACKAGES) {
+						LoggerProxy.info('Attempting to reinstall missing packages', { missingPackages });
+						try {
+							// Optimistic approach - stop if any installation fails
+							// eslint-disable-next-line no-restricted-syntax
+							for (const missingPackage of missingPackages) {
+								// eslint-disable-next-line no-await-in-loop
+								void (await loadNodesAndCredentials.loadNpmModule(
+									missingPackage.packageName,
+									missingPackage.version,
+								));
+								missingPackages.delete(missingPackage);
+							}
+							LoggerProxy.info(
+								'Packages reinstalled successfully. Resuming regular initialization.',
+							);
+						} catch (error) {
+							LoggerProxy.error('n8n was unable to install the missing packages.');
+						}
+					}
+				}
+				if (missingPackages.size) {
+					config.set(
+						'nodes.packagesMissing',
+						Array.from(missingPackages)
+							.map((missingPackage) => `${missingPackage.packageName}@${missingPackage.version}`)
+							.join(' '),
+					);
+				}
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
@@ -269,6 +330,7 @@ export class Start extends Command {
 						if (error.toString().includes('ECONNREFUSED') === true) {
 							logger.warn('Redis unavailable - trying to reconnect...');
 						} else {
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							logger.warn('Error with Redis: ', error);
 						}
 					});
@@ -357,6 +419,7 @@ export class Start extends Command {
 					process.stdin.setRawMode(true);
 					process.stdin.resume();
 					process.stdin.setEncoding('utf8');
+					// eslint-disable-next-line @typescript-eslint/no-unused-vars
 					let inputText = '';
 
 					if (flags.open) {

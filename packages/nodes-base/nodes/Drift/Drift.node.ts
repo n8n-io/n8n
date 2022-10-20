@@ -1,22 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
-import {
-	driftApiRequest,
-} from './GenericFunctions';
-import {
-	contactFields,
-	contactOperations,
-} from './ContactDescription';
-import {
-	IContact,
-} from './ContactInterface';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import { driftApiRequest } from './GenericFunctions';
+import { contactFields, contactOperations } from './ContactDescription';
+import { IContact } from './ContactInterface';
 
 export class Drift implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,9 +25,7 @@ export class Drift implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -50,9 +34,7 @@ export class Drift implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -116,7 +98,9 @@ export class Drift implements INodeType {
 						if (additionalFields.phone) {
 							body.phone = additionalFields.phone as string;
 						}
-						responseData = await driftApiRequest.call(this, 'POST', '/contacts', { attributes: body });
+						responseData = await driftApiRequest.call(this, 'POST', '/contacts', {
+							attributes: body,
+						});
 						responseData = responseData.data;
 					}
 					//https://devdocs.drift.com/docs/updating-a-contact
@@ -133,7 +117,9 @@ export class Drift implements INodeType {
 						if (updateFields.email) {
 							body.email = updateFields.email as string;
 						}
-						responseData = await driftApiRequest.call(this, 'PATCH', `/contacts/${contactId}`, { attributes: body });
+						responseData = await driftApiRequest.call(this, 'PATCH', `/contacts/${contactId}`, {
+							attributes: body,
+						});
 						responseData = responseData.data;
 					}
 					//https://devdocs.drift.com/docs/retrieving-contact

@@ -1,8 +1,8 @@
 <template>
 	<div>
 		<div class="error-header">
-			<div class="error-message">{{ $locale.baseText('nodeErrorView.error') + ': ' + getErrorMessage() }}</div>
-			<div class="error-description" v-if="error.description">{{error.description}}</div>
+			<div class="error-message">{{ getErrorMessage() }}</div>
+			<div class="error-description" v-if="error.description" v-html="getErrorDescription()"></div>
 		</div>
 		<details>
 			<summary class="error-details__summary">
@@ -108,6 +108,7 @@ import {
 	INodePropertyOptions,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { sanitizeHtml } from '@/utils';
 
 export default mixins(
 	copyPaste,
@@ -129,7 +130,7 @@ export default mixins(
 			if (!node) {
 				return [];
 			}
-			const nodeType = this.$store.getters.nodeType(node.type, node.typeVersion);
+			const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 
 			if (nodeType === null) {
 				return [];
@@ -139,19 +140,39 @@ export default mixins(
 		},
 	},
 	methods: {
-		getErrorMessage (): string {
-			if (!this.error.context || !this.error.context.messageTemplate) {
-				return this.error.message;
+		replacePlaceholders (parameter: string, message: string): string {
+			const parameterName = this.parameterDisplayName(parameter, false);
+			const parameterFullName = this.parameterDisplayName(parameter, true);
+			return message.replace(/%%PARAMETER%%/g, parameterName).replace(/%%PARAMETER_FULL%%/g, parameterFullName);
+		},
+		getErrorDescription (): string {
+			if (!this.error.context || !this.error.context.descriptionTemplate) {
+				return sanitizeHtml(this.error.description);
 			}
 
 			const parameterName = this.parameterDisplayName(this.error.context.parameter);
-			return this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
+			return sanitizeHtml(this.error.context.descriptionTemplate.replace(/%%PARAMETER%%/g, parameterName));
 		},
-		parameterDisplayName(path: string) {
+		getErrorMessage (): string {
+			const baseErrorMessage = this.$locale.baseText('nodeErrorView.error') + ': ';
+
+			if (!this.error.context || !this.error.context.messageTemplate) {
+				return baseErrorMessage + this.error.message;
+			}
+
+			const parameterName = this.parameterDisplayName(this.error.context.parameter);
+
+			return baseErrorMessage + this.error.context.messageTemplate.replace(/%%PARAMETER%%/g, parameterName);
+		},
+		parameterDisplayName(path: string, fullPath = true) {
 			try {
 				const parameters = this.parameterName(this.parameters, path.split('.'));
 				if (!parameters.length) {
 					throw new Error();
+				}
+
+				if (fullPath === false) {
+					return parameters.pop()!.displayName;
 				}
 				return parameters.map(parameter => parameter.displayName).join(' > ');
 			} catch (error) {
@@ -251,7 +272,7 @@ details[open] {
 }
 
 .el-divider__text {
-	background-color: #f9f9f9;
+	background-color: var(--color-background-light);
 }
 
 .box-card {

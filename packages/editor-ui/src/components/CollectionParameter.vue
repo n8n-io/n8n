@@ -11,7 +11,7 @@
 				<n8n-button
 					v-if="parameter.options.length === 1"
 					type="tertiary"
-					fullWidth
+					block
 					@click="optionSelected(parameter.options[0].name)"
 					:label="getPlaceholderText"
 				/>
@@ -38,6 +38,7 @@ import {
 } from '@/Interface';
 
 import {
+	deepCopy,
 	INodeProperties,
 	INodePropertyOptions,
 } from 'n8n-workflow';
@@ -48,6 +49,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import {Component} from "vue";
 
 export default mixins(
 	genericHelpers,
@@ -62,6 +64,9 @@ export default mixins(
 			'path', // string
 			'values', // NodeParameters
 		],
+		components: {
+			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		},
 		data () {
 			return {
 				selectedOption: undefined,
@@ -157,7 +162,7 @@ export default mixins(
 					} else {
 						// Everything else saves them directly as an array.
 						newValue = get(this.nodeValues, `${this.path}.${optionName}`, []);
-						newValue.push(JSON.parse(JSON.stringify(option.default)));
+						newValue.push(deepCopy(option.default));
 					}
 
 					parameterData = {
@@ -168,7 +173,7 @@ export default mixins(
 					// Add a new option
 					parameterData = {
 						name,
-						value: JSON.parse(JSON.stringify(option.default)),
+						value: deepCopy(option.default),
 					};
 				}
 
@@ -178,11 +183,6 @@ export default mixins(
 			valueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
 			},
-		},
-		beforeCreate: function () { // tslint:disable-line
-			// Because we have a circular dependency on ParameterInputList import it here
-			// to not break Vue.
-			this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
 		},
 	});
 </script>
@@ -194,6 +194,10 @@ export default mixins(
 
 	.param-options {
 		margin-top: var(--spacing-xs);
+
+		.button {
+			--button-background-color: var(--color-background-base);
+		}
 	}
 
 	.no-items-exist {

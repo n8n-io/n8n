@@ -1,9 +1,6 @@
 import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -14,9 +11,18 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-export async function calendlyApiRequest(this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
-	const { apiKey } = await this.getCredentials('calendlyApi') as { apiKey: string };
+export async function calendlyApiRequest(
+	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const { apiKey } = (await this.getCredentials('calendlyApi')) as { apiKey: string };
 
 	const authenticationType = getAuthenticationType(apiKey);
 
@@ -60,11 +66,15 @@ export function getAuthenticationType(data: string): 'accessToken' | 'apiKey' {
 	return data.includes('.') ? 'accessToken' : 'apiKey';
 }
 
-export async function validateCredentials(this: ICredentialTestFunctions, decryptedCredentials: ICredentialDataDecryptedObject): Promise<any> { // tslint:disable-line:no-any
+export async function validateCredentials(
+	this: ICredentialTestFunctions,
+	decryptedCredentials: ICredentialDataDecryptedObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = decryptedCredentials;
 
 	const { apiKey } = credentials as {
-		apiKey: string,
+		apiKey: string;
 	};
 
 	const authenticationType = getAuthenticationType(apiKey);
@@ -76,9 +86,15 @@ export async function validateCredentials(this: ICredentialTestFunctions, decryp
 	};
 
 	if (authenticationType === 'accessToken') {
-		Object.assign(options, { headers: { 'Authorization': `Bearer ${apiKey}` }, uri: 'https://api.calendly.com/users/me' });
+		Object.assign(options, {
+			headers: { Authorization: `Bearer ${apiKey}` },
+			uri: 'https://api.calendly.com/users/me',
+		});
 	} else {
-		Object.assign(options, { headers: { 'X-TOKEN': apiKey }, uri: 'https://calendly.com/api/v1/users/me' });
+		Object.assign(options, {
+			headers: { 'X-TOKEN': apiKey },
+			uri: 'https://calendly.com/api/v1/users/me',
+		});
 	}
 	return this.helpers.request!(options);
 }

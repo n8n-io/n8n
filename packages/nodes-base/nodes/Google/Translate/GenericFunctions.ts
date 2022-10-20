@@ -1,16 +1,8 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError, NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -23,8 +15,22 @@ interface IGoogleAuthCredentials {
 	privateKey: string;
 }
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-	const authenticationMethod = this.getNodeParameter('authentication', 0, 'serviceAccount') as string;
+export async function googleApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const authenticationMethod = this.getNodeParameter(
+		'authentication',
+		0,
+		'serviceAccount',
+	) as string;
 	const options: OptionsWithUri = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -46,7 +52,10 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		if (authenticationMethod === 'serviceAccount') {
 			const credentials = await this.getCredentials('googleApi');
 
-			const { access_token } = await getAccessToken.call(this, credentials as unknown as IGoogleAuthCredentials);
+			const { access_token } = await getAccessToken.call(
+				this,
+				credentials as unknown as IGoogleAuthCredentials,
+			);
 
 			options.headers!.Authorization = `Bearer ${access_token}`;
 			//@ts-ignore
@@ -60,8 +69,16 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function googleApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -71,15 +88,15 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 		responseData = await googleApiRequest.call(this, method, endpoint, body, query);
 		query.pageToken = responseData['nextPageToken'];
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData['nextPageToken'] !== undefined &&
-		responseData['nextPageToken'] !== ''
-	);
+	} while (responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '');
 
 	return returnData;
 }
 
-function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, credentials: IGoogleAuthCredentials): Promise<IDataObject> {
+function getAccessToken(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	credentials: IGoogleAuthCredentials,
+): Promise<IDataObject> {
 	//https://developers.google.com/identity/protocols/oauth2/service-account#httprest
 
 	const scopes = [
@@ -94,20 +111,20 @@ function getAccessToken(this: IExecuteFunctions | IExecuteSingleFunctions | ILoa
 
 	const signature = jwt.sign(
 		{
-			'iss': credentials.email as string,
-			'sub': credentials.email as string,
-			'scope': scopes.join(' '),
-			'aud': `https://oauth2.googleapis.com/token`,
-			'iat': now,
-			'exp': now + 3600,
+			iss: credentials.email as string,
+			sub: credentials.email as string,
+			scope: scopes.join(' '),
+			aud: `https://oauth2.googleapis.com/token`,
+			iat: now,
+			exp: now + 3600,
 		},
 		privateKey as string,
 		{
 			algorithm: 'RS256',
 			header: {
-				'kid': privateKey as string,
-				'typ': 'JWT',
-				'alg': 'RS256',
+				kid: privateKey as string,
+				typ: 'JWT',
+				alg: 'RS256',
 			},
 		},
 	);

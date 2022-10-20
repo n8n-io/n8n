@@ -1,15 +1,10 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 // https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization
 
 export class QuickBooksOAuth2Api implements ICredentialType {
 	name = 'quickBooksOAuth2Api';
-	extends = [
-		'oAuth2Api',
-	];
+	extends = ['oAuth2Api'];
 	displayName = 'QuickBooks Online OAuth2 API';
 	documentationUrl = 'quickbooks';
 	properties: INodeProperties[] = [

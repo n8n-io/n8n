@@ -40,6 +40,7 @@ export class Logger implements ILogger {
 					winston.format.printf(({ level, message, timestamp, metadata }) => {
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						return `${timestamp} | ${level.padEnd(18)} | ${message}${
+							// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 							Object.keys(metadata).length ? ` ${JSON.stringify(inspect(metadata))}` : ''
 						}`;
 					}),
