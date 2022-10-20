@@ -352,7 +352,9 @@ export default mixins(
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-				this.$store.commit('ui/setNDVSessionId');
+				setTimeout(() => {
+					this.$store.commit('ui/setNDVSessionId');
+				}, 0);
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
@@ -397,10 +399,14 @@ export default mixins(
 			this.runInputIndex = -1;
 		},
 		inputNodeName(nodeName: string | undefined) {
-			this.$store.commit('ui/setInputNodeName', nodeName);
+			setTimeout(() => {
+				this.$store.commit('ui/setInputNodeName', nodeName);
+			}, 0);
 		},
 		inputRun() {
-			this.$store.commit('ui/setInputRunIndex', this.inputRun);
+			setTimeout(() => {
+				this.$store.commit('ui/setInputRunIndex', this.inputRun);
+			}, 0);
 		},
 	},
 	methods: {
