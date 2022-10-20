@@ -433,7 +433,8 @@ export default mixins(
 		},
 
 		onClickDebounced(event: MouseEvent) {
-			if (event.detail === 2) {
+			const isDoubleClick = event.detail > 2;
+			if (isDoubleClick) {
 				this.setNodeActive();
 			} else {
 				this.mouseLeftClick(event);
