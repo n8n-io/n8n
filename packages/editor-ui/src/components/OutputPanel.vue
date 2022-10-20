@@ -10,6 +10,7 @@
 		:executingMessage="$locale.baseText('ndv.output.executing')"
 		:sessionId="sessionId"
 		:isReadOnly="isReadOnly"
+		:blockUI="blockUI"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
@@ -108,6 +109,10 @@ export default mixins(
 		},
 		sessionId: {
 			type: String,
+		},
+		blockUI: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	computed: {

@@ -72,6 +72,7 @@
 						:linkedRuns="linked"
 						:sessionId="sessionId"
 						:isReadOnly="readOnly"
+						:blockUI="blockUi && isTriggerNode"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -86,6 +87,7 @@
 						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
+						:blockUI="blockUi && showTriggerPanel"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@activate="onWorkflowActivate"
@@ -222,14 +224,10 @@ export default mixins(
 			return null;
 		},
 		showTriggerPanel(): boolean {
-			const isWebhookBasedNode = this.activeNodeType && this.activeNodeType.webhooks && this.activeNodeType.webhooks.length;
-			const isPollingNode = this.activeNodeType && this.activeNodeType.polling;
-			const override = this.activeNodeType && this.activeNodeType.triggerPanel;
-			return Boolean(
-				!this.readOnly &&
-				this.isTriggerNode &&
-				(isWebhookBasedNode || isPollingNode || override),
-			);
+			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
+			const isPollingNode = this.activeNodeType?.polling;
+			const override = !!this.activeNodeType?.triggerPanel;
+			return !this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override);
 		},
 		workflow(): Workflow {
 			return this.getCurrentWorkflow();
@@ -339,6 +337,15 @@ export default mixins(
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
 			return this.$store.getters['ui/outputPanelEditMode'];
+		},
+		isWorkflowRunning(): boolean {
+			return this.$store.getters.isActionActive('workflowRunning');
+		},
+		isExecutionWaitingForWebhook(): boolean {
+			return this.$store.getters.executionWaitingForWebhook;
+		},
+		blockUi(): boolean {
+			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
 		},
 	},
 	watch: {

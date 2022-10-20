@@ -321,7 +321,7 @@
 				</n8n-select>
 			</div>
 		</div>
-
+	<div v-if="blockUI" :class="$style.uiBlocker"></div>
 	</div>
 </template>
 
@@ -367,7 +367,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { pinData } from '@/components/mixins/pinData';
 import { CodeEditor } from "@/components/forms";
-import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
 import RunDataJson from '@/components/RunDataJson.vue';
@@ -437,6 +437,10 @@ export default mixins(
 			showMappingHint: {
 				type: Boolean,
 			},
+			blockUI: {
+				type: Boolean,
+				default: false,
+			},
 		},
 		data () {
 			return {
@@ -501,9 +505,6 @@ export default mixins(
 					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
 				}
 				return null;
-			},
-			isTriggerNode (): boolean {
-				return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
 			},
 			canPinData (): boolean {
 				return !this.isPaneTypeInput &&
@@ -1381,6 +1382,18 @@ export default mixins(
 
 .stretchVertically {
 	height: 100%;
+}
+
+.uiBlocker {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	background-color: var(--color-background-dark);
+	z-index: 1;
+	opacity: 0.6;
+	border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
 }
 
 </style>
