@@ -16,7 +16,8 @@
   "types": "dist/src/index.d.ts",
   "scripts": {
     "dev": "npm run watch",
-    "build": "tsc && gulp build:icons && gulp build:translations",
+    "build": "tsc && gulp build:icons && npm run build:translations && npm run build:cache",
+    "build:cache": "node scripts/generate-cache.js",
     "build:translations": "gulp build:translations",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js --write \"packages/nodes-base/**/*.{ts,json}\"",
     "lint": "tslint -p tsconfig.json -c tslint.json && eslint nodes credentials src",

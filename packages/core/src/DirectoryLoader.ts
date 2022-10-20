@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile, stat } from 'node:fs/promises';
 import { createContext, Context, Script } from 'node:vm';
 import glob from 'fast-glob';
 import { DocumentationLink, LoggerProxy as Logger } from 'n8n-workflow';
@@ -260,6 +260,7 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 	}
 }
 
+const CACHE_FILE = '.n8n.cache';
 /**
  * Loader for source files of nodes and creds located in a package dir,
  * e.g. /nodes-base or community packages.
@@ -272,8 +273,13 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 		if (options?.cachingEnabled) {
 			try {
-				const cache = await this.readJSON<n8n.PackageCache>('.n8n.cache');
+				const { mtimeMs: nodesMTime } = await stat(this.resolvePath('nodes'));
+				const { mtimeMs: credsMTime } = await stat(this.resolvePath('credentials'));
+				const { mtimeMs: cacheMTime } = await stat(this.resolvePath(CACHE_FILE));
+				if (Math.max(nodesMTime, credsMTime, cacheMTime) !== cacheMTime)
+					throw new Error('Stale cache');
 
+				const cache = await this.readJSON<n8n.PackageCache>(CACHE_FILE);
 				this.loadedNodes = cache.loadedNodes;
 				this.nodeTypes = cache.nodeTypes;
 				this.credentialTypes = cache.credentialTypes;
@@ -282,7 +288,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 				Logger.info(`Source directory: ${this.directory}\n`);
 				return;
 			} catch {
-				Logger.info('No cache found. Loading nodes and credentials from files...');
+				Logger.info('Cache invalid or missing. Loading nodes and credentials from files...');
 				Logger.info(`Source directory: ${this.directory}\n`);
 			}
 		}
@@ -314,7 +320,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 		}
 
 		if (options?.cachingEnabled) {
-			this.writeJSON<n8n.PackageCache>('.n8n.cache', {
+			this.writeJSON<n8n.PackageCache>(CACHE_FILE, {
 				loadedNodes: this.loadedNodes,
 				nodeTypes: this.nodeTypes,
 				credentialTypes: this.credentialTypes,
