@@ -1,3 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import {
 	INode,
 	INodeCredentials,
@@ -6,11 +9,11 @@ import {
 	INodeTypeNameVersion,
 	INodeTypes,
 	IWorkflowExecuteAdditionalData,
+	requireDistNode,
 	Workflow,
 } from 'n8n-workflow';
 
 import { NodeExecuteFunctions } from '.';
-import { requireDistNode } from './utils';
 
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
