@@ -506,6 +506,9 @@ export default mixins(
 				}
 				return null;
 			},
+			isTriggerNode (): boolean {
+				return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
+			},
 			canPinData (): boolean {
 				return !this.isPaneTypeInput &&
 					this.isPinDataNodeType &&
