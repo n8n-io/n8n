@@ -31,7 +31,7 @@ import _ from 'lodash';
 import { ICredentialsDataImap, isCredentialsDataImap } from '../../../credentials/Imap.credentials';
 
 const versionDescription: INodeTypeDescription = {
-	displayName: 'EmailReadImap',
+	displayName: 'Email Trigger (IMAP)',
 	name: 'emailReadImap',
 	icon: 'fa:inbox',
 	group: ['trigger'],

@@ -31,7 +31,7 @@ import { simpleParser, Source as ParserSource } from 'mailparser';
 import _ from 'lodash';
 
 const versionDescription: INodeTypeDescription = {
-	displayName: 'EmailReadImap',
+	displayName: 'Email Trigger (IMAP)',
 	name: 'emailReadImap',
 	icon: 'fa:inbox',
 	group: ['trigger'],

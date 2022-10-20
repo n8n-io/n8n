@@ -6,7 +6,7 @@ import { EmailReadImapV2 } from './v2/EmailReadImapV2.node';
 export class EmailReadImap extends NodeVersionedType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
-			displayName: 'EmailReadImap',
+			displayName: 'Email Trigger (IMAP)',
 			name: 'emailReadImap',
 			icon: 'fa:inbox',
 			group: ['trigger'],
