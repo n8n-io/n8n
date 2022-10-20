@@ -680,7 +680,7 @@ export const workflowHelpers = mixins(
 					this.$store.commit('setWorkflowInactive', workflowId);
 				}
 
-				this.$store.commit('setWorkflowUpdatedAt', data.updatedAt);
+				this.$store.commit('setWorkflowUpdatedAt', workflow.updatedAt);
 			},
 
 			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
