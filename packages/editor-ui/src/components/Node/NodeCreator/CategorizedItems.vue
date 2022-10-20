@@ -87,9 +87,10 @@ import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
-import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
+import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
+import { sublimeSearch } from './sortUtils';
 
 export default mixins(externalHooks, globalLinkActions).extend({
 	name: 'CategorizedItems',
@@ -176,11 +177,15 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			return this.nodeFilter.toLowerCase().trim();
 		},
 		filteredNodeTypes(): INodeCreateElement[] {
-			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
 			const filter = this.searchFilter;
-			const matchedCategorizedNodes = searchableNodes.filter((el: INodeCreateElement) => {
-				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
-			});
+			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
+
+			// const matchedCategorizedNodes = searchableNodes.filter((el: INodeCreateElement) => {
+			// 	return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
+			// });
+
+			const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, this.selectedType));
+			const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
 
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
@@ -190,7 +195,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 				});
 			}, 0);
 
-			return matchedCategorizedNodes;
+			return matchedCategorizedNodes.map(({item}) => item);;
 		},
 		filteredAllNodeTypes(): INodeCreateElement[] {
 			if(this.filteredNodeTypes.length > 0) return [];
