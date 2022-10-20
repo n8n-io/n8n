@@ -313,9 +313,8 @@ class App {
 				smtpSetup: isEmailSetUp(),
 			},
 			ldap: {
-				enabled: isLdapEnabled(),
-				loginLabel: getLdapLoginLabel(),
-				loginEnabled: isLdapLoginEnabled(),
+				loginEnabled: false,
+				loginLabel: '',
 			},
 			publicApi: {
 				enabled: config.getEnv('publicApi.disabled') === false,
@@ -343,6 +342,7 @@ class App {
 			enterprise: {
 				sharing: false,
 				workflowSharing: false,
+				ldap: false,
 			},
 		};
 	}
@@ -372,13 +372,16 @@ class App {
 		Object.assign(this.frontendSettings.enterprise, {
 			sharing: isSharingEnabled(),
 			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
+			ldap: isLdapEnabled(),
 		});
 
-		Object.assign(this.frontendSettings.ldap, {
-			enabled: isLdapEnabled(),
-			loginLabel: getLdapLoginLabel(),
-			loginEnabled: isLdapLoginEnabled(),
-		});
+		if (isLdapEnabled()) {
+			Object.assign(this.frontendSettings.ldap, {
+				loginLabel: getLdapLoginLabel(),
+				loginEnabled: isLdapLoginEnabled(),
+			});
+		}
+
 		if (config.get('nodes.packagesMissing').length > 0) {
 			this.frontendSettings.missingPackages = true;
 		}

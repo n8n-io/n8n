@@ -1,5 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
+import { LDAP_DEFAULT_CONFIGURATION } from '../../../Ldap/constants';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 export class CreateLdapEntities1655579796123 implements MigrationInterface {
 	name = 'CreateLdapEntities1655579796123';
@@ -73,8 +74,15 @@ export class CreateLdapEntities1655579796123 implements MigrationInterface {
 				"name"	TEXT,
 				"data"	TEXT NOT NULL DEFAULT '{}',
 				PRIMARY KEY("name")
-			);`
+			);`,
 		);
+
+		await queryRunner.query(`
+				INSERT INTO "${tablePrefix}feature_config" VALUES (
+					ldap,
+					${JSON.stringify(LDAP_DEFAULT_CONFIGURATION)},
+				)
+		`);
 
 		await queryRunner.query(
 			`CREATE TABLE IF NOT EXISTS "${tablePrefix}ldap_sync_history" (
@@ -89,7 +97,7 @@ export class CreateLdapEntities1655579796123 implements MigrationInterface {
 				"runMode" TEXT NOT NULL,
 				"error" TEXT,
 				PRIMARY KEY("id" AUTOINCREMENT)
-			);`
+			);`,
 		);
 
 		await queryRunner.query('PRAGMA foreign_keys=ON');

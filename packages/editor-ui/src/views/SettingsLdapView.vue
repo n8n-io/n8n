@@ -60,7 +60,7 @@
 		</el-table>
 		</div>
 		<div :class="$style.syncronizationActionButtons">
-			<n8n-button float="right" :label="$locale.baseText('settings.ldap.dryRun')" type="light" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingDryRun" @click="onDryRunClick" />
+			<n8n-button float="right" :label="$locale.baseText('settings.ldap.dryRun')" type="secondary" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingDryRun" @click="onDryRunClick" />
 			<n8n-button float="left" :label="$locale.baseText('settings.ldap.synchronizeNow')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingLiveRun" @click="onLiveRunClick" />
 		</div>
 	</SettingsView>

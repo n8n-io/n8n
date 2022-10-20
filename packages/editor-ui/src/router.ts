@@ -26,7 +26,7 @@ import { Store } from 'vuex';
 import { IPermissions, IRootState, IWorkflowsState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
-import { VIEWS } from './constants';
+import { EnterpriseEditionFeature, VIEWS } from './constants';
 import { store } from './store';
 
 Vue.use(Router);
@@ -405,7 +405,7 @@ const router = new Router({
 					},
 					deny: {
 						shouldDeny: () => {
-							return store.getters['settings/isUserManagementEnabled'] === false;
+							return !store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Ldap);
 						},
 					},
 				},
