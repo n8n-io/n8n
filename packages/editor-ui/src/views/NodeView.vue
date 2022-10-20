@@ -228,6 +228,7 @@ import { getAccountAge } from '@/modules/userHelpers';
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
 import { getNodeViewTab } from '@/components/helpers';
+import { Route } from 'vue-router';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -267,14 +268,19 @@ export default mixins(
 		},
 		watch: {
 			// Listen to route changes and load the workflow accordingly
-			'$route' (to, from) {
+			'$route' (to: Route, from: Route) {
 				const currentTab = getNodeViewTab(to);
 				const nodeViewNotInitialized = !this.$store.getters['ui/isNodeViewInitialized'];
 				let workflowChanged =
 					from.params.name !== to.params.name &&
 					// Both 'new' and __EMPTY__ are new workflow names, so ignore them when detecting if wf changed
-					!(from.params.name === 'new' && this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID);
+					!(from.params.name === 'new' && this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID) &&
+					// Also ignore if workflow id changes when saving new workflow
+					to.params.action !== 'workflowSave';
 				const isOpeningTemplate = to.name === VIEWS.TEMPLATE_IMPORT;
+
+				console.log('CHANGED ROUTE...');
+				console.log(to.params.action === 'workflowSave');
 
 				// When entering this tab:
 				if (currentTab === MAIN_HEADER_TABS.WORKFLOW || isOpeningTemplate) {
