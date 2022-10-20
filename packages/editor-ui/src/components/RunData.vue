@@ -321,7 +321,7 @@
 				</n8n-select>
 			</div>
 		</div>
-	<div v-if="blockUI" :class="$style.uiBlocker"></div>
+		<n8n-block-ui :show="blockUI" :class="$style.uiBlocker" />
 	</div>
 </template>
 
@@ -1385,15 +1385,8 @@ export default mixins(
 }
 
 .uiBlocker {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background-color: var(--color-background-dark);
-	z-index: 1;
-	opacity: 0.6;
-	border-radius: 0 var(--border-radius-large) var(--border-radius-large) 0;
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
 </style>

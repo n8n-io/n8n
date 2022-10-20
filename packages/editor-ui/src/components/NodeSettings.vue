@@ -112,7 +112,7 @@
 				/>
 			</div>
 		</div>
-		<div v-if="blockUI" :class="[$style.uiBlocker]"></div>
+		<n8n-block-ui :show="blockUI" />
 	</div>
 </template>
 
@@ -785,18 +785,6 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 .descriptionContainer {
 	display: flex;
 	flex-direction: column;
-}
-
-.uiBlocker {
-	position: absolute;
-	top: 0;
-	left: 0;
-	width: 100%;
-	height: 100%;
-	background-color: var(--color-background-dark);
-	z-index: 1;
-	opacity: 0.6;
-	border-radius: var(--border-radius-large);
 }
 </style>
 
