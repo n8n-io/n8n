@@ -73,7 +73,7 @@
 					:mode="node.parameters.mode"
 					:jsCode="node.parameters.jsCode"
 					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
+					@valueChanged="valueChangedDebounced"
 				/>
 
 				<div v-else-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
@@ -336,12 +336,14 @@ import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
 	nodeHelpers,
 	showMessage,
 	workflowHelpers,
+	debounceHelper,
 )
 	.extend({
 		name: 'parameter-input',
@@ -921,6 +923,9 @@ export default mixins(
 				};
 
 				this.$emit('textInput', parameterData);
+			},
+			valueChangedDebounced (value: NodeParameterValueType | {} | Date) {
+				this.callDebounced('valueChanged', { debounceTime: 100 }, value);
 			},
 			valueChanged (value: NodeParameterValueType | {} | Date) {
 				if (this.parameter.name === 'nodeCredentialType') {
