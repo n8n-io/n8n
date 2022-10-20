@@ -133,7 +133,7 @@ export class WorkflowEntity implements IWorkflowDb {
 	@JoinColumn({ referencedColumnName: 'workflow' })
 	statistics: WorkflowStatistics[];
 
-	@Column()
+	@Column({ default: false })
 	dataLoaded: boolean;
 
 	@Column({
