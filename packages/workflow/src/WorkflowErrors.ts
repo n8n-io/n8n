@@ -1,4 +1,4 @@
-import { INode } from './Interfaces';
+import type { INode } from './Interfaces';
 
 /**
  * Class for instantiating an operational error, e.g. a timeout error.
@@ -34,3 +34,5 @@ export class SubworkflowOperationError extends WorkflowOperationError {
 		};
 	}
 }
+
+export class CliWorkflowOperationError extends SubworkflowOperationError {}

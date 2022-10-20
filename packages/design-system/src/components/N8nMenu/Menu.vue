@@ -22,7 +22,6 @@
 						:key="item.id"
 						:item="item"
 						:compact="collapsed"
-						:popperClass="$style.submenuPopper"
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
@@ -30,7 +29,7 @@
 					/>
 				</el-menu>
 			</div>
-			<div :class="{[$style.lowerContent]: true, ['pb-xs']: $slots.menuSuffix }">
+			<div :class="[$style.lowerContent, 'pb-2xs']">
 				<el-menu
 					:defaultActive="defaultActive"
 					:collapse="collapsed"
@@ -41,7 +40,6 @@
 						:key="item.id"
 						:item="item"
 						:compact="collapsed"
-						:popperClass="$style.submenuPopper"
 						:tooltipDelay="tooltipDelay"
 						:mode="mode"
 						:activeTab="activeTab"
@@ -75,7 +73,7 @@ export default Vue.extend({
 	},
 	data() {
 		return {
-			activeTab: '',
+			activeTab: this.value,
 		};
 	},
 	props: {
@@ -103,6 +101,10 @@ export default Vue.extend({
 		items: {
 			type: Array as PropType<IMenuItem[]>,
 		},
+		value: {
+			type: String,
+			default: '',
+		},
 	},
 	mounted() {
 		if (this.mode === 'router') {
@@ -114,6 +116,8 @@ export default Vue.extend({
 		} else {
 			this.activeTab =  this.items.length > 0 ? this.items[0].id : '';
 		}
+
+		this.$emit('input', this.activeTab);
 	},
 	computed: {
 		upperMenuItems(): IMenuItem[] {
@@ -129,6 +133,12 @@ export default Vue.extend({
 				this.activeTab = option;
 			}
 			this.$emit('select', option);
+			this.$emit('input', this.activeTab);
+		},
+	},
+	watch: {
+		value(value: string) {
+			this.activeTab = value;
 		},
 	},
 });
@@ -150,17 +160,13 @@ export default Vue.extend({
 
 	& > div > :global(.el-menu) {
 		background: none;
-		padding: 12px;
+		padding: var(--menu-padding, 12px);
 	}
 }
 
 .upperContent {
 	ul {
 		padding-top: 0 !important;
-	}
-	.submenuPopper {
-		bottom: auto !important;
-		top: 0 !important;
 	}
 }
 

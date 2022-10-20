@@ -68,6 +68,7 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
 import { IWorkflowErrorData } from './Interfaces';
+import { findSubworkflowStart } from './utils';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -774,21 +775,7 @@ export async function getRunData(
 		}
 	}
 
-	// Find Start-Node
-	const requiredNodeTypes = ['n8n-nodes-base.start'];
-	let startNode: INode | undefined;
-	// eslint-disable-next-line no-restricted-syntax
-	for (const node of workflowData.nodes) {
-		if (requiredNodeTypes.includes(node.type)) {
-			startNode = node;
-			break;
-		}
-	}
-	if (startNode === undefined) {
-		// If the workflow does not contain a start-node we can not know what
-		// should be executed and with what data to start.
-		throw new Error(`The workflow does not contain a "Start" node and can so not be executed.`);
-	}
+	const startingNode = findSubworkflowStart(workflowData.nodes);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [
@@ -800,7 +787,7 @@ export async function getRunData(
 	// Initialize the incoming data
 	const nodeExecutionStack: IExecuteData[] = [];
 	nodeExecutionStack.push({
-		node: startNode,
+		node: startingNode,
 		data: {
 			main: [inputData],
 		},

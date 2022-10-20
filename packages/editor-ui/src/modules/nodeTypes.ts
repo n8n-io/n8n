@@ -19,7 +19,8 @@ import {
 	getResourceLocatorResults,
 } from '@/api/nodeTypes';
 import { omit } from '@/utils';
-import type { IRootState, INodeTypesState, IResourceLocatorReqParams } from '../Interface';
+import type { IRootState, INodeTypesState, ICategoriesWithNodes, INodeCreateElement, IResourceLocatorReqParams } from '../Interface';
+import { getCategoriesWithNodes, getCategorizedList } from './nodeTypesHelpers';
 
 const module: Module<INodeTypesState, IRootState> = {
 	namespaced: true,
@@ -54,6 +55,19 @@ const module: Module<INodeTypesState, IRootState> = {
 			const nodeType = nodeVersions[version || Math.max(...versionNumbers)];
 
 			return nodeType || null;
+		},
+		isTriggerNode: (state, getters) => (nodeTypeName: string) => {
+			const nodeType = getters.getNodeType(nodeTypeName);
+			return !!(nodeType && nodeType.group.includes('trigger'));
+		},
+		visibleNodeTypes: (state, getters): INodeTypeDescription[] => {
+			return getters.allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => !nodeType.hidden);
+		},
+		categoriesWithNodes: (state, getters, rootState, rootGetters): ICategoriesWithNodes => {
+			return getCategoriesWithNodes(getters.visibleNodeTypes, rootGetters['users/personalizedNodeTypes']);
+		},
+		categorizedItems: (state, getters): INodeCreateElement[] => {
+			return getCategorizedList(getters.categoriesWithNodes);
 		},
 	},
 	mutations: {

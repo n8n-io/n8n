@@ -46,6 +46,7 @@ import { get } from 'lodash';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { deepCopy } from "n8n-workflow";
 
 export default mixins(genericHelpers)
 	.extend({
@@ -87,7 +88,7 @@ export default mixins(genericHelpers)
 					currentValue = [];
 				}
 
-				currentValue.push(JSON.parse(JSON.stringify(this.parameter.default)));
+				currentValue.push(deepCopy(this.parameter.default));
 
 				const parameterData = {
 					name,

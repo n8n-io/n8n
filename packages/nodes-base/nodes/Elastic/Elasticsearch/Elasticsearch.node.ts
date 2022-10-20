@@ -1,21 +1,12 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	JsonObject,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import { elasticsearchApiRequest } from './GenericFunctions';
+import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from './GenericFunctions';
 
 import { documentFields, documentOperations, indexFields, indexOperations } from './descriptions';
 
-import { DocumentGetAllOptions, ElasticsearchApiCredentials, FieldsUiValues } from './types';
+import { DocumentGetAllOptions, FieldsUiValues } from './types';
 
 import { omit } from 'lodash';
 
@@ -79,8 +70,6 @@ export class Elasticsearch implements INodeType {
 				//                                document
 				// **********************************************************************
 
-				// https://www.elastic.co/guide/en/elasticsearch/reference/current/docs.html
-
 				if (operation === 'delete') {
 					// ----------------------------------------
 					//             document: delete
@@ -134,6 +123,7 @@ export class Elasticsearch implements INodeType {
 					const body = {} as IDataObject;
 					const qs = {} as IDataObject;
 					const options = this.getNodeParameter('options', i) as DocumentGetAllOptions;
+					// const paginate = this.getNodeParameter('paginate', i) as boolean;
 
 					if (Object.keys(options).length) {
 						const { query, ...rest } = options;
@@ -144,18 +134,38 @@ export class Elasticsearch implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', 0);
 
-					if (!returnAll) {
+					if (returnAll) {
+						//Defines the number of hits to return. Defaults to 10. By default, you cannot page through more than 10,000 hits
+						qs.size = 10000;
+						if (qs.sort) {
+							responseData = await elasticsearchApiRequestAllItems.call(
+								this,
+								indexId as string,
+								body,
+								qs,
+							);
+						} else {
+							responseData = await elasticsearchApiRequest.call(
+								this,
+								'GET',
+								`/${indexId}/_search`,
+								body,
+								qs,
+							);
+							responseData = responseData.hits.hits;
+						}
+					} else {
 						qs.size = this.getNodeParameter('limit', 0);
-					}
 
-					responseData = await elasticsearchApiRequest.call(
-						this,
-						'GET',
-						`/${indexId}/_search`,
-						body,
-						qs,
-					);
-					responseData = responseData.hits.hits;
+						responseData = await elasticsearchApiRequest.call(
+							this,
+							'GET',
+							`/${indexId}/_search`,
+							body,
+							qs,
+						);
+						responseData = responseData.hits.hits;
+					}
 
 					const simple = this.getNodeParameter('simple', 0) as IDataObject;
 
@@ -196,23 +206,20 @@ export class Elasticsearch implements INodeType {
 
 					const qs = {} as IDataObject;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(qs, omit(additionalFields, ['documentId']));
 					}
-
-					Object.assign(qs, options);
 
 					const indexId = this.getNodeParameter('indexId', i);
 					const { documentId } = additionalFields;
 
 					if (documentId) {
 						const endpoint = `/${indexId}/_doc/${documentId}`;
-						responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body, qs);
+						responseData = await elasticsearchApiRequest.call(this, 'PUT', endpoint, body);
 					} else {
 						const endpoint = `/${indexId}/_doc`;
-						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body, qs);
+						responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
 					}
 				} else if (operation === 'update') {
 					// ----------------------------------------
@@ -243,14 +250,9 @@ export class Elasticsearch implements INodeType {
 
 					const indexId = this.getNodeParameter('indexId', i);
 					const documentId = this.getNodeParameter('documentId', i);
-					const options = this.getNodeParameter('options', i, {}) as IDataObject;
-
-					const qs = {
-						...options,
-					};
 
 					const endpoint = `/${indexId}/_update/${documentId}`;
-					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body, qs);
+					responseData = await elasticsearchApiRequest.call(this, 'POST', endpoint, body);
 				}
 			} else if (resource === 'index') {
 				// **********************************************************************
@@ -328,7 +330,6 @@ export class Elasticsearch implements INodeType {
 					}
 				}
 			}
-
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },
