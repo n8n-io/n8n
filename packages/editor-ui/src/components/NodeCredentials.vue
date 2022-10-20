@@ -147,6 +147,7 @@ export default mixins(
 			return this.node.credentials || {};
 		},
 	},
+
 	methods: {
 		getCredentialOptions(type: string): ICredentialsResponse[] {
 			return (this.allCredentialsByType as Record<string, ICredentialsResponse[]>)[type].filter((credential) => {

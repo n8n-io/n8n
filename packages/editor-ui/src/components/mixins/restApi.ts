@@ -129,9 +129,9 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns the execution with the given name
-				getExecution: async (id: string): Promise<IExecutionResponse> => {
+				getExecution: async (id: string): Promise<IExecutionResponse | undefined> => {
 					const response = await self.restApi().makeRestApiRequest('GET', `/executions/${id}`);
-					return unflattenExecutionData(response);
+					return response && unflattenExecutionData(response);
 				},
 
 				// Deletes executions

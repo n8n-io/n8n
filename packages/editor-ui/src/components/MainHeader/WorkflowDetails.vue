@@ -62,10 +62,10 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<span>{{ $locale.baseText('workflowDetails.active') + ':' }}</span>
-					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId"/>
+					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
 				<SaveButton
+					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
 					@click="onSaveButtonClick"
@@ -307,7 +307,14 @@ export default mixins(workflowHelpers, titleChange).extend({
 		async onWorkflowMenuSelect(action: string): Promise<void> {
 			switch (action) {
 				case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
-					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
+					await this.$store.dispatch('ui/openModalWithData', {
+						name: DUPLICATE_MODAL_KEY,
+						data: {
+							id: this.$store.getters.workflowId,
+							name: this.$store.getters.workflowName,
+							tags: this.$store.getters.workflowTags,
+						},
+					});
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
@@ -346,15 +353,15 @@ export default mixins(workflowHelpers, titleChange).extend({
 						this.$locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
 						this.$locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
 						{
-							confirmButtonText: this.$locale.baseText('mainSidebar.prompt.import'),
-							cancelButtonText: this.$locale.baseText('mainSidebar.prompt.cancel'),
-							inputErrorMessage: this.$locale.baseText('mainSidebar.prompt.invalidUrl'),
-							inputPattern: /^http[s]?:\/\/.*\.json$/i,
-						},
-					) as MessageBoxInputData;
+								confirmButtonText: this.$locale.baseText('mainSidebar.prompt.import'),
+								cancelButtonText: this.$locale.baseText('mainSidebar.prompt.cancel'),
+								inputErrorMessage: this.$locale.baseText('mainSidebar.prompt.invalidUrl'),
+								inputPattern: /^http[s]?:\/\/.*\.json$/i,
+							},
+						) as MessageBoxInputData;
 
-					this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
-				} catch (e) {}
+						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
+					} catch (e) {}
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
@@ -464,7 +471,6 @@ $--header-spacing: 20px;
 
 .tags {
 	flex: 1;
-	padding-right: 20px;
 	margin-right: $--header-spacing;
 }
 

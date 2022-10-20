@@ -21,7 +21,7 @@
 <script lang="ts">
 import { PropType } from "vue";
 import { ITemplatesCollection } from "@/Interface";
-import Card from '@/components/WorkflowCard.vue';
+import Card from '@/components/CollectionWorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
 

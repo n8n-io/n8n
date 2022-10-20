@@ -113,8 +113,10 @@ import {
 } from '@/Interface';
 
 import {
+	deepCopy,
 	INodeParameters,
 	INodePropertyCollection,
+	NodeParameterValue,
 } from 'n8n-workflow';
 
 import { get } from 'lodash';
@@ -249,13 +251,13 @@ export default mixins(genericHelpers)
 						// Multiple values are allowed so append option to array
 						newParameterValue[optionParameter.name] = get(this.nodeValues, `${this.path}.${optionParameter.name}`, []);
 						if (Array.isArray(optionParameter.default)) {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...JSON.parse(JSON.stringify(optionParameter.default)));
+							(newParameterValue[optionParameter.name] as INodeParameters[]).push(...deepCopy(optionParameter.default as INodeParameters[]));
 						} else if (optionParameter.default !== '' && typeof optionParameter.default !== 'object') {
-							(newParameterValue[optionParameter.name] as INodeParameters[]).push(JSON.parse(JSON.stringify(optionParameter.default)));
+							(newParameterValue[optionParameter.name] as NodeParameterValue[]).push(deepCopy(optionParameter.default));
 						}
 					} else {
 						// Add a new option
-						newParameterValue[optionParameter.name] = JSON.parse(JSON.stringify(optionParameter.default));
+						newParameterValue[optionParameter.name] = deepCopy(optionParameter.default);
 					}
 				}
 

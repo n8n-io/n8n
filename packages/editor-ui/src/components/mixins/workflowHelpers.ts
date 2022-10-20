@@ -31,6 +31,7 @@ import {
 	IExecuteData,
 	INodeConnection,
 	IWebhookDescription,
+	deepCopy,
 } from 'n8n-workflow';
 
 import {
@@ -364,8 +365,8 @@ export const workflowHelpers = mixins(
 				cachedWorkflow = new Workflow({
 					id: workflowId,
 					name: workflowName,
-					nodes: copyData ? JSON.parse(JSON.stringify(nodes)) : nodes,
-					connections: copyData? JSON.parse(JSON.stringify(connections)): connections,
+					nodes: copyData ? deepCopy(nodes) : nodes,
+					connections: copyData? deepCopy(connections): connections,
 					active: false,
 					nodeTypes,
 					settings: this.$store.getters.workflowSettings,
@@ -732,11 +733,11 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveAsNewWorkflow ({name, tags, resetWebhookUrls, resetNodeIds, openInNewWindow}: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean, resetNodeIds?: boolean} = {}, redirect = true): Promise<boolean> {
+			async saveAsNewWorkflow ({ name, tags, resetWebhookUrls, resetNodeIds, openInNewWindow, data }: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean, resetNodeIds?: boolean, data?: IWorkflowDataUpdate} = {}, redirect = true): Promise<boolean> {
 				try {
 					this.$store.commit('addActiveAction', 'workflowSaving');
 
-					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
+					const workflowDataRequest: IWorkflowDataUpdate = data || await this.getWorkflowDataToSave();
 					// make sure that the new ones are not active
 					workflowDataRequest.active = false;
 					const changedNodes = {} as IDataObject;
@@ -767,6 +768,9 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
+
+					this.$store.commit('addWorkflow', workflowData);
+
 					if (openInNewWindow) {
 						const routeData = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: workflowData.id}});
 						window.open(routeData.href, '_blank');
