@@ -294,4 +294,78 @@ describe('POST /workflows', () => {
 		const usedCredentials = await testDb.getCredentialUsageInWorkflow(response.body.data.id);
 		expect(usedCredentials).toHaveLength(1);
 	});
+
+	it('PATCH /workflows/:id should be blocked on interim change - owner blocked', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, updatedAt: ownerLastKnownDate } = createResponse.body.data;
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses and updates workflow
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { updatedAt: memberLastKnownDate } = memberGetResponse.body.data;
+
+		await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Update by member', updatedAt: memberLastKnownDate });
+
+		// owner blocked from updating workflow
+
+		const updateAttemptResponse = await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Update attempt by owner', updatedAt: ownerLastKnownDate });
+
+		expect(updateAttemptResponse.status).toBe(400);
+		expect(updateAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
+	});
+
+	it('PATCH /workflows/:id should be blocked on interim change - member blocked', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates, updates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, updatedAt: ownerFirstUpdateDate } = createResponse.body.data;
+
+		const updateResponse = await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Update by owner', updatedAt: ownerFirstUpdateDate });
+		const { updatedAt: ownerSecondUpdateDate } = updateResponse.body.data;
+
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses workflow
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { updatedAt: memberLastKnownDate } = memberGetResponse.body.data;
+
+		// owner re-updates workflow
+
+		await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Owner update again', updatedAt: ownerSecondUpdateDate });
+
+		// member blocked from updating workflow
+
+		const updateAttemptResponse = await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Update attempt by member', updatedAt: memberLastKnownDate });
+
+		expect(updateAttemptResponse.status).toBe(400);
+		expect(updateAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
+	});
 });
