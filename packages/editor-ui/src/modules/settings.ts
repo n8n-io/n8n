@@ -112,6 +112,9 @@ const module: Module<ISettingsState, IRootState> = {
 		workflowCallerPolicyDefaultOption: (state): WorkflowCallerPolicyDefaultOption => {
 			return state.settings.workflowCallerPolicyDefaultOption;
 		},
+		isWorkflowSharingEnabled: (state): boolean => {
+			return state.settings.isWorkflowSharingEnabled;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -135,6 +138,9 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		setCommunityNodesFeatureEnabled(state: ISettingsState, isEnabled: boolean) {
 			state.settings.communityNodesEnabled = isEnabled;
+		},
+		setIsWorkflowSharingEnabled(state: ISettingsState, enabled: boolean) {
+			state.settings.isWorkflowSharingEnabled = enabled;
 		},
 		setWorkflowCallerPolicyDefaultOption(state: ISettingsState, defaultOption: WorkflowCallerPolicyDefaultOption) {
 			state.settings.workflowCallerPolicyDefaultOption = defaultOption;
@@ -172,6 +178,7 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setCommunityNodesFeatureEnabled', settings.communityNodesEnabled === true);
 			context.commit('settings/setAllowedModules', settings.allowedModules, {root: true});
 			context.commit('settings/setWorkflowCallerPolicyDefaultOption', settings.workflowCallerPolicyDefaultOption, {root: true});
+			context.commit('settings/setIsWorkflowSharingEnabled', settings.enterprise.workflowSharing, {root: true});
 		},
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
 			if (!context.getters.isTelemetryEnabled) {

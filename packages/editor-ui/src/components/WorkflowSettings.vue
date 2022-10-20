@@ -123,42 +123,45 @@
 						</n8n-select>
 					</el-col>
 				</el-row>
-				<el-row>
-					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.callerPolicy') + ":" }}
-						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-text="helpTexts.workflowCallerPolicy"></div>
-							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
-					</el-col>
-					<el-col :span="14" class="ignore-key-press">
-						<n8n-select v-model="workflowSettings.callerPolicy" :placeholder="$locale.baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
-							<n8n-option
-								v-for="option of workflowCallerPolicyOptions"
-								:key="option.key"
-								:label="option.value"
-								:value="option.key">
-							</n8n-option>
-						</n8n-select>
-					</el-col>
-				</el-row>
-				<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
-					<el-col :span="10" class="setting-name">
-						{{ $locale.baseText('workflowSettings.callerIds') + ":" }}
-						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-text="helpTexts.workflowCallerIds"></div>
-							<font-awesome-icon icon="question-circle" />
-						</n8n-tooltip>
-					</el-col>
-					<el-col :span="14">
-						<n8n-input
-							type="text"
-							size="medium"
-							v-model="workflowSettings.callerIds"
-							@input="onCallerIdsInput"
-						/>
-					</el-col>
-				</el-row>
+				<div v-if="isWorkflowSharingEnabled">
+					<el-row>
+						<el-col :span="10" class="setting-name">
+							{{ $locale.baseText('workflowSettings.callerPolicy') + ":" }}
+							<n8n-tooltip class="setting-info" placement="top" >
+								<div slot="content" v-text="helpTexts.workflowCallerPolicy"></div>
+								<font-awesome-icon icon="question-circle" />
+							</n8n-tooltip>
+						</el-col>
+
+						<el-col :span="14" class="ignore-key-press">
+							<n8n-select v-model="workflowSettings.callerPolicy" :placeholder="$locale.baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
+								<n8n-option
+									v-for="option of workflowCallerPolicyOptions"
+									:key="option.key"
+									:label="option.value"
+									:value="option.key">
+								</n8n-option>
+							</n8n-select>
+						</el-col>
+					</el-row>
+					<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
+						<el-col :span="10" class="setting-name">
+							{{ $locale.baseText('workflowSettings.callerIds') + ":" }}
+							<n8n-tooltip class="setting-info" placement="top" >
+								<div slot="content" v-text="helpTexts.workflowCallerIds"></div>
+								<font-awesome-icon icon="question-circle" />
+							</n8n-tooltip>
+						</el-col>
+						<el-col :span="14">
+							<n8n-input
+								type="text"
+								size="medium"
+								v-model="workflowSettings.callerIds"
+								@input="onCallerIdsInput"
+							/>
+						</el-col>
+					</el-row>
+				</div>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timeoutWorkflow') + ":" }}
@@ -281,6 +284,9 @@ export default mixins(
 
 	computed: {
 		...mapGetters(['workflowName', 'workflowId']),
+		isWorkflowSharingEnabled(): boolean {
+			return this.$store.getters['settings/isWorkflowSharingEnabled'];
+		}
 	},
 
 	async mounted () {
