@@ -9,6 +9,7 @@
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
+import { captureError } from './ErrorHandling';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -672,6 +673,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				credentialsDecrypted,
 			);
 		} catch (error) {
+			captureError(error);
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {

@@ -82,6 +82,7 @@ import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
 import bodyParser from 'body-parser';
+
 import config from '../config';
 import * as Queue from './Queue';
 
@@ -153,6 +154,7 @@ import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
 
 import { toHttpNodeParameters } from './CurlConverterHelper';
+import { initErrorHandling, captureError } from './ErrorHandling';
 
 require('body-parser-xml')(bodyParser);
 
@@ -255,6 +257,8 @@ class App {
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		initErrorHandling(this.app);
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -747,6 +751,7 @@ class App {
 				// DB ping
 				await connection.query('SELECT 1');
 			} catch (err) {
+				captureError(err);
 				LoggerProxy.error('No Database connection!', err);
 				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);

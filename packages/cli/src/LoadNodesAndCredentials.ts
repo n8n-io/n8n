@@ -45,6 +45,7 @@ import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
 } from './CommunityNodes/packageModel';
+import { captureError } from './ErrorHandling';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -131,13 +132,17 @@ class LoadNodesAndCredentialsClass {
 			const downloadedPackages = await this.getN8nNodePackages(downloadedNodesFolderModules);
 			nodePackages.push(...downloadedPackages);
 			// eslint-disable-next-line no-empty
-		} catch (error) {}
+		} catch (error) {
+			captureError(error);
+		}
 
 		for (const packagePath of nodePackages) {
 			try {
 				await this.loadDataFromPackage(packagePath);
 				// eslint-disable-next-line no-empty
-			} catch (error) {}
+			} catch (error) {
+				captureError(error);
+			}
 		}
 	}
 

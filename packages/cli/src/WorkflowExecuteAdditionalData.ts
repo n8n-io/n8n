@@ -69,6 +69,7 @@ import {
 import { whereClause } from './WorkflowHelpers';
 import { IWorkflowErrorData } from './Interfaces';
 import { findSubworkflowStart } from './utils';
+import { captureError } from './ErrorHandling';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -163,6 +164,7 @@ export function executeErrorWorkflow(
 					);
 				})
 				.catch((error) => {
+					captureError(error);
 					Logger.error(
 						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
 						{
@@ -221,6 +223,7 @@ function pruneExecutionData(this: WorkflowHooks): void {
 			.catch((error) => {
 				throttling = false;
 
+				captureError(error);
 				Logger.error(
 					`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
 					{
@@ -451,6 +454,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						flattenedExecutionData as IExecutionFlattedDb,
 					);
 				} catch (err) {
+					captureError(err);
 					// TODO: Improve in the future!
 					// Errors here might happen because of database access
 					// For busy machines, we may get "Database is locked" errors.
@@ -511,6 +515,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
+							captureError(e);
 							Logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave)`,
 								{ executionId: this.executionId, workflowId: this.workflowData.id },
@@ -629,6 +634,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						);
 					}
 				} catch (error) {
+					captureError(error);
 					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
 						executionId: this.executionId,
 						workflowId: this.workflowData.id,
@@ -676,6 +682,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
+							captureError(e);
 							Logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
 								{ sessionId: this.sessionId, workflowId: this.workflowData.id },

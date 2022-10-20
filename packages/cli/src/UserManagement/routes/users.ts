@@ -23,6 +23,7 @@ import {
 
 import * as config from '../../../config';
 import { issueCookie } from '../auth/jwt';
+import { captureError } from '../../ErrorHandling';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -159,6 +160,7 @@ export function usersNamespace(this: N8nApp): void {
 					public_api: false,
 				});
 			} catch (error) {
+				captureError(error);
 				Logger.error('Failed to create user shells', { userShells: createUsers });
 				throw new ResponseHelper.ResponseError('An error occurred during user creation');
 			}

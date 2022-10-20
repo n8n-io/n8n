@@ -3,6 +3,7 @@ import { createTransport, Transporter } from 'nodemailer';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import * as config from '../../../config';
 import { MailData, SendEmailResult, UserManagementMailerImplementation } from './Interfaces';
+import { captureError } from '../../ErrorHandling';
 
 export class NodeMailer implements UserManagementMailerImplementation {
 	private transport: Transporter;
@@ -62,6 +63,7 @@ export class NodeMailer implements UserManagementMailerImplementation {
 				`Email sent successfully to the following recipients: ${mailData.emailRecipients.toString()}`,
 			);
 		} catch (error) {
+			captureError(error);
 			Logger.error('Failed to send email', { recipients: mailData.emailRecipients, error });
 			return {
 				success: false,

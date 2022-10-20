@@ -59,6 +59,7 @@ import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import * as ActiveExecutions from './ActiveExecutions';
 import { createErrorExecution } from './GenericHelpers';
+import { captureError } from './ErrorHandling';
 import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from './constants';
 
 const activeExecutions = ActiveExecutions.getInstance();
@@ -121,6 +122,7 @@ export class ActiveWorkflowRunner {
 					});
 					console.log(`     => Started`);
 				} catch (error) {
+					captureError(error);
 					console.log(
 						`     => ERROR: Workflow could not be activated on first try, keep on trying`,
 					);
@@ -881,6 +883,7 @@ export class ActiveWorkflowRunner {
 			try {
 				await this.add(workflowId, activationMode, workflowData);
 			} catch (error) {
+				captureError(error);
 				let lastTimeout = this.queuedWorkflowActivations[workflowId].lastTimeout;
 				if (lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
 					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
@@ -948,6 +951,7 @@ export class ActiveWorkflowRunner {
 			try {
 				await this.removeWorkflowWebhooks(workflowId);
 			} catch (error) {
+				captureError(error);
 				console.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,
