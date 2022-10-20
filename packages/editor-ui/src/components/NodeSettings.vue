@@ -12,6 +12,7 @@
 				></NodeTitle>
 				<div v-if="!isReadOnly">
 					<NodeExecuteButton
+						v-if="!blockUI"
 						:nodeName="node.name"
 						:disabled="outputPanelEditMode.enabled"
 						size="small"
