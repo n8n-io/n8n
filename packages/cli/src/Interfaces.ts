@@ -731,6 +731,13 @@ export interface IWorkflowStatisticsCounts {
 	manualError: number;
 }
 
+export interface IWorkflowStatisticsTimestamps {
+	productionSuccess: Date | null;
+	productionError: Date | null;
+	manualSuccess: Date | null;
+	manualError: Date | null;
+}
+
 export type WhereClause = Record<string, { id: string }>;
 
 // ----------------------------------

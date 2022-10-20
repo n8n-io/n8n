@@ -1,7 +1,6 @@
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
-import { In } from 'typeorm';
-import { ResponseHelper, IWorkflowStatisticsCounts, Db } from '..';
+import { Db, IWorkflowStatisticsCounts, IWorkflowStatisticsTimestamps, ResponseHelper } from '..';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
 import { getLogger } from '../Logger';
 import { ExecutionRequest } from '../requests';
@@ -32,13 +31,14 @@ async function checkWorkflowId(workflowId: string): Promise<void> {
 	}
 }
 
-// Base endpoint is /workflow-stats
+/**
+ * GET /workflow-stats/:id/counts/
+ */
 workflowStatsController.get(
 	'/:id/counts/',
 	ResponseHelper.send(async (req: ExecutionRequest.Get): Promise<IWorkflowStatisticsCounts> => {
 		// Get counts from DB
 		const workflowId = req.params.id;
-		console.log(workflowId);
 
 		// Check that the id is valid
 		await checkWorkflowId(workflowId);
@@ -75,6 +75,57 @@ workflowStatsController.get(
 
 				case StatisticsNames.productionSuccess:
 					data.productionSuccess = count;
+			}
+		});
+
+		return data;
+	}),
+);
+
+/**
+ * GET /workflow-stats/:id/times/
+ */
+workflowStatsController.get(
+	'/:id/times/',
+	ResponseHelper.send(async (req: ExecutionRequest.Get): Promise<IWorkflowStatisticsTimestamps> => {
+		// Get times from DB
+		const workflowId = req.params.id;
+
+		// Check that the id is valid
+		await checkWorkflowId(workflowId);
+
+		// Find the stats for this workflow
+		const stats = await Db.collections.WorkflowStatistics.find({
+			select: ['latestEvent', 'name'],
+			where: {
+				workflowId,
+			},
+		});
+
+		const data: IWorkflowStatisticsTimestamps = {
+			productionSuccess: null,
+			productionError: null,
+			manualSuccess: null,
+			manualError: null,
+		};
+
+		// There will be a maximum of 4 stats (currently)
+		stats.forEach(({ latestEvent, name }) => {
+			switch (name) {
+				case StatisticsNames.manualError:
+					data.manualError = latestEvent;
+					break;
+
+				case StatisticsNames.manualSuccess:
+					data.manualSuccess = latestEvent;
+					break;
+
+				case StatisticsNames.productionError:
+					data.productionError = latestEvent;
+					break;
+
+				case StatisticsNames.productionSuccess:
+					data.productionSuccess = latestEvent;
 			}
 		});
 
