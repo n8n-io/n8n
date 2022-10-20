@@ -121,7 +121,7 @@ export default Vue.extend({
 		updateSettings(settingsInStore: IWorkflowSettings): void {
 			this.workflowSaveSettings.saveFailedExecutions = settingsInStore.saveDataErrorExecution !== 'none';
 			this.workflowSaveSettings.saveSuccessfulExecutions = settingsInStore.saveDataSuccessExecution !== 'none';
-			this.workflowSaveSettings.saveManualExecutions = !settingsInStore.saveManualExecutions ? this.defaultValues.saveManualExecutions : settingsInStore.saveManualExecutions as boolean;
+			this.workflowSaveSettings.saveManualExecutions = settingsInStore.saveManualExecutions === undefined ? this.defaultValues.saveManualExecutions : settingsInStore.saveManualExecutions as boolean;
 		},
 		onAccordionClick(event: MouseEvent): void {
 			if (event.target instanceof HTMLAnchorElement) {
