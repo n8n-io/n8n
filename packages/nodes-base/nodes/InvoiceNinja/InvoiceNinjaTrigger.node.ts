@@ -14,7 +14,7 @@ export class InvoiceNinjaTrigger implements INodeType {
 		name: 'invoiceNinjaTrigger',
 		icon: 'file:invoiceNinja.svg',
 		group: ['trigger'],
-		version: 1,
+		version: [1, 2],
 		description: 'Starts the workflow when Invoice Ninja events occur',
 		defaults: {
 			name: 'Invoice Ninja Trigger',

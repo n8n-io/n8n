@@ -23,11 +23,10 @@ export async function invoiceNinjaApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	body: any = {},
+	body: IDataObject = {},
 	query?: IDataObject,
 	uri?: string,
-): Promise<any> {
-	// tslint:disable-line:no-any
+) {
 	const credentials = await this.getCredentials('invoiceNinjaApi');
 
 	if (credentials === undefined) {
@@ -59,11 +58,9 @@ export async function invoiceNinjaApiRequestAllItems(
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-): Promise<any> {
-	// tslint:disable-line:no-any
-
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;

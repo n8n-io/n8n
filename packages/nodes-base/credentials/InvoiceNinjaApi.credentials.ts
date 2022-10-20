@@ -1,26 +1,16 @@
-import { ICredentialDataDecryptedObject, ICredentialTestRequest, ICredentialType, IHttpRequestOptions, INodeProperties } from 'n8n-workflow';
+import {
+	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
+	ICredentialType,
+	IHttpRequestOptions,
+	INodeProperties,
+} from 'n8n-workflow';
 
 export class InvoiceNinjaApi implements ICredentialType {
 	name = 'invoiceNinjaApi';
 	displayName = 'Invoice Ninja API';
 	documentationUrl = 'invoiceNinja';
 	properties: INodeProperties[] = [
-		{
-			displayName: 'Version',
-			name: 'version',
-			type: 'options',
-			default: 'v4',
-			options: [
-				{
-					name: 'v4',
-					value: 'v4',
-				},
-				{
-					name: 'v5',
-					value: 'v5',
-				},
-			],
-		},
 		{
 			displayName: 'URL',
 			name: 'url',
@@ -42,9 +32,7 @@ export class InvoiceNinjaApi implements ICredentialType {
 			hint: 'This is optional, enter only if you did set a secret in your app',
 			displayOptions: {
 				show: {
-					version: [
-						'v5',
-					],
+					version: ['v5'],
 				},
 			},
 		},
@@ -56,18 +44,25 @@ export class InvoiceNinjaApi implements ICredentialType {
 			method: 'GET',
 		},
 	};
-	async authenticate( credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions ): Promise<IHttpRequestOptions> {
-		if (credentials.version === 'v4') {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
+		const VERSION_5_TOKEN_LENGTH = 64;
+		const { apiToken, secret } = credentials;
+		const tokenLength = (apiToken as string).length;
+
+		if (tokenLength < VERSION_5_TOKEN_LENGTH) {
 			requestOptions.headers = {
 				Accept: 'application/json',
-				'X-Ninja-Token': credentials.apiToken,
+				'X-Ninja-Token': apiToken,
 			};
 		} else {
 			requestOptions.headers = {
 				'Content-Type': 'application/json',
-				'X-API-TOKEN': credentials.apiToken,
+				'X-API-TOKEN': apiToken,
 				'X-Requested-With': 'XMLHttpRequest',
-				'X-API-SECRET': credentials.secret || '',
+				'X-API-SECRET': secret || '',
 			};
 		}
 		return requestOptions;
