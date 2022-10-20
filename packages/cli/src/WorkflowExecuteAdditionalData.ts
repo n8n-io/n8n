@@ -766,7 +766,11 @@ export async function getRunData(
 		typeof workflowData.settings?.callerIds === 'string' &&
 		parentWorkflowId !== undefined
 	) {
-		const allowedCallerIds = workflowData.settings.callerIds.split(',').filter(Boolean);
+		const allowedCallerIds = workflowData.settings.callerIds
+			.split(',')
+			.map((id) => id.trim())
+			.filter((id) => id !== '');
+
 		if (!allowedCallerIds.includes(parentWorkflowId)) {
 			throw new SubworkflowOperationError(
 				`Target workflow ID ${workflowData.id} may only be called by a list of workflows, which does not include current workflow ID ${parentWorkflowId}.`,
