@@ -2,8 +2,8 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 import * as config from '../../../../config';
 import { LDAP_DEFAULT_CONFIGURATION } from '../../../Ldap/constants';
 import { logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
-export class CreateLdapEntities1655579796123 implements MigrationInterface {
-	name = 'CreateLdapEntities1655579796123';
+export class CreateLdapEntities1666304975928 implements MigrationInterface {
+	name = 'CreateLdapEntities1666304975928';
 
 	async up(queryRunner: QueryRunner): Promise<void> {
 		logMigrationStart(this.name);
@@ -78,9 +78,9 @@ export class CreateLdapEntities1655579796123 implements MigrationInterface {
 		);
 
 		await queryRunner.query(`
-				INSERT INTO "${tablePrefix}feature_config" VALUES (
-					ldap,
-					${JSON.stringify(LDAP_DEFAULT_CONFIGURATION)},
+				INSERT INTO "${tablePrefix}feature_config" (name, data) VALUES (
+					'ldap',
+					'${JSON.stringify(LDAP_DEFAULT_CONFIGURATION)}'
 				)
 		`);
 
