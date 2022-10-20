@@ -925,7 +925,7 @@ export default mixins(
 				this.$emit('textInput', parameterData);
 			},
 			valueChangedDebounced (value: NodeParameterValueType | {} | Date) {
-				this.callDebounced('valueChanged', { debounceTime: 50 }, value);
+				this.callDebounced('valueChanged', { debounceTime: 100 }, value);
 			},
 			valueChanged (value: NodeParameterValueType | {} | Date) {
 				if (this.parameter.name === 'nodeCredentialType') {
