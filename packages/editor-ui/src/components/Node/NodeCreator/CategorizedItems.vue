@@ -176,26 +176,35 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		searchFilter(): string {
 			return this.nodeFilter.toLowerCase().trim();
 		},
+		defaultLocale (): string {
+			return this.$store.getters.defaultLocale;
+		},
 		filteredNodeTypes(): INodeCreateElement[] {
 			const filter = this.searchFilter;
 			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
 
-			// const matchedCategorizedNodes = searchableNodes.filter((el: INodeCreateElement) => {
-			// 	return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
-			// });
+			let returnItems: INodeCreateElement[] = [];
+			if (this.defaultLocale !== 'en') {
+				returnItems = searchableNodes.filter((el: INodeCreateElement) => {
+					return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
+				});
+			}
+			else {
+				const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, this.selectedType));
+				const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
+				returnItems = matchedCategorizedNodes.map(({item}) => item);;
+			}
 
-			const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, this.selectedType));
-			const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
 
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
 					nodeFilter: this.nodeFilter,
-					result: matchedCategorizedNodes,
+					result: returnItems,
 					selectedType: this.selectedType,
 				});
 			}, 0);
 
-			return matchedCategorizedNodes.map(({item}) => item);;
+			return returnItems;
 		},
 		filteredAllNodeTypes(): INodeCreateElement[] {
 			if(this.filteredNodeTypes.length > 0) return [];
