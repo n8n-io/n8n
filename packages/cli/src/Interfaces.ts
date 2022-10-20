@@ -724,6 +724,13 @@ export interface IWorkflowExecuteProcess {
 	workflowExecute: WorkflowExecute;
 }
 
+export interface IWorkflowStatisticsCounts {
+	productionSuccess: number;
+	productionError: number;
+	manualSuccess: number;
+	manualError: number;
+}
+
 export type WhereClause = Record<string, { id: string }>;
 
 // ----------------------------------

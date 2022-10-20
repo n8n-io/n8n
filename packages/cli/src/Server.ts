@@ -152,6 +152,7 @@ import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
 
 import { toHttpNodeParameters } from './CurlConverterHelper';
+import { workflowStatsController } from './api/workflowStats.api';
 
 require('body-parser-xml')(bodyParser);
 
@@ -775,6 +776,11 @@ class App {
 		// Workflow
 		// ----------------------------------------
 		this.app.use(`/${this.restEndpoint}/workflows`, workflowsController);
+
+		// ----------------------------------------
+		// Workflow Statistics
+		// ----------------------------------------
+		this.app.use(`/${this.restEndpoint}/workflow-stats`, workflowStatsController);
 
 		// ----------------------------------------
 		// Tags
