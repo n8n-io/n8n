@@ -735,6 +735,7 @@ export default mixins(
 
 				this.$store.commit('setActive', data.active || false);
 				this.$store.commit('setWorkflowId', workflowId);
+				this.$store.commit('setWorkflowUpdatedAt', data.updatedAt);
 				this.$store.commit('setWorkflowName', { newName: data.name, setStateDirty: false });
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 				this.$store.commit('setWorkflowPinData', data.pinData || {});
@@ -1231,7 +1232,7 @@ export default mixins(
 				} catch (error) {
 					// Execution stop might fail when the execution has already finished. Let's treat this here.
 					const execution = await this.restApi().getExecution(executionId);
-					if (execution.finished) {
+					if (execution?.finished) {
 						const executedData = {
 							data: execution.data,
 							finished: execution.finished,
