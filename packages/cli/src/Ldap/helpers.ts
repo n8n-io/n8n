@@ -5,19 +5,17 @@ import { AES, enc } from 'crypto-js';
 import { Entry } from 'ldapts';
 import { UserSettings } from 'n8n-core';
 import { validate } from 'jsonschema';
-import { Db, IFeatureConfigDb } from '..';
+import { Db } from '..';
 import config from '../../config';
 import { LdapSyncHistory } from '../databases/entities/LdapSyncHistory';
 import { Role } from '../databases/entities/Role';
-import { Settings } from '../databases/entities/Settings';
 import { User } from '../databases/entities/User';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager';
 
 import {
 	LDAP_CONFIG_SCHEMA,
-	LDAP_DEFAULT_CONFIGURATION,
-	LDAP_DISABLED,
+	LDAP_ENABLED,
 	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
@@ -26,16 +24,17 @@ import {
 import type { LdapConfig, LdapDbColumns } from './types';
 
 /**
- * 	Check whether the LDAP feature
- *	is enabled in the instance
- */
-export const isLdapDisabled = (): boolean => config.getEnv(LDAP_DISABLED);
-
-/**
  *  Check whether the LDAP feature
  *	is disabled in the instance
  */
-export const isLdapEnabled = (): boolean => !config.getEnv(LDAP_DISABLED);
+export const isLdapEnabled = (): boolean =>
+	isUserManagementEnabled() && config.getEnv(LDAP_ENABLED);
+
+/**
+ * 	Check whether the LDAP feature
+ *	is enabled in the instance
+ */
+export const isLdapDisabled = (): boolean => !isLdapEnabled();
 
 /**
  * Set the LDAP login label
@@ -64,16 +63,6 @@ export const getLdapLoginLabel = (): string => config.getEnv(LDAP_LOGIN_LABEL);
  * from the configuration object
  */
 export const isLdapLoginEnabled = (): boolean => config.getEnv(LDAP_LOGIN_ENABLED);
-
-/**
- * Check whether the current run is the
- * first run after the feature was enabled
- * @param  {Settings[]} databaseSettings
- */
-export const isFirstRunAfterLdapFeatureEnabled = (databaseSettings: Settings[]): boolean => {
-	const dbSetting = databaseSettings.find((setting) => setting.key === LDAP_DISABLED);
-	return !dbSetting;
-};
 
 /**
  * Return a random password
@@ -127,35 +116,6 @@ export const encryptPassword = async (password: string): Promise<string> => {
 export const decryptPassword = async (password: string): Promise<string> => {
 	const encryptionKey = await UserSettings.getEncryptionKey();
 	return AES.decrypt(password, encryptionKey).toString(enc.Utf8);
-};
-
-/**
- * Save the LDAP settings
- * to the database
- */
-export const saveLdapSettings = async (): Promise<void> => {
-	const setting: Settings = {
-		key: LDAP_DISABLED,
-		value: 'false',
-		loadOnStartup: true,
-	};
-
-	await Db.collections.Settings.save(setting);
-
-	config.set(LDAP_DISABLED, false);
-};
-
-/**
- * Save the LDAP configuration
- * to the database with the default
- * values
- */
-export const saveLdapConfig = async (): Promise<void> => {
-	const featureConfig: IFeatureConfigDb = {
-		name: LDAP_FEATURE_NAME,
-		data: LDAP_DEFAULT_CONFIGURATION,
-	};
-	await Db.collections.FeatureConfig.save<IFeatureConfigDb>(featureConfig);
 };
 
 /**
@@ -219,21 +179,10 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
  * @param  {Settings[]} databaseSettings
  * @returns Promise
  */
-export const handleLdapInit = async (databaseSettings: Settings[]): Promise<void> => {
+export const handleLdapInit = async (): Promise<void> => {
 	// Do nothing if UM is disabled, as UM
 	// is required for LDAP to work
-	if (!isUserManagementEnabled()) return;
-
-	if (isFirstRunAfterLdapFeatureEnabled(databaseSettings)) {
-		// Save in the setting that the feature was enabled.
-		// Once the feature is enabled (not disabled explicily
-		// when updating to the version that includes LDAP),
-		// it cannot be disabled
-		await saveLdapSettings();
-
-		// Save all the default data for the feature
-		await saveLdapConfig();
-	}
+	if (!isLdapEnabled()) return;
 
 	const adConfig = await getLdapConfig();
 

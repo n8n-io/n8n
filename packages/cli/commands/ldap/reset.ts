@@ -1,5 +1,5 @@
 import { Db } from '../../src';
-import { LDAP_DISABLED, LDAP_FEATURE_NAME, SignInType } from '../../src/Ldap/constants';
+import { LDAP_FEATURE_NAME, SignInType } from '../../src/Ldap/constants';
 import { BaseCommand } from '../BaseCommand';
 
 export class Reset extends BaseCommand {
@@ -11,8 +11,6 @@ export class Reset extends BaseCommand {
 		await Db.collections.LdapSyncHistory.delete({});
 
 		await Db.collections.FeatureConfig.delete({ name: LDAP_FEATURE_NAME });
-
-		await Db.collections.Settings.delete({ key: LDAP_DISABLED });
 
 		this.logger.info('Successfully reset the database to default ldap state.');
 	}
