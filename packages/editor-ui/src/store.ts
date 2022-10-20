@@ -464,6 +464,11 @@ export const store = new Vuex.Store({
 			state.workflow.id = id;
 		},
 
+		// updatedAt
+		setWorkflowUpdatedAt (state, updatedAt: string) {
+			state.workflow.updatedAt = updatedAt;
+		},
+
 		// Name
 		setWorkflowName(state, data) {
 			if (data.setStateDirty === true) {
@@ -1008,6 +1013,9 @@ export const store = new Vuex.Store({
 		},
 		workflowId: (state): string => {
 			return state.workflow.id;
+		},
+		workflowUpdatedAt (state): string | number {
+			return state.workflow.updatedAt;
 		},
 
 		workflowSettings: (state): IWorkflowSettings => {
