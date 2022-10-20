@@ -25,7 +25,7 @@ import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { INodeCreateElement } from '@/Interface';
-import { CORE_NODES_CATEGORY, CRON_NODE_TYPE, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY } from '@/constants';
+import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
 
 import ItemIterator from './ItemIterator.vue';
 import CategorizedItems from './CategorizedItems.vue';
@@ -66,13 +66,13 @@ export default mixins(externalHooks).extend({
 					},
 				},
 				{
-					key: CRON_NODE_TYPE,
+					key: SCHEDULE_TRIGGER_NODE_TYPE,
 					type: "node",
 					properties: {
 						nodeType: {
 
 							group: [],
-							name: CRON_NODE_TYPE,
+							name: SCHEDULE_TRIGGER_NODE_TYPE,
 							displayName: this.$locale.baseText('nodeCreator.triggerHelperPanel.scheduleTriggerDisplayName'),
 							description: this.$locale.baseText('nodeCreator.triggerHelperPanel.scheduleTriggerDescription'),
 							icon: "fa:clock",
