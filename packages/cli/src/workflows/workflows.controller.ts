@@ -356,9 +356,9 @@ workflowsController.patch(
 			);
 		}
 
-		const userManagementEnabled = !config.getEnv('userManagement.disabled');
+		const numberOfUsers = await Db.collections.User.count();
 
-		if (userManagementEnabled && !forceSave) {
+		if (numberOfUsers > 1 && !forceSave) {
 			const lastKnownDate = new Date(req.body.updatedAt).getTime();
 			const storedDate = new Date(shared.workflow.updatedAt).getTime();
 
