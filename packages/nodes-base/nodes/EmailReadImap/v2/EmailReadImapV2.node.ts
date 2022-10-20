@@ -238,9 +238,9 @@ export class EmailReadImapV2 implements INodeType {
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentialsObject = await this.getCredentials('imap');
 		const credentials = isCredentialsDataImap(credentialsObject) ? credentialsObject : undefined;
-		if (!credentials)
+		if (!credentials) {
 			throw new NodeOperationError(this.getNode(), `Credentials are not valid for imap node.`);
-
+		}
 		const mailbox = this.getNodeParameter('mailbox') as string;
 		const postProcessAction = this.getNodeParameter('postProcessAction') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
@@ -533,7 +533,7 @@ export class EmailReadImapV2 implements INodeType {
 						}
 					}
 				},
-				onupdate: async (seqno: number, info: any) => {
+				onupdate: async (seqno: number, info) => {
 					Logger.verbose(`Email Read Imap:update ${seqno}`, info);
 				},
 			};
