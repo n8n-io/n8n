@@ -3041,7 +3041,6 @@ export default mixins(
 			resetWorkspace() {
 				// Reset nodes
 				this.deleteEveryEndpoint();
-				this.instance.reset();
 
 				if (this.executionWaitingForWebhook === true) {
 					// Make sure that if there is a waiting test-webhook that
