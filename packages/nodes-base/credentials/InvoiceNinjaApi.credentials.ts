@@ -29,12 +29,7 @@ export class InvoiceNinjaApi implements ICredentialType {
 			name: 'secret',
 			type: 'string',
 			default: '',
-			hint: 'This is optional, enter only if you did set a secret in your app',
-			displayOptions: {
-				show: {
-					version: ['v5'],
-				},
-			},
+			hint: 'This is optional, enter only if you did set a secret in your app and only if you are using v5',
 		},
 	];
 	test: ICredentialTestRequest = {
