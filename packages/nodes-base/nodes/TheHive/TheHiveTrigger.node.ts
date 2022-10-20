@@ -56,16 +56,6 @@ export class TheHiveTrigger implements INodeType {
 			return {};
 		}
 
-		// While TheHive uses "deleted" for the other objects, a task is not deleted but is updated with the status "Cancel"
-		// if (
-		// 	events.includes('case_task_delete') === true &&
-		// 	bodyData.operation === 'update' &&
-		// 	bodyData.objectType === 'case_task' &&
-		// 	(bodyData.details as IDataObject)?.status === 'Cancel'
-		// ) {
-		// 	bodyData.operation = 'delete';
-		// }
-
 		// Don't start the workflow if the event is not fired
 		// Replace Creation with Create for TheHive 3 support
 		const operation = (bodyData.operation as string).replace('Creation', 'Create');
