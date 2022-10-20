@@ -6,7 +6,7 @@ export class GoogleContactsOAuth2Api implements ICredentialType {
 	name = 'googleContactsOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google Contacts OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
