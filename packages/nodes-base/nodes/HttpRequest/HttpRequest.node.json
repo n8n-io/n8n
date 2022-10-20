@@ -1,16 +1,12 @@
-
 {
 	"node": "n8n-nodes-base.httpRequest",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Development",
-		"Core Nodes"
-	],
+	"categories": ["Development", "Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/nodes/n8n-nodes-base.httpRequest/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/"
 			}
 		],
 		"generic": [
@@ -130,15 +126,8 @@
 			}
 		]
 	},
-	"alias": [
-		"API",
-		"Request",
-		"URL",
-		"Build"
-	],
+	"alias": ["API", "Request", "URL", "Build"],
 	"subcategories": {
-		"Core Nodes": [
-			"Helpers"
-		]
+		"Core Nodes": ["Helpers"]
 	}
 }

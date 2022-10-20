@@ -65,6 +65,8 @@ export abstract class ExecutionBaseError extends Error {
 
 	context: IDataObject = {};
 
+	lineNumber: number | undefined;
+
 	constructor(error: Error | ExecutionBaseError | JsonObject) {
 		super();
 		this.name = this.constructor.name;
@@ -116,10 +118,6 @@ abstract class NodeError extends ExecutionBaseError {
 	 * Otherwise, if all the paths have been exhausted and no value is eligible, `null` is
 	 * returned.
 	 *
-	 * @param {JsonObject} error
-	 * @param {string[]} potentialKeys
-	 * @param {string[]} traversalKeys
-	 * @returns {string | null}
 	 */
 	protected findProperty(
 		error: JsonObject,
@@ -215,6 +213,8 @@ abstract class NodeError extends ExecutionBaseError {
  * Class for instantiating an operational error, e.g. an invalid credentials error.
  */
 export class NodeOperationError extends NodeError {
+	lineNumber: number | undefined;
+
 	constructor(
 		node: INode,
 		error: Error | string,
@@ -335,7 +335,6 @@ export class NodeApiError extends NodeError {
 	/**
 	 * Set the error's message based on the HTTP status code.
 	 *
-	 * @returns {void}
 	 */
 	private setMessage() {
 		if (!this.httpCode) {

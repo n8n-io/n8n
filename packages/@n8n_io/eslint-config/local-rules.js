@@ -46,7 +46,7 @@ module.exports = {
 						return;
 					}
 
-					if (isDeepCloneOperation(node)) {
+					if (isJsonStringifyCall(node)) {
 						return;
 					}
 
@@ -63,6 +63,47 @@ module.exports = {
 			};
 		},
 	},
+
+	'no-json-parse-json-stringify': {
+		meta: {
+			type: 'problem',
+			docs: {
+				description:
+					'Calls to `JSON.parse(JSON.stringify(arg))` must be replaced with `deepCopy(arg)` from `n8n-workflow`.',
+				recommended: 'error',
+			},
+			messages: {
+				noJsonParseJsonStringify: 'Replace with `deepCopy({{ argText }})`',
+			},
+			fixable: 'code',
+		},
+		create(context) {
+			return {
+				CallExpression(node) {
+					if (isJsonParseCall(node) && isJsonStringifyCall(node)) {
+						const [callExpression] = node.arguments;
+
+						const { arguments: args } = callExpression;
+
+						if (!Array.isArray(args) || args.length !== 1) return;
+
+						const [arg] = args;
+
+						if (!arg) return;
+
+						const argText = context.getSourceCode().getText(arg);
+
+						context.report({
+							messageId: 'noJsonParseJsonStringify',
+							node,
+							data: { argText },
+							fix: (fixer) => fixer.replaceText(node, `deepCopy(${argText})`),
+						});
+					}
+				},
+			};
+		},
+	},
 };
 
 const isJsonParseCall = (node) =>
@@ -72,7 +113,7 @@ const isJsonParseCall = (node) =>
 	node.callee.property.type === 'Identifier' &&
 	node.callee.property.name === 'parse';
 
-const isDeepCloneOperation = (node) => {
+const isJsonStringifyCall = (node) => {
 	const parseArg = node.arguments?.[0];
 	return (
 		parseArg !== undefined &&

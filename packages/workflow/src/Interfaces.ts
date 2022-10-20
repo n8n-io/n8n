@@ -11,6 +11,7 @@ import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
+import { ExpressionError } from './ExpressionError';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -62,6 +63,7 @@ export interface IConnection {
 }
 
 export type ExecutionError =
+	| ExpressionError
 	| WorkflowActivationError
 	| WorkflowOperationError
 	| NodeOperationError
@@ -939,11 +941,12 @@ export type NodePropertyTypes =
 	| 'options'
 	| 'string'
 	| 'credentialsSelect'
-	| 'resourceLocator';
+	| 'resourceLocator'
+	| 'curlImport';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'json';
+export type EditorTypes = 'code' | 'codeNodeEditor' | 'json';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1209,6 +1212,7 @@ export interface INodeTypeBaseDescription {
 	subtitle?: string;
 	defaultVersion?: number;
 	codex?: CodexData;
+	parameterPane?: 'wide';
 
 	/**
 	 * Whether the node must be hidden in the node creator panel,
@@ -1618,9 +1622,17 @@ export interface IStatusCodeMessages {
 	[key: string]: string;
 }
 
+export type DocumentationLink = {
+	url: string;
+};
+
 export type CodexData = {
 	categories?: string[];
 	subcategories?: { [category: string]: string[] };
+	resources?: {
+		credentialDocumentation?: DocumentationLink[];
+		primaryDocumentation?: DocumentationLink[];
+	};
 	alias?: string[];
 };
 

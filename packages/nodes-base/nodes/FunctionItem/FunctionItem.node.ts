@@ -14,6 +14,7 @@ export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function Item',
 		name: 'functionItem',
+		hidden: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
@@ -26,6 +27,12 @@ export class FunctionItem implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
+				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'JavaScript Code',
 				name: 'functionCode',
 				typeOptions: {
@@ -36,7 +43,7 @@ export class FunctionItem implements INodeType {
 				},
 				type: 'string',
 				default: `// Code here will run once per input item.
-// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+// More info and help: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.functionitem/
 // Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Add a new field called 'myNewField' to the JSON of the item

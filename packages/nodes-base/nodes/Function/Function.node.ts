@@ -14,6 +14,7 @@ export class Function implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function',
 		name: 'function',
+		hidden: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
@@ -27,6 +28,12 @@ export class Function implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
+				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'JavaScript Code',
 				name: 'functionCode',
 				typeOptions: {
@@ -37,7 +44,7 @@ export class Function implements INodeType {
 				},
 				type: 'string',
 				default: `// Code here will run only once, no matter how many input items there are.
-// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.function
+// More info and help:https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.function/
 // Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Loop over inputs and add a new field called 'myNewField' to the JSON of each one

@@ -160,8 +160,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 
 			if (!properties.success && runData?.data.resultData.error) {
 				properties.error_message = runData?.data.resultData.error.message;
-				let errorNodeName = runData?.data.resultData.error.node?.name;
-				properties.error_node_type = runData?.data.resultData.error.node?.type;
+				let errorNodeName =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.name
+						: undefined;
+				properties.error_node_type =
+					'node' in runData?.data.resultData.error
+						? runData?.data.resultData.error.node?.type
+						: undefined;
 
 				if (runData.data.resultData.lastNodeExecuted) {
 					const lastNode = TelemetryHelpers.getNodeTypeForName(
