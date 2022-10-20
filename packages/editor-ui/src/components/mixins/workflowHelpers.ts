@@ -400,7 +400,6 @@ export const workflowHelpers = mixins(
 					active: this.$store.getters.isActive,
 					settings: this.$store.getters.workflowSettings,
 					tags: this.$store.getters.workflowTags,
-					updatedAt: this.$store.getters.workflowUpdatedAt,
 				};
 
 				const workflowId = this.$store.getters.workflowId;
@@ -679,8 +678,6 @@ export const workflowHelpers = mixins(
 				} else {
 					this.$store.commit('setWorkflowInactive', workflowId);
 				}
-
-				this.$store.commit('setWorkflowUpdatedAt', data.updatedAt);
 			},
 
 			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
@@ -717,7 +714,6 @@ export const workflowHelpers = mixins(
 
 					this.$store.commit('setStateDirty', false);
 					this.$store.commit('removeActiveAction', 'workflowSaving');
-					this.$store.commit('setWorkflowUpdatedAt', workflowData.updatedAt);
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
