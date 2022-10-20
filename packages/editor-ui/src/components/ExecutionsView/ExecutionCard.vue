@@ -139,13 +139,15 @@ export default mixins(
 	padding-right: var(--spacing-2xs);
 
 	&.active {
-		padding: var(--spacing-2xs) var(--spacing-2xs) var(--spacing-2xs) 0;
+		padding: 0 var(--spacing-2xs) var(--spacing-2xs) 0;
 		border-left: var(--spacing-4xs) var(--border-style-base) transparent !important;
 
 		.executionStatus {
 			color: var(--color-text-dark) !important;
 		}
 	}
+
+	& + &.active { padding-top: var(--spacing-2xs); }
 
 	&:hover, &.active {
 		.executionLink {

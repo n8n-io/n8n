@@ -19,6 +19,9 @@
 				<n8n-text v-else-if="executionUIDetails.name !== 'waiting'" color="text-base" size="medium">
 					{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }} | ID#{{ activeExecution.id }}
 				</n8n-text>
+				<n8n-text v-else-if="executionUIDetails.name === 'waiting'" color="text-base" size="medium">
+					| ID#{{ activeExecution.id }}
+				</n8n-text>
 				<br><n8n-text v-if="activeExecution.mode === 'retry'" color="text-base" size= "medium">
 					{{ $locale.baseText('executionDetails.retry') }}
 					<router-link

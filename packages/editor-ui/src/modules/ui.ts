@@ -31,7 +31,6 @@ import {
 	IRootState,
 	IRunDataDisplayMode,
 	IUiState,
-	INodeFilterType,
 	XYPosition,
 } from '../Interface';
 
@@ -175,6 +174,7 @@ const module: Module<IUiState, IRootState> = {
 		],
 		nodeViewInitialized: false,
 		addFirstStepOnLoad: false,
+		executionSidebarAutoRefresh: true,
 	},
 	getters: {
 		ndvInputData: (state: IUiState, getters, rootState: IRootState, rootGetters) => {
@@ -252,6 +252,7 @@ const module: Module<IUiState, IRootState> = {
 		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
 		isNodeViewInitialized: (state: IUiState) => state.nodeViewInitialized,
 		getAddFirstStepOnLoad: (state: IUiState) => state.addFirstStepOnLoad,
+		isExecutionSidebarAutoRefreshOn: (state: IUiState) => state.executionSidebarAutoRefresh,
 	},
 	mutations: {
 		setInputNodeName: (state: IUiState, name: string | undefined) => {
@@ -386,6 +387,9 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setAddFirstStepOnLoad(state: IUiState, addStep: boolean) {
 			state.addFirstStepOnLoad = addStep;
+		},
+		setExecutionsSidebarAutoRefresh(state: IUiState, autoRefresh: boolean) {
+			state.executionSidebarAutoRefresh = autoRefresh;
 		},
 	},
 	actions: {

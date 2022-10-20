@@ -13,7 +13,7 @@
 
 <script lang="ts">
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { IWorkflowSettings } from 'n8n-workflow';
+import { deepCopy, IWorkflowSettings } from 'n8n-workflow';
 import Vue from 'vue';
 
 interface IWorkflowSaveSettings {
@@ -100,7 +100,7 @@ export default Vue.extend({
 			}
 		},
 		workflowSettings(): IWorkflowSettings {
-			const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings)) as IWorkflowSettings;
+			const workflowSettings = deepCopy(this.$store.getters.workflowSettings);
 			return workflowSettings;
 		},
 		accordionDescription(): string {
@@ -121,7 +121,7 @@ export default Vue.extend({
 		updateSettings(settingsInStore: IWorkflowSettings): void {
 			this.workflowSaveSettings.saveFailedExecutions = settingsInStore.saveDataErrorExecution !== 'none';
 			this.workflowSaveSettings.saveSuccessfulExecutions = settingsInStore.saveDataSuccessExecution !== 'none';
-			this.workflowSaveSettings.saveManualExecutions = settingsInStore.saveManualExecutions  === true;
+			this.workflowSaveSettings.saveManualExecutions = !settingsInStore.saveManualExecutions ? this.defaultValues.saveManualExecutions : settingsInStore.saveManualExecutions as boolean;
 		},
 		onAccordionClick(event: MouseEvent): void {
 			if (event.target instanceof HTMLAnchorElement) {

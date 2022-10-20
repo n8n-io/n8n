@@ -142,6 +142,7 @@ export default Vue.extend({
     },
 	},
 	mounted() {
+		this.autoRefresh = this.$store.getters['ui/isExecutionSidebarAutoRefreshOn'];
 		if (this.autoRefresh) {
 			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
 		}
@@ -174,6 +175,7 @@ export default Vue.extend({
 			this.$emit('reloadExecutions');
 		},
 		onAutoRefreshToggle (): void {
+			this.$store.commit('ui/setExecutionsSidebarAutoRefresh', this.autoRefresh);
 			if (this.autoRefreshInterval) {
 				// Clear any previously existing intervals (if any - there shouldn't)
 				clearInterval(this.autoRefreshInterval);

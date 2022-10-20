@@ -983,6 +983,7 @@ export interface IUiState {
 	pendingExecuteButtonShake: boolean;
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
+	executionSidebarAutoRefresh: boolean;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
