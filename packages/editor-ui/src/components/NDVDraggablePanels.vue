@@ -303,7 +303,7 @@ export default mixins(debounceHelper).extend({
 		},
 		onResizeDebounced(data: { direction: string, x: number, width: number}) {
 			if (this.initialized) {
-				this.callDebounced('onResize', { debounceTime: 15, trailing: true }, data);
+				this.callDebounced('onResize', { debounceTime: 10, trailing: true }, data);
 			}
 		},
 		onResize({ direction, x, width }: { direction: string, x: number, width: number}) {
