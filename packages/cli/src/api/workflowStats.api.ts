@@ -1,6 +1,13 @@
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
-import { Db, IWorkflowStatisticsCounts, IWorkflowStatisticsTimestamps, ResponseHelper } from '..';
+import {
+	Db,
+	IWorkflowStatisticsCounts,
+	IWorkflowStatisticsDataLoaded,
+	IWorkflowStatisticsTimestamps,
+	ResponseHelper,
+} from '..';
+import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
 import { getLogger } from '../Logger';
 import { ExecutionRequest } from '../requests';
@@ -20,7 +27,7 @@ workflowStatsController.use((req, res, next) => {
 });
 
 // Helper function that validates the ID, throws an error if not valud
-async function checkWorkflowId(workflowId: string): Promise<void> {
+async function checkWorkflowId(workflowId: string): Promise<WorkflowEntity> {
 	const workflow = await Db.collections.Workflow.findOne(workflowId);
 	if (!workflow) {
 		throw new ResponseHelper.ResponseError(
@@ -29,6 +36,7 @@ async function checkWorkflowId(workflowId: string): Promise<void> {
 			404,
 		);
 	}
+	return workflow;
 }
 
 /**
@@ -128,6 +136,26 @@ workflowStatsController.get(
 					data.productionSuccess = latestEvent;
 			}
 		});
+
+		return data;
+	}),
+);
+
+/**
+ * GET /workflow-stats/:id/data-loaded/
+ */
+workflowStatsController.get(
+	'/:id/data-loaded/',
+	ResponseHelper.send(async (req: ExecutionRequest.Get): Promise<IWorkflowStatisticsDataLoaded> => {
+		// Get flag
+		const workflowId = req.params.id;
+
+		// Get the corresponding workflow
+		const workflow = await checkWorkflowId(workflowId);
+
+		const data: IWorkflowStatisticsDataLoaded = {
+			dataLoaded: workflow.dataLoaded,
+		};
 
 		return data;
 	}),

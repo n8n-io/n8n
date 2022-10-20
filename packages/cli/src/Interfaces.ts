@@ -731,6 +731,10 @@ export interface IWorkflowStatisticsCounts {
 	manualError: number;
 }
 
+export interface IWorkflowStatisticsDataLoaded {
+	dataLoaded: boolean;
+}
+
 export interface IWorkflowStatisticsTimestamps {
 	productionSuccess: Date | null;
 	productionError: Date | null;
