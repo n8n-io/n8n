@@ -7,11 +7,11 @@
 			:loadingMore="loadingMore"
 			@reloadExecutions="setExecutions"
 			@filterUpdated="onFilterUpdated"
-			@refresh="loadAutoRefresh"
 			@loadMore="loadMore"
+			@retryExecution="onRetryExecution"
 		/>
 		<div :class="$style.content" v-if="!hidePreview">
-			<router-view name="executionPreview" @deleteCurrentExecution="onDeleteCurrentExecution"/>
+			<router-view name="executionPreview" @deleteCurrentExecution="onDeleteCurrentExecution" @retryExecution="onRetryExecution"/>
 		</div>
 	</div>
 </template>
@@ -447,6 +447,46 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		async loadActiveWorkflows(): Promise<void> {
 			const activeWorkflows = await this.restApi().getActiveWorkflows();
 			this.$store.commit('setActiveWorkflows', activeWorkflows);
+		},
+		async onRetryExecution (payload: { execution: IExecutionsSummary, command: string }) {
+			const loadWorkflow = payload.command === 'current-workflow';
+
+			this.$showMessage({
+				title: this.$locale.baseText('executionDetails.runningMessage'),
+				type: 'info',
+				duration: 2000,
+			});
+			await this.retryExecution(payload.execution, loadWorkflow);
+			this.loadAutoRefresh();
+
+			this.$telemetry.track('User clicked retry execution button', {
+				workflow_id: this.$store.getters.workflowId,
+				execution_id: payload.execution.id,
+				retry_type: loadWorkflow ? 'current' : 'original',
+			});
+		},
+		async retryExecution (execution: IExecutionsSummary, loadWorkflow?: boolean) {
+			try {
+				const retrySuccessful = await this.restApi().retryExecution(execution.id, loadWorkflow);
+
+				if (retrySuccessful === true) {
+					this.$showMessage({
+						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
+						type: 'success',
+					});
+				} else {
+					this.$showMessage({
+						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
+						type: 'error',
+					});
+				}
+
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.retryExecution.title'),
+				);
+			}
 		},
 	},
 });

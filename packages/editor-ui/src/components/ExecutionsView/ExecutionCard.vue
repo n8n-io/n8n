@@ -94,40 +94,7 @@ export default mixins(
 	},
 	methods: {
 		async onRetryMenuItemSelect(action: string): void {
-			const loadWorkflow = action === 'current-workflow';
-			const executionData = this.execution as unknown as IExecutionShortResponse;
-
-			await this.retryExecution(executionData, loadWorkflow);
-			this.$emit('refresh');
-
-			this.$telemetry.track('User clicked retry execution button', {
-				workflow_id: this.$store.getters.workflowId,
-				execution_id: executionData.id,
-				retry_type: loadWorkflow ? 'current' : 'original',
-			});
-		},
-		async retryExecution (execution: IExecutionShortResponse, loadWorkflow?: boolean) {
-			try {
-				const retrySuccessful = await this.restApi().retryExecution(execution.id, loadWorkflow);
-
-				if (retrySuccessful === true) {
-					this.$showMessage({
-						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulTrue.title'),
-						type: 'success',
-					});
-				} else {
-					this.$showMessage({
-						title: this.$locale.baseText('executionsList.showMessage.retrySuccessfulFalse.title'),
-						type: 'error',
-					});
-				}
-
-			} catch (error) {
-				this.$showError(
-					error,
-					this.$locale.baseText('executionsList.showError.retryExecution.title'),
-				);
-			}
+			this.$emit('retryExecution', { execution: this.execution, command: action });
 		},
 	},
 });

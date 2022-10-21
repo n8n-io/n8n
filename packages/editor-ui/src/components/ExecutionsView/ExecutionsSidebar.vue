@@ -69,6 +69,7 @@
 				:key="execution.id"
 				:execution="execution"
 				@refresh="onRefresh"
+				@retryExecution="onRetryExecution"
 			/>
 			<div v-if="loadingMore" class="mr-m">
 				<n8n-loading :class="$style.loader" variant="p" :rows="1" />
@@ -164,6 +165,9 @@ export default Vue.extend({
 					}
 				}
 			}
+		},
+		onRetryExecution (payload: Object) {
+			this.$emit('retryExecution', payload);
 		},
 		onRefresh (): void {
 			this.$emit('refresh');

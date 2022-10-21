@@ -33,6 +33,24 @@
 				</n8n-text>
 			</div>
 			<div>
+				<el-dropdown v-if="executionUIDetails.name === 'error'" trigger="click" class="mr-xs" @command="handleRetryClick">
+					<span class="retry-button">
+						<n8n-icon-button
+							size="large"
+							type="tertiary"
+							:title="$locale.baseText('executionsList.retryExecution')"
+							icon="redo"
+						/>
+					</span>
+					<el-dropdown-menu slot="dropdown">
+						<el-dropdown-item command="current-workflow">
+							{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+						</el-dropdown-item>
+						<el-dropdown-item command="original-workflow">
+							{{ $locale.baseText('executionsList.retryWithOriginalworkflow') }}
+						</el-dropdown-item>
+					</el-dropdown-menu>
+				</el-dropdown>
 				<n8n-icon-button :title="$locale.baseText('executionDetails.deleteExecution')" icon="trash" size="large" type="tertiary" @click="onDeleteExecution" />
 			</div>
 		</div>
@@ -79,6 +97,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 				return;
 			}
 			this.$emit('deleteCurrentExecution');
+		},
+		handleRetryClick(command: string): void {
+			this.$emit('retryExecution', { execution: this.activeExecution, command });
 		},
 	},
 });
