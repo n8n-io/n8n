@@ -202,7 +202,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 	},
 	methods: {
 		async onSaveButtonClick () {
-			let currentId = undefined;//this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID ? this.currentWorkflowId : this.$route.params.name;
+			let currentId = undefined;
 			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				currentId = this.currentWorkflowId;
 			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
