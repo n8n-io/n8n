@@ -165,7 +165,7 @@ export default mixins(externalHooks).extend({
 				this.draggingPath = el.dataset.path;
 			}
 
-			this.$store.commit('ui/resetMappingTelemetry');
+			this.$store.commit('ndv/resetMappingTelemetry');
 		},
 		onDragEnd(el: HTMLElement) {
 			this.draggingPath = null;

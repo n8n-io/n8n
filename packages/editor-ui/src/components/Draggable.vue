@@ -111,7 +111,7 @@ export default Vue.extend({
 				this.isDragging = true;
 
 				const data = this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : (this.data || '');
-				this.$store.commit('ui/draggableStartDragging', {type: this.type, data });
+				this.$store.commit('ndv/draggableStartDragging', {type: this.type, data });
 
 				this.$emit('dragstart', this.draggingEl);
 				document.body.style.cursor = 'grabbing';
@@ -141,7 +141,7 @@ export default Vue.extend({
 				this.$emit('dragend', this.draggingEl);
 				this.isDragging = false;
 				this.draggingEl = null;
-				this.$store.commit('ui/draggableStopDragging');
+				this.$store.commit('ndv/draggableStopDragging');
 			}, 0);
 		},
 	},

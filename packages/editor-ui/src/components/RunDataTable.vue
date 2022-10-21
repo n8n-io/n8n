@@ -346,7 +346,7 @@ export default mixins(externalHooks).extend({
 		onDragStart() {
 			this.draggedColumn = true;
 
-			this.$store.commit('ui/resetMappingTelemetry');
+			this.$store.commit('ndv/resetMappingTelemetry');
 		},
 		onCellDragStart(el: HTMLElement) {
 			if (el && el.dataset.value) {

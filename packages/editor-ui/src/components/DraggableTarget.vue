@@ -73,7 +73,7 @@ export default Vue.extend({
 	},
 	watch: {
 		activeDrop(active) {
-			this.$store.commit('ui/setDraggableCanDrop', active);
+			this.$store.commit('ndv/setDraggableCanDrop', active);
 		},
 	},
 });

@@ -151,13 +151,13 @@ export default mixins(
 			onFocus() {
 				this.focused = true;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ui/setMappableNDVInputFocus', this.parameter.displayName);
+					this.$store.commit('ndv/setMappableNDVInputFocus', this.parameter.displayName);
 				}
 			},
 			onBlur() {
 				this.focused = false;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ui/setMappableNDVInputFocus', '');
+					this.$store.commit('ndv/setMappableNDVInputFocus', '');
 				}
 			},
 			onMenuExpanded(expanded: boolean) {
@@ -234,7 +234,7 @@ export default mixins(
 							window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
 						}
 
-						this.$store.commit('ui/setMappingTelemetry', {
+						this.$store.commit('ndv/setMappingTelemetry', {
 							dest_node_type: this.node.type,
 							dest_parameter: this.path,
 							dest_parameter_mode: typeof prevValue === 'string' && prevValue.startsWith('=')? 'expression': 'fixed',
