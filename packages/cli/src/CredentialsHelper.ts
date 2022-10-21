@@ -58,13 +58,11 @@ import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
-	getAll(): Array<INodeType | IVersionedNodeType> {
-		// @ts-ignore
+	init: async (): Promise<void> => {},
+	getAll(this: INodeTypes): Array<INodeType | IVersionedNodeType> {
 		return Object.values(this.nodeTypes).map((data) => data.type);
 	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
+	getByNameAndVersion(this: INodeTypes, nodeType: string, version?: number): INodeType | undefined {
 		if (this.nodeTypes[nodeType] === undefined) {
 			return undefined;
 		}

@@ -115,7 +115,6 @@ export class CredentialsService {
 	static async prepareCreateData(
 		data: CredentialRequest.CredentialProperties,
 	): Promise<CredentialsEntity> {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { id, ...rest } = data;
 
 		// This saves us a merge but requires some type casting. These

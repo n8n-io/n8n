@@ -10,9 +10,7 @@ import fs from 'fs';
 import { Command, flags } from '@oclif/command';
 
 import { BinaryDataManager, UserSettings } from 'n8n-core';
-
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { INode, ITaskData, LoggerProxy } from 'n8n-workflow';
+import { ITaskData, LoggerProxy } from 'n8n-workflow';
 
 import { sep } from 'path';
 

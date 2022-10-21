@@ -7,10 +7,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import _, { cloneDeep } from 'lodash';
+import { cloneDeep } from 'lodash';
 import { BinaryDataManager } from 'n8n-core';
 import {
 	IDataObject,

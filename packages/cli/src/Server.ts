@@ -20,7 +20,6 @@
 /* eslint-disable @typescript-eslint/no-shadow */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-continue */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -840,13 +839,8 @@ class App {
 		this.app.get(
 			`/${this.restEndpoint}/nodes-list-search`,
 			ResponseHelper.send(
-				async (
-					req: NodeListSearchRequest,
-					res: express.Response,
-				): Promise<INodeListSearchResult | undefined> => {
-					const nodeTypeAndVersion = jsonParse(
-						req.query.nodeTypeAndVersion,
-					) as INodeTypeNameVersion;
+				async (req: NodeListSearchRequest): Promise<INodeListSearchResult | undefined> => {
+					const nodeTypeAndVersion = jsonParse<INodeTypeNameVersion>(req.query.nodeTypeAndVersion);
 
 					const { path, methodName } = req.query;
 
@@ -894,42 +888,40 @@ class App {
 		// Returns all the node-types
 		this.app.get(
 			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const returnData: INodeTypeDescription[] = [];
-					const onlyLatest = req.query.onlyLatest === 'true';
+			ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
+				const returnData: INodeTypeDescription[] = [];
+				const onlyLatest = req.query.onlyLatest === 'true';
 
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
+				const nodeTypes = NodeTypes();
+				const allNodes = nodeTypes.getAll();
 
-					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
-						if (req.query.includeProperties !== 'true') {
-							// @ts-ignore
-							delete nodeInfo.properties;
-						}
-						return nodeInfo;
-					};
+				const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
+					const nodeInfo: INodeTypeDescription = { ...nodeType.description };
+					if (req.query.includeProperties !== 'true') {
+						// @ts-ignore
+						delete nodeInfo.properties;
+					}
+					return nodeInfo;
+				};
 
-					if (onlyLatest) {
-						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
+				if (onlyLatest) {
+					allNodes.forEach((nodeData) => {
+						const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
+						const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
+						returnData.push(nodeInfo);
+					});
+				} else {
+					allNodes.forEach((nodeData) => {
+						const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
+						allNodeTypes.forEach((element) => {
+							const nodeInfo: INodeTypeDescription = getNodeDescription(element);
 							returnData.push(nodeInfo);
 						});
-					} else {
-						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-							allNodeTypes.forEach((element) => {
-								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-								returnData.push(nodeInfo);
-							});
-						});
-					}
+					});
+				}
 
-					return returnData;
-				},
-			),
+				return returnData;
+			}),
 		);
 
 		this.app.get(
@@ -937,7 +929,6 @@ class App {
 			ResponseHelper.send(
 				async (
 					req: express.Request & { query: { credentialType: string } },
-					res: express.Response,
 				): Promise<object | null> => {
 					const translationPath = getCredentialTranslationPath({
 						locale: this.frontendSettings.defaultLocale,
@@ -1076,21 +1067,16 @@ class App {
 		// ----------------------------------------
 		this.app.post(
 			`/${this.restEndpoint}/curl-to-json`,
-			ResponseHelper.send(
-				async (
-					req: CurlHelper.ToJson,
-					res: express.Response,
-				): Promise<{ [key: string]: string }> => {
-					const curlCommand = req.body.curlCommand ?? '';
+			ResponseHelper.send(async (req: CurlHelper.ToJson): Promise<{ [key: string]: string }> => {
+				const curlCommand = req.body.curlCommand ?? '';
 
-					try {
-						const parameters = toHttpNodeParameters(curlCommand);
-						return ResponseHelper.flattenObject(parameters, 'parameters');
-					} catch (e) {
-						throw new ResponseHelper.ResponseError(`Invalid cURL command`, undefined, 400);
-					}
-				},
-			),
+				try {
+					const parameters = toHttpNodeParameters(curlCommand);
+					return ResponseHelper.flattenObject(parameters, 'parameters');
+				} catch (e) {
+					throw new ResponseHelper.ResponseError(`Invalid cURL command`, undefined, 400);
+				}
+			}),
 		);
 		// ----------------------------------------
 		// Credential-Types
@@ -1099,19 +1085,17 @@ class App {
 		// Returns all the credential types which are defined in the loaded n8n-modules
 		this.app.get(
 			`/${this.restEndpoint}/credential-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialType[]> => {
-					const returnData: ICredentialType[] = [];
+			ResponseHelper.send(async (): Promise<ICredentialType[]> => {
+				const returnData: ICredentialType[] = [];
 
-					const credentialTypes = CredentialTypes();
+				const credentialTypes = CredentialTypes();
 
-					credentialTypes.getAll().forEach((credentialData) => {
-						returnData.push(credentialData);
-					});
+				credentialTypes.getAll().forEach((credentialData) => {
+					returnData.push(credentialData);
+				});
 
-					return returnData;
-				},
-			),
+				return returnData;
+			}),
 		);
 
 		this.app.get(
@@ -1609,7 +1593,7 @@ class App {
 		// Removes a test webhook
 		this.app.delete(
 			`/${this.restEndpoint}/test-webhook/:id`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<boolean> => {
+			ResponseHelper.send(async (req: express.Request): Promise<boolean> => {
 				// TODO UM: check if this needs validation with user management.
 				const workflowId = req.params.id;
 				return this.testWebhooks.cancelTestWebhook(workflowId);
@@ -1623,9 +1607,7 @@ class App {
 		// Returns all the available timezones
 		this.app.get(
 			`/${this.restEndpoint}/options/timezones`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<object> => {
-				return timezones;
-			}),
+			ResponseHelper.send(() => timezones),
 		);
 
 		// ----------------------------------------
@@ -1635,7 +1617,7 @@ class App {
 		// Returns binary buffer
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+			ResponseHelper.send(async (req: express.Request): Promise<string> => {
 				// TODO UM: check if this needs permission check for UM
 				const dataPath = req.params.path;
 				return BinaryDataManager.getInstance()
@@ -1653,15 +1635,13 @@ class App {
 		// Returns the current settings for the UI
 		this.app.get(
 			`/${this.restEndpoint}/settings`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<IN8nUISettings> => {
-					void InternalHooksManager.getInstance().onFrontendSettingsAPI(
-						req.headers.sessionid as string,
-					);
+			ResponseHelper.send(async (req: express.Request): Promise<IN8nUISettings> => {
+				void InternalHooksManager.getInstance().onFrontendSettingsAPI(
+					req.headers.sessionid as string,
+				);
 
-					return this.getSettingsForFrontend();
-				},
-			),
+				return this.getSettingsForFrontend();
+			}),
 		);
 
 		// ----------------------------------------

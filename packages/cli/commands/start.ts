@@ -74,8 +74,7 @@ export class Start extends Command {
 	static openBrowser() {
 		const editorUrl = GenericHelpers.getBaseUrl();
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		open(editorUrl, { wait: true }).catch((error: Error) => {
+		open(editorUrl, { wait: true }).catch(() => {
 			console.log(
 				`\nWas not able to open URL in browser. Please open manually by visiting:\n${editorUrl}\n`,
 			);
@@ -285,8 +284,7 @@ export class Start extends Command {
 					let cumulativeTimeout = 0;
 
 					const settings = {
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						retryStrategy: (times: number): number | null => {
+						retryStrategy: (): number | null => {
 							const now = Date.now();
 							if (now - lastTimer > 30000) {
 								// Means we had no timeout at all or last timeout was temporary and we recovered
@@ -419,7 +417,7 @@ export class Start extends Command {
 					process.stdin.setRawMode(true);
 					process.stdin.resume();
 					process.stdin.setEncoding('utf8');
-					// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 					let inputText = '';
 
 					if (flags.open) {
@@ -443,9 +441,8 @@ export class Start extends Command {
 								inputText = '';
 							} else {
 								// record it and write into terminal
-								// eslint-disable-next-line @typescript-eslint/no-unused-vars
 								inputText += key;
-								process.stdout.write(key);
+								process.stdout.write(inputText);
 							}
 						}
 					});

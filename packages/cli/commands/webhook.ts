@@ -91,8 +91,7 @@ export class Webhook extends Command {
 		process.on('SIGTERM', Webhook.stopProcess);
 		process.on('SIGINT', Webhook.stopProcess);
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-shadow
-		const { flags } = this.parse(Webhook);
+		this.parse(Webhook);
 
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
@@ -125,8 +124,7 @@ export class Webhook extends Command {
 				});
 
 				// Make sure the settings exist
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const userSettings = await UserSettings.prepareUserSettings();
+				await UserSettings.prepareUserSettings();
 
 				// Load all node and credential types
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
@@ -166,8 +164,7 @@ export class Webhook extends Command {
 					let cumulativeTimeout = 0;
 
 					const settings = {
-						// eslint-disable-next-line @typescript-eslint/no-unused-vars
-						retryStrategy: (times: number): number | null => {
+						retryStrategy: (): number | null => {
 							const now = Date.now();
 							if (now - lastTimer > 30000) {
 								// Means we had no timeout at all or last timeout was temporary and we recovered
@@ -222,8 +219,6 @@ export class Webhook extends Command {
 				activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 				await activeWorkflowRunner.initWebhooks();
 
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const editorUrl = GenericHelpers.getBaseUrl();
 				console.info('Webhook listener waiting for requests.');
 			} catch (error) {
 				console.error('Exiting due to error. See log message for details.');

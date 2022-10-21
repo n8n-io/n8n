@@ -13,7 +13,6 @@
 /* eslint-disable id-denylist */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable func-names */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
@@ -22,7 +21,6 @@ import {
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
-	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRun,
@@ -33,7 +31,6 @@ import {
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
 	LoggerProxy as Logger,
-	SubworkflowOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -213,7 +210,7 @@ function pruneExecutionData(this: WorkflowHooks): void {
 
 		// throttle just on success to allow for self healing on failure
 		Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) })
-			.then((data) =>
+			.then(() =>
 				setTimeout(() => {
 					throttling = false;
 				}, timeout * 1000),
@@ -316,11 +313,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 			},
 		],
 		workflowExecuteAfter: [
-			async function (
-				this: WorkflowHooks,
-				fullRunData: IRun,
-				newStaticData: IDataObject,
-			): Promise<void> {
+			async function (this: WorkflowHooks, fullRunData: IRun): Promise<void> {
 				Logger.debug(`Executing hook (hookFunctionsPush)`, {
 					executionId: this.executionId,
 					sessionId: this.sessionId,
@@ -364,7 +357,7 @@ function hookFunctionsPush(): IWorkflowExecuteHooks {
 	};
 }
 
-export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowExecuteHooks {
+export function hookFunctionsPreExecute(): IWorkflowExecuteHooks {
 	const externalHooks = ExternalHooks();
 
 	return {
@@ -1118,7 +1111,7 @@ export function getWorkflowHooksIntegrated(
 ): WorkflowHooks {
 	optionalParameters = optionalParameters || {};
 	const hookFunctions = hookFunctionsSave(optionalParameters.parentProcessMode);
-	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	const preExecuteFunctions = hookFunctionsPreExecute();
 	for (const key of Object.keys(preExecuteFunctions)) {
 		if (hookFunctions[key] === undefined) {
 			hookFunctions[key] = [];
@@ -1140,7 +1133,7 @@ export function getWorkflowHooksWorkerExecuter(
 ): WorkflowHooks {
 	optionalParameters = optionalParameters || {};
 	const hookFunctions = hookFunctionsSaveWorker();
-	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	const preExecuteFunctions = hookFunctionsPreExecute();
 	for (const key of Object.keys(preExecuteFunctions)) {
 		if (hookFunctions[key] === undefined) {
 			hookFunctions[key] = [];
@@ -1161,7 +1154,7 @@ export function getWorkflowHooksWorkerMain(
 ): WorkflowHooks {
 	optionalParameters = optionalParameters || {};
 	const hookFunctions = hookFunctionsPush();
-	const preExecuteFunctions = hookFunctionsPreExecute(optionalParameters.parentProcessMode);
+	const preExecuteFunctions = hookFunctionsPreExecute();
 	for (const key of Object.keys(preExecuteFunctions)) {
 		if (hookFunctions[key] === undefined) {
 			hookFunctions[key] = [];

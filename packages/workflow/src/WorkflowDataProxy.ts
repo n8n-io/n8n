@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-this-alias */
@@ -147,13 +146,13 @@ export class WorkflowDataProxy {
 
 					return Reflect.ownKeys(target);
 				},
-				getOwnPropertyDescriptor(k) {
+				getOwnPropertyDescriptor() {
 					return {
 						enumerable: true,
 						configurable: true,
 					};
 				},
-				get(target, name, receiver) {
+				get(target, name) {
 					// eslint-disable-next-line no-param-reassign
 					name = name.toString();
 					const contextData = NodeHelpers.getContext(that.runExecutionData!, 'node', node);
@@ -173,8 +172,7 @@ export class WorkflowDataProxy {
 				ownKeys(target) {
 					return Reflect.ownKeys(target);
 				},
-				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				get(target, name, receiver) {
+				get(target, name) {
 					name = name.toString();
 					return that.selfData[name];
 				},
@@ -196,13 +194,13 @@ export class WorkflowDataProxy {
 			ownKeys(target) {
 				return Reflect.ownKeys(target);
 			},
-			getOwnPropertyDescriptor(k) {
+			getOwnPropertyDescriptor() {
 				return {
 					enumerable: true,
 					configurable: true,
 				};
 			},
-			get(target, name, receiver) {
+			get(target, name) {
 				name = name.toString();
 
 				let returnValue: NodeParameterValueType;
@@ -462,7 +460,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
-				get(target, name, receiver) {
+				get(target, name) {
 					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
 						throw new ExpressionError('Environment variable access got disabled', {
 							causeDetailed:
@@ -485,10 +483,10 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
-				ownKeys(target) {
+				ownKeys() {
 					return allowedValues;
 				},
-				getOwnPropertyDescriptor(k) {
+				getOwnPropertyDescriptor() {
 					return {
 						enumerable: true,
 						configurable: true,
@@ -530,10 +528,10 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
-				ownKeys(target) {
+				ownKeys() {
 					return allowedValues;
 				},
-				getOwnPropertyDescriptor(k) {
+				getOwnPropertyDescriptor() {
 					return {
 						enumerable: true,
 						configurable: true,
@@ -571,7 +569,7 @@ export class WorkflowDataProxy {
 		return new Proxy(
 			{},
 			{
-				get(target, name, receiver) {
+				get(target, name) {
 					return that.nodeDataGetter(name.toString());
 				},
 			},
@@ -1022,10 +1020,10 @@ export class WorkflowDataProxy {
 			$input: new Proxy(
 				{},
 				{
-					ownKeys(target) {
+					ownKeys() {
 						return ['all', 'context', 'first', 'item', 'last', 'params'];
 					},
-					getOwnPropertyDescriptor(k) {
+					getOwnPropertyDescriptor() {
 						return {
 							enumerable: true,
 							configurable: true,

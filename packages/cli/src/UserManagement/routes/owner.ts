@@ -7,7 +7,7 @@ import { LoggerProxy as Logger } from 'n8n-workflow';
 import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import * as config from '../../../config';
 import { validateEntity } from '../../GenericHelpers';
-import { AuthenticatedRequest, OwnerRequest } from '../../requests';
+import { OwnerRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
 import { hashPassword, sanitizeUser, validatePassword } from '../UserManagementHelper';
@@ -107,7 +107,7 @@ export function ownerNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/owner/skip-setup`,
 		// eslint-disable-next-line @typescript-eslint/naming-convention
-		ResponseHelper.send(async (_req: AuthenticatedRequest, _res: express.Response) => {
+		ResponseHelper.send(async () => {
 			await Db.collections.Settings.update(
 				{ key: 'userManagement.skipInstanceOwnerSetup' },
 				{ value: JSON.stringify(true) },

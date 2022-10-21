@@ -2,7 +2,6 @@
 /* eslint-disable no-lonely-if */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-prototype-builtins */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable new-cap */
@@ -171,7 +170,7 @@ async function generateContentLengthHeader(formData: FormData, headers: IDataObj
 				res(length);
 			});
 		});
-		headers = Object.assign(headers, {
+		Object.assign(headers, {
 			'content-length': length,
 		});
 	} catch (error) {
@@ -1860,7 +1859,7 @@ export function getExecutePollFunctions(
 ): IPollFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
-			__emit: (data: INodeExecutionData[][]): void => {
+			__emit: (): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
 			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
@@ -2006,10 +2005,10 @@ export function getExecuteTriggerFunctions(
 ): ITriggerFunctions {
 	return ((workflow: Workflow, node: INode) => {
 		return {
-			emit: (data: INodeExecutionData[][]): void => {
+			emit: (): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
-			emitError: (error: Error): void => {
+			emitError: (): void => {
 				throw new Error('Overwrite NodeExecuteFunctions.getExecuteTriggerFunctions.emit function!');
 			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {

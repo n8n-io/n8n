@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import curlconverter from 'curlconverter';
 import get from 'lodash.get';
 import { jsonParse } from 'n8n-workflow';
@@ -154,7 +153,7 @@ const isBinaryRequest = (curlJson: CurlJson): boolean => {
 	return false;
 };
 
-const sanatizeCurlCommand = (curlCommand: string) =>
+const sanitizeCurlCommand = (curlCommand: string) =>
 	curlCommand
 		.replace(/\r\n/g, ' ')
 		.replace(/\n/g, ' ')
@@ -295,7 +294,7 @@ export const toHttpNodeParameters = (curlCommand: string): HttpNodeParameters =>
 	};
 
 	//attempt to get the curl flags not supported by the library
-	const curl = sanatizeCurlCommand(curlCommand);
+	const curl = sanitizeCurlCommand(curlCommand);
 
 	//check for follow redirect flags
 	if (FOLLOW_REDIRECT_FLAGS.some((flag) => curl.includes(` ${flag}`))) {

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { IBinaryDataConfig } from '../../core/dist/src';
 import { schema } from './schema';
@@ -127,7 +126,7 @@ type RemoveExcess<T> = T extends [...infer Path, 'format' | 'default']
 // -----------------------------------
 
 declare module 'convict' {
-	interface Config<T> {
+	interface Config {
 		getEnv<Path extends ConfigOptionPath>(path: Path): ToReturnType<Path>;
 	}
 }

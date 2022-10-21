@@ -11,7 +11,6 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable import/no-cycle */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {

@@ -284,11 +284,6 @@ const config = (module.exports = {
 		'@typescript-eslint/no-unused-expressions': 'error',
 
 		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 */
-		'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '_' }],
-
-		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-nullish-coalescing.md
 		 */
 		'@typescript-eslint/prefer-nullish-coalescing': 'error',
@@ -365,9 +360,16 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
 		 *
-		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
+		 * Changed to `warn` because eslint-plugin-diff fails to catch it. TODO: Revisit.
 		 */
-		'@typescript-eslint/no-unused-vars': 'warn',
+		'@typescript-eslint/no-unused-vars': [
+			'warn',
+			{
+				args: 'after-used',
+				ignoreRestSiblings: true,
+				destructuredArrayIgnorePattern: '^_',
+			},
+		],
 
 		// ----------------------------------
 		//              import

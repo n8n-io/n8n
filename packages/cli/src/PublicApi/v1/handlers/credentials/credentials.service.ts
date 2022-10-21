@@ -127,7 +127,6 @@ export function sanitizeCredentials(
 	const credentialsList = argIsArray ? credentials : [credentials];
 
 	const sanitizedCredentials = credentialsList.map((credential) => {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { data, nodesAccess, shared, ...rest } = credential;
 		return rest;
 	});

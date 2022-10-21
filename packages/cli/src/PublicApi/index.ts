@@ -107,17 +107,10 @@ function createApiRouter(
 		}),
 	);
 
-	apiController.use(
-		(
-			error: HttpError,
-			_req: express.Request,
-			res: express.Response,
-			_next: express.NextFunction,
-		) => {
-			return res.status(error.status || 400).json({
-				message: error.message,
-			});
-		},
+	apiController.use((error: HttpError, _req: express.Request, res: express.Response) =>
+		res.status(error.status || 400).json({
+			message: error.message,
+		}),
 	);
 
 	return apiController;

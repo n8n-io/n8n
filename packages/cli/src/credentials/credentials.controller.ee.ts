@@ -81,14 +81,12 @@ EECredentialsController.get(
 		credential.id = credential.id.toString();
 
 		if (!includeDecryptedData || !userSharing || userSharing.role.name !== 'owner') {
-			// eslint-disable-next-line @typescript-eslint/no-unused-vars
 			const { id, data: _, ...rest } = credential;
 
 			// @TODO_TECH_DEBT: Stringify `id` with entity field transformer
 			return { id: id.toString(), ...rest };
 		}
 
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { id, data: _, ...rest } = credential;
 
 		const key = await EECredentials.getEncryptionKey();

@@ -1,5 +1,4 @@
 /* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable import/no-cycle */
 import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';

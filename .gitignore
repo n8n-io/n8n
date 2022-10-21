@@ -14,5 +14,5 @@ _START_PACKAGE
 .idea
 nodelinter.config.json
 packages/*/package-lock.json
-packages/*/.turbo
+packages/**/.turbo/*
 *.swp
