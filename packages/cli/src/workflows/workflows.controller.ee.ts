@@ -23,8 +23,6 @@ import { FindManyOptions } from 'typeorm';
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
 
-const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
-
 EEWorkflowController.use((req, res, next) => {
 	if (!isSharingEnabled() || !config.getEnv('enterprise.workflowSharingEnabled')) {
 		// skip ee router and use free one
@@ -245,7 +243,7 @@ EEWorkflowController.patch(
 		if (shared.workflow.active) {
 			// When workflow gets saved always remove it as the triggers could have been
 			// changed and so the changes would not take effect
-			await activeWorkflowRunner.remove(workflowId);
+			await ActiveWorkflowRunner.getInstance().remove(workflowId);
 		}
 
 		if (updateData.settings) {
@@ -323,7 +321,10 @@ EEWorkflowController.patch(
 			// When the workflow is supposed to be active add it again
 			try {
 				await externalHooks.run('workflow.activate', [updatedWorkflow]);
-				await activeWorkflowRunner.add(workflowId, shared.workflow.active ? 'update' : 'activate');
+				await ActiveWorkflowRunner.getInstance().add(
+					workflowId,
+					shared.workflow.active ? 'update' : 'activate',
+				);
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
 				updateData.active = false;
