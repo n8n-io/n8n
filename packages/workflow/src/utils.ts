@@ -33,7 +33,7 @@ export const deepCopy = <T>(source: T): T => {
 
 export const jsonParse = <T>(
 	jsonString: string,
-	options?: { errorMessage?: string; fallbackValue?: any },
+	options?: { errorMessage?: string; fallbackValue?: T },
 ) => {
 	try {
 		return JSON.parse(jsonString) as T;
