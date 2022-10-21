@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -74,7 +75,7 @@ return item;`,
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
 						// Is some special object like a Date so stringify
-						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+						inputData[key] = deepCopy(inputData[key]);
 					}
 				}
 			});
@@ -89,7 +90,7 @@ return item;`,
 				item.index = itemIndex;
 
 				// Copy the items as they may get changed in the functions
-				item = JSON.parse(JSON.stringify(item));
+				item = deepCopy(item);
 
 				// Define the global objects for the custom function
 				const sandbox = {

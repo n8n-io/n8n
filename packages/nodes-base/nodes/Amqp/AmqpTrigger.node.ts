@@ -2,6 +2,7 @@ import { ContainerOptions, create_container, EventContext, Message, ReceiverOpti
 
 import { ITriggerFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
@@ -172,20 +173,20 @@ export class AmqpTrigger implements INodeType {
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+				const cont = deepCopy(data.body.content);
+				data.body = String.fromCharCode.apply(null, cont.data);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+				const cont = deepCopy(data.body.content);
+				data.body = String.fromCharCode.apply(null, cont.data);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				const content = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null, JSON.parse(content).data);
+				const content = deepCopy(data.body.content);
+				data.body = String.fromCharCode.apply(null, content.data);
 			}
 
 			if (options.jsonParseBody === true) {
