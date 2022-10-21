@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import { Entity, ManyToOne, PrimaryColumn, RelationId } from 'typeorm';
 import { WorkflowEntity } from './WorkflowEntity';
 import { CredentialsEntity } from './CredentialsEntity';

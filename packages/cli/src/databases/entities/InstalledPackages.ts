@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import { Column, Entity, JoinColumn, OneToMany, PrimaryColumn } from 'typeorm';
 import { InstalledNodes } from './InstalledNodes';
 import { AbstractEntity } from './AbstractEntity';

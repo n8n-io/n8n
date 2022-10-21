@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
-import { ICredentialNodeAccess } from 'n8n-workflow';
+import type { ICredentialNodeAccess } from 'n8n-workflow';
 import { Column, Entity, Index, OneToMany, PrimaryGeneratedColumn } from 'typeorm';
 import { IsArray, IsObject, IsString, Length } from 'class-validator';
-import { ICredentialsDb } from '../..';
 import { SharedCredentials } from './SharedCredentials';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import type { ICredentialsDb } from '../../Interfaces';
 
 @Entity()
 export class CredentialsEntity extends AbstractEntity implements ICredentialsDb {

@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn, Unique } from 'typeorm';
 import { IsString, Length } from 'class-validator';
 

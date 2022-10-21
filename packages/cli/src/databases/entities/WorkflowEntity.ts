@@ -1,8 +1,6 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
 import { Length } from 'class-validator';
 
-import {
+import type {
 	IBinaryKeyData,
 	IConnections,
 	IDataObject,
@@ -22,11 +20,11 @@ import {
 } from 'typeorm';
 
 import * as config from '../../../config';
-import { IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
 import { objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import type { IWorkflowDb } from '../../Interfaces';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {

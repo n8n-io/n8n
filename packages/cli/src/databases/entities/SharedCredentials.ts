@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import { Entity, ManyToOne, RelationId } from 'typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';

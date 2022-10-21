@@ -1,8 +1,7 @@
-/* eslint-disable import/no-cycle */
-import { WorkflowExecuteMode } from 'n8n-workflow';
+import type { WorkflowExecuteMode } from 'n8n-workflow';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import { IExecutionFlattedDb, IWorkflowDb } from '../..';
 import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
+import type { IExecutionFlattedDb, IWorkflowDb } from '../../Interfaces';
 
 @Entity()
 @Index(['workflowId', 'id'])

@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import {
 	AfterLoad,
 	AfterUpdate,
@@ -13,13 +12,13 @@ import {
 } from 'typeorm';
 import { IsEmail, IsString, Length } from 'class-validator';
 import type { IUser } from 'n8n-workflow';
-import { IPersonalizationSurveyAnswers, IUserSettings } from '../..';
 import { Role } from './Role';
 import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import type { IPersonalizationSurveyAnswers, IUserSettings } from '../../Interfaces';
 
 export const MIN_PASSWORD_LENGTH = 8;
 
