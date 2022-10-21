@@ -9,6 +9,7 @@ import {
 	IPollFunctions,
 	NodeApiError,
 	NodeOperationError,
+	parseJson,
 } from 'n8n-workflow';
 
 interface IAttachment {
@@ -115,7 +116,7 @@ export async function downloadRecordAttachments(
 		for (const fieldName of fieldNames) {
 			if (record[fieldName]) {
 				for (const [index, attachment] of (
-					JSON.parse(record[fieldName] as string) as IAttachment[]
+					parseJson(record[fieldName] as string) as IAttachment[]
 				).entries()) {
 					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
 						json: false,

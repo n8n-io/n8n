@@ -30,3 +30,20 @@ export const deepCopy = <T>(source: T): T => {
 	return clone;
 };
 // eslint-enable
+
+export const parseJson = (
+	jsonString: string,
+	options?: { errorMessage?: string; fallbackValue?: any },
+) => {
+	try {
+		return JSON.parse(jsonString);
+	} catch (error) {
+		if (options?.fallbackValue !== undefined) {
+			return options.fallbackValue;
+		}
+		if (options?.errorMessage) {
+			throw new Error(options.errorMessage);
+		}
+		throw error;
+	}
+};

@@ -5,6 +5,7 @@ import {
 	IWebhookFunctions,
 	JsonObject,
 	NodeOperationError,
+	parseJson,
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 import MailComposer from 'nodemailer/lib/mail-composer';
@@ -337,7 +338,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		)) as string;
 
-		return JSON.parse(webhooks) as Webhooks;
+		return parseJson(webhooks) as Webhooks;
 	};
 
 	export const createWebHook = async (
@@ -367,7 +368,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		);
 
-		return JSON.parse(webhookId) as WebhookId;
+		return parseJson(webhookId) as WebhookId;
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {

@@ -4,6 +4,7 @@ import {
 	IN8nHttpFullResponse,
 	INodeExecutionData,
 	INodeProperties,
+	parseJson,
 } from 'n8n-workflow';
 
 export const questionsOperations: INodeProperties[] = [
@@ -74,7 +75,7 @@ export const questionsOperations: INodeProperties[] = [
 									}
 									items[i] = newItem;
 									if (this.getNode().parameters.format === 'json') {
-										items[i].json = JSON.parse(
+										items[i].json = parseJson(
 											items[i].json as unknown as string,
 										)[0] as unknown as IDataObject;
 										console.log(items[i].json);

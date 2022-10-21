@@ -8,6 +8,7 @@ import {
 	INodeTypeDescription,
 	NodeApiError,
 	NodeOperationError,
+	parseJson,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request-promise-native';
@@ -1024,7 +1025,7 @@ export class HttpRequestV3 implements INodeType {
 						);
 					}
 
-					requestOptions.body = JSON.parse(jsonBodyParameter);
+					requestOptions.body = parseJson(jsonBodyParameter);
 				} else if (specifyBody === 'string') {
 					//form urlencoded
 					requestOptions.body = Object.fromEntries(new URLSearchParams(body));
@@ -1211,7 +1212,7 @@ export class HttpRequestV3 implements INodeType {
 				const responseContentType = response.headers['content-type'] ?? '';
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
-					response.body = JSON.parse(Buffer.from(response.body).toString());
+					response.body = parseJson(Buffer.from(response.body).toString());
 				} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
