@@ -100,13 +100,17 @@ export default mixins(
 				switch (tab) {
 					case MAIN_HEADER_TABS.WORKFLOW:
 						if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(this.workflowToReturnTo)) {
-							this.$router.push({
+							if (this.$route.name !== VIEWS.WORKFLOW) {
+								this.$router.push({
 								name: VIEWS.WORKFLOW,
 								params: { name: this.workflowToReturnTo },
 							});
+							}
 						} else {
-							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-							this.$store.commit('setStateDirty', this.dirtyState);
+							if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
+								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+								this.$store.commit('setStateDirty', this.dirtyState);
+							}
 						}
 						this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 						break;
