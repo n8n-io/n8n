@@ -1,11 +1,11 @@
-import {
+import type {
 	INode,
 	INodeCredentials,
 	INodeParameters,
 	INodeTypeNameVersion,
 	INodeTypes,
-	Workflow,
 } from 'n8n-workflow';
+import { Workflow } from 'n8n-workflow';
 
 const TEMP_NODE_NAME = 'Temp-Node';
 const TEMP_WORKFLOW_NAME = 'Temp-Workflow';
@@ -73,5 +73,10 @@ export abstract class LoadNodeDetails {
 			createdAt: new Date(),
 			updatedAt: new Date(),
 		};
+	}
+
+	protected getTempNode() {
+		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+		return this.workflow.getNode(TEMP_NODE_NAME)!;
 	}
 }

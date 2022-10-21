@@ -13,20 +13,15 @@ import {
 import { NodeExecuteFunctions } from '.';
 import { LoadNodeDetails } from './LoadNodeDetails';
 
-const TEMP_NODE_NAME = 'Temp-Node';
-
 export class LoadNodeParameterOptions extends LoadNodeDetails {
 	/**
 	 * Returns the available options via a predefined method
-	 *
-	 * @param {string} methodName The name of the method of which to get the data from
 	 */
 	async getOptionsViaMethodName(
 		methodName: string,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const node = this.workflow.getNode(TEMP_NODE_NAME)!;
+		const node = this.getTempNode();
 
 		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		const method = nodeType?.methods?.loadOptions?.[methodName];
@@ -49,22 +44,16 @@ export class LoadNodeParameterOptions extends LoadNodeDetails {
 
 	/**
 	 * Returns the available options via a load request information
-	 *
-	 * @param {ILoadOptions} loadOptions The load options which also contain the request information
 	 */
 	async getOptionsViaRequestProperty(
 		loadOptions: ILoadOptions,
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<INodePropertyOptions[]> {
-		const node = this.workflow.getNode(TEMP_NODE_NAME);
+		const node = this.getTempNode();
 
-		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node!.type, node?.typeVersion);
+		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node?.typeVersion);
 
-		if (
-			nodeType === undefined ||
-			!nodeType.description.requestDefaults ||
-			!nodeType.description.requestDefaults.baseURL
-		) {
+		if (!nodeType?.description?.requestDefaults?.baseURL) {
 			// This in in here for now for security reasons.
 			// Background: As the full data for the request to make does get send, and the auth data
 			// will then be applied, would it be possible to retrieve that data like that. By at least
@@ -72,9 +61,7 @@ export class LoadNodeParameterOptions extends LoadNodeDetails {
 			// In the future this code has to get improved that it does not use the request information from
 			// the request rather resolves it via the parameter-path and nodeType data.
 			throw new Error(
-				`The node-type "${
-					node!.type
-				}" does not exist or does not have "requestDefaults.baseURL" defined!`,
+				`The node-type "${node.type}" does not exist or does not have "requestDefaults.baseURL" defined!`,
 			);
 		}
 
@@ -85,7 +72,7 @@ export class LoadNodeParameterOptions extends LoadNodeDetails {
 
 		const routingNode = new RoutingNode(
 			this.workflow,
-			node!,
+			node,
 			connectionInputData,
 			runExecutionData ?? null,
 			additionalData,
@@ -119,7 +106,7 @@ export class LoadNodeParameterOptions extends LoadNodeDetails {
 			inputData,
 			runIndex,
 			tempNode,
-			{ node: node!, source: null, data: {} },
+			{ node, source: null, data: {} },
 			NodeExecuteFunctions,
 		);
 

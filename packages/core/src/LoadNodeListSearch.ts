@@ -1,18 +1,11 @@
-import { INodeListSearchResult, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import type { INodeListSearchResult, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
 
 import { NodeExecuteFunctions } from '.';
 import { LoadNodeDetails } from './LoadNodeDetails';
 
-const TEMP_NODE_NAME = 'Temp-Node';
-
 export class LoadNodeListSearch extends LoadNodeDetails {
 	/**
 	 * Returns the available options via a predefined method
-	 *
-	 * @param {string} methodName The name of the method of which to get the data from
-	 * @param {IWorkflowExecuteAdditionalData} additionalData
-	 * @returns {Promise<INodePropertyOptions[]>}
-	 * @memberof LoadNodeParameterOptions
 	 */
 	async getOptionsViaMethodName(
 		methodName: string,
@@ -20,8 +13,7 @@ export class LoadNodeListSearch extends LoadNodeDetails {
 		filter?: string,
 		paginationToken?: string,
 	): Promise<INodeListSearchResult> {
-		// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-		const node = this.workflow.getNode(TEMP_NODE_NAME)!;
+		const node = this.getTempNode();
 
 		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 		const method = nodeType?.methods?.listSearch?.[methodName];
