@@ -2,7 +2,7 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { In } from 'typeorm';
 
-import { Db, IUser } from '../../src';
+import { Db } from '../../src';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import type { CredentialWithSharings } from '../../src/credentials/credentials.types';
 import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
@@ -11,12 +11,9 @@ import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
+import type { IUser } from 'n8n-workflow';
 
 jest.mock('../../src/telemetry');
-
-// mock whether credentialsSharing is enabled or not
-const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');
-mockIsCredentialsSharingEnabled.mockReturnValue(true);
 
 let app: express.Application;
 let testDbName = '';
@@ -25,6 +22,7 @@ let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let saveCredential: SaveCredentialFunction;
 let authAgent: AuthAgent;
+let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -45,6 +43,8 @@ beforeAll(async () => {
 
 	utils.initTestLogger();
 	utils.initTestTelemetry();
+
+	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
 });
 
 beforeEach(async () => {
@@ -65,7 +65,7 @@ test('router should switch based on flag', async () => {
 	const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
 
 	// free router
-	mockIsCredentialsSharingEnabled.mockReturnValueOnce(false);
+	sharingSpy.mockReturnValueOnce(false);
 
 	const freeShareResponse = authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
@@ -82,7 +82,6 @@ test('router should switch based on flag', async () => {
 	expect(freeGetStatus).toBe(200);
 
 	// EE router
-	mockIsCredentialsSharingEnabled.mockReturnValueOnce(true);
 
 	const eeShareResponse = authAgent(owner)
 		.put(`/credentials/${savedCredential.id}/share`)
