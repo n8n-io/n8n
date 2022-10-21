@@ -17,8 +17,7 @@ export const lowerCaser = {
  */
 export const objectRetriever: ValueTransformer = {
 	to: (value: object): object => value,
-	from: (value: string | object): object =>
-		typeof value === 'string' ? (jsonParse(value) as object) : value,
+	from: (value: string | object): object => (typeof value === 'string' ? jsonParse(value) : value),
 };
 
 /**
@@ -28,8 +27,7 @@ export const objectRetriever: ValueTransformer = {
 const jsonColumn: ValueTransformer = {
 	to: (value: object): string | object =>
 		config.getEnv('database.type') === 'sqlite' ? JSON.stringify(value) : value,
-	from: (value: string | object): object =>
-		typeof value === 'string' ? (jsonParse(value) as object) : value,
+	from: (value: string | object): object => (typeof value === 'string' ? jsonParse(value) : value),
 };
 
 export const sqlite = { jsonColumn };

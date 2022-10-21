@@ -952,7 +952,11 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
-			const specifyHeaders = this.getNodeParameter('specifyHeaders', itemIndex, 'keypair') as string;
+			const specifyHeaders = this.getNodeParameter(
+				'specifyHeaders',
+				itemIndex,
+				'keypair',
+			) as string;
 			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
 			const {
@@ -1148,7 +1152,7 @@ export class HttpRequestV3 implements INodeType {
 						);
 					}
 
-					requestOptions.qs = JSON.parse(jsonQueryParameter);
+					requestOptions.qs = jsonParse(jsonQueryParameter);
 				}
 			}
 
@@ -1173,7 +1177,7 @@ export class HttpRequestV3 implements INodeType {
 						);
 					}
 
-					requestOptions.headers = JSON.parse(jsonHeadersParameter);
+					requestOptions.headers = jsonParse(jsonHeadersParameter);
 				}
 			}
 
