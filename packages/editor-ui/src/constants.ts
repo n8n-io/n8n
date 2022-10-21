@@ -367,6 +367,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	Ldap = 'ldap',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 

@@ -517,7 +517,6 @@ export interface IN8nUISettings {
 	defaultLocale: string;
 	userManagement: IUserManagementSettings;
 	ldap: {
-		enabled: boolean;
 		loginLabel: string;
 		loginEnabled: boolean;
 	};
@@ -544,6 +543,7 @@ export interface IN8nUISettings {
 	enterprise: {
 		sharing: boolean;
 		workflowSharing: boolean;
+		ldap: boolean;
 	};
 }
 

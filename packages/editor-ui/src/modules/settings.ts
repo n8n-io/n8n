@@ -33,7 +33,6 @@ const module: Module<ISettingsState, IRootState> = {
 			path: '/',
 		},
 		ldap: {
-			enabled: false,
 			loginLabel: '',
 			loginEnabled: false,
 		},
@@ -57,9 +56,6 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		publicApiPath(state: ISettingsState): string {
 			return state.api.path;
-		},
-		isLdapEnabled(state: ISettingsState): boolean {
-			return state.ldap.enabled;
 		},
 		isLdapLoginEnabled(state: ISettingsState): boolean {
 			return state.ldap.loginEnabled;
@@ -134,7 +130,6 @@ const module: Module<ISettingsState, IRootState> = {
 			state.api.enabled = settings.publicApi.enabled;
 			state.api.latestVersion = settings.publicApi.latestVersion;
 			state.api.path = settings.publicApi.path;
-			state.ldap.enabled = settings.ldap.enabled;
 			state.ldap.loginLabel = settings.ldap.loginLabel;
 			state.ldap.loginEnabled = settings.ldap.loginEnabled;
 			state.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;

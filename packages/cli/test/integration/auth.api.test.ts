@@ -2,7 +2,6 @@ import express = require('express');
 import validator from 'validator';
 import config from '../../config';
 import { Db } from '../../src';
-import { AUTH_COOKIE_NAME } from '../../src/constants';
 import type { Role } from '../../src/databases/entities/Role';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { randomValidPassword } from './shared/random';
@@ -10,7 +9,6 @@ import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 import { AUTH_COOKIE_NAME } from '../../src/constants';
-import { setLdapLoginEnabled } from '../../src/Ldap/helpers';
 
 jest.mock('../../src/telemetry');
 

@@ -4,7 +4,7 @@
 
 export const LDAP_FEATURE_NAME = 'ldap';
 
-export const LDAP_DISABLED = 'ldap.disabled';
+export const LDAP_ENABLED = 'enterprise.features.ldap';
 
 export const LDAP_LOGIN_LABEL = 'ldap.loginLabel';
 

@@ -276,7 +276,7 @@ export class Start extends Command {
 					);
 				}
 
-				await handleLdapInit(databaseSettings);
+				await handleLdapInit();
 
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
