@@ -4,15 +4,16 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { encodeURIComponentOnce, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { eventFields, eventOperations } from './EventDescription';
 
@@ -70,6 +71,30 @@ export class GoogleCalendar implements INodeType {
 	};
 
 	methods = {
+		listSearch: {
+			async getCalendars(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const results: INodeListSearchItems[] = [];
+				const calendars = await googleApiRequestAllItems.call(
+					this,
+					'items',
+					'GET',
+					'/calendar/v3/users/me/calendarList',
+				);
+				for (const calendar of calendars) {
+					const calendarName = calendar.summary;
+					const calendarId = encodeURIComponent(calendar.id);
+					results.push({
+						name: calendarName,
+						value: calendarId,
+					});
+				}
+				return { results };
+			},
+		},
 		loadOptions: {
 			// Get all the calendars to display them to user so that he can
 			// select them easily
@@ -205,7 +230,7 @@ export class GoogleCalendar implements INodeType {
 				if (resource === 'event') {
 					//https://developers.google.com/calendar/v3/reference/events/insert
 					if (operation === 'create') {
-						const calendarId = this.getNodeParameter('calendar', i) as string;
+						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
 						const start = this.getNodeParameter('start', i) as string;
 						const end = this.getNodeParameter('end', i) as string;
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
@@ -352,7 +377,7 @@ export class GoogleCalendar implements INodeType {
 					}
 					//https://developers.google.com/calendar/v3/reference/events/delete
 					if (operation === 'delete') {
-						const calendarId = this.getNodeParameter('calendar', i) as string;
+						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.sendUpdates) {
@@ -368,7 +393,7 @@ export class GoogleCalendar implements INodeType {
 					}
 					//https://developers.google.com/calendar/v3/reference/events/get
 					if (operation === 'get') {
-						const calendarId = this.getNodeParameter('calendar', i) as string;
+						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.maxAttendees) {
@@ -388,7 +413,7 @@ export class GoogleCalendar implements INodeType {
 					//https://developers.google.com/calendar/v3/reference/events/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const calendarId = this.getNodeParameter('calendar', i) as string;
+						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.iCalUID) {
 							qs.iCalUID = options.iCalUID as string;
@@ -446,7 +471,7 @@ export class GoogleCalendar implements INodeType {
 					}
 					//https://developers.google.com/calendar/v3/reference/events/patch
 					if (operation === 'update') {
-						const calendarId = this.getNodeParameter('calendar', i) as string;
+						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;

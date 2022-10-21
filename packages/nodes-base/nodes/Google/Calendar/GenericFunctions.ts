@@ -62,3 +62,8 @@ export async function googleApiRequestAllItems(
 
 	return returnData;
 }
+
+export function encodeURIComponentOnce(uri: string) {
+	// load options used to save encoded uri strings
+	return encodeURIComponent(decodeURIComponent(uri));
+}

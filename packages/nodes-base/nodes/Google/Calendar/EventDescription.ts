@@ -52,21 +52,44 @@ export const eventFields: INodeProperties[] = [
 	/*                                 event:getAll                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Calendar Name or ID',
+		displayName: 'Calendar',
 		name: 'calendar',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getCalendars',
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		description: 'Choose Calendar from the list or by ID',
+		modes: [
+			{
+				displayName: 'Calendar',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Calendar...',
+				typeOptions: {
+					searchListMethod: 'getCalendars',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '.*@.*',
+							errorMessage: 'Not a valid Google Calendar ID',
+						},
+					},
+				],
+				placeholder: 'en.german#holiday@group.v.calendar.google.com',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['event'],
 			},
 		},
-		default: '',
 	},
 
 	/* -------------------------------------------------------------------------- */
