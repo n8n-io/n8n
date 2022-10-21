@@ -4,6 +4,7 @@ import { BINARY_ENCODING } from 'n8n-core';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
@@ -364,7 +365,7 @@ export class MoveBinaryData implements INodeType {
 					newItem.json = JSON.parse(convertedValue);
 				} else {
 					// Does get added to existing data so copy it first
-					newItem.json = JSON.parse(JSON.stringify(item.json));
+					newItem.json = deepCopy(item.json);
 
 					if (options.keepAsBase64 !== true) {
 						convertedValue = iconv.decode(buffer, encoding, {
@@ -387,7 +388,7 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = item.binary;
 				} else {
 					// Binary data will change so copy it
-					newItem.binary = JSON.parse(JSON.stringify(item.binary));
+					newItem.binary = deepCopy(item.binary);
 					unset(newItem.binary, sourceKey);
 				}
 			} else if (mode === 'jsonToBinary') {
@@ -408,7 +409,7 @@ export class MoveBinaryData implements INodeType {
 
 				if (item.binary !== undefined) {
 					// Item already has binary data so copy it
-					newItem.binary = JSON.parse(JSON.stringify(item.binary));
+					newItem.binary = deepCopy(item.binary);
 				} else {
 					// Item does not have binary data yet so initialize empty
 					newItem.binary = {};
@@ -447,7 +448,7 @@ export class MoveBinaryData implements INodeType {
 					} else {
 						// Data should not be kept and only one key has to get removed. So copy all
 						// data and then remove the not needed one
-						newItem.json = JSON.parse(JSON.stringify(item.json));
+						newItem.json = deepCopy(item.json);
 						const sourceKey = this.getNodeParameter('sourceKey', itemIndex) as string;
 
 						unset(newItem.json, sourceKey);
