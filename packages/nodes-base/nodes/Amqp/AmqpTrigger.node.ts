@@ -1,3 +1,5 @@
+/* eslint-disable n8n-local-rules/no-uncaught-json-parse */
+//TODO this is a temporary fix for the issue with the JSON.parse, removed ater n8n 5151 merged
 import { ContainerOptions, create_container, EventContext, Message, ReceiverOptions } from 'rhea';
 
 import { ITriggerFunctions } from 'n8n-core';
@@ -6,8 +8,8 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	jsonParse,
 	NodeOperationError,
-	parseJSON,
 } from 'n8n-workflow';
 
 export class AmqpTrigger implements INodeType {
@@ -190,7 +192,7 @@ export class AmqpTrigger implements INodeType {
 			}
 
 			if (options.jsonParseBody === true) {
-				data.body = parseJSON(data.body);
+				data.body = jsonParse(data.body);
 			}
 			if (options.onlyBody === true) {
 				data = data.body;

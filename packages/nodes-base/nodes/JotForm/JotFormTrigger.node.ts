@@ -9,7 +9,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	parseJSON,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { jotformApiRequest } from './GenericFunctions';
@@ -168,7 +168,7 @@ export class JotFormTrigger implements INodeType {
 
 		return new Promise((resolve, reject) => {
 			form.parse(req, async (err, data, files) => {
-				const rawRequest = parseJSON(data.rawRequest as string);
+				const rawRequest = jsonParse(data.rawRequest as string);
 				data.rawRequest = rawRequest;
 
 				let returnData: IDataObject;

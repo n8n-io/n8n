@@ -5,7 +5,7 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	parseJSON,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from './GenericFunctions';
@@ -136,7 +136,7 @@ export class Elasticsearch implements INodeType {
 						if (query) {
 							Object.assign(
 								body,
-								parseJSON(query, { errorMessage: "Invalid JSON in 'Query' option" }),
+								jsonParse(query, { errorMessage: "Invalid JSON in 'Query' option" }),
 							);
 						}
 						Object.assign(qs, rest);

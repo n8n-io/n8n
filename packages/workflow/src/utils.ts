@@ -31,7 +31,7 @@ export const deepCopy = <T>(source: T): T => {
 };
 // eslint-enable
 
-export const parseJSON = <T>(
+export const jsonParse = <T>(
 	jsonString: string,
 	options?: { errorMessage?: string; fallbackValue?: any },
 ) => {

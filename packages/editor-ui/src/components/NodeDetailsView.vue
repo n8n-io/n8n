@@ -112,7 +112,7 @@ import {
 	IRunData,
 	IRunExecutionData,
 	Workflow,
-	parseJSON,
+	jsonParse,
 } from 'n8n-workflow';
 import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '../Interface';
 
@@ -555,7 +555,7 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('pinData', { node: this.activeNode, data: parseJSON(value) });
+					this.$store.commit('pinData', { node: this.activeNode, data: jsonParse(value) });
 				}
 
 				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);

@@ -4,8 +4,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	jsonParse,
 	NodeOperationError,
-	parseJSON,
 } from 'n8n-workflow';
 
 const errorObjectPlaceholder = `{
@@ -92,7 +92,7 @@ export class StopAndError implements INodeType {
 			toThrow = this.getNodeParameter('errorMessage', 0) as string;
 		} else {
 			const json = this.getNodeParameter('errorObject', 0) as string;
-			const errorObject = parseJSON(json);
+			const errorObject = jsonParse(json);
 
 			toThrow = {
 				name: 'User-thrown error',

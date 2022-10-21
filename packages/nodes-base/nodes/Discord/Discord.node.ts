@@ -4,9 +4,9 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	jsonParse,
 	NodeApiError,
 	NodeOperationError,
-	parseJSON,
 } from 'n8n-workflow';
 
 import { DiscordAttachment, DiscordWebhook } from './Interfaces';
@@ -172,7 +172,7 @@ export class Discord implements INodeType {
 
 			if (options.allowed_mentions) {
 				//@ts-expect-error
-				body.allowed_mentions = parseJSON(options.allowed_mentions);
+				body.allowed_mentions = jsonParse(options.allowed_mentions);
 			}
 
 			if (options.avatarUrl) {
@@ -189,12 +189,12 @@ export class Discord implements INodeType {
 
 			if (options.payloadJson) {
 				//@ts-expect-error
-				body.payload_json = parseJSON(options.payloadJson);
+				body.payload_json = jsonParse(options.payloadJson);
 			}
 
 			if (options.attachments) {
 				//@ts-expect-error
-				body.attachments = parseJSON(options.attachments as DiscordAttachment[]);
+				body.attachments = jsonParse(options.attachments as DiscordAttachment[]);
 			}
 
 			//* Not used props, delete them from the payload as Discord won't need them :^

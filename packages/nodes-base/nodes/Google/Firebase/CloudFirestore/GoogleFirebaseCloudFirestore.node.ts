@@ -7,7 +7,7 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	parseJSON,
+	jsonParse,
 } from 'n8n-workflow';
 
 import {
@@ -339,7 +339,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 							this,
 							'POST',
 							`/${projectId}/databases/${database}/documents:runQuery`,
-							parseJSON(query),
+							jsonParse(query),
 						);
 
 						responseData = responseData.map(

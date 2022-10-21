@@ -5,8 +5,8 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	jsonParse,
 	NodeOperationError,
-	parseJSON,
 } from 'n8n-workflow';
 
 import { contactFields, contactOperations } from './ContactDescription';
@@ -150,7 +150,7 @@ export class AgileCrm implements INodeType {
 					} else if (filterType === 'json') {
 						const filterJsonRules = this.getNodeParameter('filterJson', i) as string;
 						if (validateJSON(filterJsonRules) !== undefined) {
-							Object.assign(filterJson, parseJSON(filterJsonRules) as IFilter);
+							Object.assign(filterJson, jsonParse(filterJsonRules) as IFilter);
 						} else {
 							throw new NodeOperationError(this.getNode(), 'Filter (JSON) must be a valid json', {
 								itemIndex: i,
@@ -204,7 +204,7 @@ export class AgileCrm implements INodeType {
 
 						if (additionalFieldsJson !== '') {
 							if (validateJSON(additionalFieldsJson) !== undefined) {
-								Object.assign(body, parseJSON(additionalFieldsJson));
+								Object.assign(body, jsonParse(additionalFieldsJson));
 							} else {
 								throw new NodeOperationError(
 									this.getNode(),
@@ -356,7 +356,7 @@ export class AgileCrm implements INodeType {
 
 						if (additionalFieldsJson !== '') {
 							if (validateJSON(additionalFieldsJson) !== undefined) {
-								Object.assign(body, parseJSON(additionalFieldsJson));
+								Object.assign(body, jsonParse(additionalFieldsJson));
 							} else {
 								throw new NodeOperationError(
 									this.getNode(),
@@ -534,7 +534,7 @@ export class AgileCrm implements INodeType {
 
 						if (additionalFieldsJson !== '') {
 							if (validateJSON(additionalFieldsJson) !== undefined) {
-								Object.assign(body, parseJSON(additionalFieldsJson));
+								Object.assign(body, jsonParse(additionalFieldsJson));
 							} else {
 								throw new NodeOperationError(
 									this.getNode(),
@@ -574,7 +574,7 @@ export class AgileCrm implements INodeType {
 
 						if (additionalFieldsJson !== '') {
 							if (validateJSON(additionalFieldsJson) !== undefined) {
-								Object.assign(body, parseJSON(additionalFieldsJson));
+								Object.assign(body, jsonParse(additionalFieldsJson));
 							} else {
 								throw new NodeOperationError(
 									this.getNode(),

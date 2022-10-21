@@ -7,7 +7,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	parseJSON,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { wufooApiRequest } from './GenericFunctions';
@@ -154,7 +154,7 @@ export class WufooTrigger implements INodeType {
 			return {};
 		}
 
-		const fieldsObject = parseJSON(req.body.FieldStructure, {
+		const fieldsObject = jsonParse(req.body.FieldStructure, {
 			errorMessage: "Invalid JSON in request body field 'FieldStructure'",
 		});
 
@@ -209,10 +209,10 @@ export class WufooTrigger implements INodeType {
 				entryId: req.body.EntryId as number,
 				dateCreated: req.body.DateCreated as Date,
 				formId: req.body.FormId as string,
-				formStructure: parseJSON(req.body.FormStructure, {
+				formStructure: jsonParse(req.body.FormStructure, {
 					errorMessage: "Invalid JSON in request body field 'FormStructure'",
 				}),
-				fieldStructure: parseJSON(req.body.FieldStructure, {
+				fieldStructure: jsonParse(req.body.FieldStructure, {
 					errorMessage: "Invalid JSON in request body field 'FieldStructure'",
 				}),
 				entries,

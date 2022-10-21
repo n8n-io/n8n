@@ -7,7 +7,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, NodeApiError, parseJSON } from 'n8n-workflow';
+import { IDataObject, IHttpRequestOptions, jsonParse, NodeApiError } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -77,7 +77,7 @@ export async function awsApiRequestAllItems(
 	do {
 		responseData = await awsApiRequestREST.call(this, service, method, path, body, query, headers);
 		if (responseData.NextToken) {
-			const data = parseJSON(body as string, { errorMessage: 'Response body is not valid JSON' });
+			const data = jsonParse(body as string, { errorMessage: 'Response body is not valid JSON' });
 			data['NextToken'] = responseData.NextToken;
 		}
 		returnData.push.apply(returnData, get(responseData, propertyName));
