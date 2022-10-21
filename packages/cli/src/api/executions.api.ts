@@ -9,10 +9,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
+import { validate } from 'jsonschema';
 import _, { cloneDeep } from 'lodash';
 import { BinaryDataManager } from 'n8n-core';
 import { IDataObject, IWorkflowBase, LoggerProxy, Workflow } from 'n8n-workflow';
-import { FindManyOptions, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
+import { FindManyOptions, FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 
 import {
 	ActiveExecutions,
@@ -105,13 +106,86 @@ async function getExecutionsCount(
 	return { count, estimated: false };
 }
 
+const schemaGetExecutionsQueryFilter = {
+	$id: '/IGetExecutionsQueryFilter',
+	type: 'object',
+	properties: {
+		finished: { type: 'boolean' },
+		mode: { type: 'string' },
+		retryOf: { type: 'string' },
+		retrySuccessId: { type: 'string' },
+		startedAt: {
+			type: { type: 'string' },
+			format: 'date-time',
+		},
+		stoppedAt: {
+			type: { type: 'string' },
+			format: 'date-time',
+		},
+		workflowData: { type: 'string' },
+		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+	},
+};
+
+interface IGetExecutionsQueryFilter {
+	id?: FindOperator<string>;
+	finished?: boolean;
+	mode?: string;
+	retryOf?: string;
+	retrySuccessId?: string;
+	startedAt?: string;
+	stoppedAt?: string;
+	workflowData?: string;
+	workflowId?: number | string;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	waitTill?: FindOperator<any>;
+}
+
+const allowedExecutionsQueryFilterFields = [
+	'finished',
+	'mode',
+	'retryOf',
+	'retrySuccessId',
+	'startedAt',
+	'stoppedAt',
+	'workflowData',
+	'workflowId',
+];
+
 /**
  * GET /executions
  */
 executionsController.get(
 	'/',
 	ResponseHelper.send(async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
-		const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+		const userIsGlobalOwner = req.user.globalRole.name === 'owner';
+		if (!userIsGlobalOwner && sharedWorkflowIds.length === 0)
+			// return early since without shared workflows there can be no hits for regular users
+			return {
+				count: 0,
+				estimated: false,
+				results: [],
+			};
+
+		let filter: IGetExecutionsQueryFilter | undefined = undefined;
+		if (req.query.filter) {
+			try {
+				const filterJson = JSON.parse(req.query.filter);
+				Object.keys(filterJson).map((key) => {
+					if (!allowedExecutionsQueryFilterFields.includes(key)) delete filterJson[key];
+				});
+				if (validate(filterJson, schemaGetExecutionsQueryFilter).valid) {
+					filter = filterJson as IGetExecutionsQueryFilter;
+				}
+			} catch (error) {
+				throw new ResponseHelper.ResponseError(
+					`Parameter "filter" contained invalid JSON string.`,
+					500,
+					500,
+				);
+			}
+		}
 
 		const limit = req.query.limit
 			? parseInt(req.query.limit, 10)
@@ -131,42 +205,11 @@ executionsController.get(
 				.map(({ id }) => id),
 		);
 
-		const countFilter = cloneDeep(filter);
+		const countFilter = cloneDeep(filter ?? {});
 		countFilter.waitTill &&= Not(IsNull());
 		countFilter.id = Not(In(executingWorkflowIds));
 
-		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
-
-		const findOptions: FindManyOptions<IExecutionFlattedDb> = {
-			select: [
-				'id',
-				'finished',
-				'mode',
-				'retryOf',
-				'retrySuccessId',
-				'waitTill',
-				'startedAt',
-				'stoppedAt',
-				'workflowData',
-			],
-			where: { workflowId: In(sharedWorkflowIds) },
-			order: { id: 'DESC' },
-			take: limit,
-		};
-
-		Object.entries(filter).forEach(([key, value]) => {
-			let filterToAdd = {};
-
-			if (key === 'waitTill') {
-				filterToAdd = { waitTill: Not(IsNull()) };
-			} else if (key === 'finished' && value === false) {
-				filterToAdd = { finished: false, waitTill: IsNull() };
-			} else {
-				filterToAdd = { [key]: value };
-			}
-
-			Object.assign(findOptions.where!, filterToAdd);
-		});
+		const findWhere = { workflowId: In(sharedWorkflowIds) };
 
 		const rangeQuery: string[] = [];
 		const rangeQueryParams: {
@@ -191,14 +234,29 @@ executionsController.get(
 		}
 
 		if (rangeQuery.length) {
-			Object.assign(findOptions.where!, {
+			Object.assign(findWhere, {
 				id: Raw(() => rangeQuery.join(' and '), rangeQueryParams),
 			});
 		}
 
-		const executions = await Db.collections.Execution.find(findOptions);
+		let query = Db.collections.Execution.createQueryBuilder()
+			.select()
+			.orderBy('id', 'DESC')
+			.take(limit)
+			.where(findWhere);
 
-		const { count, estimated } = await getExecutionsCount(countFilter, req.user);
+		if (filter) {
+			if (filter.waitTill !== undefined) {
+				filter.waitTill = Not(IsNull());
+			} else if (filter.finished !== undefined && !filter.finished) {
+				filter.waitTill = IsNull();
+			}
+			query = query.andWhere(filter);
+		}
+
+		const executions = await query.getMany();
+
+		const { count, estimated } = await getExecutionsCount(countFilter as IDataObject, req.user);
 
 		const formattedExecutions = executions.map((execution) => {
 			return {
@@ -211,7 +269,7 @@ executionsController.get(
 				startedAt: execution.startedAt,
 				stoppedAt: execution.stoppedAt,
 				workflowId: execution.workflowData?.id?.toString() ?? '',
-				workflowName: execution.workflowData.name,
+				workflowName: execution.workflowData?.name,
 			};
 		});
 
@@ -406,13 +464,36 @@ executionsController.post(
 executionsController.post(
 	'/delete',
 	ResponseHelper.send(async (req: ExecutionRequest.Delete): Promise<void> => {
-		const { deleteBefore, ids, filters: requestFilters } = req.body;
+		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
+		let requestFilters;
+		if (requestFiltersRaw) {
+			try {
+				Object.keys(requestFiltersRaw).map((key) => {
+					if (!allowedExecutionsQueryFilterFields.includes(key)) delete requestFiltersRaw[key];
+				});
+				if (validate(requestFiltersRaw, schemaGetExecutionsQueryFilter).valid) {
+					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
+				}
+			} catch (error) {
+				throw new ResponseHelper.ResponseError(
+					`Parameter "filter" contained invalid JSON string.`,
+					500,
+					500,
+				);
+			}
+		}
 
 		if (!deleteBefore && !ids) {
 			throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
 		}
 
 		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+		const userIsGlobalOwner = req.user.globalRole.name === 'owner';
+		if (!userIsGlobalOwner && sharedWorkflowIds.length === 0) {
+			// return early since without shared workflows there can be no hits for regular users
+			return;
+		}
+
 		const binaryDataManager = BinaryDataManager.getInstance();
 
 		// delete executions by date, if user may access the underlying workflows
@@ -422,16 +503,18 @@ executionsController.post(
 				startedAt: LessThanOrEqual(deleteBefore),
 			};
 
-			if (filters) {
-				Object.assign(filters, requestFilters);
+			let query = Db.collections.Execution.createQueryBuilder()
+				.select()
+				.where({
+					...filters,
+					workflowId: In(sharedWorkflowIds),
+				});
+
+			if (requestFilters) {
+				query = query.andWhere(requestFilters);
 			}
 
-			const executions = await Db.collections.Execution.find({
-				where: {
-					workflowId: In(sharedWorkflowIds),
-					...filters,
-				},
-			});
+			const executions = await query.getMany();
 
 			if (!executions.length) return;
 
