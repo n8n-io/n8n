@@ -11,6 +11,7 @@ import config from '../../config';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
+import { INode, INodes } from 'n8n-workflow';
 
 jest.mock('../../src/telemetry');
 
@@ -283,5 +284,162 @@ describe('POST /workflows', () => {
 
 		const response = await authAgent(member2).post('/workflows').send(workflow);
 		expect(response.statusCode).toBe(200);
+	});
+});
+
+describe('PATCH /workflows/:id', () => {
+	it('Should not fail when not touching workflow nodes', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						credentials: {
+							default: {
+								id: savedCredential.id.toString(),
+								name: savedCredential.name,
+							},
+						},
+					},
+				],
+			},
+			owner,
+		);
+
+		const response = await authAgent(owner).patch(`/workflows/${workflow.id}`).send({
+			name: 'new name',
+		});
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	it('Should allow owner to add node with credential without access', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authAgent(owner)
+			.patch(`/workflows/${workflow.id}`)
+			.send({
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						credentials: {
+							default: {
+								id: savedCredential.id.toString(),
+								name: savedCredential.name,
+							},
+						},
+					},
+				],
+			});
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	it('Should not allow member to add node containing credential without access', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authAgent(member)
+			.patch(`/workflows/${workflow.id}`)
+			.send({
+				nodes: [
+					{
+						id: 'uuid-1234',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						credentials: {},
+					},
+					{
+						id: 'uuid-12345',
+						name: 'Start',
+						parameters: {},
+						position: [-20, 260],
+						type: 'n8n-nodes-base.start',
+						typeVersion: 1,
+						credentials: {
+							default: {
+								id: savedCredential.id.toString(),
+								name: savedCredential.name,
+							},
+						},
+					},
+				],
+			});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	it('Should override existing node with read only version while allowing to save', async () => {
+		const member1 = await testDb.createUser({ globalRole: globalMemberRole });
+		const member2 = await testDb.createUser({ globalRole: globalMemberRole });
+
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
+
+		const originalNodes: INode[] = [
+			{
+				id: 'uuid-1234',
+				name: 'Start',
+				parameters: {},
+				position: [-20, 260],
+				type: 'n8n-nodes-base.start',
+				typeVersion: 1,
+				credentials: {
+					default: {
+						id: savedCredential.id.toString(),
+						name: savedCredential.name,
+					},
+				},
+			},
+		];
+
+		const changedNodes: INode[] = [
+			{
+				id: 'uuid-1234',
+				name: 'End',
+				parameters: {},
+				position: [-20, 260],
+				type: 'n8n-nodes-base.no-op',
+				typeVersion: 1,
+				credentials: {
+					default: {
+						id: '200',
+						name: 'fake credential',
+					},
+				},
+			},
+		];
+
+		const workflow = await createWorkflow({ nodes: originalNodes }, member1);
+		await testDb.shareWorkflowWithUsers(workflow, [member2]);
+
+		const response = await authAgent(member2).patch(`/workflows/${workflow.id}`).send({
+			nodes: changedNodes,
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.nodes).toMatchObject(originalNodes);
 	});
 });
