@@ -515,7 +515,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					return {};
 				}
 
-				let responseData = jsonParse(data.join(''));
+				let responseData = jsonParse<any>(data.join(''));
 				let endpoint = '';
 
 				let returnItem: INodeExecutionData[] = [

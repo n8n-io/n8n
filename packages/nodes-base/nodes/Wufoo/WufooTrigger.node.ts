@@ -154,7 +154,7 @@ export class WufooTrigger implements INodeType {
 			return {};
 		}
 
-		const fieldsObject = jsonParse(req.body.FieldStructure, {
+		const fieldsObject = jsonParse<any>(req.body.FieldStructure, {
 			errorMessage: "Invalid JSON in request body field 'FieldStructure'",
 		});
 

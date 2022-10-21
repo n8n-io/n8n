@@ -168,7 +168,7 @@ export class JotFormTrigger implements INodeType {
 
 		return new Promise((resolve, reject) => {
 			form.parse(req, async (err, data, files) => {
-				const rawRequest = jsonParse(data.rawRequest as string);
+				const rawRequest = jsonParse<any>(data.rawRequest as string);
 				data.rawRequest = rawRequest;
 
 				let returnData: IDataObject;
