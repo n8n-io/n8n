@@ -6,6 +6,7 @@
 		:autoComplete="autocomplete"
 		ref="innerInput"
 		v-on="$listeners"
+		:name="name"
 	>
 		<template #prepend>
 			<slot name="prepend" />
@@ -64,6 +65,9 @@ export default Vue.extend({
 			type: Number,
 		},
 		title: {
+			type: String,
+		},
+		name: {
 			type: String,
 		},
 		autocomplete: {
