@@ -195,6 +195,17 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			try {
 				await this.restApi().deleteExecutions({ ids: [ this.$route.params.executionId ] });
 				await this.setExecutions();
+				// Select first execution in the list after deleting the current one
+				if (this.executions.length > 0) {
+					this.$store.commit('workflows/setActiveWorkflowExecution', this.executions[0]);
+					this.$router.push({
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+					}).catch(()=>{});;
+				} else { // If there are no executions left, show empty state and clear active execution from the store
+					this.$store.commit('workflows/setActiveWorkflowExecution', null);
+					this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
+				}
 			} catch (error) {
 				this.loading = false;
 				this.$showError(

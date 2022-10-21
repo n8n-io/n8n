@@ -102,6 +102,9 @@ const module: Module<IWorkflowsState, IRootState> = {
 		setTotalFinishedExecutionsCount (state: IWorkflowsState, count: number) {
 			state.finishedExecutionsCount = count;
 		},
+		deleteExecution (state: IWorkflowsState, execution: IExecutionsSummary) {
+			state.currentWorkflowExecutions.splice(state.currentWorkflowExecutions.indexOf(execution), 1);
+		},
 	},
 	getters: {
 		currentWorkflowExecutions: (state: IWorkflowsState): IExecutionsSummary[] => {
