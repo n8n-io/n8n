@@ -352,13 +352,9 @@ export default mixins(
 				this.avgOutputRowHeight = 0;
 				this.avgInputRowHeight = 0;
 
-<<<<<<< HEAD
-				this.$store.commit('ndv/setNDVSessionId');
-=======
 				setTimeout(() => {
-					this.$store.commit('ui/setNDVSessionId');
+					this.$store.commit('ndv/setNDVSessionId');
 				}, 0);
->>>>>>> e10128cbeaf760e27e01003391ccbd26d1fbc632
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
