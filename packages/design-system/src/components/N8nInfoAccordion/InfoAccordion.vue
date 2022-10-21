@@ -6,6 +6,7 @@
 			<n8n-icon :icon="expanded? 'chevron-up' : 'chevron-down'" bold />
 		</div>
 		<div v-if="expanded" :class="{[$style.description]: true, [$style.collapsed]: !expanded}" @click="onClick">
+			<!-- Info accordion can display list of items with icons or just a HTML description -->
 			<div v-if="items.length > 0" :class="$style.accordionItems">
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
 					<n8n-tooltip :disabled="!item.tooltip">

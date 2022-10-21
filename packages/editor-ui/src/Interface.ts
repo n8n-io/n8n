@@ -980,7 +980,6 @@ export interface IUiState {
 		stickyPosition: null | XYPosition;
 	};
 	fakeDoorFeatures: IFakeDoor[];
-	pendingExecuteButtonShake: boolean;
 	nodeViewInitialized: boolean;
 	addFirstStepOnLoad: boolean;
 	executionSidebarAutoRefresh: boolean;

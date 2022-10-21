@@ -50,7 +50,7 @@
 </template>
 
 <script lang="ts">
-import { IExecutionShortResponse, IExecutionsSummary } from '@/Interface';
+import { IExecutionsSummary } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers';
 import { VIEWS } from '../../constants';
@@ -82,7 +82,7 @@ export default mixins(
 		retryExecutionActions(): object[] {
 			return [
 				{ id: 'current-workflow', label: this.$locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') },
-				{ id: 'original-workflow', label: this.$locale.baseText('executionsList.retryWithOriginalworkflow') },
+				{ id: 'original-workflow', label: this.$locale.baseText('executionsList.retryWithOriginalWorkflow') },
 			];
 		},
 		executionUIDetails(): IExecutionUIData {
@@ -93,7 +93,7 @@ export default mixins(
 		},
 	},
 	methods: {
-		async onRetryMenuItemSelect(action: string): void {
+		onRetryMenuItemSelect(action: string): void {
 			this.$emit('retryExecution', { execution: this.execution, command: action });
 		},
 	},
@@ -168,6 +168,7 @@ export default mixins(
 	color: var(--color-text-base);
 	font-size: var(--font-size-xs);
 	padding: var(--spacing-xs);
+	padding-right: var(--spacing-s);
 	border-radius: var(--border-radius-base);
 	position: relative;
 	left: calc(-1 * var(--spacing-4xs)); // Hide link border under card border so it's not visible when not hovered

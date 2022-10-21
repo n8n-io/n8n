@@ -129,7 +129,7 @@ export default Vue.extend({
 				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 			}
 		},
-		onItemTooltipClick(item: string, event: MouseEvent) {
+		onItemTooltipClick(item: string, event: MouseEvent): void {
 			if (item === 'productionExecutions' && event.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
 				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);

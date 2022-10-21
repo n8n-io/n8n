@@ -155,7 +155,7 @@ export default Vue.extend({
 		}
 	},
 	methods: {
-		loadMore (): void {
+		loadMore(): void {
 			if (!this.loading) {
 				const executionsList = this.$refs.executionList as HTMLElement;
 				if (executionsList) {
@@ -166,19 +166,19 @@ export default Vue.extend({
 				}
 			}
 		},
-		onRetryExecution (payload: Object) {
+		onRetryExecution(payload: Object) {
 			this.$emit('retryExecution', payload);
 		},
-		onRefresh (): void {
+		onRefresh(): void {
 			this.$emit('refresh');
 		},
-		onFilterChange (): void {
+		onFilterChange(): void {
 			this.$emit('filterUpdated', this.prepareFilter());
 		},
-		reloadExecutions (): void {
+		reloadExecutions(): void {
 			this.$emit('reloadExecutions');
 		},
-		onAutoRefreshToggle (): void {
+		onAutoRefreshToggle(): void {
 			this.$store.commit('ui/setExecutionsSidebarAutoRefresh', this.autoRefresh);
 			if (this.autoRefreshInterval) {
 				// Clear any previously existing intervals (if any - there shouldn't)
@@ -189,11 +189,11 @@ export default Vue.extend({
 				this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4 * 1000); // refresh data every 4 secs
 			}
 		},
-		async resetFilters (): Promise<void> {
+		async resetFilters(): Promise<void> {
 			this.filter.status = '';
 			this.$emit('filterUpdated', this.prepareFilter());
 		},
-		prepareFilter (): object {
+		prepareFilter(): object {
 			return {
 				finished: this.filter.status !== 'running',
 				status: this.filter.status,

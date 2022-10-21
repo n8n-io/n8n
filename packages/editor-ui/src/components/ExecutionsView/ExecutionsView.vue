@@ -50,27 +50,27 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		};
 	},
 	computed: {
-		hidePreview (): boolean {
+		hidePreview(): boolean {
 			const nothingToShow = this.executions.length === 0 && this.filterApplied;
 			const activeNotPresent = this.filterApplied && (this.executions as IExecutionsSummary[]).find(ex => ex.id === this.activeExecution.id) === undefined;
 			return this.loading || nothingToShow || activeNotPresent;
 		},
-		showSidebar (): boolean {
+		showSidebar(): boolean {
 			if (this.executions.length === 0) {
 				return this.filterApplied;
 			}
 			return true;
 		},
-		filterApplied (): boolean {
+		filterApplied(): boolean {
 			return this.filter.status !== '';
 		},
-		workflowDataNotLoaded (): boolean {
+		workflowDataNotLoaded(): boolean {
 			return this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID && this.$store.getters.workflowName === '';
 		},
-		loadedFinishedExecutionsCount (): number {
+		loadedFinishedExecutionsCount(): number {
 			return (this.$store.getters['workflows/getAllLoadedFinishedExecutions'] as IExecutionsSummary[]).length;
 		},
-		totalFinishedExecutionsCount (): number {
+		totalFinishedExecutionsCount(): number {
 			return this.$store.getters['workflows/getTotalFinishedExecutionsCount'];
 		},
 	},
@@ -131,7 +131,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		this.loading = false;
 	},
 	methods: {
-		async initView (loadWorkflow: boolean) : Promise<void> {
+		async initView(loadWorkflow: boolean) : Promise<void> {
 			if (loadWorkflow) {
 				if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
 					await this.$store.dispatch('nodeTypes/getNodeTypes');
@@ -147,12 +147,12 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				}
 			}
 		},
-		async onLoadMore (): Promise<void> {
+		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
 				this.callDebounced("loadMore", { debounceTime: 1000 });
 			}
 		},
-		async loadMore (): Promise<void> {
+		async loadMore(): Promise<void> {
 			if (this.filter.status === 'running' || this.loadedFinishedExecutionsCount >= this.totalFinishedExecutionsCount) {
 				return;
 			}
@@ -195,7 +195,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', currentExecutions);
 			this.loadingMore = false;
 		},
-		async onDeleteCurrentExecution (): Promise<void> {
+		async onDeleteCurrentExecution(): Promise<void> {
 			this.loading = true;
 			try {
 				await this.restApi().deleteExecutions({ ids: [ this.$route.params.executionId ] });
@@ -226,7 +226,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				type: 'success',
 			});
 		},
-		onFilterUpdated (newFilter: { finished: boolean, status: string }): void {
+		onFilterUpdated(newFilter: { finished: boolean, status: string }): void {
 			this.filter = newFilter;
 			this.setExecutions();
 		},
@@ -453,7 +453,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			const activeWorkflows = await this.restApi().getActiveWorkflows();
 			this.$store.commit('setActiveWorkflows', activeWorkflows);
 		},
-		async onRetryExecution (payload: { execution: IExecutionsSummary, command: string }) {
+		async onRetryExecution(payload: { execution: IExecutionsSummary, command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
 
 			this.$showMessage({
@@ -470,7 +470,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				retry_type: loadWorkflow ? 'current' : 'original',
 			});
 		},
-		async retryExecution (execution: IExecutionsSummary, loadWorkflow?: boolean) {
+		async retryExecution(execution: IExecutionsSummary, loadWorkflow?: boolean) {
 			try {
 				const retrySuccessful = await this.restApi().retryExecution(execution.id, loadWorkflow);
 

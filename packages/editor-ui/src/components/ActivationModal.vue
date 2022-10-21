@@ -69,7 +69,6 @@ export default Vue.extend({
 			} else {
 				this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } }).catch(() => {});
 			}
-			// this.modalBus.$emit('close');
 			this.$store.commit('ui/closeModal', WORKFLOW_ACTIVE_MODAL_KEY);
 		},
 		async showSettings() {

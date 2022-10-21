@@ -28,11 +28,10 @@
 <script lang="ts">
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { IExecutionsSummary } from '@/Interface';
-import mixins from 'vue-typed-mixins';
-import { restApi } from '../mixins/restApi';
+import Vue from 'vue';
 import ExecutionsInfoAccordion from './ExecutionsInfoAccordion.vue';
 
-export default mixins(restApi).extend({
+export default Vue.extend({
 	name: 'executions-landing-page',
 	components: {
 		ExecutionsInfoAccordion,
