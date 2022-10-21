@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment';
 import { Eq } from './QueryFunctions';
@@ -79,7 +79,7 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 				response[key] = Date.parse(optionals[key] as string);
 			} else if (key === 'artifacts') {
 				try {
-					response[key] = JSON.parse(optionals[key] as string);
+					response[key] = jsonParse(optionals[key] as string);
 				} catch (error) {
 					throw new Error('Invalid JSON for artifacts');
 				}
@@ -107,7 +107,7 @@ export async function prepareCustomFields(
 
 		if (typeof customFieldsJson === 'string') {
 			try {
-				customFieldsJson = JSON.parse(customFieldsJson);
+				customFieldsJson = jsonParse(customFieldsJson);
 			} catch (error) {
 				throw new Error('Invalid JSON for customFields');
 			}
