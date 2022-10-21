@@ -74,7 +74,7 @@ export default Vue.extend({
 		},
 		data() {
 			return {
-				mutableValues: {} as INodeParameters[],
+				mutableValues: [] as INodeParameters[],
 			};
 		},
 		watch: {
