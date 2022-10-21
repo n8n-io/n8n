@@ -164,7 +164,6 @@ export class HttpRequestV3 implements INodeType {
 						},
 					],
 					default: 'keypair',
-					description: 'Asasas',
 				},
 				{
 					displayName: 'Query Parameters',
@@ -249,7 +248,6 @@ export class HttpRequestV3 implements INodeType {
 						},
 					],
 					default: 'keypair',
-					description: 'Asasas',
 				},
 				{
 					displayName: 'Header Parameters',
@@ -935,7 +933,7 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
-			const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex, '') as string;
+			const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as string;
 			const jsonQueryParameter = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
 
 			const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
@@ -953,7 +951,7 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
-			const specifyHeaders = this.getNodeParameter('specifyHeaders', itemIndex, '') as string;
+			const specifyHeaders = this.getNodeParameter('specifyHeaders', itemIndex, 'keypair') as string;
 			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
 			const {
@@ -1136,7 +1134,7 @@ export class HttpRequestV3 implements INodeType {
 						Promise.resolve({}),
 					);
 				} else if (specifyQuery === 'json') {
-					// body is specified using JSON
+					// query is specified using JSON
 					try {
 						JSON.parse(jsonQueryParameter);
 					} catch (_) {
