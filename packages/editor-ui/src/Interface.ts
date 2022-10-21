@@ -180,7 +180,7 @@ export interface IRestApi {
 	getWorkflow(id: string): Promise<IWorkflowDb>;
 	getWorkflows(filter?: object): Promise<IWorkflowShortResponse[]>;
 	getWorkflowFromUrl(url: string): Promise<IWorkflowDb>;
-	getExecution(id: string): Promise<IExecutionResponse>;
+	getExecution(id: string): Promise<IExecutionResponse | undefined>;
 	deleteExecutions(sendData: IExecutionDeleteFilter): Promise<void>;
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;

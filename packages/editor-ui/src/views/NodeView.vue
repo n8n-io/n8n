@@ -1231,7 +1231,7 @@ export default mixins(
 				} catch (error) {
 					// Execution stop might fail when the execution has already finished. Let's treat this here.
 					const execution = await this.restApi().getExecution(executionId);
-					if (execution.finished) {
+					if (execution?.finished) {
 						const executedData = {
 							data: execution.data,
 							finished: execution.finished,

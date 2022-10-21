@@ -2,7 +2,7 @@
 	<div class="node-wrapper" :style="nodePosition" :id="nodeId">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
-			<div :class="nodeClass" :style="nodeStyle" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
+			<div :class="nodeClass" :style="nodeStyle" @click.left="onClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
@@ -112,6 +112,7 @@ import mixins from 'vue-typed-mixins';
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
@@ -119,6 +120,7 @@ export default mixins(
 	nodeHelpers,
 	workflowHelpers,
 	pinData,
+	debounceHelper,
 ).extend({
 	name: 'Node',
 	components: {
@@ -424,6 +426,19 @@ export default mixins(
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
 			});
+		},
+
+		onClick(event: MouseEvent) {
+			this.callDebounced('onClickDebounced', { debounceTime: 300, trailing: true }, event);
+		},
+
+		onClickDebounced(event: MouseEvent) {
+			const isDoubleClick = event.detail >= 2;
+			if (isDoubleClick) {
+				this.setNodeActive();
+			} else {
+				this.mouseLeftClick(event);
+			}
 		},
 
 		setNodeActive () {
