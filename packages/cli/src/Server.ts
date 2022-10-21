@@ -153,7 +153,7 @@ import { ResponseError } from './ResponseHelper';
 
 import { toHttpNodeParameters } from './CurlConverterHelper';
 
-import { ldapController } from './Ldap/routes/ldapController';
+import { ldapController } from './Ldap/routes/ldap.controller.ee';
 import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
 
 require('body-parser-xml')(bodyParser);

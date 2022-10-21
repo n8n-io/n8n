@@ -11,7 +11,7 @@ import { LdapSyncHistory } from '../databases/entities/LdapSyncHistory';
 import { Role } from '../databases/entities/Role';
 import { User } from '../databases/entities/User';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
-import { LdapManager } from './LdapManager';
+import { LdapManager } from './LdapManager.ee';
 
 import {
 	LDAP_CONFIG_SCHEMA,
