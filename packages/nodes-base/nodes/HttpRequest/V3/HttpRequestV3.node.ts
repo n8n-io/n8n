@@ -935,6 +935,9 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
+			const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex, '') as string;
+			const jsonQueryParameter = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
+
 			const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 			const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
 			const specifyBody = this.getNodeParameter('specifyBody', itemIndex, '') as string;
@@ -950,6 +953,8 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
+			const specifyHeaders = this.getNodeParameter('specifyHeaders', itemIndex, '') as string;
+			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
 			const {
 				redirect,
@@ -1123,8 +1128,29 @@ export class HttpRequestV3 implements INodeType {
 				}
 			}
 
+			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
-				requestOptions.qs = await queryParameters.reduce(parmetersToKeyValue, Promise.resolve({}));
+				if (specifyQuery === 'keypair') {
+					requestOptions.qs = await queryParameters.reduce(
+						parmetersToKeyValue,
+						Promise.resolve({}),
+					);
+				} else if (specifyQuery === 'json') {
+					// body is specified using JSON
+					try {
+						JSON.parse(jsonQueryParameter);
+					} catch (_) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`JSON parameter need to be an valid JSON`,
+							{
+								runIndex: itemIndex,
+							},
+						);
+					}
+
+					requestOptions.qs = JSON.parse(jsonQueryParameter);
+				}
 			}
 
 			if (sendHeaders && headerParameters) {
@@ -1132,6 +1158,31 @@ export class HttpRequestV3 implements INodeType {
 					parmetersToKeyValue,
 					Promise.resolve({}),
 				);
+			}
+
+			// Get parameters defined in the UI
+			if (sendHeaders && headerParameters) {
+				if (specifyHeaders === 'keypair') {
+					requestOptions.headers = await headerParameters.reduce(
+						parmetersToKeyValue,
+						Promise.resolve({}),
+					);
+				} else if (specifyHeaders === 'json') {
+					// body is specified using JSON
+					try {
+						JSON.parse(jsonHeadersParameter);
+					} catch (_) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`JSON parameter need to be an valid JSON`,
+							{
+								runIndex: itemIndex,
+							},
+						);
+					}
+
+					requestOptions.headers = JSON.parse(jsonHeadersParameter);
+				}
 			}
 
 			if (autoDetectResponseFormat || responseFormat === 'file') {
