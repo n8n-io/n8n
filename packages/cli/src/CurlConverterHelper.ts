@@ -110,7 +110,7 @@ const DOWNLOAD_FILE_FLAGS = ['-O', '-o'];
 const IGNORE_SSL_ISSUES_FLAGS = ['-k', '--insecure'];
 
 const curlToJson = (curlCommand: string): CurlJson => {
-	return jsonParse(curlconverter.toJsonString(curlCommand)) as CurlJson;
+	return jsonParse(curlconverter.toJsonString(curlCommand));
 };
 
 const isContentType = (headers: CurlJson['headers'], contentType: ContentTypes): boolean => {
@@ -196,7 +196,7 @@ const extractQueries = (queries: CurlJson['queries'] = {}): HttpNodeQueries => {
 
 const extractJson = (body: CurlJson['data']) =>
 	//@ts-ignore
-	jsonParse(Object.keys(body)[0]) as { [key: string]: string };
+	jsonParse<{ [key: string]: string }>(Object.keys(body)[0]);
 
 const jsonBodyToNodeParameters = (body: CurlJson['data'] = {}): Parameter[] | [] => {
 	const data = extractJson(body);

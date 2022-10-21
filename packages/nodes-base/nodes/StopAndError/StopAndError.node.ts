@@ -92,7 +92,8 @@ export class StopAndError implements INodeType {
 			toThrow = this.getNodeParameter('errorMessage', 0) as string;
 		} else {
 			const json = this.getNodeParameter('errorObject', 0) as string;
-			const errorObject = jsonParse(json);
+			// tslint:disable-next-line:no-any
+			const errorObject = jsonParse<any>(json);
 
 			toThrow = {
 				name: 'User-thrown error',

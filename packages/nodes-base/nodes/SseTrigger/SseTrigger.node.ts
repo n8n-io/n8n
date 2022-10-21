@@ -37,7 +37,8 @@ export class SseTrigger implements INodeType {
 		const eventSource = new EventSource(url);
 
 		eventSource.onmessage = (event) => {
-			const eventData = jsonParse(event.data, { errorMessage: 'Invalid JSON for event data' });
+			// tslint:disable-next-line:no-any
+			const eventData = jsonParse<any>(event.data, { errorMessage: 'Invalid JSON for event data' });
 			this.emit([this.helpers.returnJsonArray([eventData])]);
 		};
 

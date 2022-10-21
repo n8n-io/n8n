@@ -111,7 +111,7 @@ async function getExecutionsCount(
 executionsController.get(
 	'/',
 	ResponseHelper.send(async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
-		const filter = req.query.filter ? jsonParse(req.query.filter) : {};
+		const filter = req.query.filter ? jsonParse<IDataObject>(req.query.filter) : {};
 
 		const limit = req.query.limit
 			? parseInt(req.query.limit, 10)

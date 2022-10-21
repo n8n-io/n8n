@@ -515,7 +515,8 @@ export class SurveyMonkeyTrigger implements INodeType {
 					return {};
 				}
 
-				let responseData = jsonParse(data.join(''));
+				// tslint:disable-next-line:no-any
+				let responseData = jsonParse<any>(data.join(''));
 				let endpoint = '';
 
 				let returnItem: INodeExecutionData[] = [

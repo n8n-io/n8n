@@ -77,7 +77,10 @@ export async function awsApiRequestAllItems(
 	do {
 		responseData = await awsApiRequestREST.call(this, service, method, path, body, query, headers);
 		if (responseData.NextToken) {
-			const data = jsonParse(body as string, { errorMessage: 'Response body is not valid JSON' });
+			// tslint:disable-next-line:no-any
+			const data = jsonParse<any>(body as string, {
+				errorMessage: 'Response body is not valid JSON',
+			});
 			data['NextToken'] = responseData.NextToken;
 		}
 		returnData.push.apply(returnData, get(responseData, propertyName));
