@@ -116,7 +116,7 @@ export default Vue.extend({
 			filter: {
 				status: '',
 			},
-			autoRefresh: true,
+			autoRefresh: false,
 			autoRefreshInterval: undefined as undefined | NodeJS.Timer,
 		};
 	},

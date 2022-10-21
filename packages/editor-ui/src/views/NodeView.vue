@@ -820,30 +820,9 @@ export default mixins(
 				}
 				this.zoomToFit();
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-				await this.loadExecutions();
+				this.$store.commit('workflows/setActiveWorkflowExecution', null);
 				this.stopLoading();
 				return data;
-			},
-			async loadExecutions(): Promise<void> {
-				if (!this.currentWorkflow) {
-					this.$store.commit('workflows/setCurrentWorkflowExecutions', []);
-					this.$store.commit('workflows/setActiveWorkflowExecution', null);
-					return;
-				}
-				try {
-						const workflowExecutions: IExecutionsSummary[] = await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', { finished: true, status: '' });
-						this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
-						if (workflowExecutions.length > 0) {
-							this.$store.commit('workflows/setActiveWorkflowExecution', workflowExecutions[0]);
-						} else {
-							this.$store.commit('workflows/setActiveWorkflowExecution', null);
-						}
-				} catch (error) {
-					this.$showError(
-						error,
-						this.$locale.baseText('executionsList.showError.refreshData.title'),
-					);
-				}
 			},
 			touchTap(e: MouseEvent | TouchEvent) {
 				if (this.isTouchDevice) {
@@ -2236,8 +2215,8 @@ export default mixins(
 						this.$telemetry.track('welcome note inserted');
 					}
 				}
-				await this.loadExecutions();
 				this.$store.commit('ui/setNodeViewInitialized', true);
+				this.$store.commit('workflows/setActiveWorkflowExecution', null);
 				this.stopLoading();
 			}),
 			async initView(): Promise<void> {

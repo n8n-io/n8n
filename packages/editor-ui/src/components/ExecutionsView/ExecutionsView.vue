@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" v-if="!loading">
 		<executions-sidebar
 			v-if="showSidebar"
 			:executions="executions"
@@ -62,11 +62,24 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		workflowDataNotLoaded (): boolean {
 			return this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID && this.$store.getters.workflowName === '';
 		},
+		loadedFinishedExecutionsCount (): number {
+			return (this.$store.getters['workflows/getAllLoadedFinishedExecutions'] as IExecutionsSummary[]).length;
+		},
+		totalFinishedExecutionsCount (): number {
+			return this.$store.getters['workflows/getTotalFinishedExecutionsCount'];
+		},
 	},
 	watch:{
     $route (to: Route, from: Route) {
 			const workflowChanged = from.params.name !== to.params.name;
 			this.initView(workflowChanged);
+
+			if (to.params.executionId) {
+				const execution = this.$store.getters['workflows/getExecutionDataById'](to.params.executionId);
+				if (execution) {
+					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
+				}
+			}
 		},
 	},
 	async beforeRouteLeave(to, from, next) {
@@ -102,17 +115,18 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		next();
 	},
 	async mounted() {
+		this.loading = true;
 		const workflowUpdated = this.$route.params.name !== this.$store.getters.workflowId;
 		const onNewWorkflow = this.$route.params.name === 'new' && this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		const shouldUpdate = workflowUpdated && !onNewWorkflow;
 		await this.initView(shouldUpdate);
 		if (!shouldUpdate) {
-			this.setExecutions();
+			await this.setExecutions();
 		}
+		this.loading = false;
 	},
 	methods: {
 		async initView (loadWorkflow: boolean) : Promise<void> {
-			this.loading = true;
 			if (loadWorkflow) {
 				if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
 					await this.$store.dispatch('nodeTypes/getNodeTypes');
@@ -127,14 +141,14 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 					}).catch(()=>{});;
 				}
 			}
-			this.setActiveExecution();
-			this.loading = false;
 		},
 		async onLoadMore (): Promise<void> {
-			this.callDebounced("loadMore", { debounceTime: 200 });
+			if (!this.loadingMore) {
+				this.callDebounced("loadMore", { debounceTime: 1000 });
+			}
 		},
 		async loadMore (): Promise<void> {
-			if (this.filter.status === 'running') {
+			if (this.filter.status === 'running' || this.loadedFinishedExecutionsCount >= this.totalFinishedExecutionsCount) {
 				return;
 			}
 			this.loadingMore = true;
@@ -167,8 +181,13 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				// @ts-ignore
 				return { ...execution, mode: execution.mode };
 			});
-
-			this.$store.commit('workflows/setCurrentWorkflowExecutions', [ ...this.executions, ...data.results ]);
+			const currentExecutions = [ ...this.executions ];
+			for (const newExecution of data.results) {
+				if (currentExecutions.find(ex => ex.id === newExecution.id) === undefined) {
+					currentExecutions.push(newExecution);
+				}
+			}
+			this.$store.commit('workflows/setCurrentWorkflowExecutions', currentExecutions);
 			this.loadingMore = false;
 		},
 		async onDeleteCurrentExecution (): Promise<void> {
@@ -196,10 +215,9 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {
-			this.loading = true;
 			const workflowExecutions = await this.loadExecutions();
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
-			this.loading = false;
+			this.setActiveExecution();
 		},
 		async loadAutoRefresh(): Promise<void> {
 			// Most of the auto-refresh logic is taken from the `ExecutionsList` component
@@ -270,6 +288,14 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				if (execution) {
 					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
 				}
+			}
+			// If there is no execution in the route, select the first one
+			if (this.$store.getters['workflows/getActiveWorkflowExecution'] === null && this.executions.length > 0) {
+				this.$store.commit('workflows/setActiveWorkflowExecution', this.executions[0]);
+				this.$router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+				}).catch(()=>{});;
 			}
 		},
 		async openWorkflow(workflowId: string): Promise<void> {

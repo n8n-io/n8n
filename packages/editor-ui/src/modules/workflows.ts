@@ -14,6 +14,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 	state: {
 		currentWorkflowExecutions: [],
 		activeWorkflowExecution: null,
+		finishedExecutionsCount: 0,
 	},
 	actions: {
 		getNewWorkflowData: async (context: ActionContext<IWorkflowsState, IRootState>, name?: string): Promise<object> => {
@@ -84,7 +85,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 						},
 					);
 				}
-
+				context.commit('setTotalFinishedExecutionsCount', finishedExecutions.count);
 				return [...activeExecutions, ...finishedExecutions.results || []];
 			} catch (error) {
 				throw(error);
@@ -98,6 +99,9 @@ const module: Module<IWorkflowsState, IRootState> = {
 		setActiveWorkflowExecution (state: IWorkflowsState, executionData: IExecutionsSummary) {
 			state.activeWorkflowExecution = executionData;
 		},
+		setTotalFinishedExecutionsCount (state: IWorkflowsState, count: number) {
+			state.finishedExecutionsCount = count;
+		},
 	},
 	getters: {
 		currentWorkflowExecutions: (state: IWorkflowsState): IExecutionsSummary[] => {
@@ -108,6 +112,12 @@ const module: Module<IWorkflowsState, IRootState> = {
 		},
 		getExecutionDataById: (state: IWorkflowsState) => (id: string) => {
 			return state.currentWorkflowExecutions.find(execution => execution.id === id);
+		},
+		getTotalFinishedExecutionsCount: (state: IWorkflowsState) : number => {
+			return state.finishedExecutionsCount;
+		},
+		getAllLoadedFinishedExecutions: (state: IWorkflowsState) : IExecutionsSummary[] => {
+			return state.currentWorkflowExecutions.filter(ex => ex.finished === true || ex.stoppedAt !== undefined);
 		},
 	},
 };

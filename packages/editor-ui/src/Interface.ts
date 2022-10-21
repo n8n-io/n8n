@@ -1066,6 +1066,7 @@ export interface IUsersState {
 export interface IWorkflowsState {
 	currentWorkflowExecutions: IExecutionsSummary[];
 	activeWorkflowExecution: IExecutionsSummary|null;
+	finishedExecutionsCount: number;
 }
 	export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
