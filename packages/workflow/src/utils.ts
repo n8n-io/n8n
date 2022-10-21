@@ -30,19 +30,19 @@ export const deepCopy = <T>(source: T): T => {
 	return clone;
 };
 // eslint-enable
-
-export const jsonParse = <T>(
-	jsonString: string,
-	options?: { errorMessage?: string; fallbackValue?: T },
-) => {
+type ErrorMessage = { errorMessage?: string };
+type FallbackValue = { fallbackValue?: any };
+export const jsonParse = <T>(jsonString: string, options?: ErrorMessage | FallbackValue) => {
 	try {
 		return JSON.parse(jsonString) as T;
 	} catch (error) {
-		if (options?.fallbackValue !== undefined) {
-			return options.fallbackValue;
-		}
-		if (options?.errorMessage) {
-			throw new Error(options.errorMessage);
+		if (options) {
+			if ((options as FallbackValue).fallbackValue !== undefined) {
+				return (options as FallbackValue).fallbackValue;
+			}
+			if ((options as ErrorMessage).errorMessage) {
+				throw new Error((options as ErrorMessage).errorMessage);
+			}
 		}
 		throw error;
 	}
