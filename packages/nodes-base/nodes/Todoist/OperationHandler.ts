@@ -1,4 +1,4 @@
-import { IDataObject, parseJson } from 'n8n-workflow';
+import { IDataObject, parseJSON } from 'n8n-workflow';
 import {
 	Context,
 	FormatDueDatetime,
@@ -228,7 +228,7 @@ export class SyncHandler implements OperationHandler {
 		const commandsJson = ctx.getNodeParameter('commands', itemIndex) as string;
 		const projectId = ctx.getNodeParameter('project', itemIndex) as number;
 		const sections = await getSectionIds(ctx, projectId);
-		const commands: Command[] = parseJson(commandsJson);
+		const commands: Command[] = parseJSON(commandsJson);
 		const tempIdMapping = new Map<string, string>();
 
 		for (let i = 0; i < commands.length; i++) {

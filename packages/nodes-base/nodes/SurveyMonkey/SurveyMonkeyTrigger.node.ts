@@ -10,7 +10,7 @@ import {
 	IWebhookResponseData,
 	NodeApiError,
 	NodeOperationError,
-	parseJson,
+	parseJSON,
 } from 'n8n-workflow';
 
 import { idsExist, surveyMonkeyApiRequest, surveyMonkeyRequestAllItems } from './GenericFunctions';
@@ -514,7 +514,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 					return {};
 				}
 
-				let responseData = parseJson(data.join(''));
+				let responseData = parseJSON(data.join(''));
 				let endpoint = '';
 
 				let returnItem: INodeExecutionData[] = [

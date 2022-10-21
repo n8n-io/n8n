@@ -13,7 +13,7 @@ import {
 	IDataObject,
 	INode,
 	IRunExecutionData,
-	parseJson,
+	parseJSON,
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -75,7 +75,7 @@ export async function getVersions(): Promise<IPackageVersions> {
 
 	const packageFile = await fsReadFile(pathJoin(__dirname, '../../package.json'), 'utf8');
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	const packageData = parseJson(packageFile);
+	const packageData = parseJSON(packageFile);
 
 	versionCache = {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

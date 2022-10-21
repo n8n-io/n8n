@@ -11,7 +11,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
-	parseJson,
+	parseJSON,
 } from 'n8n-workflow';
 
 import iconv from 'iconv-lite';
@@ -362,7 +362,7 @@ export class MoveBinaryData implements INodeType {
 					convertedValue = iconv.decode(buffer, encoding, {
 						stripBOM: options.stripBOM as boolean,
 					});
-					newItem.json = parseJson(convertedValue);
+					newItem.json = parseJSON(convertedValue);
 				} else {
 					// Does get added to existing data so copy it first
 					newItem.json = JSON.parse(JSON.stringify(item.json));
@@ -376,7 +376,7 @@ export class MoveBinaryData implements INodeType {
 					}
 
 					if (options.jsonParse) {
-						convertedValue = parseJson(convertedValue);
+						convertedValue = parseJSON(convertedValue);
 					}
 
 					const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;

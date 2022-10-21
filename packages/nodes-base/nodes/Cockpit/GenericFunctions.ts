@@ -1,5 +1,5 @@
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject, NodeApiError, NodeOperationError, parseJson } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError, parseJSON } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 
 export async function cockpitApiRequest(
@@ -48,7 +48,7 @@ export function createDataFromParameters(
 
 	if (dataFieldsAreJson) {
 		// Parameters are defined as JSON
-		return parseJson(this.getNodeParameter('dataFieldsJson', itemIndex, '{}') as string);
+		return parseJSON(this.getNodeParameter('dataFieldsJson', itemIndex, '{}') as string);
 	}
 
 	// Parameters are defined in UI

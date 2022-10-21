@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError, parseJson } from 'n8n-workflow';
+import { IDataObject, NodeApiError, NodeOperationError, parseJSON } from 'n8n-workflow';
 
 import moment from 'moment';
 import { Eq } from './QueryFunctions';
@@ -78,7 +78,7 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 			} else if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
 				response[key] = Date.parse(optionals[key] as string);
 			} else if (key === 'artifacts') {
-				response[key] = parseJson(optionals[key] as string);
+				response[key] = parseJSON(optionals[key] as string);
 			} else if (key === 'tags') {
 				response[key] = splitTags(optionals[key] as string);
 			} else {
@@ -102,7 +102,7 @@ export async function prepareCustomFields(
 		delete additionalFields.customFieldsJson;
 
 		if (typeof customFieldsJson === 'string') {
-			return parseJson(customFieldsJson);
+			return parseJSON(customFieldsJson);
 		} else if (typeof customFieldsJson === 'object') {
 			return customFieldsJson as IDataObject;
 		} else if (customFieldsJson) {

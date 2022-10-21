@@ -7,7 +7,7 @@ import {
 	INodeTypeDescription,
 	ITriggerResponse,
 	NodeOperationError,
-	parseJson,
+	parseJSON,
 } from 'n8n-workflow';
 
 export class AmqpTrigger implements INodeType {
@@ -190,7 +190,7 @@ export class AmqpTrigger implements INodeType {
 			}
 
 			if (options.jsonParseBody === true) {
-				data.body = parseJson(data.body);
+				data.body = parseJSON(data.body);
 			}
 			if (options.onlyBody === true) {
 				data = data.body;

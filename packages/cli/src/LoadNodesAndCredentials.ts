@@ -21,7 +21,7 @@ import {
 	INodeTypeNameVersion,
 	INodeVersionedType,
 	LoggerProxy,
-	parseJson,
+	parseJSON,
 } from 'n8n-workflow';
 
 import {
@@ -510,7 +510,7 @@ class LoadNodesAndCredentialsClass {
 	async readPackageJson(packagePath: string): Promise<IN8nNodePackageJson> {
 		// Get the absolute path of the package
 		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
-		return parseJson(packageFileString) as IN8nNodePackageJson;
+		return parseJSON(packageFileString) as IN8nNodePackageJson;
 	}
 
 	/**

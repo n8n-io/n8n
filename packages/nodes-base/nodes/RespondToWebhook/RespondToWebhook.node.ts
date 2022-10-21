@@ -8,7 +8,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
-	parseJson,
+	parseJSON,
 } from 'n8n-workflow';
 
 export class RespondToWebhook implements INodeType {
@@ -207,7 +207,7 @@ export class RespondToWebhook implements INodeType {
 		if (respondWith === 'json') {
 			const responseBodyParameter = this.getNodeParameter('responseBody', 0) as string;
 			if (responseBodyParameter) {
-				responseBody = parseJson(responseBodyParameter, {
+				responseBody = parseJSON(responseBodyParameter, {
 					errorMessage: "Invalid JSON in 'Response Body' field",
 				});
 			}

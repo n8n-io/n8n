@@ -169,7 +169,7 @@ export const convertPath = (path: string): string => {
 };
 
 export const clearJsonKey = (userInput: string | object) => {
-	const parsedUserInput = typeof userInput === 'string' ? parseJson(userInput) : userInput;
+	const parsedUserInput = typeof userInput === 'string' ? parseJSON(userInput) : userInput;
 
 	if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 

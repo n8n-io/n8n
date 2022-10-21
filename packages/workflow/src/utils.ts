@@ -31,12 +31,12 @@ export const deepCopy = <T>(source: T): T => {
 };
 // eslint-enable
 
-export const parseJson = (
+export const parseJSON = <T>(
 	jsonString: string,
 	options?: { errorMessage?: string; fallbackValue?: any },
 ) => {
 	try {
-		return JSON.parse(jsonString);
+		return JSON.parse(jsonString) as T;
 	} catch (error) {
 		if (options?.fallbackValue !== undefined) {
 			return options.fallbackValue;
