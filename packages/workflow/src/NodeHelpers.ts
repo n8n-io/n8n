@@ -38,6 +38,7 @@ import {
 	NodeParameterValue,
 	WebhookHttpMethod,
 } from './Interfaces';
+import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
 
@@ -660,9 +661,7 @@ export function getNodeParameters(
 				} else if (returnDefaults) {
 					// Does not have values defined but defaults should be returned
 					if (Array.isArray(nodeProperties.default)) {
-						nodeParameters[nodeProperties.name] = JSON.parse(
-							JSON.stringify(nodeProperties.default),
-						);
+						nodeParameters[nodeProperties.name] = deepCopy(nodeProperties.default);
 					} else {
 						// As it is probably wrong for many nodes, do we keep on returning an empty array if
 						// anything else than an array is set as default
@@ -690,7 +689,7 @@ export function getNodeParameters(
 				}
 			} else if (returnDefaults) {
 				// Does not have values defined but defaults should be returned
-				nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+				nodeParameters[nodeProperties.name] = deepCopy(nodeProperties.default);
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			}
 		} else if (nodeProperties.type === 'fixedCollection') {
@@ -704,7 +703,7 @@ export function getNodeParameters(
 			let propertyValues = nodeValues[nodeProperties.name];
 			if (returnDefaults) {
 				if (propertyValues === undefined) {
-					propertyValues = JSON.parse(JSON.stringify(nodeProperties.default));
+					propertyValues = deepCopy(nodeProperties.default);
 				}
 			}
 
@@ -819,9 +818,7 @@ export function getNodeParameters(
 				if (returnDefaults) {
 					// Set also when it has the default value
 					if (collectionValues === undefined) {
-						nodeParameters[nodeProperties.name] = JSON.parse(
-							JSON.stringify(nodeProperties.default),
-						);
+						nodeParameters[nodeProperties.name] = deepCopy(nodeProperties.default);
 					} else {
 						nodeParameters[nodeProperties.name] = collectionValues;
 					}

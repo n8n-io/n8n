@@ -1,6 +1,7 @@
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
+	deepCopy,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -708,7 +709,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 						responseData.questions = {};
 
 						// Map the "Map" to JSON
-						const tuples = JSON.parse(JSON.stringify([...responseQuestions]));
+						const tuples = deepCopy([...responseQuestions]);
 						for (const [key, value] of tuples) {
 							responseData.questions[key] = value;
 						}

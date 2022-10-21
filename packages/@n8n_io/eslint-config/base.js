@@ -321,8 +321,7 @@ const config = (module.exports = {
 		// ----------------------------------
 		'n8n-local-rules/no-uncaught-json-parse': 'error',
 
-		// TODO: set to `error` and fix offenses
-		'n8n-local-rules/no-json-parse-json-stringify': 'warn',
+		'n8n-local-rules/no-json-parse-json-stringify': 'error',
 
 		// ******************************************************************
 		//                    overrides to base ruleset
