@@ -1,3 +1,4 @@
+import { parseJson } from 'n8n-workflow';
 import {
 	CursorPagination,
 	OffsetPagination,
@@ -6,7 +7,7 @@ import {
 } from '../../../types';
 
 export const decodeCursor = (cursor: string): PaginationOffsetDecoded | PaginationCursorDecoded => {
-	return JSON.parse(Buffer.from(cursor, 'base64').toString()) as
+	return parseJson(Buffer.from(cursor, 'base64').toString()) as
 		| PaginationCursorDecoded
 		| PaginationOffsetDecoded;
 };
