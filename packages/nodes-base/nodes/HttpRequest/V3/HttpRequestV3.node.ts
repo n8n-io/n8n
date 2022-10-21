@@ -1153,13 +1153,6 @@ export class HttpRequestV3 implements INodeType {
 				}
 			}
 
-			if (sendHeaders && headerParameters) {
-				requestOptions.headers = await headerParameters.reduce(
-					parmetersToKeyValue,
-					Promise.resolve({}),
-				);
-			}
-
 			// Get parameters defined in the UI
 			if (sendHeaders && headerParameters) {
 				if (specifyHeaders === 'keypair') {
