@@ -2,7 +2,7 @@
 /* eslint-disable no-underscore-dangle */
 import type { Entry } from 'ldapts';
 import { IDataObject, LoggerProxy as Logger } from 'n8n-workflow';
-import { LdapService } from './LdapService';
+import { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
 import { RunningMode, SyncStatus } from './constants';
 import {
