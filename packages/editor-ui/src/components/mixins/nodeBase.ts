@@ -11,6 +11,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getStyleTokenValue } from '../helpers';
+import { readonly } from 'vue';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -228,6 +229,9 @@ export const nodeBase = mixins(
 			// TODO: This caused problems with displaying old information
 			//       https://github.com/jsplumb/katavorio/wiki
 			//       https://jsplumb.github.io/jsplumb/home.html
+			if (this.isReadOnly === true) {
+				return;
+			}
 			// Make nodes draggable
 			this.instance.draggable(this.nodeId, {
 				grid: [CanvasHelpers.GRID_SIZE, CanvasHelpers.GRID_SIZE],
