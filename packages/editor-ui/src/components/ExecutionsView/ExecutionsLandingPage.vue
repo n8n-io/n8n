@@ -29,7 +29,6 @@
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
 import { IExecutionsSummary } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { getActivatableTriggerNodes } from '../helpers';
 import { restApi } from '../mixins/restApi';
 import ExecutionsInfoAccordion from './ExecutionsInfoAccordion.vue';
 
@@ -43,11 +42,7 @@ export default mixins(restApi).extend({
 			return (this.$store.getters['workflows/currentWorkflowExecutions'] as IExecutionsSummary[]).length;
 		},
 		containsTrigger(): boolean {
-			if (this.currentWorkflowId === '' || this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				return false;
-			}
-			const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
-			return foundTriggers.length > 0;
+			return this.$store.getters.workflowTriggerNodes.length > 0;
 		},
 		currentWorkflowId(): string {
 			return this.$store.getters.workflowId;

@@ -402,6 +402,7 @@
 	"executionsLandingPage.emptyState.accordion.manualExecutions": "Manual executions",
 	"executionsLandingPage.emptyState.accordion.productionExecutionsWarningTooltip": "Not all production executions are being saved. Change this in the workflow's <a href=\"#\">settings</a>",
 	"executionsLandingPage.emptyState.accordion.footer": "You can change this in <a href=\"#\">Workflow Settings</a>",
+	"executionsLandingPage.noResults": "No executions found",
 	"executionsList.allWorkflows": "All Workflows",
 	"executionsList.anyStatus": "Any Status",
 	"executionsList.autoRefresh": "Auto refresh",
