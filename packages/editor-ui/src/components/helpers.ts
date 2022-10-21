@@ -2,7 +2,7 @@ import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import { isResourceLocatorValue } from '@/typeGuards';
 import dateformat from 'dateformat';
-import {IDataObject, INodeProperties, INodeTypeDescription, NodeParameterValueType,INodeExecutionData} from 'n8n-workflow';
+import {IDataObject, INodeProperties, INodeTypeDescription, NodeParameterValueType,INodeExecutionData, parseJson} from 'n8n-workflow';
 import { isJsonKeyObject } from "@/utils";
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
@@ -169,7 +169,7 @@ export const convertPath = (path: string): string => {
 };
 
 export const clearJsonKey = (userInput: string | object) => {
-	const parsedUserInput = typeof userInput === 'string' ? JSON.parse(userInput) : userInput;
+	const parsedUserInput = typeof userInput === 'string' ? jsonParse(userInput) : userInput;
 
 	if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 
