@@ -145,12 +145,35 @@ export class HttpRequestV3 implements INodeType {
 					description: 'Whether the request has query params or not',
 				},
 				{
+					displayName: 'Specify Query Parameters',
+					name: 'specifyQuery',
+					type: 'options',
+					displayOptions: {
+						show: {
+							sendQuery: [true],
+						},
+					},
+					options: [
+						{
+							name: 'Using Fields Below',
+							value: 'keypair',
+						},
+						{
+							name: 'Using JSON',
+							value: 'json',
+						},
+					],
+					default: 'keypair',
+					description: 'Asasas',
+				},
+				{
 					displayName: 'Query Parameters',
 					name: 'queryParameters',
 					type: 'fixedCollection',
 					displayOptions: {
 						show: {
 							sendQuery: [true],
+							specifyQuery: ['keypair'],
 						},
 					},
 					typeOptions: {
@@ -185,6 +208,18 @@ export class HttpRequestV3 implements INodeType {
 							],
 						},
 					],
+				},
+				{
+					displayName: 'JSON',
+					name: 'jsonQuery',
+					type: 'json',
+					displayOptions: {
+						show: {
+							sendQuery: [true],
+							specifyQuery: ['json'],
+						},
+					},
+					default: '',
 				},
 				{
 					displayName: 'Send Headers',
@@ -195,12 +230,35 @@ export class HttpRequestV3 implements INodeType {
 					description: 'Whether the request has headers or not',
 				},
 				{
+					displayName: 'Specify Headers',
+					name: 'specifyHeaders',
+					type: 'options',
+					displayOptions: {
+						show: {
+							sendHeaders: [true],
+						},
+					},
+					options: [
+						{
+							name: 'Using Fields Below',
+							value: 'keypair',
+						},
+						{
+							name: 'Using JSON',
+							value: 'json',
+						},
+					],
+					default: 'keypair',
+					description: 'Asasas',
+				},
+				{
 					displayName: 'Header Parameters',
 					name: 'headerParameters',
 					type: 'fixedCollection',
 					displayOptions: {
 						show: {
 							sendHeaders: [true],
+							specifyHeaders: ['keypair'],
 						},
 					},
 					typeOptions: {
@@ -235,6 +293,18 @@ export class HttpRequestV3 implements INodeType {
 							],
 						},
 					],
+				},
+				{
+					displayName: 'JSON',
+					name: 'jsonHeaders',
+					type: 'json',
+					displayOptions: {
+						show: {
+							sendHeaders: [true],
+							specifyHeaders: ['json'],
+						},
+					},
+					default: '',
 				},
 				{
 					displayName: 'Send Body',
