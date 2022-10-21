@@ -67,6 +67,7 @@ import {
 	faLink,
 	faLightbulb,
 	faMapSigns,
+	faMousePointer,
 	faNetworkWired,
 	faPause,
 	faPauseCircle,
@@ -83,11 +84,13 @@ import {
 	faRedo,
 	faRss,
 	faSave,
+	faSatelliteDish,
 	faSearch,
 	faSearchMinus,
 	faSearchPlus,
 	faServer,
 	faSignInAlt,
+	faSignOutAlt,
 	faSlidersH,
 	faSpinner,
 	faStop,
@@ -185,6 +188,7 @@ addIcon(faKey);
 addIcon(faLink);
 addIcon(faLightbulb);
 addIcon(faMapSigns);
+addIcon(faMousePointer);
 addIcon(faNetworkWired);
 addIcon(faPause);
 addIcon(faPauseCircle);
@@ -201,11 +205,13 @@ addIcon(faQuestionCircle);
 addIcon(faRedo);
 addIcon(faRss);
 addIcon(faSave);
+addIcon(faSatelliteDish);
 addIcon(faSearch);
 addIcon(faSearchMinus);
 addIcon(faSearchPlus);
 addIcon(faServer);
 addIcon(faSignInAlt);
+addIcon(faSignOutAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
 addIcon(faSolidStickyNote);

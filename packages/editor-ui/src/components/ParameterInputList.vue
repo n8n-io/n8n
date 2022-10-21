@@ -97,6 +97,7 @@
 <script lang="ts">
 
 import {
+	deepCopy,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
@@ -288,7 +289,7 @@ export default mixins(
 
 				if (parameterGotResolved === true) {
 					if (this.path) {
-						rawValues = JSON.parse(JSON.stringify(this.nodeValues));
+						rawValues = deepCopy(this.nodeValues);
 						set(rawValues, this.path, nodeValues);
 						return this.displayParameter(rawValues, parameter, this.path, this.node);
 					} else {

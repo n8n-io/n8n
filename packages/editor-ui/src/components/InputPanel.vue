@@ -75,7 +75,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, START_NODE_TYPE } from '@/constants';
+import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	workflowHelpers,
@@ -118,7 +118,7 @@ export default mixins(
 			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
 		},
 		showDraggableHint(): boolean {
-			const toIgnore = [START_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
+			const toIgnore = [START_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
 			if (!this.currentNode || toIgnore.includes(this.currentNode.type)) {
 				return false;
 			}
