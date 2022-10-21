@@ -196,7 +196,7 @@ const extractQueries = (queries: CurlJson['queries'] = {}): HttpNodeQueries => {
 
 const extractJson = (body: CurlJson['data']) =>
 	//@ts-ignore
-	jsonParse(Object.keys(body)[0]);
+	jsonParse<{ [key: string]: string }>(Object.keys(body)[0]);
 
 const jsonBodyToNodeParameters = (body: CurlJson['data'] = {}): Parameter[] | [] => {
 	const data = extractJson(body);
