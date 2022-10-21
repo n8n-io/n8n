@@ -294,8 +294,10 @@ describe('POST /workflows', () => {
 		const usedCredentials = await testDb.getCredentialUsageInWorkflow(response.body.data.id);
 		expect(usedCredentials).toHaveLength(1);
 	});
+});
 
-	it('PATCH /workflows/:id should be blocked on interim change - owner blocked', async () => {
+describe('PATCH /workflows/:id', () => {
+	it('should block owner update on interim update by member', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -328,7 +330,7 @@ describe('POST /workflows', () => {
 		);
 	});
 
-	it('PATCH /workflows/:id should be blocked on interim change - member blocked', async () => {
+	it('should block member update on interim update by owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -362,6 +364,80 @@ describe('POST /workflows', () => {
 		const updateAttemptResponse = await authAgent(member)
 			.patch(`/workflows/${id}`)
 			.send({ name: 'Update attempt by member', updatedAt: memberLastKnownDate });
+
+		expect(updateAttemptResponse.status).toBe(400);
+		expect(updateAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
+	});
+
+	it('should block owner activation on interim activation by member', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, updatedAt: ownerLastKnownDate } = createResponse.body.data;
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses and activates workflow
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { updatedAt: memberLastKnownDate } = memberGetResponse.body.data;
+
+		await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ active: true, updatedAt: memberLastKnownDate });
+
+		// owner blocked from activating workflow
+
+		const activationAttemptResponse = await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ active: true, updatedAt: ownerLastKnownDate });
+
+		expect(activationAttemptResponse.status).toBe(400);
+		expect(activationAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
+	});
+
+	it('should block member activation on interim activation by owner', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates, updates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, updatedAt: ownerFirstUpdateDate } = createResponse.body.data;
+
+		const updateResponse = await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Update by owner', updatedAt: ownerFirstUpdateDate });
+		const { updatedAt: ownerSecondUpdateDate } = updateResponse.body.data;
+
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses workflow
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { updatedAt: memberLastKnownDate } = memberGetResponse.body.data;
+
+		// owner activates workflow
+
+		await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ active: true, updatedAt: ownerSecondUpdateDate });
+
+		// member blocked from activating workflow
+
+		const updateAttemptResponse = await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ active: true, updatedAt: memberLastKnownDate });
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
