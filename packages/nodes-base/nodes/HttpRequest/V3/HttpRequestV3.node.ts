@@ -12,7 +12,11 @@ import {
 
 import { OptionsWithUri } from 'request-promise-native';
 
-import { getOAuth2AdditionalParameters, replaceNullValues } from '../GenericFunctions';
+import {
+	binaryContentTypes,
+	getOAuth2AdditionalParameters,
+	replaceNullValues,
+} from '../GenericFunctions';
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -141,12 +145,34 @@ export class HttpRequestV3 implements INodeType {
 					description: 'Whether the request has query params or not',
 				},
 				{
+					displayName: 'Specify Query Parameters',
+					name: 'specifyQuery',
+					type: 'options',
+					displayOptions: {
+						show: {
+							sendQuery: [true],
+						},
+					},
+					options: [
+						{
+							name: 'Using Fields Below',
+							value: 'keypair',
+						},
+						{
+							name: 'Using JSON',
+							value: 'json',
+						},
+					],
+					default: 'keypair',
+				},
+				{
 					displayName: 'Query Parameters',
 					name: 'queryParameters',
 					type: 'fixedCollection',
 					displayOptions: {
 						show: {
 							sendQuery: [true],
+							specifyQuery: ['keypair'],
 						},
 					},
 					typeOptions: {
@@ -181,6 +207,18 @@ export class HttpRequestV3 implements INodeType {
 							],
 						},
 					],
+				},
+				{
+					displayName: 'JSON',
+					name: 'jsonQuery',
+					type: 'json',
+					displayOptions: {
+						show: {
+							sendQuery: [true],
+							specifyQuery: ['json'],
+						},
+					},
+					default: '',
 				},
 				{
 					displayName: 'Send Headers',
@@ -191,12 +229,34 @@ export class HttpRequestV3 implements INodeType {
 					description: 'Whether the request has headers or not',
 				},
 				{
+					displayName: 'Specify Headers',
+					name: 'specifyHeaders',
+					type: 'options',
+					displayOptions: {
+						show: {
+							sendHeaders: [true],
+						},
+					},
+					options: [
+						{
+							name: 'Using Fields Below',
+							value: 'keypair',
+						},
+						{
+							name: 'Using JSON',
+							value: 'json',
+						},
+					],
+					default: 'keypair',
+				},
+				{
 					displayName: 'Header Parameters',
 					name: 'headerParameters',
 					type: 'fixedCollection',
 					displayOptions: {
 						show: {
 							sendHeaders: [true],
+							specifyHeaders: ['keypair'],
 						},
 					},
 					typeOptions: {
@@ -231,6 +291,18 @@ export class HttpRequestV3 implements INodeType {
 							],
 						},
 					],
+				},
+				{
+					displayName: 'JSON',
+					name: 'jsonHeaders',
+					type: 'json',
+					displayOptions: {
+						show: {
+							sendHeaders: [true],
+							specifyHeaders: ['json'],
+						},
+					},
+					default: '',
 				},
 				{
 					displayName: 'Send Body',
@@ -861,6 +933,9 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
+			const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as string;
+			const jsonQueryParameter = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
+
 			const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 			const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
 			const specifyBody = this.getNodeParameter('specifyBody', itemIndex, '') as string;
@@ -876,6 +951,8 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
+			const specifyHeaders = this.getNodeParameter('specifyHeaders', itemIndex, 'keypair') as string;
+			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
 			const {
 				redirect,
@@ -1049,15 +1126,54 @@ export class HttpRequestV3 implements INodeType {
 				}
 			}
 
+			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
-				requestOptions.qs = await queryParameters.reduce(parmetersToKeyValue, Promise.resolve({}));
+				if (specifyQuery === 'keypair') {
+					requestOptions.qs = await queryParameters.reduce(
+						parmetersToKeyValue,
+						Promise.resolve({}),
+					);
+				} else if (specifyQuery === 'json') {
+					// query is specified using JSON
+					try {
+						JSON.parse(jsonQueryParameter);
+					} catch (_) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`JSON parameter need to be an valid JSON`,
+							{
+								runIndex: itemIndex,
+							},
+						);
+					}
+
+					requestOptions.qs = JSON.parse(jsonQueryParameter);
+				}
 			}
 
+			// Get parameters defined in the UI
 			if (sendHeaders && headerParameters) {
-				requestOptions.headers = await headerParameters.reduce(
-					parmetersToKeyValue,
-					Promise.resolve({}),
-				);
+				if (specifyHeaders === 'keypair') {
+					requestOptions.headers = await headerParameters.reduce(
+						parmetersToKeyValue,
+						Promise.resolve({}),
+					);
+				} else if (specifyHeaders === 'json') {
+					// body is specified using JSON
+					try {
+						JSON.parse(jsonHeadersParameter);
+					} catch (_) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`JSON parameter need to be an valid JSON`,
+							{
+								runIndex: itemIndex,
+							},
+						);
+					}
+
+					requestOptions.headers = JSON.parse(jsonHeadersParameter);
+				}
 			}
 
 			if (autoDetectResponseFormat || responseFormat === 'file') {
@@ -1204,11 +1320,11 @@ export class HttpRequestV3 implements INodeType {
 			) as boolean;
 
 			if (autoDetectResponseFormat) {
-				const responseContentType = response.headers['content-type'];
+				const responseContentType = response.headers['content-type'] ?? '';
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
 					response.body = JSON.parse(Buffer.from(response.body).toString());
-				} else if (['image', 'audio', 'video'].some((e) => responseContentType.includes(e))) {
+				} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';

@@ -10,7 +10,7 @@ export class GoogleDriveOAuth2Api implements ICredentialType {
 	name = 'googleDriveOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google Drive OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
