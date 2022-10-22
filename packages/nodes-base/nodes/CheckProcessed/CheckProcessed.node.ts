@@ -82,6 +82,19 @@ export class CheckProcessed implements INodeType {
 				],
 				default: 'workflow',
 			},
+			{
+				displayName: 'Max Entries',
+				name: 'maxEntries',
+				type: 'number',
+				noDataExpression: true,
+				displayOptions: {
+					show: {
+						mode: ['add', 'filterOut'],
+					},
+				},
+				default: 50,
+				description: 'How many entries will be saved max',
+			},
 		],
 	};
 
@@ -118,13 +131,15 @@ export class CheckProcessed implements INodeType {
 		}
 
 		if (mode === 'add') {
-			await this.helpers.checkProcessedAndRecord(Object.keys(itemMapping), context);
+			const maxEntries = this.getNodeParameter('maxEntries', 0) as number;
+			await this.helpers.checkProcessedAndRecord(Object.keys(itemMapping), context, { maxEntries });
 			return [items];
 		} else if (mode === 'remove') {
 			await this.helpers.removeProcessed(Object.keys(itemMapping), context);
 			return [items];
 		} else {
 			// mode: filterOut
+			const maxEntries = this.getNodeParameter('maxEntries', 0) as number;
 			const addProcessedValue = this.getNodeParameter('addProcessedValue', 0) as string;
 
 			let itemsProcessed: ICheckProcessedOutput;
@@ -132,6 +147,7 @@ export class CheckProcessed implements INodeType {
 				itemsProcessed = await this.helpers.checkProcessedAndRecord(
 					Object.keys(itemMapping),
 					context,
+					{ maxEntries },
 				);
 			} else {
 				itemsProcessed = await this.helpers.checkProcessed(Object.keys(itemMapping), context);

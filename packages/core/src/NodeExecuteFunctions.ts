@@ -105,6 +105,7 @@ import {
 	IWorkflowSettings,
 	ProcessedDataManager,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
+	ICheckProcessedOptions,
 } from '.';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
@@ -827,16 +828,23 @@ export async function checkProcessed(
 	items: string[],
 	context: IProcessedDataContext,
 	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
 ): Promise<ICheckProcessedOutput> {
-	return ProcessedDataManager.getInstance().checkProcessed(items, context, contextData);
+	return ProcessedDataManager.getInstance().checkProcessed(items, context, contextData, options);
 }
 
 export async function checkProcessedAndRecord(
 	items: string[],
 	context: IProcessedDataContext,
 	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
 ): Promise<ICheckProcessedOutput> {
-	return ProcessedDataManager.getInstance().checkProcessedAndRecord(items, context, contextData);
+	return ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		items,
+		context,
+		contextData,
+		options,
+	);
 }
 
 export async function checkProcessedItemsAndRecord(
@@ -844,12 +852,14 @@ export async function checkProcessedItemsAndRecord(
 	items: IDataObject[],
 	context: IProcessedDataContext,
 	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
 ): Promise<ICheckProcessedOutputItems> {
 	return ProcessedDataManager.getInstance().checkProcessedItemsAndRecord(
 		key,
 		items,
 		context,
 		contextData,
+		options,
 	);
 }
 
@@ -2410,21 +2420,30 @@ export function getExecuteFunctions(
 				async checkProcessed(
 					items: string[],
 					context: IProcessedDataContext,
+					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutput> {
-					return checkProcessed(items, context, { node, workflow });
+					return checkProcessed(items, context, { node, workflow }, options);
 				},
 				async checkProcessedAndRecord(
 					items: string[],
 					context: IProcessedDataContext,
+					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutput> {
-					return checkProcessedAndRecord(items, context, { node, workflow });
+					return checkProcessedAndRecord(items, context, { node, workflow }, options);
 				},
 				async checkProcessedItemsAndRecord(
 					propertyName: string,
 					items: IDataObject[],
 					context: IProcessedDataContext,
+					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutputItems> {
-					return checkProcessedItemsAndRecord(propertyName, items, context, { node, workflow });
+					return checkProcessedItemsAndRecord(
+						propertyName,
+						items,
+						context,
+						{ node, workflow },
+						options,
+					);
 				},
 				async removeProcessed(items: string[], context: IProcessedDataContext): Promise<void> {
 					return removeProcessed(items, context, { node, workflow });
@@ -2657,14 +2676,16 @@ export function getExecuteSingleFunctions(
 				async checkProcessed(
 					items: string[],
 					context: IProcessedDataContext,
+					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutput> {
-					return checkProcessed(items, context, { node, workflow });
+					return checkProcessed(items, context, { node, workflow }, options);
 				},
 				async checkProcessedAndRecord(
 					items: string[],
 					context: IProcessedDataContext,
+					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutput> {
-					return checkProcessedAndRecord(items, context, { node, workflow });
+					return checkProcessedAndRecord(items, context, { node, workflow }, options);
 				},
 				async removeProcessed(items: string[], context: IProcessedDataContext): Promise<void> {
 					return removeProcessed(items, context, { node, workflow });

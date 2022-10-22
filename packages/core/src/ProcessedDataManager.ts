@@ -2,6 +2,7 @@ import { IDataObject } from 'n8n-workflow';
 import get from 'lodash.get';
 import {
 	ICheckProcessedContextData,
+	ICheckProcessedOptions,
 	ICheckProcessedOutput,
 	ICheckProcessedOutputItems,
 	IProcessedDataConfig,
@@ -46,9 +47,10 @@ export class ProcessedDataManager {
 		items: string[],
 		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
 		if (this.managers[this.mode]) {
-			return this.managers[this.mode].checkProcessed(items, context, contextData);
+			return this.managers[this.mode].checkProcessed(items, context, contextData, options);
 		}
 
 		throw new Error(`There is no manager for the defined mode "${this.mode}"`);
@@ -59,6 +61,7 @@ export class ProcessedDataManager {
 		items: IDataObject[],
 		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutputItems> {
 		if (!this.managers[this.mode]) {
 			throw new Error(`There is no manager for the defined mode "${this.mode}"`);
@@ -75,6 +78,7 @@ export class ProcessedDataManager {
 			Object.keys(itemLookup),
 			context,
 			contextData,
+			options,
 		);
 
 		return {
@@ -87,9 +91,10 @@ export class ProcessedDataManager {
 		items: string[],
 		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
 		if (this.managers[this.mode]) {
-			return this.managers[this.mode].checkProcessedAndRecord(items, context, contextData);
+			return this.managers[this.mode].checkProcessedAndRecord(items, context, contextData, options);
 		}
 
 		throw new Error(`There is no manager for the defined mode "${this.mode}"`);

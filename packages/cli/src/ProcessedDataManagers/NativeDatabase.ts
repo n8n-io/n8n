@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
 	ICheckProcessedContextData,
+	ICheckProcessedOptions,
 	ICheckProcessedOutput,
 	IProcessedDataContext,
 	IProcessedDataManager,
@@ -127,6 +128,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		items: string[],
 		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
 		const dbContext = ProcessedDataManagerNativeDatabase.createContext(context, contextData);
 
@@ -146,7 +148,10 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		);
 
 		if (!processedData) {
-			// All items are new so add new entry
+			// All items are new so add new entries
+			if (options.maxEntries) {
+				hashedItems.splice(0, hashedItems.length - options.maxEntries);
+			}
 			await Db.collections.ProcessedData.insert({
 				workflowId: contextData.workflow.id.toString(),
 				context: dbContext,
@@ -174,6 +179,13 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 				(processedData.value.data as string[]).push(item);
 			}
 		});
+
+		if (options.maxEntries) {
+			(processedData.value.data as string[]).splice(
+				0,
+				(processedData.value.data as string[]).length - options.maxEntries,
+			);
+		}
 
 		await Db.collections.ProcessedData.save(processedData);
 
@@ -203,7 +215,9 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		let index;
 		hashedItems.forEach((item) => {
 			index = (processedData.value.data as string[]).findIndex((value) => value === item);
-			(processedData.value.data as string[]).splice(index, 1);
+			if (index !== -1) {
+				(processedData.value.data as string[]).splice(index, 1);
+			}
 		});
 
 		await Db.collections.ProcessedData.save(processedData);

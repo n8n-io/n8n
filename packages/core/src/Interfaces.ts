@@ -37,11 +37,13 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 		checkProcessedAndRecord(
 			items: string[],
 			context: IProcessedDataContext,
+			options: ICheckProcessedOptions,
 		): Promise<ICheckProcessedOutput>;
 		checkProcessedItemsAndRecord(
 			propertyName: string,
 			items: IDataObject[],
 			context: IProcessedDataContext,
+			options: ICheckProcessedOptions,
 		): Promise<ICheckProcessedOutputItems>;
 		removeProcessed(items: string[], context: IProcessedDataContext): Promise<void>;
 		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
@@ -343,12 +345,14 @@ export interface IProcessedDataManager {
 		items: string[],
 		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput>;
 
 	checkProcessedAndRecord(
 		items: string[],
 		context: IProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput>;
 
 	removeProcessed(
@@ -378,4 +382,8 @@ export interface ICheckProcessedContextData {
 		id?: number | string;
 		active: boolean;
 	};
+}
+
+export interface ICheckProcessedOptions {
+	maxEntries?: number;
 }

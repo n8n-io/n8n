@@ -68,6 +68,7 @@ test('ProcessedData: NativeDatabase should record and check data correctly', asy
 		['a', 'b'],
 		context,
 		contextData,
+		{},
 	);
 
 	// No data exists yet so has to be new
@@ -77,6 +78,7 @@ test('ProcessedData: NativeDatabase should record and check data correctly', asy
 		['a', 'b'],
 		context,
 		contextData,
+		{},
 	);
 
 	// 'a' & 'b' got only checked before, so still has to be new
@@ -86,6 +88,7 @@ test('ProcessedData: NativeDatabase should record and check data correctly', asy
 		['a', 'b', 'c'],
 		context,
 		contextData,
+		{},
 	);
 
 	// 'a' & 'b' got recorded before, 'c' never
@@ -95,6 +98,7 @@ test('ProcessedData: NativeDatabase should record and check data correctly', asy
 		['a', 'b', 'c', 'd'],
 		context,
 		contextData,
+		{},
 	);
 
 	// 'a' & 'b' got recorded before, 'c' only checked bfeore and 'd' has never been seen
@@ -106,6 +110,7 @@ test('ProcessedData: NativeDatabase should record and check data correctly', asy
 		['a', 'b', 'c', 'd'],
 		context,
 		contextData,
+		{},
 	);
 
 	// 'b' & 'd' got removed from the database so they should be new, 'a' & 'b' should still be known
@@ -125,6 +130,7 @@ test('ProcessedData: NativeDatabase different contexts should not interfere with
 		['a', 'b'],
 		'node',
 		contextData,
+		{},
 	);
 
 	// No data exists yet for context "node" so has to be new
@@ -135,6 +141,7 @@ test('ProcessedData: NativeDatabase different contexts should not interfere with
 		['a', 'b', 'c'],
 		'workflow',
 		contextData,
+		{},
 	);
 
 	// No data exists yet for context 'worklow' so has to be new
@@ -146,6 +153,7 @@ test('ProcessedData: NativeDatabase different contexts should not interfere with
 		['a', 'b', 'c'],
 		'node',
 		contextData,
+		{},
 	);
 
 	// 'a' got removed for the context 'node' and 'c' never got saved, so only 'b' should be known
@@ -157,9 +165,53 @@ test('ProcessedData: NativeDatabase different contexts should not interfere with
 		['a', 'b', 'c', 'd'],
 		'workflow',
 		contextData,
+		{},
 	);
 
 	// 'b' got removed for the context 'workflow' and 'd' never got saved for that reason new
 	// 'a' and 'c' should should be known
 	expect(processedData).toEqual({ new: ['b', 'd'], processed: ['a', 'c'] });
+});
+
+test('ProcessedData: NativeDatabase check maxEntries', async () => {
+	const contextData: ICheckProcessedContextData = {
+		workflow,
+		node,
+	};
+
+	let processedData: ICheckProcessedOutput;
+
+	processedData = await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		['0', '1', '2', '3'],
+		'node',
+		contextData,
+		{ maxEntries: 5 },
+	);
+
+	// All data should be new
+	expect(processedData).toEqual({ new: ['0', '1', '2', '3'], processed: [] });
+
+	// Add data with context "workflow"
+	processedData = await ProcessedDataManager.getInstance().checkProcessedAndRecord(
+		['4', '5', '6'],
+		'node',
+		contextData,
+		{ maxEntries: 5 },
+	);
+
+	// All given data should be new
+	expect(processedData).toEqual({ new: ['4', '5', '6'], processed: [] });
+
+	// This should not make a difference, removing an item which does not exist
+	await ProcessedDataManager.getInstance().removeProcessed(['a'], 'node', contextData);
+
+	processedData = await ProcessedDataManager.getInstance().checkProcessed(
+		['0', '1', '2', '3', '4', '5', '6', '7'],
+		'node',
+		contextData,
+		{ maxEntries: 5 },
+	);
+
+	// '7' should be new and '0' and '1' also because they got been pruned as max 5 get saved
+	expect(processedData).toEqual({ new: ['0', '1', '7'], processed: ['2', '3', '4', '5', '6'] });
 });
