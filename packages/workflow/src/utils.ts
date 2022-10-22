@@ -86,3 +86,23 @@ export function requireDistNode(nodeType: INodeType, workflow: Workflow) {
 		throw new Error(`Failed to instantiate node at ${sourcePath}`);
 	}
 }
+
+type ErrorMessage = { errorMessage: string };
+type FallbackValue<T> = { fallbackValue: T };
+
+export const jsonParse = <T>(
+	jsonString: string,
+	options: ErrorMessage | FallbackValue<T> | {} = {},
+): T => {
+	try {
+		return JSON.parse(jsonString) as T;
+	} catch (error) {
+		if ('fallbackValue' in options) {
+			return options.fallbackValue;
+		}
+		if ('errorMessage' in options) {
+			throw new Error(options.errorMessage);
+		}
+		throw error;
+	}
+};

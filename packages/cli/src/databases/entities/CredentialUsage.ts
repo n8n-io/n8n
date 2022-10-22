@@ -1,35 +1,10 @@
-/* eslint-disable import/no-cycle */
-import {
-	BeforeUpdate,
-	CreateDateColumn,
-	Entity,
-	ManyToOne,
-	PrimaryColumn,
-	RelationId,
-	UpdateDateColumn,
-} from 'typeorm';
-import { IsDate, IsOptional } from 'class-validator';
-
-import config = require('../../../config');
-import { DatabaseType } from '../../index';
+import { Entity, ManyToOne, PrimaryColumn, RelationId } from 'typeorm';
 import { WorkflowEntity } from './WorkflowEntity';
 import { CredentialsEntity } from './CredentialsEntity';
-
-function getTimestampSyntax() {
-	const dbType = config.get('database.type') as DatabaseType;
-
-	const map: { [key in DatabaseType]: string } = {
-		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
-		postgresdb: 'CURRENT_TIMESTAMP(3)',
-		mysqldb: 'CURRENT_TIMESTAMP(3)',
-		mariadb: 'CURRENT_TIMESTAMP(3)',
-	};
-
-	return map[dbType];
-}
+import { AbstractEntity } from './AbstractEntity';
 
 @Entity()
-export class CredentialUsage {
+export class CredentialUsage extends AbstractEntity {
 	@ManyToOne(() => WorkflowEntity, {
 		onDelete: 'CASCADE',
 	})
@@ -50,23 +25,4 @@ export class CredentialUsage {
 	@RelationId((credentialUsage: CredentialUsage) => credentialUsage.credential)
 	@PrimaryColumn()
 	credentialId: string;
-
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	createdAt: Date;
-
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
-	})
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	updatedAt: Date;
-
-	@BeforeUpdate()
-	setUpdateDate(): void {
-		this.updatedAt = new Date();
-	}
 }

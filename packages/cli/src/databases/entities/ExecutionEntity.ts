@@ -1,26 +1,7 @@
-/* eslint-disable import/no-cycle */
-import { WorkflowExecuteMode } from 'n8n-workflow';
-
-import { Column, ColumnOptions, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
-import * as config from '../../../config';
-import { DatabaseType, IExecutionFlattedDb, IWorkflowDb } from '../..';
-
-function resolveDataType(dataType: string) {
-	const dbType = config.getEnv('database.type');
-
-	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
-		sqlite: {
-			json: 'simple-json',
-		},
-		postgresdb: {
-			datetime: 'timestamptz',
-		},
-		mysqldb: {},
-		mariadb: {},
-	};
-
-	return typeMap[dbType][dataType] ?? dataType;
-}
+import type { WorkflowExecuteMode } from 'n8n-workflow';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
+import type { IExecutionFlattedDb, IWorkflowDb } from '../../Interfaces';
 
 @Entity()
 @Index(['workflowId', 'id'])
@@ -47,19 +28,19 @@ export class ExecutionEntity implements IExecutionFlattedDb {
 	@Column({ nullable: true })
 	retrySuccessId: string;
 
-	@Column(resolveDataType('datetime'))
+	@Column(datetimeColumnType)
 	startedAt: Date;
 
 	@Index()
-	@Column({ type: resolveDataType('datetime') as ColumnOptions['type'], nullable: true })
+	@Column({ type: datetimeColumnType, nullable: true })
 	stoppedAt: Date;
 
-	@Column(resolveDataType('json'))
+	@Column(jsonColumnType)
 	workflowData: IWorkflowDb;
 
 	@Column({ nullable: true })
 	workflowId: string;
 
-	@Column({ type: resolveDataType('datetime') as ColumnOptions['type'], nullable: true })
+	@Column({ type: datetimeColumnType, nullable: true })
 	waitTill: Date;
 }
