@@ -4,6 +4,7 @@ import {
 	IHttpRequestOptions,
 	IWebhookFunctions,
 	JsonObject,
+	jsonParse,
 	NodeOperationError,
 } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
@@ -337,7 +338,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		)) as string;
 
-		return JSON.parse(webhooks) as Webhooks;
+		return jsonParse(webhooks) as Webhooks;
 	};
 
 	export const createWebHook = async (
@@ -367,7 +368,7 @@ export namespace SendInBlueWebhookApi {
 			options,
 		);
 
-		return JSON.parse(webhookId) as WebhookId;
+		return jsonParse(webhookId) as WebhookId;
 	};
 
 	export const deleteWebhook = async (ref: IHookFunctions, webhookId: string) => {

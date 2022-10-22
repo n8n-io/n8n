@@ -11,7 +11,7 @@
 import express from 'express';
 import _, { cloneDeep } from 'lodash';
 import { BinaryDataManager } from 'n8n-core';
-import { IDataObject, IWorkflowBase, LoggerProxy, Workflow } from 'n8n-workflow';
+import { IDataObject, IWorkflowBase, LoggerProxy, jsonParse, Workflow } from 'n8n-workflow';
 import { FindManyOptions, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 
 import {
@@ -111,7 +111,7 @@ async function getExecutionsCount(
 executionsController.get(
 	'/',
 	ResponseHelper.send(async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
-		const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+		const filter = req.query.filter ? jsonParse<IDataObject>(req.query.filter) : {};
 
 		const limit = req.query.limit
 			? parseInt(req.query.limit, 10)
