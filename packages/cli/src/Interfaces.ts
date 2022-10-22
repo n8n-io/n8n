@@ -17,6 +17,7 @@ import {
 	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	Workflow,
+	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -39,12 +40,20 @@ import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import type { TagEntity } from './databases/entities/TagEntity';
 import type { User } from './databases/entities/User';
 import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { CredentialUsage } from './databases/entities/CredentialUsage';
 
 export interface IActivationError {
 	time: number;
 	error: {
 		message: string;
 	};
+}
+
+export interface IQueuedWorkflowActivations {
+	activationMode: WorkflowActivateMode;
+	lastTimeout: number;
+	timeout: NodeJS.Timeout;
+	workflowData: IWorkflowDb;
 }
 
 export interface ICustomRequest extends Request {
@@ -76,6 +85,7 @@ export interface IDatabaseCollections {
 	Settings: Repository<Settings>;
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
+	CredentialUsage: Repository<CredentialUsage>;
 }
 
 export interface IWebhookDb {
@@ -520,8 +530,13 @@ export interface IN8nUISettings {
 		type: string;
 	};
 	isNpmAvailable: boolean;
+	allowedModules: {
+		builtIn?: string;
+		external?: string;
+	};
 	enterprise: {
 		sharing: boolean;
+		workflowSharing: boolean;
 	};
 }
 

@@ -178,7 +178,7 @@ export class AwsSnsTrigger implements INodeType {
 		const topic = this.getNodeParameter('topic') as string;
 
 		// @ts-ignore
-		const body = JSON.parse(req.rawBody.toString());
+		const body = jsonParse(req.rawBody.toString());
 
 		if (body.Type === 'SubscriptionConfirmation' && body.TopicArn === topic) {
 			const { Token } = body;

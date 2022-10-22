@@ -5,11 +5,11 @@ import { promises as fs } from 'fs';
 import { Command, flags } from '@oclif/command';
 import {
 	BinaryDataManager,
-	UserSettings,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	ProcessedDataManager,
+	UserSettings,
 } from 'n8n-core';
-import { INode, LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 
 import {
 	ActiveExecutions,
@@ -31,6 +31,7 @@ import { getLogger } from '../src/Logger';
 import config from '../config';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
 import { getProcessedDataManagers } from '../src/ProcessedDataManagers';
+import { findCliWorkflowStart } from '../src/utils';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';
@@ -127,6 +128,10 @@ export class Execute extends Command {
 			}
 		}
 
+		if (!workflowData) {
+			throw new Error('Failed to retrieve workflow data for requested workflow');
+		}
+
 		// Make sure the settings exist
 		await UserSettings.prepareUserSettings();
 
@@ -155,33 +160,14 @@ export class Execute extends Command {
 			workflowId = undefined;
 		}
 
-		// Check if the workflow contains the required "Start" node
-		// "requiredNodeTypes" are also defined in editor-ui/views/NodeView.vue
-		const requiredNodeTypes = ['n8n-nodes-base.start'];
-		let startNode: INode | undefined;
-		// eslint-disable-next-line no-restricted-syntax, @typescript-eslint/no-non-null-assertion
-		for (const node of workflowData!.nodes) {
-			if (requiredNodeTypes.includes(node.type)) {
-				startNode = node;
-				break;
-			}
-		}
-
-		if (startNode === undefined) {
-			// If the workflow does not contain a start-node we can not know what
-			// should be executed and with which data to start.
-			console.info(`The workflow does not contain a "Start" node. So it can not be executed.`);
-			// eslint-disable-next-line consistent-return
-			return Promise.resolve();
-		}
-
 		try {
+			const startingNode = findCliWorkflowStart(workflowData.nodes);
+
 			const user = await getInstanceOwner();
 			const runData: IWorkflowExecutionDataProcess = {
 				executionMode: 'cli',
-				startNodes: [startNode.name],
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				workflowData: workflowData!,
+				startNodes: [startingNode.name],
+				workflowData,
 				userId: user.id,
 			};
 
@@ -218,6 +204,7 @@ export class Execute extends Command {
 			logger.error('\nExecution error:');
 			logger.info('====================================');
 			logger.error(e.message);
+			if (e.description) logger.error(e.description);
 			logger.error(e.stack);
 			this.exit(1);
 		}

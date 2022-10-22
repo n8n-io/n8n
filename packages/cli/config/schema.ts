@@ -896,6 +896,12 @@ export const schema = {
 				default: false,
 			},
 		},
+		// This is a temporary flag (acting as feature toggle)
+		// Will be removed when feature goes live
+		workflowSharingEnabled: {
+			format: Boolean,
+			default: false,
+		},
 	},
 
 	hiringBanner: {

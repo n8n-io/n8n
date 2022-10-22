@@ -32,9 +32,7 @@ import { makeRestApiRequest } from '@/api/helpers';
 /**
  * Unflattens the Execution data.
  *
- * @export
  * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
- * @returns {IExecutionResponse}
  */
 function unflattenExecutionData (fullExecutionData: IExecutionFlattedResponse): IExecutionResponse {
 	// Unflatten the data
@@ -131,9 +129,9 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns the execution with the given name
-				getExecution: async (id: string): Promise<IExecutionResponse> => {
+				getExecution: async (id: string): Promise<IExecutionResponse | undefined> => {
 					const response = await self.restApi().makeRestApiRequest('GET', `/executions/${id}`);
-					return unflattenExecutionData(response);
+					return response && unflattenExecutionData(response);
 				},
 
 				// Deletes executions

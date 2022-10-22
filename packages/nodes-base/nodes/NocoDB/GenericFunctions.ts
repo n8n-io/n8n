@@ -7,6 +7,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
+	jsonParse,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -21,11 +22,6 @@ interface IAttachment {
 /**
  * Make an API request to NocoDB
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,
@@ -76,13 +72,7 @@ export async function apiRequest(
  * Make an API request to paginated NocoDB endpoint
  * and return all results
  *
- * @export
  * @param {(IHookFunctions | IExecuteFunctions)} this
- * @param {string} method
- * @param {string} endpoint
- * @param {IDataObject} body
- * @param {IDataObject} [query]
- * @returns {Promise<any>}
  */
 export async function apiRequestAllItems(
 	this: IHookFunctions | IExecuteFunctions | IPollFunctions,
@@ -126,7 +116,7 @@ export async function downloadRecordAttachments(
 		for (const fieldName of fieldNames) {
 			if (record[fieldName]) {
 				for (const [index, attachment] of (
-					JSON.parse(record[fieldName] as string) as IAttachment[]
+					jsonParse(record[fieldName] as string) as IAttachment[]
 				).entries()) {
 					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
 						json: false,

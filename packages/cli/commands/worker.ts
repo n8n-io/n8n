@@ -376,6 +376,8 @@ export class Worker extends Command {
 					const port = config.getEnv('queue.health.port');
 
 					const app = express();
+					app.disable('x-powered-by');
+
 					const server = http.createServer(app);
 
 					app.get(

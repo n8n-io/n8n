@@ -7,11 +7,12 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { wufooApiRequest } from './GenericFunctions';
 
-import { IField, IFormQuery, IWebhook } from './Interface';
+import { IField, IWebhook } from './Interface';
 
 import { randomBytes } from 'crypto';
 
@@ -70,9 +71,9 @@ export class WufooTrigger implements INodeType {
 		loadOptions: {
 			async getForms(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
-				const body: IFormQuery = { includeTodayCount: true };
+
 				// https://wufoo.github.io/docs/#all-forms
-				const formObject = await wufooApiRequest.call(this, 'GET', 'forms.json', body);
+				const formObject = await wufooApiRequest.call(this, 'GET', 'forms.json');
 				for (const form of formObject.Forms) {
 					const name = form.Name;
 					const value = form.Hash;
@@ -153,7 +154,10 @@ export class WufooTrigger implements INodeType {
 			return {};
 		}
 
-		const fieldsObject = JSON.parse(req.body.FieldStructure);
+		// tslint:disable-next-line:no-any
+		const fieldsObject = jsonParse<any>(req.body.FieldStructure, {
+			errorMessage: "Invalid JSON in request body field 'FieldStructure'",
+		});
 
 		fieldsObject.Fields.map((field: IField) => {
 			// TODO
@@ -206,8 +210,12 @@ export class WufooTrigger implements INodeType {
 				entryId: req.body.EntryId as number,
 				dateCreated: req.body.DateCreated as Date,
 				formId: req.body.FormId as string,
-				formStructure: JSON.parse(req.body.FormStructure),
-				fieldStructure: JSON.parse(req.body.FieldStructure),
+				formStructure: jsonParse(req.body.FormStructure, {
+					errorMessage: "Invalid JSON in request body field 'FormStructure'",
+				}),
+				fieldStructure: jsonParse(req.body.FieldStructure, {
+					errorMessage: "Invalid JSON in request body field 'FieldStructure'",
+				}),
 				entries,
 			};
 

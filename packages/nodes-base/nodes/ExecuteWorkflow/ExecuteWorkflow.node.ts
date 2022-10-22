@@ -14,7 +14,7 @@ export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow',
 		name: 'executeWorkflow',
-		icon: 'fa:network-wired',
+		icon: 'fa:sign-in-alt',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',
@@ -132,7 +132,7 @@ export class ExecuteWorkflow implements INodeType {
 			},
 			{
 				displayName:
-					'Any data you pass into this node will be output by the start node of the workflow to be executed. <a href="https://docs.n8n.io/nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
+					'Any data you pass into this node will be output by the start node of the workflow to be executed. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
 				name: 'executeWorkflowNotice',
 				type: 'notice',
 				default: '',

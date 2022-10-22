@@ -378,11 +378,12 @@ export class WorkflowRunnerProcess {
 		) {
 			// Execute all nodes
 
+			const pinDataKeys = this.data?.pinData ? Object.keys(this.data.pinData) : [];
+			const noPinData = pinDataKeys.length === 0;
+			const isPinned = (nodeName: string) => pinDataKeys.includes(nodeName);
+
 			let startNode;
-			if (
-				this.data.startNodes?.length === 1 &&
-				Object.keys(this.data.pinData ?? {}).includes(this.data.startNodes[0])
-			) {
+			if (this.data.startNodes?.length === 1 && (noPinData || isPinned(this.data.startNodes[0]))) {
 				startNode = this.workflow.getNode(this.data.startNodes[0]) ?? undefined;
 			}
 
@@ -409,9 +410,6 @@ export class WorkflowRunnerProcess {
 	/**
 	 * Sends hook data to the parent process that it executes them
 	 *
-	 * @param {string} hook
-	 * @param {any[]} parameters
-	 * @memberof WorkflowRunnerProcess
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types, @typescript-eslint/no-explicit-any
 	async sendHookToParentProcess(hook: string, parameters: any[]) {
@@ -430,7 +428,6 @@ export class WorkflowRunnerProcess {
 	 * the parent process where they then can be executed with access
 	 * to database and to PushService
 	 *
-	 * @returns
 	 */
 	getProcessForwardHooks(): WorkflowHooks {
 		const hookFunctions: IWorkflowExecuteHooks = {
@@ -480,7 +477,6 @@ export class WorkflowRunnerProcess {
  *
  * @param {string} type The type of data to send
  * @param {*} data The data
- * @returns {Promise<void>}
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function sendToParentProcess(type: string, data: any): Promise<void> {

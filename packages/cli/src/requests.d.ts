@@ -77,6 +77,8 @@ export declare namespace WorkflowRequest {
 			destinationNode?: string;
 		}
 	>;
+
+	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
@@ -326,4 +328,12 @@ export declare namespace NodeRequest {
 	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
 
 	type Update = Post;
+}
+
+// ----------------------------------
+//           /curl-to-json
+// ----------------------------------
+
+export declare namespace CurlHelper {
+	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
 }

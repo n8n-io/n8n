@@ -6,7 +6,7 @@ export class GoogleAdsOAuth2Api implements ICredentialType {
 	name = 'googleAdsOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google Ads OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Developer Token',

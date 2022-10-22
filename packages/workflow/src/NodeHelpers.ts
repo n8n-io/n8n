@@ -38,6 +38,7 @@ import {
 	NodeParameterValue,
 	WebhookHttpMethod,
 } from './Interfaces';
+import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
 
@@ -232,9 +233,6 @@ export const cronNodeOptions: INodePropertyCollection[] = [
  * Gets special parameters which should be added to nodeTypes depending
  * on their type or configuration
  *
- * @export
- * @param {INodeType} nodeType
- * @returns
  */
 export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[] {
 	if (nodeType.description.polling === true) {
@@ -261,12 +259,10 @@ export function getSpecialNodeParameters(nodeType: INodeType): INodeProperties[]
 /**
  * Returns if the parameter should be displayed or not
  *
- * @export
  * @param {INodeParameters} nodeValues The data on the node which decides if the parameter
  *                                    should be displayed
  * @param {(INodeProperties | INodeCredentialDescription)} parameter The parameter to check if it should be displayed
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
- * @returns
  */
 export function displayParameter(
 	nodeValues: INodeParameters,
@@ -352,12 +348,10 @@ export function displayParameter(
  * Returns if the given parameter should be displayed or not considering the path
  * to the properties
  *
- * @export
  * @param {INodeParameters} nodeValues The data on the node which decides if the parameter
  *                                    should be displayed
  * @param {(INodeProperties | INodeCredentialDescription)} parameter The parameter to check if it should be displayed
  * @param {string} path The path to the property
- * @returns
  */
 export function displayParameterPath(
 	nodeValues: INodeParameters,
@@ -382,11 +376,9 @@ export function displayParameterPath(
 /**
  * Returns the context data
  *
- * @export
  * @param {IRunExecutionData} runExecutionData The run execution data
  * @param {string} type The data type. "node"/"flow"
  * @param {INode} [node] If type "node" is set the node to return the context of has to be supplied
- * @returns {IContextObject}
  */
 export function getContext(
 	runExecutionData: IRunExecutionData,
@@ -421,9 +413,6 @@ export function getContext(
 /**
  * Returns which parameters are dependent on which
  *
- * @export
- * @param {INodeProperties[]} nodePropertiesArray
- * @returns {IParameterDependencies}
  */
 export function getParamterDependencies(
 	nodePropertiesArray: INodeProperties[],
@@ -462,10 +451,6 @@ export function getParamterDependencies(
  * Returns in which order the parameters should be resolved
  * to have the parameters available they depend on
  *
- * @export
- * @param {INodeProperties[]} nodePropertiesArray
- * @param {IParameterDependencies} parameterDependencies
- * @returns {number[]}
  */
 export function getParamterResolveOrder(
 	nodePropertiesArray: INodeProperties[],
@@ -533,7 +518,6 @@ export function getParamterResolveOrder(
  * Returns the node parameter values. Depending on the settings it either just returns the none
  * default values or it applies all the default values.
  *
- * @export
  * @param {INodeProperties[]} nodePropertiesArray The properties which exist and their settings
  * @param {INodeParameters} nodeValues The node parameter data
  * @param {boolean} returnDefaults If default values get added or only none default values returned
@@ -541,7 +525,6 @@ export function getParamterResolveOrder(
  * @param {boolean} [onlySimpleTypes=false] If only simple types should be resolved
  * @param {boolean} [dataIsResolved=false] If nodeValues are already fully resolved (so that all default values got added already)
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
- * @returns {(INodeParameters | null)}
  */
 export function getNodeParameters(
 	nodePropertiesArray: INodeProperties[],
@@ -678,9 +661,7 @@ export function getNodeParameters(
 				} else if (returnDefaults) {
 					// Does not have values defined but defaults should be returned
 					if (Array.isArray(nodeProperties.default)) {
-						nodeParameters[nodeProperties.name] = JSON.parse(
-							JSON.stringify(nodeProperties.default),
-						);
+						nodeParameters[nodeProperties.name] = deepCopy(nodeProperties.default);
 					} else {
 						// As it is probably wrong for many nodes, do we keep on returning an empty array if
 						// anything else than an array is set as default
@@ -708,7 +689,7 @@ export function getNodeParameters(
 				}
 			} else if (returnDefaults) {
 				// Does not have values defined but defaults should be returned
-				nodeParameters[nodeProperties.name] = JSON.parse(JSON.stringify(nodeProperties.default));
+				nodeParameters[nodeProperties.name] = deepCopy(nodeProperties.default);
 				nodeParametersFull[nodeProperties.name] = nodeParameters[nodeProperties.name];
 			}
 		} else if (nodeProperties.type === 'fixedCollection') {
@@ -722,7 +703,7 @@ export function getNodeParameters(
 			let propertyValues = nodeValues[nodeProperties.name];
 			if (returnDefaults) {
 				if (propertyValues === undefined) {
-					propertyValues = JSON.parse(JSON.stringify(nodeProperties.default));
+					propertyValues = deepCopy(nodeProperties.default);
 				}
 			}
 
@@ -837,9 +818,7 @@ export function getNodeParameters(
 				if (returnDefaults) {
 					// Set also when it has the default value
 					if (collectionValues === undefined) {
-						nodeParameters[nodeProperties.name] = JSON.parse(
-							JSON.stringify(nodeProperties.default),
-						);
+						nodeParameters[nodeProperties.name] = deepCopy(nodeProperties.default);
 					} else {
 						nodeParameters[nodeProperties.name] = collectionValues;
 					}
@@ -858,10 +837,7 @@ export function getNodeParameters(
 /**
  * Brings the output data in a format that can be returned from a node
  *
- * @export
- * @param {INodeExecutionData[]} outputData
  * @param {number} [outputIndex=0]
- * @returns {Promise<INodeExecutionData[][]>}
  */
 export async function prepareOutputData(
 	outputData: INodeExecutionData[],
@@ -882,10 +858,7 @@ export async function prepareOutputData(
 /**
  * Returns all the webhooks which should be created for the give node
  *
- * @export
  *
- * @param {INode} node
- * @returns {IWebhookData[]}
  */
 export function getNodeWebhooks(
 	workflow: Workflow,
@@ -998,11 +971,6 @@ export function getNodeWebhooks(
 /**
  * Returns the webhook path
  *
- * @export
- * @param {string} workflowId
- * @param {string} nodeTypeName
- * @param {string} path
- * @returns {string}
  */
 export function getNodeWebhookPath(
 	workflowId: string,
@@ -1029,13 +997,6 @@ export function getNodeWebhookPath(
 /**
  * Returns the webhook URL
  *
- * @export
- * @param {string} baseUrl
- * @param {string} workflowId
- * @param {string} nodeTypeName
- * @param {string} path
- * @param {boolean} isFullPath
- * @returns {string}
  */
 export function getNodeWebhookUrl(
 	baseUrl: string,
@@ -1057,10 +1018,8 @@ export function getNodeWebhookUrl(
 /**
  * Returns all the parameter-issues of the node
  *
- * @export
  * @param {INodeProperties[]} nodePropertiesArray The properties of the node
  * @param {INode} node The data of the node
- * @returns {(INodeIssues | null)}
  */
 export function getNodeParametersIssues(
 	nodePropertiesArray: INodeProperties[],
@@ -1090,10 +1049,8 @@ export function getNodeParametersIssues(
 /**
  * Returns the issues of the node as string
  *
- * @export
  * @param {INodeIssues} issues The issues of the node
  * @param {INode} node The node
- * @returns {string[]}
  */
 export function nodeIssuesToString(issues: INodeIssues, node?: INode): string[] {
 	const nodeIssues = [];
@@ -1161,7 +1118,6 @@ export const validateResourceLocatorParameter = (
 /**
  * Adds an issue if the parameter is not defined
  *
- * @export
  * @param {INodeIssues} foundIssues The already found issues
  * @param {INodeProperties} nodeProperties The properties of the node
  * @param {NodeParameterValue} value The value of the parameter
@@ -1197,11 +1153,9 @@ export function addToIssuesIfMissing(
 /**
  * Returns the parameter value
  *
- * @export
  * @param {INodeParameters} nodeValues The values of the node
  * @param {string} parameterName The name of the parameter to return the value of
  * @param {string} path The path to the properties
- * @returns
  */
 export function getParameterValueByPath(
 	nodeValues: INodeParameters,
@@ -1218,11 +1172,9 @@ function isINodeParameterResourceLocator(value: unknown): value is INodeParamete
 /**
  * Returns all the issues with the given node-values
  *
- * @export
  * @param {INodeProperties} nodeProperties The properties of the node
  * @param {INodeParameters} nodeValues The values of the node
  * @param {string} path The path to the properties
- * @returns {INodeIssues}
  */
 export function getParameterIssues(
 	nodeProperties: INodeProperties,
@@ -1363,10 +1315,8 @@ export function getParameterIssues(
 /**
  * Merges multiple NodeIssues together
  *
- * @export
  * @param {INodeIssues} destination The issues to merge into
  * @param {(INodeIssues | null)} source The issues to merge
- * @returns
  */
 export function mergeIssues(destination: INodeIssues, source: INodeIssues | null) {
 	if (source === null) {
@@ -1409,9 +1359,6 @@ export function mergeIssues(destination: INodeIssues, source: INodeIssues | null
 /**
  * Merges the given node properties
  *
- * @export
- * @param {INodeProperties[]} mainProperties
- * @param {INodeProperties[]} addProperties
  */
 export function mergeNodeProperties(
 	mainProperties: INodeProperties[],

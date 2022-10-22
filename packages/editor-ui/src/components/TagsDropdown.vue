@@ -245,6 +245,23 @@ $--max-input-height: 60px;
 </style>
 
 <style lang="scss">
+.tags-container {
+	.el-tag {
+		padding: 1px var(--spacing-4xs);
+		color: var(--color-text-dark);
+		background-color: var(--color-background-base);
+		border-radius: var(--border-radius-base);
+		font-size: var(--font-size-2xs);
+		border: 0;
+
+		.el-tag__close {
+			max-height: 14px;
+			max-width: 14px;
+			line-height: 14px;
+		}
+	}
+}
+
 .tags-dropdown {
 	$--item-font-size: 14px;
 	$--item-line-height: 18px;

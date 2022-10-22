@@ -20,13 +20,13 @@ import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
+import WorkflowsView from '@/views/WorkflowsView.vue';
 import { Store } from 'vuex';
 import { IPermissions, IRootState, IWorkflowsState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { store } from './store';
-import e from 'express';
 
 Vue.use(Router);
 
@@ -55,8 +55,7 @@ function getTemplatesRedirect(store: Store<IRootState>) {
 
 const router = new Router({
 	mode: 'history',
-	// @ts-ignore
-	base: window.BASE_PATH === '/{{BASE_PATH}}/' ? '/' : window.BASE_PATH,
+	base: import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/',
 	scrollBehavior(to, from, savedPosition) {
 		// saved position == null means the page is NOT visited from history (back button)
 		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta) {
@@ -70,7 +69,9 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect(store: Store<IRootState>) {
-					return { name: VIEWS.NEW_WORKFLOW };
+					const startOnNewWorkflowRouteFlag = window.posthog?.isFeatureEnabled?.('start-at-wf-empty-state');
+
+					return { name: startOnNewWorkflowRouteFlag ? VIEWS.NEW_WORKFLOW : VIEWS.WORKFLOWS };
 				},
 				permissions: {
 					allow: {
@@ -180,6 +181,21 @@ const router = new Router({
 			name: VIEWS.CREDENTIALS,
 			components: {
 				default: CredentialsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/workflows',
+			name: VIEWS.WORKFLOWS,
+			components: {
+				default: WorkflowsView,
 				sidebar: MainSidebar,
 			},
 			meta: {
