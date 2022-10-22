@@ -6,7 +6,7 @@ export class GooglePerspectiveOAuth2Api implements ICredentialType {
 	name = 'googlePerspectiveOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google Perspective OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
