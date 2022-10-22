@@ -17,23 +17,22 @@ import {
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+	ALL_NODE_FILTER,
 	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
-	IExecutionResponse,
-	IFakeDoor,
 	IFakeDoorLocation,
 	IRootState,
 	IRunDataDisplayMode,
 	IUiState,
+	INodeFilterType,
 	XYPosition,
 } from '../Interface';
 
@@ -75,9 +74,6 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[TAGS_MANAGER_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_OPEN_MODAL_KEY]: {
 				open: false,
 			},
 			[VALUE_SURVEY_MODAL_KEY]: {
@@ -213,6 +209,9 @@ const module: Module<IUiState, IRootState> = {
 		getModalMode: (state: IUiState) => {
 			return (name: string) => state.modals[name].mode;
 		},
+		getModalData: (state: IUiState) => {
+			return (name: string) => state.modals[name].data;
+		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 		ndvSessionId: (state: IUiState): string => state.ndv.sessionId,
 		getPanelDisplayMode: (state: IUiState)  => {
@@ -276,6 +275,11 @@ const module: Module<IUiState, IRootState> = {
 			const { name, id } = params;
 			Vue.set(state.modals[name], 'activeId', id);
 		},
+		setModalData: (state: IUiState, params: { name: string, data: Record<string, unknown> }) => {
+			const { name, data } = params;
+
+			Vue.set(state.modals[name], 'data', data);
+		},
 		setCurlCommand: (state: IUiState, params: {name: string, command: string}) => {
 			const { name, command } = params;
 			Vue.set(state.modals[name], 'curlCommand', command);
@@ -329,6 +333,9 @@ const module: Module<IUiState, IRootState> = {
 		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
 			Vue.set(state.ndv.output.editMode, 'value', payload);
 		},
+		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
+			state.mainPanelPosition = relativePosition;
+		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);
 		},
@@ -375,6 +382,10 @@ const module: Module<IUiState, IRootState> = {
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
 			context.commit('openModal', modalKey);
+		},
+		openModalWithData: async (context: ActionContext<IUiState, IRootState>, payload: { name: string, data: Record<string, unknown> }) => {
+			context.commit('setModalData', payload);
+			context.commit('openModal', payload.name);
 		},
 		openDeleteUserModal: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: DELETE_USER_MODAL_KEY, id });

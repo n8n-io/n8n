@@ -1,54 +1,55 @@
 <template>
-	<el-submenu
-		v-if="item.children && item.children.length > 0"
-		:id="item.id"
-		:class="{
-			[$style.submenu]: true,
-			[$style.item]: true,
-			[$style.compact]: compact,
-			[$style.active]: mode === 'router' && isItemActive(item)
-		}"
-		:index="item.id"
-		:popper-append-to-body="false"
-		:popper-class="`${$style.submenuPopper} ${popperClass}`"
-	>
+	<div :class="['n8n-menu-item', $style.item]">
+		<el-submenu
+			v-if="item.children && item.children.length > 0"
+			:id="item.id"
+			:class="{
+				[$style.submenu]: true,
+				[$style.compact]: compact,
+				[$style.active]: mode === 'router' && isItemActive(item)
+			}"
+			:index="item.id"
+			popper-append-to-body
+			:popper-class="`${$style.submenuPopper} ${popperClass}`"
+		>
 			<template slot="title">
 				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" :size="item.customIconSize || 'large'" />
 				<span :class="$style.label">{{ item.label }}</span>
 			</template>
-		<el-menu-item
-			v-for="child in availableChildren"
-			:key="child.id"
-			:id="child.id"
-			:class="{
-				[$style.menuItem]: true,
-				[$style.disableActiveStyle]: !isItemActive(child),
-				[$style.active]: isItemActive(child),
-			}"
-			:index="child.id"
-			@click="onItemClick(child)"
-		>
-			<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
-			<span :class="$style.label">{{ child.label }}</span>
-		</el-menu-item>
-	</el-submenu>
-	<n8n-tooltip v-else placement="right" :content="item.label" :disabled="!compact" :open-delay="tooltipDelay">
-		<el-menu-item
-			:id="item.id"
-			:class="{
-				[$style.menuItem]: true,
-				[$style.item]: true,
-				[$style.disableActiveStyle]: !isItemActive(item),
-				[$style.active]: isItemActive(item),
-				[$style.compact]: compact
-			}"
-			:index="item.id"
-			@click="onItemClick(item)"
-		>
-			<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" :size="item.customIconSize || 'large'" />
-			<span :class="$style.label">{{ item.label }}</span>
-		</el-menu-item>
-	</n8n-tooltip>
+			<el-menu-item
+				v-for="child in availableChildren"
+				:key="child.id"
+				:id="child.id"
+				:class="{
+					[$style.menuItem]: true,
+					[$style.disableActiveStyle]: !isItemActive(child),
+					[$style.active]: isItemActive(child),
+				}"
+				:index="child.id"
+				@click="onItemClick(child)"
+			>
+				<n8n-icon v-if="child.icon" :class="$style.icon" :icon="child.icon" />
+				<span :class="$style.label">{{ child.label }}</span>
+			</el-menu-item>
+		</el-submenu>
+		<n8n-tooltip v-else placement="right" :content="item.label" :disabled="!compact" :open-delay="tooltipDelay">
+			<el-menu-item
+				:id="item.id"
+				:class="{
+					[$style.menuItem]: true,
+					[$style.item]: true,
+					[$style.disableActiveStyle]: !isItemActive(item),
+					[$style.active]: isItemActive(item),
+					[$style.compact]: compact
+				}"
+				:index="item.id"
+				@click="onItemClick(item)"
+			>
+				<n8n-icon v-if="item.icon" :class="$style.icon" :icon="item.icon" :size="item.customIconSize || 'large'" />
+				<span :class="$style.label">{{ item.label }}</span>
+			</el-menu-item>
+		</n8n-tooltip>
+	</div>
 </template>
 
 <script lang="ts">
@@ -155,6 +156,12 @@ export default Vue.extend({
 .submenu {
 	background: none !important;
 
+	&.compact :global(.el-submenu__title) {
+		i {
+			display: none;
+		}
+	}
+
 	:global(.el-submenu__title) {
 		display: flex;
 		align-items: center;
@@ -253,9 +260,6 @@ export default Vue.extend({
 
 .submenuPopper {
 	display: block;
-	left: 40px !important;
-	bottom: 110px !important;
-	top: auto !important;
 
 	ul {
 		padding: 0 var(--spacing-xs) !important;
@@ -263,6 +267,7 @@ export default Vue.extend({
 	.menuItem {
 		display: flex;
 		padding: var(--spacing-2xs) var(--spacing-xs) !important;
+		margin: var(--spacing-2xs) 0 !important;
 	}
 
 	.icon {

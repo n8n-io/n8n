@@ -1,5 +1,13 @@
 <template>
 	<div class="workflow-activator">
+		<div :class="$style.activeStatusText">
+			<n8n-text v-if="workflowActive" :color="couldNotBeStarted ? 'danger' : 'success'" size="small" bold>
+				{{ $locale.baseText('workflowActivator.active') }}
+			</n8n-text>
+			<n8n-text v-else color="text-base" size="small" bold>
+				{{ $locale.baseText('workflowActivator.inactive') }}
+			</n8n-text>
+		</div>
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
 			<div slot="content">{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
 			<el-switch
@@ -113,10 +121,21 @@ export default mixins(
 	);
 </script>
 
-<style lang="scss" scoped>
-
-.workflow-activator {
+<style lang="scss" module>
+.activeStatusText {
+	width: 64px; // Required to avoid jumping when changing active state
+	padding-right: var(--spacing-2xs);
+	box-sizing: border-box;
 	display: inline-block;
+	text-align: right;
+}
+</style>
+
+<style lang="scss" scoped>
+.workflow-activator {
+	display: inline-flex;
+	flex-wrap: nowrap;
+	align-items: center;
 }
 
 .could-not-be-started {
@@ -128,5 +147,4 @@ export default mixins(
 ::v-deep .el-loading-spinner {
 	margin-top: -10px;
 }
-
 </style>

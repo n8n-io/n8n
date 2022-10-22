@@ -56,7 +56,7 @@ export default mixins(
 <style lang="scss">
 .main-header {
 	background-color: var(--color-background-xlight);
-	height: 65px;
+	height: $header-height;
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);

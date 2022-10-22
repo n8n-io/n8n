@@ -24,7 +24,8 @@ export async function apiRequest(
 	endpoint: string,
 	body: object,
 	query?: IDataObject,
-): Promise<unknown> {
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	query = query || {};
 
 	type N8nApiCredentials = {
@@ -39,7 +40,7 @@ export async function apiRequest(
 		method,
 		body,
 		qs: query,
-		uri: `${baseUrl}/${endpoint}`,
+		uri: `${baseUrl.replace(new RegExp('/$'), '')}/${endpoint}`,
 		json: true,
 	};
 
@@ -51,6 +52,30 @@ export async function apiRequest(
 		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
+}
+
+export async function apiRequestAllItems(
+	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	body: object,
+	query?: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	query = query || {};
+	const returnData: IDataObject[] = [];
+
+	let nextCursor: string | undefined = undefined;
+	let responseData;
+
+	do {
+		query.cursor = nextCursor;
+		query.limit = 100;
+		responseData = await apiRequest.call(this, method, endpoint, body, query);
+		returnData.push.apply(returnData, responseData.data);
+		nextCursor = responseData.nextCursor as string | undefined;
+	} while (nextCursor);
+	return returnData;
 }
 
 /**

@@ -16,3 +16,4 @@ export * from './WorkflowDataProxy';
 export * from './WorkflowErrors';
 export * from './WorkflowHooks';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
+export { deepCopy, jsonParse } from './utils';
