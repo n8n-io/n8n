@@ -1,8 +1,11 @@
-import { CreateDateColumn, Entity, Index, PrimaryColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryColumn } from 'typeorm';
 
 import * as config from '../../../config';
 // eslint-disable-next-line import/no-cycle
 import { DatabaseType, IProcessedDataDb } from '../..';
+import { jsonColumnType } from './AbstractEntity';
+import { objectRetriever } from '../utils/transformers';
+import { IDataObject } from 'n8n-workflow';
 
 function getTimestampSyntax() {
 	const dbType = config.getEnv('database.type');
@@ -22,15 +25,18 @@ function getTimestampSyntax() {
 export class ProcessedData implements IProcessedDataDb {
 	// @Column('varchar')
 	@PrimaryColumn('varchar')
-	value: string;
-
-	// @Column('varchar')
-	@PrimaryColumn('varchar')
 	context: string;
 
 	// @Column()
 	@PrimaryColumn()
 	workflowId: string;
+
+	@Column({
+		type: jsonColumnType,
+		nullable: true,
+		transformer: objectRetriever,
+	})
+	value: IDataObject;
 
 	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
 	createdAt: Date;

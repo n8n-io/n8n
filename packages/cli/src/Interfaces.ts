@@ -104,7 +104,7 @@ export interface IWebhookDb {
 export interface IProcessedDataDb {
 	createdAt: Date;
 	context: string;
-	value: string;
+	value: IDataObject;
 	workflowId: string;
 }
 
