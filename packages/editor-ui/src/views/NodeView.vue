@@ -117,6 +117,7 @@
 
 <script lang="ts">
 import Vue from 'vue';
+import { mapStores } from 'pinia';
 import {
 	OnConnectionBindInfo, Connection, Endpoint, N8nPlusEndpoint, jsPlumbInstance,
 } from 'jsplumb';
@@ -201,10 +202,9 @@ import {
 } from '@/Interface';
 import { mapGetters } from 'vuex';
 import { getAccountAge } from '@/modules/userHelpers';
-import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { debounceHelper } from '@/components/mixins/debounce';
-import { useCanvasStore } from "@/modules/canvas";
-import { mapStores } from "pinia";
+import { useCanvasStore } from '@/modules/canvas';
 
 interface AddNodeOptions {
 	position?: XYPosition;
