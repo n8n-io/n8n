@@ -72,11 +72,8 @@
 			@addNode="onAddNode"
 		/>
 		<canvas-controls
-			ref="canvasControls"
 			:is-demo="isDemo"
 			:is-sidebar-menu-collapsed="sidebarMenuCollapsed"
-			:js-plumb-ref="instance"
-			:node-view-ref="$refs.nodeView"
 		/>
 		<div
 			class="workflow-execute-wrapper" v-if="!isReadOnly"
