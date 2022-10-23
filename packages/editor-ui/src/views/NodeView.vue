@@ -1563,7 +1563,7 @@ export default mixins(
 
 				if (options.position) {
 					const nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
-					this.canvasStore.setNodesWithPlaceholderNode(nodesWithPlaceholderNode);
+					this.canvasStore.nodesWithPlaceholderNode = nodesWithPlaceholderNode;
 					newNodeData.position = CanvasHelpers.getNewNodePosition(nodesWithPlaceholderNode, options.position);
 				} else if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
@@ -3135,7 +3135,8 @@ export default mixins(
 		},
 
 		async mounted() {
-			this.canvasStore.setNodeViewHtmlElement(this.$refs.nodeView as HTMLDivElement);
+			this.canvasStore.nodeViewHtmlElement = this.$refs.nodeView as HTMLDivElement;
+			this.canvasStore.nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);

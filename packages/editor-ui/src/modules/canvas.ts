@@ -15,14 +15,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const nodeViewScale = ref<number>(1);
 	const nodesWithPlaceholderNode = ref<INodeUi[]>([]);
 
-	const setNodeViewHtmlElement = (element: HTMLDivElement | null | undefined) => {
-		nodeViewHtmlElement.value = element;
-	};
-
-	const setNodesWithPlaceholderNode = (nodes: INodeUi[]) => {
-		nodesWithPlaceholderNode.value = nodes;
-	};
-
 	const setZoomLevel = (zoomLevel: number) => {
 		nodeViewScale.value = zoomLevel;
 		const element = nodeViewHtmlElement.value;
@@ -74,7 +66,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const zoomToFit = () => {
-		console.log(nodesWithPlaceholderNode.value);
+		console.log(nodesWithPlaceholderNode.value.length);
 		if (nodesWithPlaceholderNode.value.length === 0) { // some unknown workflow executions
 			return;
 		}
@@ -87,8 +79,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	return {
 		jsPlumbInstance,
-		setNodeViewHtmlElement,
-		setNodesWithPlaceholderNode,
 		nodeViewHtmlElement,
 		nodeViewScale,
 		nodesWithPlaceholderNode,
