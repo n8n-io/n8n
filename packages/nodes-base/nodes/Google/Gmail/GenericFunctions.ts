@@ -27,6 +27,7 @@ export interface IEmail {
 	to?: string;
 	cc?: string;
 	bcc?: string;
+	replyTo?: string;
 	inReplyTo?: string;
 	reference?: string;
 	subject: string;
@@ -231,6 +232,7 @@ export async function encodeEmail(email: IEmail) {
 		to: email.to,
 		cc: email.cc,
 		bcc: email.bcc,
+		replyTo: email.replyTo,
 		inReplyTo: email.inReplyTo,
 		references: email.reference,
 		subject: email.subject,

@@ -233,6 +233,14 @@ export const messageFields: INodeProperties[] = [
 				description:
 					'The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API.',
 			},
+			{
+				displayName: 'Reply To Email',
+				name: 'replyTo',
+				type: 'string',
+				placeholder: 'reply@example.com',
+				default: '',
+				description: 'The email address that the reply message is sent to',
+			},
 		],
 	},
 	{

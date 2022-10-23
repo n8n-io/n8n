@@ -284,6 +284,7 @@ export class GmailV2 implements INodeType {
 						const to = prepareEmailsInput.call(this, sendTo, 'To', i);
 						let cc = '';
 						let bcc = '';
+						let replyTo = '';
 
 						if (options.ccList) {
 							cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', i);
@@ -291,6 +292,10 @@ export class GmailV2 implements INodeType {
 
 						if (options.bccList) {
 							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
+						}
+
+						if (options.replyTo) {
+							replyTo = prepareEmailsInput.call(this, options.replyTo as string, 'ReplyTo', i);
 						}
 
 						let attachments: IDataObject[] = [];
@@ -325,6 +330,7 @@ export class GmailV2 implements INodeType {
 							to,
 							cc,
 							bcc,
+							replyTo,
 							subject: this.getNodeParameter('subject', i) as string,
 							...prepareEmailBody.call(this, i),
 							attachments,
@@ -516,6 +522,7 @@ export class GmailV2 implements INodeType {
 						let to = '';
 						let cc = '';
 						let bcc = '';
+						let replyTo = '';
 
 						if (options.sendTo) {
 							to += prepareEmailsInput.call(this, options.sendTo as string, 'To', i);
@@ -527,6 +534,10 @@ export class GmailV2 implements INodeType {
 
 						if (options.bccList) {
 							bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', i);
+						}
+
+						if (options.replyTo) {
+							replyTo = prepareEmailsInput.call(this, options.replyTo as string, 'ReplyTo', i);
 						}
 
 						let attachments: IDataObject[] = [];
@@ -549,6 +560,7 @@ export class GmailV2 implements INodeType {
 							to,
 							cc,
 							bcc,
+							replyTo,
 							subject: this.getNodeParameter('subject', i) as string,
 							...prepareEmailBody.call(this, i),
 							attachments,
