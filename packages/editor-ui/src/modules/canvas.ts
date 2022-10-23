@@ -66,7 +66,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const zoomToFit = () => {
-		console.log(nodesWithPlaceholderNode.value.length);
 		if (nodesWithPlaceholderNode.value.length === 0) { // some unknown workflow executions
 			return;
 		}

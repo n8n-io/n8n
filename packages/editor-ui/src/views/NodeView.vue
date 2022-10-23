@@ -754,6 +754,7 @@ export default mixins(
 					this.$store.commit('setStateDirty', false);
 				}
 
+				this.canvasStore.nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
 				this.canvasStore.zoomToFit();
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
@@ -3136,7 +3137,6 @@ export default mixins(
 
 		async mounted() {
 			this.canvasStore.nodeViewHtmlElement = this.$refs.nodeView as HTMLDivElement;
-			this.canvasStore.nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
