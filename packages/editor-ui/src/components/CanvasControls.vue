@@ -12,9 +12,9 @@
 	</div>
 </template>
 <script lang="ts" setup>
-import { onBeforeMount, onBeforeUnmount } from "vue";
-import { useCanvasStore } from "@/modules/canvas";
-import { storeToRefs } from "pinia";
+import { onBeforeMount, onBeforeUnmount } from 'vue';
+import { storeToRefs } from 'pinia';
+import { useCanvasStore } from '@/modules/canvas';
 
 const props = defineProps<{
 	isDemo: boolean
