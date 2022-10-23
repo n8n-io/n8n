@@ -125,6 +125,7 @@ const modules = {
 };
 
 export const store = new Vuex.Store({
+	// @ts-ignore
 	strict: import.meta.env.NODE_ENV !== 'production',
 	modules,
 	state,
@@ -790,14 +791,18 @@ export const store = new Vuex.Store({
 		},
 		getRestUrl: (state): string => {
 			let endpoint = 'rest';
+			// @ts-ignore
 			if (import.meta.env.VUE_APP_ENDPOINT_REST) {
+				// @ts-ignore
 				endpoint = import.meta.env.VUE_APP_ENDPOINT_REST;
 			}
 			return `${state.baseUrl}${endpoint}`;
 		},
 		getRestApiContext(state): IRestApiContext {
 			let endpoint = 'rest';
+			// @ts-ignore
 			if (import.meta.env.VUE_APP_ENDPOINT_REST) {
+				// @ts-ignore
 				endpoint = import.meta.env.VUE_APP_ENDPOINT_REST;
 			}
 			return {
@@ -1063,3 +1068,5 @@ export const store = new Vuex.Store({
 		},
 	},
 });
+
+export const useRootStore = () => store;

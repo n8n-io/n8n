@@ -71,17 +71,13 @@
 			@toggleNodeCreator="onToggleNodeCreator"
 			@addNode="onAddNode"
 		/>
-		<div
-			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
-			<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')"
-				icon="expand" />
-			<n8n-icon-button @click="zoomIn" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomIn')"
-				icon="search-plus" />
-			<n8n-icon-button @click="zoomOut" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomOut')"
-				icon="search-minus" />
-			<n8n-icon-button v-if="nodeViewScale !== 1 && !isDemo" @click="resetZoom" type="tertiary" size="large"
-				:title="$locale.baseText('nodeView.resetZoom')" icon="undo" />
-		</div>
+		<canvas-controls
+			ref="canvasControls"
+			:is-demo="isDemo"
+			:is-sidebar-menu-collapsed="sidebarMenuCollapsed"
+			:js-plumb-ref="instance"
+			:node-view-ref="$refs.nodeView"
+		/>
 		<div
 			class="workflow-execute-wrapper" v-if="!isReadOnly"
 		>
@@ -122,10 +118,9 @@
 <script lang="ts">
 import Vue from 'vue';
 import {
-	Connection, Endpoint, N8nPlusEndpoint,
+	OnConnectionBindInfo, Connection, Endpoint, N8nPlusEndpoint, jsPlumbInstance,
 } from 'jsplumb';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
-import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
 import once from 'lodash/once';
 
 import {
@@ -205,17 +200,20 @@ import {
 	IWorkflowToShare,
 } from '@/Interface';
 import { mapGetters } from 'vuex';
-import '../plugins/N8nCustomConnectorType';
-import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
+import { useCanvasStore } from "@/modules/canvas";
+import { mapStores } from "pinia";
 
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
 }
 
+const NodeCreator = () => import('@/components/Node/NodeCreator/NodeCreator.vue');
+const NodeCreation = () => import('@/components/Node/NodeCreation.vue');
+const CanvasControls = () => import('@/components/CanvasControls.vue');
 
 export default mixins(
 	copyPaste,
@@ -237,11 +235,12 @@ export default mixins(
 		components: {
 			NodeDetailsView,
 			Node,
-			NodeCreator: () => import('@/components/Node/NodeCreator/NodeCreator.vue'),
+			NodeCreator,
 			NodeSettings,
 			Sticky,
 			CanvasAddButton,
-			NodeCreation: () => import('@/components/Node/NodeCreation.vue'),
+			NodeCreation,
+			CanvasControls,
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -414,16 +413,21 @@ export default mixins(
 			getNodeViewOffsetPosition(): XYPosition {
 				return this.$store.getters.getNodeViewOffsetPosition;
 			},
+			...mapStores(useCanvasStore),
+			nodeViewScale(): number {
+				return this.canvasStore.nodeViewScale;
+			},
+			instance(): jsPlumbInstance {
+				return this.canvasStore.jsPlumbInstance;
+			},
 		},
 		data() {
 			return {
 				GRID_SIZE: CanvasHelpers.GRID_SIZE,
 				STICKY_NODE_TYPE,
 				createNodeActive: false,
-				instance: jsPlumb.getInstance(),
 				lastSelectedConnection: null as null | Connection,
 				lastClickPosition: [450, 450] as XYPosition,
-				nodeViewScale: 1,
 				ctrlKeyPressed: false,
 				stopExecutionInProgress: false,
 				blankRedirect: false,
@@ -604,7 +608,7 @@ export default mixins(
 
 				await this.addNodes(deepCopy(data.workflowData.nodes), deepCopy(data.workflowData.connections));
 				this.$nextTick(() => {
-					this.zoomToFit();
+					this.canvasStore.zoomToFit();
 					this.$store.commit('setStateDirty', false);
 				});
 
@@ -670,7 +674,7 @@ export default mixins(
 				}
 
 				this.$nextTick(() => {
-					this.zoomToFit();
+					this.canvasStore.zoomToFit();
 				});
 			},
 			async openWorkflowTemplate(templateId: string) {
@@ -704,7 +708,7 @@ export default mixins(
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				this.workflowData = await this.$store.dispatch('workflows/getNewWorkflowData', data.name);
 				this.$nextTick(() => {
-					this.zoomToFit();
+					this.canvasStore.zoomToFit();
 					this.$store.commit('setStateDirty', true);
 				});
 
@@ -724,7 +728,7 @@ export default mixins(
 					return;
 				}
 
-				if (data === undefined) {
+				if (!data) {
 					throw new Error(
 						this.$locale.baseText(
 							'nodeView.workflowWithIdCouldNotBeFound',
@@ -750,7 +754,7 @@ export default mixins(
 					this.$store.commit('setStateDirty', false);
 				}
 
-				this.zoomToFit();
+				this.canvasStore.zoomToFit();
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 
@@ -846,14 +850,6 @@ export default mixins(
 					if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
 						this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
 					}
-				} else if ((e.key === '=' || e.key === '+') && !this.isCtrlKeyPressed(e)) {
-					this.zoomIn();
-				} else if ((e.key === '_' || e.key === '-') && !this.isCtrlKeyPressed(e)) {
-					this.zoomOut();
-				} else if ((e.key === '0') && !this.isCtrlKeyPressed(e)) {
-					this.resetZoom();
-				} else if ((e.key === '1') && !this.isCtrlKeyPressed(e)) {
-					this.zoomToFit();
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
 					e.stopPropagation();
@@ -1130,48 +1126,6 @@ export default mixins(
 					}
 				});
 			},
-
-			resetZoom() {
-				const { scale, offset } = CanvasHelpers.scaleReset({ scale: this.nodeViewScale, offset: this.getNodeViewOffsetPosition });
-
-				this.setZoomLevel(scale);
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: offset });
-			},
-
-			zoomIn() {
-				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleBigger({ scale: this.nodeViewScale, offset: this.getNodeViewOffsetPosition });
-
-				this.setZoomLevel(scale);
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: [xOffset, yOffset] });
-			},
-
-			zoomOut() {
-				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleSmaller({ scale: this.nodeViewScale, offset: this.getNodeViewOffsetPosition });
-
-				this.setZoomLevel(scale);
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: [xOffset, yOffset] });
-			},
-
-			setZoomLevel(zoomLevel: number) {
-				this.nodeViewScale = zoomLevel; // important for background
-				const element = this.$refs.nodeView as HTMLElement;
-				if (!element) {
-					return;
-				}
-
-				// https://docs.jsplumbtoolkit.com/community/current/articles/zooming.html
-				const prependProperties = ['webkit', 'moz', 'ms', 'o'];
-				const scaleString = 'scale(' + zoomLevel + ')';
-
-				for (let i = 0; i < prependProperties.length; i++) {
-					// @ts-ignore
-					element.style[prependProperties[i] + 'Transform'] = scaleString;
-				}
-				element.style['transform'] = scaleString;
-
-				// @ts-ignore
-				this.instance.setZoom(zoomLevel);
-			},
 			setRecenteredCanvasAddButtonPosition (offset?: XYPosition) {
 
 				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset || [0, 0]);
@@ -1202,19 +1156,6 @@ export default mixins(
 
 				return extendedNodes;
 			},
-			zoomToFit() {
-				const nodes = this.getNodesWithPlaceholderNode() as INodeUi[];
-
-				if (nodes.length === 0) { // some unknown workflow executions
-					return;
-				}
-
-				const { zoomLevel, offset } = CanvasHelpers.getZoomToFit(nodes);
-
-				this.setZoomLevel(zoomLevel);
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: offset });
-			},
-
 			async stopExecution() {
 				const executionId = this.$store.getters.activeExecutionId;
 				if (executionId === null) {
@@ -1621,7 +1562,9 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 
 				if (options.position) {
-					newNodeData.position = CanvasHelpers.getNewNodePosition(this.getNodesWithPlaceholderNode(), options.position);
+					const nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
+					this.canvasStore.setNodesWithPlaceholderNode(nodesWithPlaceholderNode);
+					newNodeData.position = CanvasHelpers.getNewNodePosition(nodesWithPlaceholderNode, options.position);
 				} else if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
 					if (lastSelectedConnection) { // set when injecting into a connection
@@ -2114,8 +2057,8 @@ export default mixins(
 				this.workflowData = await this.$store.dispatch('workflows/getNewWorkflowData');
 
 				this.$store.commit('setStateDirty', false);
-				this.setZoomLevel(1);
-				this.zoomToFit();
+				this.canvasStore.setZoomLevel(1);
+				this.canvasStore.zoomToFit();
 			},
 			tryToAddWelcomeSticky: once(async function(this: any) {
 				const newWorkflow = this.workflowData;
@@ -3192,6 +3135,7 @@ export default mixins(
 		},
 
 		async mounted() {
+			this.canvasStore.setNodeViewHtmlElement(this.$refs.nodeView as HTMLDivElement);
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
@@ -3294,47 +3238,6 @@ export default mixins(
 </script>
 
 <style scoped lang="scss">
-.zoom-menu {
-	$--zoom-menu-margin: 15;
-
-	position: fixed;
-	left: $sidebar-width + $--zoom-menu-margin;
-	width: 210px;
-	bottom: 44px;
-	line-height: 25px;
-	color: #444;
-	padding-right: 5px;
-
-	&:not(.demo-zoom-menu).expanded {
-		left: $sidebar-expanded-width + $--zoom-menu-margin;
-	}
-
-	button {
-		border: var(--border-base);
-	}
-
-	>* {
-		+* {
-			margin-left: var(--spacing-3xs);
-		}
-
-		&:hover {
-			transform: scale(1.1);
-		}
-	}
-}
-
-.regular-zoom-menu {
-	@media (max-width: $breakpoint-2xs) {
-		bottom: 90px;
-	}
-}
-
-.demo-zoom-menu {
-	left: 10px;
-	bottom: 10px;
-}
-
 .node-view-root {
 	overflow: hidden;
 	background-color: var(--color-canvas-background);
