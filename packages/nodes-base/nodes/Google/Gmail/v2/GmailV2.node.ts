@@ -23,7 +23,7 @@ import {
 	prepareEmailBody,
 	prepareEmailsInput,
 	prepareQuery,
-	replayToEmail,
+	replyToEmail,
 	simplifyOutput,
 	unescapeSnippets,
 } from '../GenericFunctions';
@@ -348,7 +348,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						responseData = await replayToEmail.call(this, items, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, items, messageIdGmail, options, i);
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/v1/reference/users/messages/get
@@ -754,7 +754,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
-						responseData = await replayToEmail.call(this, items, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, items, messageIdGmail, options, i);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash
@@ -797,9 +797,12 @@ export class GmailV2 implements INodeType {
 				}
 				//------------------------------------------------------------------//
 
-				const executionData = this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-					itemData: { item: i },
-				});
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{
+						itemData: { item: i },
+					},
+				);
 				returnData.push(...executionData);
 			} catch (error) {
 				error.message = `${error.message} (item ${i})`;

@@ -168,7 +168,82 @@ export const messageFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['message'],
-				operation: ['send', 'reply'],
+				operation: ['reply'],
+			},
+		},
+		default: {},
+		options: [
+			{
+				displayName: 'Attachment',
+				name: 'attachmentsUi',
+				placeholder: 'Add Attachment',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				options: [
+					{
+						name: 'attachmentsBinary',
+						displayName: 'Attachment Binary',
+						values: [
+							{
+								displayName: 'Attachment Field Name (in Input)',
+								name: 'property',
+								type: 'string',
+								default: '',
+								description:
+									'Add the field name from the input node. Multiple properties can be set separated by comma.',
+							},
+						],
+					},
+				],
+				default: {},
+				description: 'Array of supported attachments to add to the message',
+			},
+			{
+				displayName: 'BCC Email',
+				name: 'bccList',
+				type: 'string',
+				description: 'The email addresses of the blind copy recipients',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add BCC Email',
+				},
+				placeholder: 'info@example.com',
+				default: [],
+			},
+			{
+				displayName: 'CC Email',
+				name: 'ccList',
+				type: 'string',
+				description: 'The email addresses of the copy recipients',
+				typeOptions: {
+					multipleValues: true,
+					multipleValueButtonText: 'Add CC Email',
+				},
+				placeholder: 'info@example.com',
+				default: [],
+			},
+			{
+				displayName: 'Override Sender Name',
+				name: 'senderName',
+				type: 'string',
+				placeholder: 'Name <test@gmail.com>',
+				default: '',
+				description:
+					'The name displayed in your contacts inboxes. It has to be in the format: "Display-Name &#60;name@gmail.com&#62;". The email address has to match the email address of the logged in user for the API.',
+			},
+		],
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 		default: {},

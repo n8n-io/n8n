@@ -570,7 +570,7 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 	return result;
 }
 
-export async function replayToEmail(
+export async function replyToEmail(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 	gmailId: string,
