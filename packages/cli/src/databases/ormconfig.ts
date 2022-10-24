@@ -27,7 +27,7 @@ export default [
 		password: '',
 		host: 'localhost',
 		port: 5432,
-		logging: false,
+		logging: true,
 		entities: Object.values(entities),
 		migrations: [path.resolve(MIGRATIONS_DIR, 'postgresdb', 'index.ts')],
 		cli: {
