@@ -206,7 +206,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 		getInputNodeName() {
 			try {
-				const activeNode = this.$store.getters.activeNode;
+				const activeNode = this.$store.getters['ndv/activeNode'];
 				const workflow = this.getCurrentWorkflow();
 				const input = workflow.connectionsByDestinationNode[activeNode.name];
 

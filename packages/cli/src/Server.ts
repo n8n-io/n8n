@@ -67,6 +67,7 @@ import {
 	ITelemetrySettings,
 	LoggerProxy,
 	NodeHelpers,
+	jsonParse,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -787,20 +788,20 @@ class App {
 			`/${this.restEndpoint}/node-parameter-options`,
 			ResponseHelper.send(
 				async (req: NodeParameterOptionsRequest): Promise<INodePropertyOptions[]> => {
-					const nodeTypeAndVersion = JSON.parse(
+					const nodeTypeAndVersion = jsonParse(
 						req.query.nodeTypeAndVersion,
 					) as INodeTypeNameVersion;
 
 					const { path, methodName } = req.query;
 
-					const currentNodeParameters = JSON.parse(
+					const currentNodeParameters = jsonParse(
 						req.query.currentNodeParameters,
 					) as INodeParameters;
 
 					let credentials: INodeCredentials | undefined;
 
 					if (req.query.credentials) {
-						credentials = JSON.parse(req.query.credentials);
+						credentials = jsonParse(req.query.credentials);
 					}
 
 					const loadDataInstance = new LoadNodeParameterOptions(
@@ -823,7 +824,7 @@ class App {
 					if (req.query.loadOptions) {
 						return loadDataInstance.getOptionsViaRequestProperty(
 							// @ts-ignore
-							JSON.parse(req.query.loadOptions as string),
+							jsonParse(req.query.loadOptions as string),
 							additionalData,
 						);
 					}
@@ -842,7 +843,7 @@ class App {
 					req: NodeListSearchRequest,
 					res: express.Response,
 				): Promise<INodeListSearchResult | undefined> => {
-					const nodeTypeAndVersion = JSON.parse(
+					const nodeTypeAndVersion = jsonParse(
 						req.query.nodeTypeAndVersion,
 					) as INodeTypeNameVersion;
 
@@ -852,14 +853,14 @@ class App {
 						throw new ResponseError('Parameter currentNodeParameters is required.', undefined, 400);
 					}
 
-					const currentNodeParameters = JSON.parse(
+					const currentNodeParameters = jsonParse(
 						req.query.currentNodeParameters,
 					) as INodeParameters;
 
 					let credentials: INodeCredentials | undefined;
 
 					if (req.query.credentials) {
-						credentials = JSON.parse(req.query.credentials);
+						credentials = jsonParse(req.query.credentials);
 					}
 
 					const listSearchInstance = new LoadNodeListSearch(
@@ -1454,7 +1455,7 @@ class App {
 						if (!sharedWorkflowIds.length) return [];
 
 						if (req.query.filter) {
-							const { workflowId } = JSON.parse(req.query.filter);
+							const { workflowId } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
 								Object.assign(findOptions.where!, { workflowId });
 							}
@@ -1481,7 +1482,7 @@ class App {
 
 					const returnData: IExecutionsSummary[] = [];
 
-					const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+					const filter = req.query.filter ? jsonParse<any>(req.query.filter) : {};
 
 					const sharedWorkflowIds = await getSharedWorkflowIds(req.user).then((ids) =>
 						ids.map((id) => id.toString()),
