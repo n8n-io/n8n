@@ -1696,6 +1696,10 @@ class App {
 					}
 
 					res.header('Access-Control-Allow-Origin', '*');
+					res.header(
+						'Access-Control-Allow-Headers',
+						'Origin, X-Requested-With, Content-Type, Accept, sessionid',
+				  );
 
 					ResponseHelper.sendSuccessResponse(res, {}, true, 204);
 					return;
