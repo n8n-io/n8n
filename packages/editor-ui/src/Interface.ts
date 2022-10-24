@@ -856,7 +856,6 @@ export interface IRootState {
 	activeWorkflows: string[];
 	activeActions: string[];
 	activeCredentialType: string | null;
-	activeNode: string | null;
 	baseUrl: string;
 	defaultLocale: string;
 	endpointWebhook: string;
@@ -936,42 +935,33 @@ export interface TargetItem {
 	outputIndex: number;
 }
 
-export interface IUiState {
-	sidebarMenuCollapsed: boolean;
-	modalStack: string[];
-	modals: {
-		[key: string]: IModalState;
-	};
+export interface NDVState {
+	activeNodeName: string | null;
 	mainPanelDimensions: {[key: string]: {[key: string]: number}};
-	isPageLoading: boolean;
-	currentView: string;
-	ndv: {
-		sessionId: string;
-		input: {
-			displayMode: IRunDataDisplayMode;
-			nodeName?: string;
-			run?: number;
-			branch?: number;
-			data: {
-				isEmpty: boolean;
-			}
-		};
-		output: {
-			branch?: number;
-			displayMode: IRunDataDisplayMode;
-			data: {
-				isEmpty: boolean;
-			}
-			editMode: {
-				enabled: boolean;
-				value: string;
-			};
-		};
-		focusedMappableInput: string;
-		mappingTelemetry: {[key: string]: string | number | boolean};
-		hoveringItem: null | TargetItem;
+	sessionId: string;
+	input: {
+		displayMode: IRunDataDisplayMode;
+		nodeName?: string;
+		run?: number;
+		branch?: number;
+		data: {
+			isEmpty: boolean;
+		}
 	};
-	mainPanelPosition: number;
+	output: {
+		branch?: number;
+		displayMode: IRunDataDisplayMode;
+		data: {
+			isEmpty: boolean;
+		}
+		editMode: {
+			enabled: boolean;
+			value: string;
+		};
+	};
+	focusedMappableInput: string;
+	mappingTelemetry: {[key: string]: string | number | boolean};
+	hoveringItem: null | TargetItem;
 	draggable: {
 		isDragging: boolean;
 		type: string;
@@ -979,6 +969,17 @@ export interface IUiState {
 		canDrop: boolean;
 		stickyPosition: null | XYPosition;
 	};
+}
+
+
+export interface IUiState {
+	sidebarMenuCollapsed: boolean;
+	modalStack: string[];
+	modals: {
+		[key: string]: IModalState;
+	};
+	isPageLoading: boolean;
+	currentView: string;
 	fakeDoorFeatures: IFakeDoor[];
 }
 

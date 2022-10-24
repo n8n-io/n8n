@@ -534,7 +534,7 @@ export const workflowHelpers = mixins(
 				let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 				const inputName = 'main';
-				const activeNode = this.$store.getters.activeNode;
+				const activeNode = this.$store.getters['ndv/activeNode'];
 				const workflow = this.getCurrentWorkflow();
 				const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
 				let parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);

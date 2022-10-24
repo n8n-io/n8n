@@ -369,7 +369,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 						pane: 'input',
 						type: 'open-executions-log',
 					});
-					this.$store.commit('setActiveNode', null);
+					this.$store.commit('ndv/setActiveNodeName', null);
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (target.dataset.key === 'settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);

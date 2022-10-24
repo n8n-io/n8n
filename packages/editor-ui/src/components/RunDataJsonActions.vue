@@ -84,7 +84,7 @@ export default mixins(
 	},
 	computed: {
 		activeNode(): INodeUi {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		normalisedJsonPath(): string {
 			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;

@@ -177,7 +177,7 @@ export default mixins(
 		};
 	},
 	mounted() {
-		this.$store.commit('ui/setNDVSessionId');
+		this.$store.commit('ndv/setNDVSessionId');
 
 		dataPinningEventBus.$on('data-pinning-discovery', ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
 			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
@@ -189,7 +189,7 @@ export default mixins(
 	computed: {
 		...mapGetters(['executionWaitingForWebhook']),
 		sessionId(): string {
-			return this.$store.getters['ui/ndvSessionId'];
+			return this.$store.getters['ndv/ndvSessionId'];
 		},
 		workflowRunning(): boolean {
 			return this.$store.getters.isActionActive('workflowRunning');
@@ -204,7 +204,7 @@ export default mixins(
 			);
 		},
 		activeNode(): INodeUi | null {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		inputNodeName(): string | undefined {
 			return this.selectedInput || this.parentNode;
@@ -256,7 +256,7 @@ export default mixins(
 		},
 		isActiveStickyNode(): boolean {
 			return (
-				!!this.$store.getters.activeNode && this.$store.getters.activeNode.type === STICKY_NODE_TYPE
+				!!this.$store.getters['ndv/activeNode'] && this.$store.getters['ndv/activeNode'].type === STICKY_NODE_TYPE
 			);
 		},
 		workflowExecution(): IExecutionResponse | null {
@@ -339,7 +339,7 @@ export default mixins(
 			return `${BASE_NODE_SURVEY_URL}${this.activeNodeType.name}`;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
-			return this.$store.getters['ui/outputPanelEditMode'];
+			return this.$store.getters['ndv/outputPanelEditMode'];
 		},
 	},
 	watch: {
@@ -354,7 +354,7 @@ export default mixins(
 				this.avgInputRowHeight = 0;
 
 				setTimeout(() => {
-					this.$store.commit('ui/setNDVSessionId');
+					this.$store.commit('ndv/setNDVSessionId');
 				}, 0);
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
@@ -375,8 +375,8 @@ export default mixins(
 							output_first_connector_runs: this.maxOutputRun,
 							selected_view_inputs: this.isTriggerNode
 								? 'trigger'
-								: this.$store.getters['ui/inputPanelDisplayMode'],
-							selected_view_outputs: this.$store.getters['ui/outputPanelDisplayMode'],
+								: this.$store.getters['ndv/inputPanelDisplayMode'],
+							selected_view_outputs: this.$store.getters['ndv/outputPanelDisplayMode'],
 							input_connectors: this.parentNodes.length,
 							output_connectors:
 								outogingConnections && outogingConnections.main && outogingConnections.main.length,
@@ -401,12 +401,12 @@ export default mixins(
 		},
 		inputNodeName(nodeName: string | undefined) {
 			setTimeout(() => {
-				this.$store.commit('ui/setInputNodeName', nodeName);
+				this.$store.commit('ndv/setInputNodeName', nodeName);
 			}, 0);
 		},
 		inputRun() {
 			setTimeout(() => {
-				this.$store.commit('ui/setInputRunIndex', this.inputRun);
+				this.$store.commit('ndv/setInputRunIndex', this.inputRun);
 			}, 0);
 		},
 	},
@@ -416,7 +416,7 @@ export default mixins(
 				return;
 			}
 			if (e === null) {
-				this.$store.commit('ui/setHoveringItem', null);
+				this.$store.commit('ndv/setHoveringItem', null);
 				return;
 			}
 
@@ -426,11 +426,11 @@ export default mixins(
 				outputIndex: e.outputIndex,
 				itemIndex: e.itemIndex,
 			};
-			this.$store.commit('ui/setHoveringItem', item);
+			this.$store.commit('ndv/setHoveringItem', item);
 		},
 		onOutputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
 			if (e === null || !this.activeNode) {
-				this.$store.commit('ui/setHoveringItem', null);
+				this.$store.commit('ndv/setHoveringItem', null);
 				return;
 			}
 
@@ -440,7 +440,7 @@ export default mixins(
 				outputIndex: e.outputIndex,
 				itemIndex: e.itemIndex,
 			};
-			this.$store.commit('ui/setHoveringItem', item);
+			this.$store.commit('ndv/setHoveringItem', item);
 		},
 		onInputTableMounted(e: { avgRowHeight: number }) {
 			this.avgInputRowHeight = e.avgRowHeight;
@@ -449,7 +449,7 @@ export default mixins(
 			this.avgOutputRowHeight = e.avgRowHeight;
 		},
 		onWorkflowActivate() {
-			this.$store.commit('setActiveNode', null);
+			this.$store.commit('ndv/setActiveNodeName', null);
 			setTimeout(() => {
 				this.activateCurrentWorkflow('ndv');
 			}, 1000);
@@ -558,7 +558,7 @@ export default mixins(
 					this.$store.commit('pinData', { node: this.activeNode, data: jsonParse(value) });
 				}
 
-				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+				this.$store.commit('ndv/setOutputPanelEditModeEnabled', false);
 			}
 
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
@@ -568,8 +568,8 @@ export default mixins(
 				workflow_id: this.$store.getters.workflowId,
 			});
 			this.triggerWaitingWarningEnabled = false;
-			this.$store.commit('setActiveNode', null);
-			this.$store.commit('ui/resetNDVSessionId');
+			this.$store.commit('ndv/setActiveNodeName', null);
+			this.$store.commit('ndv/resetNDVSessionId');
 		},
 		onRunOutputIndexChange(run: number) {
 			this.runOutputIndex = run;
