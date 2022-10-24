@@ -9,8 +9,6 @@
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
-import { NodeVersionedType } from 'n8n-nodes-base';
-
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -39,6 +37,8 @@ import {
 	ITaskDataConnections,
 	LoggerProxy as Logger,
 	IHttpRequestHelper,
+	requireDistNode,
+	ICredentialTestRequest,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -484,12 +484,10 @@ export class CredentialsHelper extends ICredentialsHelper {
 			// Always set to an array even if node is not versioned to not having
 			// to duplicate the logic
 			const allNodeTypes: INodeType[] = [];
-			if (node instanceof NodeVersionedType) {
-				// Node is versioned
+			if (NodeHelpers.isVersioned(node)) {
 				allNodeTypes.push(...Object.values(node.nodeVersions));
 			} else {
-				// Node is not versioned
-				allNodeTypes.push(node as INodeType);
+				allNodeTypes.push(node);
 			}
 
 			// Check each of the node versions for credential tests
@@ -497,6 +495,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				// Check each of teh credentials
 				for (const credential of nodeType.description.credentials ?? []) {
 					if (credential.name === credentialType && !!credential.testedBy) {
+						// Test is defined as string which links to a function
 						if (typeof credential.testedBy === 'string') {
 							if (NodeHelpers.isVersioned(node)) {
 								// The node is versioned. So check all versions for test function
@@ -504,23 +503,43 @@ export class CredentialsHelper extends ICredentialsHelper {
 								const versions = Object.keys(node.nodeVersions).sort().reverse();
 								for (const version of versions) {
 									const versionedNode = node.nodeVersions[parseInt(version, 10)];
-									if (
-										versionedNode.methods?.credentialTest &&
-										versionedNode.methods?.credentialTest[credential.testedBy]
-									) {
-										return versionedNode.methods?.credentialTest[credential.testedBy];
-									}
-								}
-							}
-							// Test is defined as string which links to a function
-							return (node as unknown as INodeType).methods?.credentialTest![credential.testedBy];
-						}
 
-						// Test is defined as JSON with a definition for the request to make
-						return {
-							nodeType,
-							testRequest: credential.testedBy,
-						};
+									const method = versionedNode.methods?.credentialTest?.[credential.testedBy];
+
+									if (!method) continue;
+
+									const isCachedNode = typeof method === 'string';
+
+									if (!isCachedNode) return method;
+
+									const distNode = requireDistNode(nodeType, nodeTypes);
+
+									const distMethod = distNode.methods.credentialTest?.[credential.testedBy];
+
+									if (distMethod) return distMethod;
+								}
+							} else {
+								const method = node.methods?.credentialTest?.[credential.testedBy];
+
+								if (!method) continue;
+
+								const isCachedNode = typeof method === 'string';
+
+								if (!isCachedNode) return method;
+
+								const distNode = requireDistNode(nodeType, nodeTypes);
+
+								const distMethod = distNode.methods.credentialTest?.[credential.testedBy];
+
+								if (distMethod) return distMethod;
+							}
+						} else {
+							// Test is defined as JSON with a definition for the request to make
+							return {
+								nodeType,
+								testRequest: credential.testedBy,
+							};
+						}
 					}
 				}
 			}
