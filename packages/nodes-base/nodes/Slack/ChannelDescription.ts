@@ -728,7 +728,8 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description: "Unique identifier of a thread's parent message",
+		description: 'Timestamp of the message to reply.',
+		placeholder: '1663233118.856619',
 	},
 	{
 		displayName: 'Return All',

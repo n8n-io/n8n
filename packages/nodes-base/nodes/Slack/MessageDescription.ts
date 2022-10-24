@@ -81,7 +81,8 @@ export const messageFields: INodeProperties[] = [
 				operation: ['getPermalink'],
 			},
 		},
-		description: 'Timestamp of the message to get permanent link',
+		description: 'Timestamp of the message to message.',
+		placeholder: '1663233118.856619',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -1177,7 +1178,8 @@ export const messageFields: INodeProperties[] = [
 				name: 'ts',
 				type: 'dateTime',
 				default: '',
-				description: 'Time message relates to',
+				description: 'Timestamp of the message to post.',
+				placeholder: '1663233118.856619',
 			},
 			{
 				displayName: 'Fields',
@@ -1372,7 +1374,8 @@ export const messageFields: INodeProperties[] = [
 				operation: ['update'],
 			},
 		},
-		description: 'Timestamp of the message to be updated',
+		description: 'Timestamp of the message to update.',
+		placeholder: '1663233118.856619',
 	},
 	{
 		displayName: 'Update Fields',
@@ -1557,7 +1560,8 @@ export const messageFields: INodeProperties[] = [
 				name: 'ts',
 				type: 'dateTime',
 				default: '',
-				description: 'Time message relates to',
+				description: 'Timestamp of the message to reply.',
+				placeholder: '1663233118.856619',
 			},
 			{
 				displayName: 'Fields',
@@ -1635,7 +1639,8 @@ export const messageFields: INodeProperties[] = [
 				operation: ['delete'],
 			},
 		},
-		description: 'Timestamp of the message to be deleted',
+		description: 'Timestamp of the message to delete.',
+		placeholder: '1663233118.856619',
 	},
 
 	/* ----------------------------------------------------------------------- */

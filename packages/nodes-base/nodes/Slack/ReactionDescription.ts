@@ -81,6 +81,7 @@ export const reactionFields: INodeProperties[] = [
 				operation: ['add', 'get', 'remove'],
 			},
 		},
-		description: 'Timestamp of the message',
+		description: 'Timestamp of the message to add, get or remove.',
+		placeholder: '1663233118.856619',
 	},
 ];
