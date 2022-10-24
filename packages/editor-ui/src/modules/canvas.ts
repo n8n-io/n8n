@@ -54,14 +54,13 @@ export const useCanvasStore = defineStore('canvas', () => {
 		}
 
 		// https://docs.jsplumbtoolkit.com/community/current/articles/zooming.html
-		const prependProperties = ['webkit', 'moz', 'ms', 'o'];
 		const scaleString = 'scale(' + zoomLevel + ')';
 
-		for (let i = 0; i < prependProperties.length; i++) {
+		['webkit', 'moz', 'ms', 'o'].forEach((prefix) => {
 			// @ts-ignore
-			element.style[prependProperties[i] + 'Transform'] = scaleString;
-		}
-		element.style['transform'] = scaleString;
+			element.style[prefix + 'Transform'] = scaleString;
+		});
+		element.style.transform = scaleString;
 
 		jsPlumbInstance.setZoom(zoomLevel);
 	};
