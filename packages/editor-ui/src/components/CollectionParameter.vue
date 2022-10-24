@@ -95,7 +95,7 @@ export default mixins(
 				});
 			},
 			node (): INodeUi {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			// Returns all the options which did not get added already
 			parameterOptions (): Array<INodePropertyOptions | INodeProperties> {

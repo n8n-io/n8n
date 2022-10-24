@@ -37,7 +37,7 @@ export default mixins(
 				return this.$route.name === VIEWS.EXECUTION;
 			},
 			activeNode (): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			hideMenuBar(): boolean {
 				return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
