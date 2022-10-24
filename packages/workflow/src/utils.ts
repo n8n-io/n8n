@@ -43,13 +43,12 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 	try {
 		return JSON.parse(jsonString) as T;
 	} catch (error) {
-		if (options) {
-			if (options.fallbackValue !== undefined) {
-				return options.fallbackValue as T;
-			} else if (options.errorMessage) {
-				throw new Error(options.errorMessage);
-			}
+		if (options?.fallbackValue !== undefined) {
+			return options.fallbackValue as T;
+		} else if (options?.errorMessage) {
+			throw new Error(options.errorMessage);
 		}
+
 		throw error;
 	}
 };
