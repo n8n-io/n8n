@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import path from 'path';
-import { INodeType, Workflow } from '.';
+import type { INodeListSearchResult, INodePropertyOptions, INodeType, Workflow } from '.';
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 export const deepCopy = <T>(source: T): T => {
@@ -36,14 +37,27 @@ export const deepCopy = <T>(source: T): T => {
 	}
 	return clone;
 };
-// eslint-enable
 
-type NodeModule = {
-	[className: string]: new () => {
-		methods: { [key: string]: { [key: string]: Function } };
+/**
+ * Requiring dist nodes
+ */
+
+type DistNodeModule = {
+	[nodeClassName: string]: new () => {
+		methods: {
+			loadOptions?: { [methodName: string]: LoadOptionsMethod };
+			listSearch?: { [methodName: string]: ListSearchMethod };
+		};
 		webhookMethods: { [key: string]: { [key: string]: Function } };
 	};
 };
+
+type LoadOptionsMethod = () => Promise<INodePropertyOptions[]>;
+
+type ListSearchMethod = (
+	filter?: string,
+	paginationToken?: string,
+) => Promise<INodeListSearchResult>;
 
 function getVersionedNodeFilePath(sourcePath: string, version: number | number[]) {
 	if (Array.isArray(version)) return sourcePath;
@@ -55,11 +69,7 @@ function getVersionedNodeFilePath(sourcePath: string, version: number | number[]
 }
 
 export function requireDistNode(nodeType: INodeType, workflow: Workflow) {
-	if (!workflow.nodeTypes.getSourcePath) {
-		throw new Error('Expected getSourcePath() to exist in workflow.nodeTypes');
-	}
-
-	const sourcePath = workflow.nodeTypes.getSourcePath(nodeType.description.name);
+	const sourcePath = workflow.nodeTypes.getSourcePath!(nodeType.description.name);
 
 	const nodeFilePath =
 		nodeType.description.defaultVersion !== undefined
@@ -69,23 +79,27 @@ export function requireDistNode(nodeType: INodeType, workflow: Workflow) {
 	let _module;
 
 	try {
-		_module = require(nodeFilePath) as NodeModule;
+		_module = require(nodeFilePath) as DistNodeModule;
 	} catch (_) {
 		throw new Error(`Failed to require node at ${sourcePath}`);
 	}
 
-	const _className = nodeFilePath.split('/').pop()?.split('.').shift();
+	const nodeClassName = nodeFilePath.split('/').pop()?.split('.').shift();
 
-	if (!_className) {
-		throw new Error(`Failed to find class in node at ${nodeFilePath}`);
+	if (!nodeClassName) {
+		throw new Error(`Failed to extract class name from ${nodeFilePath}`);
 	}
 
 	try {
-		return new _module[_className]();
+		return new _module[nodeClassName]();
 	} catch (error) {
 		throw new Error(`Failed to instantiate node at ${sourcePath}`);
 	}
 }
+
+/**
+ * Parsing JSON
+ */
 
 type ErrorMessage = { errorMessage: string };
 type FallbackValue<T> = { fallbackValue: T };
