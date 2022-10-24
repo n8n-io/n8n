@@ -42,7 +42,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		return JSON.parse(jsonString) as T;
 	} catch (error) {
 		if (options) {
-			if (options.fallbackValue) {
+			if (options.fallbackValue !== undefined) {
 				return options.fallbackValue;
 			}
 			if (options.errorMessage) {
