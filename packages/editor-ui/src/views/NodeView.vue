@@ -16,7 +16,7 @@
 					v-show="showCanvasAddButton"
 					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
 					:position="canvasAddButtonPosition"
-					@hook:mounted="setRecenteredCanvasAddButtonPosition"
+					@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
 				/>
 				<div v-for="nodeData in nodes" :key="nodeData.id">
 					<node
@@ -272,7 +272,7 @@ export default mixins(
 			},
 			containsTrigger(containsTrigger) {
 				// Re-center CanvasAddButton if there's no triggers
-				if (containsTrigger === false) this.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
+				if (containsTrigger === false) this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
 				else this.tryToAddWelcomeSticky();
 			},
 		},
@@ -751,6 +751,8 @@ export default mixins(
 					this.$store.commit('setStateDirty', false);
 				}
 
+				this.canvasStore.zoomToFit();
+
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 
 				return data;
@@ -1120,36 +1122,6 @@ export default mixins(
 						});
 					}
 				});
-			},
-			setRecenteredCanvasAddButtonPosition (offset?: XYPosition) {
-
-				const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset || [0, 0]);
-
-				position[0] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
-				position[1] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
-
-				this.canvasAddButtonPosition = CanvasHelpers.getNewNodePosition(this.nodes, position);
-			},
-
-			getPlaceholderTriggerNodeUI (): INodeUi {
-				this.setRecenteredCanvasAddButtonPosition();
-
-				return {
-					id: uuid(),
-					...CanvasHelpers.DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
-					position: this.canvasAddButtonPosition,
-				};
-			},
-			// Extend nodes with placeholder trigger button as NodeUI object
-			// with the centered position if canvas doesn't contains trigger node
-			getNodesWithPlaceholderNode(): INodeUi[] {
-				const nodes = this.$store.getters.allNodes as INodeUi[];
-
-				const extendedNodes = this.containsTrigger
-					? nodes
-					: [this.getPlaceholderTriggerNodeUI(), ...nodes];
-
-				return extendedNodes;
 			},
 			async stopExecution() {
 				const executionId = this.$store.getters.activeExecutionId;
@@ -1557,9 +1529,7 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 
 				if (options.position) {
-					const nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
-					this.canvasStore.nodesWithPlaceholderNode = nodesWithPlaceholderNode;
-					newNodeData.position = CanvasHelpers.getNewNodePosition(nodesWithPlaceholderNode, options.position);
+					newNodeData.position = CanvasHelpers.getNewNodePosition(this.canvasStore.getNodesWithPlaceholderNode(), options.position);
 				} else if (lastSelectedNode) {
 					const lastSelectedConnection = this.lastSelectedConnection;
 					if (lastSelectedConnection) { // set when injecting into a connection
@@ -2551,8 +2521,6 @@ export default mixins(
 						this.instance.setSuspendDrawing(false, true);
 					}
 
-					this.canvasStore.nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
-
 					// Remove node from selected index if found in it
 					this.$store.commit('removeNodeFromSelection', node);
 
@@ -3166,10 +3134,6 @@ export default mixins(
 				try {
 					this.initNodeView();
 					await this.initView();
-
-					this.canvasStore.nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
-					await this.$nextTick();
-					this.canvasStore.zoomToFit();
 
 					if (window.top) {
 						window.top.postMessage(JSON.stringify({ command: 'n8nReady', version: this.$store.getters.versionCli }), '*');
