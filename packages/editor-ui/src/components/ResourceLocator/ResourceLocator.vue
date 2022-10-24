@@ -84,6 +84,7 @@
 									:size="inputSize"
 									:value="expressionDisplayValue"
 									:title="displayTitle"
+									:disabled="isReadOnly"
 									@keydown.stop
 									ref="input"
 								/>
