@@ -165,13 +165,13 @@ export default mixins(externalHooks).extend({
 				this.draggingPath = el.dataset.path;
 			}
 
-			this.$store.commit('ui/resetMappingTelemetry');
+			this.$store.commit('ndv/resetMappingTelemetry');
 		},
 		onDragEnd(el: HTMLElement) {
 			this.draggingPath = null;
 
 			setTimeout(() => {
-				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
+				const mappingTelemetry = this.$store.getters['ndv/mappingTelemetry'];
 				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: el.dataset.name || '',

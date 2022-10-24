@@ -145,7 +145,7 @@
 						:value="editMode.value"
 						:options="{ scrollBeyondLastLine: false }"
 						type="json"
-						@input="$store.commit('ui/setOutputPanelEditModeValue', $event)"
+						@input="$store.commit('ndv/setOutputPanelEditModeValue', $event)"
 					/>
 				</div>
 				<div :class="$style['edit-mode-footer']">
@@ -470,7 +470,7 @@ export default mixins(
 					this.showPinDataDiscoveryTooltip(this.jsonData);
 				}
 			}
-			this.$store.commit('ui/setNDVBranchIndex', {
+			this.$store.commit('ndv/setNDVBranchIndex', {
 				pane: this.paneType,
 				branchIndex: this.currentOutputIndex,
 			});
@@ -482,7 +482,7 @@ export default mixins(
 		},
 		computed: {
 			activeNode(): INodeUi {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			dataPinningDocsUrl(): string {
 				return DATA_PINNING_DOCS_URL;
@@ -491,7 +491,7 @@ export default mixins(
 				return DATA_EDITING_DOCS_URL;
 			},
 			displayMode(): IRunDataDisplayMode {
-				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
+				return this.$store.getters['ndv/getPanelDisplayMode'](this.paneType);
 			},
 			node(): INodeUi | null {
 				return (this.nodeUi as INodeUi | null) || null;
@@ -675,7 +675,7 @@ export default mixins(
 			editMode(): { enabled: boolean; value: string; } {
 				return this.isPaneTypeInput
 					? { enabled: false, value: '' }
-					: this.$store.getters['ui/outputPanelEditMode'];
+					: this.$store.getters['ndv/outputPanelEditMode'];
 			},
 			isPaneTypeInput(): boolean {
 				return this.paneType === 'input';
@@ -737,8 +737,8 @@ export default mixins(
 					? inputData
 					: TEST_PIN_DATA;
 
-				this.$store.commit('ui/setOutputPanelEditModeEnabled', true);
-				this.$store.commit('ui/setOutputPanelEditModeValue', JSON.stringify(data, null, 2));
+				this.$store.commit('ndv/setOutputPanelEditModeEnabled', true);
+				this.$store.commit('ndv/setOutputPanelEditModeValue', JSON.stringify(data, null, 2));
 
 				this.$telemetry.track('User opened ndv edit state', {
 					node_type: this.activeNode.type,
@@ -751,8 +751,8 @@ export default mixins(
 				});
 			},
 			onClickCancelEdit() {
-				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('ui/setOutputPanelEditModeValue', '');
+				this.$store.commit('ndv/setOutputPanelEditModeEnabled', false);
+				this.$store.commit('ndv/setOutputPanelEditModeValue', '');
 				this.onExitEditMode({ type: 'cancel' });
 			},
 			onClickSaveEdit() {
@@ -770,7 +770,7 @@ export default mixins(
 					return;
 				}
 
-				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
+				this.$store.commit('ndv/setOutputPanelEditModeEnabled', false);
 				this.$store.commit('pinData', { node: this.node, data: clearJsonKey(value) });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
@@ -935,7 +935,7 @@ export default mixins(
 			},
 			onDisplayModeChange(displayMode: IRunDataDisplayMode) {
 				const previous = this.displayMode;
-				this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: displayMode});
+				this.$store.commit('ndv/setPanelDisplayMode', {pane: this.paneType, mode: displayMode});
 
 				const dataContainer = this.$refs.dataContainer;
 				if (dataContainer) {
@@ -1007,10 +1007,10 @@ export default mixins(
 				this.refreshDataSize();
 				this.closeBinaryDataDisplay();
 				if (this.binaryData.length > 0) {
-					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'binary'});
+					this.$store.commit('ndv/setPanelDisplayMode', {pane: this.paneType, mode: 'binary'});
 				}
 				else if (this.displayMode === 'binary') {
-					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'table'});
+					this.$store.commit('ndv/setPanelDisplayMode', {pane: this.paneType, mode: 'table'});
 				}
 			},
 			closeBinaryDataDisplay () {
@@ -1096,7 +1096,7 @@ export default mixins(
 			},
 			goToErroredNode() {
 				if (this.node) {
-					this.$store.commit('setActiveNode', this.node.name);
+					this.$store.commit('ndv/setActiveNodeName', this.node.name);
 				}
 			},
 		},
@@ -1107,7 +1107,7 @@ export default mixins(
 			inputData:{
 				handler(data: INodeExecutionData[]) {
 					if(this.paneType && data){
-						this.$store.commit('ui/setNDVPanelDataIsEmpty', { panel: this.paneType, isEmpty: data.every(item => isEmpty(item.json)) });
+						this.$store.commit('ndv/setNDVPanelDataIsEmpty', { panel: this.paneType, isEmpty: data.every(item => isEmpty(item.json)) });
 					}
 				},
 				immediate: true,
@@ -1130,7 +1130,7 @@ export default mixins(
 				}
 			},
 			currentOutputIndex(branchIndex: number) {
-				this.$store.commit('ui/setNDVBranchIndex', {
+				this.$store.commit('ndv/setNDVBranchIndex', {
 					pane: this.paneType,
 					branchIndex,
 				});

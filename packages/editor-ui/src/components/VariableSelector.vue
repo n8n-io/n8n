@@ -406,7 +406,7 @@ export default mixins(
 				const runIndex = 0;
 				const returnData: IVariableSelectorOption[] = [];
 
-				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
 
 				if (activeNode === null) {
 					return returnData;
@@ -486,7 +486,7 @@ export default mixins(
 			getFilterResults (filterText: string, itemIndex: number): IVariableSelectorOption[] {
 				const inputName = 'main';
 
-				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
 
 				if (activeNode === null) {
 					return [];

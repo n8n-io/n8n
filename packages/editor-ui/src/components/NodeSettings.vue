@@ -198,7 +198,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			};
 		},
 		node(): INodeUi {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		parametersSetting(): INodeProperties[] {
 			return this.parameters.filter((item) => {
@@ -218,7 +218,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			return this.nodeType.properties;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string } {
-			return this.$store.getters['ui/outputPanelEditMode'];
+			return this.$store.getters['ndv/outputPanelEditMode'];
 		},
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.node.type);
