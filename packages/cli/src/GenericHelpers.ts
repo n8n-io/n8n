@@ -29,7 +29,6 @@ import {
 	IPackageVersions,
 	IWorkflowDb,
 	ResponseHelper,
-	IN8nNodePackageJson,
 } from '.';
 // eslint-disable-next-line import/order
 import { Like } from 'typeorm';
@@ -38,6 +37,7 @@ import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { CredentialsEntity } from './databases/entities/CredentialsEntity';
 import { TagEntity } from './databases/entities/TagEntity';
 import { User } from './databases/entities/User';
+import type { n8n } from 'n8n-core';
 
 let versionCache: IPackageVersions | undefined;
 
@@ -76,7 +76,7 @@ export async function getVersions(): Promise<IPackageVersions> {
 
 	const packageFile = await fsReadFile(pathJoin(__dirname, '../../package.json'), 'utf8');
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	const packageData = jsonParse<IN8nNodePackageJson>(packageFile);
+	const packageData = jsonParse<n8n.PackageJson>(packageFile);
 
 	versionCache = {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
