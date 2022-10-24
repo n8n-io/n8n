@@ -44,8 +44,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		if (options) {
 			if (options.fallbackValue !== undefined) {
 				return options.fallbackValue;
-			}
-			if (options.errorMessage) {
+			} else if (options.errorMessage) {
 				throw new Error(options.errorMessage);
 			}
 		}
