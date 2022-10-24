@@ -23,6 +23,11 @@ export const messageOperations: INodeProperties[] = [
 				action: 'Get a message permalink',
 			},
 			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search for messages',
+			},
+			{
 				name: 'Send',
 				value: 'post',
 				action: 'Send a message',
@@ -83,6 +88,29 @@ export const messageFields: INodeProperties[] = [
 	/*                          message:post/postEphemeral                        */
 	/* -------------------------------------------------------------------------- */
 	{
+		displayName: 'Send message to',
+		name: 'select',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['post', 'postEphemeral'],
+			},
+		},
+		options: [
+			{
+				name: 'Channel',
+				value: 'channel',
+			},
+			{
+				name: 'User',
+				value: 'user',
+			},
+		],
+		default: '',
+		placeholder: 'Select...',
+	},
+	{
 		displayName: 'Channel',
 		name: 'channel',
 		type: 'string',
@@ -92,6 +120,7 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				operation: ['post', 'postEphemeral'],
 				resource: ['message'],
+				select: ['channel'],
 			},
 		},
 		required: true,
@@ -105,12 +134,44 @@ export const messageFields: INodeProperties[] = [
 		placeholder: 'User ID',
 		displayOptions: {
 			show: {
-				operation: ['postEphemeral'],
+				operation: ['post', 'postEphemeral'],
 				resource: ['message'],
+				select: ['user'],
 			},
 		},
 		required: true,
 		description: 'The user ID to send the message to',
+	},
+	{
+		displayName: 'Message Type',
+		name: 'messageType',
+		type: 'options',
+		displayOptions: {
+			show: {
+				operation: ['post', 'postEphemeral'],
+				resource: ['message'],
+			},
+		},
+		description:
+			'Whether to send a simple text message, or use Slack’s Blocks UI builder for more sophisticated messages that include form fields, sections and more',
+		options: [
+			{
+				name: 'Simple Text Message',
+				value: 'text',
+				description: 'Supports basic Markdown',
+			},
+			{
+				name: 'Blocks',
+				value: 'block',
+				description:
+					"Combine text, buttons, form elements, dividers and more in Slack 's visual builder",
+			},
+			{
+				name: 'Attachments',
+				value: 'attachment',
+			},
+		],
+		default: 'text',
 	},
 	{
 		displayName: 'Message Text',
@@ -124,390 +185,11 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				operation: ['post', 'postEphemeral'],
 				resource: ['message'],
+				messageType: ['text'],
 			},
 		},
 		description:
 			"The message text to post. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
-	},
-	{
-		displayName: 'Options',
-		name: 'otherOptions',
-		type: 'collection',
-		displayOptions: {
-			show: {
-				operation: ['post', 'postEphemeral'],
-				resource: ['message'],
-			},
-		},
-		default: {},
-		description: 'Other options to set',
-		placeholder: 'Add options',
-		options: [
-			{
-				displayName: 'Icon Emoji',
-				name: 'icon_emoji',
-				type: 'string',
-				default: '',
-				description:
-					'Emoji to use as the icon for this message. This field only has an effect when using a Bot connection. Add chat:write.customize scope on Slack API',
-			},
-			{
-				displayName: 'Icon URL',
-				name: 'icon_url',
-				type: 'string',
-				default: '',
-				description: 'URL to an image to use as the icon for this message',
-			},
-			{
-				displayName: 'Link User and Channel names',
-				name: 'link_names',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to turn @users and #channels in message text into clickable links',
-			},
-			{
-				displayName: 'Reply to a Message',
-				name: 'thread_ts',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				placeholder: 'Reply to a Message',
-				description: "Provide another message's Timestamp value to make this message a reply",
-				options: [
-					{
-						displayName: 'Reply to a Message',
-						name: 'replyValues',
-						values: [
-							{
-								displayName: 'Message timestamp to reply to',
-								name: 'timestamp_reply',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Reply to thread',
-								name: 'reply_broadcast',
-								type: 'boolean',
-								default: false,
-								description:
-									'Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts.',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Markdown',
-				name: 'mrkdwn',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to use Slack Markdown parsing',
-			},
-			{
-				displayName: 'Unfurl Links',
-				name: 'unfurl_links',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to enable unfurling of primarily text-based content',
-			},
-			{
-				displayName: 'Unfurl Media',
-				name: 'unfurl_media',
-				type: 'boolean',
-				default: true,
-				description: 'Whether to disable unfurling of media content',
-			},
-			{
-				displayName: 'Send as User',
-				name: 'sendAsUser',
-				type: 'string',
-				displayOptions: {
-					show: {
-						'/authentication': ['accessToken'],
-					},
-				},
-				default: '',
-				description:
-					'The message will be sent from this username (i.e. as if this individual sent the message). Add chat:write.customize scope on Slack API',
-			},
-		],
-	},
-	{
-		displayName: 'Attachments',
-		name: 'attachments',
-		type: 'collection',
-		typeOptions: {
-			multipleValues: true,
-			multipleValueButtonText: 'Add attachment',
-		},
-		displayOptions: {
-			show: {
-				operation: ['post', 'postEphemeral'],
-				resource: ['message'],
-			},
-		},
-		default: {}, // TODO: Remove comment: has to make default array for the main property, check where that happens in UI
-		placeholder: 'Add attachment item',
-		options: [
-			{
-				displayName: 'Fallback Text',
-				name: 'fallback',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Required plain-text summary of the attachment',
-			},
-			{
-				displayName: 'Text',
-				name: 'text',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Title',
-				name: 'title',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Title Link',
-				name: 'title_link',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Color',
-				name: 'color',
-				type: 'color',
-				default: '#ff0000',
-				description: 'Color of the line left of text',
-			},
-			{
-				displayName: 'Pretext',
-				name: 'pretext',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Text which appears before the message block',
-			},
-			{
-				displayName: 'Author Name',
-				name: 'author_name',
-				type: 'string',
-				default: '',
-				description: 'Name that should appear',
-			},
-			{
-				displayName: 'Author Link',
-				name: 'author_link',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Author Icon',
-				name: 'author_icon',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Icon which should appear for the user',
-			},
-			{
-				displayName: 'Image URL',
-				name: 'image_url',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Thumbnail URL',
-				name: 'thumb_url',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-			},
-			{
-				displayName: 'Footer',
-				name: 'footer',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Text of footer to add',
-			},
-			{
-				displayName: 'Footer Icon',
-				name: 'footer_icon',
-				type: 'string',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				default: '',
-				description: 'Icon which should appear next to footer',
-			},
-			{
-				displayName: 'Timestamp',
-				name: 'ts',
-				type: 'dateTime',
-				default: '',
-				description: 'Time message relates to',
-			},
-			{
-				displayName: 'Fields',
-				name: 'fields',
-				placeholder: 'Add Fields',
-				description: 'Fields to add to message',
-				type: 'fixedCollection',
-				typeOptions: {
-					multipleValues: true,
-				},
-				default: {},
-				options: [
-					{
-						name: 'item',
-						displayName: 'Item',
-						values: [
-							{
-								displayName: 'Title',
-								name: 'title',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Value',
-								name: 'value',
-								type: 'string',
-								default: '',
-							},
-							{
-								displayName: 'Short',
-								name: 'short',
-								type: 'boolean',
-								default: true,
-								description: 'Whether items can be displayed next to each other',
-							},
-						],
-					},
-				],
-			},
-		],
-	},
-
-	/* ----------------------------------------------------------------------- */
-	/*                                 message:update                          */
-	/* ----------------------------------------------------------------------- */
-	{
-		displayName: 'Channel Name or ID',
-		name: 'channelId',
-		type: 'options',
-		typeOptions: {
-			loadOptionsMethod: 'getChannels',
-		},
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['update'],
-			},
-		},
-		description:
-			'Channel containing the message to be updated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-	},
-	{
-		displayName: 'Message Text',
-		name: 'text',
-		type: 'string',
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['update'],
-			},
-		},
-		description:
-			"The message text to update. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
-	},
-	{
-		displayName: 'Timestamp',
-		name: 'ts',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['update'],
-			},
-		},
-		description: 'Timestamp of the message to be updated',
-	},
-	{
-		displayName: 'Update Fields',
-		name: 'updateFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['update'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Link User and Channel names',
-				name: 'link_names',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to find and link channel names and usernames',
-			},
-			{
-				displayName: 'Parse',
-				name: 'parse',
-				type: 'options',
-				options: [
-					{
-						name: 'Client',
-						value: 'client',
-					},
-					{
-						name: 'Full',
-						value: 'full',
-					},
-					{
-						name: 'None',
-						value: 'none',
-					},
-				],
-				default: 'client',
-				description: 'Change how messages are treated',
-			},
-		],
 	},
 	{
 		displayName: 'Blocks',
@@ -521,6 +203,7 @@ export const messageFields: INodeProperties[] = [
 			show: {
 				operation: ['post'],
 				resource: ['message'],
+				messageType: ['block'],
 			},
 		},
 		default: {},
@@ -1341,6 +1024,400 @@ export const messageFields: INodeProperties[] = [
 		],
 	},
 	{
+		displayName: 'This is a legacy Slack feature. Slack advises to instead use Blocks.',
+		name: 'noticeAttachments',
+		type: 'notice',
+		displayOptions: {
+			show: {
+				operation: ['post', 'postEphemeral'],
+				resource: ['message'],
+				messageType: ['attachment'],
+			},
+		},
+		default: '',
+	},
+	{
+		displayName: 'Attachments',
+		name: 'attachments',
+		type: 'collection',
+		typeOptions: {
+			multipleValues: true,
+			multipleValueButtonText: 'Add attachment',
+		},
+		displayOptions: {
+			show: {
+				operation: ['post', 'postEphemeral'],
+				resource: ['message'],
+				messageType: ['attachment'],
+			},
+		},
+		default: {}, // TODO: Remove comment: has to make default array for the main property, check where that happens in UI
+		placeholder: 'Add attachment item',
+		options: [
+			{
+				displayName: 'Fallback Text',
+				name: 'fallback',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Required plain-text summary of the attachment',
+			},
+			{
+				displayName: 'Text',
+				name: 'text',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Title',
+				name: 'title',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Title Link',
+				name: 'title_link',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Color',
+				name: 'color',
+				type: 'color',
+				default: '#ff0000',
+				description: 'Color of the line left of text',
+			},
+			{
+				displayName: 'Pretext',
+				name: 'pretext',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Text which appears before the message block',
+			},
+			{
+				displayName: 'Author Name',
+				name: 'author_name',
+				type: 'string',
+				default: '',
+				description: 'Name that should appear',
+			},
+			{
+				displayName: 'Author Link',
+				name: 'author_link',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Author Icon',
+				name: 'author_icon',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Icon which should appear for the user',
+			},
+			{
+				displayName: 'Image URL',
+				name: 'image_url',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Thumbnail URL',
+				name: 'thumb_url',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+			},
+			{
+				displayName: 'Footer',
+				name: 'footer',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Text of footer to add',
+			},
+			{
+				displayName: 'Footer Icon',
+				name: 'footer_icon',
+				type: 'string',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				default: '',
+				description: 'Icon which should appear next to footer',
+			},
+			{
+				displayName: 'Timestamp',
+				name: 'ts',
+				type: 'dateTime',
+				default: '',
+				description: 'Time message relates to',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				placeholder: 'Add Fields',
+				description: 'Fields to add to message',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				options: [
+					{
+						name: 'item',
+						displayName: 'Item',
+						values: [
+							{
+								displayName: 'Title',
+								name: 'title',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Value',
+								name: 'value',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Short',
+								name: 'short',
+								type: 'boolean',
+								default: true,
+								description: 'Whether items can be displayed next to each other',
+							},
+						],
+					},
+				],
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'otherOptions',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				operation: ['post', 'postEphemeral'],
+				resource: ['message'],
+			},
+		},
+		default: {},
+		description: 'Other options to set',
+		placeholder: 'Add options',
+		options: [
+			{
+				displayName: 'Icon Emoji',
+				name: 'icon_emoji',
+				type: 'string',
+				default: '',
+				description:
+					'Emoji to use as the icon for this message. This field only has an effect when using a Bot connection. Add chat:write.customize scope on Slack API',
+			},
+			{
+				displayName: 'Icon URL',
+				name: 'icon_url',
+				type: 'string',
+				default: '',
+				description: 'URL to an image to use as the icon for this message',
+			},
+			{
+				displayName: 'Link User and Channel names',
+				name: 'link_names',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to turn @users and #channels in message text into clickable links',
+			},
+			{
+				displayName: 'Reply to a Message',
+				name: 'thread_ts',
+				type: 'fixedCollection',
+				typeOptions: {
+					multipleValues: true,
+				},
+				default: {},
+				placeholder: 'Reply to a Message',
+				description: "Provide another message's Timestamp value to make this message a reply",
+				options: [
+					{
+						displayName: 'Reply to a Message',
+						name: 'replyValues',
+						values: [
+							{
+								displayName: 'Message timestamp to reply to',
+								name: 'timestamp_reply',
+								type: 'string',
+								default: '',
+							},
+							{
+								displayName: 'Reply to thread',
+								name: 'reply_broadcast',
+								type: 'boolean',
+								default: false,
+								description:
+									'Whether the reply should be made visible to everyone in the channel or conversation. Use in conjunction with thread_ts.',
+							},
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Markdown',
+				name: 'mrkdwn',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to use Slack Markdown parsing',
+			},
+			{
+				displayName: 'Unfurl Links',
+				name: 'unfurl_links',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to enable unfurling of primarily text-based content',
+			},
+			{
+				displayName: 'Unfurl Media',
+				name: 'unfurl_media',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to disable unfurling of media content',
+			},
+			{
+				displayName: 'Send as User',
+				name: 'sendAsUser',
+				type: 'string',
+				displayOptions: {
+					show: {
+						'/authentication': ['accessToken'],
+					},
+				},
+				default: '',
+				description:
+					'The message will be sent from this username (i.e. as if this individual sent the message). Add chat:write.customize scope on Slack API',
+			},
+		],
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:update                          */
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Channel Name or ID',
+		name: 'channelId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getChannels',
+		},
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+			},
+		},
+		description:
+			'Channel containing the message to be updated. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+	},
+	{
+		displayName: 'Message Text',
+		name: 'text',
+		type: 'string',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+			},
+		},
+		description:
+			"The message text to update. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
+	},
+	{
+		displayName: 'Timestamp',
+		name: 'ts',
+		type: 'string',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+			},
+		},
+		description: 'Timestamp of the message to be updated',
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Link User and Channel names',
+				name: 'link_names',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to find and link channel names and usernames',
+			},
+			{
+				displayName: 'Parse',
+				name: 'parse',
+				type: 'options',
+				options: [
+					{
+						name: 'Client',
+						value: 'client',
+					},
+					{
+						name: 'Full',
+						value: 'full',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'client',
+				description: 'Change how messages are treated',
+			},
+		],
+	},
+	{
 		displayName: 'Attachments',
 		name: 'attachments',
 		type: 'collection',
@@ -1559,5 +1636,102 @@ export const messageFields: INodeProperties[] = [
 			},
 		},
 		description: 'Timestamp of the message to be deleted',
+	},
+
+	/* ----------------------------------------------------------------------- */
+	/*                                 message:search
+	/* ----------------------------------------------------------------------- */
+	{
+		displayName: 'Search query',
+		name: 'query',
+		type: 'string',
+		description: 'The text to search for within messages',
+		required: true,
+		default: '',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+			},
+		},
+	},
+	{
+		displayName: 'Sort by',
+		name: 'sort',
+		description: 'How search results should be sorted. You can sort by',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+			},
+		},
+		options: [
+			{
+				name: 'Newest',
+				value: 'newest',
+			},
+			{
+				name: 'Oldest',
+				value: 'oldest',
+			},
+			{
+				name: 'Relevance Score',
+				value: 'relevance',
+			},
+		],
+		default: '',
+	},
+	{
+		displayName: 'Return All',
+		name: 'returnAll',
+		type: 'boolean',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+			},
+		},
+		default: false,
+		description: 'Whether to return all results or only up to a given limit',
+	},
+	{
+		displayName: 'Limit',
+		name: 'limit',
+		type: 'number',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+				returnAll: [false],
+			},
+		},
+		typeOptions: {
+			minValue: 1,
+			maxValue: 50,
+		},
+		default: 25,
+		description: 'Max number of results to return',
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['search'],
+			},
+		},
+		required: false,
+		options: [
+			{
+				name: 'searchChannel',
+				displayName: 'Search in Channel',
+				type: 'resourceLocator',
+				default: '',
+			},
+		],
+		default: {},
 	},
 ];
