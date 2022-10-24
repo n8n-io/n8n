@@ -357,7 +357,7 @@ workflowsController.patch(
 		}
 
 		const lastKnownDate = new Date(req.body.updatedAt).getTime();
-		const storedDate = shared.workflow.updatedAt.getTime();
+		const storedDate = new Date(shared.workflow.updatedAt).getTime();
 
 		if (!forceSave && lastKnownDate !== storedDate) {
 			LoggerProxy.info(
