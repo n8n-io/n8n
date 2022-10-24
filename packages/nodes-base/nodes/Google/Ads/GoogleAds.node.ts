@@ -24,7 +24,7 @@ export class GoogleAds implements INodeType {
 				testedBy: {
 					request: {
 						method: 'GET',
-						url: '/v9/customers:listAccessibleCustomers',
+						url: '/v11/customers:listAccessibleCustomers',
 					},
 				},
 			},
