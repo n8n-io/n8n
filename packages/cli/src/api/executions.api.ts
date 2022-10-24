@@ -9,11 +9,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
-import { validate } from 'jsonschema';
+import { validate as jsonSchemaValidate } from 'jsonschema';
 import _, { cloneDeep } from 'lodash';
 import { BinaryDataManager } from 'n8n-core';
-import { IDataObject, IWorkflowBase, LoggerProxy, Workflow } from 'n8n-workflow';
-import { FindManyOptions, FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
+import { IDataObject, IWorkflowBase, JsonObject, LoggerProxy, Workflow } from 'n8n-workflow';
+import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 
 import {
 	ActiveExecutions,
@@ -27,7 +27,6 @@ import {
 	NodeTypes,
 	WorkflowRunner,
 	ResponseHelper,
-	IExecutionFlattedDb,
 } from '..';
 import * as config from '../../config';
 import { User } from '../databases/entities/User';
@@ -38,6 +37,52 @@ import type { ExecutionRequest } from '../requests';
 import { getSharedWorkflowIds } from '../WorkflowHelpers';
 
 export const executionsController = express.Router();
+
+const schemaGetExecutionsQueryFilter = {
+	$id: '/IGetExecutionsQueryFilter',
+	type: 'object',
+	properties: {
+		finished: { type: 'boolean' },
+		mode: { type: 'string' },
+		retryOf: { type: 'string' },
+		retrySuccessId: { type: 'string' },
+		startedAt: {
+			type: { type: 'string' },
+			format: 'date-time',
+		},
+		stoppedAt: {
+			type: { type: 'string' },
+			format: 'date-time',
+		},
+		workflowData: { type: 'string' },
+		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+	},
+};
+
+const allowedExecutionsQueryFilterFields = [
+	'finished',
+	'mode',
+	'retryOf',
+	'retrySuccessId',
+	'startedAt',
+	'stoppedAt',
+	'workflowData',
+	'workflowId',
+];
+
+interface IGetExecutionsQueryFilter {
+	id?: FindOperator<string>;
+	finished?: boolean;
+	mode?: string;
+	retryOf?: string;
+	retrySuccessId?: string;
+	startedAt?: string;
+	stoppedAt?: string;
+	workflowData?: string;
+	workflowId?: number | string;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	waitTill?: FindOperator<any>;
+}
 
 /**
  * Initialise Logger if needed
@@ -106,52 +151,6 @@ async function getExecutionsCount(
 	return { count, estimated: false };
 }
 
-const schemaGetExecutionsQueryFilter = {
-	$id: '/IGetExecutionsQueryFilter',
-	type: 'object',
-	properties: {
-		finished: { type: 'boolean' },
-		mode: { type: 'string' },
-		retryOf: { type: 'string' },
-		retrySuccessId: { type: 'string' },
-		startedAt: {
-			type: { type: 'string' },
-			format: 'date-time',
-		},
-		stoppedAt: {
-			type: { type: 'string' },
-			format: 'date-time',
-		},
-		workflowData: { type: 'string' },
-		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
-	},
-};
-
-interface IGetExecutionsQueryFilter {
-	id?: FindOperator<string>;
-	finished?: boolean;
-	mode?: string;
-	retryOf?: string;
-	retrySuccessId?: string;
-	startedAt?: string;
-	stoppedAt?: string;
-	workflowData?: string;
-	workflowId?: number | string;
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	waitTill?: FindOperator<any>;
-}
-
-const allowedExecutionsQueryFilterFields = [
-	'finished',
-	'mode',
-	'retryOf',
-	'retrySuccessId',
-	'startedAt',
-	'stoppedAt',
-	'workflowData',
-	'workflowId',
-];
-
 /**
  * GET /executions
  */
@@ -159,31 +158,54 @@ executionsController.get(
 	'/',
 	ResponseHelper.send(async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
 		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
-		const userIsGlobalOwner = req.user.globalRole.name === 'owner';
-		if (!userIsGlobalOwner && sharedWorkflowIds.length === 0)
-			// return early since without shared workflows there can be no hits for regular users
+		if (sharedWorkflowIds.length === 0) {
+			// return early since without shared workflows there can be no hits
+			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
 			return {
 				count: 0,
 				estimated: false,
 				results: [],
 			};
+		}
 
+		// parse incoming filter object and remove non-valid fields
 		let filter: IGetExecutionsQueryFilter | undefined = undefined;
 		if (req.query.filter) {
 			try {
-				const filterJson = JSON.parse(req.query.filter);
-				Object.keys(filterJson).map((key) => {
-					if (!allowedExecutionsQueryFilterFields.includes(key)) delete filterJson[key];
-				});
-				if (validate(filterJson, schemaGetExecutionsQueryFilter).valid) {
-					filter = filterJson as IGetExecutionsQueryFilter;
+				const filterJson = JSON.parse(req.query.filter) as JsonObject;
+				if (filterJson) {
+					Object.keys(filterJson).map((key) => {
+						if (!allowedExecutionsQueryFilterFields.includes(key)) delete filterJson[key];
+					});
+					if (jsonSchemaValidate(filterJson, schemaGetExecutionsQueryFilter).valid) {
+						filter = filterJson as IGetExecutionsQueryFilter;
+					}
 				}
 			} catch (error) {
+				LoggerProxy.error('Failed to parse filter', {
+					userId: req.user.id,
+					filter: req.query.filter,
+				});
 				throw new ResponseHelper.ResponseError(
 					`Parameter "filter" contained invalid JSON string.`,
 					500,
 					500,
 				);
+			}
+		}
+
+		// safeguard against querying workflowIds not shared with the user
+		if (filter?.workflowId !== undefined) {
+			const workflowId = parseInt(filter.workflowId.toString());
+			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
+				LoggerProxy.verbose(
+					`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
+				);
+				return {
+					count: 0,
+					estimated: false,
+					results: [],
+				};
 			}
 		}
 
@@ -471,7 +493,7 @@ executionsController.post(
 				Object.keys(requestFiltersRaw).map((key) => {
 					if (!allowedExecutionsQueryFilterFields.includes(key)) delete requestFiltersRaw[key];
 				});
-				if (validate(requestFiltersRaw, schemaGetExecutionsQueryFilter).valid) {
+				if (jsonSchemaValidate(requestFiltersRaw, schemaGetExecutionsQueryFilter).valid) {
 					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
 				}
 			} catch (error) {
@@ -488,9 +510,9 @@ executionsController.post(
 		}
 
 		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
-		const userIsGlobalOwner = req.user.globalRole.name === 'owner';
-		if (!userIsGlobalOwner && sharedWorkflowIds.length === 0) {
-			// return early since without shared workflows there can be no hits for regular users
+		if (sharedWorkflowIds.length === 0) {
+			// return early since without shared workflows there can be no hits
+			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
 			return;
 		}
 
