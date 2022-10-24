@@ -31,11 +31,9 @@ export const deepCopy = <T>(source: T): T => {
 };
 // eslint-enable
 
-type MutuallyExclusiveTypeError = 'TypeError: Only one of the two options is allowed';
-
 type MutuallyExclusive<T, U> =
-	| (T & { [k in Exclude<keyof U, keyof T>]?: MutuallyExclusiveTypeError })
-	| (U & { [k in Exclude<keyof T, keyof U>]?: MutuallyExclusiveTypeError });
+	| (T & { [k in Exclude<keyof U, keyof T>]?: never })
+	| (U & { [k in Exclude<keyof T, keyof U>]?: never });
 
 type JSONParseOptions<T> = MutuallyExclusive<{ errorMessage: string }, { fallbackValue: T }>;
 
@@ -44,7 +42,7 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		return JSON.parse(jsonString) as T;
 	} catch (error) {
 		if (options?.fallbackValue !== undefined) {
-			return options.fallbackValue as T;
+			return options.fallbackValue;
 		} else if (options?.errorMessage) {
 			throw new Error(options.errorMessage);
 		}
