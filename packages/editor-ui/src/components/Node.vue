@@ -442,7 +442,7 @@ export default mixins(
 		},
 
 		setNodeActive () {
-			this.$store.commit('setActiveNode', this.data.name);
+			this.$store.commit('ndv/setActiveNodeName', this.data.name);
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart () {
