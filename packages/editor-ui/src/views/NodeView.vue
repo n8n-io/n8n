@@ -751,9 +751,6 @@ export default mixins(
 					this.$store.commit('setStateDirty', false);
 				}
 
-				this.canvasStore.nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
-				this.canvasStore.zoomToFit();
-
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 
 				return data;
@@ -2554,6 +2551,8 @@ export default mixins(
 						this.instance.setSuspendDrawing(false, true);
 					}
 
+					this.canvasStore.nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
+
 					// Remove node from selected index if found in it
 					this.$store.commit('removeNodeFromSelection', node);
 
@@ -3167,6 +3166,11 @@ export default mixins(
 				try {
 					this.initNodeView();
 					await this.initView();
+
+					this.canvasStore.nodesWithPlaceholderNode = this.getNodesWithPlaceholderNode();
+					await this.$nextTick();
+					this.canvasStore.zoomToFit();
+
 					if (window.top) {
 						window.top.postMessage(JSON.stringify({ command: 'n8nReady', version: this.$store.getters.versionCli }), '*');
 					}
