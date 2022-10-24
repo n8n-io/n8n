@@ -1,4 +1,8 @@
-import type { INodeListSearchResult, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
+import {
+	INodeListSearchResult,
+	IWorkflowExecuteAdditionalData,
+	requireDistNode,
+} from 'n8n-workflow';
 
 import { NodeExecuteFunctions } from '.';
 import { LoadNodeDetails } from './LoadNodeDetails';
@@ -16,21 +20,42 @@ export class LoadNodeListSearch extends LoadNodeDetails {
 		const node = this.getTempNode();
 
 		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		const method = nodeType?.methods?.listSearch?.[methodName];
 
-		if (typeof method !== 'function') {
-			throw new Error(
-				`The node-type "${node.type}" does not have the method "${methodName}" defined!`,
-			);
+		if (!nodeType) {
+			throw new Error(`Unknown node type "${node.type}"`);
 		}
 
-		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(
+		const method = nodeType?.methods?.listSearch?.[methodName];
+
+		if (!method) {
+			throw new Error(`Node type "${node.type}" does not have method "${methodName}"`);
+		}
+
+		const loadOptionsFunctions = NodeExecuteFunctions.getLoadOptionsFunctions(
 			this.workflow,
 			node,
 			this.path,
 			additionalData,
 		);
 
-		return method.call(thisArgs, filter, paginationToken);
+		const isCachedNode = typeof method === 'string';
+
+		// uncached node, run method from memory
+
+		if (!isCachedNode) {
+			return method.call(loadOptionsFunctions, filter, paginationToken);
+		}
+
+		// cached node, run method from source
+
+		const distNode = requireDistNode(nodeType, this.workflow);
+
+		const distMethod = distNode.methods.listSearch?.[methodName];
+
+		if (!distMethod) {
+			throw new Error(`Node type "${node.type}" does not have method "${methodName}"`);
+		}
+
+		return distMethod.call(loadOptionsFunctions, filter, paginationToken);
 	}
 }

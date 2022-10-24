@@ -7,6 +7,7 @@ import {
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowExecuteAdditionalData,
+	requireDistNode,
 	RoutingNode,
 } from 'n8n-workflow';
 
@@ -24,22 +25,43 @@ export class LoadNodeParameterOptions extends LoadNodeDetails {
 		const node = this.getTempNode();
 
 		const nodeType = this.workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
-		const method = nodeType?.methods?.loadOptions?.[methodName];
 
-		if (typeof method !== 'function') {
-			throw new Error(
-				`The node-type "${node.type}" does not have the method "${methodName}" defined!`,
-			);
+		if (!nodeType) {
+			throw new Error(`Unknown node type "${node.type}"`);
 		}
 
-		const thisArgs = NodeExecuteFunctions.getLoadOptionsFunctions(
+		const method = nodeType?.methods?.loadOptions?.[methodName];
+
+		if (!method) {
+			throw new Error(`Node type "${node.type}" does not have method "${methodName}"`);
+		}
+
+		const loadOptionsFunctions = NodeExecuteFunctions.getLoadOptionsFunctions(
 			this.workflow,
 			node,
 			this.path,
 			additionalData,
 		);
 
-		return method.call(thisArgs);
+		const isCachedNode = typeof method === 'string';
+
+		// uncached node, run method from memory
+
+		if (!isCachedNode) {
+			return method.call(loadOptionsFunctions);
+		}
+
+		// cached node, run method from source
+
+		const distNode = requireDistNode(nodeType, this.workflow);
+
+		const distMethod = distNode.methods.loadOptions?.[methodName];
+
+		if (!distMethod) {
+			throw new Error(`Node type "${node.type}" does not have method "${methodName}"`);
+		}
+
+		return distMethod.call(loadOptionsFunctions);
 	}
 
 	/**
