@@ -21,7 +21,8 @@
 				@drop="onDrop"
 				@textInput="onTextInput"
 				@valueChanged="onValueChanged" />
-		<input-hint v-if="expressionOutput || parameterHint" :class="$style.hint" :highlight="!!(expressionOutput && targetItem)" :hint="expressionOutput || parameterHint" />
+		<input-hint v-if="expressionOutput" :class="$style.hint" :highlight="!!(expressionOutput && targetItem)" :hint="expressionOutput" />
+		<input-hint v-else-if="parameterHint" :class="$style.hint" :renderHTML="true" :hint="parameterHint" />
 	</div>
 </template>
 
