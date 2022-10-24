@@ -187,7 +187,8 @@ export class GoogleCalendar implements INodeType {
 				if (resource === 'calendar') {
 					//https://developers.google.com/calendar/v3/reference/freebusy/query
 					if (operation === 'availability') {
-						const calendarId = this.getNodeParameter('calendar', i) as string;
+						// we need to decode once because calendar used to be saved encoded
+						const calendarId = decodeURIComponent(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
 						const timeMin = this.getNodeParameter('timeMin', i) as string;
 						const timeMax = this.getNodeParameter('timeMax', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;

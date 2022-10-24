@@ -57,7 +57,7 @@ export const eventFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
-		description: 'Choose Calendar from the list or by ID',
+		description: 'Choose Calendar from the List or by ID',
 		modes: [
 			{
 				displayName: 'Calendar',
@@ -82,7 +82,7 @@ export const eventFields: INodeProperties[] = [
 						},
 					},
 				],
-				placeholder: 'en.german#holiday@group.v.calendar.google.com',
+				placeholder: 'name@google.com',
 			},
 		],
 		displayOptions: {
