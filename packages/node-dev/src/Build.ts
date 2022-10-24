@@ -21,7 +21,7 @@ export async function createCustomTsconfig() {
 
 	// Read the tsconfig file
 	const tsConfigString = await readFile(tsconfigPath, { encoding: 'utf8' });
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, n8n-local-rules/no-uncaught-json-parse
 	const tsConfig = JSON.parse(tsConfigString);
 
 	// Set absolute include paths
