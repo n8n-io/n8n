@@ -135,6 +135,13 @@ export const extendTransform = (expression: string): { code: string } | undefine
 	}
 };
 
+function isDate(input: unknown): boolean {
+	if (typeof input !== 'string') {
+		return false;
+	}
+	return DateTime.fromISO(input).isValid;
+}
+
 /**
  * Extender function injected by expression extension plugin to allow calls to extensions.
  *
@@ -147,11 +154,15 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
 		foundFunction = arrayExtensions.functions[functionName];
+	} else if (isDate(input)) {
+		// If it's a string date (from $json), convert it to a Date object
+		input = new Date(input as string);
+		foundFunction = dateExtensions.functions[functionName];
 	} else if (typeof input === 'string') {
 		foundFunction = stringExtensions.functions[functionName];
 	} else if (typeof input === 'number') {
 		foundFunction = numberExtensions.functions[functionName];
-	} else if ('isLuxonDateTime' in (input as DateTime) || input instanceof Date) {
+	} else if (input && (DateTime.isDateTime(input) || input instanceof Date)) {
 		foundFunction = dateExtensions.functions[functionName];
 	}
 
