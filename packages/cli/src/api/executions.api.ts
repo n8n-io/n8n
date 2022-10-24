@@ -12,9 +12,15 @@ import express from 'express';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import _, { cloneDeep } from 'lodash';
 import { BinaryDataManager } from 'n8n-core';
-import { IDataObject, IWorkflowBase, JsonObject, LoggerProxy, Workflow } from 'n8n-workflow';
+import {
+	IDataObject,
+	IWorkflowBase,
+	JsonObject,
+	jsonParse,
+	LoggerProxy,
+	Workflow,
+} from 'n8n-workflow';
 import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
-
 
 import {
 	ActiveExecutions,
@@ -173,7 +179,7 @@ executionsController.get(
 		let filter: IGetExecutionsQueryFilter | undefined = undefined;
 		if (req.query.filter) {
 			try {
-				const filterJson = JSON.parse(req.query.filter) as JsonObject;
+				const filterJson: JsonObject = jsonParse(req.query.filter);
 				if (filterJson) {
 					Object.keys(filterJson).map((key) => {
 						if (!allowedExecutionsQueryFilterFields.includes(key)) delete filterJson[key];

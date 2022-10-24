@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 
 import express from 'express';
-import { INode, IPinData, JsonObject, LoggerProxy, Workflow } from 'n8n-workflow';
+import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 
 import axios from 'axios';
 import { FindManyOptions, In } from 'typeorm';
@@ -203,7 +203,7 @@ workflowsController.get(
 		let filter: IGetWorkflowsQueryFilter | undefined = undefined;
 		if (req.query.filter) {
 			try {
-				const filterJson = JSON.parse(req.query.filter) as JsonObject;
+				const filterJson: JsonObject = jsonParse(req.query.filter);
 				if (filterJson) {
 					Object.keys(filterJson).map((key) => {
 						if (!allowedWorkflowsQueryFilterFields.includes(key)) delete filterJson[key];
