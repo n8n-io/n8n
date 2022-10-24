@@ -30,20 +30,21 @@ export const deepCopy = <T>(source: T): T => {
 	return clone;
 };
 // eslint-enable
-type ErrorMessage = { errorMessage: string };
-type FallbackValue<T> = { fallbackValue: T };
+
+type OneOfTypeError = 'TypeError: Only one of the two options is allowed';
+type DisallowDiffKeys<A, B> = { [K in Exclude<keyof A, keyof B>]?: OneOfTypeError };
+type EitherOr<A, B> = (DisallowDiffKeys<A, B> & B) | (DisallowDiffKeys<B, A> & A);
 
 export const jsonParse = <T>(
 	jsonString: string,
-	options: ErrorMessage | FallbackValue<T> | {} = {},
+	options?: EitherOr<{ errorMessage: string }, { fallbackValue: T }>,
 ): T => {
 	try {
 		return JSON.parse(jsonString) as T;
 	} catch (error) {
-		if ('fallbackValue' in options) {
-			return options.fallbackValue;
-		}
-		if ('errorMessage' in options) {
+		if (options?.fallbackValue !== undefined) {
+			return options.fallbackValue as T;
+		} else if (options?.errorMessage !== undefined) {
 			throw new Error(options.errorMessage);
 		}
 		throw error;
