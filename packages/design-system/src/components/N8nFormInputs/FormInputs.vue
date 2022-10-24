@@ -14,6 +14,7 @@
 					<n8n-form-input
 						v-else
 						v-bind="input.properties"
+						:name="input.name"
 						:value="values[input.name]"
 						:showValidationWarnings="showValidationWarnings"
 						@input="(value) => onInput(input.name, value)"
