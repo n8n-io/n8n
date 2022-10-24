@@ -33,19 +33,19 @@ export interface IProcessMessage {
 
 export interface IExecuteFunctions extends IExecuteFunctionsBase {
 	helpers: {
-		checkProcessed(items: string[], context: IProcessedDataContext): Promise<ICheckProcessedOutput>;
+		checkProcessed(items: string[], context: ProcessedDataContext): Promise<ICheckProcessedOutput>;
 		checkProcessedAndRecord(
 			items: string[],
-			context: IProcessedDataContext,
+			context: ProcessedDataContext,
 			options: ICheckProcessedOptions,
 		): Promise<ICheckProcessedOutput>;
 		checkProcessedItemsAndRecord(
 			propertyName: string,
 			items: IDataObject[],
-			context: IProcessedDataContext,
+			context: ProcessedDataContext,
 			options: ICheckProcessedOptions,
 		): Promise<ICheckProcessedOutputItems>;
-		removeProcessed(items: string[], context: IProcessedDataContext): Promise<void>;
+		removeProcessed(items: string[], context: ProcessedDataContext): Promise<void>;
 		httpRequest(requestOptions: IHttpRequestOptions): Promise<any>; // tslint:disable-line:no-any
 		prepareBinaryData(
 			binaryData: Buffer,
@@ -332,7 +332,9 @@ export interface IBinaryDataManager {
 	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
 }
 
-export type IProcessedDataContext = 'node' | 'workflow';
+export type ProcessedDataContext = 'node' | 'workflow';
+export type ProcessedDataMode = 'entries' | 'latest';
+export type ProcessedDataItemTypes = string | number;
 
 export interface IProcessedDataConfig {
 	availableModes: string;
@@ -342,23 +344,24 @@ export interface IProcessedDataConfig {
 export interface IProcessedDataManager {
 	init(): Promise<void>;
 	checkProcessed(
-		items: string[],
-		context: IProcessedDataContext,
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput>;
 
 	checkProcessedAndRecord(
-		items: string[],
-		context: IProcessedDataContext,
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput>;
 
 	removeProcessed(
-		items: string[],
-		context: IProcessedDataContext,
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<void>;
 }
 
@@ -367,8 +370,8 @@ export interface IProcessedDataManagers {
 }
 
 export interface ICheckProcessedOutput {
-	new: string[];
-	processed: string[];
+	new: ProcessedDataItemTypes[];
+	processed: ProcessedDataItemTypes[];
 }
 
 export interface ICheckProcessedOutputItems {
@@ -385,5 +388,6 @@ export interface ICheckProcessedContextData {
 }
 
 export interface ICheckProcessedOptions {
+	mode: ProcessedDataMode;
 	maxEntries?: number;
 }

@@ -1,4 +1,9 @@
-import { ICheckProcessedOutput, IExecuteFunctions, IProcessedDataContext } from 'n8n-core';
+import {
+	ICheckProcessedOutput,
+	IExecuteFunctions,
+	ProcessedDataContext,
+	ProcessedDataMode,
+} from 'n8n-core';
 import {
 	INodeExecutionData,
 	INodeType,
@@ -46,6 +51,23 @@ export class CheckProcessed implements INodeType {
 				default: 'filterOut',
 			},
 			{
+				displayName: 'Check Mode',
+				name: 'checkMode',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Entries',
+						value: 'entries',
+					},
+					{
+						name: 'Latest',
+						value: 'latest',
+					},
+				],
+				default: 'latest',
+			},
+			{
 				displayName: 'Check Value',
 				name: 'checkValue',
 				type: 'string',
@@ -90,6 +112,7 @@ export class CheckProcessed implements INodeType {
 				displayOptions: {
 					show: {
 						mode: ['add', 'filterOut'],
+						checkMode: ['entries'],
 					},
 				},
 				default: 50,
@@ -101,7 +124,8 @@ export class CheckProcessed implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0) as string;
-		const context = this.getNodeParameter('context', 0, 'workflow') as IProcessedDataContext;
+		const checkMode = this.getNodeParameter('checkMode', 0) as ProcessedDataMode;
+		const context = this.getNodeParameter('context', 0, 'workflow') as ProcessedDataContext;
 
 		if (!['node', 'workflow'].includes(context)) {
 			throw new NodeOperationError(
@@ -132,7 +156,10 @@ export class CheckProcessed implements INodeType {
 
 		if (mode === 'add') {
 			const maxEntries = this.getNodeParameter('maxEntries', 0) as number;
-			await this.helpers.checkProcessedAndRecord(Object.keys(itemMapping), context, { maxEntries });
+			await this.helpers.checkProcessedAndRecord(Object.keys(itemMapping), context, {
+				mode: checkMode,
+				maxEntries,
+			});
 			return [items];
 		} else if (mode === 'remove') {
 			await this.helpers.removeProcessed(Object.keys(itemMapping), context);
@@ -147,7 +174,7 @@ export class CheckProcessed implements INodeType {
 				itemsProcessed = await this.helpers.checkProcessedAndRecord(
 					Object.keys(itemMapping),
 					context,
-					{ maxEntries },
+					{ mode: checkMode, maxEntries },
 				);
 			} else {
 				itemsProcessed = await this.helpers.checkProcessed(Object.keys(itemMapping), context);

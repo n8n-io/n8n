@@ -6,8 +6,9 @@ import {
 	ICheckProcessedOutput,
 	ICheckProcessedOutputItems,
 	IProcessedDataConfig,
-	IProcessedDataContext,
 	IProcessedDataManagers,
+	ProcessedDataContext,
+	ProcessedDataItemTypes,
 } from './Interfaces';
 
 export class ProcessedDataManager {
@@ -44,8 +45,8 @@ export class ProcessedDataManager {
 	}
 
 	async checkProcessed(
-		items: string[],
-		context: IProcessedDataContext,
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
@@ -59,7 +60,7 @@ export class ProcessedDataManager {
 	async checkProcessedItemsAndRecord(
 		propertyName: string,
 		items: IDataObject[],
-		context: IProcessedDataContext,
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutputItems> {
@@ -88,8 +89,8 @@ export class ProcessedDataManager {
 	}
 
 	async checkProcessedAndRecord(
-		items: string[],
-		context: IProcessedDataContext,
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
@@ -101,12 +102,13 @@ export class ProcessedDataManager {
 	}
 
 	async removeProcessed(
-		items: string[],
-		context: IProcessedDataContext,
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<void> {
 		if (this.managers[this.mode]) {
-			return this.managers[this.mode].removeProcessed(items, context, contextData);
+			return this.managers[this.mode].removeProcessed(items, context, contextData, options);
 		}
 
 		throw new Error(`There is no manager for the defined mode "${this.mode}"`);

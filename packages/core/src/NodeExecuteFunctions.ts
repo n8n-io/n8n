@@ -100,12 +100,13 @@ import {
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
-	IProcessedDataContext,
 	IResponseError,
 	IWorkflowSettings,
 	ProcessedDataManager,
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 	ICheckProcessedOptions,
+	ProcessedDataContext,
+	ProcessedDataItemTypes,
 } from '.';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
@@ -825,8 +826,8 @@ export async function getBinaryDataBuffer(
 }
 
 export async function checkProcessed(
-	items: string[],
-	context: IProcessedDataContext,
+	items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<ICheckProcessedOutput> {
@@ -834,8 +835,8 @@ export async function checkProcessed(
 }
 
 export async function checkProcessedAndRecord(
-	items: string[],
-	context: IProcessedDataContext,
+	items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<ICheckProcessedOutput> {
@@ -850,7 +851,7 @@ export async function checkProcessedAndRecord(
 export async function checkProcessedItemsAndRecord(
 	key: string,
 	items: IDataObject[],
-	context: IProcessedDataContext,
+	context: ProcessedDataContext,
 	contextData: ICheckProcessedContextData,
 	options: ICheckProcessedOptions,
 ): Promise<ICheckProcessedOutputItems> {
@@ -864,11 +865,12 @@ export async function checkProcessedItemsAndRecord(
 }
 
 export async function removeProcessed(
-	items: string[],
-	context: IProcessedDataContext,
+	items: ProcessedDataItemTypes[],
+	context: ProcessedDataContext,
 	contextData: ICheckProcessedContextData,
+	options: ICheckProcessedOptions,
 ): Promise<void> {
-	return ProcessedDataManager.getInstance().removeProcessed(items, context, contextData);
+	return ProcessedDataManager.getInstance().removeProcessed(items, context, contextData, options);
 }
 
 /**
@@ -2418,15 +2420,15 @@ export function getExecuteFunctions(
 					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
 				},
 				async checkProcessed(
-					items: string[],
-					context: IProcessedDataContext,
+					items: ProcessedDataItemTypes[],
+					context: ProcessedDataContext,
 					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutput> {
 					return checkProcessed(items, context, { node, workflow }, options);
 				},
 				async checkProcessedAndRecord(
-					items: string[],
-					context: IProcessedDataContext,
+					items: ProcessedDataItemTypes[],
+					context: ProcessedDataContext,
 					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutput> {
 					return checkProcessedAndRecord(items, context, { node, workflow }, options);
@@ -2434,7 +2436,7 @@ export function getExecuteFunctions(
 				async checkProcessedItemsAndRecord(
 					propertyName: string,
 					items: IDataObject[],
-					context: IProcessedDataContext,
+					context: ProcessedDataContext,
 					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutputItems> {
 					return checkProcessedItemsAndRecord(
@@ -2445,8 +2447,12 @@ export function getExecuteFunctions(
 						options,
 					);
 				},
-				async removeProcessed(items: string[], context: IProcessedDataContext): Promise<void> {
-					return removeProcessed(items, context, { node, workflow });
+				async removeProcessed(
+					items: ProcessedDataItemTypes[],
+					context: ProcessedDataContext,
+					options: ICheckProcessedOptions,
+				): Promise<void> {
+					return removeProcessed(items, context, { node, workflow }, options);
 				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(
@@ -2674,21 +2680,25 @@ export function getExecuteSingleFunctions(
 					);
 				},
 				async checkProcessed(
-					items: string[],
-					context: IProcessedDataContext,
+					items: ProcessedDataItemTypes[],
+					context: ProcessedDataContext,
 					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutput> {
 					return checkProcessed(items, context, { node, workflow }, options);
 				},
 				async checkProcessedAndRecord(
-					items: string[],
-					context: IProcessedDataContext,
+					items: ProcessedDataItemTypes[],
+					context: ProcessedDataContext,
 					options: ICheckProcessedOptions,
 				): Promise<ICheckProcessedOutput> {
 					return checkProcessedAndRecord(items, context, { node, workflow }, options);
 				},
-				async removeProcessed(items: string[], context: IProcessedDataContext): Promise<void> {
-					return removeProcessed(items, context, { node, workflow });
+				async removeProcessed(
+					items: string[],
+					context: ProcessedDataContext,
+					options: ICheckProcessedOptions,
+				): Promise<void> {
+					return removeProcessed(items, context, { node, workflow }, options);
 				},
 				request: proxyRequestToAxios,
 				async requestOAuth2(

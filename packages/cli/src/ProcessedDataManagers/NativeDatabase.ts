@@ -1,22 +1,21 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import {
 	ICheckProcessedContextData,
 	ICheckProcessedOptions,
 	ICheckProcessedOutput,
-	IProcessedDataContext,
 	IProcessedDataManager,
+	ProcessedDataContext,
+	ProcessedDataItemTypes,
 } from 'n8n-core';
 import { In, Not } from 'typeorm';
 import { createHash } from 'crypto';
 
-// eslint-disable-next-line import/no-cycle
 import {
 	DatabaseType,
 	Db,
 	ExternalHooks,
 	GenericHelpers,
 	IExternalHooksFileData,
+	IProcessedDataEntries,
 	IWorkflowBase,
 } from '..';
 
@@ -65,8 +64,12 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		externalHooks.loadHooks(hookFileData);
 	}
 
+	private static sortEntries(items: ProcessedDataItemTypes[]) {
+		return [...items].sort();
+	}
+
 	private static createContext(
-		context: IProcessedDataContext,
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 	): string {
 		if (context === 'node') {
@@ -81,21 +84,21 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		return '';
 	}
 
-	private static createValueHash(value: string): string {
-		return createHash('md5').update(value).digest('base64');
+	private static createValueHash(value: ProcessedDataItemTypes): string {
+		return createHash('md5').update(value.toString()).digest('base64');
 	}
 
 	async checkProcessed(
-		items: string[],
-		context: IProcessedDataContext,
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
 		const returnData: ICheckProcessedOutput = {
 			new: [],
 			processed: [],
 		};
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const processedData = await Db.collections.ProcessedData.findOne({
 			where: {
 				workflowId: contextData.workflow.id as string,
@@ -103,9 +106,28 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			},
 		});
 
+		if (processedData && processedData.value.mode !== options.mode) {
+			throw new Error(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				`Mode is not compatible. Data got originally used with mode "${processedData?.value.mode}" but gets queried with mode "${options.mode}"`,
+			);
+		}
+
 		if (!processedData) {
 			// If there is nothing it the database all items are new
 			returnData.new = items;
+			return returnData;
+		}
+
+		if (options.mode === 'latest') {
+			const incomingItems = ProcessedDataManagerNativeDatabase.sortEntries(items);
+			incomingItems.forEach((item) => {
+				if (item <= processedData.value.data) {
+					returnData.processed.push(item);
+				} else {
+					returnData.new.push(item);
+				}
+			});
 			return returnData;
 		}
 
@@ -114,7 +136,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		);
 
 		hashedItems.forEach((item, index) => {
-			if ((processedData.value.data as string[]).find((data) => data === item)) {
+			if ((processedData.value.data as string[]).find((entry) => entry === item)) {
 				returnData.processed.push(items[index]);
 			} else {
 				returnData.new.push(items[index]);
@@ -125,8 +147,8 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 	}
 
 	async checkProcessedAndRecord(
-		items: string[],
-		context: IProcessedDataContext,
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
 		options: ICheckProcessedOptions,
 	): Promise<ICheckProcessedOutput> {
@@ -143,6 +165,58 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			},
 		});
 
+		if (processedData && processedData.value.mode !== options.mode) {
+			throw new Error(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+				`Mode is not compatible. Data got originally used with mode "${processedData?.value.mode}" but gets queried with mode "${options.mode}"`,
+			);
+		}
+
+		if (options.mode === 'latest') {
+			const incomingItems = ProcessedDataManagerNativeDatabase.sortEntries(items);
+
+			if (!processedData) {
+				// All items are new so add new entries
+				await Db.collections.ProcessedData.insert({
+					workflowId: contextData.workflow.id.toString(),
+					context: dbContext,
+					value: {
+						mode: options.mode,
+						data: incomingItems.pop(),
+					},
+				});
+
+				return {
+					new: items,
+					processed: [],
+				};
+			}
+
+			const returnData: ICheckProcessedOutput = {
+				new: [],
+				processed: [],
+			};
+
+			let largestValue = processedData.value.data;
+
+			incomingItems.forEach((item) => {
+				if (item <= processedData.value.data) {
+					returnData.processed.push(item);
+				} else {
+					returnData.new.push(item);
+					if (item > largestValue) {
+						largestValue = item;
+					}
+				}
+			});
+
+			processedData.value.data = largestValue;
+
+			await Db.collections.ProcessedData.save(processedData);
+
+			return returnData;
+		}
+
 		const hashedItems = items.map((item) =>
 			ProcessedDataManagerNativeDatabase.createValueHash(item),
 		);
@@ -156,6 +230,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 				workflowId: contextData.workflow.id.toString(),
 				context: dbContext,
 				value: {
+					mode: options.mode,
 					data: hashedItems,
 				},
 			});
@@ -171,20 +246,19 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			processed: [],
 		};
 
+		const processedDataValue = processedData.value as IProcessedDataEntries;
+
 		hashedItems.forEach((item, index) => {
-			if ((processedData.value.data as string[]).find((data) => data === item)) {
+			if (processedDataValue.data.find((entry) => entry === item)) {
 				returnData.processed.push(items[index]);
 			} else {
 				returnData.new.push(items[index]);
-				(processedData.value.data as string[]).push(item);
+				processedDataValue.data.push(item);
 			}
 		});
 
 		if (options.maxEntries) {
-			(processedData.value.data as string[]).splice(
-				0,
-				(processedData.value.data as string[]).length - options.maxEntries,
-			);
+			processedDataValue.data.splice(0, processedDataValue.data.length - options.maxEntries);
 		}
 
 		await Db.collections.ProcessedData.save(processedData);
@@ -193,10 +267,15 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 	}
 
 	async removeProcessed(
-		items: string[],
-		context: IProcessedDataContext,
+		items: ProcessedDataItemTypes[],
+		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
+		options: ICheckProcessedOptions,
 	): Promise<void> {
+		if (options.mode === 'latest') {
+			throw new Error('Removing processed data is not possible in mode "latest"');
+		}
+
 		const processedData = await Db.collections.ProcessedData.findOne({
 			where: {
 				workflowId: contextData.workflow.id as string,
@@ -212,11 +291,13 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 			ProcessedDataManagerNativeDatabase.createValueHash(item),
 		);
 
+		const processedDataValue = processedData.value as IProcessedDataEntries;
+
 		let index;
 		hashedItems.forEach((item) => {
-			index = (processedData.value.data as string[]).findIndex((value) => value === item);
+			index = processedDataValue.data.findIndex((value) => value === item);
 			if (index !== -1) {
-				(processedData.value.data as string[]).splice(index, 1);
+				processedDataValue.data.splice(index, 1);
 			}
 		});
 

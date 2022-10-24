@@ -21,7 +21,7 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import { WorkflowExecute } from 'n8n-core';
+import { ProcessedDataMode, ProcessedDataItemTypes, WorkflowExecute } from 'n8n-core';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
@@ -101,10 +101,20 @@ export interface IWebhookDb {
 //               ProcessedData
 // ----------------------------------
 
+export interface IProcessedDataLatest {
+	mode: ProcessedDataMode;
+	data: ProcessedDataItemTypes;
+}
+
+export interface IProcessedDataEntries {
+	mode: ProcessedDataMode;
+	data: ProcessedDataItemTypes[];
+}
+
 export interface IProcessedDataDb {
 	createdAt: Date;
 	context: string;
-	value: IDataObject;
+	value: IProcessedDataEntries | IProcessedDataLatest;
 	workflowId: string;
 }
 

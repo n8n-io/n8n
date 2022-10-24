@@ -93,6 +93,7 @@ export class RssFeedRead implements INodeType {
 
 				returnData = (
 					await this.helpers.checkProcessedItemsAndRecord('title', returnData, 'node', {
+						mode: 'entries',
 						maxEntries: 100,
 					})
 				).new;

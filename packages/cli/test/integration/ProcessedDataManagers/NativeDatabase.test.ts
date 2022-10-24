@@ -1,4 +1,9 @@
-import { ICheckProcessedContextData, ICheckProcessedOutput, ProcessedDataManager } from 'n8n-core';
+import {
+	ICheckProcessedContextData,
+	ICheckProcessedOutput,
+	ProcessedDataManager,
+	ProcessedDataItemTypes,
+} from 'n8n-core';
 import { INode, Workflow } from 'n8n-workflow';
 
 import * as Helpers from '../../unit/Helpers';
@@ -55,7 +60,7 @@ afterAll(async () => {
 	await testDb.terminate(testDbName);
 });
 
-test('ProcessedData: NativeDatabase should record and check data correctly', async () => {
+test('ProcessedData (mode: entries): NativeDatabase should record and check data correctly', async () => {
 	const context = 'node';
 	const contextData: ICheckProcessedContextData = {
 		workflow,
@@ -68,7 +73,7 @@ test('ProcessedData: NativeDatabase should record and check data correctly', asy
 		['a', 'b'],
 		context,
 		contextData,
-		{},
+		{ mode: 'entries' },
 	);
 
 	// No data exists yet so has to be new
@@ -78,7 +83,7 @@ test('ProcessedData: NativeDatabase should record and check data correctly', asy
 		['a', 'b'],
 		context,
 		contextData,
-		{},
+		{ mode: 'entries' },
 	);
 
 	// 'a' & 'b' got only checked before, so still has to be new
@@ -88,7 +93,7 @@ test('ProcessedData: NativeDatabase should record and check data correctly', asy
 		['a', 'b', 'c'],
 		context,
 		contextData,
-		{},
+		{ mode: 'entries' },
 	);
 
 	// 'a' & 'b' got recorded before, 'c' never
@@ -98,26 +103,28 @@ test('ProcessedData: NativeDatabase should record and check data correctly', asy
 		['a', 'b', 'c', 'd'],
 		context,
 		contextData,
-		{},
+		{ mode: 'entries' },
 	);
 
 	// 'a' & 'b' got recorded before, 'c' only checked bfeore and 'd' has never been seen
 	expect(processedData).toEqual({ new: ['c', 'd'], processed: ['a', 'b'] });
 
-	await ProcessedDataManager.getInstance().removeProcessed(['b', 'd'], context, contextData);
+	await ProcessedDataManager.getInstance().removeProcessed(['b', 'd'], context, contextData, {
+		mode: 'entries',
+	});
 
 	processedData = await ProcessedDataManager.getInstance().checkProcessed(
 		['a', 'b', 'c', 'd'],
 		context,
 		contextData,
-		{},
+		{ mode: 'entries' },
 	);
 
 	// 'b' & 'd' got removed from the database so they should be new, 'a' & 'b' should still be known
 	expect(processedData).toEqual({ new: ['b', 'd'], processed: ['a', 'c'] });
 });
 
-test('ProcessedData: NativeDatabase different contexts should not interfere with each other', async () => {
+test('ProcessedData (mode: entries): NativeDatabase different contexts should not interfere with each other', async () => {
 	const contextData: ICheckProcessedContextData = {
 		workflow,
 		node,
@@ -130,7 +137,7 @@ test('ProcessedData: NativeDatabase different contexts should not interfere with
 		['a', 'b'],
 		'node',
 		contextData,
-		{},
+		{ mode: 'entries' },
 	);
 
 	// No data exists yet for context "node" so has to be new
@@ -141,31 +148,35 @@ test('ProcessedData: NativeDatabase different contexts should not interfere with
 		['a', 'b', 'c'],
 		'workflow',
 		contextData,
-		{},
+		{ mode: 'entries' },
 	);
 
 	// No data exists yet for context 'worklow' so has to be new
 	expect(processedData).toEqual({ new: ['a', 'b', 'c'], processed: [] });
 
-	await ProcessedDataManager.getInstance().removeProcessed(['a'], 'node', contextData);
+	await ProcessedDataManager.getInstance().removeProcessed(['a'], 'node', contextData, {
+		mode: 'entries',
+	});
 
 	processedData = await ProcessedDataManager.getInstance().checkProcessed(
 		['a', 'b', 'c'],
 		'node',
 		contextData,
-		{},
+		{ mode: 'entries' },
 	);
 
 	// 'a' got removed for the context 'node' and 'c' never got saved, so only 'b' should be known
 	expect(processedData).toEqual({ new: ['a', 'c'], processed: ['b'] });
 
-	await ProcessedDataManager.getInstance().removeProcessed(['b'], 'workflow', contextData);
+	await ProcessedDataManager.getInstance().removeProcessed(['b'], 'workflow', contextData, {
+		mode: 'entries',
+	});
 
 	processedData = await ProcessedDataManager.getInstance().checkProcessed(
 		['a', 'b', 'c', 'd'],
 		'workflow',
 		contextData,
-		{},
+		{ mode: 'entries' },
 	);
 
 	// 'b' got removed for the context 'workflow' and 'd' never got saved for that reason new
@@ -173,7 +184,7 @@ test('ProcessedData: NativeDatabase different contexts should not interfere with
 	expect(processedData).toEqual({ new: ['b', 'd'], processed: ['a', 'c'] });
 });
 
-test('ProcessedData: NativeDatabase check maxEntries', async () => {
+test('ProcessedData (mode: entries): NativeDatabase check maxEntries', async () => {
 	const contextData: ICheckProcessedContextData = {
 		workflow,
 		node,
@@ -185,7 +196,7 @@ test('ProcessedData: NativeDatabase check maxEntries', async () => {
 		['0', '1', '2', '3'],
 		'node',
 		contextData,
-		{ maxEntries: 5 },
+		{ mode: 'entries', maxEntries: 5 },
 	);
 
 	// All data should be new
@@ -196,22 +207,185 @@ test('ProcessedData: NativeDatabase check maxEntries', async () => {
 		['4', '5', '6'],
 		'node',
 		contextData,
-		{ maxEntries: 5 },
+		{ mode: 'entries', maxEntries: 5 },
 	);
 
 	// All given data should be new
 	expect(processedData).toEqual({ new: ['4', '5', '6'], processed: [] });
 
 	// This should not make a difference, removing an item which does not exist
-	await ProcessedDataManager.getInstance().removeProcessed(['a'], 'node', contextData);
+	await ProcessedDataManager.getInstance().removeProcessed(['a'], 'node', contextData, {
+		mode: 'entries',
+	});
 
 	processedData = await ProcessedDataManager.getInstance().checkProcessed(
 		['0', '1', '2', '3', '4', '5', '6', '7'],
 		'node',
 		contextData,
-		{ maxEntries: 5 },
+		{ mode: 'entries', maxEntries: 5 },
 	);
 
 	// '7' should be new and '0' and '1' also because they got been pruned as max 5 get saved
 	expect(processedData).toEqual({ new: ['0', '1', '7'], processed: ['2', '3', '4', '5', '6'] });
+});
+
+describe('ProcessedData (mode: latest): NativeDatabase should record and check data correctly', () => {
+	const tests: Array<{
+		description: string;
+		data: Array<{
+			operation: 'checkProcessed' | 'checkProcessedAndRecord';
+			input: ProcessedDataItemTypes[];
+			output: ICheckProcessedOutput;
+		}>;
+	}> = [
+		{
+			description: 'dates',
+			data: [
+				{
+					operation: 'checkProcessed',
+					input: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
+					output: {
+						new: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
+						processed: [],
+					},
+				},
+				{
+					operation: 'checkProcessedAndRecord',
+					input: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
+					output: {
+						new: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
+						processed: [],
+					},
+				},
+				{
+					operation: 'checkProcessed',
+					input: [
+						new Date('2022-01-02').toISOString(),
+						new Date('2022-01-03').toISOString(),
+						new Date('2022-01-04').toISOString(),
+					],
+					output: {
+						new: [new Date('2022-01-04').toISOString()],
+						processed: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
+					},
+				},
+				{
+					operation: 'checkProcessedAndRecord',
+					input: [
+						new Date('2022-01-02').toISOString(),
+						new Date('2022-01-03').toISOString(),
+						new Date('2022-01-04').toISOString(),
+						new Date('2022-01-05').toISOString(),
+					],
+					output: {
+						new: [new Date('2022-01-04').toISOString(), new Date('2022-01-05').toISOString()],
+						processed: [new Date('2022-01-02').toISOString(), new Date('2022-01-03').toISOString()],
+					},
+				},
+				{
+					operation: 'checkProcessed',
+					input: [
+						new Date('2022-01-01').toISOString(),
+						new Date('2022-01-02').toISOString(),
+						new Date('2022-01-03').toISOString(),
+						new Date('2022-01-04').toISOString(),
+						new Date('2022-01-06').toISOString(),
+						new Date('2022-01-07').toISOString(),
+					],
+					output: {
+						new: [new Date('2022-01-06').toISOString(), new Date('2022-01-07').toISOString()],
+						processed: [
+							new Date('2022-01-01').toISOString(),
+							new Date('2022-01-02').toISOString(),
+							new Date('2022-01-03').toISOString(),
+							new Date('2022-01-04').toISOString(),
+						],
+					},
+				},
+			],
+		},
+		{
+			description: 'letters',
+			data: [
+				{
+					operation: 'checkProcessed',
+					input: ['b', 'c'],
+					output: { new: ['b', 'c'], processed: [] },
+				},
+				{
+					operation: 'checkProcessedAndRecord',
+					input: ['b', 'c'],
+					output: { new: ['b', 'c'], processed: [] },
+				},
+				{
+					operation: 'checkProcessed',
+					input: ['b', 'c', 'd'],
+					output: { new: ['d'], processed: ['b', 'c'] },
+				},
+				{
+					operation: 'checkProcessedAndRecord',
+					input: ['b', 'c', 'd', 'e'],
+					output: { new: ['d', 'e'], processed: ['b', 'c'] },
+				},
+				{
+					operation: 'checkProcessed',
+					input: ['a', 'b', 'c', 'd', 'f', 'g'],
+					output: { new: ['f', 'g'], processed: ['a', 'b', 'c', 'd'] },
+				},
+			],
+		},
+		{
+			description: 'numbers',
+			data: [
+				{
+					operation: 'checkProcessed',
+					input: [2, 3],
+					output: { new: [2, 3], processed: [] },
+				},
+				{
+					operation: 'checkProcessedAndRecord',
+					input: [2, 3],
+					output: { new: [2, 3], processed: [] },
+				},
+				{
+					operation: 'checkProcessed',
+					input: [2, 3, 4],
+					output: { new: [4], processed: [2, 3] },
+				},
+				{
+					operation: 'checkProcessedAndRecord',
+					input: [2, 3, 4, 5],
+					output: { new: [4, 5], processed: [2, 3] },
+				},
+				{
+					operation: 'checkProcessed',
+					input: [1, 2, 3, 4, 6, 7],
+					output: { new: [6, 7], processed: [1, 2, 3, 4] },
+				},
+			],
+		},
+	];
+
+	for (const testData of tests) {
+		test(testData.description, async () => {
+			const context = 'node';
+			const contextData: ICheckProcessedContextData = {
+				workflow,
+				node,
+			};
+
+			let processedData: ICheckProcessedOutput;
+
+			for (const data of testData.data) {
+				processedData = await ProcessedDataManager.getInstance()[data.operation](
+					data.input,
+					context,
+					contextData,
+					{ mode: 'latest' },
+				);
+
+				expect(processedData).toEqual(data.output);
+			}
+		});
+	}
 });
