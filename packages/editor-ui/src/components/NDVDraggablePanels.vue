@@ -121,7 +121,7 @@ export default mixins(debounceHelper).extend({
 			relativeLeft: number,
 			relativeRight: number
 			} {
-			return this.$store.getters['ui/mainPanelDimensions'](this.currentNodePaneType);
+			return this.$store.getters['ndv/mainPanelDimensions'](this.currentNodePaneType);
 		},
 		supportedResizeDirections() {
 			const supportedDirections = ['right'];
@@ -244,7 +244,7 @@ export default mixins(debounceHelper).extend({
 		setMainPanelWidth(relativeWidth?: number) {
 			const mainPanelRelativeWidth = relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
 
-			this.$store.commit('ui/setMainPanelDimensions', {
+			this.$store.commit('ndv/setMainPanelDimensions', {
 				panelType: this.currentNodePaneType,
 				dimensions: {
 					relativeWidth: mainPanelRelativeWidth,
@@ -260,7 +260,7 @@ export default mixins(debounceHelper).extend({
 			const isInputless = this.currentNodePaneType === 'inputless';
 
 			if(isMinLeft) {
-				this.$store.commit('ui/setMainPanelDimensions', {
+				this.$store.commit('ndv/setMainPanelDimensions', {
 					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: this.minimumLeftPosition,
@@ -271,7 +271,7 @@ export default mixins(debounceHelper).extend({
 			}
 
 			if(isMaxRight) {
-				this.$store.commit('ui/setMainPanelDimensions', {
+				this.$store.commit('ndv/setMainPanelDimensions', {
 					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
@@ -281,7 +281,7 @@ export default mixins(debounceHelper).extend({
 				return;
 			}
 
-			this.$store.commit('ui/setMainPanelDimensions', {
+			this.$store.commit('ndv/setMainPanelDimensions', {
 				panelType: this.currentNodePaneType,
 				dimensions: {
 					relativeLeft: isInputless ? this.minimumLeftPosition : mainPanelRelativeLeft,
