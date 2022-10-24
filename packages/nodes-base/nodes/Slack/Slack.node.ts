@@ -4,6 +4,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -178,6 +179,34 @@ export class Slack implements INodeType {
 	};
 
 	methods = {
+		listSearch: {
+			async getChannels(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const qs = { types: 'public_channel,private_channel', limit: 1000 };
+				const channels = await slackApiRequestAllItems.call(
+					this,
+					'channels',
+					'GET',
+					'/conversations.list',
+					{},
+					qs,
+				);
+				channels.sort((a: IDataObject, b: IDataObject) => {
+					if (a.name! < b.name!) {
+						return -1;
+					}
+					if (a.name! > b.name!) {
+						return 1;
+					}
+					return 0;
+				});
+				return {
+					results: channels.map((channel: IDataObject) => ({
+						name: channel.name,
+						value: channel.id,
+					})),
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the users to display them to user so that he can
 			// select them easily
@@ -734,6 +763,43 @@ export class Slack implements INodeType {
 							message_ts: timestamp,
 						};
 						responseData = await slackApiRequest.call(this, 'GET', '/chat.getPermalink', {}, qs);
+					}
+					//https://api.slack.com/methods/search.messages
+					if (operation === 'search') {
+						let query = this.getNodeParameter('query', i) as string;
+						const sort = this.getNodeParameter('sort', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const options = this.getNodeParameter(
+							'options',
+							i,
+							{},
+							{
+								extractValue: true,
+							},
+						) as IDataObject;
+						if (options) {
+							const channel = options.searchChannel as IDataObject;
+							query = query + ` in:${channel.value}`;
+						}
+						const qs: IDataObject = {
+							query,
+							sort: sort !== 'relevance' ? 'timestamp' : undefined,
+							sort_dir: sort === 'asc' ? 'asc' : 'desc',
+						};
+						if (returnAll === true) {
+							responseData = await slackApiRequestAllItems.call(
+								this,
+								'items',
+								'GET',
+								'/search.messages',
+								{},
+								qs,
+							);
+						} else {
+							qs.limit = this.getNodeParameter('limit', i) as number;
+							responseData = await slackApiRequest.call(this, 'POST', '/search.messages', {}, qs);
+							responseData = responseData.items;
+						}
 					}
 				}
 				if (resource === 'reaction') {
