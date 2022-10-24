@@ -1,4 +1,21 @@
-import { deepCopy } from './utils';
+import { jsonParse, deepCopy } from '../src/utils';
+
+describe('jsonParse', () => {
+	it('parses JSON', () => {
+		expect(jsonParse('[1, 2, 3]')).toEqual([1, 2, 3]);
+		expect(jsonParse('{ "a": 1 }')).toEqual({ a: 1 });
+	});
+
+	it('optionally throws `errorMessage', () => {
+		expect(() => {
+			jsonParse('', { errorMessage: 'Invalid JSON' });
+		}).toThrow('Invalid JSON');
+	});
+
+	it('optionally returns a `fallbackValue`', () => {
+		expect(jsonParse('', { fallbackValue: { foo: 'bar' } })).toEqual({ foo: 'bar' });
+	});
+});
 
 describe('deepCopy', () => {
 	it('should deep copy an object', () => {

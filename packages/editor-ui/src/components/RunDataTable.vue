@@ -140,7 +140,7 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 
-import { INodeUi, IRootState, ITableData, IUiState } from '@/Interface';
+import { INodeUi, IRootState, ITableData, IUiState, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/pairedItemUtils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -202,8 +202,8 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		hoveringItem(): IUiState['ndv']['hoveringItem'] {
-			return this.$store.getters['ui/hoveringItem'];
+		hoveringItem(): NDVState['ndv']['hoveringItem'] {
+			return this.$store.getters['ndv/hoveringItem'];
 		},
 		pairedItemMappings(): IRootState['workflowExecutionPairedItemMappings'] {
 			return this.$store.getters['workflowExecutionPairedItemMappings'];
@@ -346,7 +346,7 @@ export default mixins(externalHooks).extend({
 		onDragStart() {
 			this.draggedColumn = true;
 
-			this.$store.commit('ui/resetMappingTelemetry');
+			this.$store.commit('ndv/resetMappingTelemetry');
 		},
 		onCellDragStart(el: HTMLElement) {
 			if (el && el.dataset.value) {
@@ -369,7 +369,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragEnd(column: string, src: string, depth = '0') {
 			setTimeout(() => {
-				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
+				const mappingTelemetry = this.$store.getters['ndv/mappingTelemetry'];
 				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: column,

@@ -157,7 +157,7 @@ export default mixins(
 				return this.filteredParameters.map(parameter => parameter.name);
 			},
 			node (): INodeUi {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			indexToShowSlotAt (): number {
 				let index = 0;
@@ -320,7 +320,7 @@ export default mixins(
 					if (!newValue.includes(parameter)) {
 						const parameterData = {
 							name: `${this.path}.${parameter}`,
-							node: this.$store.getters.activeNode.name,
+							node: this.$store.getters['ndv/activeNode'].name,
 							value: undefined,
 						};
 						this.$emit('valueChanged', parameterData);

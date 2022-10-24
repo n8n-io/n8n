@@ -112,7 +112,7 @@ export default mixins(
 	},
 	computed: {
 		focusedMappableInput(): string {
-			return this.$store.getters['ui/focusedMappableInput'];
+			return this.$store.getters['ndv/focusedMappableInput'];
 		},
 		isUserOnboarded(): boolean {
 			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
@@ -147,7 +147,7 @@ export default mixins(
 			return this.workflow as Workflow;
 		},
 		activeNode (): INodeUi | null {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		currentNode (): INodeUi | null {
 			return this.$store.getters.getNodeByName(this.currentNodeName);
