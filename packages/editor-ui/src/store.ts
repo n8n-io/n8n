@@ -464,7 +464,9 @@ export const store = new Vuex.Store({
 			state.workflow.id = id;
 		},
 
-		// updatedAt
+		/**
+		 * @warning Do not mutate `updatedAt` in `state.workflow` client-side.
+		 */
 		setWorkflowUpdatedAt (state, updatedAt: string) {
 			state.workflow.updatedAt = updatedAt;
 		},
