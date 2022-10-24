@@ -6,6 +6,7 @@ import { copyFile, mkdir, readFile, writeFile } from 'fs/promises';
 import { join, dirname, resolve as resolvePath } from 'path';
 import { file as tmpFile } from 'tmp-promise';
 
+import { jsonParse, IDataObject } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
 import { IBuildOptions } from '.';
 
@@ -21,13 +22,13 @@ export async function createCustomTsconfig() {
 
 	// Read the tsconfig file
 	const tsConfigString = await readFile(tsconfigPath, { encoding: 'utf8' });
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, n8n-local-rules/no-uncaught-json-parse
-	const tsConfig = JSON.parse(tsConfigString);
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	const tsConfig = jsonParse<IDataObject>(tsConfigString);
 
 	// Set absolute include paths
 	const newIncludeFiles = [];
 	// eslint-disable-next-line no-restricted-syntax
-	for (const includeFile of tsConfig.include) {
+	for (const includeFile of tsConfig.include as string[]) {
 		newIncludeFiles.push(join(process.cwd(), includeFile));
 	}
 	tsConfig.include = newIncludeFiles;
