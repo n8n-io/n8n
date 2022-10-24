@@ -7,8 +7,8 @@
 					class="node-name"
 					:value="node && node.name"
 					:nodeType="nodeType"
+					:isReadOnly="isReadOnly"
 					@input="nameChanged"
-					:readOnly="isReadOnly"
 				></NodeTitle>
 				<div v-if="!isReadOnly">
 					<NodeExecuteButton
@@ -72,11 +72,11 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path="parameters"
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
-
 					<node-credentials :node="node" @credentialSelected="credentialSelected" />
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -99,6 +99,7 @@
 				<parameter-input-list
 					:parameters="parametersSetting"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path="parameters"
 					@valueChanged="valueChanged"
 				/>
@@ -106,6 +107,7 @@
 					:parameters="nodeSettings"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path=""
 					@valueChanged="valueChanged"
 				/>
@@ -142,14 +144,13 @@ import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from './helpers';
 
-export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
+export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
 	components: {
 		NodeTitle,
@@ -234,6 +235,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		},
 		nodeType: {
 			type: Object as PropType<INodeTypeDescription>,
+		},
+		isReadOnly: {
+			type: Boolean,
 		},
 	},
 	data() {
