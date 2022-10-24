@@ -499,7 +499,7 @@ export default mixins(
 				}
 
 				// Get the resolved parameter values of the current node
-				const currentNodeParameters = this.$store.getters.activeNode.parameters;
+				const currentNodeParameters = this.$store.getters['ndv/activeNode'].parameters;
 				try {
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
@@ -514,7 +514,7 @@ export default mixins(
 				}
 			},
 			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			displayTitle (): string {
 				const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -784,7 +784,7 @@ export default mixins(
 				// Get the resolved parameter values of the current node
 
 				try {
-					const currentNodeParameters = (this.$store.getters.activeNode as INodeUi).parameters;
+					const currentNodeParameters = (this.$store.getters['ndv/activeNode'] as INodeUi).parameters;
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
@@ -828,7 +828,7 @@ export default mixins(
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
 						workflow_id: this.$store.getters.workflowId,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						session_id: this.$store.getters['ndv/ndvSessionId'],
 						source: this.eventSource || 'ndv',
 					});
 				}
@@ -960,7 +960,7 @@ export default mixins(
 						node_type: this.node && this.node.type,
 						resource: this.node && this.node.parameters.resource,
 						is_custom: value === CUSTOM_API_CALL_KEY,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						session_id: this.$store.getters['ndv/ndvSessionId'],
 						parameter: this.parameter.name,
 					});
 				}

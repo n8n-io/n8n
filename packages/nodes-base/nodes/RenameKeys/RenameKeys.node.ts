@@ -1,8 +1,13 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	deepCopy,
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+} from 'n8n-workflow';
 
 import { get, set, unset } from 'lodash';
-import { options } from 'rhea';
 
 interface IRenameKey {
 	currentKey: string;
@@ -165,7 +170,7 @@ export class RenameKeys implements INodeType {
 
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
-				json: JSON.parse(JSON.stringify(item.json)),
+				json: deepCopy(item.json),
 				pairedItem: {
 					item: itemIndex,
 				},

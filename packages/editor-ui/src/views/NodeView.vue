@@ -307,7 +307,7 @@ export default mixins(
 			},
 			...mapGetters(['nativelyNumberSuffixedDefaults']),
 			activeNode(): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			executionWaitingForWebhook(): boolean {
 				return this.$store.getters.executionWaitingForWebhook;
@@ -797,7 +797,7 @@ export default mixins(
 					this.createNodeActive = false;
 					if (this.activeNode) {
 						this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-						this.$store.commit('setActiveNode', null);
+						this.$store.commit('ndv/setActiveNodeName', null);
 					}
 
 					return;
@@ -884,7 +884,7 @@ export default mixins(
 						if (lastSelectedNode.type === STICKY_NODE_TYPE && this.isReadOnly) {
 							return;
 						}
-						this.$store.commit('setActiveNode', lastSelectedNode.name);
+						this.$store.commit('ndv/setActiveNodeName', lastSelectedNode.name);
 					}
 				} else if (e.key === 'ArrowRight' && e.shiftKey) {
 					// Select all downstream nodes
@@ -1489,7 +1489,7 @@ export default mixins(
 				this.newNodeInsertPosition = null;
 
 				if (setActive) {
-					this.$store.commit('setActiveNode', node.name);
+					this.$store.commit('ndv/setActiveNodeName', node.name);
 				}
 			},
 			showMaxNodeTypeError(nodeTypeData: INodeTypeDescription) {
@@ -2672,7 +2672,7 @@ export default mixins(
 				this.nodeSelectedByName(newName);
 
 				if (isActive) {
-					this.$store.commit('setActiveNode', newName);
+					this.$store.commit('ndv/setActiveNodeName', newName);
 					this.renamingActive = false;
 				}
 			},
