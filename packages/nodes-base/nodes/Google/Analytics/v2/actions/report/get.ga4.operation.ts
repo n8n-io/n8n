@@ -22,7 +22,9 @@ export const description: INodeProperties[] = [
 		name: 'propertyId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
+		required: true,
 		description: 'The Property of Google Analytics',
+		hint: "If this doesn't work, try changing the 'Property Type' field above",
 		modes: [
 			{
 				displayName: 'From List',
@@ -44,14 +46,14 @@ export const description: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '.*analytics.google.com/analytics.*p[0-9]{1,}.*',
+							regex: '.*analytics\\.google\\.com\\/analytics.*\\/p([0-9]{1,})(?:\\/.*|)*',
 							errorMessage: 'Not a valid Google Analytics URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '.*analytics.google.com/analytics.*p([0-9]{1,})',
+					regex: '.*analytics\\.google\\.com\\/analytics.*\\/p([0-9]{1,})(?:\\/.*|)',
 				},
 			},
 			{
@@ -68,6 +70,7 @@ export const description: INodeProperties[] = [
 						},
 					},
 				],
+				url: `=https://analytics.google.com/analytics/web/#/p{{$value}}/`,
 			},
 		],
 		displayOptions: {

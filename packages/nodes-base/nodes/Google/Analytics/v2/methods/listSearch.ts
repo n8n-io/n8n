@@ -30,7 +30,8 @@ export async function searchProperties(
 			for (const property of properties) {
 				const name = property.displayName;
 				const value = property.name.split('/')[1] || property.name;
-				returnData.push({ name, value });
+				const url = `https://analytics.google.com/analytics/web/#/p${value}/`;
+				returnData.push({ name, value, url });
 			}
 		}
 	}
@@ -52,9 +53,9 @@ export async function searchViews(this: ILoadOptionsFunctions): Promise<INodeLis
 
 	for (const item of items) {
 		returnData.push({
-			name: item.name,
+			name: `${item.name} [${item.websiteUrl}]`,
 			value: item.id,
-			description: item.websiteUrl,
+			url: `https://analytics.google.com/analytics/web/#/report-home/a${item.accountId}w${item.internalWebPropertyId}p${item.id}`,
 		});
 	}
 

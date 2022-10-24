@@ -91,7 +91,9 @@ export const description: INodeProperties[] = [
 		name: 'viewId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
+		required: true,
 		description: 'The View of Google Analytics',
+		hint: "If this doesn't work, try changing the 'Property Type' field above",
 		modes: [
 			{
 				displayName: 'From List',
