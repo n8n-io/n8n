@@ -1008,7 +1008,7 @@ export class Workflow {
 
 		// cached node contains stub method, so require dist node at runtime
 
-		const distNode = requireDistNode(nodeType, this);
+		const distNode = requireDistNode(nodeType, this.nodeTypes);
 
 		return distNode.webhookMethods[webhookData.webhookDescription.name][methodName].call(
 			executeHookFunctions,
@@ -1158,7 +1158,7 @@ export class Workflow {
 
 		// // cached node contains stub method, so require dist node at runtime
 
-		// const distNode = requireDistNode(nodeType, this);
+		// const distNode = requireDistNode(nodeType, this.nodeTypes);
 
 		// return distNode.webhookMethods[webhookData.webhookDescription.name][methodName].call(
 		// 	executeHookFunctions,
