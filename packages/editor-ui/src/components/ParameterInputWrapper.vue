@@ -104,7 +104,7 @@ export default mixins(
 				return isValueExpression(this.parameter, this.value);
 			},
 			activeNode(): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			selectedRLMode(): INodePropertyMode | undefined {
 				if (typeof this.value !== 'object' ||this.parameter.type !== 'resourceLocator' || !isResourceLocatorValue(this.value)) {
@@ -129,17 +129,17 @@ export default mixins(
 				return this.hint;
 			},
 			targetItem(): TargetItem | null {
-				return this.$store.getters['ui/hoveringItem'];
+				return this.$store.getters['ndv/hoveringItem'];
 			},
 			expressionValueComputed (): string | null {
-				const inputNodeName: string | undefined = this.$store.getters['ui/ndvInputNodeName'];
+				const inputNodeName: string | undefined = this.$store.getters['ndv/ndvInputNodeName'];
 				const value = isResourceLocatorValue(this.value)? this.value.value: this.value;
 				if (this.activeNode === null || !this.isValueExpression || typeof value !== 'string') {
 					return null;
 				}
 
-				const inputRunIndex: number | undefined = this.$store.getters['ui/ndvInputRunIndex'];
-				const inputBranchIndex: number | undefined = this.$store.getters['ui/ndvInputBranchIndex'];
+				const inputRunIndex: number | undefined = this.$store.getters['ndv/ndvInputRunIndex'];
+				const inputBranchIndex: number | undefined = this.$store.getters['ndv/ndvInputBranchIndex'];
 
 				let computedValue: NodeParameterValue;
 				try {
@@ -160,7 +160,7 @@ export default mixins(
 			},
 			expressionOutput(): string | null {
 				if (this.isValueExpression && this.expressionValueComputed) {
-					const inputData = this.$store.getters['ui/ndvInputData'];
+					const inputData = this.$store.getters['ndv/ndvInputData'];
 					if (!inputData || (inputData && inputData.length <= 1)) {
 						return this.expressionValueComputed;
 					}

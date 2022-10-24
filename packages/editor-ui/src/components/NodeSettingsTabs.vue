@@ -27,7 +27,7 @@ export default mixins(
 	},
 	computed: {
 		activeNode(): INodeUi {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		documentationUrl (): string {
 			const nodeType = this.nodeType as INodeTypeDescription | null;
