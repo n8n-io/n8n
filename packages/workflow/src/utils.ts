@@ -4,7 +4,13 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import path from 'path';
-import type { INodeListSearchResult, INodePropertyOptions, INodeType, Workflow } from '.';
+import type {
+	ICredentialTestFunction,
+	INodeListSearchResult,
+	INodePropertyOptions,
+	INodeType,
+	INodeTypes,
+} from '.';
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 export const deepCopy = <T>(source: T): T => {
@@ -47,6 +53,7 @@ type DistNodeModule = {
 		methods: {
 			loadOptions?: { [methodName: string]: LoadOptionsMethod };
 			listSearch?: { [methodName: string]: ListSearchMethod };
+			credentialTest?: { [testedBy: string]: ICredentialTestFunction };
 		};
 		webhookMethods: { [key: string]: { [key: string]: Function } };
 	};
@@ -68,8 +75,8 @@ function getVersionedNodeFilePath(sourcePath: string, version: number | number[]
 	return path.resolve(dir, `v${version}`, versionedNodeFilename);
 }
 
-export function requireDistNode(nodeType: INodeType, workflow: Workflow) {
-	const sourcePath = workflow.nodeTypes.getSourcePath!(nodeType.description.name);
+export function requireDistNode(nodeType: INodeType, nodeTypes: INodeTypes) {
+	const sourcePath = nodeTypes.getSourcePath!(nodeType.description.name);
 
 	const nodeFilePath =
 		nodeType.description.defaultVersion !== undefined
