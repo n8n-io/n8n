@@ -1,6 +1,6 @@
 <template>
 	<n8n-text size="small" color="text-base" tag="div" v-if="hint">
-		<div v-if="!renderHTML">{{ hint }}</div>
+		<div v-if="!renderHTML" :class="{[$style.hint]: true, [$style.highlight]: highlight}">{{ hint }}</div>
 		<div v-else ref="hint" :class="{[$style.hint]: true, [$style.highlight]: highlight}" v-html="sanitizeHtml(hint)"></div>
 	</n8n-text>
 </template>
