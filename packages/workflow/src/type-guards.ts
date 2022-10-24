@@ -10,7 +10,7 @@ export const isINodePropertyOptions = (
 
 export const isINodePropertyCollection = (
 	item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
-): item is INodePropertyCollection => 'value' in item && 'name' in item && 'displayName' in item;
+): item is INodePropertyCollection => 'values' in item && 'name' in item && 'displayName' in item;
 
 export const isINodePropertiesList = (
 	items: INodeProperties['options'],

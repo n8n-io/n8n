@@ -16,7 +16,7 @@
 				size="small"
 				color="text-dark"
 			/>
-			<div v-if="multipleValues === true">
+			<div v-if="multipleValues">
 				<div
 					v-for="(value, index) in mutableValues[property.name]"
 					:key="property.name + index"
@@ -187,7 +187,7 @@ export default Vue.extend({
 				return returnProperties;
 			},
 			multipleValues(): boolean {
-				return this.parameter.typeOptions !== undefined && this.parameter.typeOptions.multipleValues === true;
+				return !!this.parameter.typeOptions?.multipleValues;
 			},
 
 			parameterOptions(): INodePropertyCollection[] {
