@@ -1,11 +1,11 @@
-import {computed, ref} from "vue";
-import { defineStore } from "pinia";
+import { computed, ref } from 'vue';
+import { defineStore } from 'pinia';
 import { jsPlumb } from 'jsplumb';
-import { useRootStore } from "@/store";
-import { INodeUi, XYPosition } from "@/Interface";
-import * as CanvasHelpers from "@/views/canvasHelpers";
-import { START_NODE_TYPE } from "@/constants";
-import { v4 as uuid } from "uuid";
+import { v4 as uuid } from 'uuid';
+import { useRootStore } from '@/store';
+import { INodeUi, XYPosition } from '@/Interface';
+import * as CanvasHelpers from '@/views/canvasHelpers';
+import { START_NODE_TYPE } from '@/constants';
 import '@/plugins/N8nCustomConnectorType';
 import '@/plugins/PlusEndpointType';
 
@@ -14,7 +14,11 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const jsPlumbInstance = jsPlumb.getInstance();
 
 	const nodes = computed<INodeUi[]>(() => rootStore.getters.allNodes);
-	const triggerNodes = computed<INodeUi[]>(() => nodes.value.filter(node => node.type === START_NODE_TYPE || rootStore.getters['nodeTypes/isTriggerNode'](node.type)));
+	const triggerNodes = computed<INodeUi[]>(
+		() => nodes.value.filter(
+				node => node.type === START_NODE_TYPE || rootStore.getters['nodeTypes/isTriggerNode'](node.type),
+			),
+	);
 	const nodeViewHtmlElement = ref<HTMLDivElement | null | undefined>(null);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
@@ -39,7 +43,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 		};
 	};
 
-	const getNodesWithPlaceholderNode = (): INodeUi[] => triggerNodes.value.length > 0 ? nodes.value : [getPlaceholderTriggerNodeUI(), ...nodes.value];
+	const getNodesWithPlaceholderNode = (): INodeUi[] =>
+		triggerNodes.value.length > 0 ? nodes.value : [getPlaceholderTriggerNodeUI(), ...nodes.value];
 
 	const setZoomLevel = (zoomLevel: number) => {
 		nodeViewScale.value = zoomLevel;
