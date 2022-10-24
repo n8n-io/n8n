@@ -75,23 +75,30 @@ export class GoogleCalendar implements INodeType {
 			async getCalendars(
 				this: ILoadOptionsFunctions,
 				filter?: string,
-				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
-				const results: INodeListSearchItems[] = [];
 				const calendars = await googleApiRequestAllItems.call(
 					this,
 					'items',
 					'GET',
 					'/calendar/v3/users/me/calendarList',
-				);
-				for (const calendar of calendars) {
-					const calendarName = calendar.summary;
-					const calendarId = encodeURIComponent(calendar.id);
-					results.push({
-						name: calendarName,
-						value: calendarId,
+				) as Array<{ id: string, summary: string }>;
+
+				const results: INodeListSearchItems[] = calendars
+					.map(c => ({
+						name: c.summary,
+						value: c.id,
+					}))
+					.filter(
+						(c) =>
+							!filter ||
+							c.name.toLowerCase().includes(filter.toLowerCase()) ||
+							c.value?.toString() === filter,
+					)
+					.sort((a, b) => {
+						if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
+						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
+						return 0;
 					});
-				}
 				return { results };
 			},
 		},
@@ -117,26 +124,6 @@ export class GoogleCalendar implements INodeType {
 					returnData.push({
 						name: posibleSolutions[solution] as string,
 						value: solution,
-					});
-				}
-				return returnData;
-			},
-			// Get all the calendars to display them to user so that he can
-			// select them easily
-			async getCalendars(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const calendars = await googleApiRequestAllItems.call(
-					this,
-					'items',
-					'GET',
-					'/calendar/v3/users/me/calendarList',
-				);
-				for (const calendar of calendars) {
-					const calendarName = calendar.summary;
-					const calendarId = encodeURIComponent(calendar.id);
-					returnData.push({
-						name: calendarName,
-						value: calendarId,
 					});
 				}
 				return returnData;
