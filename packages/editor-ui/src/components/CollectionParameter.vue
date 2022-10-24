@@ -5,7 +5,7 @@
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
-			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" @valueChanged="valueChanged" />
+			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" :isReadOnly="isReadOnly" @valueChanged="valueChanged" />
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
@@ -43,7 +43,6 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import { get } from 'lodash';
@@ -52,7 +51,6 @@ import mixins from 'vue-typed-mixins';
 import {Component} from "vue";
 
 export default mixins(
-	genericHelpers,
 	nodeHelpers,
 )
 	.extend({
@@ -63,6 +61,7 @@ export default mixins(
 			'parameter', // INodeProperties
 			'path', // string
 			'values', // NodeParameters
+			'isReadOnly', // boolean
 		],
 		components: {
 			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
