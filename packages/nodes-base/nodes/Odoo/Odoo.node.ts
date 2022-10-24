@@ -52,7 +52,6 @@ export class Odoo implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Odoo',
-			color: '#714B67',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
