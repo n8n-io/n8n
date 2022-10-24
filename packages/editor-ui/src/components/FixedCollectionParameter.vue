@@ -143,7 +143,7 @@ export default Vue.extend({
 			},
 			values: {
 				type: Object as PropType<Record<string, INodeParameters[]>>,
-				required: true,
+				default: () => ({}),
 			},
 			isReadOnly: {
 				type: Boolean,

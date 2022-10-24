@@ -65,7 +65,7 @@ export default Vue.extend({
 			},
 			values: {
 				type: Array as PropType<INodeParameters[]>,
-				required: true,
+				default: () => [],
 			},
 			isReadOnly: {
 				type: Boolean,
