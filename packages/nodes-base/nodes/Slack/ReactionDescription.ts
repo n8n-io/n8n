@@ -70,7 +70,7 @@ export const reactionFields: INodeProperties[] = [
 		placeholder: '+1',
 	},
 	{
-		displayName: 'Timestamp',
+		displayName: 'Message Timestamp',
 		name: 'timestamp',
 		type: 'string',
 		required: true,

@@ -203,14 +203,14 @@ export const fileFields: INodeProperties[] = [
 					'Whether to show truncated file info for files hidden due to being too old, and the team who owns the file being over the file limit',
 			},
 			{
-				displayName: 'Timestamp From',
+				displayName: 'Message Timestamp From',
 				name: 'tsFrom',
 				type: 'string',
 				default: '',
 				description: 'Filter files created after this timestamp (inclusive)',
 			},
 			{
-				displayName: 'Timestamp To',
+				displayName: 'Message Timestamp To',
 				name: 'tsTo',
 				type: 'string',
 				default: '',

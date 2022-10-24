@@ -70,7 +70,7 @@ export const messageFields: INodeProperties[] = [
 			'Channel containing the message. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Timestamp',
+		displayName: 'Message Timestamp',
 		name: 'timestamp',
 		type: 'string',
 		required: true,
@@ -1174,7 +1174,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Icon which should appear next to footer',
 			},
 			{
-				displayName: 'Timestamp',
+				displayName: 'Message Timestamp',
 				name: 'ts',
 				type: 'dateTime',
 				default: '',
@@ -1363,7 +1363,7 @@ export const messageFields: INodeProperties[] = [
 			"The message text to update. Supports <a href='https://api.slack.com/reference/surfaces/formatting'>markdown</a> by default - this can be disabled in 'Options'",
 	},
 	{
-		displayName: 'Timestamp',
+		displayName: 'Message Timestamp',
 		name: 'ts',
 		type: 'string',
 		required: true,
@@ -1556,7 +1556,7 @@ export const messageFields: INodeProperties[] = [
 				description: 'Icon which should appear next to footer',
 			},
 			{
-				displayName: 'Timestamp',
+				displayName: 'Message Timestamp',
 				name: 'ts',
 				type: 'dateTime',
 				default: '',
@@ -1628,7 +1628,7 @@ export const messageFields: INodeProperties[] = [
 			'Channel containing the message to be deleted. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
-		displayName: 'Timestamp',
+		displayName: 'Message Timestamp',
 		name: 'timestamp',
 		type: 'string',
 		required: true,

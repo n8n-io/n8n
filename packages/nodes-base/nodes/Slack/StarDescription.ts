@@ -79,7 +79,7 @@ export const starFields: INodeProperties[] = [
 				description: 'File to add star to',
 			},
 			{
-				displayName: 'Timestamp',
+				displayName: 'Message Timestamp',
 				name: 'timestamp',
 				type: 'string',
 				default: '',
@@ -132,7 +132,7 @@ export const starFields: INodeProperties[] = [
 				description: 'File comment to add star to',
 			},
 			{
-				displayName: 'Timestamp',
+				displayName: 'Message Timestamp',
 				name: 'timestamp',
 				type: 'string',
 				default: '',
