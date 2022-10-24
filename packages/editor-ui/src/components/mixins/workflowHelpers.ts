@@ -661,6 +661,9 @@ export const workflowHelpers = mixins(
 				const isCurrentWorkflow = workflowId === this.$store.getters.workflowId;
 				if (isCurrentWorkflow) {
 					data = await this.getWorkflowDataToSave();
+				} else {
+					const { updatedAt } = await this.restApi().getWorkflow(workflowId);
+					data.updatedAt = updatedAt as string;
 				}
 
 				if (active !== undefined) {
