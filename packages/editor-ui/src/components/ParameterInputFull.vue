@@ -68,7 +68,6 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
-import InputHint from './ParameterInputHint.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
@@ -87,7 +86,6 @@ export default mixins(
 	.extend({
 		name: 'parameter-input-full',
 		components: {
-			InputHint,
 			ParameterOptions,
 			DraggableTarget,
 			ParameterInputWrapper,
