@@ -189,7 +189,7 @@ export class I18nClass {
 	 * except for `eventTriggerDescription`.
 	 */
 	nodeText () {
-		const activeNode = this.$store.getters.activeNode;
+		const activeNode = this.$store.getters['ndv/activeNode'];
 		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : ''; // unused in eventTriggerDescription
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
