@@ -356,24 +356,20 @@ workflowsController.patch(
 			);
 		}
 
-		const numberOfUsers = await Db.collections.User.count();
+		const lastKnownDate = new Date(req.body.updatedAt).getTime();
+		const storedDate = shared.workflow.updatedAt.getTime();
 
-		if (numberOfUsers > 1 && !forceSave) {
-			const lastKnownDate = new Date(req.body.updatedAt).getTime();
-			const storedDate = new Date(shared.workflow.updatedAt).getTime();
+		if (!forceSave && lastKnownDate !== storedDate) {
+			LoggerProxy.info(
+				'User was blocked from updating a workflow that was changed by another user',
+				{ workflowId, userId: req.user.id },
+			);
 
-			if (lastKnownDate !== storedDate) {
-				LoggerProxy.info(
-					'User was blocked from updating a workflow that was changed by another user',
-					{ workflowId, userId: req.user.id },
-				);
-
-				throw new ResponseHelper.ResponseError(
-					`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
-					undefined,
-					400,
-				);
-			}
+			throw new ResponseHelper.ResponseError(
+				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
+				undefined,
+				400,
+			);
 		}
 
 		// check credentials for old format
