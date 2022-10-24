@@ -111,7 +111,7 @@ export default mixins(
 			}
 
 			if (this.isTriggerNode && this.hasIssues) {
-				if (this.$store.getters.activeNode && this.$store.getters.activeNode.name !== this.nodeName) {
+				if (this.$store.getters['ndv/activeNode'] && this.$store.getters['ndv/activeNode'].name !== this.nodeName) {
 					return this.$locale.baseText('ndv.execute.fixPrevious');
 				}
 
