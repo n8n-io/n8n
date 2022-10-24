@@ -25,7 +25,7 @@ type DatePart =
 function isDateTime(date: any): date is DateTime {
 	if (date) {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		return 'isLuxonDateTime' in date && !!date.isLuxonDateTime;
+		return DateTime.isDateTime(date);
 	}
 	return false;
 }
@@ -178,6 +178,14 @@ function timeTo(date: Date | DateTime, extraArgs: unknown[]): Duration {
 	return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), unit);
 }
 
+// Small hack since we parse all ISO strings to dates
+function toDate(date: Date | DateTime) {
+	if (isDateTime(date)) {
+		return date.toJSDate();
+	}
+	return date;
+}
+
 export const dateExtensions: ExtensionMap = {
 	typeName: 'Date',
 	functions: {
@@ -194,5 +202,6 @@ export const dateExtensions: ExtensionMap = {
 		timeTo,
 		format,
 		toLocaleString,
+		toDate,
 	},
 };
