@@ -87,9 +87,10 @@ import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
-import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
+import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
+import { sublimeSearch } from './sortUtils';
 
 export default mixins(externalHooks, globalLinkActions).extend({
 	name: 'CategorizedItems',
@@ -175,22 +176,35 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		searchFilter(): string {
 			return this.nodeFilter.toLowerCase().trim();
 		},
+		defaultLocale (): string {
+			return this.$store.getters.defaultLocale;
+		},
 		filteredNodeTypes(): INodeCreateElement[] {
-			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
 			const filter = this.searchFilter;
-			const matchedCategorizedNodes = searchableNodes.filter((el: INodeCreateElement) => {
-				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
-			});
+			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
+
+			let returnItems: INodeCreateElement[] = [];
+			if (this.defaultLocale !== 'en') {
+				returnItems = searchableNodes.filter((el: INodeCreateElement) => {
+					return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
+				});
+			}
+			else {
+				const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, this.selectedType));
+				const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
+				returnItems = matchedCategorizedNodes.map(({item}) => item);;
+			}
+
 
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
 					nodeFilter: this.nodeFilter,
-					result: matchedCategorizedNodes,
+					result: returnItems,
 					selectedType: this.selectedType,
 				});
 			}, 0);
 
-			return matchedCategorizedNodes;
+			return returnItems;
 		},
 		filteredAllNodeTypes(): INodeCreateElement[] {
 			if(this.filteredNodeTypes.length > 0) return [];
