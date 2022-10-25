@@ -22,6 +22,7 @@
 					index === elements.length - 1 || elements[index + 1].type !== 'node'
 				"
 				@click="$emit('selected', item)"
+				@nodeTypeSelected="$emit('selected', item)"
 				@dragstart="emit('dragstart', item, $event)"
 				@dragend="emit('dragend', item, $event)"
 			/>

@@ -22,6 +22,7 @@
 			:nodeType="item.properties.nodeType"
 			@dragstart="$listeners.dragstart"
 			@dragend="$listeners.dragend"
+			@nodeTypeSelected="$listeners.nodeTypeSelected"
 		/>
 	</div>
 </template>
@@ -59,7 +60,6 @@ export default Vue.extend({
 
 <style lang="scss" scoped>
 .container {
-	position: relative;
 	border-left: 2px solid transparent;
 
 	&:hover {

@@ -19,7 +19,7 @@ export async function getNodeTypes(
 	context: IRestApiContext,
 	{ onlyLatest } = { onlyLatest: false },
 ) {
-	return makeRestApiRequest(context, 'GET', '/node-types', { onlyLatest });
+	return makeRestApiRequest(context, 'GET', '/node-types', { onlyLatest, includeProperties: true });
 }
 
 export async function getNodeTranslationHeaders(

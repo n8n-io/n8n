@@ -1,7 +1,7 @@
 <template>
 	<aside :class="$style.nodeActions" v-if="nodeType">
 		<header :class="$style.header">
-			<button :class="$style.backButton" @click="$emit('back')">
+			<button :class="$style.backButton" @click.stop="onBack">
 				<font-awesome-icon :class="$style.backIcon" icon="arrow-left" size="2x" />
 			</button>
 			<p :class="$style.headerContent">
@@ -12,6 +12,7 @@
 		<main :class="$style.content">
 			<search-bar
 				v-model="search"
+				class="ignore-key-press"
 				:placeholder="`Search ${nodeNameTitle} Actions...`"
 			/>
 			<template v-for="action in actions">
@@ -26,11 +27,13 @@
 					<ul :class="$style.categoryActions" v-show="!subtractedCategories.includes(action.key)">
 						<li
 							v-for="actionItem in action.actions"
-							:key="actionItem.key"
+							:key="`${action.key}_${actionItem.key}`"
 							:class="$style.categoryAction"
 						>
-							<p v-text="actionItem.title" />
-							<trigger-icon :class="$style.triggerIcon" />
+							<button :class="$style.categoryActionButton" @click="onActionClick(actionItem, action)">
+								<p v-text="actionItem.title" />
+								<trigger-icon :class="$style.triggerIcon" />
+							</button>
 						</li>
 					</ul>
 				</div>
@@ -40,65 +43,34 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs } from 'vue';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { reactive, computed, toRefs, PropType } from 'vue';
+import { IDataObject, INodeTypeDescription } from 'n8n-workflow';
+import { startCase } from 'lodash';
 
 import { store } from '@/store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import TriggerIcon from '@/components/TriggerIcon.vue';
 import SearchBar from './SearchBar.vue';
 
-const actions = [
-	{
-		key: 'recommened',
-		title: 'Recommended',
-		type: 'category',
-		actions: [
-			{
-				key: 'event_created',
-				title: 'When Event Created',
-			},
-			{
-				key: 'event_ended',
-				title: 'When Event Created',
-			},
-			{
-				key: 'event_started',
-				title: 'When Event Started',
-			},
-			{
-				key: 'event_updated',
-				title: 'When Event Updated',
-			},
-		],
-	}, {
-		key: 'event',
-		title: 'Event',
-		type: 'category',
-		actions: [
-			{
-				key: 'get_many_events',
-				title: 'Get Many Events',
-				description: "Retrieve many events from a calendar",
-			},
-		],
-	},
-];
+const emit = defineEmits(['actionSelected', 'back']);
 
 const props = defineProps({
-	nodeTypeName: {
-		type: String,
+	nodeType: {
+		type: Object as PropType<INodeTypeDescription>,
+		required: true,
+	},
+	actions: {
+		type: Array,
 		required: true,
 	},
 });
 
 const state = reactive({
-	nodeType: {} as INodeTypeDescription,
 	subtractedCategories: [] as string[],
 	search: '',
 });
 
-const nodeNameTitle = computed(() => state.nodeType?.displayName?.replace(' Trigger', ''));
+const nodeNameTitle = computed(() => props.nodeType?.displayName?.replace(' Trigger', ''));
 
 function toggleCategory(category: string) {
 	if (state.subtractedCategories.includes(category)) {
@@ -106,20 +78,29 @@ function toggleCategory(category: string) {
 	} else {
 		state.subtractedCategories.push(category);
 	}
-	console.log("🚀 ~ file: NodeActions.vue ~ line 99 ~ toggleCategory ~ state.subtractedCategories", state.subtractedCategories);
 }
 
-async function loadData() {
-	state.nodeType = (
-		await store.dispatch('nodeTypes/getNodesInformation', [{
-			name: props.nodeTypeName,
-			version: 1.0,
-		}]) as INodeTypeDescription[]
-	)[0];
+function onActionClick(actionItem, rootCategory) {
+	const displayOptions = actionItem?.displayOptions ;
+
+	const displayConditions = Object.keys(displayOptions?.show || {})
+		.reduce((acc: IDataObject, showCondition: string) => {
+			acc[showCondition] = displayOptions?.show?.[showCondition]?.[0];
+			return acc;
+		}, {});
+
+	console.log("🚀 ~ file: NodeActions.vue ~ line 88 ~ onActionClick ~ displayConditions", displayConditions);
+	emit('actionSelected', {
+		name: props.nodeType.defaults.name,
+		value: { [rootCategory.key]: actionItem.multiOptions ? [actionItem.key] : actionItem.key, ...displayConditions},
+	});
 }
 
-loadData();
-const { nodeType, subtractedCategories, search } = toRefs(state);
+function onBack() {
+	emit('back');
+}
+
+const { subtractedCategories, search } = toRefs(state);
 </script>
 
 <style lang="scss" module>
@@ -163,6 +144,25 @@ const { nodeType, subtractedCategories, search } = toRefs(state);
 	cursor: pointer;
 }
 
+.categoryActionButton {
+	border: none;
+	background: none;
+	display: flex;
+	align-items: center;
+	position: relative;
+	cursor: pointer;
+
+	&:hover:before {
+		content: "";
+		position: absolute;
+		right: calc(100% + var(--spacing-s) - 1px);
+		top: 0;
+		bottom: 0;
+		width: 2px;
+		// height: 10px;
+		background: var(--color-primary);
+	}
+}
 .categoryTitle {
 	font-weight: 700;
 	font-size: 11px;

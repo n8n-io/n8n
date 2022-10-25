@@ -3,7 +3,8 @@
 		draggable
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
-		:class="{[$style['node-item']]: true}"
+		@click.stop="onClick"
+		:class="$style.nodeItem"
 	>
 		<node-icon :class="$style['node-icon']" :nodeType="nodeType" />
 		<div>
@@ -11,16 +12,16 @@
 				<span :class="$style.name">
 					{{ $locale.headerText({
 							key: `headers.${shortNodeType}.displayName`,
-							fallback: nodeType.displayName,
+							fallback: nodeType.displayName.replace('Trigger', ''),
 						})
 					}}
 				</span>
 				<span v-if="isTrigger" :class="$style['trigger-icon']">
 					<trigger-icon />
 				</span>
-				<n8n-tooltip v-if="isCommunityNode" placement="top">
+				<n8n-tooltip v-if="isCommunityNode" placement="top" >
 					<div
-						:class="$style['community-node-icon']"
+						:class="$style['communityNodeIcon']"
 						slot="content"
 						v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
 						@click="onCommunityNodeTooltipClick"
@@ -29,7 +30,7 @@
 					<n8n-icon icon="cube" />
 				</n8n-tooltip>
 			</div>
-			<div :class="$style.description">
+			<div :class="$style.description" v-if="!hideDescription">
 				{{ $locale.headerText({
 						key: `headers.${shortNodeType}.description`,
 						fallback: nodeType.description,
@@ -37,7 +38,7 @@
 				}}
 			</div>
 
-			<div :class="$style['draggable-data-transfer']" ref="draggableDataTransfer" />
+			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
 			<transition name="node-item-transition">
 				<div
 					:class="$style.draggable"
@@ -49,19 +50,34 @@
 				</div>
 			</transition>
 		</div>
+		<node-actions
+			:class="$style.actions"
+			v-if="showActions"
+			:nodeType="nodeType"
+			:actions="actions"
+			@actionSelected="onActionSelected"
+			@back="showActions = false"
+		/>
+		<div :class="$style.actionIcon" v-if="hasActions">
+			<font-awesome-icon :class="$style.actionArrow" icon="arrow-right" />
+		</div>
 	</div>
 </template>
 
 <script lang="ts">
 
 import Vue, { PropType } from 'vue';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { INodeTypeDescription, IDataObject, INodeProperties } from 'n8n-workflow';
+import { INodeCreateElement, INodeItemProps } from '@/Interface';
+import { startCase } from 'lodash';
 
 import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TriggerIcon from '@/components/TriggerIcon.vue';
+import NodeActions from './NodeActions.vue';
+
 import { isCommunityPackageName } from '@/components/helpers';
 
 Vue.component('node-icon', NodeIcon);
@@ -69,6 +85,9 @@ Vue.component('trigger-icon', TriggerIcon);
 
 export default Vue.extend({
 	name: 'NodeItem',
+	components: {
+		NodeActions,
+	},
 	props: {
 		nodeType: {
 			type: Object as PropType<INodeTypeDescription>,
@@ -76,10 +95,15 @@ export default Vue.extend({
 		active: {
 			type: Boolean,
 		},
+		hideDescription: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
 			dragging: false,
+			showActions: false,
 			draggablePosition: {
 				x: -100,
 				y: -100,
@@ -88,6 +112,9 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		hasActions(): boolean {
+			return this.actions.length > 0;
+		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.nodeType.name);
 		},
@@ -103,20 +130,81 @@ export default Vue.extend({
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.nodeType.name);
 		},
+		// TODO: Add types
+		actions(): any {
+			function recommendedCategory(properties: INodeProperties[]) {
+				const categoryKeys = ['event', 'events', 'trigger on'];
+				const matchedProperties = (properties || [])
+					.filter((property: any) => categoryKeys.includes(property.displayName?.toLowerCase()));
+
+				console.log("🚀 ~ file: NodeItem.vue ~ line 127 ~ matchedProperty ~ matchedProperty", matchedProperties);
+				if(matchedProperties.length === 0) return null;
+
+				const actions = matchedProperties
+					.filter((property: any) => property.options && property.name !== '*')
+					.reduce((acc, curr) => {
+						const options = curr.options?.map((option: any) => ({
+								key: option.value,
+								title: `When ${startCase(option.name)}`,
+								description: option.description,
+								displayOptions: curr.displayOptions,
+								multiOptions: curr.type === 'multiOptions',
+						 }));
+						if(options) acc.push(...options);
+						return acc;
+					}, []);
+					// .map((option: any) => ({
+							// displayOptions: option.displayOptions,
+							// key: option.value,
+							// title: `When ${startCase(option.name)}`,
+							// description: option.description,
+						// }));
+
+						console.log("🚀 ~ file: NodeItem.vue ~ line 152 ~ recommendedCategory ~ actions", actions);
+				// TODO: Is it safe to assume that the first property name and type is identical to all the others?
+				return {
+					key: matchedProperties[0].name,
+					title: 'Recommended',
+					type: 'category',
+					actions,
+				};
+			}
+
+			return [recommendedCategory(this.nodeType.properties)].filter(Boolean);
+		},
 	},
-	mounted() {
+	// mounted() {
 		/**
 		 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
 		 * All browsers attach the correct page coordinates to the "dragover" event.
 		 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
 		 */
-		document.body.addEventListener("dragover", this.onDragOver);
-	},
-	destroyed() {
-		document.body.removeEventListener("dragover", this.onDragOver);
-	},
+	// 	document.body.addEventListener("dragover", this.onDragOver);
+	// },
+	// destroyed() {
+	// 	document.body.removeEventListener("dragover", this.onDragOver);
+	// },
 	methods: {
+		onClick() {
+			console.log('On click!');
+			if(this.hasActions) {
+				this.showActions = true;
+			} else {
+				this.$emit('nodeTypeSelected', this.nodeType.name);
+			}
+		},
+		onActionSelected(action: IDataObject) {
+			this.$emit('nodeTypeSelected', this.nodeType.name);
+			// We need some time for the node to be created before setting parameters
+			setTimeout(() => this.$store.commit('setNodeParameters', action), 0);
+		},
 		onDragStart(event: DragEvent): void {
+			/**
+			 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
+			 * All browsers attach the correct page coordinates to the "dragover" event.
+			 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
+			 */
+			document.body.addEventListener("dragover", this.onDragOver);
 			const { pageX: x, pageY: y } = event;
 
 			this.$emit('dragstart', event);
@@ -141,6 +229,7 @@ export default Vue.extend({
 			this.draggablePosition = { x, y };
 		},
 		onDragEnd(event: DragEvent): void {
+			document.body.removeEventListener("dragover", this.onDragOver);
 			this.$emit('dragend', event);
 
 			this.dragging = false;
@@ -158,7 +247,29 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-.node-item {
+.actions {
+	position: absolute;
+	top: 0;
+	z-index: 1;
+}
+
+.actionIcon {
+	opacity: 0;
+	flex-grow: 1;
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	margin-left: 8px;
+}
+.nodeItem:hover .actionIcon {
+	opacity: 1;
+}
+.actionArrow {
+	font-size: 12px;
+	width: 12px;
+	color: $node-creator-arrow-color;
+}
+.nodeItem {
 	padding: 11px 8px 11px 0;
 	margin-left: 15px;
 	margin-right: 12px;
@@ -203,7 +314,7 @@ export default Vue.extend({
 	vertical-align: middle;
 }
 
-.community-node-icon {
+.communityNodeIcon {
 	vertical-align: top;
 }
 
@@ -221,14 +332,14 @@ export default Vue.extend({
 	align-items: center;
 }
 
-.draggable-data-transfer {
+.draggableDataTransfer {
 	width: 1px;
 	height: 1px;
 }
 </style>
 
 <style lang="scss" scoped>
-.node-item-transition {
+.nodeItem-transition {
 	&-enter-active,
 	&-leave-active {
 		transition-property: opacity, transform;

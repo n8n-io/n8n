@@ -1,12 +1,5 @@
 <template>
 	<div :class="{ [$style.triggerHelperContainer]: true, [$style.isRoot]: isRoot }">
-		<node-actions
-			v-if="activeNode"
-			:key="activeNode"
-			:nodeTypeName="activeNode"
-			@actionSelected="onActionSelected"
-			@back="onActionsBack"
-		/>
 		<categorized-items
 			ref="categorizedItems"
 			@subcategoryClose="onSubcategoryClose"
@@ -32,13 +25,14 @@ import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { INodeCreateElement } from '@/Interface';
+import { INodeCreateElement, INodeItemProps } from '@/Interface';
 import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
 
 import ItemIterator from './ItemIterator.vue';
 import CategorizedItems from './CategorizedItems.vue';
 import SearchBar from './SearchBar.vue';
-import NodeActions from './NodeActions.vue';
+import { IDataObject } from 'n8n-workflow';
+import { startCase } from 'lodash';
 
 export default mixins(externalHooks).extend({
 	name: 'TriggerHelperPanel',
@@ -46,7 +40,6 @@ export default mixins(externalHooks).extend({
 		ItemIterator,
 		CategorizedItems,
 		SearchBar,
-		NodeActions,
 	},
 	props: {
 		searchItems: {
@@ -58,7 +51,6 @@ export default mixins(externalHooks).extend({
 			CORE_NODES_CATEGORY,
 			COMMUNICATION_CATEGORY,
 			isRoot: true,
-			activeNode: null as string | null,
 		};
 	},
 	computed: {
@@ -162,15 +154,17 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	methods: {
-		onActionsBack() {
-			this.activeNode = null;
-		},
-		onActionSelected(action: string) {
-			console.log('Action selected!');
-		},
+		// onActionsBack() {
+		// 	this.activeNode = null;
+		// },
+		// onActionSelected(action: IDataObject) {
+		// 	this.$emit('nodeTypeSelected', this.activeNode);
+		// 	// We need some time for the node to be created before setting parameters
+		// 	setTimeout(() => this.$store.commit('setNodeParameters', action), 0);
+		// },
 		onNodeSelected(nodeType: string) {
-			this.activeNode = nodeType;
-			// this.$emit('nodeSelected', nodeType);
+			// this.activeNode = nodeType;
+			this.$emit('nodeTypeSelected', nodeType);
 		},
 		isRootSubcategory(subcategory: INodeCreateElement) {
 			return this.items.find(item => item.key === subcategory.key) !== undefined;
