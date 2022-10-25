@@ -400,7 +400,6 @@ export const workflowHelpers = mixins(
 					active: this.$store.getters.isActive,
 					settings: this.$store.getters.workflowSettings,
 					tags: this.$store.getters.workflowTags,
-					updatedAt: this.$store.getters.workflowUpdatedAt,
 				};
 
 				const workflowId = this.$store.getters.workflowId;
@@ -661,9 +660,6 @@ export const workflowHelpers = mixins(
 				const isCurrentWorkflow = workflowId === this.$store.getters.workflowId;
 				if (isCurrentWorkflow) {
 					data = await this.getWorkflowDataToSave();
-				} else {
-					const { updatedAt } = await this.restApi().getWorkflow(workflowId);
-					data.updatedAt = updatedAt as string;
 				}
 
 				if (active !== undefined) {
@@ -671,7 +667,6 @@ export const workflowHelpers = mixins(
 				}
 
 				const workflow = await this.restApi().updateWorkflow(workflowId, data);
-				this.$store.commit('setWorkflowUpdatedAt', workflow.updatedAt);
 
 				if (isCurrentWorkflow) {
 					this.$store.commit('setActive', !!workflow.active);
@@ -719,7 +714,6 @@ export const workflowHelpers = mixins(
 
 					this.$store.commit('setStateDirty', false);
 					this.$store.commit('removeActiveAction', 'workflowSaving');
-					this.$store.commit('setWorkflowUpdatedAt', workflowData.updatedAt);
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
