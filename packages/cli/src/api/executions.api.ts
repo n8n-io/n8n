@@ -61,7 +61,7 @@ const schemaGetExecutionsQueryFilter = {
 			type: { type: 'string' },
 			format: 'date-time',
 		},
-		workflowData: { type: 'string' },
+		waitTill: { anyOf: [{ type: 'integer' }, { type: 'string' }, { type: 'boolean' }] },
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 	},
 };
@@ -73,8 +73,8 @@ const allowedExecutionsQueryFilterFields = [
 	'retrySuccessId',
 	'startedAt',
 	'stoppedAt',
-	'workflowData',
 	'workflowId',
+	'waitTill',
 ];
 
 interface IGetExecutionsQueryFilter {
@@ -85,7 +85,6 @@ interface IGetExecutionsQueryFilter {
 	retrySuccessId?: string;
 	startedAt?: string;
 	stoppedAt?: string;
-	workflowData?: string;
 	workflowId?: number | string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	waitTill?: FindOperator<any>;
@@ -277,7 +276,8 @@ executionsController.get(
 		if (filter) {
 			if (filter.waitTill !== undefined) {
 				filter.waitTill = Not(IsNull());
-			} else if (filter.finished !== undefined && !filter.finished) {
+				// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
+			} else if (filter.finished !== undefined && filter.finished === false) {
 				filter.waitTill = IsNull();
 			}
 			query = query.andWhere(filter);
