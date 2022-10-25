@@ -1287,6 +1287,7 @@
 	"workflows.item.open": "Open",
 	"workflows.item.duplicate": "Duplicate",
 	"workflows.item.delete": "Delete",
+	"workflows.item.neverUpdated": "Never updated",
 	"workflows.item.updated": "Last updated",
 	"workflows.item.created": "Created",
 	"workflows.item.owner": "Owner",
