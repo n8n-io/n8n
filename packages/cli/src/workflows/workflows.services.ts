@@ -3,7 +3,6 @@ import { FindManyOptions, FindOneOptions, ObjectLiteral } from 'typeorm';
 import {
 	ActiveWorkflowRunner,
 	Db,
-	ICredentialsDb,
 	InternalHooksManager,
 	ResponseHelper,
 	whereClause,
