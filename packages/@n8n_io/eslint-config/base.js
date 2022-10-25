@@ -13,6 +13,7 @@ const config = (module.exports = {
 		'node_modules/**',
 		'dist/**',
 		'test/**', // TODO: remove this
+		'jest.config.js', // TODO: remove this
 	],
 
 	plugins: [

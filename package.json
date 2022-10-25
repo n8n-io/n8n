@@ -22,9 +22,14 @@
     "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
+    "@types/jest": "^28.1.8",
+    "jest": "^28.1.3",
+    "jest-environment-jsdom": "^28.1.3",
+    "jest-mock": "^28.1.3",
     "patch-package": "^6.4.7",
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7",
+    "ts-jest": "^28.0.8",
     "turbo": "1.2.15"
   },
   "postcss": {},
