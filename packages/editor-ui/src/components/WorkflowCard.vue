@@ -10,15 +10,7 @@
 			</template>
 			<div :class="$style.cardDescription">
 				<n8n-text color="text-light" size="small">
-					<span v-show="data">
-						<span v-if="data.updatedAt === -1">
-							{{ $locale.baseText('workflows.item.neverUpdated') }} |
-						</span>
-						<span v-else>
-							{{ $locale.baseText('workflows.item.updated') }}
-							<time-ago :date="data.updatedAt" /> |
-						</span>
-					</span>
+					<span v-show="data">{{$locale.baseText('workflows.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
 					<span v-show="data" class="mr-2xs">{{$locale.baseText('workflows.item.created')}} {{ formattedCreatedAtDate }} </span>
 					<span v-if="areTagsEnabled && data.tags && data.tags.length > 0" v-show="data">
 					<n8n-tags
