@@ -4,7 +4,7 @@
 			<div :class="$style.headingContainer">
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
 				<n8n-button
-					v-if="!isQueueModeEnabled && getInstalledPackages.length > 0 && !loading"
+					v-if="!isQueueModeEnabled && communityNodesStore.getInstalledPackages.length > 0 && !loading"
 					:label="$locale.baseText('settings.communityNodes.installModal.installButton.label')"
 					size="large"
 					@click="openInstallModal"
@@ -29,7 +29,7 @@
 				></community-package-card>
 			</div>
 			<div
-				v-else-if="getInstalledPackages.length === 0"
+				v-else-if="communityNodesStore.getInstalledPackages.length === 0"
 				:class="$style.actionBoxContainer"
 			>
 				<n8n-action-box
@@ -50,7 +50,7 @@
 				v-else
 			>
 				<community-package-card
-					v-for="communityPackage in getInstalledPackages"
+					v-for="communityPackage in communityNodesStore.getInstalledPackages"
 					:key="communityPackage.packageName"
 					:communityPackage="communityPackage"
 				></community-package-card>
@@ -72,6 +72,9 @@ import {
 } from '../constants';
 import { PublicInstalledPackage } from 'n8n-workflow';
 
+import { useCommunityNodesStore } from '@/stores/communityNodes';
+import { mapStores } from 'pinia';
+
 const PACKAGE_COUNT_THRESHOLD = 31;
 
 export default mixins(
@@ -90,9 +93,9 @@ export default mixins(
 	async mounted() {
 		try {
 			this.$data.loading = true;
-			await this.$store.dispatch('communityNodes/fetchInstalledPackages');
+			await this.communityNodesStore.fetchInstalledPackages();
 
-			const installedPackages: PublicInstalledPackage[] = this.getInstalledPackages;
+			const installedPackages: PublicInstalledPackage[] = this.communityNodesStore.getInstalledPackages;
 			const packagesToUpdate: PublicInstalledPackage[] = installedPackages.filter(p => p.updateAvailable );
 			this.$telemetry.track('user viewed cnr settings page', {
 				num_of_packages_installed: installedPackages.length,
@@ -123,16 +126,16 @@ export default mixins(
 			this.$data.loading = false;
 		}
 		try {
-			await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
+			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
 		} finally {
 			this.$data.loading = false;
 		}
 	},
 	computed: {
+		...mapStores(useCommunityNodesStore),
 		...mapGetters('settings', ['isNpmAvailable', 'isQueueModeEnabled']),
-		...mapGetters('communityNodes', ['getInstalledPackages']),
 		getEmptyStateDescription() {
-			const packageCount = this.$store.getters['communityNodes/availablePackageCount'];
+			const packageCount = this.communityNodesStore.availablePackageCount;
 			return  packageCount < PACKAGE_COUNT_THRESHOLD ?
 				this.$locale.baseText('settings.communityNodes.empty.description.no-packages', {
 					interpolate: {
@@ -192,7 +195,7 @@ export default mixins(
 	},
 	methods: {
 		openInstallModal(event: MouseEvent) {
-			const telemetryPayload = { is_empty_state: this.getInstalledPackages.length === 0 };
+			const telemetryPayload = { is_empty_state: this.communityNodesStore.getInstalledPackages.length === 0 };
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
 			this.$externalHooks().run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
 			this.$store.dispatch('ui/openModal', COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);

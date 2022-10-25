@@ -48,7 +48,6 @@ import versions from './modules/versions';
 import templates from './modules/templates';
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
-import communityNodes from './modules/communityNodes';
 import nodeCreator from './modules/nodeCreator';
 import { isJsonKeyObject } from './utils';
 import {getActiveWorkflows, getWorkflows} from "@/api/workflows";
@@ -120,7 +119,6 @@ const modules = {
 	versions,
 	users,
 	ui,
-	communityNodes,
 	nodeCreator,
 	ndv,
 };
