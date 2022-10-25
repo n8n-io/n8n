@@ -45,25 +45,15 @@ const schemaGetWorkflowsQueryFilter = {
 		id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 		name: { type: 'string' },
 		active: { type: 'boolean' },
-		createdAt: {
-			type: { type: 'string' },
-			format: 'date-time',
-		},
-		updatedAt: {
-			type: { type: 'string' },
-			format: 'date-time',
-		},
 	},
 };
 
-const allowedWorkflowsQueryFilterFields = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+const allowedWorkflowsQueryFilterFields = ['id', 'name', 'active'];
 
 interface IGetWorkflowsQueryFilter {
 	id?: number | string;
 	name?: string;
 	active?: boolean;
-	createdAt?: string;
-	updatedAt?: string;
 }
 
 /**

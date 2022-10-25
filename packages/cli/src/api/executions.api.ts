@@ -53,15 +53,7 @@ const schemaGetExecutionsQueryFilter = {
 		mode: { type: 'string' },
 		retryOf: { type: 'string' },
 		retrySuccessId: { type: 'string' },
-		startedAt: {
-			type: { type: 'string' },
-			format: 'date-time',
-		},
-		stoppedAt: {
-			type: { type: 'string' },
-			format: 'date-time',
-		},
-		waitTill: { anyOf: [{ type: 'integer' }, { type: 'string' }, { type: 'boolean' }] },
+		waitTill: { type: 'boolean' },
 		workflowId: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 	},
 };
@@ -71,8 +63,6 @@ const allowedExecutionsQueryFilterFields = [
 	'mode',
 	'retryOf',
 	'retrySuccessId',
-	'startedAt',
-	'stoppedAt',
 	'workflowId',
 	'waitTill',
 ];
@@ -83,11 +73,9 @@ interface IGetExecutionsQueryFilter {
 	mode?: string;
 	retryOf?: string;
 	retrySuccessId?: string;
-	startedAt?: string;
-	stoppedAt?: string;
 	workflowId?: number | string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	waitTill?: FindOperator<any>;
+	waitTill?: FindOperator<any> | boolean;
 }
 
 /**
@@ -233,10 +221,6 @@ executionsController.get(
 				.map(({ id }) => id),
 		);
 
-		const countFilter = cloneDeep(filter ?? {});
-		countFilter.waitTill &&= Not(IsNull());
-		countFilter.id = Not(In(executingWorkflowIds));
-
 		const findWhere = { workflowId: In(sharedWorkflowIds) };
 
 		const rangeQuery: string[] = [];
@@ -274,14 +258,19 @@ executionsController.get(
 			.where(findWhere);
 
 		if (filter) {
-			if (filter.waitTill !== undefined) {
+			if (filter.waitTill === true) {
 				filter.waitTill = Not(IsNull());
 				// eslint-disable-next-line @typescript-eslint/no-unnecessary-boolean-literal-compare
-			} else if (filter.finished !== undefined && filter.finished === false) {
+			} else if (filter.finished === false) {
 				filter.waitTill = IsNull();
+			} else {
+				delete filter.waitTill;
 			}
 			query = query.andWhere(filter);
 		}
+
+		const countFilter = cloneDeep(filter ?? {});
+		countFilter.id = Not(In(executingWorkflowIds));
 
 		const executions = await query.getMany();
 
