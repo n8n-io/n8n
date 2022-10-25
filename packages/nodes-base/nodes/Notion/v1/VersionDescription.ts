@@ -21,7 +21,6 @@ export const versionDescription: INodeTypeDescription = {
 	description: 'Consume Notion API (Beta)',
 	defaults: {
 		name: 'Notion',
-		color: '#000000',
 	},
 	inputs: ['main'],
 	outputs: ['main'],
