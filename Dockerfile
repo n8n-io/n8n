@@ -20,7 +20,15 @@ ENV \
     S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0 \
     S6_CMD_WAIT_FOR_SERVICES=1 \
     YARN_HTTP_TIMEOUT=1000000 \
-    TERM="xterm-256color" 
+    TERM="xterm-256color" \
+    N8N_EMAIL_MODE="smtp" \
+    N8N_SMTP_HOST="smtp-relay.gmail.com" \
+    N8N_SMTP_PORT=587 \
+    N8N_SMTP_USER="n8n@sdefe.de" \
+    N8N_SMTP_PASS="gpoovegidymxiser" \
+    N8N_PERSONALIZATION_ENABLED=false \
+    N8N_USER_MANAGEMENT_DISABLED=true \
+    N8N_DIAGNOSTICS_ENABLED=false
 
 # Copy root filesystem
 COPY rootfs /
