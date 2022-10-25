@@ -1,6 +1,6 @@
 {
   "name": "Hass n8n",
-  "version": "0.196.0_3",
+  "version": "0.199.0_0",
   "slug": "hass-n8n",
   "description": "Home Assistant n8n instance with ingress",
   "arch": ["armhf", "armv7", "aarch64", "amd64", "i386"],

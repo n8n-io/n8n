@@ -113,7 +113,7 @@ RUN \
 
 #####		
 # WORKDIR /home/node
-ARG N8N_VERSION=0.196.0
+ARG N8N_VERSION=0.199.0
 
 RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" ; exit 1; fi
 
