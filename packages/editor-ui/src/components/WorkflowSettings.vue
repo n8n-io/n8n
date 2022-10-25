@@ -519,8 +519,7 @@ export default mixins(
 			this.isLoading = true;
 
 			try {
-				const workflow = await this.restApi().updateWorkflow(this.$route.params.name, data);
-				this.$store.commit('setWorkflowUpdatedAt', workflow.updatedAt);
+				await this.restApi().updateWorkflow(this.$route.params.name, data);
 			} catch (error) {
 				this.$showError(
 					error,

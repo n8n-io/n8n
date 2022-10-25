@@ -706,7 +706,10 @@ export const emptyPackage = () => {
 //           workflow
 // ----------------------------------
 
-export function makeWorkflow(options?: {
+export function makeWorkflow({
+	withPinData,
+	withCredential,
+}: {
 	withPinData: boolean;
 	withCredential?: { id: string; name: string };
 }) {
@@ -721,9 +724,9 @@ export function makeWorkflow(options?: {
 		position: [740, 240],
 	};
 
-	if (options?.withCredential) {
+	if (withCredential) {
 		node.credentials = {
-			spotifyApi: options.withCredential,
+			spotifyApi: withCredential,
 		};
 	}
 
@@ -732,7 +735,7 @@ export function makeWorkflow(options?: {
 	workflow.connections = {};
 	workflow.nodes = [node];
 
-	if (options?.withPinData) {
+	if (withPinData) {
 		workflow.pinData = MOCK_PINDATA;
 	}
 
