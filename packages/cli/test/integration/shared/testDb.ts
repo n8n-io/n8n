@@ -84,10 +84,11 @@ export async function init() {
 		await bootstrapPostgres.close();
 
 		const dbOptions = getDBOptions('postgres', testDbName);
-		const schema = config.getEnv('database.postgresdb.schema');
-		if (schema !== 'public') {
-			const connection = await createConnection(dbOptions);
-			await connection.query(`CREATE SCHEMA IF NOT EXISTS ${schema}";`);
+
+		if (dbOptions.schema !== 'public') {
+			const { schema, migrations, ...options } = dbOptions;
+			const connection = await createConnection(options);
+			await connection.query(`CREATE SCHEMA IF NOT EXISTS "${schema}"`);
 			await connection.close();
 		}
 

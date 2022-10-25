@@ -9,7 +9,7 @@ export default async () => {
 	const connection = await createConnection(getBootstrapDBOptions(dbType));
 
 	const query =
-		dbType === 'postgres' ? 'SELECT datname as Database FROM pg_database' : 'SHOW DATABASES';
+		dbType === 'postgres' ? 'SELECT datname as "Database" FROM pg_database' : 'SHOW DATABASES';
 	const results: { Database: string }[] = await connection.query(query);
 	const databases = results
 		.filter(
