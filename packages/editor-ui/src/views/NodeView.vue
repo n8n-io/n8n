@@ -15,7 +15,7 @@
 					@click="showTriggerCreator('tirger_placeholder_button')"
 					v-show="showCanvasAddButton"
 					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
-					:position="canvasAddButtonPosition"
+					:position="canvasStore.canvasAddButtonPosition"
 					@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
 				/>
 				<div v-for="nodeData in nodes" :key="nodeData.id">
@@ -416,7 +416,6 @@ export default mixins(
 				renamingActive: false,
 				showStickyButton: false,
 				showTriggerMissingTooltip: false,
-				canvasAddButtonPosition: [1, 1] as XYPosition,
 				workflowData: null as INewWorkflowData | null,
 			};
 		},
@@ -1551,7 +1550,7 @@ export default mixins(
 					// If added node is a trigger and it's the first one added to the canvas
 					// we place it at canvasAddButtonPosition to replace the canvas add button
 					const position = this.$store.getters['nodeTypes/isTriggerNode'](nodeTypeName) && !this.containsTrigger
-						? this.canvasAddButtonPosition
+						? this.canvasStore.canvasAddButtonPosition
 						// If no node is active find a free spot
 						: this.lastClickPosition as XYPosition;
 

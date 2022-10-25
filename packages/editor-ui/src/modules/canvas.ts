@@ -24,7 +24,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
-
 		const position = CanvasHelpers.getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
 
 		position[0] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
@@ -97,7 +96,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const zoomToFit = () => {
 		const nodes = getNodesWithPlaceholderNode();
-		console.log(nodes);
 		if (!nodes.length) { // some unknown workflow executions
 			return;
 		}
@@ -112,6 +110,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		jsPlumbInstance,
 		nodeViewHtmlElement,
 		nodeViewScale,
+		canvasAddButtonPosition,
 		setRecenteredCanvasAddButtonPosition,
 		getNodesWithPlaceholderNode,
 		setZoomLevel,
