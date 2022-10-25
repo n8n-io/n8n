@@ -2,7 +2,7 @@ import { CORE_NODES_CATEGORY, MAIN_HEADER_TABS, MAPPING_PARAMS, TEMPLATES_NODES_
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import { isResourceLocatorValue } from '@/typeGuards';
 import dateformat from 'dateformat';
-import {IDataObject, INodeProperties, INodeTypeDescription, NodeParameterValueType,INodeExecutionData} from 'n8n-workflow';
+import {IDataObject, INodeProperties, INodeTypeDescription, NodeParameterValueType,INodeExecutionData, jsonParse} from 'n8n-workflow';
 import { isJsonKeyObject } from "@/utils";
 import { Route } from 'vue-router';
 
@@ -170,7 +170,7 @@ export const convertPath = (path: string): string => {
 };
 
 export const clearJsonKey = (userInput: string | object) => {
-	const parsedUserInput = typeof userInput === 'string' ? JSON.parse(userInput) : userInput;
+	const parsedUserInput = typeof userInput === 'string' ? jsonParse(userInput) : userInput;
 
 	if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 

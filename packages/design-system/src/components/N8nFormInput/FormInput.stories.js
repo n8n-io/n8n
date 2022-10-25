@@ -19,7 +19,9 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nFormInput,
 	},
-	template: '<n8n-form-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" />',
+	template: `
+		<n8n-form-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" />
+	`,
 	methods,
 	data() {
 		return {

@@ -29,9 +29,9 @@ import { ActionContext, Module } from 'vuex';
 import {
 	IFakeDoorLocation,
 	IRootState,
-	IRunDataDisplayMode,
 	IUiState,
 	XYPosition,
+	IFakeDoor,
 } from '../Interface';
 
 const module: Module<IUiState, IRootState> = {
@@ -107,41 +107,6 @@ const module: Module<IUiState, IRootState> = {
 		sidebarMenuCollapsed: false,
 		isPageLoading: true,
 		currentView: '',
-		mainPanelDimensions: {},
-		ndv: {
-			sessionId: '',
-			input: {
-				displayMode: 'table',
-				nodeName: undefined,
-				run: undefined,
-				branch: undefined,
-				data: {
-					isEmpty: true,
-				},
-			},
-			output: {
-				displayMode: 'table',
-				branch: undefined,
-				data: {
-					isEmpty: true,
-				},
-				editMode: {
-					enabled: false,
-					value: '',
-				},
-			},
-			focusedMappableInput: '',
-			mappingTelemetry: {},
-			hoveringItem: null,
-		},
-		mainPanelPosition: 0.5,
-		draggable: {
-			isDragging: false,
-			type: '',
-			data: '',
-			canDrop: false,
-			stickyPosition: null,
-		},
 		fakeDoorFeatures: [
 			{
 				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
@@ -177,18 +142,6 @@ const module: Module<IUiState, IRootState> = {
 		executionSidebarAutoRefresh: true,
 	},
 	getters: {
-		ndvInputData: (state: IUiState, getters, rootState: IRootState, rootGetters) => {
-			const executionData = rootGetters.getWorkflowExecution as IExecutionResponse | null;
-			const inputNodeName: string | undefined = state.ndv.input.nodeName;
-			const inputRunIndex: number = state.ndv.input.run ?? 0;
-			const inputBranchIndex: number = state.ndv.input.branch?? 0;
-
-			if (!executionData || !inputNodeName || inputRunIndex === undefined || inputBranchIndex === undefined) {
-				return [];
-			}
-
-			return executionData.data?.resultData?.runData?.[inputNodeName]?.[inputRunIndex]?.data?.main?.[inputBranchIndex];
-		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
 		},
@@ -214,14 +167,6 @@ const module: Module<IUiState, IRootState> = {
 			return (name: string) => state.modals[name].data;
 		},
 		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
-		ndvSessionId: (state: IUiState): string => state.ndv.sessionId,
-		getPanelDisplayMode: (state: IUiState)  => {
-			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
-		},
-		inputPanelDisplayMode: (state: IUiState) => state.ndv.input.displayMode,
-		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
-		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
-		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
 		getFakeDoorFeatures: (state: IUiState): IFakeDoor[] => {
 			return state.fakeDoorFeatures;
 		},
@@ -231,43 +176,14 @@ const module: Module<IUiState, IRootState> = {
 		getFakeDoorById: (state: IUiState, getters) => (id: string) => {
 			return getters.getFakeDoorFeatures.find((fakeDoor: IFakeDoor) => fakeDoor.id.toString() === id);
 		},
-		focusedMappableInput: (state: IUiState) => state.ndv.focusedMappableInput,
-		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
-		draggableType: (state: IUiState) => state.draggable.type,
-		draggableData: (state: IUiState) => state.draggable.data,
-		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
-		mainPanelDimensions: (state: IUiState) => (panelType: string) => {
-			const defaults = { relativeRight: 1, relativeLeft: 1, relativeWidth: 1 };
-
-			return {...defaults, ...state.mainPanelDimensions[panelType]};
-		},
-		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
-		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
-		hoveringItem: (state: IUiState) => state.ndv.hoveringItem,
-		ndvInputNodeName: (state: IUiState) => state.ndv.input.nodeName,
-		ndvInputRunIndex: (state: IUiState) => state.ndv.input.run,
-		ndvInputBranchIndex: (state: IUiState) => state.ndv.input.branch,
 		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
 		isNodeViewInitialized: (state: IUiState) => state.nodeViewInitialized,
 		getAddFirstStepOnLoad: (state: IUiState) => state.addFirstStepOnLoad,
 		isExecutionSidebarAutoRefreshOn: (state: IUiState) => state.executionSidebarAutoRefresh,
 	},
 	mutations: {
-		setInputNodeName: (state: IUiState, name: string | undefined) => {
-			Vue.set(state.ndv.input, 'nodeName', name);
-		},
-		setInputRunIndex: (state: IUiState, run?: string) => {
-			Vue.set(state.ndv.input, 'run', run);
-		},
-		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
-			Vue.set(
-				state.mainPanelDimensions,
-				params.panelType,
-				{...state.mainPanelDimensions[params.panelType], ...params.dimensions },
-			);
-		},
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
 			const { name, mode } = params;
 			Vue.set(state.modals[name], 'mode', mode);

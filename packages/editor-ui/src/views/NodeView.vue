@@ -309,26 +309,6 @@ export default mixins(
 				// When a node gets set as active deactivate the create-menu
 				this.createNodeActive = false;
 			},
-			nodes: {
-				async handler () {
-					// Load a workflow
-					let workflowId = null as string | null;
-					if (this.$route && this.$route.params.name) {
-						workflowId = this.$route.params.name;
-					}
-				},
-				deep: true,
-			},
-			connections: {
-				async handler(value, oldValue) {
-					// Load a workflow
-					let workflowId = null as string | null;
-					if (this.$route && this.$route.params.name) {
-						workflowId = this.$route.params.name;
-					}
-				},
-				deep: true,
-			},
 			containsTrigger(containsTrigger) {
 				// Re-center CanvasAddButton if there's no triggers
 				if (containsTrigger === false) this.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
@@ -392,7 +372,7 @@ export default mixins(
 			},
 			...mapGetters(['nativelyNumberSuffixedDefaults']),
 			activeNode(): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			executionWaitingForWebhook(): boolean {
 				return this.$store.getters.executionWaitingForWebhook;
@@ -413,11 +393,11 @@ export default mixins(
 				return this.$store.getters.allNodes;
 			},
 			runButtonText(): string {
-				if (this.workflowRunning === false) {
+				if (!this.workflowRunning) {
 					return this.$locale.baseText('nodeView.runButtonText.executeWorkflow');
 				}
 
-				if (this.executionWaitingForWebhook === true) {
+				if (this.executionWaitingForWebhook) {
 					return this.$locale.baseText('nodeView.runButtonText.waitingForTriggerEvent');
 				}
 
@@ -444,14 +424,14 @@ export default mixins(
 			},
 			workflowClasses() {
 				const returnClasses = [];
-				if (this.ctrlKeyPressed === true) {
+				if (this.ctrlKeyPressed) {
 					if (this.$store.getters.isNodeViewMoveInProgress === true) {
 						returnClasses.push('move-in-process');
 					} else {
 						returnClasses.push('move-active');
 					}
 				}
-				if (this.selectActive || this.ctrlKeyPressed === true) {
+				if (this.selectActive || this.ctrlKeyPressed) {
 					// Makes sure that nothing gets selected while select or move is active
 					returnClasses.push('do-not-select');
 				}
@@ -682,7 +662,8 @@ export default mixins(
 				});
 				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
-				if (data.finished !== true && data && data.data && data.data.resultData && data.data.resultData.error) {
+
+				if (!data.finished && data.data?.resultData?.error) {
 					// Check if any node contains an error
 					let nodeErrorFound = false;
 					if (data.data.resultData.runData) {
@@ -697,7 +678,8 @@ export default mixins(
 							}
 						}
 					}
-					if (nodeErrorFound === false) {
+
+					if (!nodeErrorFound) {
 						const resultError = data.data.resultData.error;
 						const errorMessage = this.$getExecutionError(data.data);
 						const shouldTrack = resultError && 'node' in resultError && resultError.node!.type.startsWith('n8n-nodes-base');
@@ -797,7 +779,8 @@ export default mixins(
 					);
 					return;
 				}
-				if (data === undefined) {
+
+				if (!data) {
 					throw new Error(
 						this.$locale.baseText(
 							'nodeView.workflowWithIdCouldNotBeFound',
@@ -868,9 +851,9 @@ export default mixins(
 
 				// Check if the keys got emitted from a message box or from something
 				// else which should ignore the default keybindings
-				for (let index = 0; index < path.length; index++) {
-					if (path[index].className && typeof path[index].className === 'string' && (
-						path[index].className.includes('ignore-key-press')
+				for (const element of path) {
+					if (element.className && typeof element.className === 'string' && (
+						element.className.includes('ignore-key-press')
 					)) {
 						return;
 					}
@@ -885,7 +868,7 @@ export default mixins(
 					this.createNodeActive = false;
 					if (this.activeNode) {
 						this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-						this.$store.commit('setActiveNode', null);
+						this.$store.commit('ndv/setActiveNodeName', null);
 					}
 
 					return;
@@ -922,21 +905,21 @@ export default mixins(
 					this.resetZoom();
 				} else if ((e.key === '1') && !this.isCtrlKeyPressed(e)) {
 					this.zoomToFit();
-				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
+				} else if ((e.key === 'a') && this.isCtrlKeyPressed(e)) {
 					// Select all nodes
 					e.stopPropagation();
 					e.preventDefault();
 
 					this.callDebounced('selectAllNodes', { debounceTime: 1000 });
-				} else if ((e.key === 'c') && (this.isCtrlKeyPressed(e) === true)) {
+				} else if ((e.key === 'c') && this.isCtrlKeyPressed(e)) {
 					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
-				} else if ((e.key === 'x') && (this.isCtrlKeyPressed(e) === true)) {
+				} else if ((e.key === 'x') && this.isCtrlKeyPressed(e)) {
 					// Cut nodes
 					e.stopPropagation();
 					e.preventDefault();
 
 					this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
-				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) === true && e.altKey === true) {
+				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) && e.altKey) {
 					// Create a new workflow
 					e.stopPropagation();
 					e.preventDefault();
@@ -954,7 +937,7 @@ export default mixins(
 						title: this.$locale.baseText('nodeView.showMessage.keyDown.title'),
 						type: 'success',
 					});
-				} else if ((e.key === 's') && (this.isCtrlKeyPressed(e) === true)) {
+				} else if ((e.key === 's') && this.isCtrlKeyPressed(e)) {
 					// Save workflow
 					e.stopPropagation();
 					e.preventDefault();
@@ -972,9 +955,9 @@ export default mixins(
 						if (lastSelectedNode.type === STICKY_NODE_TYPE && this.isReadOnly) {
 							return;
 						}
-						this.$store.commit('setActiveNode', lastSelectedNode.name);
+						this.$store.commit('ndv/setActiveNodeName', lastSelectedNode.name);
 					}
-				} else if (e.key === 'ArrowRight' && e.shiftKey === true) {
+				} else if (e.key === 'ArrowRight' && e.shiftKey) {
 					// Select all downstream nodes
 					e.stopPropagation();
 					e.preventDefault();
@@ -994,7 +977,7 @@ export default mixins(
 					}
 
 					this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
-				} else if (e.key === 'ArrowLeft' && e.shiftKey === true) {
+				} else if (e.key === 'ArrowLeft' && e.shiftKey) {
 					// Select all downstream nodes
 					e.stopPropagation();
 					e.preventDefault();
@@ -1037,14 +1020,14 @@ export default mixins(
 
 					const connections = workflow.connectionsByDestinationNode[lastSelectedNode.name];
 
-					if (connections.main === undefined || connections.main.length === 0) {
+					if (!Array.isArray(connections.main) || !connections.main.length) {
 						return;
 					}
 
 					const parentNode = connections.main[0][0].node;
 					const connectionsParent = this.$store.getters.outgoingConnectionsByNodeName(parentNode);
 
-					if (connectionsParent.main === undefined || connectionsParent.main.length === 0) {
+					if (!Array.isArray(connectionsParent.main) || !connectionsParent.main.length) {
 						return;
 					}
 
@@ -1083,7 +1066,7 @@ export default mixins(
 			},
 
 			deactivateSelectedNode() {
-				if (this.editAllowedCheck() === false) {
+				if (!this.editAllowedCheck()) {
 					return;
 				}
 				this.disableNodes(this.$store.getters.getSelectedNodes);
@@ -1228,13 +1211,12 @@ export default mixins(
 				}
 
 				// https://docs.jsplumbtoolkit.com/community/current/articles/zooming.html
-				const prependProperties = ['webkit', 'moz', 'ms', 'o'];
 				const scaleString = 'scale(' + zoomLevel + ')';
 
-				for (let i = 0; i < prependProperties.length; i++) {
+				['webkit', 'moz', 'ms', 'o'].forEach((prefix) => {
 					// @ts-ignore
-					element.style[prependProperties[i] + 'Transform'] = scaleString;
-				}
+					element.style[prefix + 'Transform'] = scaleString;
+				});
 				element.style['transform'] = scaleString;
 
 				// @ts-ignore
@@ -1365,6 +1347,9 @@ export default mixins(
 				if (plainTextData.match(/^http[s]?:\/\/.*\.json$/i)) {
 					// Pasted data points to a possible workflow JSON file
 
+					if (!this.editAllowedCheck()) {
+						return;
+					}
 
 					const importConfirm = await this.confirmMessage(
 						this.$locale.baseText(
@@ -1377,7 +1362,7 @@ export default mixins(
 						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
 					);
 
-					if (importConfirm === false) {
+					if (!importConfirm) {
 						return;
 					}
 
@@ -1391,7 +1376,7 @@ export default mixins(
 						// Check first if it is valid JSON
 						workflowData = JSON.parse(plainTextData);
 
-						if (this.editAllowedCheck() === false) {
+						if (!this.editAllowedCheck()) {
 							return;
 						}
 					} catch (e) {
@@ -1576,8 +1561,8 @@ export default mixins(
 				this.lastSelectedConnection = null;
 				this.newNodeInsertPosition = null;
 
-				if (setActive === true) {
-					this.$store.commit('setActiveNode', node.name);
+				if (setActive) {
+					this.$store.commit('ndv/setActiveNodeName', node.name);
 				}
 			},
 			showMaxNodeTypeError(nodeTypeData: INodeTypeDescription) {
@@ -1811,7 +1796,7 @@ export default mixins(
 				this.__addConnection(connectionData, true);
 			},
 			async addNode(nodeTypeName: string, options: AddNodeOptions = {}) {
-				if (this.editAllowedCheck() === false) {
+				if (!this.editAllowedCheck()) {
 					return;
 				}
 
@@ -1943,7 +1928,7 @@ export default mixins(
 
 						CanvasHelpers.resetConnection(info.connection);
 
-						if (this.isReadOnly === false) {
+						if (!this.isReadOnly) {
 							let exitTimer: NodeJS.Timeout | undefined;
 							let enterTimer: NodeJS.Timeout | undefined;
 							info.connection.bind('mouseover', (connection: Connection) => {
@@ -2189,8 +2174,7 @@ export default mixins(
 			},
 			tryToAddWelcomeSticky: once(async function(this: any) {
 				const newWorkflow = this.workflowData;
-				const flagAvailable = window.posthog !== undefined && window.posthog.getFeatureFlag !== undefined;
-				if (flagAvailable && window.posthog.getFeatureFlag('welcome-note') === 'test') {
+				if (window.posthog?.getFeatureFlag?.('welcome-note') === 'test') {
 					// For novice users (onboardingFlowEnabled == true)
 					// Inject welcome sticky note and zoom to fit
 
@@ -2317,7 +2301,7 @@ export default mixins(
 				return CanvasHelpers.getInputEndpointUUID(node.id, index);
 			},
 			__addConnection(connection: [IConnection, IConnection], addVisualConnection = false) {
-				if (addVisualConnection === true) {
+				if (addVisualConnection) {
 					const outputUuid = this.getOutputEndpointUUID(connection[0].node, connection[0].index);
 					const inputUuid = this.getInputEndpointUUID(connection[1].node, connection[1].index);
 					if (!outputUuid || !inputUuid) {
@@ -2347,7 +2331,7 @@ export default mixins(
 				});
 			},
 			__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
-				if (removeVisualConnection === true) {
+				if (removeVisualConnection) {
 					const sourceId = this.$store.getters.getNodeByName(connection[0].node);
 					const targetId = this.$store.getters.getNodeByName(connection[1].node);
 					// @ts-ignore
@@ -2407,7 +2391,7 @@ export default mixins(
 				}
 			},
 			async duplicateNode(nodeName: string) {
-				if (this.editAllowedCheck() === false) {
+				if (!this.editAllowedCheck()) {
 					return;
 				}
 
@@ -2585,7 +2569,7 @@ export default mixins(
 				});
 			},
 			removeNode(nodeName: string) {
-				if (this.editAllowedCheck() === false) {
+				if (!this.editAllowedCheck()) {
 					return;
 				}
 
@@ -2612,7 +2596,7 @@ export default mixins(
 						}
 					}
 
-					if (deleteAllowed === false) {
+					if (!deleteAllowed) {
 						return;
 					}
 				}
@@ -2761,7 +2745,7 @@ export default mixins(
 				this.nodeSelectedByName(newName);
 
 				if (isActive) {
-					this.$store.commit('setActiveNode', newName);
+					this.$store.commit('ndv/setActiveNodeName', newName);
 					this.renamingActive = false;
 				}
 			},
@@ -3109,7 +3093,7 @@ export default mixins(
 				// Reset nodes
 				this.deleteEveryEndpoint();
 
-				if (this.executionWaitingForWebhook === true) {
+				if (this.executionWaitingForWebhook) {
 					// Make sure that if there is a waiting test-webhook that
 					// it gets removed
 					this.restApi().removeTestWebhook(this.$store.getters.workflowId)
@@ -3155,6 +3139,7 @@ export default mixins(
 			},
 			async loadCredentials(): Promise<void> {
 				await this.$store.dispatch('credentials/fetchAllCredentials');
+				await this.$store.dispatch('credentials/fetchForeignCredentials');
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes: INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
