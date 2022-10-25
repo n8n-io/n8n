@@ -103,7 +103,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		}
 
 		const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes);
-		console.log('zoomToFit', zoomLevel, offset);
 
 		setZoomLevel(zoomLevel);
 		rootStore.commit('setNodeViewOffsetPosition', {newOffset: offset});
