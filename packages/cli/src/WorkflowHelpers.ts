@@ -705,7 +705,7 @@ export function generateFailedExecutionFromError(
 	};
 }
 
-/** * Get all nodes in a workflow where the node credential is not accessible to the user. */
+/** Get all nodes in a workflow where the node credential is not accessible to the user. */
 export function getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCredIds: string[]) {
 	if (!workflow.nodes) {
 		return [];
