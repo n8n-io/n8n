@@ -126,8 +126,7 @@ const modules = {
 };
 
 export const store = new Vuex.Store({
-	// @ts-ignore
-	strict: import.meta.env.NODE_ENV !== 'production',
+	strict: process.env.NODE_ENV !== 'production',
 	modules,
 	state,
 	mutations: {
