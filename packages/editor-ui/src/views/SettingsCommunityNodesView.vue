@@ -60,19 +60,20 @@
 </template>
 
 <script lang="ts">
-import { mapGetters } from 'vuex';
-import SettingsView from './SettingsView.vue';
-import CommunityPackageCard from '../components/CommunityPackageCard.vue';
-import { showMessage } from '@/components/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '../constants';
+import { mapGetters } from 'vuex';
+import SettingsView from './SettingsView.vue';
+import CommunityPackageCard from '../components/CommunityPackageCard.vue';
+import { showMessage } from '@/components/mixins/showMessage';
+import mixins from 'vue-typed-mixins';
 import { PublicInstalledPackage } from 'n8n-workflow';
 
 import { useCommunityNodesStore } from '@/stores/communityNodes';
+import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
@@ -132,7 +133,7 @@ export default mixins(
 		}
 	},
 	computed: {
-		...mapStores(useCommunityNodesStore),
+		...mapStores(useCommunityNodesStore, useUIStore),
 		...mapGetters('settings', ['isNpmAvailable', 'isQueueModeEnabled']),
 		getEmptyStateDescription() {
 			const packageCount = this.communityNodesStore.availablePackageCount;
@@ -198,7 +199,7 @@ export default mixins(
 			const telemetryPayload = { is_empty_state: this.communityNodesStore.getInstalledPackages.length === 0 };
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
 			this.$externalHooks().run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
-			this.$store.dispatch('ui/openModal', COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
+			this.uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},
 });

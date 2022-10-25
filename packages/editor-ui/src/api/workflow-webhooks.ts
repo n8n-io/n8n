@@ -35,7 +35,7 @@ export async function applyForOnboardingCall(instanceId: string, currentUer: IUs
 	}
 }
 
-export async function submitEmailOnSignup(instanceId: string, currentUer: IUser, email: string, agree: boolean): Promise<string> {
+export async function submitEmailOnSignup(instanceId: string, currentUer: IUser, email: string | undefined, agree: boolean): Promise<string> {
 	return await post(
 		N8N_API_BASE_URL,
 		CONTACT_EMAIL_SUBMISSION_ENDPOINT,

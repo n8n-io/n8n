@@ -1,3 +1,4 @@
+import { IMenuItem } from 'n8n-design-system';
 import {
 	GenericValue,
 	IConnections,
@@ -851,6 +852,53 @@ export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
 }
 
+// TODO:
+//	- Make this the only root state once migration is done
+//	- Remove commented out props
+export interface rootStatePinia {
+	// --> UI store
+	// activeExecutions: IExecutionsCurrentSummaryExtended[];
+	// activeWorkflows: string[];
+	// activeActions: string[];
+	// activeCredentialType: string | null;
+	// activeNode: string | null;
+	baseUrl: string;
+	defaultLocale: string;
+	endpointWebhook: string;
+	endpointWebhookTest: string;
+	executionId: string | null;
+	executingNode: string | null;
+	executionWaitingForWebhook: boolean;
+	pushConnectionActive: boolean;
+	saveDataErrorExecution: string;
+	saveDataSuccessExecution: string;
+	saveManualExecutions: boolean;
+	timezone: string;
+	// stateIsDirty: boolean; // --> UI Store
+	executionTimeout: number;
+	maxExecutionTimeout: number;
+	versionCli: string;
+	oauthCallbackUrls: object;
+	n8nMetadata: object;
+	// workflowExecutionData: IExecutionResponse | null; // --> WF store
+	// lastSelectedNode: string | null; // --> UI Store
+	// lastSelectedNodeOutputIndex: number | null; // --> UI Store
+	// nodeViewOffsetPosition: XYPosition; // --> UI Store
+	// nodeViewMoveInProgress: boolean; // --> UI Store
+	// selectedNodes: INodeUi[]; // --> UI Store
+	sessionId: string;
+	urlBaseWebhook: string;
+	// workflow: IWorkflowDb; // --> WF Store
+	// sidebarMenuItems: IMenuItem[]; // --> UI Store
+	instanceId: string;
+	nodeMetadata: nodeMetadataMap;
+	isNpmAvailable: boolean;
+}
+
+export interface nodeMetadataMap {
+	[nodeName: string]: INodeMetadata;
+}
+
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
@@ -888,12 +936,12 @@ export interface IRootState {
 	workflowsById: IWorkflowsMap;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
-	nodeMetadata: {[nodeName: string]: INodeMetadata};
+	nodeMetadata: nodeMetadataMap;
 	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
 }
 
-export interface ICommunityPackageMap {
+export interface communityPackageMap {
 	[name: string]: PublicInstalledPackage;
 }
 
@@ -983,6 +1031,52 @@ export interface IUiState {
 	fakeDoorFeatures: IFakeDoor[];
 }
 
+export interface uiState {
+	activeExecutions: IExecutionsCurrentSummaryExtended[];
+	activeWorkflows: string[];
+	activeActions: string[];
+	activeCredentialType: string | null;
+	activeNode: string | null;
+	sidebarMenuCollapsed: boolean;
+	modalStack: string[];
+	modals: {
+		[key: string]: IModalState;
+	};
+	isPageLoading: boolean;
+	currentView: string;
+	ndv: {
+		sessionId: string;
+		input: {
+			displayMode: IRunDataDisplayMode;
+		};
+		output: {
+			displayMode: IRunDataDisplayMode;
+			editMode: {
+				enabled: boolean;
+				value: string;
+			};
+		};
+		focusedMappableInput: string;
+		mappingTelemetry: {[key: string]: string | number | boolean};
+	};
+	mainPanelPosition: number;
+	fakeDoorFeatures: IFakeDoor[];
+	draggable: {
+		isDragging: boolean;
+		type: string;
+		data: string;
+		canDrop: boolean;
+		stickyPosition: null | XYPosition;
+	};
+	stateIsDirty: boolean;
+	lastSelectedNode: string | null;
+	lastSelectedNodeOutputIndex: number | null;
+	nodeViewOffsetPosition: XYPosition;
+	nodeViewMoveInProgress: boolean;
+	selectedNodes: INodeUi[];
+	sidebarMenuItems: IMenuItem[];
+}
+
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export type IFakeDoor = {
@@ -1066,9 +1160,9 @@ export interface IWorkflowsMap {
 
 export interface IWorkflowsState {}
 
-export interface ICommunityNodesState {
+export interface communityNodesState {
 	availablePackageCount: number;
-	installedPackages: ICommunityPackageMap;
+	installedPackages: communityPackageMap;
 }
 
 export interface IRestApiContext {

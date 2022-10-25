@@ -401,3 +401,9 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	'imap': 'IMAP',
 	'imaps': 'IMAP',
 };
+
+export enum STORES {
+	ROOT = 'root',
+	COMMUNITY_NODES = 'communityNodes',
+	UI = 'ui',
+}

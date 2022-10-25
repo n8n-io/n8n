@@ -4,26 +4,22 @@ import { defineStore } from "pinia";
 import { useRootStore } from "./n8nRootStore";
 import { PublicInstalledPackage } from 'n8n-workflow';
 import Vue from "vue";
-import { ICommunityPackageMap } from "@/Interface";
+import { communityNodesState, communityPackageMap } from "@/Interface";
+import { STORES } from "@/constants";
 
 const LOADER_DELAY = 300;
 
-export interface ICommunityNodesState {
-	availablePackageCount: number;
-	installedPackages: { [name: string]: PublicInstalledPackage };
-}
-
-export const useCommunityNodesStore = defineStore('communityNodes', {
-	state: (): ICommunityNodesState => ({
+export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, {
+	state: (): communityNodesState => ({
 		// -1 means that package count has not been fetched yet
 		availablePackageCount: -1,
 		installedPackages: {},
 	}),
 	getters: {
-		getInstalledPackages: (state) => {
+		getInstalledPackages: (state: communityNodesState) => {
 			return Object.values(state.installedPackages).sort((a, b) => a.packageName.localeCompare(b.packageName));
 		},
-		getInstalledPackageByName: (state) => {
+		getInstalledPackageByName: (state: communityNodesState) => {
 			return (name: string): PublicInstalledPackage => state.installedPackages[name];
 		},
 	},
@@ -71,7 +67,7 @@ export const useCommunityNodesStore = defineStore('communityNodes', {
 			}
 		},
 		setInstalledPackages(packages: PublicInstalledPackage[]) {
-			this.installedPackages = packages.reduce((packageMap: ICommunityPackageMap, pack: PublicInstalledPackage) => {
+			this.installedPackages = packages.reduce((packageMap: communityPackageMap, pack: PublicInstalledPackage) => {
 				packageMap[pack.packageName] = pack;
 				return packageMap;
 			}, {});
