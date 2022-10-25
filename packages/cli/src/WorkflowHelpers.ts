@@ -239,6 +239,21 @@ export async function executeErrorWorkflow(
 }
 
 /**
+ * Derive `className` from `sourcePath`. `constructor.name` cannot be used when reading from cache.
+ */
+const toClassName = (sourcePath: string) => {
+	const lastSegment = sourcePath.split('/').pop();
+
+	if (!lastSegment) throw new Error('Failed to extract className from sourcePath');
+
+	const className = lastSegment.split('.').shift();
+
+	if (!className) throw new Error('Failed to extract className from sourcePath');
+
+	return className;
+};
+
+/**
  * Returns all the defined NodeTypes
  *
  */
@@ -254,7 +269,7 @@ export function getAllNodeTypeData(): ITransferNodeTypes {
 		}
 
 		returnData[nodeTypeName] = {
-			className: nodeTypes.nodeTypes[nodeTypeName].type.constructor.name,
+			className: toClassName(nodeTypes.nodeTypes[nodeTypeName].sourcePath),
 			sourcePath: nodeTypes.nodeTypes[nodeTypeName].sourcePath,
 		};
 	}
@@ -278,7 +293,7 @@ export function getAllCredentalsTypeData(): ICredentialsTypeData {
 		}
 
 		returnData[credentialTypeName] = {
-			className: credentialTypes.credentialTypes[credentialTypeName].type.constructor.name,
+			className: toClassName(credentialTypes.credentialTypes[credentialTypeName].sourcePath),
 			sourcePath: credentialTypes.credentialTypes[credentialTypeName].sourcePath,
 		};
 	}
@@ -296,21 +311,6 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	// Check which node-types have to be loaded
 	// eslint-disable-next-line @typescript-eslint/no-use-before-define
 	const neededNodeTypes = getNeededNodeTypes(nodes);
-
-	/**
-	 * Derive `className` from `sourcePath`. `constructor.name` cannot be used when reading from cache.
-	 */
-	const toClassName = (sourcePath: string) => {
-		const lastSegment = sourcePath.split('/').pop();
-
-		if (!lastSegment) throw new Error('Failed to extract className from sourcePath');
-
-		const className = lastSegment.split('.').shift();
-
-		if (!className) throw new Error('Failed to extract className from sourcePath');
-
-		return className;
-	};
 
 	// Get all the data of the needed node types that they
 	// can be loaded again in the process
@@ -340,8 +340,9 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
 	const credentialType = credentialTypes.getByName(type);
 
 	const credentialTypeData: ICredentialsTypeData = {};
+
 	credentialTypeData[type] = {
-		className: credentialTypes.credentialTypes[type].type.constructor.name,
+		className: toClassName(credentialTypes.credentialTypes[type].sourcePath),
 		sourcePath: credentialTypes.credentialTypes[type].sourcePath,
 	};
 
@@ -355,7 +356,7 @@ export function getCredentialsDataWithParents(type: string): ICredentialsTypeDat
 		}
 
 		credentialTypeData[typeName] = {
-			className: credentialTypes.credentialTypes[typeName].type.constructor.name,
+			className: toClassName(credentialTypes.credentialTypes[type].sourcePath),
 			sourcePath: credentialTypes.credentialTypes[typeName].sourcePath,
 		};
 		Object.assign(credentialTypeData, getCredentialsDataWithParents(typeName));

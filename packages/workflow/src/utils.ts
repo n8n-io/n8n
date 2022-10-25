@@ -6,10 +6,14 @@
 import path from 'path';
 import type {
 	ICredentialTestFunction,
-	INodeListSearchResult,
+	ICredentialType,
+	ICredentialTypes,
+	IHttpRequestOptions,
 	INodePropertyOptions,
-	INodeType,
 	INodeTypes,
+	ICredentialDataDecryptedObject,
+	INodeListSearchResult,
+	INodeType,
 } from '.';
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
@@ -55,6 +59,10 @@ type DistNodeModule = {
 			listSearch?: { [methodName: string]: ListSearchMethod };
 			credentialTest?: { [testedBy: string]: ICredentialTestFunction };
 		};
+		authenticate(
+			credentials: ICredentialDataDecryptedObject,
+			requestOptions: IHttpRequestOptions,
+		): Promise<IHttpRequestOptions>;
 		webhookMethods: { [key: string]: { [key: string]: Function } };
 	};
 };
@@ -101,6 +109,30 @@ export function requireDistNode(nodeType: INodeType, nodeTypes: INodeTypes) {
 		return new _module[nodeClassName]();
 	} catch (error) {
 		throw new Error(`Failed to instantiate node at ${sourcePath}`);
+	}
+}
+
+export function requireDistCred(credType: ICredentialType, credTypes: ICredentialTypes) {
+	const credSourcePath = credTypes.getSourcePath!(credType.name);
+
+	let _module;
+
+	try {
+		_module = require(credSourcePath) as DistNodeModule;
+	} catch (_) {
+		throw new Error(`Failed to require node at ${credSourcePath}`);
+	}
+
+	const nodeClassName = credSourcePath.split('/').pop()?.split('.').shift();
+
+	if (!nodeClassName) {
+		throw new Error(`Failed to extract class name from ${credSourcePath}`);
+	}
+
+	try {
+		return new _module[nodeClassName]();
+	} catch (error) {
+		throw new Error(`Failed to instantiate credential at ${credSourcePath}`);
 	}
 }
 

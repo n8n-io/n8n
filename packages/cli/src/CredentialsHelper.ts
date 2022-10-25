@@ -38,7 +38,7 @@ import {
 	LoggerProxy as Logger,
 	IHttpRequestHelper,
 	requireDistNode,
-	ICredentialTestRequest,
+	requireDistCred,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -94,6 +94,15 @@ export class CredentialsHelper extends ICredentialsHelper {
 				// Special authentication function is defined
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 				return credentialType.authenticate(credentials, requestOptions as IHttpRequestOptions);
+			}
+
+			const isCachedCredential =
+				typeof credentialType.authenticate === 'object' &&
+				Object.keys(credentialType.authenticate).length === 0;
+
+			if (isCachedCredential) {
+				const distCred = requireDistCred(credentialType, this.credentialTypes);
+				return distCred.authenticate(credentials, requestOptions as IHttpRequestOptions);
 			}
 
 			if (typeof credentialType.authenticate === 'object') {

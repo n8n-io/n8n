@@ -328,6 +328,7 @@ export interface ICredentialTypes {
 	init(credentialTypes?: ICredentialTypeData): Promise<void>;
 	getAll(): ICredentialType[];
 	getByName(credentialType: string): ICredentialType;
+	getSourcePath?: (credTypeName: string) => string;
 }
 
 // The way the credentials get saved in the database (data encrypted)
