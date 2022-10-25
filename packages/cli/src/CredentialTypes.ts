@@ -19,6 +19,14 @@ class CredentialTypesClass implements ICredentialTypesInterface {
 		return this.cache;
 	}
 
+	getSourcePath(credTypeName: string) {
+		const credType = this.credentialTypes[credTypeName];
+
+		if (!credType) throw new Error(`Unknown credential type: ${credTypeName}`);
+
+		return credType.sourcePath;
+	}
+
 	getByName(credentialType: string): ICredentialType {
 		try {
 			return this.credentialTypes[credentialType].type;
