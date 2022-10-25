@@ -19,7 +19,7 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypeNameVersion,
-	INodeVersionedType,
+	IVersionedNodeType,
 	LoggerProxy,
 	jsonParse,
 } from 'n8n-workflow';
@@ -351,7 +351,7 @@ class LoadNodesAndCredentialsClass {
 		nodeName: string,
 		filePath: string,
 	): INodeTypeNameVersion | undefined {
-		let tempNode: INodeType | INodeVersionedType;
+		let tempNode: INodeType | IVersionedNodeType;
 		let nodeVersion = 1;
 
 		try {
@@ -375,9 +375,9 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		if (tempNode.hasOwnProperty('nodeVersions')) {
-			const versionedNodeType = (tempNode as INodeVersionedType).getNodeType();
+			const versionedNodeType = (tempNode as IVersionedNodeType).getNodeType();
 			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
-			nodeVersion = (tempNode as INodeVersionedType).currentVersion;
+			nodeVersion = (tempNode as IVersionedNodeType).currentVersion;
 
 			if (
 				versionedNodeType.description.icon !== undefined &&
@@ -459,7 +459,7 @@ class LoadNodesAndCredentialsClass {
 		filePath,
 		isCustom,
 	}: {
-		node: INodeType | INodeVersionedType;
+		node: INodeType | IVersionedNodeType;
 		filePath: string;
 		isCustom: boolean;
 	}) {
