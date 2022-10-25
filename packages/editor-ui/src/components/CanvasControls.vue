@@ -82,11 +82,11 @@ onBeforeUnmount(() => {
 
 .regularZoomMenu {
 	@media (max-width: $breakpoint-2xs) {
-		transform: translateY(90px);
+		transform: translateY(-90px);
 	}
 }
 
 .demoZoomMenu {
-	transform: translate(10px);
+	transform: translate(-10px, 10px);
 }
 </style>
