@@ -112,16 +112,16 @@ export const pageFields = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+							regex: '([a-z0-9-]{2,})',
 							errorMessage: 'Not a valid Notion Page ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+					regex: '([a-z0-9-]{2,})',
 				},
-				url: '=https://www.notion.so/{{$value}}',
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {
@@ -187,16 +187,16 @@ export const pageFields = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+							regex: '([a-z0-9-]{2,})',
 							errorMessage: 'Not a valid Notion Page ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{2,})',
+					regex: '([a-z0-9-]{2,})',
 				},
-				url: '=https://www.notion.so/{{$value}}',
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {
