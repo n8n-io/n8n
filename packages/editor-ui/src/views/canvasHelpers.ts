@@ -1,7 +1,7 @@
 import { getStyleTokenValue, isNumber } from "@/components/helpers";
 import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
-import { IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
-import { Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
+import { EndpointStyle, IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
+import { AnchorArraySpec, Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
 	IConnection,
 	INode,
@@ -146,7 +146,7 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 
 export const ANCHOR_POSITIONS: {
 	[key: string]: {
-		[key: number]: number[][];
+		[key: number]: AnchorArraySpec[];
 	}
 } = {
 	input: {
@@ -192,7 +192,7 @@ export const ANCHOR_POSITIONS: {
 };
 
 
-export const getInputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string) => ({
+export const getInputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string): EndpointStyle => ({
 	width: 8,
 	height: nodeTypeData && nodeTypeData.outputs.length > 2 ? 18 : 20,
 	fill: getStyleTokenValue(color),
@@ -200,7 +200,7 @@ export const getInputEndpointStyle = (nodeTypeData: INodeTypeDescription, color:
 	lineWidth: 0,
 });
 
-export const getInputNameOverlay = (label: string) => ([
+export const getInputNameOverlay = (label: string): OverlaySpec => ([
 	'Label',
 	{
 		id: OVERLAY_INPUT_NAME_LABEL,
@@ -217,7 +217,7 @@ export const getOutputEndpointStyle = (nodeTypeData: INodeTypeDescription, color
 	outlineStroke: 'none',
 });
 
-export const getOutputNameOverlay = (label: string) => ([
+export const getOutputNameOverlay = (label: string): OverlaySpec => ([
 	'Label',
 	{
 		id: OVERLAY_OUTPUT_NAME_LABEL,
