@@ -48,7 +48,7 @@ export class LoadNodeListSearch extends LoadNodeDetails {
 
 		// cached node, run method from source
 
-		const distNode = requireDistNode(nodeType, this.workflow);
+		const distNode = requireDistNode(nodeType, this.workflow.nodeTypes);
 
 		const distMethod = distNode.methods.listSearch?.[methodName];
 
