@@ -52,10 +52,10 @@ onBeforeUnmount(() => {
 	$--zoom-menu-margin: 15;
 
 	position: fixed;
-	left: 0;
-	transform: translateX($sidebar-width + $--zoom-menu-margin);
 	width: 210px;
-	bottom: 44px;
+	left: 0;
+	bottom: 0;
+	transform: translate($sidebar-width + $--zoom-menu-margin, 44px);
 	line-height: 25px;
 	color: #444;
 	padding-right: 5px;
@@ -82,12 +82,11 @@ onBeforeUnmount(() => {
 
 .regularZoomMenu {
 	@media (max-width: $breakpoint-2xs) {
-		bottom: 90px;
+		transform: translateY(90px);
 	}
 }
 
 .demoZoomMenu {
-	left: 10px;
-	bottom: 10px;
+	transform: translate(10px);
 }
 </style>
