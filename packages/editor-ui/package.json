@@ -82,7 +82,7 @@
     "@intlify/vue-i18n-loader": "^1.1.0",
     "@n8n_io/eslint-config": "",
     "@testing-library/jest-dom": "^5.16.5",
-    "@testing-library/vue": "^6.6.1",
+    "@testing-library/vue": "^5.8.3",
     "@types/dateformat": "^3.0.0",
     "@types/esprima": "^4.0.3",
     "@types/express": "^4.17.6",
@@ -109,9 +109,10 @@
     "string-template-parser": "^1.2.6",
     "tslint": "^6.1.2",
     "typescript": "~4.8.0",
-    "vite": "2.9",
+    "vite": "2.9.5",
     "vite-plugin-html": "^3.2.0",
     "vite-plugin-monaco-editor": "^1.0.10",
-    "vue-tsc": "^0.34.15"
+    "vue-tsc": "^0.34.15",
+    "vitest": "0.9.3"
   }
 }
