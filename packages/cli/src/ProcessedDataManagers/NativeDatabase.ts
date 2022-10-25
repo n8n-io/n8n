@@ -16,6 +16,7 @@ import {
 	GenericHelpers,
 	IExternalHooksFileData,
 	IProcessedDataEntries,
+	IProcessedDataLatest,
 	IWorkflowBase,
 } from '..';
 
@@ -68,6 +69,13 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		return [...items].sort();
 	}
 
+	private static compareValues(
+		value1: ProcessedDataItemTypes,
+		value2: ProcessedDataItemTypes,
+	): boolean {
+		return value1 > value2;
+	}
+
 	private static createContext(
 		context: ProcessedDataContext,
 		contextData: ICheckProcessedContextData,
@@ -109,7 +117,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		if (processedData && processedData.value.mode !== options.mode) {
 			throw new Error(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				`Mode is not compatible. Data got originally used with mode "${processedData?.value.mode}" but gets queried with mode "${options.mode}"`,
+				`Mode is not compatible. Data got originally saved with mode "${processedData?.value.mode}" but gets queried with mode "${options.mode}"`,
 			);
 		}
 
@@ -120,12 +128,14 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		}
 
 		if (options.mode === 'latest') {
+			const processedDataValue = processedData.value as IProcessedDataLatest;
+
 			const incomingItems = ProcessedDataManagerNativeDatabase.sortEntries(items);
 			incomingItems.forEach((item) => {
-				if (item <= processedData.value.data) {
-					returnData.processed.push(item);
-				} else {
+				if (ProcessedDataManagerNativeDatabase.compareValues(item, processedDataValue.data)) {
 					returnData.new.push(item);
+				} else {
+					returnData.processed.push(item);
 				}
 			});
 			return returnData;
@@ -168,7 +178,7 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 		if (processedData && processedData.value.mode !== options.mode) {
 			throw new Error(
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-				`Mode is not compatible. Data got originally used with mode "${processedData?.value.mode}" but gets queried with mode "${options.mode}"`,
+				`Mode is not compatible. Data got originally saved with mode "${processedData?.value.mode}" but gets queried with mode "${options.mode}"`,
 			);
 		}
 
@@ -197,16 +207,17 @@ export class ProcessedDataManagerNativeDatabase implements IProcessedDataManager
 				processed: [],
 			};
 
-			let largestValue = processedData.value.data;
+			let largestValue = processedData.value.data as ProcessedDataItemTypes;
+			const processedDataValue = processedData.value as IProcessedDataLatest;
 
 			incomingItems.forEach((item) => {
-				if (item <= processedData.value.data) {
-					returnData.processed.push(item);
-				} else {
+				if (ProcessedDataManagerNativeDatabase.compareValues(item, processedDataValue.data)) {
 					returnData.new.push(item);
-					if (item > largestValue) {
+					if (ProcessedDataManagerNativeDatabase.compareValues(item, largestValue)) {
 						largestValue = item;
 					}
+				} else {
+					returnData.processed.push(item);
 				}
 			});
 
