@@ -34,10 +34,15 @@ export async function linkedInApiRequest(
 		delete options.body;
 	}
 
+	const authentication = this.getNodeParameter('authentication', 0, 'oAuth2') as string;
 	try {
-		return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, {
-			tokenType: 'Bearer',
-		});
+		if (authentication === 'oAuth2') {
+			return await this.helpers.requestOAuth2!.call(this, 'linkedInOAuth2Api', options, {
+				tokenType: 'Bearer',
+			});
+		} else {
+			return await this.helpers.requestWithAuthentication.call(this, 'linkedInApi', options);
+		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
