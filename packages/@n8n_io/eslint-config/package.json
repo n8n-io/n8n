@@ -13,8 +13,7 @@
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-n8n-local-rules": "^1.0.0",
     "eslint-plugin-prettier": "^4.2.1",
-    "eslint-plugin-vue": "^9.4.0",
-    "jest": "^28.1.3"
+    "eslint-plugin-vue": "^9.4.0"
   },
   "scripts": {
     "test": "jest"
