@@ -2,7 +2,7 @@
 	"node": "n8n-nodes-base.ftp",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": ["Data & Storage", "Development", "Utility"],
+	"categories": ["Core Nodes", "Data & Storage", "Development", "Utility"],
 	"resources": {
 		"credentialDocumentation": [
 			{
@@ -15,5 +15,8 @@
 			}
 		]
 	},
-	"alias": ["SFTP"]
+	"alias": ["SFTP"],
+	"subcategories": {
+		"Core Nodes": ["Files"]
+	}
 }

@@ -14,6 +14,7 @@
 		:showMappingHint="draggableHintShown"
 		:distanceFromActive="currentNodeDepth"
 		paneType="input"
+		@itemHover="$emit('itemHover', $event)"
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
@@ -74,7 +75,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
-import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, START_NODE_TYPE } from '@/constants';
+import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
 
 export default mixins(
 	workflowHelpers,
@@ -111,13 +112,13 @@ export default mixins(
 	},
 	computed: {
 		focusedMappableInput(): string {
-			return this.$store.getters['ui/focusedMappableInput'];
+			return this.$store.getters['ndv/focusedMappableInput'];
 		},
 		isUserOnboarded(): boolean {
 			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
 		},
 		showDraggableHint(): boolean {
-			const toIgnore = [START_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
+			const toIgnore = [START_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, CRON_NODE_TYPE, INTERVAL_NODE_TYPE];
 			if (!this.currentNode || toIgnore.includes(this.currentNode.type)) {
 				return false;
 			}
@@ -146,7 +147,7 @@ export default mixins(
 			return this.workflow as Workflow;
 		},
 		activeNode (): INodeUi | null {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		currentNode (): INodeUi | null {
 			return this.$store.getters.getNodeByName(this.currentNodeName);

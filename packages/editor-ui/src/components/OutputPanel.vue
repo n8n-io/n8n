@@ -15,6 +15,7 @@
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@tableMounted="$emit('tableMounted', $event)"
+		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
 	>
 		<template v-slot:header>
@@ -111,7 +112,7 @@ export default mixins(
 	},
 	computed: {
 		node(): INodeUi {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
@@ -120,7 +121,7 @@ export default mixins(
 			return null;
 		},
 		isTriggerNode (): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
 		},
 		isPollingTypeNode (): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
@@ -149,6 +150,8 @@ export default mixins(
 			return executionData.resultData.runData;
 		},
 		hasNodeRun(): boolean {
+			if (this.$store.getters.subworkflowExecutionError) return true;
+
 			return Boolean(
 				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
 			);
@@ -199,7 +202,7 @@ export default mixins(
 			return updatedAt > runAt;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
-			return this.$store.getters['ui/outputPanelEditMode'];
+			return this.$store.getters['ndv/outputPanelEditMode'];
 		},
 		canPinData(): boolean {
 			return this.isPinDataNodeType && !this.isReadOnly;

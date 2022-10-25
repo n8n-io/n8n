@@ -65,6 +65,8 @@ export abstract class ExecutionBaseError extends Error {
 
 	context: IDataObject = {};
 
+	lineNumber: number | undefined;
+
 	constructor(error: Error | ExecutionBaseError | JsonObject) {
 		super();
 		this.name = this.constructor.name;
@@ -211,6 +213,8 @@ abstract class NodeError extends ExecutionBaseError {
  * Class for instantiating an operational error, e.g. an invalid credentials error.
  */
 export class NodeOperationError extends NodeError {
+	lineNumber: number | undefined;
+
 	constructor(
 		node: INode,
 		error: Error | string,
