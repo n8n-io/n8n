@@ -694,14 +694,6 @@ export const schema = {
 		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
-	ldap: {
-		disabled: {
-			format: Boolean,
-			default: false,
-			env: 'N8N_LDAP_DISABLED',
-		},
-	},
-
 	externalHookFiles: {
 		doc: 'Files containing external hooks. Multiple files can be separated by colon (":")',
 		format: String,
