@@ -241,16 +241,16 @@ const typeMention: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '([a-z0-9]{2,}).*',
+							regex: '([a-z0-9-]{2,})',
 							errorMessage: 'Not a valid Notion Database ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '([a-z0-9]{2,})',
+					regex: '([a-z0-9-]{2,})',
 				},
-				url: '=https://www.notion.so/{{$value}}',
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
 		],
 		displayOptions: {
