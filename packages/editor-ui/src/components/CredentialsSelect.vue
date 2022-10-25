@@ -7,6 +7,7 @@
 				:value="displayValue"
 				:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
 				:title="displayTitle"
+				:disabled="isReadOnly"
 				ref="innerSelect"
 				@change="(value) => $emit('valueChanged', value)"
 				@keydown.stop

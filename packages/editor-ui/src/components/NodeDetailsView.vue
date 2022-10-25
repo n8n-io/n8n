@@ -54,7 +54,7 @@
 						:linkedRuns="linked"
 						:currentNodeName="inputNodeName"
 						:sessionId="sessionId"
-						:readOnly="readOnly"
+						:readOnly="readOnly || hasForeignCredential"
 						@linkRun="onLinkRunToInput"
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
@@ -71,7 +71,7 @@
 						:runIndex="outputRun"
 						:linkedRuns="linked"
 						:sessionId="sessionId"
-						:isReadOnly="readOnly"
+						:isReadOnly="readOnly || hasForeignCredential"
 						:blockUI="blockUi && isTriggerNode"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
@@ -87,6 +87,7 @@
 						:dragging="isDragging"
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
+						:isReadOnly="readOnly || hasForeignCredential"
 						:blockUI="blockUi && showTriggerPanel"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
@@ -116,7 +117,7 @@ import {
 	Workflow,
 	jsonParse,
 } from 'n8n-workflow';
-import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '../Interface';
+import { IExecutionResponse, INodeUi, IUpdateInformation, TargetItem } from '@/Interface';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -138,7 +139,7 @@ import {
 } from '@/constants';
 import { workflowActivate } from './mixins/workflowActivate';
 import { pinData } from "@/components/mixins/pinData";
-import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 
 export default mixins(
 	externalHooks,
@@ -176,6 +177,7 @@ export default mixins(
 			pinDataDiscoveryTooltipVisible: false,
 			avgInputRowHeight: 0,
 			avgOutputRowHeight: 0,
+			hasForeignCredential: false,
 		};
 	},
 	mounted() {
@@ -366,6 +368,8 @@ export default mixins(
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
+
+				this.checkForeignCredentials();
 
 				setTimeout(() => {
 					if (this.activeNode) {
@@ -609,6 +613,10 @@ export default mixins(
 				selection_value: index,
 				input_node_type: this.inputNode ? this.inputNode.type : '',
 			});
+		},
+		checkForeignCredentials() {
+			const issues = this.getNodeCredentialIssues(this.activeNode);
+			this.hasForeignCredential = !!issues?.credentials?.foreign;
 		},
 	},
 });

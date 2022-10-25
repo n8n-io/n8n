@@ -1,4 +1,15 @@
 import {
+	jsPlumbInstance,
+	DragOptions,
+	DropOptions,
+	ElementGroupRef,
+	Endpoint,
+	EndpointOptions,
+	EndpointRectangle,
+	EndpointRectangleOptions,
+	EndpointSpec,
+} from "jsplumb";
+import {
 	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
@@ -104,24 +115,40 @@ declare module 'jsplumb' {
 }
 
 // EndpointOptions from jsplumb seems incomplete and wrong so we define an own one
-export interface IEndpointOptions {
-	anchor?: any; // tslint:disable-line:no-any
-	createEndpoint?: boolean;
-	dragAllowedWhenFull?: boolean;
-	dropOptions?: any; // tslint:disable-line:no-any
-	dragProxy?: any; // tslint:disable-line:no-any
-	endpoint?: string;
-	endpointStyle?: object;
-	endpointHoverStyle?: object;
-	isSource?: boolean;
-	isTarget?: boolean;
-	maxConnections?: number;
-	overlays?: any; // tslint:disable-line:no-any
-	parameters?: any; // tslint:disable-line:no-any
-	uuid?: string;
-	enabled?: boolean;
-	cssClass?: string;
-}
+export type IEndpointOptions = Omit<EndpointOptions, 'endpoint' | 'dragProxy'> & {
+	endpointStyle: EndpointStyle
+	endpointHoverStyle: EndpointStyle
+	endpoint?: EndpointSpec | string
+	dragAllowedWhenFull?: boolean
+	dropOptions?: DropOptions & {
+		tolerance: string
+	};
+	dragProxy?: string | string[] | EndpointSpec | [ EndpointRectangle,  EndpointRectangleOptions & { strokeWidth: number } ]
+};
+
+export type EndpointStyle = {
+	width?: number
+	height?: number
+	fill?: string
+	stroke?: string
+	outlineStroke?:string
+	lineWidth?: number
+	hover?: boolean
+	showOutputLabel?: boolean
+	size?: string
+	hoverMessage?: string
+};
+
+export type IDragOptions = DragOptions & {
+	grid: [number, number]
+	filter: string
+};
+
+export type IJsPlumbInstance = Omit<jsPlumbInstance, 'addEndpoint' | 'draggable'> & {
+	clearDragSelection: () => void
+	addEndpoint(el: ElementGroupRef, params?: IEndpointOptions, referenceParams?: IEndpointOptions): Endpoint | Endpoint[]
+	draggable(el: {}, options?: IDragOptions): IJsPlumbInstance
+};
 
 export interface IUpdateInformation {
 	name: string;
@@ -908,6 +935,7 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
+	foreignCredentials?: ICredentialMap;
 }
 
 export interface ITagsState {

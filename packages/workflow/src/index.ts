@@ -17,3 +17,11 @@ export * from './WorkflowErrors';
 export * from './WorkflowHooks';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export { deepCopy, jsonParse } from './utils';
+export {
+	isINodeProperties,
+	isINodePropertyOptions,
+	isINodePropertyCollection,
+	isINodePropertiesList,
+	isINodePropertyCollectionList,
+	isINodePropertyOptionsList,
+} from './type-guards';

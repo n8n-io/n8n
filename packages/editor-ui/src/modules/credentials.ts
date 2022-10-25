@@ -1,4 +1,5 @@
-import { getCredentialTypes,
+import {
+	getCredentialTypes,
 	getCredentialsNewName,
 	getAllCredentials,
 	deleteCredential,
@@ -8,6 +9,7 @@ import { getCredentialTypes,
 	oAuth2CredentialAuthorize,
 	oAuth1CredentialAuthorize,
 	testCredential,
+	getForeignCredentials,
 } from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -17,7 +19,7 @@ import {
 	ICredentialsState,
 	ICredentialTypeMap,
 	IRootState,
-} from '../Interface';
+} from '@/Interface';
 import {
 	ICredentialType,
 	ICredentialsDecrypted,
@@ -58,6 +60,15 @@ const module: Module<ICredentialsState, IRootState> = {
 				return accu;
 			}, {});
 		},
+		setForeignCredentials: (state: ICredentialsState, credentials: ICredentialsResponse[]) => {
+			state.foreignCredentials = credentials.reduce((accu: ICredentialMap, cred: ICredentialsResponse) => {
+				if (cred.id) {
+					accu[cred.id] = cred;
+				}
+
+				return accu;
+			}, {});
+		},
 		upsertCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			if (credential.id) {
 				Vue.set(state.credentials, credential.id, { ...state.credentials[credential.id], ...credential });
@@ -81,6 +92,10 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		allCredentials(state: ICredentialsState): ICredentialsResponse[] {
 			return Object.values(state.credentials)
+				.sort((a, b) => a.name.localeCompare(b.name));
+		},
+		allForeignCredentials(state: ICredentialsState): ICredentialsResponse[] {
+			return Object.values(state.foreignCredentials || {})
 				.sort((a, b) => a.name.localeCompare(b.name));
 		},
 		allCredentialsByType(state: ICredentialsState, getters: any): {[type: string]: ICredentialsResponse[]} { // tslint:disable-line:no-any
@@ -178,6 +193,12 @@ const module: Module<ICredentialsState, IRootState> = {
 		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
 			const credentials = await getAllCredentials(context.rootGetters.getRestApiContext);
 			context.commit('setCredentials', credentials);
+
+			return credentials;
+		},
+		fetchForeignCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
+			const credentials = await getForeignCredentials(context.rootGetters.getRestApiContext);
+			context.commit('setForeignCredentials', credentials);
 
 			return credentials;
 		},
