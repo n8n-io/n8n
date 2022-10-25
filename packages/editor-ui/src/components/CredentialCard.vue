@@ -48,6 +48,8 @@ import CredentialIcon from '@/components/CredentialIcon.vue';
 import {getCredentialPermissions, IPermissions} from "@/permissions";
 import {mapGetters} from "vuex";
 import dateformat from "dateformat";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -86,6 +88,7 @@ export default mixins(
 		},
 	},
 	computed: {
+		...mapStores(useUIStore),
 		currentUser (): IUser {
 			return this.$store.getters['users/currentUser'];
 		},
@@ -114,7 +117,7 @@ export default mixins(
 	},
 	methods: {
 		async onClick() {
-			this.$store.dispatch('ui/openExistingCredential', { id: this.data.id});
+			this.uiStore.openExistingCredential(this.data.id);
 		},
 		async onAction(action: string) {
 			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {

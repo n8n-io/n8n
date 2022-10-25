@@ -49,6 +49,8 @@ import PageAlert from '../components/PageAlert.vue';
 import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/components/mixins/showMessage';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(showMessage).extend({
 	name: 'SettingsUsersView',
@@ -62,6 +64,7 @@ export default mixins(showMessage).extend({
 		}
 	},
 	computed: {
+		...mapStores(useUIStore),
 		...mapGetters('users', ['allUsers', 'currentUserId', 'showUMSetupWarning']),
 		...mapGetters('settings', ['isSmtpSetup']),
 	},
@@ -70,13 +73,13 @@ export default mixins(showMessage).extend({
 			this.$router.push({name: VIEWS.SETUP});
 		},
 		onInvite() {
-			this.$store.dispatch('ui/openModal', INVITE_USER_MODAL_KEY);
+			this.uiStore.openModal(INVITE_USER_MODAL_KEY);
 		},
 		async onDelete(userId: string) {
 			const getUserById = this.$store.getters['users/getUserById'];
 			const user = getUserById(userId) as IUser | null;
 			if (user) {
-				this.$store.dispatch('ui/openDeleteUserModal', { id: userId });
+				this.uiStore.openDeleteUserModal(userId);
 			}
 		},
 		async onReinvite(userId: string) {

@@ -62,6 +62,8 @@ import dateformat from "dateformat";
 import { restApi } from '@/components/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Vue from "vue";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -103,6 +105,7 @@ export default mixins(
 		},
 	},
 	computed: {
+		...mapStores(useUIStore),
 		currentUser (): IUser {
 			return this.$store.getters['users/currentUser'];
 		},
@@ -162,7 +165,7 @@ export default mixins(
 			if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {
 				await this.onClick();
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE) {
-				await this.$store.dispatch('ui/openModalWithData', {
+				this.uiStore.openModalWithData({
 					name: DUPLICATE_MODAL_KEY,
 					data: {
 						id: this.data.id,

@@ -57,6 +57,8 @@ import { isEqual } from 'lodash';
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
 import { getSourceItems } from '@/pairedItemUtils';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -68,6 +70,9 @@ export const workflowHelpers = mixins(
 	showMessage,
 )
 	.extend({
+		computed: {
+			...mapStores(useUIStore),
+		},
 		methods: {
 			 executeData(parentNode: string[], currentNode: string, inputName: string, runIndex: number): IExecuteData {
 				const executeData = {
@@ -674,9 +679,9 @@ export const workflowHelpers = mixins(
 				}
 
 				if (workflow.active) {
-					this.$store.commit('setWorkflowActive', workflowId);
+					this.uiStore.setWorkflowActive(workflowId);
 				} else {
-					this.$store.commit('setWorkflowInactive', workflowId);
+					this.uiStore.setWorkflowInactive(workflowId);
 				}
 			},
 
@@ -688,7 +693,7 @@ export const workflowHelpers = mixins(
 
 				// Workflow exists already so update it
 				try {
-					this.$store.commit('addActiveAction', 'workflowSaving');
+					this.uiStore.addActiveAction('workflowSaving');
 
 					const workflowDataRequest: IWorkflowDataUpdate = await this.getWorkflowDataToSave();
 
@@ -713,12 +718,12 @@ export const workflowHelpers = mixins(
 					}
 
 					this.$store.commit('setStateDirty', false);
-					this.$store.commit('removeActiveAction', 'workflowSaving');
+					this.uiStore.removeActiveAction('workflowSaving');
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
 				} catch (error) {
-					this.$store.commit('removeActiveAction', 'workflowSaving');
+					this.uiStore.removeActiveAction('workflowSaving');
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),
@@ -732,7 +737,7 @@ export const workflowHelpers = mixins(
 
 			async saveAsNewWorkflow ({ name, tags, resetWebhookUrls, resetNodeIds, openInNewWindow, data }: {name?: string, tags?: string[], resetWebhookUrls?: boolean, openInNewWindow?: boolean, resetNodeIds?: boolean, data?: IWorkflowDataUpdate} = {}, redirect = true): Promise<boolean> {
 				try {
-					this.$store.commit('addActiveAction', 'workflowSaving');
+					this.uiStore.addActiveAction('workflowSaving');
 
 					const workflowDataRequest: IWorkflowDataUpdate = data || await this.getWorkflowDataToSave();
 					// make sure that the new ones are not active
@@ -771,7 +776,7 @@ export const workflowHelpers = mixins(
 					if (openInNewWindow) {
 						const routeData = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: workflowData.id}});
 						window.open(routeData.href, '_blank');
-						this.$store.commit('removeActiveAction', 'workflowSaving');
+						this.uiStore.removeActiveAction('workflowSaving');
 						return true;
 					}
 
@@ -809,13 +814,13 @@ export const workflowHelpers = mixins(
 						});
 					}
 
-					this.$store.commit('removeActiveAction', 'workflowSaving');
+					this.uiStore.removeActiveAction('workflowSaving');
 					this.$store.commit('setStateDirty', false);
 					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
 				} catch (e) {
-					this.$store.commit('removeActiveAction', 'workflowSaving');
+					this.uiStore.removeActiveAction('workflowSaving');
 
 					this.$showMessage({
 						title: this.$locale.baseText('workflowHelpers.showMessage.title'),

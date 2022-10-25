@@ -28,6 +28,8 @@
 
 <script lang="ts">
 import {IFakeDoor} from '@/Interface';
+import { useUIStore } from '@/stores/ui';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -43,6 +45,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(useUIStore),
 		userId(): string {
 			return this.$store.getters['users/currentUserId'];
 		},
@@ -52,8 +55,8 @@ export default Vue.extend({
 		instanceId(): string {
 			return this.$store.getters.instanceId;
 		},
-		featureInfo(): IFakeDoor {
-			return this.$store.getters['ui/getFakeDoorById'](this.featureId);
+		featureInfo(): IFakeDoor | undefined {
+			return this.uiStore.getFakeDoorById(this.featureId);
 		},
 	},
 	methods: {

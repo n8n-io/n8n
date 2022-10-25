@@ -203,6 +203,8 @@ import {
 } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(
 	externalHooks,
@@ -258,6 +260,7 @@ export default mixins(
 		}
 	},
 	computed: {
+		...mapStores(useUIStore),
 		statuses () {
 			return [
 				{
@@ -283,7 +286,7 @@ export default mixins(
 			];
 		},
 		activeExecutions (): IExecutionsCurrentSummaryExtended[] {
-			return this.$store.getters.getActiveExecutions;
+			return this.uiStore.activeExecutions;
 		},
 		combinedExecutions (): IExecutionsSummary[] {
 			const returnData: IExecutionsSummary[] = [];
@@ -471,7 +474,7 @@ export default mixins(
 				}
 			}
 
-			this.$store.commit('setActiveExecutions', activeExecutions);
+			this.uiStore.activeExecutions = activeExecutions;
 		},
 		async loadAutoRefresh () : Promise<void> {
 			const filter = this.workflowFilterPast;
@@ -491,7 +494,7 @@ export default mixins(
 				}
 			}
 
-			this.$store.commit('setActiveExecutions', results[1]);
+			this.uiStore.activeExecutions = results[1];
 
 			// execution IDs are typed as string, int conversion is necessary so we can order.
 			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => parseInt(exec.id, 10));

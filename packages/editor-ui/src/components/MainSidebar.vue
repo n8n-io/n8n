@@ -82,6 +82,8 @@ import {
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
 import Vue from 'vue';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(
 	genericHelpers,
@@ -108,10 +110,7 @@ export default mixins(
 			};
 		},
 		computed: {
-			...mapGetters('ui', {
-				isCollapsed: 'sidebarMenuCollapsed',
-				isNodeView: 'isNodeView',
-			}),
+			...mapStores(useUIStore),
 			...mapGetters('versions', [
 				'hasVersionUpdates',
 				'nextVersions',
@@ -124,6 +123,9 @@ export default mixins(
 				'isTemplatesEnabled',
 				'isUserManagementEnabled',
 			]),
+			isCollapsed(): boolean {
+				return this.uiStore.sidebarMenuCollapsed;
+			},
 			canUserAccessSettings(): boolean {
 				const accessibleRoute = this.findFirstAccessibleSettingsRoute();
 				return accessibleRoute !== null;
@@ -148,7 +150,7 @@ export default mixins(
 			},
  			mainMenuItems (): IMenuItem[] {
 				const items: IMenuItem[] = [];
-				const injectedItems = this.$store.getters.sidebarMenuItems as IMenuItem[];
+				const injectedItems =  this.uiStore.sidebarMenuItems;
 
 				if (injectedItems && injectedItems.length > 0) {
 					for(const item of injectedItems) {
@@ -304,7 +306,7 @@ export default mixins(
 				}
 			},
 			toggleCollapse () {
-				this.$store.commit('ui/toggleSidebarMenuCollapse');
+				this.uiStore.toggleSidebarMenuCollapse();
 				// When expanding, delay showing some element to ensure smooth animation
 				if (!this.isCollapsed) {
 					setTimeout(() => {
@@ -315,7 +317,7 @@ export default mixins(
 				}
 			},
 			openUpdatesPanel() {
-				this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
+				this.uiStore.openModal(VERSIONS_MODAL_KEY);
 			},
 			async handleSelect (key: string) {
 				switch (key) {
@@ -338,7 +340,7 @@ export default mixins(
 						break;
 					}
 					case 'executions': {
-						this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+						this.uiStore.openModal(EXECUTIONS_MODAL_KEY);
 						break;
 					}
 					case 'settings': {
@@ -353,7 +355,7 @@ export default mixins(
 					}
 					case 'about': {
 						this.trackHelpItemClick('about');
-						this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
+						this.uiStore.openModal(ABOUT_MODAL_KEY);
 						break;
 					}
 					case 'quickstart':
@@ -438,10 +440,10 @@ export default mixins(
 				this.checkWidthAndAdjustSidebar(browserWidth);
 			},
 			checkWidthAndAdjustSidebar (width: number) {
-				if (width < 900 || this.isNodeView) {
-					this.$store.commit('ui/collapseSidebarMenu');
+				if (width < 900 || this.uiStore.isNodeView) {
+					this.uiStore.sidebarMenuCollapsed = true;
 				} else {
-					this.$store.commit('ui/expandSidebarMenu');
+					this.uiStore.sidebarMenuCollapsed = false;
 				}
 			},
 		},

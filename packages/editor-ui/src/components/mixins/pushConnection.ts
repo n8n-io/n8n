@@ -22,6 +22,8 @@ import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '../helpers';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -40,6 +42,7 @@ export const pushConnection = mixins(
 			};
 		},
 		computed: {
+			...mapStores(useUIStore),
 			sessionId (): string {
 				return this.$store.getters.sessionId;
 			},
@@ -178,7 +181,7 @@ export const pushConnection = mixins(
 				}
 
 				if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
-					if (this.$store.getters.isActionActive('workflowRunning') === false) {
+					if (!this.uiStore.isActionActive('workflowRunning')) {
 						// No workflow is running so ignore the messages
 						return false;
 					}
@@ -197,9 +200,9 @@ export const pushConnection = mixins(
 					// The workflow finished executing
 					const pushData = receivedData.data;
 
-					this.$store.commit('finishActiveExecution', pushData);
+					this.uiStore.finishActiveExecution(pushData);
 
-					if (this.$store.getters.isActionActive('workflowRunning') === false) {
+					if (!this.uiStore.isActionActive('workflowRunning')) {
 						// No workflow is running so ignore the messages
 						return false;
 					}
@@ -239,7 +242,7 @@ export const pushConnection = mixins(
 						if (!isSavingExecutions) {
 							this.$root.$emit('registerGlobalLinkAction', 'open-settings', async () => {
 								if (this.$store.getters.isNewWorkflow) await this.saveAsNewWorkflow();
-								this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+								this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 							});
 
 							action = '<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
@@ -365,7 +368,7 @@ export const pushConnection = mixins(
 
 					this.$store.commit('setExecutingNode', null);
 					this.$store.commit('setWorkflowExecutionData', runDataExecuted);
-					this.$store.commit('removeActiveAction', 'workflowRunning');
+					this.uiStore.removeActiveAction('workflowRunning');
 
 					// Set the node execution issues on all the nodes which produced an error so that
 					// it can be displayed in the node-view
@@ -397,7 +400,7 @@ export const pushConnection = mixins(
 						workflowName: pushData.workflowName,
 					};
 
-					this.$store.commit('addActiveExecution', executionData);
+					this.uiStore.addActiveExecution(executionData);
 				} else if (receivedData.type === 'nodeExecuteAfter') {
 					// A node finished to execute. Add its data
 					const pushData = receivedData.data;
@@ -412,7 +415,7 @@ export const pushConnection = mixins(
 
 					if (pushData.workflowId === this.$store.getters.workflowId) {
 						this.$store.commit('setExecutionWaitingForWebhook', false);
-						this.$store.commit('removeActiveAction', 'workflowRunning');
+						this.uiStore.removeActiveAction('workflowRunning');
 					}
 				} else if (receivedData.type === 'testWebhookReceived') {
 					// A test-webhook did get called

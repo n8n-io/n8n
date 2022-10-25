@@ -56,6 +56,8 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
@@ -68,6 +70,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 	},
 	computed: {
+		...mapStores(useUIStore),
 		defaultText (): string {
 			if (!this.nodeType) {
 				return '';
@@ -78,7 +81,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return content && isString(content.default) ? content.default : '';
 		},
 		isSelected (): boolean {
-			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
+			return this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !== undefined;
 		},
 		nodeType (): INodeTypeDescription | null {
 			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
@@ -124,7 +127,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return !(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing);
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 	},
 	data () {

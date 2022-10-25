@@ -72,7 +72,7 @@
 			@addNode="onAddNode"
 		/>
 		<div
-			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !sidebarMenuCollapsed }">
+			:class="{ 'zoom-menu': true, 'regular-zoom-menu': !isDemo, 'demo-zoom-menu': isDemo, expanded: !uiStore.sidebarMenuCollapsed }">
 			<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')"
 				icon="expand" />
 			<n8n-icon-button @click="zoomIn" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomIn')"
@@ -210,6 +210,8 @@ import '../plugins/PlusEndpointType';
 import { getAccountAge } from '@/modules/userHelpers';
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -310,11 +312,9 @@ export default mixins(
 			}
 		},
 		computed: {
+			...mapStores(useUIStore),
 			...mapGetters('users', [
 				'currentUser',
-			]),
-			...mapGetters('ui', [
-				'sidebarMenuCollapsed',
 			]),
 			...mapGetters('settings', [
 				'isOnboardingCallPromptFeatureEnabled',
@@ -376,7 +376,7 @@ export default mixins(
 			workflowClasses() {
 				const returnClasses = [];
 				if (this.ctrlKeyPressed === true) {
-					if (this.$store.getters.isNodeViewMoveInProgress === true) {
+					if (this.uiStore.nodeViewMoveInProgress === true) {
 						returnClasses.push('move-in-process');
 					} else {
 						returnClasses.push('move-active');
@@ -392,7 +392,7 @@ export default mixins(
 				return this.$store.getters.getWorkflowExecution;
 			},
 			workflowRunning(): boolean {
-				return this.$store.getters.isActionActive('workflowRunning');
+				return this.uiStore.isActionActive('workflowRunning');
 			},
 			allTriggersDisabled(): boolean {
 				const disabledTriggerNodes = this.triggerNodes.filter(node => node.disabled);
@@ -412,7 +412,7 @@ export default mixins(
 				return !this.containsTrigger || this.allTriggersDisabled;
 			},
 			getNodeViewOffsetPosition(): XYPosition {
-				return this.$store.getters.getNodeViewOffsetPosition;
+				return this.uiStore.nodeViewOffsetPosition;
 			},
 		},
 		data() {
@@ -1018,14 +1018,14 @@ export default mixins(
 				if (this.editAllowedCheck() === false) {
 					return;
 				}
-				this.disableNodes(this.$store.getters.getSelectedNodes);
+				this.disableNodes(this.uiStore.getSelectedNodes);
 			},
 
 			deleteSelectedNodes() {
 				// Copy "selectedNodes" as the nodes get deleted out of selection
 				// when they get deleted and if we would use original it would mess
 				// with the index and would so not delete all nodes
-				const nodesToDelete: string[] = this.$store.getters.getSelectedNodes.map((node: INodeUi) => {
+				const nodesToDelete: string[] = this.uiStore.getSelectedNodes.map((node: INodeUi) => {
 					return node.name;
 				});
 				nodesToDelete.forEach((nodeName: string) => {
@@ -1135,21 +1135,21 @@ export default mixins(
 				const { scale, offset } = CanvasHelpers.scaleReset({ scale: this.nodeViewScale, offset: this.getNodeViewOffsetPosition });
 
 				this.setZoomLevel(scale);
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: offset });
+				this.uiStore.nodeViewOffsetPosition = offset;
 			},
 
 			zoomIn() {
 				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleBigger({ scale: this.nodeViewScale, offset: this.getNodeViewOffsetPosition });
 
 				this.setZoomLevel(scale);
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: [xOffset, yOffset] });
+				this.uiStore.nodeViewOffsetPosition = [xOffset, yOffset];
 			},
 
 			zoomOut() {
 				const { scale, offset: [xOffset, yOffset] } = CanvasHelpers.scaleSmaller({ scale: this.nodeViewScale, offset: this.getNodeViewOffsetPosition });
 
 				this.setZoomLevel(scale);
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: [xOffset, yOffset] });
+				this.uiStore.nodeViewOffsetPosition = [xOffset, yOffset];
 			},
 
 			setZoomLevel(zoomLevel: number) {
@@ -1212,7 +1212,7 @@ export default mixins(
 				const { zoomLevel, offset } = CanvasHelpers.getZoomToFit(nodes);
 
 				this.setZoomLevel(zoomLevel);
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: offset });
+				this.uiStore.nodeViewOffsetPosition = offset;
 			},
 
 			async stopExecution() {
@@ -1244,11 +1244,11 @@ export default mixins(
 							executionId,
 							retryOf: execution.retryOf,
 						} as IPushDataExecutionFinished;
-						this.$store.commit('finishActiveExecution', pushData);
+						this.uiStore.finishActiveExecution(pushData);
 						this.$titleSet(execution.workflowData.name, 'IDLE');
 						this.$store.commit('setExecutingNode', null);
 						this.$store.commit('setWorkflowExecutionData', executedData);
-						this.$store.commit('removeActiveAction', 'workflowRunning');
+						this.uiStore.removeActiveAction('workflowRunning');
 						this.$showMessage({
 							title: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.title'),
 							message: this.$locale.baseText('nodeView.showMessage.stopExecutionCatch.message'),
@@ -1504,8 +1504,8 @@ export default mixins(
 					this.nodeSelected(node);
 				}
 
-				this.$store.commit('setLastSelectedNode', node.name);
-				this.$store.commit('setLastSelectedNodeOutputIndex', null);
+				this.uiStore.lastSelectedNode = node.name;
+				this.uiStore.lastSelectedNodeOutputIndex = null;
 				this.lastSelectedConnection = null;
 				this.newNodeInsertPosition = null;
 
@@ -1795,8 +1795,8 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('setLastSelectedNode', sourceNode.name);
-					this.$store.commit('setLastSelectedNodeOutputIndex', info.index);
+					this.uiStore.lastSelectedNode = sourceNode.name;
+					this.uiStore.lastSelectedNodeOutputIndex = info.index;
 					this.newNodeInsertPosition = null;
 
 					if (info.connection) {
@@ -2614,8 +2614,7 @@ export default mixins(
 					}
 
 					// Remove node from selected index if found in it
-					this.$store.commit('removeNodeFromSelection', node);
-
+					this.uiStore.removeNodeFromSelection(node);
 				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged(parameterData: IUpdateInformation) {
@@ -2983,7 +2982,7 @@ export default mixins(
 				let nodeData;
 				const exportNodeNames: string[] = [];
 
-				for (const node of this.$store.getters.getSelectedNodes) {
+				for (const node of this.uiStore.getSelectedNodes) {
 					try {
 						nodeData = this.getNodeDataToSave(node);
 						exportNodeNames.push(node.name);
@@ -3067,18 +3066,17 @@ export default mixins(
 
 				this.$store.commit('setActiveExecutionId', null);
 				this.$store.commit('setExecutingNode', null);
-				this.$store.commit('removeActiveAction', 'workflowRunning');
+				this.uiStore.removeActiveAction('workflowRunning');
 				this.$store.commit('setExecutionWaitingForWebhook', false);
 
-				this.$store.commit('resetSelectedNodes');
-
-				this.$store.commit('setNodeViewOffsetPosition', { newOffset: [0, 0], setStateDirty: false });
+				this.uiStore.resetSelectedNodes();
+				this.uiStore.nodeViewOffsetPosition = [0, 0];
 
 				return Promise.resolve();
 			},
 			async loadActiveWorkflows(): Promise<void> {
 				const activeWorkflows = await this.restApi().getActiveWorkflows();
-				this.$store.commit('setActiveWorkflows', activeWorkflows);
+				this.uiStore.activeWorkflows = activeWorkflows;
 			},
 			async loadNodeTypes(): Promise<void> {
 				await this.$store.dispatch('nodeTypes/getNodeTypes');
@@ -3251,7 +3249,7 @@ export default mixins(
 				this.isOnboardingCallPromptFeatureEnabled &&
 				getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
 			) {
-				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
+				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
 				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
 				if (onboardingResponse.title && onboardingResponse.description) {
@@ -3269,7 +3267,7 @@ export default mixins(
 									title: onboardingResponse.title,
 									description: onboardingResponse.description,
 								});
-								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, { root: true });
+								this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
 							},
 						});
 					}, promptTimeout);

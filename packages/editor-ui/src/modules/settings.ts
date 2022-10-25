@@ -13,6 +13,7 @@ import {CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, VALUE_SURVEY_MODAL_K
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
 import {createApiKey, deleteApiKey, getApiKey } from "@/api/api-keys";
+import { useUIStore } from '@/stores/ui';
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -171,14 +172,15 @@ const module: Module<ISettingsState, IRootState> = {
 			}
 
 			try {
+				const uiStore = useUIStore();
 				const instanceId = context.state.settings.instanceId;
 				const userId = context.rootGetters['users/currentUserId'];
 				const promptsData: IN8nPrompts = await getPromptsData(instanceId, userId);
 
 				if (promptsData && promptsData.showContactPrompt) {
-					context.commit('ui/openModal', CONTACT_PROMPT_MODAL_KEY, {root: true});
+					uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
 				} else if (promptsData && promptsData.showValueSurvey) {
-					context.commit('ui/openModal', VALUE_SURVEY_MODAL_KEY, {root: true});
+					uiStore.openModal(VALUE_SURVEY_MODAL_KEY);
 				}
 
 				context.commit('setPromptsData', promptsData);

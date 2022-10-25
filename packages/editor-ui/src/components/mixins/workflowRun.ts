@@ -19,6 +19,8 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { titleChange } from './titleChange';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export const workflowRun = mixins(
 	externalHooks,
@@ -27,6 +29,9 @@ export const workflowRun = mixins(
 	showMessage,
 	titleChange,
 ).extend({
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		// Starts to executes a workflow on server.
 		async runWorkflowApi (runData: IStartRunData): Promise<IExecutionPushResponse> {
@@ -40,14 +45,14 @@ export const workflowRun = mixins(
 
 			this.$store.commit('setSubworkflowExecutionError', null);
 
-			this.$store.commit('addActiveAction', 'workflowRunning');
+			this.uiStore.addActiveAction('workflowRunning');
 
 			let response: IExecutionPushResponse;
 
 			try {
 				response = await this.restApi().runWorkflow(runData);
 			} catch (error) {
-				this.$store.commit('removeActiveAction', 'workflowRunning');
+				this.uiStore.removeActiveAction('workflowRunning');
 				throw error;
 			}
 
@@ -64,7 +69,7 @@ export const workflowRun = mixins(
 		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
 			const workflow = this.getCurrentWorkflow();
 
-			if (this.$store.getters.isActionActive('workflowRunning') === true) {
+			if (this.uiStore.isActionActive('workflowRunning')) {
 				return;
 			}
 

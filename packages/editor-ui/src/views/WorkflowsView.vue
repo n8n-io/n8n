@@ -73,6 +73,8 @@ import {VIEWS} from '@/constants';
 import Vue from "vue";
 import {ITag, IUser, IWorkflowDb} from "@/Interface";
 import TagsDropdown from "@/components/TagsDropdown.vue";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -101,6 +103,7 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(useUIStore),
 		currentUser(): IUser {
 			return this.$store.getters['users/currentUser'];
 		},
@@ -127,7 +130,8 @@ export default mixins(
 
 			return await Promise.all([
 				this.$store.dispatch('fetchAllWorkflows'),
-				this.$store.dispatch('fetchActiveWorkflows'),
+				// this.$store.dispatch('fetchActiveWorkflows'),
+				this.uiStore.fetchActiveWorkflows(),
 			]);
 		},
 		onClickTag(tagId: string, event: PointerEvent) {

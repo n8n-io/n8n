@@ -29,11 +29,12 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from "@/constants";
 import {
+	curlToJSONResponse,
 	IExecutionsCurrentSummaryExtended,
 	IFakeDoorLocation,
 	IMenuItem,
 	INodeUi,
-	IOnboardingCallPromptResponse,
+	IOnboardingCallPrompt,
 	IPushDataExecutionFinished,
 	IRunDataDisplayMode,
 	IUser,
@@ -43,13 +44,15 @@ import {
 import Vue from "vue";
 import { defineStore } from "pinia";
 import { useRootStore } from "./n8nRootStore";
+import { getCurlToJson } from "@/api/curlHelper";
+import { getActiveWorkflows } from "@/api/workflows";
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): uiState => ({
+		// TODO: Maybe move workflows and executions to workflow store
 		activeExecutions: [],
 		activeWorkflows: [],
 		activeActions: [],
-		activeNode: null,
 		activeCredentialType: null,
 		modals: {
 			[ABOUT_MODAL_KEY]: {
@@ -121,21 +124,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		sidebarMenuCollapsed: true,
 		isPageLoading: true,
 		currentView: '',
-		ndv: {
-			sessionId: '',
-			input: {
-				displayMode: 'table',
-			},
-			output: {
-				displayMode: 'table',
-				editMode: {
-					enabled: false,
-					value: '',
-				},
-			},
-			focusedMappableInput: '',
-			mappingTelemetry: {},
-		},
 		mainPanelPosition: 0.5,
 		fakeDoorFeatures: [
 			{
@@ -175,6 +163,7 @@ export const useUIStore = defineStore(STORES.UI, {
 			stickyPosition: null,
 		},
 		stateIsDirty: false,
+		// TODO: Those two are waiting for Workflow store...
 		lastSelectedNode: null,
 		lastSelectedNodeOutputIndex: null,
 		nodeViewOffsetPosition: [0, 0],
@@ -183,7 +172,13 @@ export const useUIStore = defineStore(STORES.UI, {
 		sidebarMenuItems: [],
 	}),
 	getters: {
-		areExpressionsDisabled(state: uiState): boolean {
+		getCurlCommand: (state: uiState): string|undefined => {
+			return state.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
+		},
+		getHttpNodeParameters: (state: uiState): string|undefined => {
+			return state.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
+		},
+		areExpressionsDisabled: (state: uiState): boolean => {
 			return state.currentView === VIEWS.DEMO;
 		},
 		isVersionsOpen: (state: uiState): boolean => {
@@ -204,14 +199,39 @@ export const useUIStore = defineStore(STORES.UI, {
 		getModalData: (state: uiState) => {
 			return (name: string) => state.modals[name].data;
 		},
-		getPanelDisplayMode: (state: uiState)  => {
-			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
-		},
+		// getPanelDisplayMode: (state: uiState)  => {
+		// 	return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
+		// },
 		getFakeDoorByLocation: (state: uiState) => (location: IFakeDoorLocation) => {
 			return state.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
 		},
 		getFakeDoorById: (state: uiState) => (id: string) => {
 			return state.fakeDoorFeatures.find(fakeDoor => fakeDoor.id.toString() === id);
+		},
+		isNodeView: (state: uiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
+		// getNDVDataIsEmpty: (state: uiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
+		isActionActive: (state: uiState) => (action: string) => {
+			return state.activeActions.includes(action);
+		},
+		getSelectedNodes: (state: uiState) => {
+			const seen = new Set();
+			return state.selectedNodes.filter((node: INodeUi) => {
+				// dedupe for instances when same node is selected in different ways
+				if (!seen.has(node.id)) {
+					seen.add(node.id);
+					return true;
+				}
+				return false;
+			});
+		},
+		isNodeSelected: (state: uiState) => (nodeName: string): boolean => {
+			let index;
+			for (index in state.selectedNodes) {
+				if (state.selectedNodes[index].name === nodeName) {
+					return true;
+				}
+			}
+			return false;
 		},
 	},
 	actions: {
@@ -221,9 +241,16 @@ export const useUIStore = defineStore(STORES.UI, {
 		setActiveId(name: string, id: string): void {
 			Vue.set(this.modals[name], 'activeId', id);
 		},
+		setModalData (payload: { name: string, data: Record<string, unknown> }) {
+			Vue.set(this.modals[payload.name], 'data', payload.data);
+		},
 		openModal(name: string): void {
 			Vue.set(this.modals[name], 'open', true);
 			this.modalStack = [name].concat(this.modalStack);
+		},
+		openModalWithData (payload: { name: string, data: Record<string, unknown> }): void {
+			this.setModalData(payload);
+			this.openModal(payload.name);
 		},
 		closeModal(name: string): void {
 			Vue.set(this.modals[name], 'open', false);
@@ -239,24 +266,24 @@ export const useUIStore = defineStore(STORES.UI, {
 			});
 			this.modalStack = [];
 		},
-		setNDVSessionId(): void {
-			Vue.set(this.ndv, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
-		},
-		resetNDVSessionId(): void {
-			Vue.set(this.ndv, 'sessionId', '');
-		},
-		setPanelDisplayMode(pane: 'input' | 'output', mode: IRunDataDisplayMode): void {
-			Vue.set(this.ndv[pane], 'displayMode', mode);
-		},
-		setOutputPanelEditModeEnabled(isEnabled: boolean): void {
-			Vue.set(this.ndv.output.editMode, 'enabled', isEnabled);
-		},
-		setOutputPanelEditModeValue(value: string): void {
-			Vue.set(this.ndv.output.editMode, 'value', value);
-		},
-		setMappableNDVInputFocus(paramName: string): void {
-			Vue.set(this.ndv, 'focusedMappableInput', paramName);
-		},
+		// setNDVSessionId(): void {
+		// 	Vue.set(this.ndv, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
+		// },
+		// resetNDVSessionId(): void {
+		// 	Vue.set(this.ndv, 'sessionId', '');
+		// },
+		// setPanelDisplayMode(pane: 'input' | 'output', mode: IRunDataDisplayMode): void {
+		// 	Vue.set(this.ndv[pane], 'displayMode', mode);
+		// },
+		// setOutputPanelEditModeEnabled(isEnabled: boolean): void {
+		// 	Vue.set(this.ndv.output.editMode, 'enabled', isEnabled);
+		// },
+		// setOutputPanelEditModeValue(value: string): void {
+		// 	Vue.set(this.ndv.output.editMode, 'value', value);
+		// },
+		// setMappableNDVInputFocus(paramName: string): void {
+		// 	Vue.set(this.ndv, 'focusedMappableInput', paramName);
+		// },
 		draggableStartDragging(type: string, data: string): void {
 			this.draggable = {
 				isDragging: true,
@@ -281,12 +308,12 @@ export const useUIStore = defineStore(STORES.UI, {
 		setDraggableCanDrop(canDrop: boolean): void {
 			Vue.set(this.draggable, 'canDrop', canDrop);
 		},
-		setMappingTelemetry(telemetry: {[key: string]: string | number | boolean}): void {
-			this.ndv.mappingTelemetry = { ...this.ndv.mappingTelemetry, ...telemetry };
-		},
-		resetMappingTelemetry(): void {
-			this.ndv.mappingTelemetry = {};
-		},
+		// setMappingTelemetry(telemetry: {[key: string]: string | number | boolean}): void {
+		// 	this.ndv.mappingTelemetry = { ...this.ndv.mappingTelemetry, ...telemetry };
+		// },
+		// resetMappingTelemetry(): void {
+		// 	this.ndv.mappingTelemetry = {};
+		// },
 		openDeleteUserModal(id: string): void {
 			this.setActiveId(DELETE_USER_MODAL_KEY, id);
 			this.openModal(DELETE_USER_MODAL_KEY);
@@ -296,12 +323,12 @@ export const useUIStore = defineStore(STORES.UI, {
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'edit');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
-		openNewCredential(id: string): void {
-			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, id);
+		openNewCredential(type: string): void {
+			this.setActiveId(CREDENTIAL_EDIT_MODAL_KEY, type);
 			this.setMode(CREDENTIAL_EDIT_MODAL_KEY, 'new');
 			this.openModal(CREDENTIAL_EDIT_MODAL_KEY);
 		},
-		async getNextOnboardingPrompt(): Promise<IOnboardingCallPromptResponse> {
+		async getNextOnboardingPrompt(): Promise<IOnboardingCallPrompt> {
 			const rootStore = useRootStore();
 			const instanceId = rootStore.instanceId;
 			// TODO: current USER
@@ -406,6 +433,25 @@ export const useUIStore = defineStore(STORES.UI, {
 		addSidebarMenuItems(menuItems: IMenuItem[]) {
 			const updated = this.sidebarMenuItems.concat(menuItems);
 			Vue.set(this, 'sidebarMenuItems', updated);
+		},
+		setCurlCommand (payload: { name: string, command: string }): void {
+			Vue.set(this.modals[payload.name], 'curlCommand', payload.command);
+		},
+		setHttpNodeParameters (payload: { name: string, parameters: string }): void {
+			Vue.set(this.modals[payload.name], 'httpNodeParameters', payload.parameters);
+		},
+		toggleSidebarMenuCollapse (): void {
+			this.sidebarMenuCollapsed = !this.sidebarMenuCollapsed;
+		},
+		async getCurlToJson (curlCommand: string): Promise<curlToJSONResponse> {
+			const rootStore = useRootStore();
+			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
+		},
+		async fetchActiveWorkflows (): Promise<string[]> {
+			const rootStore = useRootStore();
+			const activeWorkflows = await getActiveWorkflows(rootStore.getRestApiContext);
+			this.activeWorkflows = activeWorkflows;
+			return activeWorkflows;
 		},
 	},
 });

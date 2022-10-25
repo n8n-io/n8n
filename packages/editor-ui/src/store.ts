@@ -129,54 +129,54 @@ export const store = new Vuex.Store({
 	state,
 	mutations: {
 		// Active Actions
-		addActiveAction(state, action: string) {
-			if (!state.activeActions.includes(action)) {
-				state.activeActions.push(action);
-			}
-		},
+		// addActiveAction(state, action: string) {
+		// 	if (!state.activeActions.includes(action)) {
+		// 		state.activeActions.push(action);
+		// 	}
+		// },
 
-		removeActiveAction(state, action: string) {
-			const actionIndex = state.activeActions.indexOf(action);
-			if (actionIndex !== -1) {
-				state.activeActions.splice(actionIndex, 1);
-			}
-		},
+		// removeActiveAction(state, action: string) {
+		// 	const actionIndex = state.activeActions.indexOf(action);
+		// 	if (actionIndex !== -1) {
+		// 		state.activeActions.splice(actionIndex, 1);
+		// 	}
+		// },
 
 		// Active Executions
-		addActiveExecution(state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
-			// Check if the execution exists already
-			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.id === newActiveExecution.id;
-			});
+		// addActiveExecution(state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
+		// 	// Check if the execution exists already
+		// 	const activeExecution = state.activeExecutions.find(execution => {
+		// 		return execution.id === newActiveExecution.id;
+		// 	});
 
-			if (activeExecution !== undefined) {
-				// Exists already so no need to add it again
-				if (activeExecution.workflowName === undefined) {
-					activeExecution.workflowName = newActiveExecution.workflowName;
-				}
-				return;
-			}
+		// 	if (activeExecution !== undefined) {
+		// 		// Exists already so no need to add it again
+		// 		if (activeExecution.workflowName === undefined) {
+		// 			activeExecution.workflowName = newActiveExecution.workflowName;
+		// 		}
+		// 		return;
+		// 	}
 
-			state.activeExecutions.unshift(newActiveExecution);
-		},
-		finishActiveExecution(state, finishedActiveExecution: IPushDataExecutionFinished) {
-			// Find the execution to set to finished
-			const activeExecution = state.activeExecutions.find(execution => {
-				return execution.id === finishedActiveExecution.executionId;
-			});
+		// 	state.activeExecutions.unshift(newActiveExecution);
+		// },
+		// finishActiveExecution(state, finishedActiveExecution: IPushDataExecutionFinished) {
+		// 	// Find the execution to set to finished
+		// 	const activeExecution = state.activeExecutions.find(execution => {
+		// 		return execution.id === finishedActiveExecution.executionId;
+		// 	});
 
-			if (activeExecution === undefined) {
-				// The execution could not be found
-				return;
-			}
+		// 	if (activeExecution === undefined) {
+		// 		// The execution could not be found
+		// 		return;
+		// 	}
 
-			if (finishedActiveExecution.executionId !== undefined) {
-				Vue.set(activeExecution, 'id', finishedActiveExecution.executionId);
-			}
+		// 	if (finishedActiveExecution.executionId !== undefined) {
+		// 		Vue.set(activeExecution, 'id', finishedActiveExecution.executionId);
+		// 	}
 
-			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
-			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
-		},
+		// 	Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
+		// 	Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
+		// },
 		setSubworkflowExecutionError(state, subworkflowExecutionError: Error | null) {
 			state.subworkflowExecutionError = subworkflowExecutionError;
 		},
@@ -204,9 +204,9 @@ export const store = new Vuex.Store({
 		},
 
 		// Active Workflows
-		setActiveWorkflows(state, newActiveWorkflows: string[]) {
-			state.activeWorkflows = newActiveWorkflows;
-		},
+		// setActiveWorkflows(state, newActiveWorkflows: string[]) {
+		// 	state.activeWorkflows = newActiveWorkflows;
+		// },
 		setWorkflowActive(state, workflowId: string) {
 			state.stateIsDirty = false;
 			const index = state.activeWorkflows.indexOf(workflowId);
@@ -235,21 +235,21 @@ export const store = new Vuex.Store({
 		},
 
 		// Selected Nodes
-		addSelectedNode(state, node: INodeUi) {
-			state.selectedNodes.push(node);
-		},
-		removeNodeFromSelection(state, node: INodeUi) {
-			let index;
-			for (index in state.selectedNodes) {
-				if (state.selectedNodes[index].name === node.name) {
-					state.selectedNodes.splice(parseInt(index, 10), 1);
-					break;
-				}
-			}
-		},
-		resetSelectedNodes(state) {
-			Vue.set(state, 'selectedNodes', []);
-		},
+		// addSelectedNode(state, node: INodeUi) {
+		// 	state.selectedNodes.push(node);
+		// },
+		// removeNodeFromSelection(state, node: INodeUi) {
+		// 	let index;
+		// 	for (index in state.selectedNodes) {
+		// 		if (state.selectedNodes[index].name === node.name) {
+		// 			state.selectedNodes.splice(parseInt(index, 10), 1);
+		// 			break;
+		// 		}
+		// 	}
+		// },
+		// resetSelectedNodes(state) {
+		// 	Vue.set(state, 'selectedNodes', []);
+		// },
 
 		// Pin data
 		pinData(state, payload: { node: INodeUi, data: INodeExecutionData[] }) {
@@ -395,6 +395,7 @@ export const store = new Vuex.Store({
 			}
 		},
 
+		// THIS GOES TO WORKFLOW OR  NDV STORE...
 		renameNodeSelectedAndExecution(state, nameData) {
 			state.stateIsDirty = true;
 			// If node has any WorkflowResultData rename also that one that the data
@@ -580,12 +581,12 @@ export const store = new Vuex.Store({
 		},
 
 		// Node-View
-		setNodeViewMoveInProgress(state, value: boolean) {
-			state.nodeViewMoveInProgress = value;
-		},
-		setNodeViewOffsetPosition(state, data) {
-			state.nodeViewOffsetPosition = data.newOffset;
-		},
+		// setNodeViewMoveInProgress(state, value: boolean) {
+		// 	state.nodeViewMoveInProgress = value;
+		// },
+		// setNodeViewOffsetPosition(state, data) {
+		// 	state.nodeViewOffsetPosition = data.newOffset;
+		// },
 
 		// Active Execution
 		setExecutingNode(state, executingNode: string) {
@@ -655,9 +656,9 @@ export const store = new Vuex.Store({
 		setIsNpmAvailable(state, isNpmAvailable: boolean) {
 			Vue.set(state, 'isNpmAvailable', isNpmAvailable);
 		},
-		setActiveCredentialType(state, activeCredentialType: string) {
-			state.activeCredentialType = activeCredentialType;
-		},
+		// setActiveCredentialType(state, activeCredentialType: string) {
+		// 	state.activeCredentialType = activeCredentialType;
+		// },
 		setLastSelectedNode(state, nodeName: string) {
 			state.lastSelectedNode = nodeName;
 		},
@@ -752,17 +753,17 @@ export const store = new Vuex.Store({
 		executedNode: (state): string | undefined => {
 			return state.workflowExecutionData ? state.workflowExecutionData.executedNode : undefined;
 		},
-		activeCredentialType: (state): string | null => {
-			return state.activeCredentialType;
-		},
+		// activeCredentialType: (state): string | null => {
+		// 	return state.activeCredentialType;
+		// },
 
 		subworkflowExecutionError: (state): Error | null => {
 			return state.subworkflowExecutionError;
 		},
 
-		isActionActive: (state) => (action: string): boolean => {
-			return state.activeActions.includes(action);
-		},
+		// isActionActive: (state) => (action: string): boolean => {
+		// 	return state.activeActions.includes(action);
+		// },
 
 		isNewWorkflow: (state) => {
 			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
@@ -864,9 +865,9 @@ export const store = new Vuex.Store({
 		},
 
 		// Active Workflows
-		getActiveWorkflows: (state): string[] => {
-			return state.activeWorkflows;
-		},
+		// getActiveWorkflows: (state): string[] => {
+		// 	return state.activeWorkflows;
+		// },
 
 		workflowTriggerNodes: (state, getters) => {
 			return state.workflow.nodes.filter(node => {
@@ -875,35 +876,35 @@ export const store = new Vuex.Store({
 			});
 		},
 
-		getNodeViewOffsetPosition: (state): XYPosition => {
-			return state.nodeViewOffsetPosition;
-		},
-		isNodeViewMoveInProgress: (state): boolean => {
-			return state.nodeViewMoveInProgress;
-		},
+		// getNodeViewOffsetPosition: (state): XYPosition => {
+		// 	return state.nodeViewOffsetPosition;
+		// },
+		// isNodeViewMoveInProgress: (state): boolean => {
+		// 	return state.nodeViewMoveInProgress;
+		// },
 
 		// Selected Nodes
-		getSelectedNodes: (state): INodeUi[] => {
-			const seen = new Set();
-			return state.selectedNodes.filter((node: INodeUi) => {
-				// dedupe for instances when same node is selected in different ways
-				if (!seen.has(node.id)) {
-					seen.add(node.id);
-					return true;
-				}
+		// getSelectedNodes: (state): INodeUi[] => {
+		// 	const seen = new Set();
+		// 	return state.selectedNodes.filter((node: INodeUi) => {
+		// 		// dedupe for instances when same node is selected in different ways
+		// 		if (!seen.has(node.id)) {
+		// 			seen.add(node.id);
+		// 			return true;
+		// 		}
 
-				return false;
-			});
-		},
-		isNodeSelected: (state) => (nodeName: string): boolean => {
-			let index;
-			for (index in state.selectedNodes) {
-				if (state.selectedNodes[index].name === nodeName) {
-					return true;
-				}
-			}
-			return false;
-		},
+		// 		return false;
+		// 	});
+		// },
+		// isNodeSelected: (state) => (nodeName: string): boolean => {
+		// 	let index;
+		// 	for (index in state.selectedNodes) {
+		// 		if (state.selectedNodes[index].name === nodeName) {
+		// 			return true;
+		// 		}
+		// 	}
+		// 	return false;
+		// },
 
 		isActive: (state): boolean => {
 			return state.workflow.active;
@@ -1052,11 +1053,11 @@ export const store = new Vuex.Store({
 
 			return workflows;
 		},
-		fetchActiveWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string[]> => {
-			const activeWorkflows = await getActiveWorkflows(context.rootGetters.getRestApiContext);
-			context.commit('setActiveWorkflows', activeWorkflows);
+		// fetchActiveWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string[]> => {
+		// 	const activeWorkflows = await getActiveWorkflows(context.rootGetters.getRestApiContext);
+		// 	context.commit('setActiveWorkflows', activeWorkflows);
 
-			return activeWorkflows;
-		},
+		// 	return activeWorkflows;
+		// },
 	},
 });

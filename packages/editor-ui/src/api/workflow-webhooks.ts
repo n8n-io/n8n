@@ -1,11 +1,11 @@
-import { IOnboardingCallPromptResponse, IUser } from "@/Interface";
+import { IOnboardingCallPrompt, IOnboardingCallPromptResponse, IUser } from "@/Interface";
 import { get, post } from "./helpers";
 
 const N8N_API_BASE_URL = 'https://api.n8n.io/api';
 const ONBOARDING_PROMPTS_ENDPOINT = '/prompts/onboarding';
 const CONTACT_EMAIL_SUBMISSION_ENDPOINT = '/accounts/onboarding';
 
-export async function fetchNextOnboardingPrompt(instanceId: string, currentUer: IUser): Promise<IOnboardingCallPromptResponse> {
+export async function fetchNextOnboardingPrompt(instanceId: string, currentUer: IUser): Promise<IOnboardingCallPrompt> {
 	return await get(
 		N8N_API_BASE_URL,
 		ONBOARDING_PROMPTS_ENDPOINT,

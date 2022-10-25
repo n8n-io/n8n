@@ -145,6 +145,8 @@ import {mapGetters} from "vuex";
 import {getCredentialPermissions, IPermissions} from "@/permissions";
 import { IMenuItem } from 'n8n-design-system';
 import { BaseTextKey } from '@/plugins/i18n';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -253,6 +255,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.loading = false;
 	},
 	computed: {
+		...mapStores(useUIStore),
 		...mapGetters('users', ['currentUser']),
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
@@ -387,7 +390,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			return true;
 		},
 		credentialsFakeDoorFeatures(): IFakeDoor[] {
-			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
+			return this.uiStore.getFakeDoorByLocation('credentialsModal');
 		},
 		credentialPermissions(): IPermissions {
 			if (this.loading) {

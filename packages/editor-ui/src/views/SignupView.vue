@@ -14,6 +14,9 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { value } from 'jsonpath';
 
 export default mixins(
 	showMessage,
@@ -90,6 +93,7 @@ export default mixins(
 		}
 	},
 	computed: {
+		...mapStores(useUIStore),
 		inviteMessage(): null | string {
 			if (!this.inviter) {
 				return null;
@@ -111,7 +115,7 @@ export default mixins(
 
 				if (values.agree === true) {
 					try {
-						await this.$store.dispatch('ui/submitContactEmail', { email: values.email, agree: values.agree });
+						await this.uiStore.submitContactEmail(values.email.toString(), values.agree);
 					} catch { }
 				}
 

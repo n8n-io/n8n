@@ -121,6 +121,8 @@ import Vue from 'vue';
 import { mapGetters } from 'vuex';
 import { getAccountAge } from '@/modules/userHelpers';
 import { GenericValue } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
@@ -138,6 +140,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		};
 	},
 	computed: {
+		...mapStores(useUIStore),
 		...mapGetters({
 			baseUrl: 'getBaseUrl',
 		}),
@@ -491,7 +494,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		},
 		async fetchOnboardingPrompt() {
 			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
-				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
+				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
 				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
 				if (onboardingResponse.title && onboardingResponse.description) {
@@ -509,7 +512,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 									title: onboardingResponse.title,
 									description: onboardingResponse.description,
 								});
-								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
+								this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
 							},
 						});
 					}, promptTimeout);

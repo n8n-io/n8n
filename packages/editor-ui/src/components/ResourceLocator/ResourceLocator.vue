@@ -171,6 +171,8 @@ import { workflowHelpers } from '../mixins/workflowHelpers';
 import { nodeHelpers } from '../mixins/nodeHelpers';
 import { getAppNameFromNodeName } from '../helpers';
 import { isResourceLocatorValue } from '@/typeGuards';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -256,6 +258,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		};
 	},
 	computed: {
+		...mapStores(useUIStore),
 		appName(): string {
 			if (!this.node) {
 				return '';
@@ -488,7 +491,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return;
 			}
 			const id = node.credentials[credentialKey].id;
-			this.$store.dispatch('ui/openExistingCredential', { id });
+			this.uiStore.openExistingCredential(id);
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {

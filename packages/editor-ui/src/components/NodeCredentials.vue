@@ -81,6 +81,8 @@ import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
 import {getCredentialPermissions} from "@/permissions";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(
 	genericHelpers,
@@ -103,6 +105,7 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(useUIStore),
 		...mapGetters('users', ['currentUser']),
 		...mapGetters('credentials', {
 			allCredentialsByType: 'allCredentialsByType',
@@ -220,7 +223,7 @@ export default mixins(
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
 			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
-				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
+				this.uiStore.openNewCredential(credentialType);
 				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });
 				return;
 			}
@@ -316,7 +319,7 @@ export default mixins(
 
 		editCredential(credentialType: string): void {
 			const { id } = this.node.credentials[credentialType];
-			this.$store.dispatch('ui/openExistingCredential', { id });
+			this.uiStore.openExistingCredential(id);
 
 			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
 

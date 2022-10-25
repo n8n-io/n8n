@@ -40,6 +40,8 @@ import Modal from '@/components/Modal.vue';
 import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from './helpers';
 import { INodeTypeDescription } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default Vue.extend({
 	name: 'ActivationModal',
@@ -57,10 +59,10 @@ export default Vue.extend({
 	},
 	methods: {
 		async showExecutionsList () {
-			this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+			this.uiStore.openModal(EXECUTIONS_MODAL_KEY);
 		},
 		async showSettings() {
-			this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+			this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 		},
 		handleCheckboxChange (checkboxValue: boolean) {
 			this.checked = checkboxValue;
@@ -68,6 +70,7 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(useUIStore),
 		triggerContent (): string {
 			const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
 			if (!foundTriggers.length) {

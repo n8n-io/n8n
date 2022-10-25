@@ -69,7 +69,7 @@ export default mixins(
 			return this.workflowRunning && (executingNode === this.node.name || triggeredNode === this.node.name);
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		isTriggerNode (): boolean {
 			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);

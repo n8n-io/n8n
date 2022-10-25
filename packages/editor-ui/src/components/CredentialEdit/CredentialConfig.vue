@@ -102,6 +102,8 @@ import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
 import { BUILTIN_CREDENTIALS_DOCS_URL, EnterpriseEditionFeature } from '@/constants';
 import { IPermissions } from "@/permissions";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -162,7 +164,7 @@ export default mixins(restApi).extend({
 	async beforeMount() {
 		if (this.$store.getters.defaultLocale === 'en') return;
 
-		this.$store.commit('setActiveCredentialType', this.credentialType.name);
+		this.uiStore.activeCredentialType = this.credentialType.name;
 
 		const key = `n8n-nodes-base.credentials.${this.credentialType.name}`;
 
@@ -176,6 +178,7 @@ export default mixins(restApi).extend({
 		);
 	},
 	computed: {
+		...mapStores(useUIStore),
 		appName(): string {
 			if (!this.credentialType) {
 				return '';

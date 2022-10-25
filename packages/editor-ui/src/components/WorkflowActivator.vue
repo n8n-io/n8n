@@ -35,6 +35,8 @@
 
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowActivate } from '@/components/mixins/workflowActivate';
+import { useUIStore } from '@/stores/ui';
+import { mapStores } from 'pinia';
 
 import mixins from 'vue-typed-mixins';
 import { mapGetters } from "vuex";
@@ -53,6 +55,7 @@ export default mixins(
 				'workflowId',
 			],
 			computed: {
+				...mapStores(useUIStore),
 				...mapGetters({
 					dirtyState: "getStateIsDirty",
 				}),
@@ -60,7 +63,7 @@ export default mixins(
 					return this.$store.getters.nodesIssuesExist;
 				},
 				isWorkflowActive (): boolean {
-					const activeWorkflows = this.$store.getters.getActiveWorkflows;
+					const activeWorkflows =  this.uiStore.activeWorkflows;
 					return activeWorkflows.includes(this.workflowId);
 				},
 				couldNotBeStarted (): boolean {

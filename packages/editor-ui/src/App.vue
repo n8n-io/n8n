@@ -6,7 +6,7 @@
 			id="app"
 			:class="{
 				[$style.container]: true,
-				[$style.sidebarCollapsed]: sidebarMenuCollapsed
+				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed
 			}"
 		>
 			<div id="header" :class="$style['header']">
@@ -38,6 +38,8 @@ import { userHelpers } from './components/mixins/userHelpers';
 import { addHeaders, loadLanguage } from './plugins/i18n';
 import { restApi } from '@/components/mixins/restApi';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import { mapStores } from 'pinia';
+import { useUIStore } from './stores/ui';
 
 export default mixins(
 	showMessage,
@@ -54,7 +56,7 @@ export default mixins(
 	computed: {
 		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['currentUser']),
-		...mapGetters('ui', ['sidebarMenuCollapsed']),
+		...mapStores(useUIStore),
 		defaultLocale (): string {
 			return this.$store.getters.defaultLocale;
 		},
@@ -104,7 +106,7 @@ export default mixins(
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
 		trackPage() {
-			this.$store.commit('ui/setCurrentView', this.$route.name);
+			this.uiStore.currentView = this.$route.name || '';
 			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
 				this.$store.commit('templates/setSessionId');
 			}

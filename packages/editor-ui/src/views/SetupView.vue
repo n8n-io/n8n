@@ -15,6 +15,8 @@ import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { restApi } from '@/components/mixins/restApi';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 
 export default mixins(
@@ -96,6 +98,9 @@ export default mixins(
 			credentialsCount: 0,
 		};
 	},
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		async getAllCredentials() {
 			const credentials = await this.$store.dispatch('credentials/fetchAllCredentials');
@@ -150,7 +155,7 @@ export default mixins(
 
 				if (values.agree === true) {
 					try {
-						await this.$store.dispatch('ui/submitContactEmail', { email: values.email, agree: values.agree });
+						await this.uiStore.submitContactEmail(values.email.toString(), values.agree);
 					} catch { }
 				}
 

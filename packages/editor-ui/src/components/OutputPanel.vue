@@ -85,6 +85,8 @@ import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { pinData } from "@/components/mixins/pinData";
 import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
@@ -111,6 +113,7 @@ export default mixins(
 		},
 	},
 	computed: {
+		...mapStores(useUIStore),
 		node(): INodeUi {
 			return this.$store.getters['ndv/activeNode'];
 		},
@@ -134,7 +137,7 @@ export default mixins(
 			return this.node && executingNode === this.node.name;
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		workflowExecution(): IExecutionResponse | null {
 			return this.$store.getters.getWorkflowExecution;

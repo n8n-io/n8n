@@ -141,7 +141,7 @@ export default mixins(
 			return false;
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		currentWorkflow(): Workflow {
 			return this.workflow as Workflow;

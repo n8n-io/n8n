@@ -142,6 +142,7 @@ export interface INodeUpdatePropertiesInformation {
 export type XYPosition = [number, number];
 
 export interface INodeUi extends INode {
+	[x: string]: unknown;
 	position: XYPosition;
 	color?: string;
 	notes?: string;
@@ -861,7 +862,7 @@ export interface rootStatePinia {
 	// activeWorkflows: string[];
 	// activeActions: string[];
 	// activeCredentialType: string | null;
-	// activeNode: string | null;
+	// activeNode: string | null; ---> NDV STORE
 	baseUrl: string;
 	defaultLocale: string;
 	endpointWebhook: string;
@@ -1036,7 +1037,7 @@ export interface uiState {
 	activeWorkflows: string[];
 	activeActions: string[];
 	activeCredentialType: string | null;
-	activeNode: string | null;
+	// activeNode: string | null; --> NDV STORE
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
 	modals: {
@@ -1044,21 +1045,21 @@ export interface uiState {
 	};
 	isPageLoading: boolean;
 	currentView: string;
-	ndv: {
-		sessionId: string;
-		input: {
-			displayMode: IRunDataDisplayMode;
-		};
-		output: {
-			displayMode: IRunDataDisplayMode;
-			editMode: {
-				enabled: boolean;
-				value: string;
-			};
-		};
-		focusedMappableInput: string;
-		mappingTelemetry: {[key: string]: string | number | boolean};
-	};
+	// ndv: { 		--->		MOVED TO NDV STORE
+	// 	sessionId: string;
+	// 	input: {
+	// 		displayMode: IRunDataDisplayMode;
+	// 	};
+	// 	output: {
+	// 		displayMode: IRunDataDisplayMode;
+	// 		editMode: {
+	// 			enabled: boolean;
+	// 			value: string;
+	// 		};
+	// 	};
+	// 	focusedMappableInput: string;
+	// 	mappingTelemetry: {[key: string]: string | number | boolean};
+	// };
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
@@ -1198,8 +1199,8 @@ export interface IOnboardingCallPromptResponse {
 
 export interface IOnboardingCallPrompt {
 	title: string;
-	body: string;
-	index: number;
+	description: string;
+	toast_sequence_number: number;
 }
 
 export interface ITab {
@@ -1224,4 +1225,15 @@ export interface IResourceLocatorReqParams {
 
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
+}
+
+export interface curlToJSONResponse {
+	"parameters.url": string;
+	"parameters.authentication": string;
+	"parameters.method": string;
+	"parameters.sendHeaders": boolean;
+	"parameters.headerParameters.parameters.0.name": string;
+	"parameters.headerParameters.parameters.0.value": string;
+	"parameters.sendQuery": boolean;
+	"parameters.sendBody": boolean;
 }

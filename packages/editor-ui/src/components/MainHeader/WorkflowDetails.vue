@@ -104,6 +104,8 @@ import { IWorkflowDataUpdate, IWorkflowToShare } from "@/Interface";
 import { saveAs } from 'file-saver';
 import { titleChange } from "../mixins/titleChange";
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
+import { mapStores } from "pinia";
+import { useUIStore } from "@/stores/ui";
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -137,6 +139,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 		};
 	},
 	computed: {
+		...mapStores(useUIStore),
 		...mapGetters({
 			isWorkflowActive: "isActive",
 			workflowName: "workflowName",
@@ -148,7 +151,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			return !this.$route.params.name;
 		},
 		isWorkflowSaving(): boolean {
-			return this.$store.getters.isActionActive("workflowSaving");
+			return this.uiStore.isActionActive('workflowSaving');
 		},
 		currentWorkflowId(): string {
 			return this.$route.params.name;
@@ -307,7 +310,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 		async onWorkflowMenuSelect(action: string): Promise<void> {
 			switch (action) {
 				case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
-					await this.$store.dispatch('ui/openModalWithData', {
+					this.uiStore.openModalWithData({
 						name: DUPLICATE_MODAL_KEY,
 						data: {
 							id: this.$store.getters.workflowId,
@@ -369,7 +372,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.SETTINGS: {
-					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.DELETE: {

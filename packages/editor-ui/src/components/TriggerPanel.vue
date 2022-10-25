@@ -103,6 +103,8 @@ import NodeIcon from './NodeIcon.vue';
 import { copyPaste } from './mixins/copyPaste';
 import { showMessage } from '@/components/mixins/showMessage';
 import Vue from 'vue';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	name: 'TriggerPanel',
@@ -120,6 +122,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 	},
 	computed: {
+		...mapStores(useUIStore),
 		node(): INodeUi | null {
 			return this.$store.getters.getNodeByName(this.nodeName);
 		},
@@ -201,7 +204,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			);
 		},
 		workflowRunning(): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		isActivelyPolling(): boolean {
 			const triggeredNode = this.$store.getters.executedNode;
@@ -370,9 +373,9 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 						type: 'open-executions-log',
 					});
 					this.$store.commit('ndv/setActiveNodeName', null);
-					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+					this.uiStore.openModal(EXECUTIONS_MODAL_KEY);
 				} else if (target.dataset.key === 'settings') {
-					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 				}
 			}
 		},

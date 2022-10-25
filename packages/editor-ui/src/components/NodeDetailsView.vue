@@ -192,7 +192,7 @@ export default mixins(
 			return this.$store.getters['ndv/ndvSessionId'];
 		},
 		workflowRunning(): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		showTriggerWaitingWarning(): boolean {
 			return (

@@ -30,6 +30,7 @@ import {
 	IUsersState,
 } from '../Interface';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './userHelpers';
+import { useUIStore } from '@/stores/ui';
 
 const isDefaultUser = (user: IUserResponse | null) => Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
 
@@ -212,7 +213,8 @@ const module: Module<IUsersState, IRootState> = {
 			const surveyEnabled = context.rootGetters['settings/isPersonalizationSurveyEnabled'] as boolean;
 			const currentUser = context.getters.currentUser as IUser | null;
 			if (surveyEnabled && currentUser && !currentUser.personalizationAnswers) {
-				context.dispatch('ui/openModal', PERSONALIZATION_MODAL_KEY, {root: true});
+				const uiStore = useUIStore();
+				uiStore.openModal(PERSONALIZATION_MODAL_KEY);
 			}
 		},
 		async skipOwnerSetup(context: ActionContext<IUsersState, IRootState>) {

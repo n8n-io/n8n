@@ -5,6 +5,8 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { LOCAL_STORAGE_ACTIVATION_FLAG, PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_ACTIVE_MODAL_KEY } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export const workflowActivate = mixins(
 	externalHooks,
@@ -16,6 +18,9 @@ export const workflowActivate = mixins(
 			return {
 				updatingWorkflowActivation: false,
 			};
+		},
+		computed: {
+			...mapStores(useUIStore),
 		},
 		methods: {
 			async activateCurrentWorkflow(telemetrySource?: string) {
@@ -37,7 +42,7 @@ export const workflowActivate = mixins(
 				}
 				const isCurrentWorkflow = currWorkflowId === this.$store.getters['workflowId'];
 
-				const activeWorkflows = this.$store.getters.getActiveWorkflows;
+				const activeWorkflows =  this.uiStore.activeWorkflows;
 				const isWorkflowActive = activeWorkflows.includes(currWorkflowId);
 
 				const telemetryPayload = {
@@ -93,7 +98,7 @@ export const workflowActivate = mixins(
 
 				if (isCurrentWorkflow) {
 					if (newActiveState && window.localStorage.getItem(LOCAL_STORAGE_ACTIVATION_FLAG) !== 'true') {
-						this.$store.dispatch('ui/openModal', WORKFLOW_ACTIVE_MODAL_KEY);
+						this.uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 					}
 					else {
 						this.$store.dispatch('settings/fetchPromptsData');

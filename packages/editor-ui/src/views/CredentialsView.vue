@@ -59,6 +59,8 @@ import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.
 import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
 import {CREDENTIAL_SELECT_MODAL_KEY} from '@/constants';
 import Vue from "vue";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -88,6 +90,7 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(useUIStore),
 		currentUser(): IUser {
 			return this.$store.getters['users/currentUser'];
 		},
@@ -106,7 +109,7 @@ export default mixins(
 	},
 	methods: {
 		addCredential() {
-			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
+			this.uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
 
 			this.$telemetry.track('User clicked add cred button', {
 				source: 'Creds list',

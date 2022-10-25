@@ -113,6 +113,8 @@ import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from './mixins/debounce';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(
 	externalHooks,
@@ -128,6 +130,7 @@ export default mixins(
 		NodeIcon,
 	},
 	computed: {
+		...mapStores(useUIStore),
 		isDuplicatable(): boolean {
 			if(!this.nodeType) return true;
 			return this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes;
@@ -154,7 +157,7 @@ export default mixins(
 			return workflowResultDataNode.length;
 		},
 		canvasOffsetPosition() {
-			return this.$store.getters.getNodeViewOffsetPosition;
+			return this.uiStore.nodeViewOffsetPosition;
 		},
 		getTriggerNodeTooltip (): string | undefined {
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
@@ -285,7 +288,7 @@ export default mixins(
 			return;
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		nodeStyle (): object {
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
@@ -312,7 +315,7 @@ export default mixins(
 			return returnStyles;
 		},
 		isSelected (): boolean {
-			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
+			return this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !== undefined;
 		},
 		shiftOutputCount (): boolean {
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);

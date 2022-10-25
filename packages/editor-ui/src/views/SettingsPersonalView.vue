@@ -46,6 +46,8 @@
 import { showMessage } from '@/components/mixins/showMessage';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
+import { useUIStore } from '@/stores/ui';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
@@ -105,6 +107,7 @@ export default mixins(
 		];
 	},
 	computed: {
+		...mapStores(useUIStore),
 		currentUser() {
 			return this.$store.getters['users/currentUser'] as IUser;
 		},
@@ -142,7 +145,7 @@ export default mixins(
 			this.formBus.$emit('submit');
 		},
 		openPasswordModal() {
-			this.$store.dispatch('ui/openModal', CHANGE_PASSWORD_MODAL_KEY);
+			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 		},
 	},
 });

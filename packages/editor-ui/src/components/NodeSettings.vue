@@ -148,6 +148,8 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from './helpers';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -161,8 +163,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		NodeExecuteButton,
 	},
 	computed: {
+		...mapStores(useUIStore),
 		isCurlImportModalOpen() {
-			return this.$store.getters['ui/isModalOpen'](IMPORT_CURL_MODAL_KEY);
+			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
 		},
 		nodeTypeName(): string {
 			if (this.nodeType) {
@@ -352,7 +355,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		},
 		isCurlImportModalOpen(newValue, oldValue) {
 			if (newValue === false) {
-				let parameters = this.$store.getters['ui/getHttpNodeParameters'];
+				let parameters = this.uiStore.getHttpNodeParameters || '';
 
 				if (!parameters) return;
 
@@ -368,7 +371,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 						value: parameters,
 					});
 
-					this.$store.dispatch('ui/setHttpNodeParameters', { parameters: '' });
+					this.uiStore.setHttpNodeParameters({ name: IMPORT_CURL_MODAL_KEY, parameters: '' });
 				} catch (_) {}
 			}
 		},

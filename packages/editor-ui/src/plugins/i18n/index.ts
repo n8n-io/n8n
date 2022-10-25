@@ -15,6 +15,7 @@ import {
 } from 'n8n-design-system';
 
 import englishBaseText from './locales/en.json';
+import { useUIStore } from "@/stores/ui";
 
 Vue.use(VueI18n);
 locale.use('en');
@@ -95,7 +96,8 @@ export class I18nClass {
 	 * Namespace for methods to render text in the credentials details modal.
 	 */
 	credText () {
-		const credentialType = this.$store.getters.activeCredentialType;
+		const uiStore = useUIStore();
+		const credentialType = uiStore.activeCredentialType;
 		const credentialPrefix = `n8n-nodes-base.credentials.${credentialType}`;
 		const context = this;
 

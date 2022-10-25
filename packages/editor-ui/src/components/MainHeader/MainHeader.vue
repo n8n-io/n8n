@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div :class="{'main-header': true, expanded: !sidebarMenuCollapsed}">
+		<div :class="{'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed}">
 			<div v-show="!hideMenuBar" class="top-menu">
 				<ExecutionDetails v-if="isExecutionPage" />
 				<WorkflowDetails v-else />
@@ -19,6 +19,8 @@ import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 import { STICKY_NODE_TYPE, VIEWS } from '@/constants';
 import { INodeUi } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(
 	pushConnection,
@@ -30,9 +32,7 @@ export default mixins(
 			ExecutionDetails,
 		},
 		computed: {
-			...mapGetters('ui', [
-				'sidebarMenuCollapsed',
-			]),
+			...mapStores(useUIStore),
 			isExecutionPage (): boolean {
 				return this.$route.name === VIEWS.EXECUTION;
 			},
