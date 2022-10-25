@@ -12,15 +12,13 @@
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
-  "main": "dist/src/index",
-  "types": "dist/src/index.d.ts",
   "scripts": {
     "dev": "npm run watch",
     "build": "tsc && gulp build:icons && gulp build:translations",
     "build:translations": "gulp build:translations",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js --write \"packages/nodes-base/**/*.{ts,json}\"",
-    "lint": "tslint -p tsconfig.json -c tslint.json && eslint nodes credentials src",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint nodes credentials src --fix",
+    "lint": "tslint -p tsconfig.json -c tslint.json && eslint nodes credentials",
+    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint nodes credentials --fix",
     "watch": "tsc --watch",
     "test": "jest"
   },
