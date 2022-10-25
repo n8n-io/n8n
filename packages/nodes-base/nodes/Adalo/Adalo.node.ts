@@ -21,7 +21,6 @@ export class Adalo implements INodeType {
 		description: 'Consume Adalo API',
 		defaults: {
 			name: 'Adalo',
-			color: '#4f44d7',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
