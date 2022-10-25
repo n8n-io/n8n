@@ -314,13 +314,13 @@ export class EmailReadImapV1 implements INodeType {
 			if (format === 'simple' || format === 'raw') {
 				fetchOptions = {
 					bodies: ['TEXT', 'HEADER'],
-					markSeen: postProcessAction === 'read',
+					markSeen: false,
 					struct: true,
 				};
 			} else if (format === 'resolved') {
 				fetchOptions = {
 					bodies: [''],
-					markSeen: postProcessAction === 'read',
+					markSeen: false,
 					struct: true,
 				};
 			}
@@ -459,6 +459,13 @@ export class EmailReadImapV1 implements INodeType {
 				}
 			}
 
+			// only mark messages as seen once processing has finished
+			if (postProcessAction === 'read') {
+				const uidList = results.map((e) => e.attributes.uid);
+				if (uidList.length > 0) {
+					connection.addFlags(uidList, '\\SEEN');
+				}
+			}
 			return newEmails;
 		};
 
