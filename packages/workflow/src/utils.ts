@@ -5,15 +5,15 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import path from 'path';
 import type {
-	ICredentialDataDecryptedObject,
 	ICredentialTestFunction,
 	ICredentialType,
 	ICredentialTypes,
 	IHttpRequestOptions,
-	INodeListSearchResult,
 	INodePropertyOptions,
-	INodeType,
 	INodeTypes,
+	ICredentialDataDecryptedObject,
+	INodeListSearchResult,
+	INodeType,
 } from '.';
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
