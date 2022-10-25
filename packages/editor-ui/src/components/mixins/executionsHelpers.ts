@@ -39,20 +39,20 @@ export const executionHelpers = mixins(genericHelpers).extend({
 
 			if (execution.waitTill) {
 				status.name = 'waiting';
-				status.label = 'Waiting';
+				status.label = this.$locale.baseText('executionsList.waiting');
 			} else if (execution.stoppedAt === undefined) {
 				status.name = 'running';
-				status.label = 'Running';
+				status.label = this.$locale.baseText('executionsList.running');
 				status.runningTime = this.displayTimer(new Date().getTime() - new Date(execution.startedAt).getTime(), true);
 			} else if (execution.finished) {
 				status.name = 'success';
-				status.label = 'Succeeded';
+				status.label = this.$locale.baseText('executionsList.succeeded');
 				if (execution.stoppedAt) {
 					status.runningTime = this.displayTimer(new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime(), true);
 				}
 			} else if (execution.stoppedAt !== null) {
 				status.name = 'error';
-				status.label = 'Failed';
+				status.label = this.$locale.baseText('executionsList.error');
 				if (execution.stoppedAt) {
 					status.runningTime = this.displayTimer(new Date(execution.stoppedAt).getTime() - new Date(execution.startedAt).getTime(), true);
 				}

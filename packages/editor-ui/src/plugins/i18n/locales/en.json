@@ -428,6 +428,7 @@
 	"executionsList.retryWithCurrentlySavedWorkflow": "Retry with currently saved workflow (from node with error)",
 	"executionsList.retryWithOriginalWorkflow": "Retry with original workflow (from node with error)",
 	"executionsList.running": "Running",
+	"executionsList.succeeded": "Succeeded",
 	"executionsList.runningTime": "Running Time",
 	"executionsList.selectStatus": "Select Status",
 	"executionsList.selectWorkflow": "Select Workflow",

@@ -1,5 +1,5 @@
 import { makeRestApiRequest } from '@/api/helpers';
-import { getNewWorkflow } from '@/api/workflows';
+import { getCurrentExecutions, getFinishedExecutions, getNewWorkflow } from '@/api/workflows';
 import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { IDataObject } from 'n8n-workflow';
 import { ActionContext, Module } from 'vuex';
@@ -63,12 +63,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 			}
 			try {
 				if (filter.status === ''|| !filter.finished) {
-					activeExecutions = await makeRestApiRequest(
-						context.rootGetters.getRestApiContext,
-						'GET',
-						`/executions-current`,
-						{ filter: requestFilter },
-					);
+					activeExecutions = await getCurrentExecutions(context.rootGetters.getRestApiContext, requestFilter);
 				}
 				if (filter.status === '' || filter.finished) {
 					if (filter.status === 'waiting') {
@@ -76,14 +71,7 @@ const module: Module<IWorkflowsState, IRootState> = {
 					} else if (filter.status !== '')  {
 						requestFilter.finished = filter.status === 'success';
 					}
-					finishedExecutions = await makeRestApiRequest(
-						context.rootGetters.getRestApiContext,
-						'GET',
-						'/executions',
-						{
-							filter: requestFilter,
-						},
-					);
+					finishedExecutions = await getFinishedExecutions(context.rootGetters.getRestApiContext, requestFilter);
 				}
 				context.commit('setTotalFinishedExecutionsCount', finishedExecutions.count);
 				return [...activeExecutions, ...finishedExecutions.results || []];

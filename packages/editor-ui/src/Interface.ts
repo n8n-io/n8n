@@ -1093,7 +1093,7 @@ export interface IUsersState {
 
 export interface IWorkflowsState {
 	currentWorkflowExecutions: IExecutionsSummary[];
-	activeWorkflowExecution: IExecutionsSummary|null;
+	activeWorkflowExecution: IExecutionsSummary | null;
 	finishedExecutionsCount: number;
 }
 	export interface IWorkflowsMap {
