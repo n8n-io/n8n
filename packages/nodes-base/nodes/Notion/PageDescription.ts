@@ -88,6 +88,7 @@ export const pageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Page-b4eeb113e118403aa450af65ac25f0b9',
+				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -131,7 +132,7 @@ export const pageFields = [
 				operation: ['archive'],
 			},
 		},
-		description: "The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Notion Page to archive",
 	},
 	{
 		displayName: 'Simplify',
@@ -163,6 +164,7 @@ export const pageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Page-b4eeb113e118403aa450af65ac25f0b9',
+				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -205,7 +207,7 @@ export const pageFields = [
 				operation: ['create'],
 			},
 		},
-		description: "The URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Notion Database Page to create a child page for",
 	},
 	{
 		displayName: 'Title',

@@ -49,6 +49,7 @@ export const blockFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Page-b4eeb113e118403ba450af65ac25f0b9',
+				hint: "Use Notion's 'copy link' (Pages are also blocks)",
 				validation: [
 					{
 						type: 'regex',
@@ -91,7 +92,7 @@ export const blockFields = [
 				operation: ['append'],
 			},
 		},
-		description: "The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.",
+		description: "The Notion Block to append blocks to",
 	},
 	...blocks('block', 'append'),
 	/* -------------------------------------------------------------------------- */
@@ -110,6 +111,7 @@ export const blockFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Page-b4eeb113e118403ba450af65ac25f0b9',
+				hint: "Use Notion's 'copy link' (Pages are also blocks)",
 				validation: [
 					{
 						type: 'regex',
@@ -152,7 +154,7 @@ export const blockFields = [
 				operation: ['getAll'],
 			},
 		},
-		description: "The Block URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Pages are also blocks, so you can use a page URL/ID here too.",
+		description: "The Notion Block to get all children from",
 	},
 	{
 		displayName: 'Return All',

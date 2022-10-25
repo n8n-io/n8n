@@ -217,6 +217,7 @@ const typeMention: INodeProperties[] = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -258,7 +259,7 @@ const typeMention: INodeProperties[] = [
 				mentionType: ['database'],
 			},
 		},
-		description: "The Database being mentioned. Choose from the list or use the URL from Notion's 'copy link' functionality (or just the ID contained within the URL).",
+		description: "The Notion Database being mentioned",
 	},
 	{
 		displayName: 'Range',

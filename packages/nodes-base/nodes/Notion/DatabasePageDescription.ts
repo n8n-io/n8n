@@ -108,6 +108,7 @@ export const databasePageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -150,7 +151,7 @@ export const databasePageFields = [
 				operation: ['create'],
 			},
 		},
-		description: "Choose from the list or use the URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Notion Database to operate on",
 	},
 	{
 		displayName: 'Title',
@@ -532,6 +533,7 @@ export const databasePageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
+				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -574,7 +576,7 @@ export const databasePageFields = [
 				operation: ['update'],
 			},
 		},
-		description: "The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Notion Database Page to update",
 	},
 	{
 		displayName: 'Simplify',
@@ -940,6 +942,7 @@ export const databasePageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
+				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -983,7 +986,7 @@ export const databasePageFields = [
 				operation: ['get'],
 			},
 		},
-		description: "The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Notion Database Page to get",
 	},
 	{
 		displayName: 'Simplify',
@@ -1025,6 +1028,7 @@ export const databasePageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -1067,7 +1071,7 @@ export const databasePageFields = [
 				operation: ['getAll'],
 			},
 		},
-		description: "Choose from the list or use the URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Notion Database to operate on",
 	},
 	{
 		displayName: 'Return All',
