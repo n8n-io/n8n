@@ -134,6 +134,7 @@ export class EEWorkflowsService extends WorkflowsService {
 				allCredentials,
 			);
 		} catch (error) {
+			console.log(error);
 			throw new ResponseHelper.ResponseError(
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 				undefined,

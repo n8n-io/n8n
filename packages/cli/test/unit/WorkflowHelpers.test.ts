@@ -1,10 +1,11 @@
-import { INode } from 'n8n-workflow';
+import { INode, LoggerProxy } from 'n8n-workflow';
 import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import {
 	getNodesWithInaccessibleCreds,
 	validateWorkflowCredentialUsage,
 } from '../../src/WorkflowHelpers';
+import { getLogger } from '../../src/Logger';
 
 const FIRST_CREDENTIAL_ID = '1';
 const SECOND_CREDENTIAL_ID = '2';
@@ -14,28 +15,32 @@ const NODE_WITH_NO_CRED = '0133467b-df4a-473d-9295-fdd9d01fa45a';
 const NODE_WITH_ONE_CRED = '4673f869-f2dc-4a33-b053-ca3193bc5226';
 const NODE_WITH_TWO_CRED = '9b4208bd-8f10-4a6a-ad3b-da47a326f7da';
 
+beforeAll(() => {
+	LoggerProxy.init(getLogger());
+});
+
 describe('WorkflowHelpers', () => {
 	describe('getNodesWithInaccessibleCreds', () => {
 		test('Should return an empty list for a workflow without nodes', () => {
-			const workflow = getValidWorkflow();
+			const workflow = getWorkflow();
 			const nodesWithInaccessibleCreds = getNodesWithInaccessibleCreds(workflow, []);
 			expect(nodesWithInaccessibleCreds).toHaveLength(0);
 		});
 
 		test('Should return an empty list for a workflow with nodes without credentials', () => {
-			const workflow = getValidWorkflow({ addNodeWithoutCreds: true });
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const nodesWithInaccessibleCreds = getNodesWithInaccessibleCreds(workflow, []);
 			expect(nodesWithInaccessibleCreds).toHaveLength(0);
 		});
 
 		test('Should return an element for a node with a credential without access', () => {
-			const workflow = getValidWorkflow({ addNodeWithOneCred: true });
+			const workflow = getWorkflow({ addNodeWithOneCred: true });
 			const nodesWithInaccessibleCreds = getNodesWithInaccessibleCreds(workflow, []);
 			expect(nodesWithInaccessibleCreds).toHaveLength(1);
 		});
 
 		test('Should return an empty list for a node with a credential with access', () => {
-			const workflow = getValidWorkflow({ addNodeWithOneCred: true });
+			const workflow = getWorkflow({ addNodeWithOneCred: true });
 			const nodesWithInaccessibleCreds = getNodesWithInaccessibleCreds(workflow, [
 				FIRST_CREDENTIAL_ID,
 			]);
@@ -43,15 +48,15 @@ describe('WorkflowHelpers', () => {
 		});
 
 		test('Should return an element for a node with two credentials and mixed access', () => {
-			const workflow = getValidWorkflow({ addNodeWithTwoCreds: true });
+			const workflow = getWorkflow({ addNodeWithTwoCreds: true });
 			const nodesWithInaccessibleCreds = getNodesWithInaccessibleCreds(workflow, [
 				SECOND_CREDENTIAL_ID,
 			]);
 			expect(nodesWithInaccessibleCreds).toHaveLength(1);
 		});
 
-		test('Should return one element for a workflows with two nodes and two credentials', () => {
-			const workflow = getValidWorkflow({ addNodeWithOneCred: true, addNodeWithTwoCreds: true });
+		test('Should return one node for a workflow with two nodes and two credentials', () => {
+			const workflow = getWorkflow({ addNodeWithOneCred: true, addNodeWithTwoCreds: true });
 			const nodesWithInaccessibleCreds = getNodesWithInaccessibleCreds(workflow, [
 				SECOND_CREDENTIAL_ID,
 				THIRD_CREDENTIAL_ID,
@@ -60,7 +65,7 @@ describe('WorkflowHelpers', () => {
 		});
 
 		test('Should return one element for a workflows with two nodes and one credential', () => {
-			const workflow = getValidWorkflow({
+			const workflow = getWorkflow({
 				addNodeWithoutCreds: true,
 				addNodeWithOneCred: true,
 				addNodeWithTwoCreds: true,
@@ -72,7 +77,7 @@ describe('WorkflowHelpers', () => {
 		});
 
 		test('Should return one element for a workflows with two nodes and partial credential access', () => {
-			const workflow = getValidWorkflow({ addNodeWithOneCred: true, addNodeWithTwoCreds: true });
+			const workflow = getWorkflow({ addNodeWithOneCred: true, addNodeWithTwoCreds: true });
 			const nodesWithInaccessibleCreds = getNodesWithInaccessibleCreds(workflow, [
 				FIRST_CREDENTIAL_ID,
 				SECOND_CREDENTIAL_ID,
@@ -81,7 +86,7 @@ describe('WorkflowHelpers', () => {
 		});
 
 		test('Should return two elements for a workflows with two nodes and partial credential access', () => {
-			const workflow = getValidWorkflow({ addNodeWithOneCred: true, addNodeWithTwoCreds: true });
+			const workflow = getWorkflow({ addNodeWithOneCred: true, addNodeWithTwoCreds: true });
 			const nodesWithInaccessibleCreds = getNodesWithInaccessibleCreds(workflow, [
 				SECOND_CREDENTIAL_ID,
 			]);
@@ -89,7 +94,7 @@ describe('WorkflowHelpers', () => {
 		});
 
 		test('Should return two elements for a workflows with two nodes and no credential access', () => {
-			const workflow = getValidWorkflow({ addNodeWithOneCred: true, addNodeWithTwoCreds: true });
+			const workflow = getWorkflow({ addNodeWithOneCred: true, addNodeWithTwoCreds: true });
 			const nodesWithInaccessibleCreds = getNodesWithInaccessibleCreds(workflow, []);
 			expect(nodesWithInaccessibleCreds).toHaveLength(2);
 		});
@@ -97,49 +102,49 @@ describe('WorkflowHelpers', () => {
 
 	describe('validateWorkflowCredentialUsage', () => {
 		it('Should throw error saving a workflow using credential without access', () => {
-			const newWorkflowVersion = getValidWorkflow({ addNodeWithOneCred: true });
-			const previousWorkflowVersion = getValidWorkflow();
+			const newWorkflowVersion = getWorkflow({ addNodeWithOneCred: true });
+			const previousWorkflowVersion = getWorkflow();
 			expect(() => {
 				validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, []);
-			}).toThrowError();
+			}).toThrow();
 		});
 
 		it('Should not throw error when saving a workflow using credential with access', () => {
-			const newWorkflowVersion = getValidWorkflow({ addNodeWithOneCred: true });
-			const previousWorkflowVersion = getValidWorkflow();
+			const newWorkflowVersion = getWorkflow({ addNodeWithOneCred: true });
+			const previousWorkflowVersion = getWorkflow();
 			expect(() => {
 				validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, [
 					generateCredentialEntity(FIRST_CREDENTIAL_ID),
 				]);
-			}).not.toThrowError();
+			}).not.toThrow();
 		});
 
 		it('Should not throw error when saving a workflow removing node without credential access', () => {
-			const newWorkflowVersion = getValidWorkflow();
-			const previousWorkflowVersion = getValidWorkflow({ addNodeWithOneCred: true });
+			const newWorkflowVersion = getWorkflow();
+			const previousWorkflowVersion = getWorkflow({ addNodeWithOneCred: true });
 			expect(() => {
 				validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, [
 					generateCredentialEntity(FIRST_CREDENTIAL_ID),
 				]);
-			}).not.toThrowError();
+			}).not.toThrow();
 		});
 
 		it('Should save fine when not making changes to workflow without access', () => {
-			const workflowWithOneCredential = getValidWorkflow({ addNodeWithOneCred: true });
+			const workflowWithOneCredential = getWorkflow({ addNodeWithOneCred: true });
 			expect(() => {
 				validateWorkflowCredentialUsage(workflowWithOneCredential, workflowWithOneCredential, []);
-			}).not.toThrowError();
+			}).not.toThrow();
 		});
 
 		it('Should throw error saving a workflow adding node without credential access', () => {
-			const newWorkflowVersion = getValidWorkflow({
+			const newWorkflowVersion = getWorkflow({
 				addNodeWithOneCred: true,
 				addNodeWithTwoCreds: true,
 			});
-			const previousWorkflowVersion = getValidWorkflow({ addNodeWithOneCred: true });
+			const previousWorkflowVersion = getWorkflow({ addNodeWithOneCred: true });
 			expect(() => {
 				validateWorkflowCredentialUsage(newWorkflowVersion, previousWorkflowVersion, []);
-			}).toThrowError();
+			}).toThrow();
 		});
 	});
 });
@@ -150,7 +155,7 @@ function generateCredentialEntity(credentialId: string) {
 	return credentialEntity;
 }
 
-function getValidWorkflow(options?: {
+function getWorkflow(options?: {
 	addNodeWithoutCreds?: boolean;
 	addNodeWithOneCred?: boolean;
 	addNodeWithTwoCreds?: boolean;

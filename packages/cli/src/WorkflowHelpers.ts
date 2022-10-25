@@ -44,6 +44,7 @@ import config from '../config';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { User } from './databases/entities/User';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
+import { LoggerProxy } from 'n8n-workflow';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -712,9 +713,13 @@ export function getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCred
 	}
 	return workflow.nodes.filter((node) => {
 		if (!node.credentials) return false;
-		return Object.values(node.credentials)
-			.map((nodeCred) => nodeCred.id)
-			.some((nodeCredId) => nodeCredId !== null && !userCredIds.includes(nodeCredId));
+
+		const allUsedCredentials = Object.values(node.credentials);
+
+		const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
+		return allUsedCredentialIds.some(
+			(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
+		);
 	});
 }
 
@@ -751,6 +756,12 @@ export function validateWorkflowCredentialUsage(
 
 	nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
 		if (isTamperingAttempt(node.id)) {
+			LoggerProxy.info('Blocked workflow update due to tampering attempt', {
+				nodeType: node.type,
+				nodeName: node.name,
+				nodeId: node.id,
+				nodeCredentials: node.credentials,
+			});
 			// Node is new, so this is probably a tampering attempt. Throw an error
 			throw new Error(
 				'Workflow contains new nodes with credentials the user does not have access to',
@@ -762,6 +773,11 @@ export function validateWorkflowCredentialUsage(
 			(newWorkflowNode) => newWorkflowNode.id === node.id,
 		);
 
+		LoggerProxy.debug('Replacing node with previous version when saving updated workflow', {
+			nodeType: node.type,
+			nodeName: node.name,
+			nodeId: node.id,
+		});
 		newWorkflowVersion.nodes[nodeIdx] = previousWorkflowVersion.nodes.find(
 			(previousNode) => previousNode.id === node.id,
 		)!;

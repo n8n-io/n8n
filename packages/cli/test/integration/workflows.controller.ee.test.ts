@@ -73,7 +73,7 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflows).toHaveLength(2);
 	});
 
-	test('PUT /workflows/:id/share should not fail when sharing with invalid user-id', async () => {
+	test('PUT /workflows/:id/share should succeed when sharing with invalid user-id', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const workflow = await createWorkflow({}, owner);
 
@@ -288,7 +288,7 @@ describe('POST /workflows', () => {
 });
 
 describe('PATCH /workflows/:id', () => {
-	it('Should not fail when not touching workflow nodes', async () => {
+	it('Should succeed when saving unchanged workflow nodes', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
@@ -321,7 +321,7 @@ describe('PATCH /workflows/:id', () => {
 		expect(response.statusCode).toBe(200);
 	});
 
-	it('Should allow owner to add node with credential without access', async () => {
+	it('Should allow owner to add node containing credential not shared with the owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -352,7 +352,7 @@ describe('PATCH /workflows/:id', () => {
 		expect(response.statusCode).toBe(200);
 	});
 
-	it('Should not allow member to add node containing credential without access', async () => {
+	it('Should prevent member from adding node containing credential inaccessible to member', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -392,7 +392,7 @@ describe('PATCH /workflows/:id', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	it('Should override existing node with read only version while allowing to save', async () => {
+	it('Should succeed but prevent modifying nodes that are read-only for the requester', async () => {
 		const member1 = await testDb.createUser({ globalRole: globalMemberRole });
 		const member2 = await testDb.createUser({ globalRole: globalMemberRole });
 
