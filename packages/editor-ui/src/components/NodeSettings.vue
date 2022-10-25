@@ -7,8 +7,8 @@
 					class="node-name"
 					:value="node && node.name"
 					:nodeType="nodeType"
+					:isReadOnly="isReadOnly"
 					@input="nameChanged"
-					:readOnly="isReadOnly"
 				></NodeTitle>
 				<div v-if="!isReadOnly">
 					<NodeExecuteButton
@@ -72,11 +72,11 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path="parameters"
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
-
 					<node-credentials :node="node" @credentialSelected="credentialSelected" />
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -99,6 +99,7 @@
 				<parameter-input-list
 					:parameters="parametersSetting"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path="parameters"
 					@valueChanged="valueChanged"
 				/>
@@ -106,6 +107,7 @@
 					:parameters="nodeSettings"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path=""
 					@valueChanged="valueChanged"
 				/>
@@ -122,6 +124,7 @@ import {
 	INodeProperties,
 	NodeHelpers,
 	NodeParameterValue,
+	deepCopy,
 } from 'n8n-workflow';
 import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 
@@ -141,14 +144,13 @@ import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from './helpers';
 
-export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
+export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
 	components: {
 		NodeTitle,
@@ -197,7 +199,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			};
 		},
 		node(): INodeUi {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		parametersSetting(): INodeProperties[] {
 			return this.parameters.filter((item) => {
@@ -217,7 +219,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			return this.nodeType.properties;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string } {
-			return this.$store.getters['ui/outputPanelEditMode'];
+			return this.$store.getters['ndv/outputPanelEditMode'];
 		},
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.node.type);
@@ -233,6 +235,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		},
 		nodeType: {
 			type: Object as PropType<INodeTypeDescription>,
+		},
+		isReadOnly: {
+			type: Boolean,
 		},
 	},
 	data() {
@@ -427,7 +432,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 					// Value should be set
 					if (typeof value === 'object') {
 						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, JSON.parse(JSON.stringify(value)));
+						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, deepCopy(value));
 					} else {
 						// @ts-ignore
 						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, value);
@@ -500,7 +505,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 
 				// Copy the data because it is the data of vuex so make sure that
 				// we do not edit it directly
-				nodeParameters = JSON.parse(JSON.stringify(nodeParameters));
+				nodeParameters = deepCopy(nodeParameters);
 
 				for (const parameterName of Object.keys(parameterData.value)) {
 					//@ts-ignore
@@ -591,7 +596,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 
 				// Copy the data because it is the data of vuex so make sure that
 				// we do not edit it directly
-				nodeParameters = JSON.parse(JSON.stringify(nodeParameters));
+				nodeParameters = deepCopy(nodeParameters);
 
 				// Remove the 'parameters.' from the beginning to just have the
 				// actual parameter name
@@ -734,7 +739,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 					}
 				}
 
-				Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
+				Vue.set(this.nodeValues, 'parameters', deepCopy(this.node.parameters));
 			} else {
 				this.nodeValid = false;
 			}

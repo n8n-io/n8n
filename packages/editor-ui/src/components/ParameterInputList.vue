@@ -12,12 +12,14 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
 
 			<import-parameter
 					v-else-if="parameter.type === 'curlImport' && nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion >= 3"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 			/>
 
@@ -45,6 +47,7 @@
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
+					color="text-dark"
 				/>
 				<collection-parameter
 					v-if="parameter.type === 'collection'"
@@ -52,6 +55,7 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 				<fixed-collection-parameter
@@ -60,6 +64,7 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
@@ -96,6 +101,7 @@
 <script lang="ts">
 
 import {
+	deepCopy,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
@@ -105,7 +111,6 @@ import {
 import { INodeUi, IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
@@ -116,7 +121,6 @@ import mixins from 'vue-typed-mixins';
 import {Component} from "vue";
 
 export default mixins(
-	genericHelpers,
 	workflowHelpers,
 )
 	.extend({
@@ -134,6 +138,7 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
+			'isReadOnly',
 		],
 		computed: {
 			nodeTypeVersion(): number | null {
@@ -155,7 +160,7 @@ export default mixins(
 				return this.filteredParameters.map(parameter => parameter.name);
 			},
 			node (): INodeUi {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			indexToShowSlotAt (): number {
 				let index = 0;
@@ -287,7 +292,7 @@ export default mixins(
 
 				if (parameterGotResolved === true) {
 					if (this.path) {
-						rawValues = JSON.parse(JSON.stringify(this.nodeValues));
+						rawValues = deepCopy(this.nodeValues);
 						set(rawValues, this.path, nodeValues);
 						return this.displayParameter(rawValues, parameter, this.path, this.node);
 					} else {
@@ -318,7 +323,7 @@ export default mixins(
 					if (!newValue.includes(parameter)) {
 						const parameterData = {
 							name: `${this.path}.${parameter}`,
-							node: this.$store.getters.activeNode.name,
+							node: this.$store.getters['ndv/activeNode'].name,
 							value: undefined,
 						};
 						this.$emit('valueChanged', parameterData);

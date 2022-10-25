@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	deepCopy,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -431,7 +432,7 @@ export class DateTime implements INodeType {
 					if (dataPropertyName.includes('.')) {
 						// Uses dot notation so copy all data
 						newItem = {
-							json: JSON.parse(JSON.stringify(item.json)),
+							json: deepCopy(item.json),
 							pairedItem: {
 								item: i,
 							},
@@ -475,7 +476,7 @@ export class DateTime implements INodeType {
 					if (dataPropertyName.includes('.')) {
 						// Uses dot notation so copy all data
 						newItem = {
-							json: JSON.parse(JSON.stringify(item.json)),
+							json: deepCopy(item.json),
 							pairedItem: {
 								item: i,
 							},

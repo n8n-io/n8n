@@ -37,7 +37,7 @@ export default mixins(
 				return this.$route.name === VIEWS.EXECUTION;
 			},
 			activeNode (): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			hideMenuBar(): boolean {
 				return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
@@ -56,7 +56,7 @@ export default mixins(
 <style lang="scss">
 .main-header {
 	background-color: var(--color-background-xlight);
-	height: 65px;
+	height: $header-height;
 	width: 100%;
 	box-sizing: border-box;
 	border-bottom: var(--border-width-base) var(--border-style-base) var(--color-foreground-base);

@@ -35,6 +35,7 @@ type MultipleMatches = 'all' | 'first';
 export type MatchFieldsOutput = 'both' | 'input1' | 'input2';
 
 export type MatchFieldsJoinMode =
+	| 'keepEverything'
 	| 'keepMatches'
 	| 'keepNonMatches'
 	| 'enrichInput2'
@@ -294,12 +295,16 @@ export function selectMergeMethod(clashResolveOptions: ClashResolveOptions) {
 			}
 		}
 		if (mergeMode === 'deepMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) =>
-				mergeWith(target, ...source, customizer);
+			return (target: IDataObject, ...source: IDataObject[]) => {
+				const targetCopy = Object.assign({}, target);
+				return mergeWith(targetCopy, ...source, customizer);
+			};
 		}
 		if (mergeMode === 'shallowMerge') {
-			return (target: IDataObject, ...source: IDataObject[]) =>
-				assignWith(target, ...source, customizer);
+			return (target: IDataObject, ...source: IDataObject[]) => {
+				const targetCopy = Object.assign({}, target);
+				return assignWith(targetCopy, ...source, customizer);
+			};
 		}
 	} else {
 		if (mergeMode === 'deepMerge') {

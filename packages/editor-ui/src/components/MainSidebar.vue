@@ -9,7 +9,7 @@
 			:class="{ ['clickable']: true, [$style.sideMenuCollapseButton]: true, [$style.expandedButton]: !isCollapsed }"
 			@click="toggleCollapse">
 		</div>
-			<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
+		<n8n-menu :items="mainMenuItems" :collapsed="isCollapsed" @select="handleSelect">
 			<template #header>
 				<div :class="$style.logo">
 					<img :src="basePath +  (isCollapsed ? 'n8n-logo-collapsed.svg' : 'n8n-logo-expanded.svg')" :class="$style.icon" alt="n8n"/>
@@ -78,10 +78,10 @@ import {
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
-	WORKFLOW_OPEN_MODAL_KEY,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
+import Vue from 'vue';
 
 export default mixins(
 	genericHelpers,
@@ -160,7 +160,6 @@ export default mixins(
 								// @ts-ignore
 								label: item.properties ? item.properties.title : '',
 								position: item.position,
-								activateOnRouteNames: [ VIEWS.TEMPLATES ],
 								type: item.properties?.href ? 'link' : 'regular',
 								properties: item.properties,
 							} as IMenuItem,
@@ -174,20 +173,7 @@ export default mixins(
 						icon: 'network-wired',
 						label: this.$locale.baseText('mainSidebar.workflows'),
 						position: 'top',
-						activateOnRouteNames: [ VIEWS.NEW_WORKFLOW, VIEWS.WORKFLOWS, VIEWS.WORKFLOW ],
-						children: [
-							{
-								id: 'workflow',
-								label: this.$locale.baseText('mainSidebar.new'),
-								icon: 'file',
-								activateOnRouteNames: [ VIEWS.NEW_WORKFLOW ],
-							},
-							{
-								id: 'workflow-open',
-								label: this.$locale.baseText('mainSidebar.open'),
-								icon: 'folder-open',
-							},
-						],
+						activateOnRouteNames: [ VIEWS.WORKFLOWS ],
 					},
 					{
 						id: 'templates',
@@ -277,15 +263,13 @@ export default mixins(
 				return [ ...items, ...regularItems ];
 			},
 		},
-		mounted() {
-			this.fullyExpanded = !this.isCollapsed;
+		async mounted() {
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
-			if (window.innerWidth > 900 && !this.isNodeView) {
-				this.$store.commit('ui/expandSidebarMenu');
-			}
 			this.checkWidthAndAdjustSidebar(window.innerWidth);
+			await Vue.nextTick();
+			this.fullyExpanded = !this.isCollapsed;
 		},
 		created() {
 			window.addEventListener("resize", this.onResize);
@@ -335,12 +319,10 @@ export default mixins(
 			},
 			async handleSelect (key: string) {
 				switch (key) {
-					case 'workflow': {
-						await this.createNewWorkflow();
-						break;
-					}
-					case 'workflow-open': {
-						this.$store.dispatch('ui/openModal', WORKFLOW_OPEN_MODAL_KEY);
+					case 'workflows': {
+						if (this.$router.currentRoute.name !== VIEWS.WORKFLOWS) {
+							this.$router.push({name: VIEWS.WORKFLOWS});
+						}
 						break;
 					}
 					case 'templates': {
@@ -456,8 +438,10 @@ export default mixins(
 				this.checkWidthAndAdjustSidebar(browserWidth);
 			},
 			checkWidthAndAdjustSidebar (width: number) {
-				if (width < 900) {
+				if (width < 900 || this.isNodeView) {
 					this.$store.commit('ui/collapseSidebarMenu');
+				} else {
+					this.$store.commit('ui/expandSidebarMenu');
 				}
 			},
 		},

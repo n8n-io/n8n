@@ -8,7 +8,7 @@
 	>
 		<template slot="content">
 			<div :class="$style.container">
-				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')">
+				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
 						:value="curlCommand"
 						type="textarea"
@@ -65,7 +65,7 @@ export default mixins(showMessage).extend({
 	},
 	computed: {
 		node(): INodeUi {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 	},
 	methods: {

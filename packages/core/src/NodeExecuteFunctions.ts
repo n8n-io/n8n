@@ -63,6 +63,7 @@ import {
 	NodeParameterValueType,
 	NodeExecutionWithMetadata,
 	IPairedItemData,
+	deepCopy,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -101,6 +102,7 @@ import {
 	PLACEHOLDER_EMPTY_EXECUTION_ID,
 } from '.';
 import { extractValue } from './ExtractValue';
+import { getClientCredentialsToken } from './OAuth2Helper';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -932,9 +934,10 @@ export async function requestOAuth2(
 	});
 
 	let oauthTokenData = credentials.oauthTokenData as clientOAuth2.Data;
+
 	// if it's the first time using the credentials, get the access token and save it into the DB.
 	if (credentials.grantType === OAuth2GrantType.clientCredentials && oauthTokenData === undefined) {
-		const { data } = await oAuthClient.credentials.getToken();
+		const { data } = await getClientCredentialsToken(oAuthClient, credentials);
 
 		// Find the credentials
 		if (!node.credentials?.[credentialsType]) {
@@ -949,7 +952,7 @@ export async function requestOAuth2(
 		await additionalData.credentialsHelper.updateCredentials(
 			nodeCredentials,
 			credentialsType,
-			credentials as unknown as ICredentialDataDecryptedObject,
+			Object.assign(credentials, { oauthTokenData: data }),
 		);
 
 		oauthTokenData = data;
@@ -1004,7 +1007,7 @@ export async function requestOAuth2(
 				// if it's OAuth2 with client credentials grant type, get a new token
 				// instead of refreshing it.
 				if (OAuth2GrantType.clientCredentials === credentials.grantType) {
-					newToken = await token.client.credentials.getToken();
+					newToken = await getClientCredentialsToken(token.client, credentials);
 				} else {
 					newToken = await token.refresh(tokenRefreshOptions);
 				}
@@ -1072,7 +1075,7 @@ export async function requestOAuth2(
 			// if it's OAuth2 with client credentials grant type, get a new token
 			// instead of refreshing it.
 			if (OAuth2GrantType.clientCredentials === credentials.grantType) {
-				newToken = await token.client.credentials.getToken();
+				newToken = await getClientCredentialsToken(token.client, credentials);
 			} else {
 				newToken = await token.refresh(tokenRefreshOptions);
 			}
@@ -1345,8 +1348,10 @@ export function constructExecutionMetaData(
 export function normalizeItems(
 	executionData: INodeExecutionData | INodeExecutionData[],
 ): INodeExecutionData[] {
-	if (typeof executionData === 'object' && !Array.isArray(executionData))
-		executionData = [{ json: executionData as IDataObject }];
+	if (typeof executionData === 'object' && !Array.isArray(executionData)) {
+		executionData = executionData.json ? [executionData] : [{ json: executionData as IDataObject }];
+	}
+
 	if (executionData.every((item) => typeof item === 'object' && 'json' in item))
 		return executionData;
 
@@ -1639,7 +1644,7 @@ export async function getCredentials(
  *
  */
 export function getNode(node: INode): INode {
-	return JSON.parse(JSON.stringify(node));
+	return deepCopy(node);
 }
 
 /**
@@ -2297,6 +2302,17 @@ export function getExecuteFunctions(
 				}
 				try {
 					if (additionalData.sendMessageToUI) {
+						args = args.map((arg) => {
+							// prevent invalid dates from being logged as null
+							if (arg.isLuxonDateTime && arg.invalidReason) return { ...arg };
+
+							// log valid dates in human readable format, as in browser
+							if (arg.isLuxonDateTime) return new Date(arg.ts).toString();
+							if (arg instanceof Date) return arg.toString();
+
+							return arg;
+						});
+
 						additionalData.sendMessageToUI(node.name, args);
 					}
 				} catch (error) {
