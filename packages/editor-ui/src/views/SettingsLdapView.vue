@@ -174,7 +174,7 @@ export default mixins(
 					ldapId: form.ldapId,
 				},
 				filter: {
-					user: form.userFilter,
+					user: form.userFilter ?? '',
 				},
 				syncronization: {
 					enabled: form.syncronizationEnabled === 'true' ? true : false,

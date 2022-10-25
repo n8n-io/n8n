@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable no-underscore-dangle */
 import type { Entry } from 'ldapts';
-import { IDataObject, LoggerProxy as Logger } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 import { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
 import { RunningMode, SyncStatus } from './constants';
@@ -16,6 +16,7 @@ import {
 import type { User } from '../databases/entities/User';
 import type { Role } from '../databases/entities/Role';
 import { LdapSyncHistory as ADSync } from '../databases/entities/LdapSyncHistory';
+import { QueryFailedError } from 'typeorm/error/QueryFailedError';
 
 export class LdapSync {
 	private intervalId: NodeJS.Timeout | undefined = undefined;
@@ -107,10 +108,11 @@ export class LdapSync {
 			if (mode === RunningMode.LIVE) {
 				await processUsers(usersToCreate, usersToUpdate, usersToDisable);
 			}
-		} catch (exception) {
-			const error = exception as IDataObject;
-			status = SyncStatus.ERROR;
-			errorMessage = error?.message as string;
+		} catch (error) {
+			if (error instanceof QueryFailedError) {
+				status = SyncStatus.ERROR;
+				errorMessage = `${error.message}`;
+			}
 		}
 
 		const syncronization = new ADSync();
