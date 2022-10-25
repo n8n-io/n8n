@@ -11,16 +11,7 @@ export default mergeConfig(
 		resolve: {
 			alias: {
 				'@': resolve(__dirname, 'src'),
-				'vue2-boring-avatars': resolve(
-					__dirname,
-					'..',
-					'..',
-					'node_modules',
-					'vue2-boring-avatars',
-					'dist',
-					'vue-2-boring-avatars.umd.js',
-				),
-				// 'vue2-boring-avatars': 'vue2-boring-avatars/dist/vue-2-boring-avatars.umd.js',
+				'vue2-boring-avatars': require.resolve('vue2-boring-avatars'),
 			},
 		},
 		build: {
