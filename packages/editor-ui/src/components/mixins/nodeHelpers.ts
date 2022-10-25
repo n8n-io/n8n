@@ -27,7 +27,7 @@ import {
 import {
 	ICredentialsResponse,
 	INodeUi,
-} from '../../Interface';
+} from '@/Interface';
 
 import { restApi } from '@/components/mixins/restApi';
 
@@ -214,22 +214,17 @@ export const nodeHelpers = mixins(
 
 			// Returns all the credential-issues of the node
 			getNodeCredentialIssues (node: INodeUi, nodeType?: INodeTypeDescription): INodeIssues | null {
-				if (node.disabled === true) {
+				if (node.disabled) {
 					// Node is disabled
 					return null;
 				}
 
-				if (nodeType === undefined) {
+				if (!nodeType) {
 					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
 				}
 
-				if (nodeType === null || nodeType!.credentials === undefined) {
+				if (!nodeType?.credentials) {
 					// Node does not need any credentials or nodeType could not be found
-					return null;
-				}
-
-				if (nodeType!.credentials === undefined) {
-					// No credentials defined for node type
 					return null;
 				}
 
@@ -239,6 +234,16 @@ export const nodeHelpers = mixins(
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
+				const foreignCredentials = this.$store.getters['credentials/allForeignCredentials'];
+
+				// TODO: Check if any of the node credentials is found in foreign credentials
+				if(foreignCredentials?.some(() => true)){
+					return {
+						credentials: {
+							foreign: [],
+						},
+					};
+				}
 
 				const {
 					authentication,
@@ -279,9 +284,9 @@ export const nodeHelpers = mixins(
 					return this.reportUnsetCredential(credential);
 				}
 
-				for (const credentialTypeDescription of nodeType!.credentials!) {
+				for (const credentialTypeDescription of nodeType.credentials) {
 					// Check if credentials should be displayed else ignore
-					if (this.displayParameter(node.parameters, credentialTypeDescription, '', node) !== true) {
+					if (!this.displayParameter(node.parameters, credentialTypeDescription, '', node)) {
 						continue;
 					}
 
@@ -293,9 +298,9 @@ export const nodeHelpers = mixins(
 						credentialDisplayName = credentialType.displayName;
 					}
 
-					if (node.credentials === undefined || node.credentials[credentialTypeDescription.name] === undefined) {
+					if (!node.credentials || !node.credentials?.[credentialTypeDescription.name]) {
 						// Credentials are not set
-						if (credentialTypeDescription.required === true) {
+						if (credentialTypeDescription.required) {
 							foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.notSet', { interpolate: { type: credentialDisplayName } })];
 						}
 					} else {
@@ -493,7 +498,7 @@ export const nodeHelpers = mixins(
  * selected credentials are of the specified type.
  */
 function selectedCredsAreUnusable(node: INodeUi, credentialType: string) {
-	return node.credentials === undefined || Object.keys(node.credentials).includes(credentialType) === false;
+	return !node.credentials || !Object.keys(node.credentials).includes(credentialType);
 }
 
 /**

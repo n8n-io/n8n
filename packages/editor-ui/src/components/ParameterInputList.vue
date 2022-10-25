@@ -12,12 +12,14 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
 
 			<import-parameter
 					v-else-if="parameter.type === 'curlImport' && nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion >= 3"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 			/>
 
@@ -53,6 +55,7 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 				<fixed-collection-parameter
@@ -61,6 +64,7 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
@@ -107,7 +111,6 @@ import {
 import { INodeUi, IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
@@ -118,7 +121,6 @@ import mixins from 'vue-typed-mixins';
 import {Component} from "vue";
 
 export default mixins(
-	genericHelpers,
 	workflowHelpers,
 )
 	.extend({
@@ -136,6 +138,7 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
+			'isReadOnly',
 		],
 		computed: {
 			nodeTypeVersion(): number | null {
