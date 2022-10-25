@@ -45,8 +45,6 @@ const schemaGetWorkflowsQueryFilter = {
 		id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 		name: { type: 'string' },
 		active: { type: 'boolean' },
-		nodes: { type: 'string' },
-		connections: { type: 'string' },
 		createdAt: {
 			type: { type: 'string' },
 			format: 'date-time',
@@ -55,36 +53,17 @@ const schemaGetWorkflowsQueryFilter = {
 			type: { type: 'string' },
 			format: 'date-time',
 		},
-		settings: { type: 'string' },
-		staticData: { type: 'string' },
-		pinData: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
 	},
 };
 
-const allowedWorkflowsQueryFilterFields = [
-	'id',
-	'name',
-	'active',
-	'nodes',
-	'connections',
-	'createdAt',
-	'updatedAt',
-	'settings',
-	'staticData',
-	'pinData',
-];
+const allowedWorkflowsQueryFilterFields = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
 
 interface IGetWorkflowsQueryFilter {
 	id?: number | string;
 	name?: string;
 	active?: boolean;
-	nodes?: string;
-	connections?: string;
 	createdAt?: string;
 	updatedAt?: string;
-	settings?: string;
-	staticData?: string;
-	pinData?: string;
 }
 
 /**
