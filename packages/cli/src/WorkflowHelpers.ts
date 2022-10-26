@@ -29,6 +29,7 @@ import { v4 as uuid } from 'uuid';
 import {
 	CredentialTypes,
 	Db,
+	ICredentialsDb,
 	ICredentialsTypeData,
 	ITransferNodeTypes,
 	IWorkflowErrorData,
@@ -703,4 +704,84 @@ export function generateFailedExecutionFromError(
 		startedAt: new Date(),
 		stoppedAt: new Date(),
 	};
+}
+
+/** Get all nodes in a workflow where the node credential is not accessible to the user. */
+export function getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCredIds: string[]) {
+	if (!workflow.nodes) {
+		return [];
+	}
+	return workflow.nodes.filter((node) => {
+		if (!node.credentials) return false;
+
+		const allUsedCredentials = Object.values(node.credentials);
+
+		const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
+		return allUsedCredentialIds.some(
+			(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
+		);
+	});
+}
+
+export function validateWorkflowCredentialUsage(
+	newWorkflowVersion: WorkflowEntity,
+	previousWorkflowVersion: WorkflowEntity,
+	credentialsUserHasAccessTo: ICredentialsDb[],
+) {
+	/**
+	 * We only need to check nodes that use credentials the current user cannot access,
+	 * since these can be 2 possibilities:
+	 * - Same ID already exist: it's a read only node and therefore cannot be changed
+	 * - It's a new node which indicates tampering and therefore must fail saving
+	 */
+
+	const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id.toString());
+
+	const nodesWithCredentialsUserDoesNotHaveAccessTo = getNodesWithInaccessibleCreds(
+		newWorkflowVersion,
+		allowedCredentialIds,
+	);
+
+	// If there are no nodes with credentials the user does not have access to we can skip the rest
+	if (nodesWithCredentialsUserDoesNotHaveAccessTo.length === 0) {
+		return newWorkflowVersion;
+	}
+
+	const previouslyExistingNodeIds = previousWorkflowVersion.nodes.map((node) => node.id);
+
+	// If it's a new node we can't allow it to be saved
+	// since it uses creds the node doesn't have access
+	const isTamperingAttempt = (inaccessibleCredNodeId: string) =>
+		!previouslyExistingNodeIds.includes(inaccessibleCredNodeId);
+
+	nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
+		if (isTamperingAttempt(node.id)) {
+			Logger.info('Blocked workflow update due to tampering attempt', {
+				nodeType: node.type,
+				nodeName: node.name,
+				nodeId: node.id,
+				nodeCredentials: node.credentials,
+			});
+			// Node is new, so this is probably a tampering attempt. Throw an error
+			throw new Error(
+				'Workflow contains new nodes with credentials the user does not have access to',
+			);
+		}
+		// Replace the node with the previous version of the node
+		// Since it cannot be modified (read only node)
+		const nodeIdx = newWorkflowVersion.nodes.findIndex(
+			(newWorkflowNode) => newWorkflowNode.id === node.id,
+		);
+
+		Logger.debug('Replacing node with previous version when saving updated workflow', {
+			nodeType: node.type,
+			nodeName: node.name,
+			nodeId: node.id,
+		});
+		newWorkflowVersion.nodes[nodeIdx] = previousWorkflowVersion.nodes.find(
+			(previousNode) => previousNode.id === node.id,
+		)!;
+	});
+
+	return newWorkflowVersion;
 }
