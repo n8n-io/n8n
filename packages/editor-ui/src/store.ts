@@ -39,7 +39,6 @@ import {
 import nodeTypes from './modules/nodeTypes';
 import ndv from './modules/ndv';
 import credentials from './modules/credentials';
-import settings from './modules/settings';
 import tags from './modules/tags';
 import ui from './modules/ui';
 import users from './modules/users';
@@ -113,7 +112,6 @@ const modules = {
 	nodeTypes,
 	credentials,
 	tags,
-	settings,
 	templates,
 	workflows,
 	versions,

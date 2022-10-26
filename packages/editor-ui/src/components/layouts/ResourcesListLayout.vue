@@ -130,6 +130,8 @@ import Vue, {PropType} from "vue";
 import {debounceHelper} from '@/components/mixins/debounce';
 import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
 import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
 
 export interface IResource {
 	id: string;
@@ -204,6 +206,7 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(useSettingsStore),
 		currentUser(): IUser {
 			return this.$store.getters['users/currentUser'];
 		},
@@ -216,7 +219,7 @@ export default mixins(
 			}
 
 			return (this.resources as IResource[]).filter((resource) => {
-				if (this.isOwnerSubview && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+				if (this.isOwnerSubview && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 					return !!(resource.ownedBy && resource.ownedBy.id === this.currentUser.id);
 				}
 

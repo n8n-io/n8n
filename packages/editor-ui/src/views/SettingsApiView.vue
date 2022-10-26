@@ -73,6 +73,9 @@ import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
 import CopyInput from '../components/CopyInput.vue';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(
 	showMessage,
@@ -92,12 +95,16 @@ export default mixins(
 	},
 	mounted() {
 		this.getApiKey();
-		const baseUrl = this.$store.getters.getBaseUrl;
-		const apiPath = this.$store.getters['settings/publicApiPath'];
-		const latestVersion = this.$store.getters['settings/publicApiLatestVersion'];
+		const baseUrl = this.rootStore.baseUrl;
+		const apiPath = this.settingsStore.publicApiPath;
+		const latestVersion = this.settingsStore.publicApiLatestVersion;
 		this.apiPlaygroundPath = `${baseUrl}${apiPath}/v${latestVersion}/docs`;
 	},
 	computed: {
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+		),
 		currentUser(): IUser {
 			return this.$store.getters['users/currentUser'];
 		},
@@ -117,7 +124,7 @@ export default mixins(
 		},
 		async getApiKey() {
 			try {
-				this.apiKey = await this.$store.dispatch('settings/getApiKey');
+				this.apiKey = await this.settingsStore.getApiKey() || '';
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.view.error'));
 			} finally {
@@ -128,7 +135,7 @@ export default mixins(
 			this.loading = true;
 
 			try {
-				this.apiKey = await this.$store.dispatch('settings/createApiKey');
+				this.apiKey = await this.settingsStore.createApiKey() || '';
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.api.create.error'));
 			} finally {
@@ -138,7 +145,7 @@ export default mixins(
 		},
 		async deleteApiKey() {
 			try {
-				await this.$store.dispatch('settings/deleteApiKey');
+				await this.settingsStore.deleteApiKey();
 				this.$showMessage({ title: this.$locale.baseText("settings.api.delete.toast"), type: 'success' });
 				this.apiKey = '';
 			} catch (error) {

@@ -880,7 +880,9 @@ export interface rootStatePinia {
 	maxExecutionTimeout: number;
 	versionCli: string;
 	oauthCallbackUrls: object;
-	n8nMetadata: object;
+	n8nMetadata: {
+		[key: string]: string | number | undefined;
+	};
 	// workflowExecutionData: IExecutionResponse | null; // --> WF store
 	// lastSelectedNode: string | null; // --> UI Store
 	// lastSelectedNodeOutputIndex: number | null; // --> UI Store
@@ -889,6 +891,7 @@ export interface rootStatePinia {
 	// selectedNodes: INodeUi[]; // --> UI Store
 	sessionId: string;
 	urlBaseWebhook: string;
+	urlBaseEditor: string;
 	// workflow: IWorkflowDb; // --> WF Store
 	// sidebarMenuItems: IMenuItem[]; // --> UI Store
 	instanceId: string;

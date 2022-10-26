@@ -36,7 +36,6 @@ import {
 	INodeUi,
 	IOnboardingCallPrompt,
 	IPushDataExecutionFinished,
-	IRunDataDisplayMode,
 	IUser,
 	uiState,
 	XYPosition,

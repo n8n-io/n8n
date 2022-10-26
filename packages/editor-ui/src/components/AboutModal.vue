@@ -13,7 +13,7 @@
 						<n8n-text>{{ $locale.baseText('about.n8nVersion') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-text>{{ versionCli }}</n8n-text>
+						<n8n-text>{{ settingsStore.versionCli }}</n8n-text>
 					</el-col>
 				</el-row>
 				<el-row>
@@ -39,7 +39,7 @@
 						<n8n-text>{{ $locale.baseText('about.instanceID') }}</n8n-text>
 					</el-col>
 					<el-col :span="16">
-						<n8n-text>{{ instanceId }}</n8n-text>
+						<n8n-text>{{ settingsStore.settings.instanceId }}</n8n-text>
 					</el-col>
 				</el-row>
 			</div>
@@ -55,9 +55,10 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { mapGetters } from 'vuex';
 import Modal from './Modal.vue';
 import { ABOUT_MODAL_KEY } from '../constants';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
 
 export default Vue.extend({
 	name: 'About',
@@ -71,8 +72,9 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['versionCli']),
-		...mapGetters(['instanceId']),
+		...mapStores(
+			useSettingsStore,
+		),
 	},
 	methods: {
 		closeDialog() {

@@ -37,12 +37,15 @@ import mixins from 'vue-typed-mixins';
 import { mapGetters } from 'vuex';
 import { isObjectLiteral } from '@/utils';
 import {getCredentialPermissions} from "@/permissions";
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
 
 export const nodeHelpers = mixins(
 	restApi,
 )
 	.extend({
 		computed: {
+			...mapStores(useSettingsStore),
 			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
 		},
 		methods: {
@@ -332,7 +335,7 @@ export const nodeHelpers = mixins(
 						}
 
 						if (nameMatches.length === 0) {
-							if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+							if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.notAvailable')];
 							} else {
 								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.doNotExist', { interpolate: { name: selectedCredentials.name, type: credentialDisplayName } }), this.$locale.baseText('nodeIssues.credentials.doNotExist.hint')];

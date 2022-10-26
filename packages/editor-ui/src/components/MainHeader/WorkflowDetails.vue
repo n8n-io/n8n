@@ -23,7 +23,7 @@
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="areTagsEnabled" class="tags">
+		<span v-if="settingsStore.areTagsEnabled" class="tags">
 			<div
 				v-if="isTagsEditEnabled">
 				<TagsDropdown
@@ -106,6 +106,7 @@ import { titleChange } from "../mixins/titleChange";
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { mapStores } from "pinia";
 import { useUIStore } from "@/stores/ui";
+import { useSettingsStore } from "@/stores/settings";
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -139,14 +140,16 @@ export default mixins(workflowHelpers, titleChange).extend({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+		),
 		...mapGetters({
 			isWorkflowActive: "isActive",
 			workflowName: "workflowName",
 			isDirty: "getStateIsDirty",
 			currentWorkflowTagIds: "workflowTags",
 		}),
-		...mapGetters('settings', ['areTagsEnabled']),
 		isNewWorkflow(): boolean {
 			return !this.$route.params.name;
 		},
@@ -205,7 +208,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 	methods: {
 		async onSaveButtonClick () {
 			const saved = await this.saveCurrentWorkflow();
-			if (saved) this.$store.dispatch('settings/fetchPromptsData');
+			if (saved) await this.settingsStore.fetchPromptsData();
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;

@@ -4,7 +4,7 @@
 			<div>
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.users') }}</n8n-heading>
 				<div :class="$style.buttonContainer" v-if="!showUMSetupWarning">
-						<n8n-tooltip :disabled="isSmtpSetup" placement="bottom">
+						<n8n-tooltip :disabled="settingsStore.isSmtpSetup" placement="bottom">
 							<i18n slot="content" path="settings.users.setupSMTPToInviteUsers" tag="span">
 								<template #action>
 									<a
@@ -15,7 +15,7 @@
 								</template>
 							</i18n>
 							<div>
-								<n8n-button :label="$locale.baseText('settings.users.invite')" @click="onInvite" size="large" :disabled="!isSmtpSetup" />
+								<n8n-button :label="$locale.baseText('settings.users.invite')" @click="onInvite" size="large" :disabled="!settingsStore.isSmtpSetup" />
 							</div>
 						</n8n-tooltip>
 				</div>
@@ -30,7 +30,7 @@
 			</div>
 			<div :class="$style.usersContainer" v-else>
 				<PageAlert
-					v-if="!isSmtpSetup"
+					v-if="!settingsStore.isSmtpSetup"
 					:message="$locale.baseText('settings.users.smtpToAddUsersWarning')"
 					:popupClass="$style.alert"
 				/>
@@ -51,6 +51,7 @@ import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/components/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 export default mixins(showMessage).extend({
 	name: 'SettingsUsersView',
@@ -64,9 +65,11 @@ export default mixins(showMessage).extend({
 		}
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useSettingsStore,
+		),
 		...mapGetters('users', ['allUsers', 'currentUserId', 'showUMSetupWarning']),
-		...mapGetters('settings', ['isSmtpSetup']),
 	},
 	methods: {
 		redirectToSetup() {

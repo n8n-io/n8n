@@ -84,6 +84,7 @@ import { debounceHelper } from './mixins/debounce';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 export default mixins(
 	genericHelpers,
@@ -110,7 +111,10 @@ export default mixins(
 			};
 		},
 		computed: {
-			...mapStores(useUIStore),
+			...mapStores(
+				useSettingsStore,
+				useUIStore,
+			),
 			...mapGetters('versions', [
 				'hasVersionUpdates',
 				'nextVersions',
@@ -118,10 +122,6 @@ export default mixins(
 			...mapGetters('users', [
 				'canUserAccessSidebarUserInfo',
 				'currentUser',
-			]),
-			...mapGetters('settings', [
-				'isTemplatesEnabled',
-				'isUserManagementEnabled',
 			]),
 			isCollapsed(): boolean {
 				return this.uiStore.sidebarMenuCollapsed;
@@ -131,7 +131,7 @@ export default mixins(
 				return accessibleRoute !== null;
 			},
 			showUserArea(): boolean {
-				return this.isUserManagementEnabled && this.canUserAccessSidebarUserInfo && this.currentUser;
+				return this.settingsStore.isUserManagementEnabled && this.canUserAccessSidebarUserInfo && this.currentUser;
 			},
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;
@@ -182,7 +182,7 @@ export default mixins(
 						icon: 'box-open',
 						label: this.$locale.baseText('mainSidebar.templates'),
 						position: 'top',
-						available: this.isTemplatesEnabled,
+						available: this.settingsStore.isTemplatesEnabled,
 						activateOnRouteNames: [ VIEWS.TEMPLATES ],
 					},
 					{
@@ -381,7 +381,7 @@ export default mixins(
 					);
 					if (confirmModal === MODAL_CONFIRMED) {
 						const saved = await this.saveCurrentWorkflow({}, false);
-						if (saved) this.$store.dispatch('settings/fetchPromptsData');
+						if (saved) await this.settingsStore.fetchPromptsData();
 						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 							this.$root.$emit('newWorkflow');
 						} else {

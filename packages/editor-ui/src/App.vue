@@ -40,6 +40,7 @@ import { restApi } from '@/components/mixins/restApi';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
+import { useSettingsStore } from './stores/settings';
 
 export default mixins(
 	showMessage,
@@ -54,9 +55,11 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
 		...mapGetters('users', ['currentUser']),
-		...mapStores(useUIStore),
+		...mapStores(
+				useUIStore,
+				useSettingsStore,
+			),
 		defaultLocale (): string {
 			return this.$store.getters.defaultLocale;
 		},
@@ -69,7 +72,7 @@ export default mixins(
 	methods: {
 		async initSettings(): Promise<void> {
 			try {
-				await this.$store.dispatch('settings/getSettings');
+				await this.settingsStore.getSettings();
 			} catch (e) {
 				this.$showToast({
 					title: this.$locale.baseText('startupError'),
@@ -87,17 +90,16 @@ export default mixins(
 			} catch (e) {}
 		},
 		async initTemplates(): Promise<void> {
-			if (!this.isTemplatesEnabled) {
+			if (!this.settingsStore.isTemplatesEnabled) {
 				return;
 			}
-
 			try {
-				await this.$store.dispatch('settings/testTemplatesEndpoint');
+				await this.settingsStore.testTemplatesEndpoint();
 			} catch (e) {
 			}
 		},
 		logHiringBanner() {
-			if (this.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
+			if (this.settingsStore.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
@@ -118,7 +120,7 @@ export default mixins(
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
-			if (this.isUserManagementEnabled && this.showSetupPage) {
+			if (this.settingsStore.isUserManagementEnabled && this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
@@ -169,7 +171,8 @@ export default mixins(
 		this.loading = false;
 
 		this.trackPage();
-		this.$externalHooks().run('app.mount');
+		// TODO: Un-comment once front-end hooks are updated to work with pinia store
+		// this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
 			void this.$store.dispatch('nodeTypes/getNodeTranslationHeaders');

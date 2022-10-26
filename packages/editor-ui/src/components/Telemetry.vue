@@ -3,7 +3,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings';
+import { ITelemetrySettings } from 'n8n-workflow';
+import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 
 import { mapGetters } from 'vuex';
@@ -17,11 +20,13 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['telemetry']),
+		...mapStores(useRootStore, useSettingsStore),
 		...mapGetters('users', ['currentUserId']),
-		...mapGetters(['instanceId']),
 		isTelemetryEnabledOnRoute(): boolean {
 			return this.$route.meta && this.$route.meta.telemetry ? !this.$route.meta.telemetry.disabled: true;
+		},
+		telemetry(): ITelemetrySettings {
+			return this.settingsStore.telemetry;
 		},
 	},
 	mounted() {
@@ -40,15 +45,15 @@ export default mixins(externalHooks).extend({
 			this.$telemetry.init(
 				telemetrySettings,
 				{
-					instanceId: this.instanceId,
+					instanceId: this.rootStore.instanceId,
 					userId: this.currentUserId,
 					store: this.$store,
-					versionCli: this.$store.getters['settings/versionCli'],
+					versionCli: this.settingsStore.versionCli,
 				},
 			);
 
 			this.$externalHooks().run('telemetry.currentUserIdChanged', {
-				instanceId: this.instanceId,
+				instanceId: this.rootStore.instanceId,
 				userId: this.currentUserId,
 			});
 
@@ -60,9 +65,9 @@ export default mixins(externalHooks).extend({
 			this.init();
 		},
 		currentUserId(userId) {
-			this.$telemetry.identify(this.instanceId, userId);
+			this.$telemetry.identify(this.rootStore.instanceId, userId);
 			this.$externalHooks().run('telemetry.currentUserIdChanged', {
-				instanceId: this.instanceId,
+				instanceId: this.rootStore.instanceId,
 				userId,
 			});
 		},

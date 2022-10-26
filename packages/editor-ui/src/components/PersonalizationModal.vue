@@ -17,7 +17,7 @@
 	>
 		<template v-slot:content>
 			<div v-if="submitted" :class="$style.submittedContainer">
-				<img :class="$style.demoImage" :src="baseUrl + 'suggestednodes.png'" />
+				<img :class="$style.demoImage" :src="rootStore.baseUrl + 'suggestednodes.png'" />
 				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
 			</div>
 			<div :class="$style.container" v-else>
@@ -50,7 +50,6 @@ import mixins from 'vue-typed-mixins';
 const SURVEY_VERSION = 'v3';
 
 import {
-	CODING_SKILL_KEY,
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_1000_OR_MORE,
 	COMPANY_SIZE_20_OR_LESS,
@@ -123,6 +122,8 @@ import { getAccountAge } from '@/modules/userHelpers';
 import { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
@@ -140,15 +141,13 @@ export default mixins(showMessage, workflowHelpers).extend({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
-		...mapGetters({
-			baseUrl: 'getBaseUrl',
-		}),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+		),
 		...mapGetters('users', [
 			'currentUser',
-		]),
-		...mapGetters('settings', [
-			'isOnboardingCallPromptFeatureEnabled',
 		]),
 		survey() {
 			const survey: IFormInputs = [
@@ -493,7 +492,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = false;
 		},
 		async fetchOnboardingPrompt() {
-			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
+			if (this.settingsStore.onboardingCallPromptEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
 				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
 				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 

@@ -31,6 +31,7 @@ import {
 } from '../Interface';
 import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from './userHelpers';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 const isDefaultUser = (user: IUserResponse | null) => Boolean(user && user.isPending && user.globalRole && user.globalRole.name === ROLE.Owner);
 
@@ -156,10 +157,11 @@ const module: Module<IUsersState, IRootState> = {
 		},
 		async createOwner(context: ActionContext<IUsersState, IRootState>, params: { firstName: string; lastName: string; email: string; password: string;}) {
 			const user = await setupOwner(context.rootGetters.getRestApiContext, params);
+			const settingsStore = useSettingsStore();
 			if (user) {
 				context.commit('addUsers', [user]);
 				context.commit('setCurrentUserId', user.id);
-				context.commit('settings/stopShowingSetupPage', null, { root: true });
+				settingsStore.stopShowingSetupPage();
 			}
 		},
 		async validateSignupToken(context: ActionContext<IUsersState, IRootState>, params: {inviteeId: string, inviterId: string}): Promise<{ inviter: { firstName: string, lastName: string } }> {
@@ -210,7 +212,8 @@ const module: Module<IUsersState, IRootState> = {
 			context.commit('setPersonalizationAnswers', results);
 		},
 		async showPersonalizationSurvey(context: ActionContext<IUsersState, IRootState>) {
-			const surveyEnabled = context.rootGetters['settings/isPersonalizationSurveyEnabled'] as boolean;
+			const settingsStore = useSettingsStore();
+			const surveyEnabled = settingsStore.isPersonalizationSurveyEnabled;
 			const currentUser = context.getters.currentUser as IUser | null;
 			if (surveyEnabled && currentUser && !currentUser.personalizationAnswers) {
 				const uiStore = useUIStore();
@@ -219,7 +222,8 @@ const module: Module<IUsersState, IRootState> = {
 		},
 		async skipOwnerSetup(context: ActionContext<IUsersState, IRootState>) {
 			try {
-				context.commit('settings/stopShowingSetupPage', null, { root: true });
+				const settingsStore = useSettingsStore();
+				settingsStore.stopShowingSetupPage();
 				await skipOwnerSetup(context.rootGetters.getRestApiContext);
 			} catch (error) {}
 		},

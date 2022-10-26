@@ -212,6 +212,7 @@ import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -297,7 +298,7 @@ export default mixins(
 
 				if (confirmModal === MODAL_CONFIRMED) {
 					const saved = await this.saveCurrentWorkflow({}, false);
-					if (saved) this.$store.dispatch('settings/fetchPromptsData');
+					if (saved) await this.settingsStore.fetchPromptsData();
 					this.$store.commit('setStateDirty', false);
 					next();
 				} else if (confirmModal === MODAL_CANCEL) {
@@ -312,12 +313,12 @@ export default mixins(
 			}
 		},
 		computed: {
-			...mapStores(useUIStore),
+			...mapStores(
+				useSettingsStore,
+				useUIStore,
+			),
 			...mapGetters('users', [
 				'currentUser',
-			]),
-			...mapGetters('settings', [
-				'isOnboardingCallPromptFeatureEnabled',
 			]),
 			defaultLocale(): string {
 				return this.$store.getters.defaultLocale;
@@ -569,7 +570,7 @@ export default mixins(
 			},
 			async onSaveKeyboardShortcut() {
 				const saved = await this.saveCurrentWorkflow();
-				if (saved) this.$store.dispatch('settings/fetchPromptsData');
+				if (saved) await this.settingsStore.fetchPromptsData();
 			},
 			showTriggerCreator(source: string) {
 				if(this.createNodeActive) return;
@@ -1423,7 +1424,7 @@ export default mixins(
 						this.$store.commit('setWorkflowPinData', workflowData.pinData);
 					}
 
-					const tagsEnabled = this.$store.getters['settings/areTagsEnabled'];
+					const tagsEnabled = this.settingsStore.areTagsEnabled;
 					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
 						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
 						const tagNames = new Set(allTags.map((tag) => tag.name));
@@ -2180,7 +2181,7 @@ export default mixins(
 
 						if (confirmModal === MODAL_CONFIRMED) {
 							const saved = await this.saveCurrentWorkflow();
-							if (saved) this.$store.dispatch('settings/fetchPromptsData');
+							if (saved) await this.settingsStore.fetchPromptsData();
 						} else if (confirmModal === MODAL_CLOSE) {
 							return Promise.resolve();
 						}
@@ -3246,7 +3247,7 @@ export default mixins(
 
 			if (
 				this.currentUser.personalizationAnswers !== null &&
-				this.isOnboardingCallPromptFeatureEnabled &&
+				this.settingsStore.onboardingCallPromptEnabled &&
 				getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
 			) {
 				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();

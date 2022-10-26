@@ -28,6 +28,7 @@
 
 <script lang="ts">
 import {IFakeDoor} from '@/Interface';
+import { useSettingsStore } from '@/stores/settings';
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
@@ -45,12 +46,9 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(useUIStore, useSettingsStore),
 		userId(): string {
 			return this.$store.getters['users/currentUserId'];
-		},
-		versionCli(): string {
-			return this.$store.getters['settings/versionCli'];
 		},
 		instanceId(): string {
 			return this.$store.getters.instanceId;
@@ -61,8 +59,10 @@ export default Vue.extend({
 	},
 	methods: {
 		openLinkPage() {
-			window.open(`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.versionCli}`, '_blank');
-			this.$telemetry.track('user clicked feature waiting list button', {feature: this.featureId});
+			if (this.featureInfo) {
+				window.open(`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.settingsStore.versionCli}`, '_blank');
+				this.$telemetry.track('user clicked feature waiting list button', {feature: this.featureId});
+			}
 		},
 	},
 });

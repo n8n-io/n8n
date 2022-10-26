@@ -12,7 +12,7 @@
 				<n8n-text color="text-light" size="small">
 					<span v-show="data">{{$locale.baseText('workflows.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
 					<span v-show="data" class="mr-2xs">{{$locale.baseText('workflows.item.created')}} {{ formattedCreatedAtDate }} </span>
-					<span v-if="areTagsEnabled && data.tags && data.tags.length > 0" v-show="data">
+					<span v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0" v-show="data">
 					<n8n-tags
 						:tags="data.tags"
 						:truncateAt="3"
@@ -64,6 +64,7 @@ import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Vue from "vue";
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -105,12 +106,12 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+		),
 		currentUser (): IUser {
 			return this.$store.getters['users/currentUser'];
-		},
-		areTagsEnabled(): boolean {
-			return this.$store.getters['settings/areTagsEnabled'];
 		},
 		credentialPermissions(): IPermissions {
 			return getWorkflowPermissions(this.currentUser, this.data, this.$store);

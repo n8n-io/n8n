@@ -39,7 +39,7 @@
 			</div>
 		</template>
 		<template v-slot:filters="{ setKeyValue }">
-			<div class="mb-s" v-if="areTagsEnabled">
+			<div class="mb-s" v-if="settingsStore.areTagsEnabled">
 				<n8n-input-label
 					:label="$locale.baseText('workflows.filters.tags')"
 					:bold="false"
@@ -75,6 +75,7 @@ import {ITag, IUser, IWorkflowDb} from "@/Interface";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -103,12 +104,12 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+		),
 		currentUser(): IUser {
 			return this.$store.getters['users/currentUser'];
-		},
-		areTagsEnabled(): boolean {
-			return this.$store.getters['settings/areTagsEnabled'];
 		},
 		allWorkflows(): IWorkflowDb[] {
 			return this.$store.getters['allWorkflows'];
@@ -140,7 +141,7 @@ export default mixins(
 			}
 		},
 		onFilter(resource: IWorkflowDb, filters: { tags: string[]; search: string; }, matches: boolean): boolean {
-			if (this.areTagsEnabled && filters.tags.length > 0) {
+			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches = matches && filters.tags.every(
 					(tag) => (resource.tags as ITag[])?.find((resourceTag) => typeof resourceTag === 'object' ? `${resourceTag.id}` === `${tag}` : `${resourceTag}` === `${tag}`),
 				);

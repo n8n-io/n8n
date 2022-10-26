@@ -4,13 +4,13 @@
 			<div :class="$style.headingContainer">
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
 				<n8n-button
-					v-if="!isQueueModeEnabled && communityNodesStore.getInstalledPackages.length > 0 && !loading"
+					v-if="!settingsStore.isQueueModeEnabled && communityNodesStore.getInstalledPackages.length > 0 && !loading"
 					:label="$locale.baseText('settings.communityNodes.installModal.installButton.label')"
 					size="large"
 					@click="openInstallModal"
 				/>
 			</div>
-			<div v-if="isQueueModeEnabled" :class="$style.actionBoxContainer">
+			<div v-if="settingsStore.isQueueModeEnabled" :class="$style.actionBoxContainer">
 				<n8n-action-box
 					:heading="$locale.baseText('settings.communityNodes.empty.title')"
 					:description="getEmptyStateDescription"
@@ -75,6 +75,7 @@ import { PublicInstalledPackage } from 'n8n-workflow';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
 import { useUIStore } from '@/stores/ui';
 import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -133,8 +134,11 @@ export default mixins(
 		}
 	},
 	computed: {
-		...mapStores(useCommunityNodesStore, useUIStore),
-		...mapGetters('settings', ['isNpmAvailable', 'isQueueModeEnabled']),
+		...mapStores(
+			useCommunityNodesStore,
+			useSettingsStore,
+			useUIStore,
+		),
 		getEmptyStateDescription() {
 			const packageCount = this.communityNodesStore.availablePackageCount;
 			return  packageCount < PACKAGE_COUNT_THRESHOLD ?
@@ -150,14 +154,11 @@ export default mixins(
 					},
 				});
 		},
-		isDesktopDeployment() {
-			return this.$store.getters['settings/isDesktopDeployment'];
-		},
 		shouldShowInstallButton() {
-			return !this.isDesktopDeployment && this.isNpmAvailable;
+			return !this.settingsStore.isDesktopDeployment && this.settingsStore.isNpmAvailable;
 		},
 		actionBoxConfig() {
-			if (this.isDesktopDeployment) {
+			if (this.settingsStore.isDesktopDeployment) {
 				return {
 					calloutText: this.$locale.baseText('settings.communityNodes.notAvailableOnDesktop'),
 					calloutTheme: 'warning',
@@ -165,7 +166,7 @@ export default mixins(
 				};
 			}
 
-			if (!this.isNpmAvailable) {
+			if (!this.settingsStore.isNpmAvailable) {
 				return {
 					calloutText: this.$locale.baseText(
 						'settings.communityNodes.npmUnavailable.warning',
@@ -176,7 +177,7 @@ export default mixins(
 				};
 			}
 
-			if (this.isQueueModeEnabled) {
+			if (this.settingsStore.isQueueModeEnabled) {
 				return {
 					calloutText: this.$locale.baseText(
 						'settings.communityNodes.queueMode.warning',

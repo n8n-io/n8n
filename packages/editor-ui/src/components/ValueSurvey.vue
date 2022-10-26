@@ -64,6 +64,8 @@ import ModalDrawer from './ModalDrawer.vue';
 import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import Vue from 'vue';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
 
 const DEFAULT_TITLE = `How likely are you to recommend n8n to a friend or colleague?`;
 const GREAT_FEEDBACK_TITLE = `Great to hear! Can we reach out to see how we can make n8n even better for you?`;
@@ -85,6 +87,7 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	computed: {
+		...mapStores(useSettingsStore),
 		getTitle(): string {
 			if (this.form.value !== '') {
 				if (Number(this.form.value) > 7) {
@@ -133,12 +136,9 @@ export default mixins(workflowHelpers).extend({
 			this.form.value = value;
 			this.showButtons = false;
 
-			const response: IN8nPromptResponse = await this.$store.dispatch(
-				'settings/submitValueSurvey',
-				{ value: this.form.value },
-			);
+			const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({ value: this.form.value });
 
-			if (response.updated) {
+			if (response && response.updated) {
 				this.$telemetry.track('User responded value survey score', {
 					instance_id: this.$store.getters.instanceId,
 					nps: this.form.value,

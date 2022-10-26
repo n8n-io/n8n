@@ -27,6 +27,7 @@ import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { store } from './store';
+import { useSettingsStore } from './stores/settings';
 
 Vue.use(Router);
 
@@ -322,7 +323,8 @@ const router = new Router({
 					},
 					deny: {
 						shouldDeny: () => {
-							return store.getters['settings/isUserManagementEnabled'] === false;
+							const settingsStore = useSettingsStore();
+							return settingsStore.isUserManagementEnabled === false;
 						},
 					},
 				},
@@ -387,7 +389,8 @@ const router = new Router({
 					},
 					deny: {
 						shouldDeny: () => {
-							return store.getters['settings/isUserManagementEnabled'] === false;
+							const settingsStore = useSettingsStore();
+							return settingsStore.isUserManagementEnabled === false;
 						},
 					},
 				},
@@ -439,7 +442,8 @@ const router = new Router({
 					},
 					deny: {
 						shouldDeny: () => {
-							return store.getters['settings/isPublicApiEnabled'] === false;
+							const settingsStore =  useSettingsStore();
+							return settingsStore.isPublicApiEnabled === false;
 						},
 					},
 				},
@@ -461,7 +465,8 @@ const router = new Router({
 					},
 					deny: {
 						shouldDeny: () => {
-							return store.getters['settings/isCommunityNodesFeatureEnabled'] === false;
+							const settingsStore = useSettingsStore();
+							return settingsStore.isCommunityNodesFeatureEnabled === false;
 						},
 					},
 				},

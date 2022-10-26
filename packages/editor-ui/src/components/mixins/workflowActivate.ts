@@ -7,6 +7,7 @@ import mixins from 'vue-typed-mixins';
 import { LOCAL_STORAGE_ACTIVATION_FLAG, PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_ACTIVE_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 export const workflowActivate = mixins(
 	externalHooks,
@@ -20,7 +21,10 @@ export const workflowActivate = mixins(
 			};
 		},
 		computed: {
-			...mapStores(useUIStore),
+			...mapStores(
+				useSettingsStore,
+				useUIStore,
+			),
 		},
 		methods: {
 			async activateCurrentWorkflow(telemetrySource?: string) {
@@ -101,7 +105,7 @@ export const workflowActivate = mixins(
 						this.uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 					}
 					else {
-						this.$store.dispatch('settings/fetchPromptsData');
+						this.settingsStore.fetchPromptsData();
 					}
 				}
 			},

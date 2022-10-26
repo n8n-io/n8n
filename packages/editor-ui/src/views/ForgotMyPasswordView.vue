@@ -13,6 +13,8 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { mapGetters } from 'vuex';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
 
 export default mixins(
 	showMessage,
@@ -27,7 +29,7 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['isSmtpSetup']),
+		...mapStores(useSettingsStore),
 		formConfig(): IFormBoxConfig {
 			const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
 				{
@@ -59,7 +61,7 @@ export default mixins(
 				redirectLink: '/signin',
 			};
 
-			if (this.isSmtpSetup) {
+			if (this.settingsStore.isSmtpSetup) {
 				return {
 					...DEFAULT_FORM_CONFIG,
 					buttonText: this.$locale.baseText('forgotPassword.getRecoveryLink'),

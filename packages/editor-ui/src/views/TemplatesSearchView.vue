@@ -86,6 +86,8 @@ import { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/components/helpers';
 import { VIEWS } from '@/constants';
 import { debounceHelper } from '@/components/mixins/debounce';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
 
 interface ISearchEvent {
 	search_string: string;
@@ -104,8 +106,8 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		TemplatesView,
 	},
 	computed: {
+		...mapStores(useSettingsStore),
 		...mapGetters('templates', ['allCategories', 'getSearchedWorkflowsTotal', 'getSearchedWorkflows', 'getSearchedCollections']),
-		...mapGetters('settings', ['isTemplatesEndpointReachable']),
 		collections(): ITemplatesCollection[] {
 			return this.getSearchedCollections(this.query) || [];
 		},
@@ -117,7 +119,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				return this.$locale.baseText('templates.endResult');
 			}
 			if (!this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0) {
-				if (!this.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
+				if (!this.settingsStore.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
 					return this.$locale.baseText('templates.connectionWarning');
 				}
 				return this.$locale.baseText('templates.noSearchResults');

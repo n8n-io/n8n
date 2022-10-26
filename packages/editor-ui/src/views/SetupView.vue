@@ -17,6 +17,7 @@ import { VIEWS } from '@/constants';
 import { restApi } from '@/components/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 
 export default mixins(
@@ -99,7 +100,10 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useSettingsStore,
+		),
 	},
 	methods: {
 		async getAllCredentials() {
@@ -149,7 +153,7 @@ export default mixins(
 					return;
 				}
 
-				const forceRedirectedHere = this.$store.getters['settings/showSetupPage'];
+				const forceRedirectedHere = this.settingsStore.showSetupPage;
 				this.loading = true;
 				await this.$store.dispatch('users/createOwner', values);
 

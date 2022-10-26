@@ -13,6 +13,8 @@ import {
 } from '../Interface';
 
 import Vue from 'vue';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings';
 
 const TEMPLATES_PAGE_SIZE = 10;
 
@@ -178,8 +180,9 @@ const module: Module<ITemplateState, IRootState> = {
 	},
 	actions: {
 		async getTemplateById(context: ActionContext<ITemplateState, IRootState>, templateId: string): Promise<ITemplatesWorkflowFull> {
-			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const versionCli: string = context.rootGetters['versionCli'];
+			const settingsStore = useSettingsStore();
+			const apiEndpoint: string = settingsStore.templatesHost;
+			const versionCli: string = settingsStore.versionCli;
 			const response = await getTemplateById(apiEndpoint, templateId, { 'n8n-version': versionCli });
 			const template: ITemplatesWorkflowFull = {
 				...response.workflow,
@@ -190,8 +193,9 @@ const module: Module<ITemplateState, IRootState> = {
 			return template;
 		},
 		async getCollectionById(context: ActionContext<ITemplateState, IRootState>, collectionId: string): Promise<ITemplatesCollection> {
-			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const versionCli: string = context.rootGetters['versionCli'];
+			const settingsStore = useSettingsStore();
+			const apiEndpoint: string = settingsStore.templatesHost;
+			const versionCli: string = settingsStore.versionCli;
 			const response = await getCollectionById(apiEndpoint, collectionId, { 'n8n-version': versionCli });
 			const collection: ITemplatesCollectionFull = {
 				...response.collection,
@@ -208,8 +212,9 @@ const module: Module<ITemplateState, IRootState> = {
 			if (cachedCategories.length) {
 				return cachedCategories;
 			}
-			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const versionCli: string = context.rootGetters['versionCli'];
+			const settingsStore = useSettingsStore();
+			const apiEndpoint: string = settingsStore.templatesHost;
+			const versionCli: string = settingsStore.versionCli;
 			const response = await getCategories(apiEndpoint, { 'n8n-version': versionCli });
 			const categories = response.categories;
 
@@ -223,8 +228,9 @@ const module: Module<ITemplateState, IRootState> = {
 				return cachedResults;
 			}
 
-			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const versionCli: string = context.rootGetters['versionCli'];
+			const settingsStore = useSettingsStore();
+			const apiEndpoint: string = settingsStore.templatesHost;
+			const versionCli: string = settingsStore.versionCli;
 			const response = await getCollections(apiEndpoint, query, { 'n8n-version': versionCli });
 			const collections = response.collections;
 
@@ -240,8 +246,9 @@ const module: Module<ITemplateState, IRootState> = {
 				return cachedResults;
 			}
 
-			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const versionCli: string = context.rootGetters['versionCli'];
+			const settingsStore = useSettingsStore();
+			const apiEndpoint: string = settingsStore.templatesHost;
+			const versionCli: string = settingsStore.versionCli;
 
 			const payload = await getWorkflows(apiEndpoint, {...query, skip: 0, limit: TEMPLATES_PAGE_SIZE}, { 'n8n-version': versionCli });
 
@@ -255,7 +262,8 @@ const module: Module<ITemplateState, IRootState> = {
 				return [];
 			}
 			const cachedResults: ITemplatesWorkflow[] = context.getters.getSearchedWorkflows(query) || [];
-			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
+			const settingsStore = useSettingsStore();
+			const apiEndpoint: string = settingsStore.templatesHost;
 
 			context.commit('setWorkflowSearchLoading', query);
 			try {
@@ -272,8 +280,9 @@ const module: Module<ITemplateState, IRootState> = {
 			}
 		},
 		getWorkflowTemplate: async (context: ActionContext<ITemplateState, IRootState>, templateId: string): Promise<IWorkflowTemplate> => {
-			const apiEndpoint: string = context.rootGetters['settings/templatesHost'];
-			const versionCli: string = context.rootGetters['versionCli'];
+			const settingsStore = useSettingsStore();
+			const apiEndpoint: string = settingsStore.templatesHost;
+			const versionCli: string = settingsStore.versionCli;
 			return await getWorkflowTemplate(apiEndpoint, templateId, { 'n8n-version': versionCli });
 		},
 	},

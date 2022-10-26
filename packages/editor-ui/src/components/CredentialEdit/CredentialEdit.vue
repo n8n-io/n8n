@@ -147,6 +147,7 @@ import { IMenuItem } from 'n8n-design-system';
 import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -255,7 +256,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.loading = false;
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(useUIStore, useSettingsStore),
 		...mapGetters('users', ['currentUser']),
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
@@ -434,7 +435,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return items;
 		},
 		isSharingAvailable(): boolean {
-			return this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing) === true;
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
 	},
 	methods: {
@@ -718,7 +719,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			let sharedWith: IUser[] | undefined;
 			let ownedBy: IUser | undefined;
-			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				sharedWith = this.credentialData.sharedWith as unknown as IUser[];
 				ownedBy = this.credentialData.ownedBy as unknown as IUser;
 			}

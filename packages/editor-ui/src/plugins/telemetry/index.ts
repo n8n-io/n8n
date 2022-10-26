@@ -9,6 +9,7 @@ import { Route } from "vue-router";
 import type { INodeCreateElement, IRootState } from "@/Interface";
 import type { Store } from "vuex";
 import type { IUserNodesPanelSession } from "./telemetry.types";
+import { useSettingsStore } from "@/stores/settings";
 
 export function TelemetryPlugin(vue: typeof _Vue): void {
 	const telemetry = new Telemetry();
@@ -59,9 +60,11 @@ export class Telemetry {
 
 		const { config: { key, url } } = telemetrySettings;
 
+		// TODO: Remove this once migration to pinia is done
 		this.store = store;
+		const settingsStore = useSettingsStore();
 
-		const logLevel = store.getters['settings/logLevel'];
+		const logLevel = settingsStore.logLevel;
 
 		const logging = logLevel === 'debug' ? { logLevel: 'DEBUG' } : {};
 
