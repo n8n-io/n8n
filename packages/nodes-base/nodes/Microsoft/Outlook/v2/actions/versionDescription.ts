@@ -1,14 +1,16 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { INodeTypeDescription } from 'n8n-workflow';
-import { draftFields, draftOperations } from './DraftDescription';
-import { draftMessageSharedFields } from './DraftMessageSharedDescription';
-import { messageFields, messageOperations } from './MessageDescription';
+import * as draft from './draft/Draft.resource';
+import { messageFields, messageOperations } from './message/MessageDescription';
 import {
 	messageAttachmentFields,
 	messageAttachmentOperations,
-} from './MessageAttachmentDescription';
-import { folderFields, folderOperations } from './FolderDescription';
-import { folderMessageFields, folderMessageOperations } from './FolderMessageDecription';
+} from './messageAttachment/MessageAttachmentDescription';
+import { folderFields, folderOperations } from './folder/FolderDescription';
+import {
+	folderMessageFields,
+	folderMessageOperations,
+} from './folderMessage/FolderMessageDecription';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Outlook',
@@ -59,9 +61,7 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			],
 		},
-		// Draft
-		...draftOperations,
-		...draftFields,
+		...draft.description,
 		// Message
 		...messageOperations,
 		...messageFields,
@@ -74,8 +74,5 @@ export const versionDescription: INodeTypeDescription = {
 		// Folder Message
 		...folderMessageOperations,
 		...folderMessageFields,
-
-		// Draft & Message
-		...draftMessageSharedFields,
 	],
 };

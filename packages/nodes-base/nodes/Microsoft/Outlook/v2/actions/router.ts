@@ -24,27 +24,17 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	const resource = this.getNodeParameter('resource', 0) as string;
 	const operation = this.getNodeParameter('operation', 0) as string;
 
-	if (['draft', 'message'].includes(resource)) {
-		if (operation === 'delete') {
-			for (let i = 0; i < length; i++) {
-				try {
+	for (let i = 0; i < length; i++) {
+		try {
+			if (['draft', 'message'].includes(resource)) {
+				if (operation === 'delete') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					responseData = await microsoftApiRequest.call(this, 'DELETE', `/messages/${messageId}`);
 
 					returnData.push({ success: true });
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'get') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'get') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -75,19 +65,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					if (additionalFields.dataPropertyAttachmentsPrefixName) {
 						return [returnData as INodeExecutionData[]];
 					}
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'update') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'update') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
@@ -103,21 +83,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						{},
 					);
 					returnData.push(responseData);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
 			}
-		}
-	}
 
-	if (resource === 'draft') {
-		if (operation === 'create') {
-			for (let i = 0; i < length; i++) {
-				try {
+			if (resource === 'draft') {
+				if (operation === 'create') {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const subject = this.getNodeParameter('subject', i) as string;
@@ -165,19 +135,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					responseData = await microsoftApiRequest.call(this, 'POST', `/messages`, body, {});
 
 					returnData.push(responseData);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'send') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'send') {
 					const messageId = this.getNodeParameter('messageId', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
@@ -199,21 +159,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					);
 
 					returnData.push({ success: true });
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
 			}
-		}
-	}
 
-	if (resource === 'message') {
-		if (operation === 'reply') {
-			for (let i = 0; i < length; i++) {
-				try {
+			if (resource === 'message') {
+				if (operation === 'reply') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const replyType = this.getNodeParameter('replyType', i) as string;
 					const comment = this.getNodeParameter('comment', i) as string;
@@ -286,19 +236,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					}
 
 					returnData.push(responseData);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'getMime') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'getMime') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
 					const response = await microsoftApiRequest.call(
@@ -338,20 +278,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						fileName,
 						mimeType,
 					);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						items[i].json = { error: error.message };
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'getAll') {
-			let additionalFields: IDataObject = {};
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'getAll') {
+					let additionalFields: IDataObject = {};
+
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -387,23 +318,13 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					} else {
 						returnData.push.apply(returnData, responseData);
 					}
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
+
+					if (additionalFields.dataPropertyAttachmentsPrefixName) {
+						return [returnData as INodeExecutionData[]];
 					}
-					throw error;
 				}
-			}
 
-			if (additionalFields.dataPropertyAttachmentsPrefixName) {
-				return [returnData as INodeExecutionData[]];
-			}
-		}
-
-		if (operation === 'move') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'move') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const destinationId = this.getNodeParameter('folderId', i) as string;
 					const body: IDataObject = {
@@ -417,19 +338,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						body,
 					);
 					returnData.push({ success: true });
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'send') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'send') {
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 					const toRecipients = this.getNodeParameter('toRecipients', i) as string;
@@ -491,21 +402,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 					responseData = await microsoftApiRequest.call(this, 'POST', `/sendMail`, body, {});
 					returnData.push({ success: true });
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
 			}
-		}
-	}
 
-	if (resource === 'messageAttachment') {
-		if (operation === 'add') {
-			for (let i = 0; i < length; i++) {
-				try {
+			if (resource === 'messageAttachment') {
+				if (operation === 'add') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -602,19 +503,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						);
 					}
 					returnData.push({ success: true });
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'download') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'download') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 					const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
@@ -664,19 +555,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						fileName,
 						mimeType,
 					);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						items[i].json = { error: error.message };
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'get') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'get') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const attachmentId = this.getNodeParameter('attachmentId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -695,19 +576,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						qs,
 					);
 					returnData.push(responseData);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'getAll') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'getAll') {
 					const messageId = this.getNodeParameter('messageId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -738,21 +609,11 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						responseData = responseData.value;
 					}
 					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
 			}
-		}
-	}
 
-	if (resource === 'folder') {
-		if (operation === 'create') {
-			for (let i = 0; i < length; i++) {
-				try {
+			if (resource === 'folder') {
+				if (operation === 'create') {
 					const displayName = this.getNodeParameter('displayName', i) as string;
 					const folderType = this.getNodeParameter('folderType', i) as string;
 					const body: IDataObject = {
@@ -776,35 +637,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 
 					responseData = await microsoftApiRequest.call(this, 'POST', endpoint, body);
 					returnData.push(responseData);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'delete') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'delete') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
 					responseData = await microsoftApiRequest.call(this, 'DELETE', `/mailFolders/${folderId}`);
 					returnData.push({ success: true });
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'get') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'get') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -823,19 +664,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						qs,
 					);
 					returnData.push(responseData);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'getAll') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -862,19 +693,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						responseData = responseData.value;
 					}
 					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'getChildren') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'getChildren') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -907,19 +728,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						responseData = responseData.value;
 					}
 					returnData.push.apply(returnData, responseData as IDataObject[]);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
-			}
-		}
 
-		if (operation === 'update') {
-			for (let i = 0; i < length; i++) {
-				try {
+				if (operation === 'update') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
@@ -934,20 +745,10 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 						body,
 					);
 					returnData.push(responseData);
-				} catch (error) {
-					if (this.continueOnFail()) {
-						returnData.push({ error: error.message });
-						continue;
-					}
-					throw error;
 				}
 			}
-		}
-	}
 
-	if (resource === 'folderMessage') {
-		for (let i = 0; i < length; i++) {
-			try {
+			if (resource === 'folderMessage') {
 				if (operation === 'getAll') {
 					const folderId = this.getNodeParameter('folderId', i) as string;
 					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
@@ -977,16 +778,15 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					}
 					returnData.push.apply(returnData, responseData as IDataObject[]);
 				}
-			} catch (error) {
-				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
-					continue;
-				}
-				throw error;
 			}
+		} catch (error) {
+			if (this.continueOnFail()) {
+				returnData.push({ error: error.message });
+				continue;
+			}
+			throw error;
 		}
 	}
-
 	if (
 		(resource === 'message' && operation === 'getMime') ||
 		(resource === 'messageAttachment' && operation === 'download')

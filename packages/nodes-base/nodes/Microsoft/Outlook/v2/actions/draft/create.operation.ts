@@ -1,68 +1,7 @@
-import { INodeProperties } from 'n8n-workflow';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 
-export const draftOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-			},
-		},
-		options: [
-			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a new email draft',
-				action: 'Create a draft',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a draft',
-				action: 'Delete a draft',
-			},
-			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get a single draft',
-				action: 'Get a draft',
-			},
-			{
-				name: 'Send',
-				value: 'send',
-				description: 'Send an existing draft message',
-				action: 'Send a draft',
-			},
-			{
-				name: 'Update',
-				value: 'update',
-				description: 'Update a draft',
-				action: 'Update a draft',
-			},
-		],
-		default: 'create',
-	},
-];
-
-export const draftFields: INodeProperties[] = [
-	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['delete', 'get', 'send', 'update'],
-			},
-		},
-	},
-
-	// draft:create
+export const description: INodeProperties[] = [
 	{
 		displayName: 'Subject',
 		name: 'subject',
@@ -254,28 +193,18 @@ export const draftFields: INodeProperties[] = [
 			},
 		],
 	},
-
-	// draft:send
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['send'],
-			},
-		},
-		options: [
-			{
-				displayName: 'Recipients',
-				name: 'recipients',
-				description: 'Email addresses of recipients. Mutiple can be set separated by comma.',
-				type: 'string',
-				default: '',
-			},
-		],
-	},
 ];
+
+export async function execute(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
+	let responseData: IDataObject | IDataObject[] = [];
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(responseData),
+		{ itemData: { item: index } },
+	);
+
+	return executionData;
+}

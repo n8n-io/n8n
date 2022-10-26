@@ -1,4 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
+import { additionalFieldsOptions, updateFieldsOptions } from '../commonDescrriptions';
 
 export const messageOperations: INodeProperties[] = [
 	{
@@ -27,7 +28,7 @@ export const messageOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get many messages in the signed-in user\'s mailbox',
+				description: "Get many messages in the signed-in user's mailbox",
 				action: 'Get many messages',
 			},
 			{
@@ -587,5 +588,33 @@ export const messageFields: INodeProperties[] = [
 				operation: ['move'],
 			},
 		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['get', 'getAll'],
+			},
+		},
+		options: [...additionalFieldsOptions],
+	},
+	{
+		displayName: 'Update Fields',
+		name: 'updateFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['update'],
+			},
+		},
+		options: [...updateFieldsOptions],
 	},
 ];
