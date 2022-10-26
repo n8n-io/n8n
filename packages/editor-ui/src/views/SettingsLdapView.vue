@@ -157,7 +157,7 @@ export default mixins(
 			const newConfiguration = {
 				login: {
 					enabled: form.loginEnabled === 'true' ? true : false,
-					label: form.loginLabel,
+					label: form.loginLabel ?? '',
 				},
 				connection: {
 					url: form.serverAddress,
