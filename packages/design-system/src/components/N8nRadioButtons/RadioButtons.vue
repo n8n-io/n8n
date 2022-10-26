@@ -6,8 +6,8 @@
 			v-bind="option"
 			:active="value === option.value"
 			:size="size"
-			:disabled="disabled"
-			@click="(e) => onClick(option.value, e)"
+			:disabled="disabled || option.disabled"
+			@click="(e) => onClick(option, e)"
 		/>
 	</div>
 </template>
@@ -36,11 +36,11 @@ export default Vue.extend({
 		RadioButton,
 	},
 	methods: {
-		onClick(value: unknown) {
-			if (this.disabled) {
+		onClick(option: {label: string, value: string, disabled?: boolean}) {
+			if (this.disabled || option.disabled) {
 				return;
 			}
-			this.$emit('input', value);
+			this.$emit('input', option.value);
 		},
 	},
 });

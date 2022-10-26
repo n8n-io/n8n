@@ -9,14 +9,16 @@
 				[$style.sidebarCollapsed]: sidebarMenuCollapsed
 			}"
 		>
-			<div id="header" :class="$style['header']">
+			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
-			<div id="sidebar" :class="$style['sidebar']">
+			<div id="sidebar" :class="$style.sidebar">
 				<router-view name="sidebar"></router-view>
 			</div>
-			<div id="content" :class="$style['content']">
-				<router-view />
+			<div id="content" :class="$style.content">
+				<keep-alive include="NodeView" :max="1">
+					<router-view />
+				</keep-alive>
 			</div>
 			<Modals />
 			<Telemetry />
@@ -35,7 +37,7 @@ import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
-import { addHeaders, loadLanguage } from './plugins/i18n';
+import { loadLanguage } from './plugins/i18n';
 import { restApi } from '@/components/mixins/restApi';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
 
