@@ -34,9 +34,6 @@ export class LdapService {
 			const tlsOptions: IDataObject = {};
 			if (this._config.connection.useSsl) {
 				tlsOptions.rejectUnauthorized = !this._config.connection.allowUnauthorizedCerts;
-				if (this._config.connection.caCertificate) {
-					tlsOptions.ca = [this._config.connection.caCertificate];
-				}
 				if (!this._config.connection.startTLS) {
 					ldapOptions.tlsOptions = tlsOptions;
 				}

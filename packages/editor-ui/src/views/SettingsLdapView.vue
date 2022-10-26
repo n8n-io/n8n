@@ -146,7 +146,6 @@ export default mixins(
 				syncronizationEnabled: string,
 				useSsl: string;
 				allowUnauthorizedCerts: string;
-				caCertificate: string;
 				startTLS: string;
 				syncronizationInterval: string;
 				userFilter: string;
@@ -164,7 +163,6 @@ export default mixins(
 					url: form.serverAddress,
 					useSsl: form.useSsl === 'true' ? true : false,
 					allowUnauthorizedCerts: form.allowUnauthorizedCerts === 'true' ? true : false,
-					caCertificate: form.caCertificate,
 					startTLS: form.startTLS === 'true' ? true : false,
 				},
 				binding: {
@@ -338,18 +336,6 @@ export default mixins(
 									value: 'false',
 								},
 							],
-						},
-						shouldDisplay(values): boolean {
-							return values['useSsl'] === 'true';
-						},
-					},
-					{
-						name: 'caCertificate',
-						initialValue: this.adConfig.connection.caCertificate,
-						properties: {
-							type: 'text',
-							label: 'CA Certificate',
-							required: false,
 						},
 						shouldDisplay(values): boolean {
 							return values['useSsl'] === 'true';

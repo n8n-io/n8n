@@ -34,7 +34,6 @@ export const LDAP_DEFAULT_CONFIGURATION = {
 		url: '',
 		useSsl: true,
 		allowUnauthorizedCerts: false,
-		caCertificate: '',
 		startTLS: false,
 	},
 	binding: {
@@ -111,9 +110,6 @@ export const LDAP_CONFIG_SCHEMA = {
 				},
 				allowUnauthorizedCerts: {
 					type: 'boolean',
-				},
-				caCertificate: {
-					type: 'string',
 				},
 				startTLS: {
 					type: 'boolean',
