@@ -1,11 +1,18 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
 
-export class CreateCredentialUsageTable1665484192213 implements MigrationInterface {
-	name = 'CreateCredentialUsageTable1665484192213';
+export class RemoveCredentialUsageTable1665754637026 implements MigrationInterface {
+	name = 'RemoveCredentialUsageTable1665754637026';
 
 	async up(queryRunner: QueryRunner) {
 		logMigrationStart(this.name);
+		const tablePrefix = getTablePrefix();
+		await queryRunner.query(`DROP TABLE \`${tablePrefix}credential_usage\``);
+
+		logMigrationEnd(this.name);
+	}
+
+	async down(queryRunner: QueryRunner) {
 		const tablePrefix = getTablePrefix();
 
 		await queryRunner.query(
@@ -26,13 +33,5 @@ export class CreateCredentialUsageTable1665484192213 implements MigrationInterfa
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}credential_usage\` ADD CONSTRAINT \`FK_${tablePrefix}7ce200a20ade7ae89fa7901da896993f\` FOREIGN KEY (\`credentialId\`) REFERENCES \`${tablePrefix}credentials_entity\`(\`id\`) ON DELETE CASCADE ON UPDATE CASCADE`,
 		);
-
-		logMigrationEnd(this.name);
-	}
-
-	async down(queryRunner: QueryRunner) {
-		const tablePrefix = getTablePrefix();
-
-		await queryRunner.query(`DROP TABLE "${tablePrefix}credential_usage"`);
 	}
 }
