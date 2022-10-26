@@ -48,9 +48,9 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" module>
-.zoomMenu {
-	$--zoom-menu-margin: 15;
+$--zoom-menu-margin: 15;
 
+.zoomMenu {
 	position: fixed;
 	width: 210px;
 	left: 0;
@@ -62,7 +62,7 @@ onBeforeUnmount(() => {
 	transition: transform 150ms ease-in-out;
 
 	&:not(.demoZoomMenu).expanded {
-		transform: translateX($sidebar-expanded-width + $--zoom-menu-margin);
+		transform: translate($sidebar-expanded-width + $--zoom-menu-margin, -44px);
 	}
 
 	button {
