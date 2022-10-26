@@ -33,6 +33,9 @@ export const LDAP_DEFAULT_CONFIGURATION = {
 	connection: {
 		url: '',
 		useSsl: true,
+		allowUnauthorizedCerts: false,
+		caCertificate: '',
+		startTLS: false,
 	},
 	binding: {
 		baseDn: '',
@@ -104,6 +107,15 @@ export const LDAP_CONFIG_SCHEMA = {
 					type: 'string',
 				},
 				useSsl: {
+					type: 'boolean',
+				},
+				allowUnauthorizedCerts: {
+					type: 'boolean',
+				},
+				caCertificate: {
+					type: 'string',
+				},
+				startTLS: {
 					type: 'boolean',
 				},
 			},

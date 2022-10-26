@@ -145,6 +145,9 @@ export default mixins(
 				ldapId: string,
 				syncronizationEnabled: string,
 				useSsl: string;
+				allowUnauthorizedCerts: string;
+				caCertificate: string;
+				startTLS: string;
 				syncronizationInterval: string;
 				userFilter: string;
 				}) {
@@ -160,6 +163,9 @@ export default mixins(
 				connection: {
 					url: form.serverAddress,
 					useSsl: form.useSsl === 'true' ? true : false,
+					allowUnauthorizedCerts: form.allowUnauthorizedCerts === 'true' ? true : false,
+					caCertificate: form.caCertificate,
+					startTLS: form.startTLS === 'true' ? true : false,
 				},
 				binding: {
 					baseDn: form.baseDn,
@@ -313,6 +319,62 @@ export default mixins(
 									value: 'false',
 								},
 							],
+						},
+					},
+					{
+						name: 'allowUnauthorizedCerts',
+						initialValue: this.adConfig.connection.allowUnauthorizedCerts.toString(),
+						properties: {
+							type: 'select',
+							label: 'Ignore SSL/TLS Issues',
+							required: false,
+							options: [
+								{
+									label: 'True',
+									value: 'true',
+								},
+								{
+									label: 'False',
+									value: 'false',
+								},
+							],
+						},
+						shouldDisplay(values): boolean {
+							return values['useSsl'] === 'true';
+						},
+					},
+					{
+						name: 'caCertificate',
+						initialValue: this.adConfig.connection.caCertificate,
+						properties: {
+							type: 'text',
+							label: 'CA Certificate',
+							required: false,
+						},
+						shouldDisplay(values): boolean {
+							return values['useSsl'] === 'true';
+						},
+					},
+					{
+						name: 'startTLS',
+						initialValue: this.adConfig.connection.startTLS.toString(),
+						properties: {
+							type: 'select',
+							label: 'StartTLS',
+							required: false,
+							options: [
+								{
+									label: 'True',
+									value: 'true',
+								},
+								{
+									label: 'False',
+									value: 'false',
+								},
+							],
+						},
+						shouldDisplay(values): boolean {
+							return values['useSsl'] === 'true';
 						},
 					},
 					{

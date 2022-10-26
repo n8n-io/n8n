@@ -1,6 +1,6 @@
 /* eslint-disable no-underscore-dangle */
-import { Client, Entry } from 'ldapts';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { Client, Entry, ClientOptions } from 'ldapts';
+import { IDataObject, LoggerProxy as Logger } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import type { LdapConfig } from './types';
 
@@ -30,12 +30,22 @@ export class LdapService {
 		}
 		if (this.client === undefined) {
 			Logger.info(`LDAP - Creating new LDAP client`);
-			this.client = new Client({
-				url: this._config.connection.url,
-				tlsOptions: {
-					rejectUnauthorized: this._config.connection.useSsl,
-				},
-			});
+			const ldapOptions: ClientOptions = { url: this._config.connection.url };
+			const tlsOptions: IDataObject = {};
+			if (this._config.connection.useSsl) {
+				tlsOptions.rejectUnauthorized = !this._config.connection.allowUnauthorizedCerts;
+				if (this._config.connection.caCertificate) {
+					tlsOptions.ca = [this._config.connection.caCertificate];
+				}
+				if (!this._config.connection.startTLS) {
+					ldapOptions.tlsOptions = tlsOptions;
+				}
+			}
+
+			this.client = new Client(ldapOptions);
+			if (this._config.connection.startTLS) {
+				await this.client.startTLS(tlsOptions);
+			}
 		}
 	}
 

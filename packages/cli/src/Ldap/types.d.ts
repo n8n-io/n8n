@@ -11,6 +11,9 @@ export interface LdapConfig {
 	connection: {
 		url: string;
 		useSsl: boolean;
+		allowUnauthorizedCerts: boolean;
+		caCertificate: string;
+		startTLS: boolean;
 	};
 	binding: {
 		baseDn: string;

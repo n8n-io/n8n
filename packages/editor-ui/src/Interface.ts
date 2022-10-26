@@ -1187,6 +1187,9 @@ export interface ILdapConfig {
 		connection: {
 			useSsl: boolean;
 			url: string;
+			allowUnauthorizedCerts: boolean;
+			caCertificate: string;
+			startTLS: boolean;
 		};
 		syncronization: {
 			enabled: boolean;
