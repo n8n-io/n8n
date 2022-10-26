@@ -462,7 +462,7 @@ export const store = new Vuex.Store({
 
 		// Id
 		setWorkflowId (state, id: string) {
-			state.workflow.id = id;
+			state.workflow.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
 		},
 
 		// Name

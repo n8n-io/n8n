@@ -719,12 +719,15 @@ export interface ITemplatesCategory {
 	name: string;
 }
 
+export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	workflowCallerPolicyDefaultOption: WorkflowCallerPolicyDefaultOption;
 	timezone: string;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
@@ -768,6 +771,7 @@ export interface IN8nUISettings {
 	deployment?: {
 		type: string;
 	};
+	isWorkflowSharingEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -777,6 +781,8 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
+	callerIds?: string;
+	callerPolicy?: WorkflowCallerPolicyDefaultOption;
 }
 
 export interface ITimeoutHMS {
@@ -1009,6 +1015,9 @@ export interface IUiState {
 	isPageLoading: boolean;
 	currentView: string;
 	fakeDoorFeatures: IFakeDoor[];
+	nodeViewInitialized: boolean;
+	addFirstStepOnLoad: boolean;
+	executionSidebarAutoRefresh: boolean;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -1088,7 +1097,12 @@ export interface IUsersState {
 	users: {[userId: string]: IUser};
 }
 
-export interface IWorkflowsMap {
+export interface IWorkflowsState {
+	currentWorkflowExecutions: IExecutionsSummary[];
+	activeWorkflowExecution: IExecutionsSummary | null;
+	finishedExecutionsCount: number;
+}
+	export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }
 
@@ -1143,6 +1157,12 @@ export interface ITab {
 	icon?: string;
 	align?: 'right';
 	tooltip?: string;
+}
+
+export interface ITabBarItem {
+	value: string;
+	label: string;
+	disabled?: boolean;
 }
 
 export interface IResourceLocatorReqParams {

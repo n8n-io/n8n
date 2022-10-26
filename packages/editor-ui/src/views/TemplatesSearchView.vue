@@ -204,6 +204,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 			}
 		},
 		openNewWorkflow() {
+			this.$store.commit('ui/setNodeViewInitialized', false);
 			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
