@@ -231,9 +231,15 @@ export const findAndAuthenticateLdapUser = async (
 	// Search for the user with the administrator binding using the
 	// the Login ID attribute and whatever was inputted in the UI's
 	// email input.
-	const searchResult = await ldapService.searchWithAdminBinding(
-		addConfigFilter(`(${loginIdAttribute}=${email})`, userFilter),
-	);
+	let searchResult: Entry[];
+
+	try {
+		searchResult = await ldapService.searchWithAdminBinding(
+			addConfigFilter(`(${loginIdAttribute}=${email})`, userFilter),
+		);
+	} catch (_) {
+		return undefined;
+	}
 
 	if (!searchResult.length) {
 		return undefined;
@@ -254,7 +260,7 @@ export const findAndAuthenticateLdapUser = async (
 		// for the user) and the password, attempt to validate the
 		// user by binding
 		await ldapService.validUser(user.dn, password);
-	} catch (error) {
+	} catch (_) {
 		return undefined;
 	}
 

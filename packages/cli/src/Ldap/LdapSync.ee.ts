@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable no-underscore-dangle */
-import type { Entry } from 'ldapts';
+import { Entry, InvalidDNSyntaxError } from 'ldapts';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
@@ -84,9 +84,18 @@ export class LdapSync {
 	async run(mode: RunningMode): Promise<void> {
 		Logger.info(`LDAP - Starting a syncronization run in ${mode} mode`);
 
-		const adUsers = await this._ldapService.searchWithAdminBinding(
-			addConfigFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
-		);
+		let adUsers: Entry[] = [];
+
+		try {
+			adUsers = await this._ldapService.searchWithAdminBinding(
+				addConfigFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
+			);
+		} catch (e) {
+			if (e instanceof Error) {
+				Logger.error(`LDAP - ${e.message}`);
+				throw e;
+			}
+		}
 
 		const startedAt = new Date();
 

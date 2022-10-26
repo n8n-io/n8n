@@ -51,8 +51,13 @@ ldapController.put('/config', async (req: LdapConfig.Update, res: express.Respon
 ldapController.post('/sync', async (req: LdapConfig.Sync, res: express.Response) => {
 	const runType = req.body.type;
 
-	await LdapManager.getInstance().sync.run(runType);
-
+	try {
+		await LdapManager.getInstance().sync.run(runType);
+	} catch (e) {
+		if (e instanceof Error) {
+			return res.status(400).json({ message: e.message });
+		}
+	}
 	return res.status(200).json({});
 });
 
