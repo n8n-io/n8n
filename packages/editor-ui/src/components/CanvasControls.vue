@@ -48,22 +48,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style lang="scss" module>
-$--zoom-menu-margin: 15;
-
 .zoomMenu {
-	position: fixed;
+	position: absolute;
 	width: 210px;
-	left: 0;
-	bottom: 0;
-	transform: translate($sidebar-width + $--zoom-menu-margin, -44px);
+	bottom: 108px;
+	left: 35px;
 	line-height: 25px;
 	color: #444;
 	padding-right: 5px;
-	transition: transform 150ms ease-in-out;
-
-	&:not(.demoZoomMenu).expanded {
-		transform: translate($sidebar-expanded-width + $--zoom-menu-margin, -44px);
-	}
 
 	button {
 		border: var(--border-base);
@@ -82,11 +74,12 @@ $--zoom-menu-margin: 15;
 
 .regularZoomMenu {
 	@media (max-width: $breakpoint-2xs) {
-		transform: translate($sidebar-width + $--zoom-menu-margin, -100px);
+		bottom: 90px;
 	}
 }
 
 .demoZoomMenu {
-	transform: translate(10px, -10px);
+	left: 10px;
+	bottom: 10px;
 }
 </style>
