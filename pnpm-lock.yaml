@@ -480,7 +480,7 @@ importers:
       lodash.orderby: ^4.6.0
       lodash.set: ^4.3.2
       luxon: ^2.3.0
-      monaco-editor: ^0.30.1
+      monaco-editor: ^0.33.0
       n8n-design-system: ~0.39.0
       n8n-workflow: ~0.121.0
       normalize-wheel: ^1.0.1
@@ -542,7 +542,7 @@ importers:
       lodash.orderby: 4.6.0
       lodash.set: 4.3.2
       luxon: 2.3.2
-      monaco-editor: 0.30.1
+      monaco-editor: 0.33.0
       n8n-design-system: link:../design-system
       n8n-workflow: link:../workflow
       normalize-wheel: 1.0.1
@@ -594,7 +594,7 @@ importers:
       tslint: 6.1.3_typescript@4.8.4
       vite: 2.9.5_sass@1.55.0
       vite-plugin-html: 3.2.0_vite@2.9.5
-      vite-plugin-monaco-editor: 1.1.0_monaco-editor@0.30.1
+      vite-plugin-monaco-editor: 1.1.0_monaco-editor@0.33.0
       vitest: 0.9.3_c8@7.12.0+sass@1.55.0
       vue-tsc: 0.34.17_typescript@4.8.4
 
@@ -15170,8 +15170,8 @@ packages:
   /moment/2.29.4:
     resolution: {integrity: sha512-5LC9SOxjSc2HF6vO2CyuTDNivEdoz2IvyJJGj6X8DJ0eFyfszE0QiEd+iXmBvUP3WHxSjFH/vIsA0EN00cgr8w==}
 
-  /monaco-editor/0.30.1:
-    resolution: {integrity: sha512-B/y4+b2O5G2gjuxIFtCE2EkM17R2NM7/3F8x0qcPsqy4V83bitJTIO4TIeZpYlzu/xy6INiY/+84BEm6+7Cmzg==}
+  /monaco-editor/0.33.0:
+    resolution: {integrity: sha512-VcRWPSLIUEgQJQIE0pVT8FcGBIgFoxz7jtqctE+IiCxWugD0DwgyQBcZBhdSrdMC84eumoqMZsGl2GTreOzwqw==}
 
   /mongodb-connection-string-url/2.5.4:
     resolution: {integrity: sha512-SeAxuWs0ez3iI3vvmLk/j2y+zHwigTDKQhtdxTgt5ZCOQQS5+HW4g45/Xw5vzzbn7oQXCNQ24Z40AkJsizEy7w==}
@@ -20651,12 +20651,12 @@ packages:
       vite: 2.9.5_sass@1.55.0
     dev: true
 
-  /vite-plugin-monaco-editor/1.1.0_monaco-editor@0.30.1:
+  /vite-plugin-monaco-editor/1.1.0_monaco-editor@0.33.0:
     resolution: {integrity: sha512-IvtUqZotrRoVqwT0PBBDIZPNraya3BxN/bfcNfnxZ5rkJiGcNtO5eAOWWSgT7zullIAEqQwxMU83yL9J5k7gww==}
     peerDependencies:
       monaco-editor: '>=0.33.0'
     dependencies:
-      monaco-editor: 0.30.1
+      monaco-editor: 0.33.0
     dev: true
 
   /vite/2.9.15_sass@1.55.0:
