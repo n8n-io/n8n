@@ -307,7 +307,12 @@ export class Slack implements INodeType {
 				if (resource === 'channel') {
 					//https://api.slack.com/methods/conversations.archive
 					if (operation === 'archive') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const body: IDataObject = {
 							channel,
 						};
@@ -321,7 +326,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.close
 					if (operation === 'close') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const body: IDataObject = {
 							channel,
 						};
@@ -335,7 +345,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.create
 					if (operation === 'create') {
-						let channel = this.getNodeParameter('channelId', i) as string;
+						let channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						channel = channel[0] === '#' ? channel.slice(1) : channel;
 						const channelVisibility = this.getNodeParameter('channelVisibility', i) as string;
 						const body: IDataObject = {
@@ -353,7 +368,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.kick
 					if (operation === 'kick') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const userId = this.getNodeParameter('userId', i) as string;
 						const body: IDataObject = {
 							channel,
@@ -369,7 +389,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.join
 					if (operation === 'join') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const body: IDataObject = {
 							channel,
 						};
@@ -384,7 +409,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.info
 					if (operation === 'get') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						qs.channel = channel;
 						responseData = await slackApiRequest.call(this, 'POST', '/conversations.info', {}, qs);
 						responseData = responseData.channel;
@@ -416,7 +446,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.history
 					if (operation === 'history') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						qs.channel = channel;
@@ -452,7 +487,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.invite
 					if (operation === 'invite') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const userIds = (this.getNodeParameter('userIds', i) as string[]).join(',');
 						const body: IDataObject = {
 							channel,
@@ -469,7 +509,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.leave
 					if (operation === 'leave') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const body: IDataObject = {
 							channel,
 						};
@@ -485,7 +530,12 @@ export class Slack implements INodeType {
 					if (operation === 'member') {
 						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 						const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
-						qs.channel = this.getNodeParameter('channelId', i) as string;
+						qs.channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
@@ -547,7 +597,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.rename
 					if (operation === 'rename') {
-						const channel = this.getNodeParameter('channelId', i) as IDataObject;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as IDataObject;
 						const name = this.getNodeParameter('name', i) as IDataObject;
 						const body: IDataObject = {
 							channel,
@@ -564,7 +619,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.replies
 					if (operation === 'replies') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const ts = this.getNodeParameter('ts', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -602,7 +662,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.setPurpose
 					if (operation === 'setPurpose') {
-						const channel = this.getNodeParameter('channelId', i) as IDataObject;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as IDataObject;
 						const purpose = this.getNodeParameter('purpose', i) as IDataObject;
 						const body: IDataObject = {
 							channel,
@@ -619,7 +684,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.setTopic
 					if (operation === 'setTopic') {
-						const channel = this.getNodeParameter('channelId', i) as IDataObject;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as IDataObject;
 						const topic = this.getNodeParameter('topic', i) as IDataObject;
 						const body: IDataObject = {
 							channel,
@@ -636,7 +706,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.unarchive
 					if (operation === 'unarchive') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const body: IDataObject = {
 							channel,
 						};
@@ -681,7 +756,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/chat.update
 					if (operation === 'update') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const text = this.getNodeParameter('text', i) as string;
 						const ts = this.getNodeParameter('ts', i) as string;
 						const attachments = this.getNodeParameter(
@@ -745,7 +825,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/chat.delete
 					if (operation === 'delete') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const timestamp = this.getNodeParameter('timestamp', i) as string;
 						const body: IDataObject = {
 							channel,
@@ -756,7 +841,12 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/chat.getPermalink
 					if (operation === 'getPermalink') {
-						const channel = this.getNodeParameter('channelId', i) as string;
+						const channel = this.getNodeParameter(
+							'channelId',
+							i,
+							{},
+							{ extractValue: true },
+						) as string;
 						const timestamp = this.getNodeParameter('timestamp', i) as string;
 						const qs = {
 							channel,
@@ -803,7 +893,12 @@ export class Slack implements INodeType {
 					}
 				}
 				if (resource === 'reaction') {
-					const channel = this.getNodeParameter('channelId', i) as string;
+					const channel = this.getNodeParameter(
+						'channelId',
+						i,
+						{},
+						{ extractValue: true },
+					) as string;
 					const timestamp = this.getNodeParameter('timestamp', i) as string;
 					//https://api.slack.com/methods/reactions.add
 					if (operation === 'add') {
