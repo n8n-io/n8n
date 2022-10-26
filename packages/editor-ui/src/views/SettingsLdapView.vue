@@ -226,7 +226,7 @@ export default mixins(
 			try {
 				this.adConfig = await this.$store.dispatch('settings/runLdapSync', { type: 'dry' });
 				this.$showToast({
-					title: this.$locale.baseText('settings.ldap.runSync'),
+					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: 'Syncronization succeded',
 					type: 'success',
 				});
@@ -241,7 +241,7 @@ export default mixins(
 			try {
 				this.adConfig = await this.$store.dispatch('settings/runLdapSync', { type: 'live' });
 				this.$showToast({
-					title: this.$locale.baseText('settings.ldap.runSync'),
+					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: 'Syncronization succeded',
 					type: 'success',
 				});
