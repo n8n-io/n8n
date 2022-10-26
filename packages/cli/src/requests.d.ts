@@ -48,6 +48,7 @@ export declare namespace WorkflowRequest {
 		settings: IWorkflowSettings;
 		active: boolean;
 		tags: string[];
+		hash: string;
 	}>;
 
 	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
