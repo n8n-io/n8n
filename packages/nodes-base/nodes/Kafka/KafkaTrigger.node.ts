@@ -1,4 +1,4 @@
-import { Kafka as apacheKafka, KafkaConfig, logLevel, SASLOptions } from 'kafkajs';
+import { Kafka as apacheKafka, KafkaConfig, logLevel, SASLOptions ,	CompressionCodecs, CompressionTypes} from 'kafkajs';
 
 import { SchemaRegistry } from '@kafkajs/confluent-schema-registry';
 
@@ -11,6 +11,9 @@ import {
 	ITriggerResponse,
 	NodeOperationError,
 } from 'n8n-workflow';
+
+const SnappyCodec = require('kafkajs-snappy');
+CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
