@@ -18,6 +18,8 @@ import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_TYPE } from '@/constants';
 import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
 
+const darkModeBetaEnabled = () => document.body.classList.contains('dark-mode-beta');
+
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'code-node-editor',
 	props: {
@@ -38,6 +40,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		return {
 			editor: null as EditorView | null,
 			linterCompartment: new Compartment(),
+			themeCompartment: new Compartment(),
 		};
 	},
 	watch: {
@@ -152,12 +155,17 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 			this.$emit('valueChanged', this.placeholder);
 		}
 
+		const { BASE_THEME, DARK_THEME, LIGHT_THEME } = CODE_NODE_EDITOR_THEME;
+		const themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+		const themeExtension = darkModeBetaEnabled() && themeMediaQuery.matches ? DARK_THEME : LIGHT_THEME;
+
 		const state = EditorState.create({
 			doc: this.jsCode === '' ? this.placeholder : this.jsCode,
 			extensions: [
 				...baseExtensions,
 				...stateBasedExtensions,
-				CODE_NODE_EDITOR_THEME,
+				BASE_THEME,
+				this.themeCompartment.of(themeExtension),
 				javascript(),
 				this.autocompletionExtension(),
 			],
@@ -166,6 +174,13 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		this.editor = new EditorView({
 			parent: this.$refs.codeNodeEditor as HTMLDivElement,
 			state,
+		});
+
+		themeMediaQuery.addEventListener('change', event => {
+			const themeExtension = darkModeBetaEnabled() && event.matches ? DARK_THEME : LIGHT_THEME;
+			this.editor?.dispatch({
+				effects: this.themeCompartment.reconfigure(themeExtension),
+			});
 		});
 	},
 });

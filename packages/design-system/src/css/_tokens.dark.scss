@@ -2,7 +2,7 @@
 
 @mixin theme {
 	--color-primary-h: 7;
-	--color-primary-s: 100%;
+	--color-primary-s: 90%;
 	--color-primary-l: 68%;
 	--color-primary: hsl(
 		var(--color-primary-h),
@@ -177,7 +177,7 @@
 
 	--color-text-xlight-h: 0;
 	--color-text-xlight-s: 0%;
-	--color-text-xlight-l: 100%;
+	--color-text-xlight-l: 10%;
 	--color-text-xlight: hsl(
 		var(--color-text-xlight-h),
 		var(--color-text-xlight-s),
@@ -204,7 +204,7 @@
 
 	--color-foreground-xlight-h: 0;
 	--color-foreground-xlight-s: 0%;
-	--color-foreground-xlight-l: 0%;
+	--color-foreground-xlight-l: 10%;
 	--color-foreground-xlight: hsl(
 		var(--color-foreground-xlight-h),
 		var(--color-foreground-xlight-s),
@@ -230,8 +230,8 @@
 	);
 
 	--color-background-light-h: 220;
-	--color-background-light-s: 27%;
-	--color-background-light-l: 0%;
+	--color-background-light-s: 10%;
+	--color-background-light-l: 15%;
 	--color-background-light: hsl(
 		var(--color-background-light-h),
 		var(--color-background-light-s),
@@ -265,9 +265,9 @@
 		var(--color-canvas-dot-l)
 	);
 
-	--color-canvas-background-h: 90;
+	--color-canvas-background-h: 200;
 	--color-canvas-background-s: 10%;
-	--color-canvas-background-l: 0%;
+	--color-canvas-background-l: 10%;
 	--color-canvas-background: hsl(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),
@@ -313,6 +313,8 @@
 	}
 }
 
-body.theme-dark {
-  @include theme;
+@media (prefers-color-scheme: dark) {
+	body.dark-mode-beta {
+		@include theme;
+	}
 }
