@@ -27,12 +27,12 @@
 					</header>
 					<ul :class="$style.categoryActions" v-show="!subtractedCategories.includes(action.key)">
 						<li
-							v-for="actionItem in action.actions"
-							:key="`${action.key}_${actionItem.key}`"
+							v-for="item in action.items"
+							:key="`${action.key}_${item.key}`"
 							:class="$style.categoryAction"
 						>
-							<button :class="$style.categoryActionButton" @click="onActionClick(actionItem, action)">
-								<p v-text="actionItem.title" />
+							<button :class="$style.categoryActionButton" @click="onActionClick(item, action)">
+								<p v-text="item.title" />
 								<trigger-icon v-if="isTrigger" :class="$style.triggerIcon" />
 							</button>
 						</li>
@@ -45,7 +45,7 @@
 
 <script setup lang="ts">
 import { reactive, computed, toRefs, PropType } from 'vue';
-import { IDataObject, INodeTypeDescription } from 'n8n-workflow';
+import { IDataObject, INodeTypeDescription, INodeAction } from 'n8n-workflow';
 import { startCase } from 'lodash';
 
 import { store } from '@/store';
@@ -83,7 +83,7 @@ function toggleCategory(category: string) {
 	}
 }
 
-function onActionClick(actionItem) {
+function onActionClick(actionItem: INodeAction) {
 	const displayOptions = actionItem?.displayOptions ;
 
 	const displayConditions = Object.keys(displayOptions?.show || {})
@@ -93,7 +93,6 @@ function onActionClick(actionItem) {
 		}, {});
 
 
-	console.log("🚀 ~ file: NodeActions.vue ~ line 88 ~ onActionClick ~ displayConditions", displayConditions);
 	emit('actionSelected', {
 		name: props.nodeType.defaults.name,
 		value: { ...actionItem.values , ...displayConditions},

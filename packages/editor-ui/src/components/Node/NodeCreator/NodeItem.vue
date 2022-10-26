@@ -30,7 +30,7 @@
 					<n8n-icon icon="cube" />
 				</n8n-tooltip>
 			</div>
-			<div :class="$style.description" v-if="!hideDescription">
+			<div :class="$style.description" v-if="!simpleStyle">
 				{{ $locale.headerText({
 						key: `headers.${shortNodeType}.description`,
 						fallback: nodeType.description,
@@ -52,9 +52,9 @@
 		</div>
 		<node-actions
 			:class="$style.actions"
-			v-if="showActions"
+			v-if="nodeType.actions && showActions"
 			:nodeType="nodeType"
-			:actions="actions"
+			:actions="nodeType.actions"
 			@actionSelected="onActionSelected"
 			@back="showActions = false"
 		/>
@@ -68,7 +68,7 @@
 
 import Vue, { PropType } from 'vue';
 import { INodeTypeDescription, IDataObject, INodeProperties } from 'n8n-workflow';
-import { INodeCreateElement, INodeItemProps } from '@/Interface';
+import { INodeTypeDescriptionWithActions } from '@/Interface';
 import { startCase, find } from 'lodash';
 
 import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
@@ -90,9 +90,12 @@ export default Vue.extend({
 	},
 	props: {
 		nodeType: {
-			type: Object as PropType<INodeTypeDescription>,
+			type: Object as PropType<INodeTypeDescriptionWithActions>,
 		},
 		active: {
+			type: Boolean,
+		},
+		simpleStyle: {
 			type: Boolean,
 		},
 		hideDescription: {
@@ -113,7 +116,7 @@ export default Vue.extend({
 	},
 	computed: {
 		hasActions(): boolean {
-			return this.actions.length > 0;
+			return this.nodeType?.actions?.length > 0;
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.nodeType.name);
@@ -130,93 +133,12 @@ export default Vue.extend({
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.nodeType.name);
 		},
-		// TODO: Add types
-		actions(): any {
-			function recommendedCategory(properties: INodeProperties[]) {
-				const matchingKeys = ['event', 'events', 'trigger on'];
-				const matchedProperties = (properties || [])
-					.filter((property: any) => matchingKeys.includes(property.displayName?.toLowerCase()));
-
-				if(matchedProperties.length === 0) return [];
-
-				const actions = matchedProperties
-					.filter((property: any) => property.options && property.name !== '*')
-					.reduce((acc, curr) => {
-						const options = curr.options?.map((option: any) => ({
-								key: option.value,
-								title: `When ${startCase(option.name)}`,
-								description: option.description,
-								displayOptions: curr.displayOptions,
-								multiOptions: curr.type === 'multiOptions',
-								values: {[matchedProperties[0].name]: curr.type === 'multiOptions' ? [option.value] : option.value},
-						 }));
-						if(options) acc.push(...options);
-						return acc;
-					}, []);
-
-				// Do not return empty category
-				if(actions.length === 0) return [];
-
-				// TODO: Is it safe to assume that the first property name and type is identical to all the others?
-				return [{
-					key: matchedProperties[0].name,
-					title: 'Recommended',
-					type: 'category',
-					actions,
-				}];
-			}
-
-			// function
-			function resourceCategories(properties: INodeProperties[]) {
-				const matchingKeys = ['resource'];
-				const matchedProperties = (properties || [])
-					.filter((property: any) => matchingKeys.includes(property.displayName?.toLowerCase()));
-
-				if(matchedProperties.length === 0) return [];
-
-				const categories = [];
-
-				for (const matchedProperty of matchedProperties) {
-					for (const resource of matchedProperty.options || []) {
-						const resourceCategory = {
-							title: resource.name,
-							key: resource.value,
-							type: 'category',
-							actions: [],
-						};
-
-						const operations = properties.find(property => {
-							return property.name === 'operation' && property.displayOptions?.show?.resource?.includes(resource.value);
-						});
-
-						for (const operation of operations?.options || []) {
-							(resourceCategory.actions as any[]).push({
-									key: operation.value,
-									title: `${resource.name} ${startCase(operation.name)}`,
-									description: operation?.description,
-									displayOptions: operations?.displayOptions,
-									values: {operation: operations?.type === 'multiOptions' ? [operation.value] : operation.value},
-							});
-						}
-
-						if(resourceCategory.actions.length > 0) categories.push(resourceCategory);
-					}
-				}
-
-				return categories;
-			}
-
-			return [...recommendedCategory(this.nodeType.properties), ...resourceCategories(this.nodeType.properties)];
-		},
 	},
 	methods: {
 		onClick() {
 			console.log('On click!');
-			if(this.hasActions) {
-				this.showActions = true;
-			} else {
-				this.$emit('nodeTypeSelected', this.nodeType.name);
-			}
+			if(this.hasActions) this.showActions = true;
+			else this.$emit('nodeTypeSelected', this.nodeType.name);
 		},
 		onActionSelected(action: IDataObject) {
 			this.$emit('nodeTypeSelected', this.nodeType.name);
@@ -300,6 +222,7 @@ export default Vue.extend({
 	margin-right: 12px;
 	display: flex;
 	cursor: grab;
+	align-items: center;
 }
 
 .details {

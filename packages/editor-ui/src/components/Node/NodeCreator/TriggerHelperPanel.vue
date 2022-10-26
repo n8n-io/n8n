@@ -56,7 +56,7 @@ export default mixins(externalHooks).extend({
 	computed: {
 		items() {
 			return [{
-					key: "core_nodes",
+					key: "app_nodes",
 					type: "subcategory",
 					title: this.$locale.baseText('nodeCreator.subcategoryNames.appTriggerNodes'),
 					properties: {
@@ -154,16 +154,7 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	methods: {
-		// onActionsBack() {
-		// 	this.activeNode = null;
-		// },
-		// onActionSelected(action: IDataObject) {
-		// 	this.$emit('nodeTypeSelected', this.activeNode);
-		// 	// We need some time for the node to be created before setting parameters
-		// 	setTimeout(() => this.$store.commit('setNodeParameters', action), 0);
-		// },
 		onNodeSelected(nodeType: string) {
-			// this.activeNode = nodeType;
 			this.$emit('nodeTypeSelected', nodeType);
 		},
 		isRootSubcategory(subcategory: INodeCreateElement) {

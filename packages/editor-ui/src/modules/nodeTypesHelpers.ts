@@ -1,6 +1,7 @@
 import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, PERSONALIZED_CATEGORY  } from '@/constants';
-import { INodeCreateElement, ICategoriesWithNodes } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { INodeCreateElement, ICategoriesWithNodes, INodeTypeDescriptionWithActions } from '@/Interface';
+import { INodeTypeDescription, INodeProperties } from 'n8n-workflow';
+import { startCase } from 'lodash';
 
 const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescription, category: string, subcategory: string) => {
 	if (!accu[category]) {
@@ -31,6 +32,87 @@ const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescri
 		includedByTrigger: isTrigger,
 		includedByRegular: !isTrigger,
 	});
+};
+
+export const extendNodeWithActions = (nodeType: INodeTypeDescription): INodeTypeDescriptionWithActions => {
+	function recommendedCategory(properties: INodeProperties[]) {
+		const matchingKeys = ['event', 'events', 'trigger on'];
+		const matchedProperties = (properties || [])
+			.filter((property: any) => matchingKeys.includes(property.displayName?.toLowerCase()));
+
+		if(matchedProperties.length === 0) return [];
+
+		const actions = matchedProperties
+			.reduce((acc, curr) => {
+				const options = curr.options
+				?.filter((property: any) => !['*', '', ' '].includes(property.name))
+				.map((option: any) => ({
+						key: option.value,
+						title: `When ${startCase(option.name)}`,
+						description: option.description,
+						displayOptions: curr.displayOptions,
+						multiOptions: curr.type === 'multiOptions',
+						values: {[matchedProperties[0].name]: curr.type === 'multiOptions' ? [option.value] : option.value},
+					}));
+				if(options) acc.push(...options);
+				return acc;
+			}, []);
+
+		// Do not return empty category
+		if(actions.length === 0) return [];
+
+		// TODO: Is it safe to assume that the first property name and type is identical to all the others?
+		return [{
+			key: matchedProperties[0].name,
+			title: 'Recommended',
+			type: 'category',
+			actions,
+		}];
+	}
+
+	function resourceCategories(properties: INodeProperties[]) {
+		const matchingKeys = ['resource'];
+		const matchedProperties = (properties || [])
+			.filter((property: any) => matchingKeys.includes(property.displayName?.toLowerCase()));
+
+		if(matchedProperties.length === 0) return [];
+
+		const categories = [];
+
+		for (const matchedProperty of matchedProperties) {
+			for (const resource of matchedProperty.options || []) {
+				const resourceCategory = {
+					title: resource.name,
+					key: resource.value,
+					type: 'category',
+					actions: [],
+				};
+
+				const operations = properties.find(property => {
+					return property.name === 'operation' && property.displayOptions?.show?.resource?.includes(resource.value);
+				});
+
+				for (const operation of operations?.options || []) {
+					(resourceCategory.actions as any[]).push({
+							key: operation.value,
+							title: `${resource.name} ${startCase(operation.name)}`,
+							description: operation?.description,
+							displayOptions: operations?.displayOptions,
+							values: {operation: operations?.type === 'multiOptions' ? [operation.value] : operation.value},
+					});
+				}
+
+				if(resourceCategory.actions.length > 0) categories.push(resourceCategory);
+			}
+		}
+
+		return categories;
+	}
+
+	return {
+		...nodeType,
+		actions: [...recommendedCategory(nodeType.properties), ...resourceCategories(nodeType.properties)],
+	};
 };
 
 export const getCategoriesWithNodes = (nodeTypes: INodeTypeDescription[], personalizedNodeTypes: string[]): ICategoriesWithNodes => {

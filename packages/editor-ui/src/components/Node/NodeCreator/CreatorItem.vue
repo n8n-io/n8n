@@ -20,6 +20,7 @@
 		<node-item
 			v-else-if="item.type === 'node'"
 			:nodeType="item.properties.nodeType"
+			:simpleStyle="simpleNodeStyle"
 			@dragstart="$listeners.dragstart"
 			@dragend="$listeners.dragend"
 			@nodeTypeSelected="$listeners.nodeTypeSelected"
@@ -46,6 +47,9 @@ export default Vue.extend({
 			type: Object as PropType<INodeCreateElement>,
 		},
 		active: {
+			type: Boolean,
+		},
+		simpleNodeStyle: {
 			type: Boolean,
 		},
 		clickable: {

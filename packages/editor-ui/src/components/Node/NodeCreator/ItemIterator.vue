@@ -18,6 +18,7 @@
 				:item="item"
 				:active="activeIndex === index && !disabled"
 				:clickable="!disabled"
+				:simple-node-style="simpleNodeStyle"
 				:lastNode="
 					index === elements.length - 1 || elements[index + 1].type !== 'node'
 				"
@@ -49,6 +50,9 @@ export default Vue.extend({
 			type: Number,
 		},
 		disabled: {
+			type: Boolean,
+		},
+		simpleNodeStyle: {
 			type: Boolean,
 		},
 		transitionsEnabled: {

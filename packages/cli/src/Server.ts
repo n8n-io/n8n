@@ -896,12 +896,16 @@ class App {
 				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
 					const returnData: INodeTypeDescription[] = [];
 					const onlyLatest = req.query.onlyLatest === 'true';
+					const withActions = req.query.withActions === 'true';
 
 					const nodeTypes = NodeTypes();
 					const allNodes = nodeTypes.getAll();
 
 					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
+						const nodeInfo = withActions
+							? nodeTypes.extendNodeTypeWithActions({ ...nodeType.description })
+							: { ...nodeType.description };
+
 						if (req.query.includeProperties !== 'true') {
 							// @ts-ignore
 							delete nodeInfo.properties;

@@ -9,7 +9,11 @@ import {
 	INodeTypes,
 	INodeVersionedType,
 	NodeHelpers,
+	INodeProperties,
+	INodeAction,
+	INodePropertyOptions,
 } from 'n8n-workflow';
+import { capitalCase } from 'change-case';
 
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {};
@@ -71,6 +75,102 @@ class NodeTypesClass implements INodeTypes {
 
 	removeNodeType(nodeType: string): void {
 		delete this.nodeTypes[nodeType];
+	}
+
+	extendNodeTypeWithActions(nodeType: INodeTypeDescription): INodeTypeDescription {
+		function recommendedCategory(properties: INodeProperties[]) {
+			const matchingKeys = ['event', 'events', 'trigger on'];
+			const matchedProperties = (properties ?? []).filter((property) =>
+				matchingKeys.includes(property.displayName?.toLowerCase()),
+			);
+
+			if (matchedProperties.length === 0) return [];
+
+			const items = matchedProperties.reduce((acc: INodeAction[], category) => {
+				const options = (category.options ?? [])
+					.filter(
+						(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
+					)
+					.map((categoryItem: INodePropertyOptions) => ({
+						key: categoryItem.value?.toString(),
+						title: `When ${capitalCase(categoryItem.name)}`,
+						description: categoryItem.description,
+						displayOptions: category.displayOptions,
+						values: {
+							[matchedProperties[0].name]:
+								category.type === 'multiOptions' ? [categoryItem.value] : categoryItem.value,
+						},
+					}));
+
+				return [...acc, ...options];
+			}, []);
+
+			// Do not return empty category
+			if (items.length === 0) return [];
+
+			return [
+				{
+					key: matchedProperties[0].name,
+					title: 'Recommended',
+					type: 'category',
+					items,
+				},
+			];
+		}
+
+		function resourceCategories(properties: INodeProperties[]): INodeAction[] {
+			const categories: INodeAction[] = [];
+			const matchingKeys = ['resource'];
+			const matchedProperties = properties?.filter((property: INodeProperties) =>
+				matchingKeys.includes(property.displayName?.toLowerCase()),
+			);
+
+			matchedProperties.forEach((property) => {
+				property.options?.forEach((resourceOption: INodePropertyOptions) => {
+					const resourceCategory = {
+						title: resourceOption.name,
+						key: resourceOption.value?.toString(),
+						type: 'category',
+						items: [] as INodeAction[],
+					};
+
+					const operations = properties.find(
+						(operation) =>
+							operation.name === 'operation' &&
+							operation.displayOptions?.show?.resource?.includes(resourceOption.value),
+					);
+
+					if (!operations?.options) return;
+
+					resourceCategory.items = operations.options.map(
+						(operationOption: INodePropertyOptions) => ({
+							key: operationOption.value.toString(),
+							title: `${resourceOption.name} ${capitalCase(operationOption.name)}`,
+							description: operationOption?.description,
+							displayOptions: operations?.displayOptions,
+							values: {
+								operation:
+									operations?.type === 'multiOptions'
+										? [operationOption.value]
+										: operationOption.value,
+							},
+						}),
+					);
+
+					if (resourceCategory.items.length > 0) categories.push(resourceCategory);
+				});
+			});
+
+			return categories;
+		}
+
+		return {
+			...nodeType,
+			actions: [
+				...recommendedCategory(nodeType.properties),
+				...resourceCategories(nodeType.properties),
+			],
+		};
 	}
 }
 

@@ -32,6 +32,7 @@
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					:transitionsEnabled="true"
 					@selected="selected"
+					:simple-node-style="isAppEventSubcategory"
 				/>
 			</div>
 			<div
@@ -42,6 +43,7 @@
 					:elements="filteredNodeTypes"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					@selected="selected"
+					:simple-node-style="isAppEventSubcategory"
 				/>
 			</div>
 			<no-results v-else :showRequest="filteredAllNodeTypes.length === 0" :show-icon="filteredAllNodeTypes.length === 0">
@@ -91,6 +93,7 @@ import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesW
 import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
+import { cloneDeep } from 'lodash';
 
 export default mixins(externalHooks, globalLinkActions).extend({
 	name: 'CategorizedItems',
@@ -182,9 +185,8 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		matchedTypeNodes(): INodeCreateElement[] {
 			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
 
-			return searchableNodes.filter((el: INodeCreateElement) => {
-				return matchesSelectType(el, this.selectedType);
-			});
+			if(this.isAppEventSubcategory) return searchableNodes;
+			return searchableNodes.filter((el: INodeCreateElement) => matchesSelectType(el, this.selectedType));
 		},
 		filteredNodeTypes(): INodeCreateElement[] {
 			// const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
@@ -263,8 +265,38 @@ export default mixins(externalHooks, globalLinkActions).extend({
 
 			return nodes.filter((el: INodeCreateElement) => matchesSelectType(el, this.selectedType));
 		},
-
+		isAppEventSubcategory(): boolean {
+			return this.activeSubcategory?.key === 'app_nodes';
+		},
 		subcategorizedNodes(): INodeCreateElement[] {
+			if(this.isAppEventSubcategory) {
+				// On App Event is a special subcategory because we want to
+				// show merged regular nodes with actions and trigger nodes
+				const mergedNodes = this.searchItems.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
+					const clonedNode = cloneDeep(node);
+					const isRegularNode = clonedNode.includedByRegular === true;
+					const isTriggerNode = clonedNode.includedByTrigger === true;
+					const nodeType = clonedNode.properties.nodeType;
+					const actions = nodeType.actions || [];
+					const hasActions = actions?.length > 0;
+					const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
+
+					if(isRegularNode && !hasActions) return acc;
+					if(isTriggerNode && !!this.subcategorizedItems.find(i => i.key === node.key)) return acc;
+
+					const existingNode = acc[normalizedName];
+					if(existingNode) {
+						existingNode.properties.nodeType.actions.push(...actions);
+					} else {
+						acc[normalizedName] = clonedNode;
+					}
+
+					return acc;
+
+				}, {});
+
+				return Object.values(mergedNodes);
+			}
 			return this.subcategorizedItems.filter(node => node.type === 'node');
 		},
 
