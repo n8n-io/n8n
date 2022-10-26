@@ -85,10 +85,7 @@
 			@toggleNodeCreator="onToggleNodeCreator"
 			@addNode="onAddNode"
 		/>
-		<canvas-controls
-			:is-demo="isDemo"
-			:is-sidebar-menu-collapsed="sidebarMenuCollapsed"
-		/>
+		<canvas-controls />
 		<div
 			class="workflow-execute-wrapper" v-if="!isReadOnly"
 		>
@@ -359,9 +356,6 @@ export default mixins(
 		computed: {
 			...mapGetters('users', [
 				'currentUser',
-			]),
-			...mapGetters('ui', [
-				'sidebarMenuCollapsed',
 			]),
 			...mapGetters('settings', [
 				'isOnboardingCallPromptFeatureEnabled',

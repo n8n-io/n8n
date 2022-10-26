@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="{ [$style.zoomMenu]: true, [$style.regularZoomMenu]: !isDemo, [$style.demoZoomMenu]: isDemo, [$style.expanded]: !isSidebarMenuCollapsed }">
+		:class="{ [$style.zoomMenu]: true, [$style.regularZoomMenu]: !isDemo, [$style.demoZoomMenu]: isDemo }">
 		<n8n-icon-button @click="zoomToFit" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomToFit')"
 										 icon="expand" />
 		<n8n-icon-button @click="zoomIn" type="tertiary" size="large" :title="$locale.baseText('nodeView.zoomIn')"
@@ -16,13 +16,9 @@ import { onBeforeMount, onBeforeUnmount } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useCanvasStore } from '@/modules/canvas';
 
-const props = defineProps<{
-	isDemo: boolean
-	isSidebarMenuCollapsed: boolean
-}>();
 const canvasStore = useCanvasStore();
 const { zoomToFit, zoomIn, zoomOut, resetZoom  } = canvasStore;
-const { nodeViewScale } = storeToRefs(canvasStore);
+const { nodeViewScale, isDemo } = storeToRefs(canvasStore);
 
 const keyDown = (e: KeyboardEvent) => {
 	const isCtrlKeyPressed = e.metaKey || e.ctrlKey;
