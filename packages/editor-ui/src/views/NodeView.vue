@@ -2752,13 +2752,13 @@ export default mixins(
 			deleteEveryEndpoint() {
 				// Check as it does not exist on first load
 				if (this.instance) {
-					try {
-						const nodes = this.$store.getters.allNodes as INodeUi[];
-						// @ts-ignore
-						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(node.id));
+					const nodes = this.$store.getters.allNodes as INodeUi[];
 
-						this.instance.deleteEveryEndpoint();
-					} catch (e) { }
+					// important to prevent memory leaks
+					// @ts-ignore
+					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(node.id));
+
+					this.instance.deleteEveryEndpoint();
 				}
 			},
 			matchCredentials(node: INodeUi) {
