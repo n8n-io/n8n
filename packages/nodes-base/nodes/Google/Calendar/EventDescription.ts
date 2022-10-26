@@ -57,7 +57,7 @@ export const eventFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		required: true,
-		description: 'Choose Calendar from the List or by ID',
+		description: 'Google Calendar to operate on',
 		modes: [
 			{
 				displayName: 'Calendar',
