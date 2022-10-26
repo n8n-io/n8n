@@ -2753,10 +2753,15 @@ export default mixins(
 				// Check as it does not exist on first load
 				if (this.instance) {
 					const nodes = this.$store.getters.allNodes as INodeUi[];
-
-					// important to prevent memory leaks
-					// @ts-ignore
-					nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(node.id));
+					nodes.forEach((node: INodeUi) => {
+						try {
+							// important to prevent memory leak
+							// @ts-ignore
+							this.instance.destroyDraggable(node.id);
+						} catch (e) {
+							console.error(e);
+						}
+					});
 
 					this.instance.deleteEveryEndpoint();
 				}
