@@ -102,6 +102,7 @@ const state: IRootState = {
 		settings: {},
 		tags: [],
 		pinData: {},
+		hash: '',
 	},
 	workflowsById: {},
 	sidebarMenuItems: [],
@@ -473,6 +474,10 @@ export const store = new Vuex.Store({
 			state.workflow.name = data.newName;
 		},
 
+		setWorkflowHash(state, hash: string) {
+			state.workflow.hash = hash;
+		},
+
 		// replace invalid credentials in workflow
 		replaceInvalidWorkflowCredentials(state, {credentials, invalid, type}) {
 			state.workflow.nodes.forEach((node) => {
@@ -760,6 +765,9 @@ export const store = new Vuex.Store({
 
 		subworkflowExecutionError: (state): Error | null => {
 			return state.subworkflowExecutionError;
+		},
+		workflowHash: (state): string | undefined => {
+			return state.workflow.hash;
 		},
 
 		isActionActive: (state) => (action: string): boolean => {
