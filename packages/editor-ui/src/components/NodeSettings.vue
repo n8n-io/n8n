@@ -14,10 +14,11 @@
 					<NodeExecuteButton
 						v-if="!blockUI"
 						:nodeName="node.name"
-						:disabled="outputPanelEditMode.enabled"
+						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
 						size="small"
 						telemetrySource="parameters"
 						@execute="onNodeExecute"
+						@stopExecution="onStopExecution"
 					/>
 				</div>
 			</div>
@@ -225,6 +226,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.node.type);
+		},
+		isTriggerNode(): boolean {
+			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
 		},
 	},
 	props: {
@@ -763,6 +767,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				package_name: this.node.type.split('.')[0],
 				node_type: this.node.type,
 			});
+		},
+		onStopExecution(){
+			this.$emit('stopExecution');
 		},
 	},
 	mounted() {

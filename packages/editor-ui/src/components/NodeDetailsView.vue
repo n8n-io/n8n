@@ -91,6 +91,7 @@
 						:blockUI="blockUi && showTriggerPanel"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
+						@stopExecution="onStopExecution"
 						@activate="onWorkflowActivate"
 					/>
 					<a
@@ -615,8 +616,13 @@ export default mixins(
 			});
 		},
 		checkForeignCredentials() {
-			const issues = this.getNodeCredentialIssues(this.activeNode);
-			this.hasForeignCredential = !!issues?.credentials?.foreign;
+			if(this.activeNode){
+				const issues = this.getNodeCredentialIssues(this.activeNode);
+				this.hasForeignCredential = !!issues?.credentials?.foreign;
+			}
+		},
+		onStopExecution(){
+			this.$emit('stopExecution');
 		},
 	},
 });
