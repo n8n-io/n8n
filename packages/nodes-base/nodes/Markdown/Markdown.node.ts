@@ -27,7 +27,6 @@ export class Markdown implements INodeType {
 		description: 'Convert data between Markdown and HTML',
 		defaults: {
 			name: 'Markdown',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

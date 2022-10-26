@@ -1144,7 +1144,7 @@ export interface INodeType {
 	};
 }
 
-export interface INodeVersionedType {
+export interface IVersionedNodeType {
 	nodeVersions: {
 		[key: number]: INodeType;
 	};
@@ -1423,7 +1423,7 @@ export type WebhookResponseMode = 'onReceived' | 'lastNode';
 export interface INodeTypes {
 	nodeTypes: INodeTypeData;
 	init(nodeTypes?: INodeTypeData): Promise<void>;
-	getAll(): Array<INodeType | INodeVersionedType>;
+	getAll(): Array<INodeType | IVersionedNodeType>;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
@@ -1436,7 +1436,7 @@ export interface ICredentialTypeData {
 
 export interface INodeTypeData {
 	[key: string]: {
-		type: INodeType | INodeVersionedType;
+		type: INodeType | IVersionedNodeType;
 		sourcePath: string;
 	};
 }

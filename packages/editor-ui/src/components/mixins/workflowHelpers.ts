@@ -20,7 +20,7 @@ import {
 	INodeTypes,
 	INodeTypeData,
 	INodeTypeDescription,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IPinData,
 	IRunData,
 	IRunExecutionData,
@@ -313,7 +313,7 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): Array<INodeType | INodeVersionedType> => {
+					getAll: (): Array<INodeType | IVersionedNodeType> => {
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},
@@ -680,8 +680,9 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
-				const currentWorkflow = this.$route.params.name;
+			async saveCurrentWorkflow({id, name, tags}: {id?: string, name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
+				const currentWorkflow = id ||  this.$route.params.name;
+
 				if (!currentWorkflow) {
 					return this.saveAsNewWorkflow({name, tags}, redirect);
 				}

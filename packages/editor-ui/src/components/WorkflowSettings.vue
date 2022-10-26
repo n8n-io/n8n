@@ -187,7 +187,7 @@ import {
 	IWorkflowShortResponse,
 } from '@/Interface';
 import Modal from './Modal.vue';
-import { WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
 
 import mixins from 'vue-typed-mixins';
 
@@ -244,7 +244,7 @@ export default mixins(
 	},
 
 	async mounted () {
-		if (this.$route.params.name === undefined) {
+		if (!this.workflowId || this.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			this.$showMessage({
 				title: 'No workflow active',
 				message: `No workflow active to display settings of.`,
@@ -519,7 +519,7 @@ export default mixins(
 			this.isLoading = true;
 
 			try {
-				await this.restApi().updateWorkflow(this.$route.params.name, data);
+				await this.restApi().updateWorkflow(this.workflowId, data);
 			} catch (error) {
 				this.$showError(
 					error,

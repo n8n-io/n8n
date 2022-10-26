@@ -30,6 +30,7 @@ import {
 	IFakeDoorLocation,
 	IRootState,
 	IUiState,
+	XYPosition,
 	IFakeDoor,
 } from '../Interface';
 
@@ -136,6 +137,9 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['credentialsModal'],
 			},
 		],
+		nodeViewInitialized: false,
+		addFirstStepOnLoad: false,
+		executionSidebarAutoRefresh: true,
 	},
 	getters: {
 		isVersionsOpen: (state: IUiState) => {
@@ -175,6 +179,9 @@ const module: Module<IUiState, IRootState> = {
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
 		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
+		isNodeViewInitialized: (state: IUiState) => state.nodeViewInitialized,
+		getAddFirstStepOnLoad: (state: IUiState) => state.addFirstStepOnLoad,
+		isExecutionSidebarAutoRefreshOn: (state: IUiState) => state.executionSidebarAutoRefresh,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -230,6 +237,75 @@ const module: Module<IUiState, IRootState> = {
 		},
 		setCurrentView: (state: IUiState, currentView: string) => {
 			state.currentView = currentView;
+		},
+		setNDVSessionId: (state: IUiState) => {
+			Vue.set(state.ndv, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
+		},
+		resetNDVSessionId: (state: IUiState) => {
+			Vue.set(state.ndv, 'sessionId', '');
+		},
+		setPanelDisplayMode: (state: IUiState, params: {pane: 'input' | 'output', mode: IRunDataDisplayMode}) => {
+			Vue.set(state.ndv[params.pane], 'displayMode', params.mode);
+		},
+		setOutputPanelEditModeEnabled: (state: IUiState, payload: boolean) => {
+			Vue.set(state.ndv.output.editMode, 'enabled', payload);
+		},
+		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
+			Vue.set(state.ndv.output.editMode, 'value', payload);
+		},
+		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
+			state.mainPanelPosition = relativePosition;
+		},
+		setMappableNDVInputFocus(state: IUiState, paramName: string) {
+			Vue.set(state.ndv, 'focusedMappableInput', paramName);
+		},
+		draggableStartDragging(state: IUiState, {type, data}: {type: string, data: string}) {
+			state.draggable = {
+				isDragging: true,
+				type,
+				data,
+				canDrop: false,
+				stickyPosition: null,
+			};
+		},
+		draggableStopDragging(state: IUiState) {
+			state.draggable = {
+				isDragging: false,
+				type: '',
+				data: '',
+				canDrop: false,
+				stickyPosition: null,
+			};
+		},
+		setDraggableStickyPos(state: IUiState, position: XYPosition | null) {
+			Vue.set(state.draggable, 'stickyPosition', position);
+		},
+		setDraggableCanDrop(state: IUiState, canDrop: boolean) {
+			Vue.set(state.draggable, 'canDrop', canDrop);
+		},
+		setMappingTelemetry(state: IUiState, telemetry: {[key: string]: string | number | boolean}) {
+			state.ndv.mappingTelemetry = {...state.ndv.mappingTelemetry, ...telemetry};
+		},
+		resetMappingTelemetry(state: IUiState) {
+			state.ndv.mappingTelemetry = {};
+		},
+		setHoveringItem(state: IUiState, item: null | IUiState['ndv']['hoveringItem']) {
+			Vue.set(state.ndv, 'hoveringItem', item);
+		},
+		setNDVBranchIndex(state: IUiState, e: {pane: 'input' | 'output', branchIndex: number}) {
+			Vue.set(state.ndv[e.pane], 'branch', e.branchIndex);
+		},
+		setNDVPanelDataIsEmpty(state: IUiState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
+			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
+		},
+		setNodeViewInitialized(state: IUiState, isInitialized: boolean) {
+			state.nodeViewInitialized = isInitialized;
+		},
+		setAddFirstStepOnLoad(state: IUiState, addStep: boolean) {
+			state.addFirstStepOnLoad = addStep;
+		},
+		setExecutionsSidebarAutoRefresh(state: IUiState, autoRefresh: boolean) {
+			state.executionSidebarAutoRefresh = autoRefresh;
 		},
 	},
 	actions: {
