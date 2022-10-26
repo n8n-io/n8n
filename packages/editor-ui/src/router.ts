@@ -21,12 +21,10 @@ import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
-import { Store } from 'vuex';
 import { IPermissions, IRootState, IWorkflowsState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
-import { store } from './store';
 import { useSettingsStore } from './stores/settings';
 
 Vue.use(Router);
@@ -35,18 +33,19 @@ interface IRouteConfig extends RouteConfigSingleView {
 	meta: {
 		nodeView?: boolean;
 		templatesEnabled?: boolean;
-		getRedirect?: (store: Store<IRootState>) => {name: string} | false;
+		getRedirect?: () => {name: string} | false;
 		permissions: IPermissions;
 		telemetry?: {
 			disabled?: true;
-			getProperties: (route: Route, store: Store<IRootState>) => object;
+			getProperties: (route: Route) => object;
 		};
 		scrollOffset?: number;
 	};
 }
 
-function getTemplatesRedirect(store: Store<IRootState>) {
-	const isTemplatesEnabled: boolean = store.getters['settings/isTemplatesEnabled'];
+function getTemplatesRedirect() {
+	const settingsStore = useSettingsStore();
+	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
 	if (!isTemplatesEnabled) {
 		return {name: VIEWS.NOT_FOUND};
 	}
@@ -69,9 +68,8 @@ const router = new Router({
 			path: '/',
 			name: VIEWS.HOMEPAGE,
 			meta: {
-				getRedirect(store: Store<IRootState>) {
+				getRedirect() {
 					const startOnNewWorkflowRouteFlag = window.posthog?.isFeatureEnabled?.('start-at-wf-empty-state');
-
 					return { name: startOnNewWorkflowRouteFlag ? VIEWS.NEW_WORKFLOW : VIEWS.WORKFLOWS };
 				},
 				permissions: {
@@ -91,10 +89,11 @@ const router = new Router({
 			meta: {
 				templatesEnabled: true,
 				telemetry: {
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
 						return {
 							collection_id: route.params.id,
-							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+							//TODO: Update once templates store i migrated:
+							wf_template_repo_session_id: '', //store.getters['templates/currentSessionId'],
 						};
 					},
 				},
@@ -134,10 +133,11 @@ const router = new Router({
 				templatesEnabled: true,
 				getRedirect: getTemplatesRedirect,
 				telemetry: {
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
 						return {
 							template_id: route.params.id,
-							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+							//TODO: Update once templates store i migrated:
+							wf_template_repo_session_id: '',
 						};
 					},
 				},
@@ -161,9 +161,10 @@ const router = new Router({
 				// Templates view remembers it's scroll position on back
 				scrollOffset: 0,
 				telemetry: {
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
 						return {
-							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
+							//TODO: Update once templates store i migrated:
+							wf_template_repo_session_id: '',
 						};
 					},
 				},
@@ -377,7 +378,7 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
 						return {
 							feature: 'users',
 						};
@@ -405,7 +406,7 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
 						return {
 							feature: 'personal',
 						};
@@ -430,7 +431,7 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
 						return {
 							feature: 'api',
 						};
@@ -480,7 +481,7 @@ const router = new Router({
 			meta: {
 				telemetry: {
 					pageCategory: 'settings',
-					getProperties(route: Route, store: Store<IRootState>) {
+					getProperties(route: Route) {
 						return {
 							feature: route.params['featureId'],
 						};
