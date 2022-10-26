@@ -27,6 +27,7 @@ import {
 import {
 	ICredentialsResponse,
 	INodeUi,
+	IUser,
 } from '../../Interface';
 
 import { restApi } from '@/components/mixins/restApi';
@@ -39,6 +40,7 @@ import { isObjectLiteral } from '@/utils';
 import {getCredentialPermissions} from "@/permissions";
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 export const nodeHelpers = mixins(
 	restApi,
@@ -311,9 +313,11 @@ export const nodeHelpers = mixins(
 							};
 						}
 
+						const usersStore = useUsersStore();
+						const currentUser = usersStore.currentUser || {} as IUser;
 						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name)
 							.filter((credential: ICredentialsResponse) => {
-								const permissions = getCredentialPermissions(this.$store.getters['users/currentUser'], credential, this.$store);
+								const permissions = getCredentialPermissions(currentUser, credential, this.$store);
 								return permissions.use;
 							});
 

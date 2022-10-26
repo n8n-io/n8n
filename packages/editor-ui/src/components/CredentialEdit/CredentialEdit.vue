@@ -109,6 +109,7 @@ import {
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
 	IFakeDoor,
+	IUser,
 } from '@/Interface';
 
 import {
@@ -123,7 +124,6 @@ import {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	IUser,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -141,13 +141,13 @@ import InlineNameEdit from '../InlineNameEdit.vue';
 import {EnterpriseEditionFeature} from "@/constants";
 import {IDataObject} from "n8n-workflow";
 import FeatureComingSoon from '../FeatureComingSoon.vue';
-import {mapGetters} from "vuex";
 import {getCredentialPermissions, IPermissions} from "@/permissions";
 import { IMenuItem } from 'n8n-design-system';
 import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -256,8 +256,14 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.loading = false;
 	},
 	computed: {
-		...mapStores(useUIStore, useSettingsStore),
-		...mapGetters('users', ['currentUser']),
+		...mapStores(
+				useSettingsStore,
+				useUIStore,
+				useUsersStore,
+			),
+		currentUser(): IUser {
+			return this.usersStore.currentUser || {} as IUser;
+		},
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
 				return null;

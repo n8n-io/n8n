@@ -3,7 +3,7 @@
 		<div :class="$style.container">
 			<div>
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.users') }}</n8n-heading>
-				<div :class="$style.buttonContainer" v-if="!showUMSetupWarning">
+				<div :class="$style.buttonContainer" v-if="!usersStore.showUMSetupWarning">
 						<n8n-tooltip :disabled="settingsStore.isSmtpSetup" placement="bottom">
 							<i18n slot="content" path="settings.users.setupSMTPToInviteUsers" tag="span">
 								<template #action>
@@ -20,7 +20,7 @@
 						</n8n-tooltip>
 				</div>
 			</div>
-			<div v-if="showUMSetupWarning" :class="$style.setupInfoContainer">
+			<div v-if="usersStore.showUMSetupWarning" :class="$style.setupInfoContainer">
 				<n8n-action-box
 					:heading="$locale.baseText('settings.users.setupToInviteUsers')"
 					:buttonText="$locale.baseText('settings.users.setupMyAccount')"
@@ -34,7 +34,7 @@
 					:message="$locale.baseText('settings.users.smtpToAddUsersWarning')"
 					:popupClass="$style.alert"
 				/>
-				<n8n-users-list :users="allUsers" :currentUserId="currentUserId" @delete="onDelete" @reinvite="onReinvite" />
+				<n8n-users-list :users="usersStore.allUsers" :currentUserId="usersStore.currentUserId" @delete="onDelete" @reinvite="onReinvite" />
 			</div>
 		</div>
 	</SettingsView>
@@ -42,7 +42,6 @@
 
 <script lang="ts">
 import { INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
-import { mapGetters } from 'vuex';
 
 import SettingsView from './SettingsView.vue';
 import PageAlert from '../components/PageAlert.vue';
@@ -52,6 +51,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(showMessage).extend({
 	name: 'SettingsUsersView',
@@ -60,16 +60,16 @@ export default mixins(showMessage).extend({
 		PageAlert,
 	},
 	async mounted() {
-		if (!this.showUMSetupWarning) {
-			await this.$store.dispatch('users/fetchUsers');
+		if (!this.usersStore.showUMSetupWarning) {
+			await this.usersStore.fetchUsers();
 		}
 	},
 	computed: {
 		...mapStores(
-			useUIStore,
 			useSettingsStore,
+			useUIStore,
+			useUsersStore,
 		),
-		...mapGetters('users', ['allUsers', 'currentUserId', 'showUMSetupWarning']),
 	},
 	methods: {
 		redirectToSetup() {
@@ -79,18 +79,16 @@ export default mixins(showMessage).extend({
 			this.uiStore.openModal(INVITE_USER_MODAL_KEY);
 		},
 		async onDelete(userId: string) {
-			const getUserById = this.$store.getters['users/getUserById'];
-			const user = getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId) as IUser | null;
 			if (user) {
 				this.uiStore.openDeleteUserModal(userId);
 			}
 		},
 		async onReinvite(userId: string) {
-			const getUserById = this.$store.getters['users/getUserById'];
-			const user = getUserById(userId) as IUser | null;
+			const user = this.usersStore.getUserById(userId) as IUser | null;
 			if (user) {
 				try {
-					await this.$store.dispatch('users/reinviteUser', { id: user.id });
+					await this.usersStore.reinviteUser({ id: user.id });
 
 					this.$showToast({
 						type: 'success',

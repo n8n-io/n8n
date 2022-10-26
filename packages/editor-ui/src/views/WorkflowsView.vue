@@ -76,6 +76,7 @@ import TagsDropdown from "@/components/TagsDropdown.vue";
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -107,9 +108,10 @@ export default mixins(
 		...mapStores(
 			useSettingsStore,
 			useUIStore,
+			useUsersStore,
 		),
 		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
+			return this.usersStore.currentUser || {} as IUser;
 		},
 		allWorkflows(): IWorkflowDb[] {
 			return this.$store.getters['allWorkflows'];
@@ -127,11 +129,10 @@ export default mixins(
 			this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 		async initialize() {
-			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
+			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 
 			return await Promise.all([
 				this.$store.dispatch('fetchAllWorkflows'),
-				// this.$store.dispatch('fetchActiveWorkflows'),
 				this.uiStore.fetchActiveWorkflows(),
 			]);
 		},
@@ -159,7 +160,7 @@ export default mixins(
 		},
 	},
 	mounted() {
-		this.$store.dispatch('users/showPersonalizationSurvey');
+		this.usersStore.showPersonalizationSurvey();
 	},
 });
 </script>

@@ -203,6 +203,7 @@ import {
 	IWorkflowTemplate,
 	IExecutionsSummary,
 	IWorkflowToShare,
+	IUser,
 } from '@/Interface';
 import { mapGetters } from 'vuex';
 import '../plugins/N8nCustomConnectorType';
@@ -213,6 +214,7 @@ import { debounceHelper } from '@/components/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -316,10 +318,11 @@ export default mixins(
 			...mapStores(
 				useSettingsStore,
 				useUIStore,
+				useUsersStore,
 			),
-			...mapGetters('users', [
-				'currentUser',
-			]),
+			currentUser(): IUser {
+				return this.usersStore.currentUser || {} as IUser;
+			},
 			defaultLocale(): string {
 				return this.$store.getters.defaultLocale;
 			},
@@ -3237,13 +3240,14 @@ export default mixins(
 				this.stopLoading();
 
 				setTimeout(() => {
-					this.$store.dispatch('users/showPersonalizationSurvey');
+					this.usersStore.showPersonalizationSurvey();
 					this.checkForNewVersions();
 					this.addPinDataConnections(this.$store.getters.pinData);
 				}, 0);
 			});
 
-			this.$externalHooks().run('nodeView.mount');
+			// TODO: This currently breaks since front-end hooks are still not updated to work with pinia store
+			this.$externalHooks().run('nodeView.mount').catch(e => {});
 
 			if (
 				this.currentUser.personalizationAnswers !== null &&

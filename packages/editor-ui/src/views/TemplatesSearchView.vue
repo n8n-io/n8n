@@ -88,6 +88,7 @@ import { VIEWS } from '@/constants';
 import { debounceHelper } from '@/components/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 interface ISearchEvent {
 	search_string: string;
@@ -106,7 +107,10 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		TemplatesView,
 	},
 	computed: {
-		...mapStores(useSettingsStore),
+		...mapStores(
+			useSettingsStore,
+			useUsersStore,
+		),
 		...mapGetters('templates', ['allCategories', 'getSearchedWorkflowsTotal', 'getSearchedWorkflows', 'getSearchedCollections']),
 		collections(): ITemplatesCollection[] {
 			return this.getSearchedCollections(this.query) || [];
@@ -357,7 +361,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		setPageTitle('n8n - Templates');
 		this.loadCategories();
 		this.loadWorkflowsAndCollections(true);
-		this.$store.dispatch('users/showPersonalizationSurvey');
+		this.usersStore.showPersonalizationSurvey();
 
 		setTimeout(() => {
 			// Check if there is scroll position saved in route and scroll to it

@@ -76,6 +76,7 @@ import CopyInput from '../components/CopyInput.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(
 	showMessage,
@@ -104,9 +105,10 @@ export default mixins(
 		...mapStores(
 			useRootStore,
 			useSettingsStore,
+			useUsersStore,
 		),
 		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
+			return this.usersStore.currentUser || {} as IUser;
 		},
 	},
 	methods: {

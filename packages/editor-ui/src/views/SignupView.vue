@@ -17,6 +17,7 @@ import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { value } from 'jsonpath';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(
 	showMessage,
@@ -78,14 +79,14 @@ export default mixins(
 		};
 	},
 	async mounted() {
-		const inviterId = this.$route.query.inviterId;
-		const inviteeId = this.$route.query.inviteeId;
+		const inviterId = this.$route.query.inviterId.toString() || '';
+		const inviteeId = this.$route.query.inviteeId.toString() || '';
 		try {
 			if (!inviterId || !inviteeId) {
 				throw new Error(this.$locale.baseText('auth.signup.missingTokenError'));
 			}
 
-			const invite = await this.$store.dispatch('users/validateSignupToken', { inviterId, inviteeId});
+			const invite = await this.usersStore.validateSignupToken({ inviteeId, inviterId });
 			this.inviter = invite.inviter as {firstName: string, lastName: string};
 		} catch (e) {
 			this.$showError(e, this.$locale.baseText('auth.signup.tokenValidationError'));
@@ -93,7 +94,10 @@ export default mixins(
 		}
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useUsersStore,
+		),
 		inviteMessage(): null | string {
 			if (!this.inviter) {
 				return null;
@@ -109,9 +113,9 @@ export default mixins(
 		async onSubmit(values: {[key: string]: string | boolean}) {
 			try {
 				this.loading = true;
-				const inviterId = this.$route.query.inviterId;
-				const inviteeId = this.$route.query.inviteeId;
-				await this.$store.dispatch('users/signup', {...values, inviterId, inviteeId});
+				const inviterId = this.$route.query.inviterId.toString();
+				const inviteeId = this.$route.query.inviteeId.toString();
+				await this.usersStore.signup({...values, inviterId, inviteeId} as { inviteeId: string; inviterId: string; firstName: string; lastName: string; password: string;});
 
 				if (values.agree === true) {
 					try {

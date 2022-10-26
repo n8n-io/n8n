@@ -18,6 +18,7 @@ import { restApi } from '@/components/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 
 export default mixins(
@@ -101,8 +102,9 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
-			useUIStore,
 			useSettingsStore,
+			useUIStore,
+			useUsersStore,
 		),
 	},
 	methods: {
@@ -155,7 +157,7 @@ export default mixins(
 
 				const forceRedirectedHere = this.settingsStore.showSetupPage;
 				this.loading = true;
-				await this.$store.dispatch('users/createOwner', values);
+				await this.usersStore.createOwner(values as { firstName: string; lastName: string; email: string; password: string;});
 
 				if (values.agree === true) {
 					try {
@@ -188,7 +190,7 @@ export default mixins(
 			}
 		},
 		onSkip() {
-			this.$store.dispatch('users/skipOwnerSetup');
+			this.usersStore.skipOwnerSetup();
 			this.$router.push({
 				name: VIEWS.HOMEPAGE,
 			});

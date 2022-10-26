@@ -407,4 +407,5 @@ export enum STORES {
 	COMMUNITY_NODES = 'communityNodes',
 	UI = 'ui',
 	SETTINGS = 'settings',
+	USERS = 'users',
 }

@@ -29,6 +29,7 @@ import { getAppNameFromCredType } from '@/components/helpers';
 import {i18n} from "@/plugins/i18n";
 import {credentialsEEModule} from "@/modules/credentials.ee";
 import {EnterpriseEditionFeature} from "@/constants";
+import { useUsersStore } from '@/stores/users';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -196,7 +197,8 @@ const module: Module<ICredentialsState, IRootState> = {
 						ownedBy: data.ownedBy,
 					});
 
-					if (data.sharedWith && data.ownedBy.id === context.rootGetters['users/currentUserId']) {
+					const usersStore = useUsersStore();
+					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
 						await context.dispatch('setCredentialSharedWith', {
 							credentialId: credential.id,
 							sharedWith: data.sharedWith,
@@ -222,7 +224,8 @@ const module: Module<ICredentialsState, IRootState> = {
 						ownedBy: data.ownedBy,
 					});
 
-					if (data.sharedWith && data.ownedBy.id === context.rootGetters['users/currentUserId']) {
+					const usersStore = useUsersStore();
+					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
 						await context.dispatch('setCredentialSharedWith', {
 							credentialId: credential.id,
 							sharedWith: data.sharedWith,

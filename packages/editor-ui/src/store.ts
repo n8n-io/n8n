@@ -41,7 +41,6 @@ import ndv from './modules/ndv';
 import credentials from './modules/credentials';
 import tags from './modules/tags';
 import ui from './modules/ui';
-import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
 import templates from './modules/templates';
@@ -115,7 +114,6 @@ const modules = {
 	templates,
 	workflows,
 	versions,
-	users,
 	ui,
 	nodeCreator,
 	ndv,

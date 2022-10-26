@@ -61,6 +61,7 @@ import {CREDENTIAL_SELECT_MODAL_KEY} from '@/constants';
 import Vue from "vue";
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useUsersStore } from '@/stores/users';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -90,13 +91,10 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
-		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
-		allUsers(): IUser[] {
-			return this.$store.getters['users/allUsers'];
-		},
+		...mapStores(
+			useUIStore,
+			useUsersStore,
+		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.$store.getters['credentials/allCredentials'];
 		},
@@ -127,7 +125,7 @@ export default mixins(
 
 			await Promise.all(loadPromises);
 
-			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
+			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
 		onFilter(resource: ICredentialsResponse, filters: { type: string[]; search: string; }, matches: boolean): boolean {
 			if (filters.type.length > 0) {

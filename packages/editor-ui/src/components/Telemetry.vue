@@ -5,11 +5,10 @@
 <script lang="ts">
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-
-import { mapGetters } from 'vuex';
 import { externalHooks } from './mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
@@ -20,8 +19,14 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
-		...mapStores(useRootStore, useSettingsStore),
-		...mapGetters('users', ['currentUserId']),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUsersStore,
+		),
+		currentUserId(): string {
+			return this.usersStore.currentUserId || '';
+		},
 		isTelemetryEnabledOnRoute(): boolean {
 			return this.$route.meta && this.$route.meta.telemetry ? !this.$route.meta.telemetry.disabled: true;
 		},

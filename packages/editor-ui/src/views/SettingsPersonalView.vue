@@ -47,6 +47,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
 import { useUIStore } from '@/stores/ui';
+import { useUsersStore } from '@/stores/users';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -107,9 +108,12 @@ export default mixins(
 		];
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useUsersStore,
+		),
 		currentUser() {
-			return this.$store.getters['users/currentUser'] as IUser;
+			return this.usersStore.currentUser || {} as IUser;
 		},
 	},
 	methods: {
@@ -124,8 +128,8 @@ export default mixins(
 				return;
 			}
 			try {
-				await this.$store.dispatch('users/updateUser', {
-					id: this.currentUser.id,
+				await this.usersStore.updateUser({
+					id: this.usersStore.currentUserId || '',
 					firstName: form.firstName,
 					lastName: form.lastName,
 					email: form.email,

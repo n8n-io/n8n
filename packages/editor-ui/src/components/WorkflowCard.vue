@@ -65,6 +65,7 @@ import Vue from "vue";
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -109,9 +110,10 @@ export default mixins(
 		...mapStores(
 			useSettingsStore,
 			useUIStore,
+			useUsersStore,
 		),
 		currentUser (): IUser {
-			return this.$store.getters['users/currentUser'];
+			return this.usersStore.currentUser || {} as IUser;
 		},
 		credentialPermissions(): IPermissions {
 			return getWorkflowPermissions(this.currentUser, this.data, this.$store);

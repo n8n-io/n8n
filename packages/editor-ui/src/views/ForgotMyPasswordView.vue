@@ -15,6 +15,7 @@ import { IFormBoxConfig } from '@/Interface';
 import { mapGetters } from 'vuex';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(
 	showMessage,
@@ -29,7 +30,10 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore),
+		...mapStores(
+			useSettingsStore,
+			useUsersStore,
+		),
 		formConfig(): IFormBoxConfig {
 			const EMAIL_INPUTS: IFormBoxConfig['inputs'] = [
 				{
@@ -78,7 +82,7 @@ export default mixins(
 		async onSubmit(values: { email: string }) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/sendForgotPasswordEmail', values);
+				await this.usersStore.sendForgotPasswordEmail(values);
 
 				this.$showMessage({
 					type: 'success',

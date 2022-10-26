@@ -31,7 +31,7 @@
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
 						<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
 							<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
-								<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
+								<n8n-avatar :firstName="usersStore.currentUser.firstName" :lastName="usersStore.currentUser.lastName" size="small" />
 								<el-dropdown-menu slot="dropdown">
 									<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
 									<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
@@ -40,7 +40,7 @@
 						</el-dropdown>
 					</div>
 					<div :class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }">
-						<n8n-text size="small" :bold="true" color="text-dark">{{currentUser.fullName}}</n8n-text>
+						<n8n-text size="small" :bold="true" color="text-dark">{{usersStore.currentUser.fullName}}</n8n-text>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
 						<n8n-action-dropdown :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
@@ -85,6 +85,7 @@ import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(
 	genericHelpers,
@@ -114,14 +115,11 @@ export default mixins(
 			...mapStores(
 				useSettingsStore,
 				useUIStore,
+				useUsersStore,
 			),
 			...mapGetters('versions', [
 				'hasVersionUpdates',
 				'nextVersions',
-			]),
-			...mapGetters('users', [
-				'canUserAccessSidebarUserInfo',
-				'currentUser',
 			]),
 			isCollapsed(): boolean {
 				return this.uiStore.sidebarMenuCollapsed;
@@ -131,7 +129,7 @@ export default mixins(
 				return accessibleRoute !== null;
 			},
 			showUserArea(): boolean {
-				return this.settingsStore.isUserManagementEnabled && this.canUserAccessSidebarUserInfo && this.currentUser;
+				return this.settingsStore.isUserManagementEnabled && this.usersStore.canUserAccessSidebarUserInfo && this.usersStore.currentUser !== null;
 			},
 			workflowExecution (): IExecutionResponse | null {
 				return this.$store.getters.getWorkflowExecution;
@@ -204,7 +202,7 @@ export default mixins(
 						icon: 'cog',
 						label: this.$locale.baseText('settings'),
 						position: 'bottom',
-						available: this.canUserAccessSettings && this.currentUser,
+						available: this.canUserAccessSettings && this.usersStore.currentUser !== null,
 						activateOnRouteNames: [ VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS ],
 					},
 					{
@@ -297,8 +295,7 @@ export default mixins(
 			},
 			async onLogout() {
 				try {
-					await this.$store.dispatch('users/logout');
-
+					await this.usersStore.logout();
 					const route = this.$router.resolve({ name: VIEWS.SIGNIN });
 					window.open(route.href, '_self');
 				} catch (e) {

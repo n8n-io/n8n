@@ -8,6 +8,7 @@ import { defineStore } from "pinia";
 import Vue from "vue";
 import { useRootStore } from "./n8nRootStore";
 import { useUIStore } from "./ui";
+import { useUsersStore } from "./users";
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
@@ -154,8 +155,8 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			}
 			try {
 				const uiStore = useUIStore();
-				// TODO: const userId = context.rootGetters['users/currentUserId'];
-				const promptsData: IN8nPrompts = await getPromptsData(this.settings.instanceId, 'userId');
+				const usersStore = useUsersStore();
+				const promptsData: IN8nPrompts = await getPromptsData(this.settings.instanceId, usersStore.currentUserId || '');
 
 				if (promptsData && promptsData.showContactPrompt) {
 					uiStore.openModal(CONTACT_PROMPT_MODAL_KEY);
@@ -171,16 +172,16 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async submitContactInfo(email: string): Promise<any> {
 			try {
-				// TODO: const userId = context.rootGetters['users/currentUserId'];
-				return await submitContactInfo(this.settings.instanceId, 'userId', email);
+				const usersStore = useUsersStore();
+				return await submitContactInfo(this.settings.instanceId, usersStore.currentUserId || '', email);
 			} catch (error) {
 				Promise.reject(error);
 			}
 		},
 		async submitValueSurvey(params: IN8nValueSurveyData): Promise<IN8nPromptResponse | undefined> {
 			try {
-				// TODO: const userId = context.rootGetters['users/currentUserId'];
-				return await submitValueSurvey(this.settings.instanceId, 'userId', params);
+				const usersStore = useUsersStore();
+				return await submitValueSurvey(this.settings.instanceId, usersStore.currentUserId || '', params);
 			} catch (error) {
 				return;
 			}

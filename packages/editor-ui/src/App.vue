@@ -33,14 +33,14 @@ import { HIRING_BANNER, VIEWS } from './constants';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
-import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
-import { addHeaders, loadLanguage } from './plugins/i18n';
+import { loadLanguage } from './plugins/i18n';
 import { restApi } from '@/components/mixins/restApi';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
+import { useUsersStore } from './stores/users';
 
 export default mixins(
 	showMessage,
@@ -55,10 +55,10 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters('users', ['currentUser']),
 		...mapStores(
-				useUIStore,
 				useSettingsStore,
+				useUIStore,
+				useUsersStore,
 			),
 		defaultLocale (): string {
 			return this.$store.getters.defaultLocale;
@@ -86,7 +86,7 @@ export default mixins(
 		},
 		async loginWithCookie(): Promise<void> {
 			try {
-				await this.$store.dispatch('users/loginWithCookie');
+				await this.usersStore.loginWithCookie();
 			} catch (e) {}
 		},
 		async initTemplates(): Promise<void> {
@@ -134,7 +134,7 @@ export default mixins(
 			}
 
 			// if cannot access page and not logged in, ask to sign in
-			const user = this.currentUser as IUser | null;
+			const user = this.usersStore.currentUser as IUser | null;
 			if (!user) {
 				const redirect =
 					this.$route.query.redirect ||

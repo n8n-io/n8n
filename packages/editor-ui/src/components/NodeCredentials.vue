@@ -63,6 +63,7 @@ import {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
+	IUser,
 } from '@/Interface';
 import {
 	ICredentialType,
@@ -83,6 +84,7 @@ import mixins from 'vue-typed-mixins';
 import {getCredentialPermissions} from "@/permissions";
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(
 	genericHelpers,
@@ -105,12 +107,17 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
-		...mapGetters('users', ['currentUser']),
+		...mapStores(
+			useUIStore,
+			useUsersStore,
+		),
 		...mapGetters('credentials', {
 			allCredentialsByType: 'allCredentialsByType',
 			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
+		currentUser (): IUser {
+			return this.usersStore.currentUser || {} as IUser;
+		},
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
 				.map((credentialTypeDescription) => credentialTypeDescription.name);

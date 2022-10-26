@@ -115,15 +115,15 @@ import {
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
+import { IFormInputs, IPersonalizationLatestVersion, IPersonalizationSurveyAnswersV3, IUser } from '@/Interface';
 import Vue from 'vue';
-import { mapGetters } from 'vuex';
 import { getAccountAge } from '@/modules/userHelpers';
 import { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
@@ -145,10 +145,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			useRootStore,
 			useSettingsStore,
 			useUIStore,
+			useUsersStore,
 		),
-		...mapGetters('users', [
-			'currentUser',
-		]),
 		survey() {
 			const survey: IFormInputs = [
 				{
@@ -477,7 +475,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 
 				this.$externalHooks().run('personalizationModal.onSubmit', survey);
 
-				await this.$store.dispatch('users/submitPersonalizationSurvey', survey);
+				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationSurveyAnswersV3);
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
@@ -492,7 +490,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = false;
 		},
 		async fetchOnboardingPrompt() {
-			if (this.settingsStore.onboardingCallPromptEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
+			if (this.settingsStore.onboardingCallPromptEnabled && getAccountAge(this.usersStore.currentUser || {} as IUser) <= ONBOARDING_PROMPT_TIMEBOX) {
 				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
 				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 

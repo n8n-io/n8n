@@ -15,6 +15,8 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(
 	showMessage,
@@ -29,6 +31,9 @@ export default mixins(
 			loading: false,
 			config: null as null | IFormBoxConfig,
 		};
+	},
+	computed: {
+		...mapStores(useUsersStore),
 	},
 	async mounted() {
 		this.config = {
@@ -68,8 +73,8 @@ export default mixins(
 			],
 		};
 
-		const token = this.$route.query.token;
-		const userId = this.$route.query.userId;
+		const token = this.$route.query.token.toString();
+		const userId = this.$route.query.userId.toString();
 		try {
 			if (!token) {
 				throw new Error(this.$locale.baseText('auth.changePassword.missingTokenError'));
@@ -78,7 +83,7 @@ export default mixins(
 				throw new Error(this.$locale.baseText('auth.changePassword.missingUserIdError'));
 			}
 
-			await this.$store.dispatch('users/validatePasswordToken', {token, userId});
+			await this.usersStore.validatePasswordToken({ token, userId });
 		} catch (e) {
 			this.$showMessage({title: this.$locale.baseText('auth.changePassword.tokenValidationError'), type: 'error'});
 		}
@@ -105,9 +110,9 @@ export default mixins(
 		async onSubmit() {
 			try {
 				this.loading = true;
-				const token = this.$route.query.token;
-				const userId = this.$route.query.userId;
-				await this.$store.dispatch('users/changePassword', {token, userId, password: this.password});
+				const token = this.$route.query.token.toString();
+				const userId = this.$route.query.userId.toString();
+				await this.usersStore.changePassword({token, userId, password: this.password});
 
 				this.$showMessage({
 					type: 'success',
