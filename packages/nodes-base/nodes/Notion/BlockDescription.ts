@@ -74,7 +74,7 @@ export const blockFields = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^([a-z0-9]{32})[ \t]*|^([a-z0-9-]{36})[ \t]*',
+							regex: '^(([a-z0-9]{32})|([a-z0-9-]{36}))[ \t]*',
 							errorMessage: 'Not a valid Notion Block ID',
 						},
 					},
@@ -136,7 +136,7 @@ export const blockFields = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^([a-z0-9]{32})[ \t]*|^([a-z0-9-]{36})[ \t]*',
+							regex: '^(([a-z0-9]{32})|([a-z0-9-]{36}))[ \t]*',
 							errorMessage: 'Not a valid Notion Block ID',
 						},
 					},
