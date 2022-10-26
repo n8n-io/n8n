@@ -38,7 +38,6 @@
     "dist/**/*"
   ],
   "devDependencies": {
-    "@n8n_io/eslint-config": "*",
     "@types/express": "^4.17.6",
     "@types/jmespath": "^0.15.0",
     "@types/lodash.get": "^4.4.6",

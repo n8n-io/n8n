@@ -26,6 +26,7 @@
     "worker": "./packages/cli/bin/n8n worker"
   },
   "devDependencies": {
+    "@n8n_io/eslint-config": "*",
     "@types/jest": "^28.1.8",
     "@types/node": "^16.11.22",
     "jest": "^28.1.3",
