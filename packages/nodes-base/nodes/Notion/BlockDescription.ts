@@ -74,14 +74,14 @@ export const blockFields = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '([a-z0-9-]{2,})',
+							regex: '^([a-z0-9]{32})[ \t]*|^([a-z0-9-]{36})[ \t]*',
 							errorMessage: 'Not a valid Notion Block ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '([a-z0-9-]{2,})',
+					regex: '^([a-z0-9-]{32,36})',
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
@@ -136,14 +136,14 @@ export const blockFields = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '([a-z0-9-]{2,})',
+							regex: '^([a-z0-9]{32})[ \t]*|^([a-z0-9-]{36})[ \t]*',
 							errorMessage: 'Not a valid Notion Block ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '([a-z0-9-]{2,})',
+					regex: '^([a-z0-9-]{32,36})',
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
