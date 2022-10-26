@@ -245,7 +245,7 @@ export const pushConnection = mixins(
 							action = '<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 						}
 						else {
-							action = `<a href="/execution/${activeExecutionId}" target="_blank">View the execution</a> to see what happened after this node.`;
+							action = `<a href="/workflow/${workflow.id}/executions/${activeExecutionId}">View the execution</a> to see what happened after this node.`;
 						}
 
 						// Workflow did start but had been put to wait

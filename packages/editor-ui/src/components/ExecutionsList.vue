@@ -344,16 +344,13 @@ export default mixins(
 		convertToDisplayDate,
 		displayExecution (execution: IExecutionShortResponse, e: PointerEvent) {
 			if (e.metaKey || e.ctrlKey) {
-				const route = this.$router.resolve({name: VIEWS.EXECUTION, params: {id: execution.id}});
+				const route = this.$router.resolve({ name: VIEWS.EXECUTION_PREVIEW, params: { name: execution.workflowId, executionId: execution.id } });
 				window.open(route.href, '_blank');
 
 				return;
 			}
 
-			this.$router.push({
-				name: VIEWS.EXECUTION,
-				params: { id: execution.id },
-			});
+			this.$router.push({ name: VIEWS.EXECUTION_PREVIEW, params: { name: execution.workflowId, executionId: execution.id } }).catch(()=>{});;
 			this.modalBus.$emit('closeAll');
 		},
 		handleAutoRefreshToggle () {
@@ -409,6 +406,35 @@ export default mixins(
 
 			try {
 				await this.restApi().deleteExecutions(sendData);
+				let removedCurrentlyLoadedExecution = false;
+				let removedActiveExecution = false;
+				const currentWorkflow: string = this.$store.getters.workflowId;
+				const activeExecution: IExecutionsSummary = this.$store.getters['workflows/getActiveWorkflowExecution'];
+				// Also update current workflow executions view if needed
+				for (const selectedId of Object.keys(this.selectedItems)) {
+					const execution: IExecutionsSummary = this.$store.getters['workflows/getExecutionDataById'](selectedId);
+					if (execution && execution.workflowId === currentWorkflow) {
+						this.$store.commit('workflows/deleteExecution', execution);
+						removedCurrentlyLoadedExecution = true;
+					}
+					if (execution.id === activeExecution.id) {
+						removedActiveExecution = true;
+					}
+				}
+				// Also update route if needed
+				if (removedCurrentlyLoadedExecution) {
+					const currentWorkflowExecutions: IExecutionsSummary[] = this.$store.getters['workflows/currentWorkflowExecutions'];
+					if (currentWorkflowExecutions.length === 0) {
+						this.$store.commit('workflows/setActiveWorkflowExecution', null);
+						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } });
+					} else if (removedActiveExecution) {
+						this.$store.commit('workflows/setActiveWorkflowExecution', currentWorkflowExecutions[0]);
+						this.$router.push({
+							name: VIEWS.EXECUTION_PREVIEW,
+							params: { name: currentWorkflow, executionId: currentWorkflowExecutions[0].id },
+						}).catch(()=>{});;
+					}
+				}
 			} catch (error) {
 				this.isDataLoading = false;
 				this.$showError(
