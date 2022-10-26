@@ -37,7 +37,6 @@ export class VenafiTlsProtectCloud implements INodeType {
 		description: 'Consume Venafi TLS Protect Cloud​ API',
 		defaults: {
 			name: 'Venafi TLS Protect Cloud​',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

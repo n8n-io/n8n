@@ -38,10 +38,10 @@ export default Vue.extend({
 	},
 	computed: {
 		isDragging(): boolean {
-			return this.$store.getters['ui/isDraggableDragging'];
+			return this.$store.getters['ndv/isDraggableDragging'];
 		},
 		draggableType(): string {
-			return this.$store.getters['ui/draggableType'];
+			return this.$store.getters['ndv/draggableType'];
 		},
 		droppable(): boolean {
 			return !this.disabled && this.isDragging && this.draggableType === this.type;
@@ -60,20 +60,20 @@ export default Vue.extend({
 				this.hovering = e.clientX >= dim.left && e.clientX <= dim.right && e.clientY >= dim.top && e.clientY <= dim.bottom;
 
 				if (!this.disabled && this.sticky && this.hovering) {
-					this.$store.commit('ui/setDraggableStickyPos', [dim.left + this.stickyOffset, dim.top + this.stickyOffset]);
+					this.$store.commit('ndv/setDraggableStickyPos', [dim.left + this.stickyOffset, dim.top + this.stickyOffset]);
 				}
 			}
 		},
 		onMouseUp(e: MouseEvent) {
 			if (this.activeDrop) {
-				const data = this.$store.getters['ui/draggableData'];
+				const data = this.$store.getters['ndv/draggableData'];
 				this.$emit('drop', data);
 			}
 		},
 	},
 	watch: {
 		activeDrop(active) {
-			this.$store.commit('ui/setDraggableCanDrop', active);
+			this.$store.commit('ndv/setDraggableCanDrop', active);
 		},
 	},
 });

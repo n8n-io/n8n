@@ -6,6 +6,7 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	jsonParse,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
@@ -951,7 +952,11 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
-			const specifyHeaders = this.getNodeParameter('specifyHeaders', itemIndex, 'keypair') as string;
+			const specifyHeaders = this.getNodeParameter(
+				'specifyHeaders',
+				itemIndex,
+				'keypair',
+			) as string;
 			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
 			const {
@@ -1097,7 +1102,7 @@ export class HttpRequestV3 implements INodeType {
 						);
 					}
 
-					requestOptions.body = JSON.parse(jsonBodyParameter);
+					requestOptions.body = jsonParse(jsonBodyParameter);
 				} else if (specifyBody === 'string') {
 					//form urlencoded
 					requestOptions.body = Object.fromEntries(new URLSearchParams(body));
@@ -1147,7 +1152,7 @@ export class HttpRequestV3 implements INodeType {
 						);
 					}
 
-					requestOptions.qs = JSON.parse(jsonQueryParameter);
+					requestOptions.qs = jsonParse(jsonQueryParameter);
 				}
 			}
 
@@ -1172,7 +1177,7 @@ export class HttpRequestV3 implements INodeType {
 						);
 					}
 
-					requestOptions.headers = JSON.parse(jsonHeadersParameter);
+					requestOptions.headers = jsonParse(jsonHeadersParameter);
 				}
 			}
 
@@ -1323,7 +1328,7 @@ export class HttpRequestV3 implements INodeType {
 				const responseContentType = response.headers['content-type'] ?? '';
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
-					response.body = JSON.parse(Buffer.from(response.body).toString());
+					response.body = jsonParse(Buffer.from(response.body).toString());
 				} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {

@@ -1,6 +1,6 @@
 import EventSource from 'eventsource';
 import { ITriggerFunctions } from 'n8n-core';
-import { INodeType, INodeTypeDescription, ITriggerResponse } from 'n8n-workflow';
+import { INodeType, INodeTypeDescription, ITriggerResponse, jsonParse } from 'n8n-workflow';
 
 export class SseTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,7 +37,8 @@ export class SseTrigger implements INodeType {
 		const eventSource = new EventSource(url);
 
 		eventSource.onmessage = (event) => {
-			const eventData = JSON.parse(event.data);
+			// tslint:disable-next-line:no-any
+			const eventData = jsonParse<any>(event.data, { errorMessage: 'Invalid JSON for event data' });
 			this.emit([this.helpers.returnJsonArray([eventData])]);
 		};
 

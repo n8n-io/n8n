@@ -598,6 +598,7 @@ export function whereClause({
 
 /**
  * Get the IDs of the workflows that have been shared with the user.
+ * Returns all IDs if user is global owner (see `whereClause`)
  */
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({

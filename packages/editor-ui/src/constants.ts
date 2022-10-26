@@ -287,6 +287,9 @@ export enum VIEWS {
 	HOMEPAGE = "Homepage",
 	COLLECTION = "TemplatesCollectionView",
 	EXECUTION = "ExecutionById",
+	EXECUTIONS = "ExecutionList",
+	EXECUTION_PREVIEW = "ExecutionPreview",
+	EXECUTION_HOME = "ExecutionsLandingPage",
 	TEMPLATE = "TemplatesWorkflowView",
 	TEMPLATES = "TemplatesSearchView",
 	CREDENTIALS = "CredentialsView",
@@ -369,6 +372,11 @@ export enum EnterpriseEditionFeature {
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
+export enum MAIN_HEADER_TABS {
+	WORKFLOW = 'workflow',
+	EXECUTIONS = 'executions',
+	SETTINGS = 'settings',
+}
 export const CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS = [
 	'ftp',
 	'ftps',
