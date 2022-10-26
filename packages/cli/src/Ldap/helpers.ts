@@ -3,6 +3,7 @@
 /* eslint-disable import/no-cycle */
 import { AES, enc } from 'crypto-js';
 import { Entry } from 'ldapts';
+import { Filter } from 'ldapts/filters/Filter';
 import { UserSettings } from 'n8n-core';
 import { validate } from 'jsonschema';
 import { Db } from '..';
@@ -211,17 +212,23 @@ export const addConfigFilter = (filter: string, configUserFilter: string): strin
 	}
 	return filter;
 };
+
+export const escapeFilter = (filter: string): string => {
+	//@ts-ignore
+	return new Filter().escape(filter); /* eslint-disable-line */
+};
+
 /**
  * Find and authenticate user in the LDAP
  * server.
- * @param  {string} email
+ * @param  {string} loginId
  * @param  {string} password
  * @param  {string} loginIdAttribute
  * @param  {string} userFilter
  * @returns Promise
  */
 export const findAndAuthenticateLdapUser = async (
-	email: string,
+	loginId: string,
 	password: string,
 	loginIdAttribute: string,
 	userFilter: string,
@@ -235,7 +242,7 @@ export const findAndAuthenticateLdapUser = async (
 
 	try {
 		searchResult = await ldapService.searchWithAdminBinding(
-			addConfigFilter(`(${loginIdAttribute}=${email})`, userFilter),
+			addConfigFilter(`(${loginIdAttribute}=${escapeFilter(loginId)})`, userFilter),
 		);
 	} catch (_) {
 		return undefined;
