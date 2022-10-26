@@ -48,7 +48,7 @@ const schemaGetWorkflowsQueryFilter = {
 	},
 };
 
-const allowedWorkflowsQueryFilterFields = ['id', 'name', 'active'];
+const allowedWorkflowsQueryFilterFields = Object.keys(schemaGetWorkflowsQueryFilter.properties);
 
 interface IGetWorkflowsQueryFilter {
 	id?: number | string;

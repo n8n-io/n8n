@@ -58,14 +58,7 @@ const schemaGetExecutionsQueryFilter = {
 	},
 };
 
-const allowedExecutionsQueryFilterFields = [
-	'finished',
-	'mode',
-	'retryOf',
-	'retrySuccessId',
-	'workflowId',
-	'waitTill',
-];
+const allowedExecutionsQueryFilterFields = Object.keys(schemaGetExecutionsQueryFilter.properties);
 
 interface IGetExecutionsQueryFilter {
 	id?: FindOperator<string>;
