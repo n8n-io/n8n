@@ -223,14 +223,14 @@ const typeMention: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex:
-								'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([a-z0-9]{2,})\??.*',
+								'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([a-z0-9]{32}).*',
 							errorMessage: 'Not a valid Notion Database URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: 'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([a-z0-9]{2,})',
+					regex: 'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([a-z0-9]{32})',
 				},
 			},
 			{
