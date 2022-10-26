@@ -747,8 +747,37 @@ export async function getRunData(
 	workflowData: IWorkflowBase,
 	userId: string,
 	inputData?: INodeExecutionData[],
+	parentWorkflowId?: string,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
+
+	const policy =
+		workflowData.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
+
+	if (policy === 'none') {
+		throw new SubworkflowOperationError(
+			`Target workflow ID ${workflowData.id} may not be called by other workflows.`,
+			'Please update the settings of the target workflow or ask its owner to do so.',
+		);
+	}
+
+	if (
+		policy === 'workflowsFromAList' &&
+		typeof workflowData.settings?.callerIds === 'string' &&
+		parentWorkflowId !== undefined
+	) {
+		const allowedCallerIds = workflowData.settings.callerIds
+			.split(',')
+			.map((id) => id.trim())
+			.filter((id) => id !== '');
+
+		if (!allowedCallerIds.includes(parentWorkflowId)) {
+			throw new SubworkflowOperationError(
+				`Target workflow ID ${workflowData.id} may only be called by a list of workflows, which does not include current workflow ID ${parentWorkflowId}.`,
+				'Please update the settings of the target workflow or ask its owner to do so.',
+			);
+		}
+	}
 
 	const startingNode = findSubworkflowStart(workflowData.nodes);
 
