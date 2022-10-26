@@ -1,5 +1,5 @@
 import { DeleteResult, EntityManager, In, Not } from 'typeorm';
-import { Db, ICredentialsDb } from '..';
+import { Db, ICredentialsDb, ResponseHelper, WorkflowHelpers } from '..';
 import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { User } from '../databases/entities/User';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
@@ -7,6 +7,7 @@ import { RoleService } from '../role/role.service';
 import { UserService } from '../user/user.service';
 import { WorkflowsService } from './workflows.services';
 import { WorkflowWithSharings } from './workflows.types';
+import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
 
 export class EEWorkflowsService extends WorkflowsService {
 	static async isOwned(
@@ -113,5 +114,34 @@ export class EEWorkflowsService extends WorkflowsService {
 				}
 			});
 		});
+	}
+
+	static async updateWorkflow(
+		user: User,
+		workflow: WorkflowEntity,
+		workflowId: string,
+		tags?: string[],
+	): Promise<WorkflowEntity> {
+		const previousVersion = await EEWorkflowsService.get({ id: parseInt(workflowId, 10) });
+		if (!previousVersion) {
+			throw new ResponseHelper.ResponseError('Workflow not found', undefined, 404);
+		}
+		const allCredentials = await EECredentials.getAll(user);
+		try {
+			workflow = WorkflowHelpers.validateWorkflowCredentialUsage(
+				workflow,
+				previousVersion,
+				allCredentials,
+			);
+		} catch (error) {
+			console.log(error);
+			throw new ResponseHelper.ResponseError(
+				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
+				undefined,
+				400,
+			);
+		}
+
+		return super.updateWorkflow(user, workflow, workflowId, tags);
 	}
 }
