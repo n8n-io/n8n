@@ -331,7 +331,7 @@ workflowsController.patch(
 		const { id: workflowId } = req.params;
 
 		const updateData = new WorkflowEntity();
-		const { tags, ...rest } = req.body;
+		const { tags, hash: incomingHash, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
@@ -352,6 +352,14 @@ workflowsController.patch(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 				undefined,
 				404,
+			);
+		}
+
+		if (incomingHash !== shared.workflow.hash) {
+			throw new ResponseHelper.ResponseError(
+				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
+				undefined,
+				400,
 			);
 		}
 
