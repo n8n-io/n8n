@@ -44,7 +44,8 @@ new Vue({
 	render: h => h(App),
 }).$mount('#app');
 
-if (process.env.NODE_ENV !== 'production') {
+// @ts-ignore
+if (import.meta.env.NODE_ENV !== 'production') {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode
 	window.onerror = (message, source, lineno, colno, error) => {
