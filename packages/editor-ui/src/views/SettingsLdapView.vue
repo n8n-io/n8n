@@ -396,7 +396,6 @@ export default mixins(
 						initialValue: this.adConfig.binding.adminDn,
 						properties: {
 							label: 'Binding DN',
-							required: true,
 							autocomplete: 'family-name',
 							capitalize: true,
 						},
@@ -410,7 +409,6 @@ export default mixins(
 						properties: {
 							label: 'Binding Password',
 							type: 'password',
-							required: true,
 							capitalize: true,
 						},
 						shouldDisplay(values): boolean {
