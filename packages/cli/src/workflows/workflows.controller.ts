@@ -2,7 +2,7 @@
 /* eslint-disable import/no-cycle */
 
 import express from 'express';
-import { IDataObject, INode, IPinData, LoggerProxy, Workflow } from 'n8n-workflow';
+import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 
 import axios from 'axios';
 import { FindManyOptions, In } from 'typeorm';
@@ -31,11 +31,30 @@ import { InternalHooksManager } from '../InternalHooksManager';
 import { externalHooks } from '../Server';
 import { getLogger } from '../Logger';
 import type { WorkflowRequest } from '../requests';
-import { isBelowOnboardingThreshold } from '../WorkflowHelpers';
+import { getSharedWorkflowIds, isBelowOnboardingThreshold } from '../WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
+import { validate as jsonSchemaValidate } from 'jsonschema';
 
 const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 export const workflowsController = express.Router();
+
+const schemaGetWorkflowsQueryFilter = {
+	$id: '/IGetWorkflowsQueryFilter',
+	type: 'object',
+	properties: {
+		id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+		name: { type: 'string' },
+		active: { type: 'boolean' },
+	},
+};
+
+const allowedWorkflowsQueryFilterFields = Object.keys(schemaGetWorkflowsQueryFilter.properties);
+
+interface IGetWorkflowsQueryFilter {
+	id?: number | string;
+	name?: string;
+	active?: boolean;
+}
 
 /**
  * Initialize Logger if needed
@@ -142,18 +161,47 @@ workflowsController.post(
 workflowsController.get(
 	`/`,
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		let workflows: WorkflowEntity[] = [];
+		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+		if (sharedWorkflowIds.length === 0) {
+			// return early since without shared workflows there can be no hits
+			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
+			return [];
+		}
 
-		let filter: IDataObject = {};
+		// parse incoming filter object and remove non-valid fields
+		let filter: IGetWorkflowsQueryFilter | undefined = undefined;
 		if (req.query.filter) {
 			try {
-				filter = (JSON.parse(req.query.filter) as IDataObject) || {};
+				const filterJson: JsonObject = jsonParse(req.query.filter);
+				if (filterJson) {
+					Object.keys(filterJson).map((key) => {
+						if (!allowedWorkflowsQueryFilterFields.includes(key)) delete filterJson[key];
+					});
+					if (jsonSchemaValidate(filterJson, schemaGetWorkflowsQueryFilter).valid) {
+						filter = filterJson as IGetWorkflowsQueryFilter;
+					}
+				}
 			} catch (error) {
 				LoggerProxy.error('Failed to parse filter', {
 					userId: req.user.id,
 					filter: req.query.filter,
 				});
-				throw new ResponseHelper.ResponseError('Failed to parse filter');
+				throw new ResponseHelper.ResponseError(
+					`Parameter "filter" contained invalid JSON string.`,
+					500,
+					500,
+				);
+			}
+		}
+
+		// safeguard against querying ids not shared with the user
+		if (filter?.id !== undefined) {
+			const workflowId = parseInt(filter.id.toString());
+			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
+				LoggerProxy.verbose(
+					`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
+				);
+				return [];
 			}
 		}
 
@@ -166,32 +214,14 @@ workflowsController.get(
 			delete query.relations;
 		}
 
-		if (req.user.globalRole.name === 'owner') {
-			workflows = await Db.collections.Workflow.find(
-				Object.assign(query, {
-					where: filter,
-				}),
-			);
-		} else {
-			const shared = await Db.collections.SharedWorkflow.find({
-				relations: ['workflow'],
-				where: whereClause({
-					user: req.user,
-					entityType: 'workflow',
-				}),
-			});
-
-			if (!shared.length) return [];
-
-			workflows = await Db.collections.Workflow.find(
-				Object.assign(query, {
-					where: {
-						id: In(shared.map(({ workflow }) => workflow.id)),
-						...filter,
-					},
-				}),
-			);
-		}
+		const workflows = await Db.collections.Workflow.find(
+			Object.assign(query, {
+				where: {
+					id: In(sharedWorkflowIds),
+					...filter,
+				},
+			}),
+		);
 
 		return workflows.map((workflow) => {
 			const { id, ...rest } = workflow;
