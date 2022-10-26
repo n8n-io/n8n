@@ -400,6 +400,7 @@ export const workflowHelpers = mixins(
 					active: this.$store.getters.isActive,
 					settings: this.$store.getters.workflowSettings,
 					tags: this.$store.getters.workflowTags,
+					hash: this.$store.getters.workflowHash,
 				};
 
 				const workflowId = this.$store.getters.workflowId;
@@ -660,6 +661,9 @@ export const workflowHelpers = mixins(
 				const isCurrentWorkflow = workflowId === this.$store.getters.workflowId;
 				if (isCurrentWorkflow) {
 					data = await this.getWorkflowDataToSave();
+				} else {
+					const { hash } = await this.restApi().getWorkflow(workflowId);
+					data.hash = hash as string;
 				}
 
 				if (active !== undefined) {
@@ -667,6 +671,7 @@ export const workflowHelpers = mixins(
 				}
 
 				const workflow = await this.restApi().updateWorkflow(workflowId, data);
+				this.$store.commit('setWorkflowHash', workflow.hash);
 
 				if (isCurrentWorkflow) {
 					this.$store.commit('setActive', !!workflow.active);
@@ -700,7 +705,10 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 
+					workflowDataRequest.hash = this.$store.getters.workflowHash;
+
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
+					this.$store.commit('setWorkflowHash', workflowData.hash);
 
 					if (name) {
 						this.$store.commit('setWorkflowName', {newName: workflowData.name});
