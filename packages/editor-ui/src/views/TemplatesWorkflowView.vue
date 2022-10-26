@@ -7,7 +7,7 @@
 						template.name
 					}}</n8n-heading>
 					<n8n-text v-if="template && template.name" color="text-base" size="small">
-						{{ $locale.baseText('templates.workflow') }}
+						{{ $locale.baseText('generic.workflow') }}
 					</n8n-text>
 					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
 				</div>
@@ -168,6 +168,10 @@ export default mixins(workflowHelpers).extend({
 
 .image {
 	width: 100%;
+	height: 500px;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	overflow: hidden;
 
 	img {
 		width: 100%;

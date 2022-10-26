@@ -1009,6 +1009,9 @@ export interface IUiState {
 	isPageLoading: boolean;
 	currentView: string;
 	fakeDoorFeatures: IFakeDoor[];
+	nodeViewInitialized: boolean;
+	addFirstStepOnLoad: boolean;
+	executionSidebarAutoRefresh: boolean;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -1088,7 +1091,12 @@ export interface IUsersState {
 	users: {[userId: string]: IUser};
 }
 
-export interface IWorkflowsMap {
+export interface IWorkflowsState {
+	currentWorkflowExecutions: IExecutionsSummary[];
+	activeWorkflowExecution: IExecutionsSummary | null;
+	finishedExecutionsCount: number;
+}
+	export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }
 
@@ -1143,6 +1151,12 @@ export interface ITab {
 	icon?: string;
 	align?: 'right';
 	tooltip?: string;
+}
+
+export interface ITabBarItem {
+	value: string;
+	label: string;
+	disabled?: boolean;
 }
 
 export interface IResourceLocatorReqParams {
