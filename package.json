@@ -1,5 +1,5 @@
 {
-  "name": "n8n",
+  "name": "n8n-monorepo",
   "version": "0.200.0",
   "private": true,
   "homepage": "https://n8n.io",
@@ -24,6 +24,9 @@
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker"
+  },
+  "dependencies": {
+    "n8n": "*"
   },
   "devDependencies": {
     "@n8n_io/eslint-config": "*",
