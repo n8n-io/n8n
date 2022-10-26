@@ -309,6 +309,13 @@ export default mixins(
 				if (containsTrigger === false) this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
 				else this.tryToAddWelcomeSticky();
 			},
+			nodeViewScale(newScale) {
+				const element = this.$refs.nodeView as HTMLDivElement;
+
+				if(element) {
+					element.style.transform = `scale(${newScale})`;
+				}
+			},
 		},
 		async beforeRouteLeave(to, from, next) {
 			const nextTab = getNodeViewTab(to);
@@ -3165,7 +3172,6 @@ export default mixins(
 			},
 		},
 		async mounted() {
-			this.canvasStore.nodeViewHtmlElement = this.$refs.nodeView as HTMLDivElement;
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
@@ -3270,6 +3276,7 @@ export default mixins(
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
+			this.canvasStore.isDemo = this.isDemo;
 		},
 		deactivated () {
 			document.removeEventListener('keydown', this.keyDown);

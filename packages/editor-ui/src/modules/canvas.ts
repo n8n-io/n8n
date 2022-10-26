@@ -19,7 +19,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 				node => node.type === START_NODE_TYPE || rootStore.getters['nodeTypes/isTriggerNode'](node.type),
 			),
 	);
-	const nodeViewHtmlElement = ref<HTMLDivElement | null | undefined>(null);
+	const isDemo = ref<boolean>(false);
 	const nodeViewScale = ref<number>(1);
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
 
@@ -47,20 +47,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	const setZoomLevel = (zoomLevel: number) => {
 		nodeViewScale.value = zoomLevel;
-		const element = nodeViewHtmlElement.value;
-		if (!element) {
-			return;
-		}
-
-		// https://docs.jsplumbtoolkit.com/community/current/articles/zooming.html
-		const scaleString = 'scale(' + zoomLevel + ')';
-
-		['webkit', 'moz', 'ms', 'o'].forEach((prefix) => {
-			// @ts-ignore
-			element.style[prefix + 'Transform'] = scaleString;
-		});
-		element.style.transform = scaleString;
-
 		jsPlumbInstance.setZoom(zoomLevel);
 	};
 
@@ -100,7 +86,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 			return;
 		}
 
-		const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes);
+		const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !isDemo.value);
 
 		setZoomLevel(zoomLevel);
 		rootStore.commit('setNodeViewOffsetPosition', {newOffset: offset});
@@ -108,7 +94,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	return {
 		jsPlumbInstance,
-		nodeViewHtmlElement,
+		isDemo,
 		nodeViewScale,
 		canvasAddButtonPosition,
 		setRecenteredCanvasAddButtonPosition,
