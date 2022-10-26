@@ -123,6 +123,45 @@
 						</n8n-select>
 					</el-col>
 				</el-row>
+				<div v-if="isWorkflowSharingEnabled">
+					<el-row>
+						<el-col :span="10" class="setting-name">
+							{{ $locale.baseText('workflowSettings.callerPolicy') + ":" }}
+							<n8n-tooltip class="setting-info" placement="top" >
+								<div slot="content" v-text="helpTexts.workflowCallerPolicy"></div>
+								<font-awesome-icon icon="question-circle" />
+							</n8n-tooltip>
+						</el-col>
+
+						<el-col :span="14" class="ignore-key-press">
+							<n8n-select v-model="workflowSettings.callerPolicy" :placeholder="$locale.baseText('workflowSettings.selectOption')" size="medium" filterable :limit-popper-width="true">
+								<n8n-option
+									v-for="option of workflowCallerPolicyOptions"
+									:key="option.key"
+									:label="option.value"
+									:value="option.key">
+								</n8n-option>
+							</n8n-select>
+						</el-col>
+					</el-row>
+					<el-row v-if="workflowSettings.callerPolicy === 'workflowsFromAList'">
+						<el-col :span="10" class="setting-name">
+							{{ $locale.baseText('workflowSettings.callerIds') + ":" }}
+							<n8n-tooltip class="setting-info" placement="top" >
+								<div slot="content" v-text="helpTexts.workflowCallerIds"></div>
+								<font-awesome-icon icon="question-circle" />
+							</n8n-tooltip>
+						</el-col>
+						<el-col :span="14">
+							<n8n-input
+								type="text"
+								size="medium"
+								v-model="workflowSettings.callerIds"
+								@input="onCallerIdsInput"
+							/>
+						</el-col>
+					</el-row>
+				</div>
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timeoutWorkflow') + ":" }}
@@ -216,6 +255,8 @@ export default mixins(
 				saveManualExecutions: this.$locale.baseText('workflowSettings.helpTexts.saveManualExecutions'),
 				executionTimeoutToggle: this.$locale.baseText('workflowSettings.helpTexts.executionTimeoutToggle'),
 				executionTimeout: this.$locale.baseText('workflowSettings.helpTexts.executionTimeout'),
+				workflowCallerPolicy: this.$locale.baseText('workflowSettings.helpTexts.workflowCallerPolicy'),
+				workflowCallerIds: this.$locale.baseText('workflowSettings.helpTexts.workflowCallerIds'),
 			},
 			defaultValues: {
 				timezone: 'America/New_York',
@@ -223,7 +264,9 @@ export default mixins(
 				saveDataSuccessExecution: 'all',
 				saveExecutionProgress: false,
 				saveManualExecutions: false,
+				workflowCallerPolicy: '',
 			},
+			workflowCallerPolicyOptions: [] as Array<{ key: string, value: string }>,
 			saveDataErrorExecutionOptions: [] as Array<{ key: string, value: string }>,
 			saveDataSuccessExecutionOptions: [] as Array<{ key: string, value: string }>,
 			saveExecutionProgressOptions: [] as Array<{ key: string | boolean, value: string }>,
@@ -241,6 +284,9 @@ export default mixins(
 
 	computed: {
 		...mapGetters(['workflowName', 'workflowId']),
+		isWorkflowSharingEnabled(): boolean {
+			return this.$store.getters['settings/isWorkflowSharingEnabled'];
+		},
 	},
 
 	async mounted () {
@@ -259,6 +305,7 @@ export default mixins(
 		this.defaultValues.saveDataSuccessExecution = this.$store.getters.saveDataSuccessExecution;
 		this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
 		this.defaultValues.timezone = this.$store.getters.timezone;
+		this.defaultValues.workflowCallerPolicy = this.$store.getters['settings/workflowCallerPolicyDefaultOption'];
 
 		this.isLoading = true;
 		const promises = [];
@@ -268,6 +315,7 @@ export default mixins(
 		promises.push(this.loadSaveExecutionProgressOptions());
 		promises.push(this.loadSaveManualOptions());
 		promises.push(this.loadTimezones());
+		promises.push(this.loadWorkflowCallerPolicyOptions());
 
 		try {
 			await Promise.all(promises);
@@ -292,6 +340,9 @@ export default mixins(
 		if (workflowSettings.saveManualExecutions === undefined) {
 			workflowSettings.saveManualExecutions = 'DEFAULT';
 		}
+		if (workflowSettings.callerPolicy === undefined) {
+			workflowSettings.callerPolicy = this.defaultValues.workflowCallerPolicy;
+		}
 		if (workflowSettings.executionTimeout === undefined) {
 			workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
 		}
@@ -307,6 +358,11 @@ export default mixins(
 		this.$telemetry.track('User opened workflow settings', { workflow_id: this.$store.getters.workflowId });
 	},
 	methods: {
+		onCallerIdsInput(str: string) {
+			this.workflowSettings.callerIds = /^[0-9,\s]+$/.test(str)
+				? str
+				: str.replace(/[^0-9,\s]/g, '');
+		},
 		closeDialog () {
 			this.modalBus.$emit('close');
 			this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: false });
@@ -318,6 +374,22 @@ export default mixins(
 				...this.timeoutHMS,
 				[key]: time,
 			};
+		},
+		async loadWorkflowCallerPolicyOptions () {
+			this.workflowCallerPolicyOptions = [
+				{
+					key: 'any',
+					value: this.$locale.baseText('workflowSettings.callerPolicy.options.any'),
+				},
+				{
+					key: 'none',
+					value: this.$locale.baseText('workflowSettings.callerPolicy.options.none'),
+				},
+				{
+					key: 'workflowsFromAList',
+					value: this.$locale.baseText('workflowSettings.callerPolicy.options.workflowsFromAList'),
+				},
+			];
 		},
 		async loadSaveDataErrorExecutionOptions () {
 			this.saveDataErrorExecutionOptions.length = 0;
