@@ -28,7 +28,7 @@
     "dist"
   ],
   "devDependencies": {
-    "@n8n_io/eslint-config": "0.0.1",
+    "@n8n_io/eslint-config": "*",
     "@types/cron": "~1.7.1",
     "@types/crypto-js": "^4.0.1",
     "@types/express": "^4.17.6",
