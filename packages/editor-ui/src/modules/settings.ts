@@ -6,6 +6,7 @@ import {
 	IN8nValueSurveyData,
 	IRootState,
 	ISettingsState,
+	WorkflowCallerPolicyDefaultOption,
 } from '../Interface';
 import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings } from '../api/settings';
 import Vue from 'vue';
@@ -108,6 +109,12 @@ const module: Module<ISettingsState, IRootState> = {
 		isQueueModeEnabled: (state): boolean => {
 			return state.settings.executionMode === 'queue';
 		},
+		workflowCallerPolicyDefaultOption: (state): WorkflowCallerPolicyDefaultOption => {
+			return state.settings.workflowCallerPolicyDefaultOption;
+		},
+		isWorkflowSharingEnabled: (state): boolean => {
+			return state.settings.isWorkflowSharingEnabled;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -131,6 +138,12 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		setCommunityNodesFeatureEnabled(state: ISettingsState, isEnabled: boolean) {
 			state.settings.communityNodesEnabled = isEnabled;
+		},
+		setIsWorkflowSharingEnabled(state: ISettingsState, enabled: boolean) {
+			state.settings.isWorkflowSharingEnabled = enabled;
+		},
+		setWorkflowCallerPolicyDefaultOption(state: ISettingsState, defaultOption: WorkflowCallerPolicyDefaultOption) {
+			state.settings.workflowCallerPolicyDefaultOption = defaultOption;
 		},
 		setAllowedModules(state, allowedModules: { builtIn?: string, external?: string }) {
 			state.settings.allowedModules = {
@@ -164,6 +177,8 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 			context.commit('setCommunityNodesFeatureEnabled', settings.communityNodesEnabled === true);
 			context.commit('settings/setAllowedModules', settings.allowedModules, {root: true});
+			context.commit('settings/setWorkflowCallerPolicyDefaultOption', settings.workflowCallerPolicyDefaultOption, {root: true});
+			context.commit('settings/setIsWorkflowSharingEnabled', settings.enterprise.workflowSharing, {root: true});
 		},
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
 			if (!context.getters.isTelemetryEnabled) {

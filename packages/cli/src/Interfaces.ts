@@ -485,6 +485,7 @@ export interface IN8nUISettings {
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
+	workflowCallerPolicyDefaultOption: 'any' | 'none' | 'workflowsFromAList';
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;
