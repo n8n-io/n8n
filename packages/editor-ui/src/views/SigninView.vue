@@ -42,7 +42,7 @@ export default mixins(
 						label: emailLabel,
 						type: 'email',
 						required: true,
-						validationRules: [{ name: 'VALID_EMAIL' }],
+						...(!isLdapLoginEnabled && { validationRules: [{ name: 'VALID_EMAIL' }] }),
 						showRequiredAsterisk: false,
 						validateOnBlur: false,
 						autocomplete: 'email',
