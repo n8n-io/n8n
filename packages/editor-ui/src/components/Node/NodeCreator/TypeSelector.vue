@@ -52,9 +52,9 @@ export default Vue.extend({
 .type-selector {
 	text-align: center;
 	background-color: $node-creator-select-background-color;
-
 	::v-deep .el-tabs > div {
 		margin-bottom: 0;
+		z-index: 1;
 
 		.el-tabs__nav {
 			height: 43px;

@@ -9,15 +9,16 @@
 				<span v-text="nodeNameTitle" />
 			</p>
 		</header>
+		<search-bar
+			v-model="search"
+			class="ignore-key-press"
+			:class="$style.search"
+			:placeholder="`Search ${nodeNameTitle} Actions...`"
+		/>
 		<main :class="$style.content">
-			<search-bar
-				v-model="search"
-				class="ignore-key-press"
-				:placeholder="`Search ${nodeNameTitle} Actions...`"
-			/>
-			<template v-for="action in actions">
-				<div v-if="action.type === 'category'" :key="action.key" :class="$style.category">
-					<header :class="$style.categoryHeader" @click="toggleCategory(action.key)">
+			<template v-for="(action, index) in actions">
+				<div v-if="action.type === 'category'" :key="`${action.key} + ${index}`" :class="$style.category">
+					<header :class="$style.categoryHeader" @click="toggleCategory(action.key)" v-if="actions.length > 1">
 						<p v-text="action.title" :class="$style.categoryTitle" />
 						<font-awesome-icon
 							:class="$style.categoryArrow"
@@ -32,7 +33,7 @@
 						>
 							<button :class="$style.categoryActionButton" @click="onActionClick(actionItem, action)">
 								<p v-text="actionItem.title" />
-								<trigger-icon :class="$style.triggerIcon" />
+								<trigger-icon v-if="isTrigger" :class="$style.triggerIcon" />
 							</button>
 						</li>
 					</ul>
@@ -72,6 +73,8 @@ const state = reactive({
 
 const nodeNameTitle = computed(() => props.nodeType?.displayName?.replace(' Trigger', ''));
 
+const isTrigger = computed(() => props.nodeType?.displayName.toLowerCase().includes('trigger'));
+
 function toggleCategory(category: string) {
 	if (state.subtractedCategories.includes(category)) {
 		state.subtractedCategories = state.subtractedCategories.filter((item) => item !== category);
@@ -80,7 +83,7 @@ function toggleCategory(category: string) {
 	}
 }
 
-function onActionClick(actionItem, rootCategory) {
+function onActionClick(actionItem) {
 	const displayOptions = actionItem?.displayOptions ;
 
 	const displayConditions = Object.keys(displayOptions?.show || {})
@@ -89,10 +92,11 @@ function onActionClick(actionItem, rootCategory) {
 			return acc;
 		}, {});
 
+
 	console.log("🚀 ~ file: NodeActions.vue ~ line 88 ~ onActionClick ~ displayConditions", displayConditions);
 	emit('actionSelected', {
 		name: props.nodeType.defaults.name,
-		value: { [rootCategory.key]: actionItem.multiOptions ? [actionItem.key] : actionItem.key, ...displayConditions},
+		value: { ...actionItem.values , ...displayConditions},
 	});
 }
 
@@ -107,6 +111,7 @@ const { subtractedCategories, search } = toRefs(state);
 .nodeActions {
 	border: $node-creator-border-color solid 1px;
 	z-index: 1;
+	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -120,6 +125,12 @@ const { subtractedCategories, search } = toRefs(state);
 .content {
 	height: 100%;
 	padding: var(--spacing-s);
+	overflow: auto;
+	padding-bottom: 3rem;
+}
+
+.search {
+	margin: var(--spacing-s);
 }
 .header {
 	border-bottom: $node-creator-border-color solid 1px;
@@ -186,10 +197,11 @@ const { subtractedCategories, search } = toRefs(state);
 .categoryHeader {
 	border-bottom: 1px solid #DBDFE7;
 	padding-bottom: 12px;
+	margin-bottom: 16px;
 	cursor: pointer;
 }
 .categoryActions {
-	padding-top: 16px;
+
 }
 .category {
 	&:not(:first-of-type) {

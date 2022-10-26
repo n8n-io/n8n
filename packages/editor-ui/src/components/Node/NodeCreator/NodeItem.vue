@@ -69,7 +69,7 @@
 import Vue, { PropType } from 'vue';
 import { INodeTypeDescription, IDataObject, INodeProperties } from 'n8n-workflow';
 import { INodeCreateElement, INodeItemProps } from '@/Interface';
-import { startCase } from 'lodash';
+import { startCase, find } from 'lodash';
 
 import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
@@ -133,12 +133,11 @@ export default Vue.extend({
 		// TODO: Add types
 		actions(): any {
 			function recommendedCategory(properties: INodeProperties[]) {
-				const categoryKeys = ['event', 'events', 'trigger on'];
+				const matchingKeys = ['event', 'events', 'trigger on'];
 				const matchedProperties = (properties || [])
-					.filter((property: any) => categoryKeys.includes(property.displayName?.toLowerCase()));
+					.filter((property: any) => matchingKeys.includes(property.displayName?.toLowerCase()));
 
-				console.log("🚀 ~ file: NodeItem.vue ~ line 127 ~ matchedProperty ~ matchedProperty", matchedProperties);
-				if(matchedProperties.length === 0) return null;
+				if(matchedProperties.length === 0) return [];
 
 				const actions = matchedProperties
 					.filter((property: any) => property.options && property.name !== '*')
@@ -149,41 +148,67 @@ export default Vue.extend({
 								description: option.description,
 								displayOptions: curr.displayOptions,
 								multiOptions: curr.type === 'multiOptions',
+								values: {[matchedProperties[0].name]: curr.type === 'multiOptions' ? [option.value] : option.value},
 						 }));
 						if(options) acc.push(...options);
 						return acc;
 					}, []);
-					// .map((option: any) => ({
-							// displayOptions: option.displayOptions,
-							// key: option.value,
-							// title: `When ${startCase(option.name)}`,
-							// description: option.description,
-						// }));
 
-						console.log("🚀 ~ file: NodeItem.vue ~ line 152 ~ recommendedCategory ~ actions", actions);
+				// Do not return empty category
+				if(actions.length === 0) return [];
+
 				// TODO: Is it safe to assume that the first property name and type is identical to all the others?
-				return {
+				return [{
 					key: matchedProperties[0].name,
 					title: 'Recommended',
 					type: 'category',
 					actions,
-				};
+				}];
 			}
 
-			return [recommendedCategory(this.nodeType.properties)].filter(Boolean);
+			// function
+			function resourceCategories(properties: INodeProperties[]) {
+				const matchingKeys = ['resource'];
+				const matchedProperties = (properties || [])
+					.filter((property: any) => matchingKeys.includes(property.displayName?.toLowerCase()));
+
+				if(matchedProperties.length === 0) return [];
+
+				const categories = [];
+
+				for (const matchedProperty of matchedProperties) {
+					for (const resource of matchedProperty.options || []) {
+						const resourceCategory = {
+							title: resource.name,
+							key: resource.value,
+							type: 'category',
+							actions: [],
+						};
+
+						const operations = properties.find(property => {
+							return property.name === 'operation' && property.displayOptions?.show?.resource?.includes(resource.value);
+						});
+
+						for (const operation of operations?.options || []) {
+							(resourceCategory.actions as any[]).push({
+									key: operation.value,
+									title: `${resource.name} ${startCase(operation.name)}`,
+									description: operation?.description,
+									displayOptions: operations?.displayOptions,
+									values: {operation: operations?.type === 'multiOptions' ? [operation.value] : operation.value},
+							});
+						}
+
+						if(resourceCategory.actions.length > 0) categories.push(resourceCategory);
+					}
+				}
+
+				return categories;
+			}
+
+			return [...recommendedCategory(this.nodeType.properties), ...resourceCategories(this.nodeType.properties)];
 		},
 	},
-	// mounted() {
-		/**
-		 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
-		 * All browsers attach the correct page coordinates to the "dragover" event.
-		 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
-		 */
-	// 	document.body.addEventListener("dragover", this.onDragOver);
-	// },
-	// destroyed() {
-	// 	document.body.removeEventListener("dragover", this.onDragOver);
-	// },
 	methods: {
 		onClick() {
 			console.log('On click!');
