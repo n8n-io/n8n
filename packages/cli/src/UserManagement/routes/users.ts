@@ -1,7 +1,6 @@
 /* eslint-disable no-restricted-syntax */
-import { Response } from 'express';
+import type { Response } from 'express';
 import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
-import { In } from 'typeorm';
 import validator from 'validator';
 
 import * as Db from '@/Db';
@@ -12,7 +11,7 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { User } from '@db/entities/User';
 import { UserRequest } from '@/requests';
 import * as UserManagementMailer from '../email/UserManagementMailer';
-import { N8nApp, PublicUser } from '../Interfaces';
+import type { N8nApp, PublicUser } from '../Interfaces';
 import {
 	getInstanceBaseUrl,
 	hashPassword,
@@ -110,7 +109,7 @@ export function usersNamespace(this: N8nApp): void {
 				createUsers[invite.email.toLowerCase()] = null;
 			});
 
-			const role = await Db.collections.Role.findOne({ scope: 'global', name: 'member' });
+			const role = await Db.collections.Role.findOne('member', 'global');
 
 			if (!role) {
 				Logger.error(
@@ -124,9 +123,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			// remove/exclude existing users from creation
-			const existingUsers = await Db.collections.User.find({
-				where: { email: In(Object.keys(createUsers)) },
-			});
+			const existingUsers = await Db.collections.User.findByEmails(Object.keys(createUsers));
 			existingUsers.forEach((user) => {
 				if (user.password) {
 					delete createUsers[user.email];
@@ -258,7 +255,7 @@ export function usersNamespace(this: N8nApp): void {
 				}
 			}
 
-			const users = await Db.collections.User.find({ where: { id: In([inviterId, inviteeId]) } });
+			const users = await Db.collections.User.findByIds([inviterId, inviteeId]);
 
 			if (users.length !== 2) {
 				Logger.debug(
@@ -326,10 +323,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const validPassword = validatePassword(password);
 
-			const users = await Db.collections.User.find({
-				where: { id: In([inviterId, inviteeId]) },
-				relations: ['globalRole'],
-			});
+			const users = await Db.collections.User.findByIds([inviterId, inviteeId], ['globalRole']);
 
 			if (users.length !== 2) {
 				Logger.debug(
@@ -360,7 +354,7 @@ export function usersNamespace(this: N8nApp): void {
 			invitee.lastName = lastName;
 			invitee.password = await hashPassword(validPassword);
 
-			const updatedUser = await Db.collections.User.save(invitee);
+			const updatedUser = await Db.collections.User.validateAndUpdate(invitee);
 
 			await issueCookie(res, updatedUser);
 
@@ -378,8 +372,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async () => {
-			const users = await Db.collections.User.find({ relations: ['globalRole'] });
-
+			const users = await Db.collections.User.findAll();
 			return users.map((user): PublicUser => sanitizeUser(user, ['personalizationAnswers']));
 		}),
 	);
@@ -411,9 +404,9 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const users = await Db.collections.User.find({
-				where: { id: In([transferId, idToDelete]) },
-			});
+			const ids = [idToDelete];
+			if (transferId) ids.push(transferId);
+			const users = await Db.collections.User.findByIds(ids);
 
 			if (!users.length || (transferId && users.length !== 2)) {
 				throw new ResponseHelper.ResponseError(
@@ -509,7 +502,7 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const reinvitee = await Db.collections.User.findOne({ id: idToReinvite });
+			const reinvitee = await Db.collections.User.findOneById(idToReinvite);
 
 			if (!reinvitee) {
 				Logger.debug(

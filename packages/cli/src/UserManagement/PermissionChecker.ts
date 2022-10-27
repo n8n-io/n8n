@@ -17,9 +17,7 @@ export class PermissionChecker {
 
 		// allow if requesting user is instance owner
 
-		const user = await Db.collections.User.findOneOrFail(userId, {
-			relations: ['globalRole'],
-		});
+		const user = await Db.collections.User.findOneByIdOrFail(userId, ['globalRole']);
 
 		if (user.globalRole.name === 'owner') return;
 

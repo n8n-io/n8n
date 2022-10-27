@@ -85,7 +85,7 @@ test('POST /owner should create owner and enable isInstanceOwnerSetUp', async ()
 	expect(globalRole.scope).toBe('global');
 	expect(apiKey).toBeUndefined();
 
-	const storedOwner = await Db.collections.User.findOneOrFail(id);
+	const storedOwner = await Db.collections.User.findOneByIdOrFail(id);
 	expect(storedOwner.password).not.toBe(newOwnerData.password);
 	expect(storedOwner.email).toBe(newOwnerData.email);
 	expect(storedOwner.firstName).toBe(newOwnerData.firstName);
@@ -117,7 +117,7 @@ test('POST /owner should create owner with lowercased email', async () => {
 	expect(id).toBe(ownerShell.id);
 	expect(email).toBe(newOwnerData.email.toLowerCase());
 
-	const storedOwner = await Db.collections.User.findOneOrFail(id);
+	const storedOwner = await Db.collections.User.findOneByIdOrFail(id);
 	expect(storedOwner.email).toBe(newOwnerData.email.toLowerCase());
 });
 

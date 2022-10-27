@@ -83,12 +83,8 @@ function createApiRouter(
 						_scopes: unknown,
 						schema: OpenAPIV3.ApiKeySecurityScheme,
 					): Promise<boolean> => {
-						const apiKey = req.headers[schema.name.toLowerCase()];
-						const user = await Db.collections.User.findOne({
-							where: { apiKey },
-							relations: ['globalRole'],
-						});
-
+						const apiKey = req.headers[schema.name.toLowerCase()] as string;
+						const user = await Db.collections.User.findByAPIKey(apiKey, ['globalRole']);
 						if (!user) return false;
 
 						void InternalHooksManager.getInstance().onUserInvokedApi({

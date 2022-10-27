@@ -285,7 +285,7 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Db.collections.Role.findOne({ scope: 'credential', name: 'user' });
+	const role = await Db.collections.Role.findOne('user', 'credential');
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
 			user,
@@ -310,16 +310,14 @@ export function affixRoleToSaveCredential(role: Role) {
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
-	const user = {
+	return Db.collections.User.create({
 		email: email ?? randomEmail(),
 		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
 		lastName: lastName ?? randomName(),
 		globalRole: globalRole ?? (await getGlobalMemberRole()),
 		...rest,
-	};
-
-	return Db.collections.User.save(user);
+	});
 }
 
 export async function createOwner() {
@@ -337,7 +335,7 @@ export function createUserShell(globalRole: Role): Promise<User> {
 		shell.email = randomEmail();
 	}
 
-	return Db.collections.User.save(shell);
+	return Db.collections.User.create(shell);
 }
 
 /**
@@ -352,7 +350,7 @@ export async function createManyUsers(
 		globalRole = await getGlobalMemberRole();
 	}
 
-	const users = await Promise.all(
+	return Promise.all(
 		[...Array(amount)].map(async () =>
 			Db.collections.User.create({
 				email: email ?? randomEmail(),
@@ -364,8 +362,6 @@ export async function createManyUsers(
 			}),
 		),
 	);
-
-	return Db.collections.User.save(users);
 }
 
 // --------------------------------------
@@ -395,7 +391,7 @@ export function saveInstalledNode(
 
 export function addApiKey(user: User): Promise<User> {
 	user.apiKey = randomApiKey();
-	return Db.collections.User.save(user);
+	return Db.collections.User.update(user, { apiKey: randomApiKey() });
 }
 
 // ----------------------------------
@@ -403,38 +399,23 @@ export function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export function getGlobalOwnerRole() {
-	return Db.collections.Role.findOneOrFail({
-		name: 'owner',
-		scope: 'global',
-	});
+	return Db.collections.Role.findOneOrFail('owner', 'global');
 }
 
 export function getGlobalMemberRole() {
-	return Db.collections.Role.findOneOrFail({
-		name: 'member',
-		scope: 'global',
-	});
+	return Db.collections.Role.findOneOrFail('member', 'global');
 }
 
 export function getWorkflowOwnerRole() {
-	return Db.collections.Role.findOneOrFail({
-		name: 'owner',
-		scope: 'workflow',
-	});
+	return Db.collections.Role.findOneOrFail('owner', 'workflow');
 }
 
 export function getWorkflowEditorRole() {
-	return Db.collections.Role.findOneOrFail({
-		name: 'editor',
-		scope: 'workflow',
-	});
+	return Db.collections.Role.findOneOrFail('editor', 'workflow');
 }
 
 export function getCredentialOwnerRole() {
-	return Db.collections.Role.findOneOrFail({
-		name: 'owner',
-		scope: 'credential',
-	});
+	return Db.collections.Role.findOneOrFail('owner', 'credential');
 }
 
 export function getAllRoles() {

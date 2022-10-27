@@ -4,7 +4,6 @@ import express from 'express';
 import { v4 as uuid } from 'uuid';
 import { URL } from 'url';
 import validator from 'validator';
-import { IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
 import * as Db from '@/Db';
@@ -54,7 +53,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			// User should just be able to reset password if one is already present
-			const user = await Db.collections.User.findOne({ email, password: Not(IsNull()) });
+			const user = await Db.collections.User.findOneByEmailIfPasswordSet(email);
 
 			if (!user?.password) {
 				Logger.debug(
@@ -70,7 +69,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
 
-			await Db.collections.User.update(id, { resetPasswordToken, resetPasswordTokenExpiration });
+			await Db.collections.User.update(user, { resetPasswordToken, resetPasswordTokenExpiration });
 
 			const baseUrl = getInstanceBaseUrl();
 			const url = new URL(`${baseUrl}/change-password`);
@@ -134,14 +133,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
-			// Timestamp is saved in seconds
-			const currentTimestamp = Math.floor(Date.now() / 1000);
-
-			const user = await Db.collections.User.findOne({
-				id,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
-			});
+			const user = await Db.collections.User.findOneForPasswordReset(id, resetPasswordToken);
 
 			if (!user) {
 				Logger.debug(
@@ -187,14 +179,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const validPassword = validatePassword(password);
 
-			// Timestamp is saved in seconds
-			const currentTimestamp = Math.floor(Date.now() / 1000);
-
-			const user = await Db.collections.User.findOne({
-				id: userId,
-				resetPasswordToken,
-				resetPasswordTokenExpiration: MoreThanOrEqual(currentTimestamp),
-			});
+			const user = await Db.collections.User.findOneForPasswordReset(userId, resetPasswordToken);
 
 			if (!user) {
 				Logger.debug(
@@ -207,7 +192,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			await Db.collections.User.update(userId, {
+			await Db.collections.User.update(user, {
 				password: await hashPassword(validPassword),
 				resetPasswordToken: null,
 				resetPasswordTokenExpiration: null,

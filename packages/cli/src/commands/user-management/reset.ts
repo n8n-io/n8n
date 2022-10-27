@@ -9,15 +9,8 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const ownerWorkflowRole = await Db.collections.Role.findOneOrFail({
-			name: 'owner',
-			scope: 'workflow',
-		});
-
-		const ownerCredentialRole = await Db.collections.Role.findOneOrFail({
-			name: 'owner',
-			scope: 'credential',
-		});
+		const ownerWorkflowRole = await Db.collections.Role.findOneOrFail('owner', 'workflow');
+		const ownerCredentialRole = await Db.collections.Role.findOneOrFail('owner', 'credential');
 
 		await Db.collections.SharedWorkflow.update(
 			{ user: { id: Not(owner.id) }, role: ownerWorkflowRole },
@@ -29,8 +22,7 @@ export class Reset extends BaseCommand {
 			{ user: owner },
 		);
 
-		await Db.collections.User.delete({ id: Not(owner.id) });
-		await Db.collections.User.save(Object.assign(owner, this.defaultUserProps));
+		await Db.collections.User.resetUsers(owner);
 
 		const danglingCredentials: CredentialsEntity[] =
 			(await Db.collections.Credentials.createQueryBuilder('credentials')

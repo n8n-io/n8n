@@ -34,9 +34,10 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(
 			async (req: MeRequest.Settings, res: express.Response): Promise<PublicUser> => {
 				const { email } = req.body;
+				const userId = req.user.id;
 				if (!email) {
 					Logger.debug('Request to update user email failed because of missing email in payload', {
-						userId: req.user.id,
+						userId,
 						payload: req.body,
 					});
 					throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
@@ -44,33 +45,32 @@ export function meNamespace(this: N8nApp): void {
 
 				if (!validator.isEmail(email)) {
 					Logger.debug('Request to update user email failed because of invalid email in payload', {
-						userId: req.user.id,
+						userId,
 						invalidEmail: email,
 					});
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}
 
 				const { email: currentEmail } = req.user;
-				const newUser = new User();
 
-				Object.assign(newUser, req.user, req.body);
+				const updatedUser = new User();
+				Object.assign(updatedUser, req.user, req.body);
+				const user = await Db.collections.User.validateAndUpdate(updatedUser);
 
-				await validateEntity(newUser);
-
-				const user = await Db.collections.User.save(newUser);
-
-				Logger.info('User updated successfully', { userId: user.id });
+				Logger.info('User updated successfully', { userId });
 
 				await issueCookie(res, user);
 
-				const updatedkeys = Object.keys(req.body);
+				const updatedKeys = Object.keys(req.body);
 				void InternalHooksManager.getInstance().onUserUpdate({
-					user_id: req.user.id,
-					fields_changed: updatedkeys,
+					user_id: userId,
+					fields_changed: updatedKeys,
 				});
-				await this.externalHooks.run('user.profile.update', [currentEmail, sanitizeUser(user)]);
 
-				return sanitizeUser(user);
+				const sanitizedUser = sanitizeUser(user);
+				await this.externalHooks.run('user.profile.update', [currentEmail, sanitizedUser]);
+
+				return sanitizedUser;
 			},
 		),
 	);
@@ -87,11 +87,13 @@ export function meNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('Invalid payload.', undefined, 400);
 			}
 
-			if (!req.user.password) {
+			const user = req.user;
+
+			if (!user.password) {
 				throw new ResponseHelper.ResponseError('Requesting user not set up.');
 			}
 
-			const isCurrentPwCorrect = await compareHash(currentPassword, req.user.password);
+			const isCurrentPwCorrect = await compareHash(currentPassword, user.password);
 			if (!isCurrentPwCorrect) {
 				throw new ResponseHelper.ResponseError(
 					'Provided current password is incorrect.',
@@ -100,21 +102,17 @@ export function meNamespace(this: N8nApp): void {
 				);
 			}
 
-			const validPassword = validatePassword(newPassword);
-
-			req.user.password = await hashPassword(validPassword);
-
-			const user = await Db.collections.User.save(req.user);
+			await Db.collections.User.updatePassword(user, newPassword);
 			Logger.info('Password updated successfully', { userId: user.id });
 
 			await issueCookie(res, user);
 
 			void InternalHooksManager.getInstance().onUserUpdate({
-				user_id: req.user.id,
+				user_id: user.id,
 				fields_changed: ['password'],
 			});
 
-			await this.externalHooks.run('user.password.update', [user.email, req.user.password]);
+			await this.externalHooks.run('user.password.update', [user.email, user.password]);
 
 			return { success: true };
 		}),
@@ -142,10 +140,7 @@ export function meNamespace(this: N8nApp): void {
 				);
 			}
 
-			await Db.collections.User.save({
-				id: req.user.id,
-				personalizationAnswers,
-			});
+			await Db.collections.User.update(req.user, { personalizationAnswers });
 
 			Logger.info('User survey updated successfully', { userId: req.user.id });
 
@@ -166,9 +161,7 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
 			const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
-			await Db.collections.User.update(req.user.id, {
-				apiKey,
-			});
+			await Db.collections.User.update(req.user, { apiKey });
 
 			const telemetryData = {
 				user_id: req.user.id,
@@ -187,9 +180,7 @@ export function meNamespace(this: N8nApp): void {
 	this.app.delete(
 		`/${this.restEndpoint}/me/api-key`,
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
-			await Db.collections.User.update(req.user.id, {
-				apiKey: null,
-			});
+			await Db.collections.User.update(req.user, { apiKey: null });
 
 			const telemetryData = {
 				user_id: req.user.id,

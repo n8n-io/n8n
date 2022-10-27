@@ -148,10 +148,7 @@ EEWorkflowController.post(
 		await Db.transaction(async (transactionManager) => {
 			savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
-			const role = await Db.collections.Role.findOneOrFail({
-				name: 'owner',
-				scope: 'workflow',
-			});
+			const role = await Db.collections.Role.findOneOrFail('owner', 'workflow');
 
 			const newSharedWorkflow = new SharedWorkflow();
 

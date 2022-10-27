@@ -22,7 +22,6 @@ import {
 
 import { WorkflowExecute } from 'n8n-core';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
 import { Repository } from 'typeorm';
 
@@ -32,12 +31,11 @@ import { Url } from 'url';
 import type { Request } from 'express';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { Role } from '@db/entities/Role';
 import type { Settings } from '@db/entities/Settings';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { TagEntity } from '@db/entities/TagEntity';
-import type { User } from '@db/entities/User';
+import type { IRepositories } from '@db/repositories';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 export interface IActivationError {
@@ -69,20 +67,18 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
-export interface IDatabaseCollections {
+export type IDatabaseCollections = IRepositories & {
 	Credentials: Repository<ICredentialsDb>;
 	Execution: Repository<IExecutionFlattedDb>;
 	Workflow: Repository<WorkflowEntity>;
 	Webhook: Repository<IWebhookDb>;
 	Tag: Repository<TagEntity>;
-	Role: Repository<Role>;
-	User: Repository<User>;
 	SharedCredentials: Repository<SharedCredentials>;
 	SharedWorkflow: Repository<SharedWorkflow>;
 	Settings: Repository<Settings>;
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
-}
+};
 
 export interface IWebhookDb {
 	workflowId: number | string;

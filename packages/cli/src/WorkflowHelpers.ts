@@ -620,10 +620,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 	let belowThreshold = true;
 	const skippedTypes = ['n8n-nodes-base.start', 'n8n-nodes-base.stickyNote'];
 
-	const workflowOwnerRole = await Db.collections.Role.findOne({
-		name: 'owner',
-		scope: 'workflow',
-	});
+	const workflowOwnerRole = await Db.collections.Role.findOne('owner', 'workflow');
 	const ownedWorkflowsIds = await Db.collections.SharedWorkflow.find({
 		user,
 		role: workflowOwnerRole,
@@ -655,7 +652,7 @@ export async function isBelowOnboardingThreshold(user: User): Promise<boolean> {
 
 	// user is above threshold --> set flag in settings
 	if (!belowThreshold) {
-		void Db.collections.User.update(user.id, { settings: { isOnboarded: true } });
+		void Db.collections.User.update(user, { settings: { isOnboarded: true } });
 	}
 
 	return belowThreshold;

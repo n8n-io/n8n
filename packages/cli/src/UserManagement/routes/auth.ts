@@ -32,12 +32,7 @@ export function authenticationMethods(this: N8nApp): void {
 
 			let user: User | undefined;
 			try {
-				user = await Db.collections.User.findOne(
-					{ email },
-					{
-						relations: ['globalRole'],
-					},
-				);
+				user = await Db.collections.User.findOneByEmail(email, ['globalRole']);
 			} catch (error) {
 				throw new Error('Unable to access database.');
 			}
@@ -83,13 +78,7 @@ export function authenticationMethods(this: N8nApp): void {
 				throw error;
 			}
 
-			try {
-				user = await Db.collections.User.findOneOrFail({ relations: ['globalRole'] });
-			} catch (error) {
-				throw new Error(
-					'No users found in database - did you wipe the users table? Create at least one user.',
-				);
-			}
+			user = await Db.collections.User.findFirst();
 
 			if (user.email || user.password) {
 				throw new Error('Invalid database state - user has password set.');

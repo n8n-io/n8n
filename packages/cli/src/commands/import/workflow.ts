@@ -195,9 +195,7 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async initOwnerWorkflowRole() {
-		const ownerWorkflowRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'workflow' },
-		});
+		const ownerWorkflowRole = await Db.collections.Role.findOne('owner', 'workflow');
 
 		if (!ownerWorkflowRole) {
 			throw new Error(`Failed to find owner workflow role. ${FIX_INSTRUCTION}`);
@@ -225,27 +223,16 @@ export class ImportWorkflowsCommand extends Command {
 	}
 
 	private async getOwner() {
-		const ownerGlobalRole = await Db.collections.Role.findOne({
-			where: { name: 'owner', scope: 'global' },
-		});
-
-		const owner = await Db.collections.User.findOne({ globalRole: ownerGlobalRole });
-
+		const ownerGlobalRole = await Db.collections.Role.findOneOrFail('owner', 'global');
+		const owner = await Db.collections.User.findOneByGlobalRole(ownerGlobalRole);
 		if (!owner) {
 			throw new Error(`Failed to find owner. ${FIX_INSTRUCTION}`);
 		}
-
 		return owner;
 	}
 
 	private async getAssignee(userId: string) {
-		const user = await Db.collections.User.findOne(userId);
-
-		if (!user) {
-			throw new Error(`Failed to find user with ID ${userId}`);
-		}
-
-		return user;
+		return Db.collections.User.findOneByIdOrFail(userId);
 	}
 
 	private transformCredentials(node: INode, credentialsEntities: ICredentialsDb[]) {
