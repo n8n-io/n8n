@@ -1,5 +1,35 @@
 import { IDataObject, INodeExecutionData, NodeApiError } from 'n8n-workflow';
 
+export const messageFields = [
+	'createdDateTime',
+	'lastModifiedDateTime',
+	'changeKey',
+	'categories',
+	'receivedDateTime',
+	'sentDateTime',
+	'hasAttachments',
+	'internetMessageId',
+	'subject',
+	'bodyPreview',
+	'importance',
+	'parentFolderId',
+	'conversationId',
+	'isDeliveryReceiptRequested',
+	'isReadReceiptRequested',
+	'isRead',
+	'isDraft',
+	'webLink',
+	'inferenceClassification',
+	'body',
+	'sender',
+	'from',
+	'toRecipients',
+	'ccRecipients',
+	'bccRecipients',
+	'replyTo',
+	'flag',
+].map((field) => ({ name: field, value: field }));
+
 export function makeRecipient(email: string) {
 	return {
 		emailAddress: {
@@ -51,4 +81,21 @@ export function createMessage(fields: IDataObject) {
 	Object.assign(message, fields);
 
 	return message;
+}
+
+export function simplifyOutputMessages(data: IDataObject[]) {
+	return data.map((item: IDataObject) => {
+		return {
+			id: item.id,
+			conversationId: item.conversationId,
+			subject: item.subject,
+			bodyPreview: item.bodyPreview,
+			from: ((item.from as IDataObject)?.emailAddress as IDataObject)?.address,
+			to: (item.toRecipients as IDataObject[]).map(
+				(recipient: IDataObject) => (recipient.emailAddress as IDataObject)?.address,
+			),
+			categories: item.categories,
+			hasAttachments: item.hasAttachments,
+		};
+	});
 }
