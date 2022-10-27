@@ -61,7 +61,6 @@ export default Vue.extend({
 	methods: {
 		async showExecutionsList () {
 			const activeExecution = this.$store.getters['workflows/getActiveWorkflowExecution'];
-			// TODO: UPDATE AFTER CONFLICTS ARE RESOLVED:
 			const currentWorkflow = this.$store.getters.workflowId;
 
 			if (activeExecution) {

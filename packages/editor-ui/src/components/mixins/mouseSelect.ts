@@ -54,7 +54,6 @@ export const mouseSelect = mixins(
 			const [x, y] = getMousePosition(event);
 			const sidebarOffset = this.isDemo ? 0 : this.uiStore.sidebarMenuCollapsed ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
 			const headerOffset = this.isDemo ? 0 : HEADER_HEIGHT;
-			const sidebarOffset = this.isDemo ? 0 : this.$store.getters['ui/sidebarMenuCollapsed'] ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
 			// @ts-ignore
 			return getRelativePosition(x - sidebarOffset, y - headerOffset, this.nodeViewScale, this.uiStore.nodeViewOffsetPosition);
 		},
