@@ -215,22 +215,25 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 				const isUnavailableMethodinEachItem = (node: Node) =>
 					node.type === 'MemberExpression' &&
 					node.computed === false &&
+					node.object.type === 'Identifier' &&
+					node.object.name === '$input' &&
 					node.property.type === 'Identifier' &&
 					['first', 'last', 'all', 'itemMatching'].includes(node.property.name);
 
 				walk<TargetNode>(ast, isUnavailableMethodinEachItem).forEach((node) => {
 					const [start, end] = this.getRange(node.property);
 
-					const message = [
-						`\`.${node.property.name}()\``,
-						this.$locale.baseText('codeNodeEditor.linter.eachItem.unavailableMethod'),
-					].join(' ');
+					const method = this.getText(node.property);
+
+					if (!method) return;
 
 					lintings.push({
 						from: start,
 						to: end,
 						severity: DEFAULT_LINTER_SEVERITY,
-						message,
+						message: this.$locale.baseText('codeNodeEditor.linter.eachItem.unavailableMethod', {
+							interpolate: { method },
+						}),
 					});
 				});
 			}
@@ -259,34 +262,6 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 						to: end + '()'.length,
 						severity: DEFAULT_LINTER_SEVERITY,
 						message: this.$locale.baseText('codeNodeEditor.linter.allItems.itemMatchingNoArg'),
-					});
-				});
-			}
-
-			/**
-			 * Lint for `.all()` called with argument in `runOnceForAllItems` mode
-			 *
-			 * $input.itemMatching()
-			 */
-
-			if (this.mode === 'runOnceForAllItems') {
-				type TargetNode = RangeNode & { callee: RangeNode & { property: RangeNode } };
-
-				const isItemMatchingCallWithoutArg = (node: Node) =>
-					node.type === 'CallExpression' &&
-					node.callee.type === 'MemberExpression' &&
-					node.callee.property.type === 'Identifier' &&
-					node.callee.property.name === 'all' &&
-					node.arguments.length !== 0;
-
-				walk<TargetNode>(ast, isItemMatchingCallWithoutArg).forEach((node) => {
-					const [start, end] = this.getRange(node.callee.property);
-
-					lintings.push({
-						from: start,
-						to: end + '()'.length,
-						severity: DEFAULT_LINTER_SEVERITY,
-						message: this.$locale.baseText('codeNodeEditor.linter.allItems.allCalledWithArg'),
 					});
 				});
 			}

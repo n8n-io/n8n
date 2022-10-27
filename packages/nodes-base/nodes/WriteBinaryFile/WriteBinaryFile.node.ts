@@ -42,6 +42,22 @@ export class WriteBinaryFile implements INodeType {
 				description:
 					'Name of the binary property which contains the data for the file to be written',
 			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Append',
+						name: 'append',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to append to an existing file',
+					},
+				],
+			},
 		],
 	};
 
@@ -57,6 +73,9 @@ export class WriteBinaryFile implements INodeType {
 				const dataPropertyName = this.getNodeParameter('dataPropertyName', itemIndex) as string;
 
 				const fileName = this.getNodeParameter('fileName', itemIndex) as string;
+				const options = this.getNodeParameter('options', 0, {}) as IDataObject;
+
+				const flag = options.append ? 'a' : 'w';
 
 				item = items[itemIndex];
 
@@ -90,7 +109,7 @@ export class WriteBinaryFile implements INodeType {
 				);
 
 				// Write the file to disk
-				await fsWriteFile(fileName, binaryDataBuffer, 'binary');
+				await fsWriteFile(fileName, binaryDataBuffer, { encoding: 'binary', flag });
 
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old

@@ -236,7 +236,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
 			credentialType: this.credentialTypeName,
 			isEditingCredential: this.mode === 'edit',
-			activeNode: this.$store.getters.activeNode,
+			activeNode: this.$store.getters['ndv/activeNode'],
 		});
 
 		setTimeout(() => {
@@ -561,7 +561,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.activeTab = tab;
 			const tabName: string = tab.replaceAll('coming-soon/', '');
 			const credType: string = this.credentialType ? this.credentialType.name : '';
-			const activeNode: INode | null = this.$store.getters.activeNode;
+			const activeNode: INode | null = this.$store.getters['ndv/activeNode'];
 
 			this.$telemetry.track('User viewed credential tab', {
 				credential_type: credType,
@@ -777,8 +777,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 					trackProperties.is_valid = !!this.testedSuccessfully;
 				}
 
-				if (this.$store.getters.activeNode) {
-					trackProperties.node_type = this.$store.getters.activeNode.type;
+				if (this.$store.getters['ndv/activeNode']) {
+					trackProperties.node_type = this.$store.getters['ndv/activeNode'].type;
 				}
 
 				if (this.authError && this.authError !== '') {

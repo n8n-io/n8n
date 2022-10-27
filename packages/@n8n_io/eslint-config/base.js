@@ -13,6 +13,7 @@ const config = (module.exports = {
 		'node_modules/**',
 		'dist/**',
 		'test/**', // TODO: remove this
+		'jest.config.js', // TODO: remove this
 	],
 
 	plugins: [
@@ -319,9 +320,9 @@ const config = (module.exports = {
 		// ----------------------------------
 		//   eslint-plugin-n8n-local-rules
 		// ----------------------------------
+		'n8n-local-rules/no-uncaught-json-parse': 'error',
 
-		// TODO: set to `error` and fix offenses
-		'n8n-local-rules/no-uncaught-json-parse': 'warn',
+		'n8n-local-rules/no-json-parse-json-stringify': 'error',
 
 		// ******************************************************************
 		//                    overrides to base ruleset

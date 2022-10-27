@@ -68,7 +68,6 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
-import InputHint from './ParameterInputHint.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
@@ -87,7 +86,6 @@ export default mixins(
 	.extend({
 		name: 'parameter-input-full',
 		components: {
-			InputHint,
 			ParameterOptions,
 			DraggableTarget,
 			ParameterInputWrapper,
@@ -123,7 +121,7 @@ export default mixins(
 		},
 		computed: {
 			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			hint (): string | null {
 				return this.$locale.nodeText().hint(this.parameter, this.path);
@@ -138,10 +136,10 @@ export default mixins(
 				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
 			},
 			isInputDataEmpty (): boolean {
-				return this.$store.getters['ui/getNDVDataIsEmpty']('input');
+				return this.$store.getters['ndv/getNDVDataIsEmpty']('input');
 			},
 			displayMode(): IRunDataDisplayMode {
-				return this.$store.getters['ui/inputPanelDisplayMode'];
+				return this.$store.getters['ndv/inputPanelDisplayMode'];
 			},
 			showMappingTooltip (): boolean {
 				return this.focused && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
@@ -151,13 +149,13 @@ export default mixins(
 			onFocus() {
 				this.focused = true;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ui/setMappableNDVInputFocus', this.parameter.displayName);
+					this.$store.commit('ndv/setMappableNDVInputFocus', this.parameter.displayName);
 				}
 			},
 			onBlur() {
 				this.focused = false;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ui/setMappableNDVInputFocus', '');
+					this.$store.commit('ndv/setMappableNDVInputFocus', '');
 				}
 			},
 			onMenuExpanded(expanded: boolean) {
@@ -234,7 +232,7 @@ export default mixins(
 							window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
 						}
 
-						this.$store.commit('ui/setMappingTelemetry', {
+						this.$store.commit('ndv/setMappingTelemetry', {
 							dest_node_type: this.node.type,
 							dest_parameter: this.path,
 							dest_parameter_mode: typeof prevValue === 'string' && prevValue.startsWith('=')? 'expression': 'fixed',
