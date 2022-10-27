@@ -775,6 +775,7 @@ export const workflowHelpers = mixins(
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
 					this.$store.commit('addWorkflow', workflowData);
+					this.$store.commit('setWorkflowHash', workflowData.hash);
 
 					if (openInNewWindow) {
 						const routeData = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: workflowData.id}});
