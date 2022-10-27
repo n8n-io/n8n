@@ -6,7 +6,7 @@ import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { RoleService } from '../role/role.service';
 import { UserService } from '../user/user.service';
 import { WorkflowsService } from './workflows.services';
-import { WorkflowWithSharings } from './workflows.types';
+import type { WorkflowWithSharingsAndCredentials } from './workflows.types';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
 
 export class EEWorkflowsService extends WorkflowsService {
@@ -73,11 +73,13 @@ export class EEWorkflowsService extends WorkflowsService {
 		return transaction.save(newSharedWorkflows);
 	}
 
-	static addOwnerAndSharings(
-		workflow: WorkflowEntity & WorkflowWithSharings,
-	): WorkflowEntity & WorkflowWithSharings {
+	static async addOwnerSharingsAndCredentials(
+		workflow: WorkflowEntity & WorkflowWithSharingsAndCredentials,
+		currentUser: User,
+	): Promise<WorkflowWithSharingsAndCredentials> {
 		workflow.ownedBy = null;
 		workflow.sharedWith = [];
+		workflow.usedCredentials = [];
 
 		workflow.shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
@@ -92,6 +94,48 @@ export class EEWorkflowsService extends WorkflowsService {
 
 		// @ts-ignore
 		delete workflow.shared;
+
+		const userCredentials = await EECredentials.getAll(currentUser);
+		const credentialIdsUsedByWorkflow = new Set<number>();
+		workflow.nodes.forEach((node) => {
+			if (!node.credentials) {
+				return;
+			}
+			Object.keys(node.credentials).forEach((credentialType) => {
+				const credentialId = parseInt(node.credentials?.[credentialType].id ?? '', 10);
+				credentialIdsUsedByWorkflow.add(credentialId);
+			});
+		});
+		const allCredentials = await EECredentials.getCredentials({
+			where: {
+				id: In(Array.from(credentialIdsUsedByWorkflow)),
+			},
+		});
+
+		return EEWorkflowsService.addCredentialsToWorkflow(workflow, allCredentials, userCredentials);
+	}
+
+	static addCredentialsToWorkflow(
+		workflow: WorkflowWithSharingsAndCredentials,
+		allCredentialsUsedByWorkflow: ICredentialsDb[],
+		userCredentials: ICredentialsDb[],
+	): WorkflowWithSharingsAndCredentials {
+		const userCredentialIds = userCredentials.map((credential) => credential.id.toString());
+		allCredentialsUsedByWorkflow.forEach((credential) => {
+			if (userCredentialIds.includes(credential.id.toString())) {
+				workflow.usedCredentials?.push({
+					id: credential.id.toString(),
+					name: credential.name,
+					userHasAccess: true,
+				});
+			} else {
+				workflow.usedCredentials?.push({
+					id: credential.id.toString(),
+					name: credential.name,
+					userHasAccess: false,
+				});
+			}
+		});
 
 		return workflow;
 	}

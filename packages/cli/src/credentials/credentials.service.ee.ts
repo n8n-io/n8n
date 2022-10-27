@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable no-param-reassign */
-import { DeleteResult, EntityManager, In, Not } from 'typeorm';
-import { Db } from '..';
+import { DeleteResult, EntityManager, FindManyOptions, In, Not } from 'typeorm';
+import { Db, ICredentialsDb } from '..';
 import { RoleService } from '../role/role.service';
 import { CredentialsService } from './credentials.service';
 
@@ -92,5 +92,9 @@ export class EECredentialsService extends CredentialsService {
 		delete credential.shared;
 
 		return credential;
+	}
+
+	static async getCredentials(filter: FindManyOptions<ICredentialsDb>): Promise<ICredentialsDb[]> {
+		return Db.collections.Credentials.find(filter);
 	}
 }
