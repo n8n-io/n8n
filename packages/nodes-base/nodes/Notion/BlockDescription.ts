@@ -55,14 +55,14 @@ export const blockFields = [
 						type: 'regex',
 						properties: {
 							regex:
-								'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{32}).*',
+								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{32}).*',
 							errorMessage: 'Not a valid Notion Block URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: 'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{32})',
+					regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{32})',
 				},
 			},
 			{
@@ -117,14 +117,14 @@ export const blockFields = [
 						type: 'regex',
 						properties: {
 							regex:
-								'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{32}).*',
+								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{32}).*',
 							errorMessage: 'Not a valid Notion Block URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: 'https:\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{32})',
+					regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([a-z0-9]{32})',
 				},
 			},
 			{
