@@ -360,10 +360,9 @@ workflowsController.patch(
 	`/:id`,
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
-		const forceSave = Boolean(req.query.forceSave);
 
 		const updateData = new WorkflowEntity();
-		const { tags, hash: incomingHash, ...rest } = req.body;
+		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
 		const updatedWorkflow = await WorkflowsService.updateWorkflow(
@@ -371,7 +370,6 @@ workflowsController.patch(
 			updateData,
 			workflowId,
 			tags,
-			forceSave,
 		);
 
 		const { id, ...remainder } = updatedWorkflow;

@@ -127,7 +127,9 @@ export class WorkflowsService {
 			await validateEntity(workflow);
 		}
 
-		await Db.collections.Workflow.update(workflowId, workflow);
+		const { hash, ...rest } = workflow;
+
+		await Db.collections.Workflow.update(workflowId, rest);
 
 		if (tags && !config.getEnv('workflowTagsDisabled')) {
 			const tablePrefix = config.getEnv('database.tablePrefix');
