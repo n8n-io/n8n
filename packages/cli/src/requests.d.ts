@@ -57,7 +57,7 @@ export declare namespace WorkflowRequest {
 
 	type Delete = Get;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody, { forceSave?: string }>;
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 

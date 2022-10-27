@@ -329,6 +329,7 @@ workflowsController.patch(
 	`/:id`,
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
+		const { forceSave } = req.query;
 
 		const updateData = new WorkflowEntity();
 		const { tags, hash: incomingHash, ...rest } = req.body;
@@ -355,7 +356,7 @@ workflowsController.patch(
 			);
 		}
 
-		if (incomingHash !== shared.workflow.hash) {
+		if (!forceSave && incomingHash !== shared.workflow.hash) {
 			throw new ResponseHelper.ResponseError(
 				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
 				undefined,
