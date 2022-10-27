@@ -886,6 +886,23 @@ export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
 }
 
+export interface workflowsState {
+	activeExecutions: IExecutionsCurrentSummaryExtended[];
+	activeWorkflows: string[];
+	activeWorkflowExecution: IExecutionsSummary | null;
+	currentWorkflowExecutions: IExecutionsSummary[];
+	executionId: string | null;
+	executingNode: string | null;
+	executionWaitingForWebhook: boolean;
+	finishedExecutionsCount: number;
+	nodeMetadata: nodeMetadataMap;
+	subworkflowExecutionError: Error | null;
+	workflow: IWorkflowDb;
+	workflowExecutionData: IExecutionResponse | null;
+	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
+	workflowsById: IWorkflowsMap;
+}
+
 // TODO:
 //	- Make this the only root state once migration is done
 //	- Remove commented out props
@@ -900,9 +917,9 @@ export interface rootStatePinia {
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
-	executionId: string | null;
-	executingNode: string | null;
-	executionWaitingForWebhook: boolean;
+	// executionId: string | null; ---> WF STORE
+	// executingNode: string | null; ---> WF STORE
+	// executionWaitingForWebhook: boolean; ---> WF STORE
 	pushConnectionActive: boolean;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
@@ -928,7 +945,7 @@ export interface rootStatePinia {
 	// workflow: IWorkflowDb; // --> WF Store
 	// sidebarMenuItems: IMenuItem[]; // --> UI Store
 	instanceId: string;
-	nodeMetadata: nodeMetadataMap;
+	// nodeMetadata: nodeMetadataMap;// --> WF STORE
 	isNpmAvailable: boolean;
 }
 
@@ -1073,8 +1090,6 @@ export interface IUiState {
 }
 
 export interface uiState {
-	activeExecutions: IExecutionsCurrentSummaryExtended[];
-	activeWorkflows: string[];
 	activeActions: string[];
 	activeCredentialType: string | null;
 	// activeNode: string | null; --> NDV STORE
@@ -1116,6 +1131,9 @@ export interface uiState {
 	nodeViewMoveInProgress: boolean;
 	selectedNodes: INodeUi[];
 	sidebarMenuItems: IMenuItem[];
+	nodeViewInitialized: boolean;
+	addFirstStepOnLoad: boolean;
+	executionSidebarAutoRefresh: boolean;
 }
 
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
@@ -1203,8 +1221,6 @@ export interface IWorkflowsState {
 	export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }
-
-export interface IWorkflowsState {}
 
 export interface communityNodesState {
 	availablePackageCount: number;

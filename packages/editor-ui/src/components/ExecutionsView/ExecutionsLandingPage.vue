@@ -27,7 +27,8 @@
 
 <script lang="ts">
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
-import { IExecutionsSummary } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 import ExecutionsInfoAccordion from './ExecutionsInfoAccordion.vue';
 
@@ -37,14 +38,12 @@ export default Vue.extend({
 		ExecutionsInfoAccordion,
 	},
 	computed: {
+		...mapStores(useWorkflowsStore),
 		executionCount(): number {
-			return (this.$store.getters['workflows/currentWorkflowExecutions'] as IExecutionsSummary[]).length;
+			return this.workflowsStore.currentWorkflowExecutions.length;
 		},
 		containsTrigger(): boolean {
-			return this.$store.getters.workflowTriggerNodes.length > 0;
-		},
-		currentWorkflowId(): string {
-			return this.$store.getters.workflowId;
+			return this.workflowsStore.workflowTriggerNodes.length > 0;
 		},
 	},
 	methods: {
@@ -54,7 +53,7 @@ export default Vue.extend({
 			this.$router.push(workflowRoute);
 		},
 		getWorkflowRoute(): { name: string, params: {}} {
-			const workflowId = this.currentWorkflowId || this.$route.params.name;
+			const workflowId = this.workflowsStore.workflowId || this.$route.params.name;
 			if (workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 				return { name: VIEWS.NEW_WORKFLOW, params: {} };
 			} else {

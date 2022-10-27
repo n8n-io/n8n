@@ -138,7 +138,7 @@ export const store = new Vuex.Store({
 		// 	}
 		// },
 
-		// Active Executions
+		// // Active Executions
 		// addActiveExecution(state, newActiveExecution: IExecutionsCurrentSummaryExtended) {
 		// 	// Check if the execution exists already
 		// 	const activeExecution = state.activeExecutions.find(execution => {
@@ -173,57 +173,57 @@ export const store = new Vuex.Store({
 		// 	Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
 		// 	Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
 		// },
-		setSubworkflowExecutionError(state, subworkflowExecutionError: Error | null) {
-			state.subworkflowExecutionError = subworkflowExecutionError;
-		},
-		setActiveExecutions(state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
-			Vue.set(state, 'activeExecutions', newActiveExecutions);
-		},
+		// setSubworkflowExecutionError(state, subworkflowExecutionError: Error | null) {
+		// 	state.subworkflowExecutionError = subworkflowExecutionError;
+		// },
+		// setActiveExecutions(state, newActiveExecutions: IExecutionsCurrentSummaryExtended[]) {
+		// 	Vue.set(state, 'activeExecutions', newActiveExecutions);
+		// },
 
-		// Workflows
-		setWorkflows: (state: IRootState, workflows: IWorkflowDb[]) => {
-			state.workflowsById = workflows.reduce<IWorkflowsMap>((acc, workflow: IWorkflowDb) => {
-				if (workflow.id) {
-					acc[workflow.id] = workflow;
-				}
+		// // Workflows
+		// setWorkflows: (state: IRootState, workflows: IWorkflowDb[]) => {
+		// 	state.workflowsById = workflows.reduce<IWorkflowsMap>((acc, workflow: IWorkflowDb) => {
+		// 		if (workflow.id) {
+		// 			acc[workflow.id] = workflow;
+		// 		}
 
-				return acc;
-			}, {});
-		},
-		deleteWorkflow: (state: IRootState, id: string) => {
-			const { [id]: deletedWorkflow, ...workflows } = state.workflowsById;
+		// 		return acc;
+		// 	}, {});
+		// },
+		// deleteWorkflow: (state: IRootState, id: string) => {
+		// 	const { [id]: deletedWorkflow, ...workflows } = state.workflowsById;
 
-			state.workflowsById = workflows;
-		},
-		addWorkflow: (state: IRootState, workflow: IWorkflowDb) => {
-			Vue.set(state.workflowsById, workflow.id, workflow);
-		},
+		// 	state.workflowsById = workflows;
+		// },
+		// addWorkflow: (state: IRootState, workflow: IWorkflowDb) => {
+		// 	Vue.set(state.workflowsById, workflow.id, workflow);
+		// },
 
 		// Active Workflows
 		// setActiveWorkflows(state, newActiveWorkflows: string[]) {
 		// 	state.activeWorkflows = newActiveWorkflows;
 		// },
-		setWorkflowActive(state, workflowId: string) {
-			state.stateIsDirty = false;
-			const index = state.activeWorkflows.indexOf(workflowId);
-			if (index === -1) {
-				state.activeWorkflows.push(workflowId);
-			}
+		// setWorkflowActive(state, workflowId: string) {
+		// 	state.stateIsDirty = false;
+		// 	const index = state.activeWorkflows.indexOf(workflowId);
+		// 	if (index === -1) {
+		// 		state.activeWorkflows.push(workflowId);
+		// 	}
 
-			if (state.workflowsById[workflowId]) {
-				Vue.set(state.workflowsById[workflowId], 'active', true);
-			}
-		},
-		setWorkflowInactive(state, workflowId: string) {
-			const index = state.activeWorkflows.indexOf(workflowId);
-			if (index !== -1) {
-				state.activeWorkflows.splice(index, 1);
-			}
+		// 	if (state.workflowsById[workflowId]) {
+		// 		Vue.set(state.workflowsById[workflowId], 'active', true);
+		// 	}
+		// },
+		// setWorkflowInactive(state, workflowId: string) {
+		// 	const index = state.activeWorkflows.indexOf(workflowId);
+		// 	if (index !== -1) {
+		// 		state.activeWorkflows.splice(index, 1);
+		// 	}
 
-			if (state.workflowsById[workflowId]) {
-				Vue.set(state.workflowsById[workflowId], 'active', false);
-			}
-		},
+		// 	if (state.workflowsById[workflowId]) {
+		// 		Vue.set(state.workflowsById[workflowId], 'active', false);
+		// 	}
+		// },
 		// Set state condition dirty or not
 		// ** Dirty: if current workflow state has been synchronized with database AKA has it been saved
 		setStateDirty(state, dirty: boolean) {
@@ -248,333 +248,332 @@ export const store = new Vuex.Store({
 		// },
 
 		// Pin data
-		pinData(state, payload: { node: INodeUi, data: INodeExecutionData[] }) {
-			if (!state.workflow.pinData) {
-				Vue.set(state.workflow, 'pinData', {});
-			}
+		// pinData(state, payload: { node: INodeUi, data: INodeExecutionData[] }) {
+		// 	if (!state.workflow.pinData) {
+		// 		Vue.set(state.workflow, 'pinData', {});
+		// 	}
 
-			if (!Array.isArray(payload.data)) {
-				payload.data = [payload.data];
-			}
+		// 	if (!Array.isArray(payload.data)) {
+		// 		payload.data = [payload.data];
+		// 	}
 
-			const storedPinData = payload.data.map(item => isJsonKeyObject(item) ? item : { json: item });
+		// 	const storedPinData = payload.data.map(item => isJsonKeyObject(item) ? item : { json: item });
 
-			Vue.set(state.workflow.pinData!, payload.node.name, storedPinData);
-			state.stateIsDirty = true;
+		// 	Vue.set(state.workflow.pinData!, payload.node.name, storedPinData);
+		// 	state.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('pin-data', { [payload.node.name]: storedPinData });
-		},
-		unpinData(state, payload: { node: INodeUi }) {
-			if (!state.workflow.pinData) {
-				Vue.set(state.workflow, 'pinData', {});
-			}
+		// 	dataPinningEventBus.$emit('pin-data', { [payload.node.name]: storedPinData });
+		// },
+		// unpinData(state, payload: { node: INodeUi }) {
+		// 	if (!state.workflow.pinData) {
+		// 		Vue.set(state.workflow, 'pinData', {});
+		// 	}
 
-			Vue.set(state.workflow.pinData!, payload.node.name, undefined);
-			delete state.workflow.pinData![payload.node.name];
+		// 	Vue.set(state.workflow.pinData!, payload.node.name, undefined);
+		// 	delete state.workflow.pinData![payload.node.name];
 
-			state.stateIsDirty = true;
+		// 	state.stateIsDirty = true;
 
-			dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
-		},
+		// 	dataPinningEventBus.$emit('unpin-data', { [payload.node.name]: undefined });
+		// },
 
 		// Active
-		setActive(state, newActive: boolean) {
-			state.workflow.active = newActive;
-		},
+		// setActive(state, newActive: boolean) {
+		// 	state.workflow.active = newActive;
+		// },
 
-		// Connections
-		addConnection(state, data) {
-			if (data.connection.length !== 2) {
-				// All connections need two entries
-				// TODO: Check if there is an error or whatever that is supposed to be returned
-				return;
-			}
+		// // Connections
+		// addConnection(state, data) {
+		// 	if (data.connection.length !== 2) {
+		// 		// All connections need two entries
+		// 		// TODO: Check if there is an error or whatever that is supposed to be returned
+		// 		return;
+		// 	}
 
-			if (data.setStateDirty === true) {
-				state.stateIsDirty = true;
-			}
+		// 	if (data.setStateDirty === true) {
+		// 		state.stateIsDirty = true;
+		// 	}
 
-			const sourceData: IConnection = data.connection[0];
-			const destinationData: IConnection = data.connection[1];
+		// 	const sourceData: IConnection = data.connection[0];
+		// 	const destinationData: IConnection = data.connection[1];
 
-			// Check if source node and type exist already and if not add them
-			if (!state.workflow.connections.hasOwnProperty(sourceData.node)) {
-				Vue.set(state.workflow.connections, sourceData.node, {});
-			}
-			if (!state.workflow.connections[sourceData.node].hasOwnProperty(sourceData.type)) {
-				Vue.set(state.workflow.connections[sourceData.node], sourceData.type, []);
-			}
-			if (state.workflow.connections[sourceData.node][sourceData.type].length < (sourceData.index + 1)) {
-				for (let i = state.workflow.connections[sourceData.node][sourceData.type].length; i <= sourceData.index; i++) {
-					state.workflow.connections[sourceData.node][sourceData.type].push([]);
-				}
-			}
+		// 	// Check if source node and type exist already and if not add them
+		// 	if (!state.workflow.connections.hasOwnProperty(sourceData.node)) {
+		// 		Vue.set(state.workflow.connections, sourceData.node, {});
+		// 	}
+		// 	if (!state.workflow.connections[sourceData.node].hasOwnProperty(sourceData.type)) {
+		// 		Vue.set(state.workflow.connections[sourceData.node], sourceData.type, []);
+		// 	}
+		// 	if (state.workflow.connections[sourceData.node][sourceData.type].length < (sourceData.index + 1)) {
+		// 		for (let i = state.workflow.connections[sourceData.node][sourceData.type].length; i <= sourceData.index; i++) {
+		// 			state.workflow.connections[sourceData.node][sourceData.type].push([]);
+		// 		}
+		// 	}
 
-			// Check if the same connection exists already
-			const checkProperties = ['index', 'node', 'type'];
-			let propertyName: string;
-			let connectionExists = false;
-			connectionLoop:
-			for (const existingConnection of state.workflow.connections[sourceData.node][sourceData.type][sourceData.index]) {
-				for (propertyName of checkProperties) {
-					if ((existingConnection as any)[propertyName] !== (destinationData as any)[propertyName]) { // tslint:disable-line:no-any
-						continue connectionLoop;
-					}
-				}
-				connectionExists = true;
-				break;
-			}
+		// 	// Check if the same connection exists already
+		// 	const checkProperties = ['index', 'node', 'type'];
+		// 	let propertyName: string;
+		// 	let connectionExists = false;
+		// 	connectionLoop:
+		// 	for (const existingConnection of state.workflow.connections[sourceData.node][sourceData.type][sourceData.index]) {
+		// 		for (propertyName of checkProperties) {
+		// 			if ((existingConnection as any)[propertyName] !== (destinationData as any)[propertyName]) { // tslint:disable-line:no-any
+		// 				continue connectionLoop;
+		// 			}
+		// 		}
+		// 		connectionExists = true;
+		// 		break;
+		// 	}
 
-			// Add the new connection if it does not exist already
-			if (connectionExists === false) {
-				state.workflow.connections[sourceData.node][sourceData.type][sourceData.index].push(destinationData);
-			}
+		// 	// Add the new connection if it does not exist already
+		// 	if (connectionExists === false) {
+		// 		state.workflow.connections[sourceData.node][sourceData.type][sourceData.index].push(destinationData);
+		// 	}
 
-		},
-		removeConnection(state, data) {
-			const sourceData = data.connection[0];
-			const destinationData = data.connection[1];
+		// },
+		// removeConnection(state, data) {
+		// 	const sourceData = data.connection[0];
+		// 	const destinationData = data.connection[1];
 
-			if (!state.workflow.connections.hasOwnProperty(sourceData.node)) {
-				return;
-			}
-			if (!state.workflow.connections[sourceData.node].hasOwnProperty(sourceData.type)) {
-				return;
-			}
-			if (state.workflow.connections[sourceData.node][sourceData.type].length < (sourceData.index + 1)) {
-				return;
-			}
+		// 	if (!state.workflow.connections.hasOwnProperty(sourceData.node)) {
+		// 		return;
+		// 	}
+		// 	if (!state.workflow.connections[sourceData.node].hasOwnProperty(sourceData.type)) {
+		// 		return;
+		// 	}
+		// 	if (state.workflow.connections[sourceData.node][sourceData.type].length < (sourceData.index + 1)) {
+		// 		return;
+		// 	}
 
-			state.stateIsDirty = true;
+		// 	state.stateIsDirty = true;
 
-			const connections = state.workflow.connections[sourceData.node][sourceData.type][sourceData.index];
-			for (const index in connections) {
-				if (connections[index].node === destinationData.node && connections[index].type === destinationData.type && connections[index].index === destinationData.index) {
-					// Found the connection to remove
-					connections.splice(parseInt(index, 10), 1);
-				}
-			}
+		// 	const connections = state.workflow.connections[sourceData.node][sourceData.type][sourceData.index];
+		// 	for (const index in connections) {
+		// 		if (connections[index].node === destinationData.node && connections[index].type === destinationData.type && connections[index].index === destinationData.index) {
+		// 			// Found the connection to remove
+		// 			connections.splice(parseInt(index, 10), 1);
+		// 		}
+		// 	}
 
-		},
-		removeAllConnections(state, data) {
-			if (data && data.setStateDirty === true) {
-				state.stateIsDirty = true;
-			}
-			state.workflow.connections = {};
-		},
-		removeAllNodeConnection(state, node: INodeUi) {
-			state.stateIsDirty = true;
-			// Remove all source connections
-			if (state.workflow.connections.hasOwnProperty(node.name)) {
-				delete state.workflow.connections[node.name];
-			}
+		// },
+		// removeAllConnections(state, data) {
+		// 	if (data && data.setStateDirty === true) {
+		// 		state.stateIsDirty = true;
+		// 	}
+		// 	state.workflow.connections = {};
+		// },
+		// removeAllNodeConnection(state, node: INodeUi) {
+		// 	state.stateIsDirty = true;
+		// 	// Remove all source connections
+		// 	if (state.workflow.connections.hasOwnProperty(node.name)) {
+		// 		delete state.workflow.connections[node.name];
+		// 	}
 
-			// Remove all destination connections
-			const indexesToRemove = [];
-			let sourceNode: string, type: string, sourceIndex: string, connectionIndex: string, connectionData: IConnection;
-			for (sourceNode of Object.keys(state.workflow.connections)) {
-				for (type of Object.keys(state.workflow.connections[sourceNode])) {
-					for (sourceIndex of Object.keys(state.workflow.connections[sourceNode][type])) {
-						indexesToRemove.length = 0;
-						for (connectionIndex of Object.keys(state.workflow.connections[sourceNode][type][parseInt(sourceIndex, 10)])) {
-							connectionData = state.workflow.connections[sourceNode][type][parseInt(sourceIndex, 10)][parseInt(connectionIndex, 10)];
-							if (connectionData.node === node.name) {
-								indexesToRemove.push(connectionIndex);
-							}
-						}
+		// 	// Remove all destination connections
+		// 	const indexesToRemove = [];
+		// 	let sourceNode: string, type: string, sourceIndex: string, connectionIndex: string, connectionData: IConnection;
+		// 	for (sourceNode of Object.keys(state.workflow.connections)) {
+		// 		for (type of Object.keys(state.workflow.connections[sourceNode])) {
+		// 			for (sourceIndex of Object.keys(state.workflow.connections[sourceNode][type])) {
+		// 				indexesToRemove.length = 0;
+		// 				for (connectionIndex of Object.keys(state.workflow.connections[sourceNode][type][parseInt(sourceIndex, 10)])) {
+		// 					connectionData = state.workflow.connections[sourceNode][type][parseInt(sourceIndex, 10)][parseInt(connectionIndex, 10)];
+		// 					if (connectionData.node === node.name) {
+		// 						indexesToRemove.push(connectionIndex);
+		// 					}
+		// 				}
 
-						indexesToRemove.forEach((index) => {
-							state.workflow.connections[sourceNode][type][parseInt(sourceIndex, 10)].splice(parseInt(index, 10), 1);
-						});
-					}
-				}
-			}
-		},
+		// 				indexesToRemove.forEach((index) => {
+		// 					state.workflow.connections[sourceNode][type][parseInt(sourceIndex, 10)].splice(parseInt(index, 10), 1);
+		// 				});
+		// 			}
+		// 		}
+		// 	}
+		// },
 
-		// THIS GOES TO WORKFLOW OR  NDV STORE...
-		renameNodeSelectedAndExecution(state, nameData) {
-			state.stateIsDirty = true;
-			// If node has any WorkflowResultData rename also that one that the data
-			// does still get displayed also after node got renamed
-			if (state.workflowExecutionData !== null && state.workflowExecutionData.data && state.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
-				state.workflowExecutionData.data.resultData.runData[nameData.new] = state.workflowExecutionData.data.resultData.runData[nameData.old];
-				delete state.workflowExecutionData.data.resultData.runData[nameData.old];
-			}
+		// renameNodeSelectedAndExecution(state, nameData) {
+		// 	state.stateIsDirty = true;
+		// 	// If node has any WorkflowResultData rename also that one that the data
+		// 	// does still get displayed also after node got renamed
+		// 	if (state.workflowExecutionData !== null && state.workflowExecutionData.data && state.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
+		// 		state.workflowExecutionData.data.resultData.runData[nameData.new] = state.workflowExecutionData.data.resultData.runData[nameData.old];
+		// 		delete state.workflowExecutionData.data.resultData.runData[nameData.old];
+		// 	}
 
-			// In case the renamed node was last selected set it also there with the new name
-			if (state.lastSelectedNode === nameData.old) {
-				state.lastSelectedNode = nameData.new;
-			}
+		// 	// In case the renamed node was last selected set it also there with the new name
+		// 	if (state.lastSelectedNode === nameData.old) {
+		// 		state.lastSelectedNode = nameData.new;
+		// 	}
 
-			Vue.set(state.nodeMetadata, nameData.new, state.nodeMetadata[nameData.old]);
-			Vue.delete(state.nodeMetadata, nameData.old);
+		// 	Vue.set(state.nodeMetadata, nameData.new, state.nodeMetadata[nameData.old]);
+		// 	Vue.delete(state.nodeMetadata, nameData.old);
 
-			if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(nameData.old)) {
-				Vue.set(state.workflow.pinData, nameData.new, state.workflow.pinData[nameData.old]);
-				Vue.delete(state.workflow.pinData, nameData.old);
-			}
+		// 	if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(nameData.old)) {
+		// 		Vue.set(state.workflow.pinData, nameData.new, state.workflow.pinData[nameData.old]);
+		// 		Vue.delete(state.workflow.pinData, nameData.old);
+		// 	}
 
-			state.workflowExecutionPairedItemMappings = getPairedItemsMapping(state.workflowExecutionData);
-		},
+		// 	state.workflowExecutionPairedItemMappings = getPairedItemsMapping(state.workflowExecutionData);
+		// },
 
-		resetAllNodesIssues(state) {
-			state.workflow.nodes.forEach((node) => {
-				node.issues = undefined;
-			});
+		// resetAllNodesIssues(state) {
+		// 	state.workflow.nodes.forEach((node) => {
+		// 		node.issues = undefined;
+		// 	});
 
-			return true;
-		},
+		// 	return true;
+		// },
 
-		setNodeIssue(state, nodeIssueData: INodeIssueData) {
+		// setNodeIssue(state, nodeIssueData: INodeIssueData) {
 
-			const node = state.workflow.nodes.find(node => {
-				return node.name === nodeIssueData.node;
-			});
-			if (!node) {
-				return false;
-			}
+		// 	const node = state.workflow.nodes.find(node => {
+		// 		return node.name === nodeIssueData.node;
+		// 	});
+		// 	if (!node) {
+		// 		return false;
+		// 	}
 
-			if (nodeIssueData.value === null) {
-				// Remove the value if one exists
-				if (node.issues === undefined || node.issues[nodeIssueData.type] === undefined) {
-					// No values for type exist so nothing has to get removed
-					return true;
-				}
+		// 	if (nodeIssueData.value === null) {
+		// 		// Remove the value if one exists
+		// 		if (node.issues === undefined || node.issues[nodeIssueData.type] === undefined) {
+		// 			// No values for type exist so nothing has to get removed
+		// 			return true;
+		// 		}
 
-				// @ts-ignore
-				Vue.delete(node.issues, nodeIssueData.type);
-			} else {
-				if (node.issues === undefined) {
-					Vue.set(node, 'issues', {});
-				}
+		// 		// @ts-ignore
+		// 		Vue.delete(node.issues, nodeIssueData.type);
+		// 	} else {
+		// 		if (node.issues === undefined) {
+		// 			Vue.set(node, 'issues', {});
+		// 		}
 
-				// Set/Overwrite the value
-				Vue.set(node.issues!, nodeIssueData.type, nodeIssueData.value);
-			}
+		// 		// Set/Overwrite the value
+		// 		Vue.set(node.issues!, nodeIssueData.type, nodeIssueData.value);
+		// 	}
 
-			return true;
-		},
+		// 	return true;
+		// },
 
-		// Id
-		setWorkflowId (state, id: string) {
-			state.workflow.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
-		},
+		// // Id
+		// setWorkflowId (state, id: string) {
+		// 	state.workflow.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+		// },
 
-		// Name
-		setWorkflowName(state, data) {
-			if (data.setStateDirty === true) {
-				state.stateIsDirty = true;
-			}
-			state.workflow.name = data.newName;
-		},
+		// // Name
+		// setWorkflowName(state, data) {
+		// 	if (data.setStateDirty === true) {
+		// 		state.stateIsDirty = true;
+		// 	}
+		// 	state.workflow.name = data.newName;
+		// },
 
-		// replace invalid credentials in workflow
-		replaceInvalidWorkflowCredentials(state, {credentials, invalid, type}) {
-			state.workflow.nodes.forEach((node) => {
-				if (!node.credentials || !node.credentials[type]) {
-					return;
-				}
-				const nodeCredentials = node.credentials[type];
+		// // replace invalid credentials in workflow
+		// replaceInvalidWorkflowCredentials(state, {credentials, invalid, type}) {
+		// 	state.workflow.nodes.forEach((node) => {
+		// 		if (!node.credentials || !node.credentials[type]) {
+		// 			return;
+		// 		}
+		// 		const nodeCredentials = node.credentials[type];
 
-				if (typeof nodeCredentials === 'string' && nodeCredentials === invalid.name) {
-					node.credentials[type] = credentials;
-					return;
-				}
+		// 		if (typeof nodeCredentials === 'string' && nodeCredentials === invalid.name) {
+		// 			node.credentials[type] = credentials;
+		// 			return;
+		// 		}
 
-				if (nodeCredentials.id === null) {
-					if (nodeCredentials.name === invalid.name) {
-						node.credentials[type] = credentials;
-					}
-					return;
-				}
+		// 		if (nodeCredentials.id === null) {
+		// 			if (nodeCredentials.name === invalid.name) {
+		// 				node.credentials[type] = credentials;
+		// 			}
+		// 			return;
+		// 		}
 
-				if (nodeCredentials.id === invalid.id) {
-					node.credentials[type] = credentials;
-				}
-			});
-		},
+		// 		if (nodeCredentials.id === invalid.id) {
+		// 			node.credentials[type] = credentials;
+		// 		}
+		// 	});
+		// },
 
-		// Nodes
-		addNode(state, nodeData: INodeUi) {
-			if (!nodeData.hasOwnProperty('name')) {
-				// All nodes have to have a name
-				// TODO: Check if there is an error or whatever that is supposed to be returned
-				return;
-			}
+		// // Nodes
+		// addNode(state, nodeData: INodeUi) {
+		// 	if (!nodeData.hasOwnProperty('name')) {
+		// 		// All nodes have to have a name
+		// 		// TODO: Check if there is an error or whatever that is supposed to be returned
+		// 		return;
+		// 	}
 
-			state.workflow.nodes.push(nodeData);
-		},
-		removeNode(state, node: INodeUi) {
-			Vue.delete(state.nodeMetadata, node.name);
+		// 	state.workflow.nodes.push(nodeData);
+		// },
+		// removeNode(state, node: INodeUi) {
+		// 	Vue.delete(state.nodeMetadata, node.name);
 
-			if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(node.name)) {
-				Vue.delete(state.workflow.pinData, node.name);
-			}
+		// 	if (state.workflow.pinData && state.workflow.pinData.hasOwnProperty(node.name)) {
+		// 		Vue.delete(state.workflow.pinData, node.name);
+		// 	}
 
-			for (let i = 0; i < state.workflow.nodes.length; i++) {
-				if (state.workflow.nodes[i].name === node.name) {
-					state.workflow.nodes.splice(i, 1);
-					state.stateIsDirty = true;
-					return;
-				}
-			}
-		},
-		removeAllNodes(state, data) {
-			if (data.setStateDirty === true) {
-				state.stateIsDirty = true;
-			}
+		// 	for (let i = 0; i < state.workflow.nodes.length; i++) {
+		// 		if (state.workflow.nodes[i].name === node.name) {
+		// 			state.workflow.nodes.splice(i, 1);
+		// 			state.stateIsDirty = true;
+		// 			return;
+		// 		}
+		// 	}
+		// },
+		// removeAllNodes(state, data) {
+		// 	if (data.setStateDirty === true) {
+		// 		state.stateIsDirty = true;
+		// 	}
 
-			if (data.removePinData) {
-				Vue.set(state.workflow, 'pinData', {});
-			}
+		// 	if (data.removePinData) {
+		// 		Vue.set(state.workflow, 'pinData', {});
+		// 	}
 
-			state.workflow.nodes.splice(0, state.workflow.nodes.length);
-			state.nodeMetadata = {};
-		},
-		updateNodeProperties(state, updateInformation: INodeUpdatePropertiesInformation) {
-			// Find the node that should be updated
-			const node = state.workflow.nodes.find(node => {
-				return node.name === updateInformation.name;
-			});
+		// 	state.workflow.nodes.splice(0, state.workflow.nodes.length);
+		// 	state.nodeMetadata = {};
+		// },
+		// updateNodeProperties(state, updateInformation: INodeUpdatePropertiesInformation) {
+		// 	// Find the node that should be updated
+		// 	const node = state.workflow.nodes.find(node => {
+		// 		return node.name === updateInformation.name;
+		// 	});
 
-			if (node) {
-				for (const key of Object.keys(updateInformation.properties)) {
-					state.stateIsDirty = true;
-					Vue.set(node, key, updateInformation.properties[key]);
-				}
-			}
-		},
-		setNodeValue(state, updateInformation: IUpdateInformation) {
-			// Find the node that should be updated
-			const node = state.workflow.nodes.find(node => {
-				return node.name === updateInformation.name;
-			});
+		// 	if (node) {
+		// 		for (const key of Object.keys(updateInformation.properties)) {
+		// 			state.stateIsDirty = true;
+		// 			Vue.set(node, key, updateInformation.properties[key]);
+		// 		}
+		// 	}
+		// },
+		// setNodeValue(state, updateInformation: IUpdateInformation) {
+		// 	// Find the node that should be updated
+		// 	const node = state.workflow.nodes.find(node => {
+		// 		return node.name === updateInformation.name;
+		// 	});
 
-			if (node === undefined || node === null) {
-				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
-			}
+		// 	if (node === undefined || node === null) {
+		// 		throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
+		// 	}
 
-			state.stateIsDirty = true;
-			Vue.set(node, updateInformation.key, updateInformation.value);
-		},
-		setNodeParameters(state, updateInformation: IUpdateInformation) {
-			// Find the node that should be updated
-			const node = state.workflow.nodes.find(node => {
-				return node.name === updateInformation.name;
-			});
+		// 	state.stateIsDirty = true;
+		// 	Vue.set(node, updateInformation.key, updateInformation.value);
+		// },
+		// setNodeParameters(state, updateInformation: IUpdateInformation) {
+		// 	// Find the node that should be updated
+		// 	const node = state.workflow.nodes.find(node => {
+		// 		return node.name === updateInformation.name;
+		// 	});
 
-			if (node === undefined || node === null) {
-				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
-			}
+		// 	if (node === undefined || node === null) {
+		// 		throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
+		// 	}
 
-			state.stateIsDirty = true;
-			Vue.set(node, 'parameters', updateInformation.value);
+		// 	state.stateIsDirty = true;
+		// 	Vue.set(node, 'parameters', updateInformation.value);
 
-			if (!state.nodeMetadata[node.name]) {
-				Vue.set(state.nodeMetadata, node.name, {});
-			}
-			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
-		},
+		// 	if (!state.nodeMetadata[node.name]) {
+		// 		Vue.set(state.nodeMetadata, node.name, {});
+		// 	}
+		// 	Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
+		// },
 
 		// Node-View
 		// setNodeViewMoveInProgress(state, value: boolean) {
@@ -585,15 +584,15 @@ export const store = new Vuex.Store({
 		// },
 
 		// Active Execution
-		setExecutingNode(state, executingNode: string) {
-			state.executingNode = executingNode;
-		},
-		setExecutionWaitingForWebhook(state, newWaiting: boolean) {
-			state.executionWaitingForWebhook = newWaiting;
-		},
-		setActiveExecutionId(state, executionId: string | null) {
-			state.executionId = executionId;
-		},
+		// setExecutingNode(state, executingNode: string) {
+		// 	state.executingNode = executingNode;
+		// },
+		// setExecutionWaitingForWebhook(state, newWaiting: boolean) {
+		// 	state.executionWaitingForWebhook = newWaiting;
+		// },
+		// setActiveExecutionId(state, executionId: string | null) {
+		// 	state.executionId = executionId;
+		// },
 
 		// Push Connection
 		setPushConnectionActive(state, newActive: boolean) {
@@ -663,79 +662,79 @@ export const store = new Vuex.Store({
 			state.lastSelectedNodeOutputIndex = outputIndex;
 		},
 
-		setWorkflowExecutionData(state, workflowResultData: IExecutionResponse | null) {
-			state.workflowExecutionData = workflowResultData;
-			state.workflowExecutionPairedItemMappings = getPairedItemsMapping(state.workflowExecutionData);
-		},
-		addNodeExecutionData(state, pushData: IPushDataNodeExecuteAfter): void {
-			if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
-				throw new Error('The "workflowExecutionData" is not initialized!');
-			}
-			if (state.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
-				Vue.set(state.workflowExecutionData.data.resultData.runData, pushData.nodeName, []);
-			}
-			state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
-			state.workflowExecutionPairedItemMappings = getPairedItemsMapping(state.workflowExecutionData);
-		},
-		clearNodeExecutionData(state, nodeName: string): void {
-			if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
-				return;
-			}
+		// setWorkflowExecutionData(state, workflowResultData: IExecutionResponse | null) {
+		// 	state.workflowExecutionData = workflowResultData;
+		// 	state.workflowExecutionPairedItemMappings = getPairedItemsMapping(state.workflowExecutionData);
+		// },
+		// addNodeExecutionData(state, pushData: IPushDataNodeExecuteAfter): void {
+		// 	if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
+		// 		throw new Error('The "workflowExecutionData" is not initialized!');
+		// 	}
+		// 	if (state.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
+		// 		Vue.set(state.workflowExecutionData.data.resultData.runData, pushData.nodeName, []);
+		// 	}
+		// 	state.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
+		// 	state.workflowExecutionPairedItemMappings = getPairedItemsMapping(state.workflowExecutionData);
+		// },
+		// clearNodeExecutionData(state, nodeName: string): void {
+		// 	if (state.workflowExecutionData === null || !state.workflowExecutionData.data) {
+		// 		return;
+		// 	}
 
-			Vue.delete(state.workflowExecutionData.data.resultData.runData, nodeName);
-		},
+		// 	Vue.delete(state.workflowExecutionData.data.resultData.runData, nodeName);
+		// },
 
-		setWorkflowSettings(state, workflowSettings: IWorkflowSettings) {
-			Vue.set(state.workflow, 'settings', workflowSettings);
-		},
+		// setWorkflowSettings(state, workflowSettings: IWorkflowSettings) {
+		// 	Vue.set(state.workflow, 'settings', workflowSettings);
+		// },
 
-		setWorkflowPinData(state, pinData: IPinData) {
-			Vue.set(state.workflow, 'pinData', pinData || {});
+		// setWorkflowPinData(state, pinData: IPinData) {
+		// 	Vue.set(state.workflow, 'pinData', pinData || {});
 
-			dataPinningEventBus.$emit('pin-data', pinData || {});
-		},
+		// 	dataPinningEventBus.$emit('pin-data', pinData || {});
+		// },
 
-		setWorkflowTagIds(state, tags: string[]) {
-			Vue.set(state.workflow, 'tags', tags);
-		},
+		// setWorkflowTagIds(state, tags: string[]) {
+		// 	Vue.set(state.workflow, 'tags', tags);
+		// },
 
-		addWorkflowTagIds(state, tags: string[]) {
-			Vue.set(state.workflow, 'tags', [...new Set([...(state.workflow.tags || []), ...tags])]);
-		},
+		// addWorkflowTagIds(state, tags: string[]) {
+		// 	Vue.set(state.workflow, 'tags', [...new Set([...(state.workflow.tags || []), ...tags])]);
+		// },
 
-		removeWorkflowTagId(state, tagId: string) {
-			const tags = state.workflow.tags as string[];
-			const updated = tags.filter((id: string) => id !== tagId);
+		// removeWorkflowTagId(state, tagId: string) {
+		// 	const tags = state.workflow.tags as string[];
+		// 	const updated = tags.filter((id: string) => id !== tagId);
 
-			Vue.set(state.workflow, 'tags', updated);
-		},
+		// 	Vue.set(state.workflow, 'tags', updated);
+		// },
 
-		// Workflow
-		setWorkflow(state, workflow: IWorkflowDb) {
-			Vue.set(state, 'workflow', workflow);
+		// // Workflow
+		// setWorkflow(state, workflow: IWorkflowDb) {
+		// 	Vue.set(state, 'workflow', workflow);
 
-			if (!state.workflow.hasOwnProperty('active')) {
-				Vue.set(state.workflow, 'active', false);
-			}
-			if (!state.workflow.hasOwnProperty('connections')) {
-				Vue.set(state.workflow, 'connections', {});
-			}
-			if (!state.workflow.hasOwnProperty('createdAt')) {
-				Vue.set(state.workflow, 'createdAt', -1);
-			}
-			if (!state.workflow.hasOwnProperty('updatedAt')) {
-				Vue.set(state.workflow, 'updatedAt', -1);
-			}
-			if (!state.workflow.hasOwnProperty('id')) {
-				Vue.set(state.workflow, 'id', PLACEHOLDER_EMPTY_WORKFLOW_ID);
-			}
-			if (!state.workflow.hasOwnProperty('nodes')) {
-				Vue.set(state.workflow, 'nodes', []);
-			}
-			if (!state.workflow.hasOwnProperty('settings')) {
-				Vue.set(state.workflow, 'settings', {});
-			}
-		},
+		// 	if (!state.workflow.hasOwnProperty('active')) {
+		// 		Vue.set(state.workflow, 'active', false);
+		// 	}
+		// 	if (!state.workflow.hasOwnProperty('connections')) {
+		// 		Vue.set(state.workflow, 'connections', {});
+		// 	}
+		// 	if (!state.workflow.hasOwnProperty('createdAt')) {
+		// 		Vue.set(state.workflow, 'createdAt', -1);
+		// 	}
+		// 	if (!state.workflow.hasOwnProperty('updatedAt')) {
+		// 		Vue.set(state.workflow, 'updatedAt', -1);
+		// 	}
+		// 	if (!state.workflow.hasOwnProperty('id')) {
+		// 		Vue.set(state.workflow, 'id', PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		// 	}
+		// 	if (!state.workflow.hasOwnProperty('nodes')) {
+		// 		Vue.set(state.workflow, 'nodes', []);
+		// 	}
+		// 	if (!state.workflow.hasOwnProperty('settings')) {
+		// 		Vue.set(state.workflow, 'settings', {});
+		// 	}
+		// },
 
 		addSidebarMenuItems (state, menuItems: IMenuItem[]) {
 			const updated = state.sidebarMenuItems.concat(menuItems);
@@ -743,39 +742,39 @@ export const store = new Vuex.Store({
 		},
 	},
 	getters: {
-		workflowExecutionPairedItemMappings: (state): IRootState['workflowExecutionPairedItemMappings'] => {
-			return state.workflowExecutionPairedItemMappings;
-		},
-		executedNode: (state): string | undefined => {
-			return state.workflowExecutionData ? state.workflowExecutionData.executedNode : undefined;
-		},
+		// workflowExecutionPairedItemMappings: (state): IRootState['workflowExecutionPairedItemMappings'] => {
+		// 	return state.workflowExecutionPairedItemMappings;
+		// },
+		// executedNode: (state): string | undefined => {
+		// 	return state.workflowExecutionData ? state.workflowExecutionData.executedNode : undefined;
+		// },
 		// activeCredentialType: (state): string | null => {
 		// 	return state.activeCredentialType;
 		// },
 
-		subworkflowExecutionError: (state): Error | null => {
-			return state.subworkflowExecutionError;
-		},
+		// subworkflowExecutionError: (state): Error | null => {
+		// 	return state.subworkflowExecutionError;
+		// },
 
 		// isActionActive: (state) => (action: string): boolean => {
 		// 	return state.activeActions.includes(action);
 		// },
 
-		isNewWorkflow: (state) => {
-			return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
-		},
+		// isNewWorkflow: (state) => {
+		// 	return state.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+		// },
 
-		currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
-			return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
-		},
+		// currentWorkflowHasWebhookNode: (state: IRootState): boolean => {
+		// 	return !!state.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
+		// },
 
-		getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
-			return state.activeExecutions;
-		},
+		// getActiveExecutions: (state): IExecutionsCurrentSummaryExtended[] => {
+		// 	return state.activeExecutions;
+		// },
 
-		getParametersLastUpdated: (state): ((name: string) => number | undefined) => {
-			return (nodeName: string) => state.nodeMetadata[nodeName] && state.nodeMetadata[nodeName].parametersLastUpdatedAt;
-		},
+		// getParametersLastUpdated: (state): ((name: string) => number | undefined) => {
+		// 	return (nodeName: string) => state.nodeMetadata[nodeName] && state.nodeMetadata[nodeName].parametersLastUpdatedAt;
+		// },
 
 		getBaseUrl: (state): string => {
 			return state.baseUrl;
@@ -855,22 +854,22 @@ export const store = new Vuex.Store({
 		},
 
 		// Workflows
-		allWorkflows(state: IRootState): IWorkflowDb[] {
-			return Object.values(state.workflowsById)
-				.sort((a, b) => a.name.localeCompare(b.name));
-		},
+		// allWorkflows(state: IRootState): IWorkflowDb[] {
+		// 	return Object.values(state.workflowsById)
+		// 		.sort((a, b) => a.name.localeCompare(b.name));
+		// },
 
 		// Active Workflows
 		// getActiveWorkflows: (state): string[] => {
 		// 	return state.activeWorkflows;
 		// },
 
-		workflowTriggerNodes: (state, getters) => {
-			return state.workflow.nodes.filter(node => {
-				const nodeType = getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
-				return nodeType && nodeType.group.includes('trigger');
-			});
-		},
+		// workflowTriggerNodes: (state, getters) => {
+		// 	return state.workflow.nodes.filter(node => {
+		// 		const nodeType = getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+		// 		return nodeType && nodeType.group.includes('trigger');
+		// 	});
+		// },
 
 		// getNodeViewOffsetPosition: (state): XYPosition => {
 		// 	return state.nodeViewOffsetPosition;
@@ -902,69 +901,69 @@ export const store = new Vuex.Store({
 		// 	return false;
 		// },
 
-		isActive: (state): boolean => {
-			return state.workflow.active;
-		},
-		allConnections: (state): IConnections => {
-			return state.workflow.connections;
-		},
-		outgoingConnectionsByNodeName: (state) => (nodeName: string): INodeConnections => {
-			if (state.workflow.connections.hasOwnProperty(nodeName)) {
-				return state.workflow.connections[nodeName];
-			}
-			return {};
-		},
-		allNodes: (state): INodeUi[] => {
-			return state.workflow.nodes;
-		},
-		nodesByName: (state: IRootState): { [name: string]: INodeUi } => {
-			return state.workflow.nodes.reduce((accu: { [name: string]: INodeUi }, node) => {
-				accu[node.name] = node;
-				return accu;
-			}, {});
-		},
-		getNodeByName: (state, getters) => (nodeName: string): INodeUi | null => {
-			return getters.nodesByName[nodeName] || null;
-		},
-		getNodeById: (state, getters) => (nodeId: string): INodeUi | undefined => {
-			return state.workflow.nodes.find((node: INodeUi) => node.id === nodeId);
-		},
-		nodesIssuesExist: (state): boolean => {
-			for (const node of state.workflow.nodes) {
-				if (node.issues === undefined || Object.keys(node.issues).length === 0) {
-					continue;
-				}
-				return true;
-			}
-			return false;
-		},
+		// isActive: (state): boolean => {
+		// 	return state.workflow.active;
+		// },
+		// allConnections: (state): IConnections => {
+		// 	return state.workflow.connections;
+		// },
+		// outgoingConnectionsByNodeName: (state) => (nodeName: string): INodeConnections => {
+		// 	if (state.workflow.connections.hasOwnProperty(nodeName)) {
+		// 		return state.workflow.connections[nodeName];
+		// 	}
+		// 	return {};
+		// },
+		// allNodes: (state): INodeUi[] => {
+		// 	return state.workflow.nodes;
+		// },
+		// nodesByName: (state: IRootState): { [name: string]: INodeUi } => {
+		// 	return state.workflow.nodes.reduce((accu: { [name: string]: INodeUi }, node) => {
+		// 		accu[node.name] = node;
+		// 		return accu;
+		// 	}, {});
+		// },
+		// getNodeByName: (state, getters) => (nodeName: string): INodeUi | null => {
+		// 	return getters.nodesByName[nodeName] || null;
+		// },
+		// getNodeById: (state, getters) => (nodeId: string): INodeUi | undefined => {
+		// 	return state.workflow.nodes.find((node: INodeUi) => node.id === nodeId);
+		// },
+		// nodesIssuesExist: (state): boolean => {
+		// 	for (const node of state.workflow.nodes) {
+		// 		if (node.issues === undefined || Object.keys(node.issues).length === 0) {
+		// 			continue;
+		// 		}
+		// 		return true;
+		// 	}
+		// 	return false;
+		// },
 		/**
 		 * Pin data
 		 */
-		pinData: (state): IPinData | undefined => {
-			return state.workflow.pinData;
-		},
-		pinDataByNodeName: (state) => (nodeName: string) => {
-			if (!state.workflow.pinData || !state.workflow.pinData[nodeName]) return undefined;
+		// pinData: (state): IPinData | undefined => {
+		// 	return state.workflow.pinData;
+		// },
+		// pinDataByNodeName: (state) => (nodeName: string) => {
+		// 	if (!state.workflow.pinData || !state.workflow.pinData[nodeName]) return undefined;
 
-			return state.workflow.pinData[nodeName].map(item => item.json);
-		},
-		pinDataSize: (state, getters, rootState, rootGetters) => {
-			const activeNode = rootGetters['ndv/activeNodeName'];
-			return state.workflow.nodes
-				.reduce((acc, node) => {
-					if (typeof node.pinData !== 'undefined' && node.name !== activeNode) {
-						acc += stringSizeInBytes(node.pinData);
-					}
+		// 	return state.workflow.pinData[nodeName].map(item => item.json);
+		// },
+		// pinDataSize: (state, getters, rootState, rootGetters) => {
+		// 	const activeNode = rootGetters['ndv/activeNodeName'];
+		// 	return state.workflow.nodes
+		// 		.reduce((acc, node) => {
+		// 			if (typeof node.pinData !== 'undefined' && node.name !== activeNode) {
+		// 				acc += stringSizeInBytes(node.pinData);
+		// 			}
 
-					return acc;
-				}, 0);
-		},
+		// 			return acc;
+		// 		}, 0);
+		// },
 
-		activeNode: (state, getters, rootState, rootGetters): INodeUi | null => {
-			// kept here for FE hooks
-			return rootGetters['ndv/activeNode'];
-		},
+		// activeNode: (state, getters, rootState, rootGetters): INodeUi | null => {
+		// 	// kept here for FE hooks
+		// 	return rootGetters['ndv/activeNode'];
+		// },
 
 		/**
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
@@ -979,81 +978,81 @@ export const store = new Vuex.Store({
 				return acc;
 			}, []);
 		},
-		lastSelectedNode: (state, getters): INodeUi | null => {
-			return getters.getNodeByName(state.lastSelectedNode);
-		},
-		lastSelectedNodeOutputIndex: (state, getters): number | null => {
-			return state.lastSelectedNodeOutputIndex;
-		},
+		// lastSelectedNode: (state, getters): INodeUi | null => {
+		// 	return getters.getNodeByName(state.lastSelectedNode);
+		// },
+		// lastSelectedNodeOutputIndex: (state, getters): number | null => {
+		// 	return state.lastSelectedNodeOutputIndex;
+		// },
 
 		// Active Execution
-		executingNode: (state): string | null => {
-			return state.executingNode;
-		},
-		activeExecutionId: (state): string | null => {
-			return state.executionId;
-		},
-		executionWaitingForWebhook: (state): boolean => {
-			return state.executionWaitingForWebhook;
-		},
+		// executingNode: (state): string | null => {
+		// 	return state.executingNode;
+		// },
+		// activeExecutionId: (state): string | null => {
+		// 	return state.executionId;
+		// },
+		// executionWaitingForWebhook: (state): boolean => {
+		// 	return state.executionWaitingForWebhook;
+		// },
 
-		workflowName: (state): string => {
-			return state.workflow.name;
-		},
-		workflowId: (state): string => {
-			return state.workflow.id;
-		},
+		// workflowName: (state): string => {
+		// 	return state.workflow.name;
+		// },
+		// workflowId: (state): string => {
+		// 	return state.workflow.id;
+		// },
 
-		workflowSettings: (state): IWorkflowSettings => {
-			if (state.workflow.settings === undefined) {
-				return {};
-			}
-			return state.workflow.settings;
-		},
+		// workflowSettings: (state): IWorkflowSettings => {
+		// 	if (state.workflow.settings === undefined) {
+		// 		return {};
+		// 	}
+		// 	return state.workflow.settings;
+		// },
 
-		workflowTags: (state): string[] => {
-			return state.workflow.tags as string[];
-		},
+		// workflowTags: (state): string[] => {
+		// 	return state.workflow.tags as string[];
+		// },
 
-		// Workflow Result Data
-		getWorkflowExecution: (state): IExecutionResponse | null => {
-			return state.workflowExecutionData;
-		},
-		getWorkflowRunData: (state): IRunData | null => {
-			if (!state.workflowExecutionData || !state.workflowExecutionData.data || !state.workflowExecutionData.data.resultData) {
-				return null;
-			}
+		// // Workflow Result Data
+		// getWorkflowExecution: (state): IExecutionResponse | null => {
+		// 	return state.workflowExecutionData;
+		// },
+		// getWorkflowRunData: (state): IRunData | null => {
+		// 	if (!state.workflowExecutionData || !state.workflowExecutionData.data || !state.workflowExecutionData.data.resultData) {
+		// 		return null;
+		// 	}
 
-			return state.workflowExecutionData.data.resultData.runData;
-		},
-		getWorkflowResultDataByNodeName: (state, getters) => (nodeName: string): ITaskData[] | null => {
-			const workflowRunData = getters.getWorkflowRunData;
+		// 	return state.workflowExecutionData.data.resultData.runData;
+		// },
+		// getWorkflowResultDataByNodeName: (state, getters) => (nodeName: string): ITaskData[] | null => {
+		// 	const workflowRunData = getters.getWorkflowRunData;
 
-			if (workflowRunData === null) {
-				return null;
-			}
-			if (!workflowRunData.hasOwnProperty(nodeName)) {
-				return null;
-			}
-			return workflowRunData[nodeName];
-		},
+		// 	if (workflowRunData === null) {
+		// 		return null;
+		// 	}
+		// 	if (!workflowRunData.hasOwnProperty(nodeName)) {
+		// 		return null;
+		// 	}
+		// 	return workflowRunData[nodeName];
+		// },
 
 		sidebarMenuItems: (state): IMenuItem[] => {
 			return state.sidebarMenuItems;
 		},
 	},
-	actions: {
-		fetchAllWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<IWorkflowDb[]> => {
-			const workflows = await getWorkflows(context.rootGetters.getRestApiContext);
-			context.commit('setWorkflows', workflows);
+	// actions: {
+	// 	// fetchAllWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<IWorkflowDb[]> => {
+	// 	// 	const workflows = await getWorkflows(context.rootGetters.getRestApiContext);
+	// 	// 	context.commit('setWorkflows', workflows);
 
-			return workflows;
-		},
-		// fetchActiveWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string[]> => {
-		// 	const activeWorkflows = await getActiveWorkflows(context.rootGetters.getRestApiContext);
-		// 	context.commit('setActiveWorkflows', activeWorkflows);
+	// 	// 	return workflows;
+	// 	},
+	// 	// fetchActiveWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string[]> => {
+	// 	// 	const activeWorkflows = await getActiveWorkflows(context.rootGetters.getRestApiContext);
+	// 	// 	context.commit('setActiveWorkflows', activeWorkflows);
 
-		// 	return activeWorkflows;
-		// },
-	},
+	// 	// 	return activeWorkflows;
+	// 	// },
+	// },
 });

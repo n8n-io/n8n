@@ -16,11 +16,11 @@ export const useCommunityNodesStore = defineStore(STORES.COMMUNITY_NODES, {
 		installedPackages: {},
 	}),
 	getters: {
-		getInstalledPackages: (state: communityNodesState) => {
-			return Object.values(state.installedPackages).sort((a, b) => a.packageName.localeCompare(b.packageName));
+		getInstalledPackages() : communityPackageMap {
+			return Object.values(this.installedPackages).sort((a, b) => a.packageName.localeCompare(b.packageName));
 		},
-		getInstalledPackageByName: (state: communityNodesState) => {
-			return (name: string): PublicInstalledPackage => state.installedPackages[name];
+		getInstalledPackageByName() : PublicInstalledPackage {
+			return (name: string): PublicInstalledPackage => this.installedPackages[name];
 		},
 	},
 	actions: {

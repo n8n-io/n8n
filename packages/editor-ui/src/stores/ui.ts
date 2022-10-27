@@ -30,12 +30,10 @@ import {
 } from "@/constants";
 import {
 	curlToJSONResponse,
-	IExecutionsCurrentSummaryExtended,
 	IFakeDoorLocation,
 	IMenuItem,
 	INodeUi,
 	IOnboardingCallPrompt,
-	IPushDataExecutionFinished,
 	IUser,
 	uiState,
 	XYPosition,
@@ -44,13 +42,10 @@ import Vue from "vue";
 import { defineStore } from "pinia";
 import { useRootStore } from "./n8nRootStore";
 import { getCurlToJson } from "@/api/curlHelper";
-import { getActiveWorkflows } from "@/api/workflows";
+import { useWorkflowsStore } from "./workflows";
 
 export const useUIStore = defineStore(STORES.UI, {
 	state: (): uiState => ({
-		// TODO: Maybe move workflows and executions to workflow store
-		activeExecutions: [],
-		activeWorkflows: [],
 		activeActions: [],
 		activeCredentialType: null,
 		modals: {
@@ -162,59 +157,71 @@ export const useUIStore = defineStore(STORES.UI, {
 			stickyPosition: null,
 		},
 		stateIsDirty: false,
-		// TODO: Those two are waiting for Workflow store...
 		lastSelectedNode: null,
 		lastSelectedNodeOutputIndex: null,
 		nodeViewOffsetPosition: [0, 0],
 		nodeViewMoveInProgress: false,
 		selectedNodes: [],
 		sidebarMenuItems: [],
+		nodeViewInitialized: false,
+		addFirstStepOnLoad: false,
+		executionSidebarAutoRefresh: true,
 	}),
 	getters: {
-		getCurlCommand: (state: uiState): string|undefined => {
-			return state.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
+		getLastSelectedNode(): INodeUi | null {
+			const workflowsStore = useWorkflowsStore();
+			if (this.lastSelectedNode) {
+				return workflowsStore.getNodeByName(this.lastSelectedNode);
+			}
+			return null;
 		},
-		getHttpNodeParameters: (state: uiState): string|undefined => {
-			return state.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
+		getCurlCommand() : string|undefined {
+			return this.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
 		},
-		areExpressionsDisabled: (state: uiState): boolean => {
-			return state.currentView === VIEWS.DEMO;
+		getHttpNodeParameters() : string|undefined {
+			return this.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
 		},
-		isVersionsOpen: (state: uiState): boolean => {
-			return state.modals[VERSIONS_MODAL_KEY].open;
+		areExpressionsDisabled() : boolean {
+			return this.currentView === VIEWS.DEMO;
 		},
-		isModalOpen: (state: uiState) => {
-			return (name: string) =>  state.modals[name].open;
+		isVersionsOpen() : boolean {
+			return this.modals[VERSIONS_MODAL_KEY].open;
 		},
-		isModalActive: (state: uiState) => {
-			return (name: string) => state.modalStack.length > 0 && name === state.modalStack[0];
+		isModalOpen() {
+			return (name: string) => this.modals[name].open;
 		},
-		getModalActiveId: (state: uiState) => {
-			return (name: string) => state.modals[name].activeId;
+		isModalActive() {
+			return (name: string) => this.modalStack.length > 0 && name === this.modalStack[0];
 		},
-		getModalMode: (state: uiState) => {
-			return (name: string) => state.modals[name].mode;
+		getModalActiveId() {
+			return (name: string) => this.modals[name].activeId;
 		},
-		getModalData: (state: uiState) => {
-			return (name: string) => state.modals[name].data;
+		getModalMode() {
+			return (name: string) => this.modals[name].mode;
 		},
+		getModalData() {
+			return (name: string) => this.modals[name].data;
+		},
+		// TODO: Moved to NDV store
 		// getPanelDisplayMode: (state: uiState)  => {
 		// 	return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
 		// },
-		getFakeDoorByLocation: (state: uiState) => (location: IFakeDoorLocation) => {
-			return state.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
+		getFakeDoorByLocation() {
+			return (location: IFakeDoorLocation) => this.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
 		},
-		getFakeDoorById: (state: uiState) => (id: string) => {
-			return state.fakeDoorFeatures.find(fakeDoor => fakeDoor.id.toString() === id);
+		getFakeDoorById() {
+			return (id: string) => this.fakeDoorFeatures.find(fakeDoor => fakeDoor.id.toString() === id);
 		},
-		isNodeView: (state: uiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
+		isNodeView() : boolean {
+			return [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(this.currentView);
+		},
 		// getNDVDataIsEmpty: (state: uiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
-		isActionActive: (state: uiState) => (action: string) => {
-			return state.activeActions.includes(action);
+		isActionActive() {
+			return (action: string) => this.activeActions.includes(action);
 		},
-		getSelectedNodes: (state: uiState) => {
+		getSelectedNodes() : INodeUi[] {
 			const seen = new Set();
-			return state.selectedNodes.filter((node: INodeUi) => {
+			return this.selectedNodes.filter((node: INodeUi) => {
 				// dedupe for instances when same node is selected in different ways
 				if (!seen.has(node.id)) {
 					seen.add(node.id);
@@ -223,14 +230,16 @@ export const useUIStore = defineStore(STORES.UI, {
 				return false;
 			});
 		},
-		isNodeSelected: (state: uiState) => (nodeName: string): boolean => {
-			let index;
-			for (index in state.selectedNodes) {
-				if (state.selectedNodes[index].name === nodeName) {
-					return true;
+		isNodeSelected() {
+			return (nodeName: string): boolean => {
+				let index;
+				for (index in this.selectedNodes) {
+					if (this.selectedNodes[index].name === nodeName) {
+						return true;
+					}
 				}
-			}
-			return false;
+				return false;
+			};
 		},
 	},
 	actions: {
@@ -369,51 +378,6 @@ export const useUIStore = defineStore(STORES.UI, {
 				this.activeActions.splice(actionIndex, 1);
 			}
 		},
-		addActiveExecution(newActiveExecution: IExecutionsCurrentSummaryExtended): void {
-			// Check if the execution exists already
-			const activeExecution = this.activeExecutions.find(execution => {
-				return execution.id === newActiveExecution.id;
-			});
-
-			if (activeExecution !== undefined) {
-				// Exists already so no need to add it again
-				if (activeExecution.workflowName === undefined) {
-					activeExecution.workflowName = newActiveExecution.workflowName;
-				}
-				return;
-			}
-			this.activeExecutions.unshift(newActiveExecution);
-		},
-		finishActiveExecution(finishedActiveExecution: IPushDataExecutionFinished): void {
-			// Find the execution to set to finished
-			const activeExecution = this.activeExecutions.find(execution => {
-				return execution.id === finishedActiveExecution.executionId;
-			});
-
-			if (activeExecution === undefined) {
-				// The execution could not be found
-				return;
-			}
-
-			if (finishedActiveExecution.executionId !== undefined) {
-				Vue.set(activeExecution, 'id', finishedActiveExecution.executionId);
-			}
-			Vue.set(activeExecution, 'finished', finishedActiveExecution.data.finished);
-			Vue.set(activeExecution, 'stoppedAt', finishedActiveExecution.data.stoppedAt);
-		},
-		setWorkflowActive(workflowId: string): void {
-			this.stateIsDirty = false;
-			const index = this.activeWorkflows.indexOf(workflowId);
-			if (index !== -1) {
-				this.activeWorkflows.push(workflowId);
-			}
-		},
-		setWorkflowInactive(workflowId: string): void {
-			const index = this.activeWorkflows.indexOf(workflowId);
-			if (index !== -1) {
-				this.activeWorkflows.splice(index, 1);
-			}
-		},
 		addSelectedNode(node: INodeUi): void {
 			this.selectedNodes.push(node);
 		},
@@ -445,12 +409,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		async getCurlToJson (curlCommand: string): Promise<curlToJSONResponse> {
 			const rootStore = useRootStore();
 			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
-		},
-		async fetchActiveWorkflows (): Promise<string[]> {
-			const rootStore = useRootStore();
-			const activeWorkflows = await getActiveWorkflows(rootStore.getRestApiContext);
-			this.activeWorkflows = activeWorkflows;
-			return activeWorkflows;
 		},
 	},
 });

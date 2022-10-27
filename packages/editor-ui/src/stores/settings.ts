@@ -28,74 +28,80 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		onboardingCallPromptEnabled: false,
 	}),
 	getters: {
-		isEnterpriseFeatureEnabled: (state: ISettingsState) => (feature: EnterpriseEditionFeature): boolean => {
-			return state.settings.enterprise[feature];
+		isEnterpriseFeatureEnabled() {
+			return (feature: EnterpriseEditionFeature) : boolean => this.settings.enterprise[feature];
 		},
-		versionCli: (state: ISettingsState): string => {
-			return state.settings.versionCli;
+		versionCli(): string {
+			return this.settings.versionCli;
 		},
-		isUserManagementEnabled(state: ISettingsState): boolean {
-			return state.userManagement.enabled;
+		isUserManagementEnabled(): boolean {
+			return this.userManagement.enabled;
 		},
-		isPublicApiEnabled(state: ISettingsState): boolean {
-			return state.api.enabled;
+		isPublicApiEnabled(): boolean {
+			return this.api.enabled;
 		},
-		publicApiLatestVersion(state: ISettingsState): number {
-			return state.api.latestVersion;
+		publicApiLatestVersion(): number {
+			return this.api.latestVersion;
 		},
-		publicApiPath(state: ISettingsState): string {
-			return state.api.path;
+		publicApiPath(): string {
+			return this.api.path;
 		},
-		showSetupPage(state: ISettingsState) {
-			return state.userManagement.showSetupOnFirstLoad;
+		showSetupPage() : boolean {
+			return this.userManagement.showSetupOnFirstLoad === true;
 		},
-		isDesktopDeployment(state: ISettingsState) {
-			return state.settings.deployment?.type.startsWith('desktop_');
+		isDesktopDeployment() : boolean {
+			if (!this.settings.deployment) {
+				return false;
+			}
+			return this.settings.deployment?.type.startsWith('desktop_');
 		},
-		isCloudDeployment(state: ISettingsState) {
-			return state.settings.deployment && state.settings.deployment.type === 'cloud';
+		isCloudDeployment() : boolean {
+			if (!this.settings.deployment) {
+				return false;
+			}
+			return this.settings.deployment.type === 'cloud';
 		},
-		isSmtpSetup(state: ISettingsState) {
-			return state.userManagement.smtpSetup;
+		isSmtpSetup() : boolean {
+			return this.userManagement.smtpSetup;
 		},
-		isPersonalizationSurveyEnabled(state: ISettingsState) {
-			return (state.settings.telemetry && state.settings.telemetry.enabled) && state.settings.personalizationSurveyEnabled;
+		isPersonalizationSurveyEnabled() : boolean {
+			return (this.settings.telemetry && this.settings.telemetry.enabled) && this.settings.personalizationSurveyEnabled;
 		},
-		telemetry: (state): ITelemetrySettings => {
-			return state.settings.telemetry;
+		telemetry() : ITelemetrySettings {
+			return this.settings.telemetry;
 		},
-		logLevel: (state): ILogLevel => {
-			return state.settings.logLevel;
+		logLevel() : ILogLevel {
+			return this.settings.logLevel;
 		},
-		isTelemetryEnabled: (state) => {
-			return state.settings.telemetry && state.settings.telemetry.enabled;
+		isTelemetryEnabled() : boolean {
+			return this.settings.telemetry && this.settings.telemetry.enabled;
 		},
-		areTagsEnabled: (state) => {
-			return state.settings.workflowTagsDisabled !== undefined ? !state.settings.workflowTagsDisabled : true;
+		areTagsEnabled() : boolean {
+			return this.settings.workflowTagsDisabled !== undefined ? !this.settings.workflowTagsDisabled : true;
 		},
-		isHiringBannerEnabled: (state): boolean => {
-			return state.settings.hiringBannerEnabled;
+		isHiringBannerEnabled() : boolean {
+			return this.settings.hiringBannerEnabled;
 		},
-		isTemplatesEnabled: (state): boolean => {
-			return Boolean(state.settings.templates && state.settings.templates.enabled);
+		isTemplatesEnabled(): boolean {
+			return Boolean(this.settings.templates && this.settings.templates.enabled);
 		},
-		isTemplatesEndpointReachable: (state): boolean => {
-			return state.templatesEndpointHealthy;
+		isTemplatesEndpointReachable() : boolean {
+			return this.templatesEndpointHealthy;
 		},
-		templatesHost: (state): string  => {
-			return state.settings.templates.host;
+		templatesHost() : string {
+			return this.settings.templates.host;
 		},
-		isCommunityNodesFeatureEnabled: (state): boolean => {
-			return state.settings.communityNodesEnabled;
+		isCommunityNodesFeatureEnabled() : boolean {
+			return this.settings.communityNodesEnabled;
 		},
-		isNpmAvailable: (state): boolean => {
-			return state.settings.isNpmAvailable;
+		isNpmAvailable() : boolean {
+			return this.settings.isNpmAvailable;
 		},
-		allowedModules: (state): { builtIn?: string[]; external?: string[] } => {
-			return state.settings.allowedModules;
+		allowedModules() : { builtIn?: string[]; external?: string[] } {
+			return this.settings.allowedModules;
 		},
-		isQueueModeEnabled: (state): boolean => {
-			return state.settings.executionMode === 'queue';
+		isQueueModeEnabled(): boolean {
+			return this.settings.executionMode === 'queue';
 		},
 	},
 	actions: {

@@ -7,6 +7,7 @@ import { getMousePosition, getRelativePosition, HEADER_HEIGHT, INNER_SIDEBAR_WID
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export const mouseSelect = mixins(
 	deviceSupportHelpers,
@@ -21,7 +22,10 @@ export const mouseSelect = mixins(
 		this.createSelectBox();
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		isDemo (): boolean {
 			return this.$route.name === VIEWS.DEMO;
 		},
@@ -108,7 +112,7 @@ export const mouseSelect = mixins(
 			const selectionBox = this.getSelectionBox(event);
 
 			// Go through all nodes and check if they are selected
-			this.$store.getters.allNodes.forEach((node: INodeUi) => {
+			this.workflowsStore.allNodes.forEach((node: INodeUi) => {
 				// TODO: Currently always uses the top left corner for checking. Should probably use the center instead
 				if (node.position[0] < selectionBox.x || node.position[0] > (selectionBox.x + selectionBox.width)) {
 					return;

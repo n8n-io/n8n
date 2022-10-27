@@ -11,6 +11,7 @@ import {
 import { getStyleTokenValue } from '../helpers';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from "@/stores/workflows";
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -27,12 +28,15 @@ export const nodeBase = mixins(
 		}
 	},
 	computed: {
-		...mapStores(useUIStore),
-		data (): INodeUi {
-			return this.$store.getters.getNodeByName(this.name);
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore
+		),
+		data (): INodeUi | null {
+			return this.workflowsStore.getNodeByName(this.name);
 		},
 		nodeId (): string {
-			return this.data.id;
+			return this.data ? this.data.id as string : '';
 		},
 	},
 	props: {
@@ -299,7 +303,7 @@ export const nodeBase = mixins(
 								},
 							};
 
-							this.$store.commit('updateNodeProperties', updateInformation);
+							this.workflowsStore.updateNodeProperties(updateInformation);
 						});
 
 						this.$emit('moved', node);

@@ -41,13 +41,17 @@ import {getCredentialPermissions} from "@/permissions";
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export const nodeHelpers = mixins(
 	restApi,
 )
 	.extend({
 		computed: {
-			...mapStores(useSettingsStore),
+			...mapStores(
+				useSettingsStore,
+				useWorkflowsStore,
+			),
 			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
 		},
 		methods: {
@@ -130,7 +134,7 @@ export const nodeHelpers = mixins(
 			// Set the status on all the nodes which produced an error so that it can be
 			// displayed in the node-view
 			hasNodeExecutionIssues (node: INodeUi): boolean {
-				const workflowResultData: IRunData = this.$store.getters.getWorkflowRunData;
+				const workflowResultData: IRunData = this.workflowsStore.getWorkflowRunData;
 
 				if (workflowResultData === null || !workflowResultData.hasOwnProperty(node.name)) {
 					return false;

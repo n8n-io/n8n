@@ -411,9 +411,10 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 };
 
 export enum STORES {
-	ROOT = 'root',
 	COMMUNITY_NODES = 'communityNodes',
-	UI = 'ui',
+	ROOT = 'root',
 	SETTINGS = 'settings',
+	UI = 'ui',
 	USERS = 'users',
+	WORKFLOWS = 'workflows',
 }

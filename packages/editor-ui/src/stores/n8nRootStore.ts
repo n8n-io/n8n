@@ -1,4 +1,3 @@
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
 import { IRestApiContext, rootStatePinia } from '@/Interface';
 import { defineStore } from 'pinia';
 
@@ -9,9 +8,6 @@ export const useRootStore = defineStore('root', {
 		defaultLocale: 'en',
 		endpointWebhook: 'webhook',
 		endpointWebhookTest: 'webhook-test',
-		executionId: null,
-		executingNode: '',
-		executionWaitingForWebhook: false,
 		pushConnectionActive: true,
 		saveDataErrorExecution: 'all',
 		saveDataSuccessExecution: 'all',
@@ -26,7 +22,6 @@ export const useRootStore = defineStore('root', {
 		urlBaseWebhook: 'http://localhost:5678/',
 		isNpmAvailable: false,
 		instanceId: '',
-		nodeMetadata: {},
 	}),
 	getters: {
 		getParametersLastUpdated: (state: rootStatePinia): ((name: string) => number | undefined) => {

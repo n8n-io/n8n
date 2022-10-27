@@ -37,7 +37,7 @@ export default mixins(
 			return {
 				activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
 				workflowToReturnTo: '',
-				dirtyState: this.$store.getters.getStateIsDirty,
+				dirtyState: false,
 			};
 		},
 		computed: {
@@ -58,19 +58,20 @@ export default mixins(
 				return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
 			},
 			workflowName (): string {
-				return this.$store.getters.workflowName;
+				return this.workflowsStore.workflowName;
 			},
 			currentWorkflow (): string {
-				return this.$route.params.name || this.$store.getters.workflowId;
+				return this.$route.params.name || this.workflowsStore.workflowId;
 			},
 			onWorkflowPage(): boolean {
 				return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 			},
 			activeExecution(): IExecutionsSummary {
-				return this.$store.getters['workflows/getActiveWorkflowExecution'];
+				return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
 			},
 		},
 		mounted() {
+			this.dirtyState = this.uiStore.stateIsDirty;
 			this.syncTabsWithRoute(this.$route);
 			// Initialize the push connection
 			this.pushConnect();
@@ -108,13 +109,13 @@ export default mixins(
 						} else {
 							if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
 								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-								this.$store.commit('setStateDirty', this.dirtyState);
+								this.uiStore.stateIsDirty = this.dirtyState;
 							}
 						}
 						this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 						break;
 					case MAIN_HEADER_TABS.EXECUTIONS:
-						this.dirtyState = this.$store.getters.getStateIsDirty;
+						this.dirtyState = this.uiStore.stateIsDirty;
 						this.workflowToReturnTo = this.currentWorkflow;
 						const routeWorkflowId = this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
 						if (this.activeExecution) {

@@ -1,3 +1,4 @@
+import { useWorkflowsStore } from '@/stores/workflows';
 import Vue from 'vue';
 import { Module } from 'vuex';
 import {
@@ -49,10 +50,12 @@ const module: Module<NDVState, IRootState> = {
 	getters: {
 		activeNodeName: (state: NDVState) => state.activeNodeName,
 		activeNode: (state, getters, rootState, rootGetters): INodeUi | null => {
-			return rootGetters.getNodeByName(state.activeNodeName);
+			const workflowsStore = useWorkflowsStore();
+			return workflowsStore.getNodeByName(state.activeNodeName || '');
 		},
 		ndvInputData: (state: NDVState, getters, rootState: IRootState, rootGetters) => {
-			const executionData = rootGetters.getWorkflowExecution as IExecutionResponse | null;
+			const workflowsStore = useWorkflowsStore();
+			const executionData = workflowsStore.getWorkflowExecution;
 			const inputNodeName: string | undefined = state.input.nodeName;
 			const inputRunIndex: number = state.input.run ?? 0;
 			const inputBranchIndex: number = state.input.branch?? 0;

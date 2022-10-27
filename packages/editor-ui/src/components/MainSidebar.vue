@@ -78,7 +78,6 @@ import {
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
-	WORKFLOW_OPEN_MODAL_KEY,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
@@ -88,6 +87,8 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(
 	genericHelpers,
@@ -109,15 +110,17 @@ export default mixins(
 		data () {
 			return {
 				// @ts-ignore
-				basePath: this.$store.getters.getBaseUrl,
+				basePath: '',
 				fullyExpanded: false,
 			};
 		},
 		computed: {
 			...mapStores(
+				useRootStore,
 				useSettingsStore,
 				useUIStore,
 				useUsersStore,
+				useWorkflowsStore,
 			),
 			...mapGetters('versions', [
 				'hasVersionUpdates',
@@ -134,7 +137,7 @@ export default mixins(
 				return this.settingsStore.isUserManagementEnabled && this.usersStore.canUserAccessSidebarUserInfo && this.usersStore.currentUser !== null;
 			},
 			workflowExecution (): IExecutionResponse | null {
-				return this.$store.getters.getWorkflowExecution;
+				return this.workflowsStore.getWorkflowExecution;
 			},
 			userMenuItems (): object[] {
 				return [
@@ -266,13 +269,14 @@ export default mixins(
 			},
 		},
 		async mounted() {
+			this.basePath = this.rootStore.baseUrl;
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
 			if (window.innerWidth < 900 || this.isNodeView) {
-				this.$store.commit('ui/collapseSidebarMenu');
+				this.uiStore.sidebarMenuCollapsed = true;
 			} else {
-				this.$store.commit('ui/expandSidebarMenu');
+				this.uiStore.sidebarMenuCollapsed = false;
 			}
 			await Vue.nextTick();
 			this.fullyExpanded = !this.isCollapsed;
@@ -285,7 +289,7 @@ export default mixins(
 		},
 		methods: {
 			trackHelpItemClick (itemType: string) {
-				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.workflowsStore.workflowId });
 			},
 			async onUserActionToggle(action: string) {
 				switch (action) {
@@ -372,7 +376,7 @@ export default mixins(
 				}
 			},
 			async createNewWorkflow (): Promise<void> {
-				const result = this.$store.getters.getStateIsDirty;
+				const result = this.uiStore.stateIsDirty;
 				if(result) {
 					const confirmModal = await this.confirmModal(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
@@ -395,11 +399,11 @@ export default mixins(
 							type: 'success',
 						});
 					} else if (confirmModal === MODAL_CANCEL) {
-						this.$store.commit('setStateDirty', false);
+						this.uiStore.stateIsDirty = false;
 						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 							this.$root.$emit('newWorkflow');
 						} else {
-							this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
+							this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 						}
 						this.$showMessage({
@@ -411,7 +415,7 @@ export default mixins(
 					}
 				} else {
 					if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
-						this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
+						this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					}
 					this.$showMessage({
