@@ -48,7 +48,7 @@ export async function searchTables(
 	this: ILoadOptionsFunctions,
 	query?: string,
 ): Promise<INodeListSearchResult> {
-	const credentials = await this.getCredentials('tiDB');
+	const credentials = await this.getCredentials('tiDBApi');
 	const connection = await createConnection(credentials);
 	const sql = `
 	SELECT table_name FROM information_schema.tables

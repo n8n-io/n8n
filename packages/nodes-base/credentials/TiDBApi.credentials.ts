@@ -1,7 +1,7 @@
 import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
-export class TiDB implements ICredentialType {
-	name = 'tiDB';
+export class TiDBApi implements ICredentialType {
+	name = 'tiDBApi';
 	displayName = 'TiDB';
 	documentationUrl = 'tiDB';
 	properties: INodeProperties[] = [

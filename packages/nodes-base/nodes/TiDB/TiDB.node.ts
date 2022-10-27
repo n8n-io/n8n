@@ -30,7 +30,7 @@ export class TiDB implements INodeType {
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'tiDB',
+				name: 'tiDBApi',
 				required: true,
 				testedBy: 'tidbConnectionTest',
 			},
@@ -275,7 +275,7 @@ export class TiDB implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = await this.getCredentials('tiDB');
+		const credentials = await this.getCredentials('tiDBApi');
 		const connection = await createConnection(credentials);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
