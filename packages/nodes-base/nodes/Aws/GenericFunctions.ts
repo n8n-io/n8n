@@ -31,7 +31,11 @@ export async function awsApiRequest(
 		region: credentials?.region as string,
 	} as IHttpRequestOptions;
 
-	return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+	try {
+		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error, { parseXml: true });
+	}
 }
 
 export async function awsApiRequestREST(

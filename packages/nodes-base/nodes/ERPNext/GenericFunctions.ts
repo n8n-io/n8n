@@ -50,6 +50,7 @@ export async function erpNextApiRequest(
 				message: 'Please ensure the subdomain is correct.',
 			});
 		}
+		throw error;
 	}
 }
 
