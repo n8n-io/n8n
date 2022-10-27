@@ -314,7 +314,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-	body.dark-mode-beta {
+	body.theme-dark-beta {
 		@include theme;
 	}
 }
