@@ -628,6 +628,14 @@ export function getNodeParameters(
 						nodeValues[nodeProperties.name] !== undefined
 							? nodeValues[nodeProperties.name]
 							: nodeProperties.default;
+				} else if (
+					nodeProperties.type === 'resourceLocator' &&
+					typeof nodeProperties.default === 'object'
+				) {
+					nodeParameters[nodeProperties.name] =
+						nodeValues[nodeProperties.name] !== undefined
+							? nodeValues[nodeProperties.name]
+							: { __rl: true, ...nodeProperties.default };
 				} else {
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] || nodeProperties.default;
