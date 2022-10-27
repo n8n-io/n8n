@@ -3,7 +3,7 @@ import { INodeUi, XYPosition } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
-import { getMousePosition, getRelativePosition, HEADER_HEIGHT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/views/canvasHelpers';
+import { getMousePosition, getRelativePosition, HEADER_HEIGHT, INNER_SIDEBAR_WIDTH, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/views/canvasHelpers';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -54,6 +54,7 @@ export const mouseSelect = mixins(
 			const [x, y] = getMousePosition(event);
 			const sidebarOffset = this.isDemo ? 0 : this.uiStore.sidebarMenuCollapsed ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
 			const headerOffset = this.isDemo ? 0 : HEADER_HEIGHT;
+			const sidebarOffset = this.isDemo ? 0 : this.$store.getters['ui/sidebarMenuCollapsed'] ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
 			// @ts-ignore
 			return getRelativePosition(x - sidebarOffset, y - headerOffset, this.nodeViewScale, this.uiStore.nodeViewOffsetPosition);
 		},

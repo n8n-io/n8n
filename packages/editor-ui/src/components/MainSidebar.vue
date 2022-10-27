@@ -78,6 +78,8 @@ import {
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
+	WORKFLOW_OPEN_MODAL_KEY,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
@@ -194,7 +196,7 @@ export default mixins(
 					{
 						id: 'executions',
 						icon: 'tasks',
-						label: this.$locale.baseText('mainSidebar.executions'),
+						label: this.$locale.baseText('generic.executions'),
 						position: 'top',
 					},
 					{
@@ -267,7 +269,11 @@ export default mixins(
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
-			this.checkWidthAndAdjustSidebar(window.innerWidth);
+			if (window.innerWidth < 900 || this.isNodeView) {
+				this.$store.commit('ui/collapseSidebarMenu');
+			} else {
+				this.$store.commit('ui/expandSidebarMenu');
+			}
 			await Vue.nextTick();
 			this.fullyExpanded = !this.isCollapsed;
 		},
@@ -393,6 +399,7 @@ export default mixins(
 						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 							this.$root.$emit('newWorkflow');
 						} else {
+							this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 						}
 						this.$showMessage({
@@ -404,6 +411,7 @@ export default mixins(
 					}
 				} else {
 					if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
+						this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
 						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					}
 					this.$showMessage({
@@ -437,10 +445,11 @@ export default mixins(
 				this.checkWidthAndAdjustSidebar(browserWidth);
 			},
 			checkWidthAndAdjustSidebar (width: number) {
-				if (width < 900 || this.uiStore.isNodeView) {
+				if (width < 900) {
 					this.uiStore.sidebarMenuCollapsed = true;
-				} else {
-					this.uiStore.sidebarMenuCollapsed = false;
+					Vue.nextTick(() => {
+						this.fullyExpanded = !this.isCollapsed;
+					});
 				}
 			},
 		},

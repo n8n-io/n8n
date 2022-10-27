@@ -3,6 +3,7 @@
 		<n8n-button
 			type="secondary"
 			:label="$locale.baseText('importParameter.label')"
+			:disabled="isReadOnly"
 			size="mini"
 			@click="onImportCurlClicked"
 		/>
@@ -20,6 +21,11 @@ export default mixins(showMessage).extend({
 	name: 'import-parameter',
 	computed: {
 		...mapStores(useUIStore),
+	props: {
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	methods: {
 		onImportCurlClicked() {

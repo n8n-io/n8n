@@ -63,10 +63,10 @@
 				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')" v-if="isDuplicatable">
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')" v-if="!isReadOnly">
+				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')">
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div v-touch:tap="executeNode" class="option" :title="$locale.baseText('node.executeNode')" v-if="!isReadOnly && !workflowRunning">
+				<div v-touch:tap="executeNode" class="option" :title="$locale.baseText('node.executeNode')" v-if="!workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
@@ -377,9 +377,11 @@ export default mixins(
 	},
 	mounted() {
 		this.setSubtitle();
-		setTimeout(() => {
-			this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
-		}, 0);
+		if (this.nodeRunData) {
+			setTimeout(() => {
+				this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
+			}, 0);
+		}
 	},
 	data () {
 		return {

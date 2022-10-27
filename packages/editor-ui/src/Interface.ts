@@ -1,5 +1,16 @@
 import { IMenuItem } from 'n8n-design-system';
 import {
+	jsPlumbInstance,
+	DragOptions,
+	DropOptions,
+	ElementGroupRef,
+	Endpoint,
+	EndpointOptions,
+	EndpointRectangle,
+	EndpointRectangleOptions,
+	EndpointSpec,
+} from "jsplumb";
+import {
 	GenericValue,
 	IConnections,
 	ICredentialsDecrypted,
@@ -105,24 +116,40 @@ declare module 'jsplumb' {
 }
 
 // EndpointOptions from jsplumb seems incomplete and wrong so we define an own one
-export interface IEndpointOptions {
-	anchor?: any; // tslint:disable-line:no-any
-	createEndpoint?: boolean;
-	dragAllowedWhenFull?: boolean;
-	dropOptions?: any; // tslint:disable-line:no-any
-	dragProxy?: any; // tslint:disable-line:no-any
-	endpoint?: string;
-	endpointStyle?: object;
-	endpointHoverStyle?: object;
-	isSource?: boolean;
-	isTarget?: boolean;
-	maxConnections?: number;
-	overlays?: any; // tslint:disable-line:no-any
-	parameters?: any; // tslint:disable-line:no-any
-	uuid?: string;
-	enabled?: boolean;
-	cssClass?: string;
-}
+export type IEndpointOptions = Omit<EndpointOptions, 'endpoint' | 'dragProxy'> & {
+	endpointStyle: EndpointStyle
+	endpointHoverStyle: EndpointStyle
+	endpoint?: EndpointSpec | string
+	dragAllowedWhenFull?: boolean
+	dropOptions?: DropOptions & {
+		tolerance: string
+	};
+	dragProxy?: string | string[] | EndpointSpec | [ EndpointRectangle,  EndpointRectangleOptions & { strokeWidth: number } ]
+};
+
+export type EndpointStyle = {
+	width?: number
+	height?: number
+	fill?: string
+	stroke?: string
+	outlineStroke?:string
+	lineWidth?: number
+	hover?: boolean
+	showOutputLabel?: boolean
+	size?: string
+	hoverMessage?: string
+};
+
+export type IDragOptions = DragOptions & {
+	grid: [number, number]
+	filter: string
+};
+
+export type IJsPlumbInstance = Omit<jsPlumbInstance, 'addEndpoint' | 'draggable'> & {
+	clearDragSelection: () => void
+	addEndpoint(el: ElementGroupRef, params?: IEndpointOptions, referenceParams?: IEndpointOptions): Endpoint | Endpoint[]
+	draggable(el: {}, options?: IDragOptions): IJsPlumbInstance
+};
 
 export interface IUpdateInformation {
 	name: string;
@@ -694,12 +721,15 @@ export interface ITemplatesCategory {
 	name: string;
 }
 
+export type WorkflowCallerPolicyDefaultOption = 'any' | 'none' | 'workflowsFromAList';
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
 	saveDataErrorExecution: string;
 	saveDataSuccessExecution: string;
 	saveManualExecutions: boolean;
+	workflowCallerPolicyDefaultOption: WorkflowCallerPolicyDefaultOption;
 	timezone: string;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
@@ -743,6 +773,7 @@ export interface IN8nUISettings {
 	deployment?: {
 		type: string;
 	};
+	isWorkflowSharingEnabled: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
@@ -752,6 +783,8 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	saveManualExecutions?: boolean;
 	timezone?: string;
 	executionTimeout?: number;
+	callerIds?: string;
+	callerPolicy?: WorkflowCallerPolicyDefaultOption;
 }
 
 export interface ITimeoutHMS {
@@ -960,6 +993,7 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
+	foreignCredentials?: ICredentialMap;
 }
 
 export interface ITagsState {
@@ -1033,6 +1067,9 @@ export interface IUiState {
 	isPageLoading: boolean;
 	currentView: string;
 	fakeDoorFeatures: IFakeDoor[];
+	nodeViewInitialized: boolean;
+	addFirstStepOnLoad: boolean;
+	executionSidebarAutoRefresh: boolean;
 }
 
 export interface uiState {
@@ -1158,7 +1195,12 @@ export interface IUsersState {
 	users: {[userId: string]: IUser};
 }
 
-export interface IWorkflowsMap {
+export interface IWorkflowsState {
+	currentWorkflowExecutions: IExecutionsSummary[];
+	activeWorkflowExecution: IExecutionsSummary | null;
+	finishedExecutionsCount: number;
+}
+	export interface IWorkflowsMap {
 	[name: string]: IWorkflowDb;
 }
 
@@ -1213,6 +1255,12 @@ export interface ITab {
 	icon?: string;
 	align?: 'right';
 	tooltip?: string;
+}
+
+export interface ITabBarItem {
+	value: string;
+	label: string;
+	disabled?: boolean;
 }
 
 export interface IResourceLocatorReqParams {
