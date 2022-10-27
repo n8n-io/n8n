@@ -19,13 +19,14 @@ import { showMessage } from './mixins/showMessage';
 
 export default mixins(showMessage).extend({
 	name: 'import-parameter',
-	computed: {
-		...mapStores(useUIStore),
 	props: {
 		isReadOnly: {
 			type: Boolean,
 			default: false,
 		},
+	},
+	computed: {
+		...mapStores(useUIStore),
 	},
 	methods: {
 		onImportCurlClicked() {
