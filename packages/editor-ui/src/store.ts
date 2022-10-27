@@ -1,5 +1,6 @@
 import Vue from 'vue';
-import Vuex, {ActionContext} from 'vuex';
+import Vuex, {ActionContext, Commit} from 'vuex';
+import { findLast } from 'lodash';
 
 import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -578,6 +579,13 @@ export const store = new Vuex.Store({
 				Vue.set(state.nodeMetadata, node.name, {});
 			}
 			Vue.set(state.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
+		},
+		setLastNodeParameters(state, updateInformation: IUpdateInformation) {
+			const latestNode = findLast(state.workflow.nodes, (node) => node.type === updateInformation.key) as INodeUi;
+
+			if(latestNode) {
+				(this.commit as Commit)("setNodeParameters", {...updateInformation, name: latestNode.name});
+			}
 		},
 
 		// Node-View

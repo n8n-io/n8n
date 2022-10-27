@@ -16,7 +16,7 @@
 			:placeholder="`Search ${nodeNameTitle} Actions...`"
 		/>
 		<main :class="$style.content">
-			<template v-for="(action, index) in actions">
+			<template v-for="(action, index) in orderedActions">
 				<div v-if="action.type === 'category'" :key="`${action.key} + ${index}`" :class="$style.category">
 					<header :class="$style.categoryHeader" @click="toggleCategory(action.key)" v-if="actions.length > 1">
 						<p v-text="action.title" :class="$style.categoryTitle" />
@@ -31,9 +31,9 @@
 							:key="`${action.key}_${item.key}`"
 							:class="$style.categoryAction"
 						>
-							<button :class="$style.categoryActionButton" @click="onActionClick(item, action)">
+							<button :class="$style.categoryActionButton" @click="onActionClick(item)">
 								<p v-text="item.title" />
-								<trigger-icon v-if="isTrigger" :class="$style.triggerIcon" />
+								<trigger-icon v-if="isTriggerAction(item)" :class="$style.triggerIcon" />
 							</button>
 						</li>
 					</ul>
@@ -45,10 +45,8 @@
 
 <script setup lang="ts">
 import { reactive, computed, toRefs, PropType } from 'vue';
-import { IDataObject, INodeTypeDescription, INodeAction } from 'n8n-workflow';
-import { startCase } from 'lodash';
+import { IDataObject, INodeTypeDescription, INodeAction, INode } from 'n8n-workflow';
 
-import { store } from '@/store';
 import NodeIcon from '@/components/NodeIcon.vue';
 import TriggerIcon from '@/components/TriggerIcon.vue';
 import SearchBar from './SearchBar.vue';
@@ -61,7 +59,7 @@ const props = defineProps({
 		required: true,
 	},
 	actions: {
-		type: Array,
+		type: Array as PropType<INodeAction[]>,
 		required: true,
 	},
 });
@@ -73,7 +71,15 @@ const state = reactive({
 
 const nodeNameTitle = computed(() => props.nodeType?.displayName?.replace(' Trigger', ''));
 
-const isTrigger = computed(() => props.nodeType?.displayName.toLowerCase().includes('trigger'));
+const orderedActions = computed(() => {
+	const recommendedTitle = 'Recommended';
+	return [
+		...props.actions.filter(action => action.title === recommendedTitle),
+		...props.actions.filter(action => action.title !== recommendedTitle),
+	];
+});
+
+const isTriggerAction = (action: INodeAction) => action.nodeName?.toLowerCase().includes('trigger');
 
 function toggleCategory(category: string) {
 	if (state.subtractedCategories.includes(category)) {
@@ -94,7 +100,7 @@ function onActionClick(actionItem: INodeAction) {
 
 
 	emit('actionSelected', {
-		name: props.nodeType.defaults.name,
+		key: actionItem.nodeName,
 		value: { ...actionItem.values , ...displayConditions},
 	});
 }
@@ -133,7 +139,7 @@ const { subtractedCategories, search } = toRefs(state);
 }
 .header {
 	border-bottom: $node-creator-border-color solid 1px;
-	height: 54px;
+	height: 50px;
 	background-color: $node-creator-subcategory-panel-header-bacground-color;
 
 	font-size: 18px;
@@ -161,6 +167,7 @@ const { subtractedCategories, search } = toRefs(state);
 	align-items: center;
 	position: relative;
 	cursor: pointer;
+	padding: 0;
 
 	&:hover:before {
 		content: "";
@@ -222,6 +229,15 @@ const { subtractedCategories, search } = toRefs(state);
 .headerContent {
 	display: flex;
 	align-items: center;
+	font-weight: 600;
+	font-size: 16px;
+	line-height: 22px;
+	/* identical to box height */
+
+
+	/* Typography/Primary heading */
+
+	color: #555555;
 }
 .triggerIcon {
 	border: none;

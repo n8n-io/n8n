@@ -33,6 +33,7 @@
 					:transitionsEnabled="true"
 					@selected="selected"
 					:simple-node-style="isAppEventSubcategory"
+					:allow-actions="isAppEventSubcategory"
 				/>
 			</div>
 			<div
@@ -44,6 +45,7 @@
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					@selected="selected"
 					:simple-node-style="isAppEventSubcategory"
+					:allow-actions="isAppEventSubcategory"
 				/>
 			</div>
 			<no-results v-else :showRequest="filteredAllNodeTypes.length === 0" :show-icon="filteredAllNodeTypes.length === 0">

@@ -903,7 +903,7 @@ class App {
 
 					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
 						const nodeInfo = withActions
-							? nodeTypes.extendNodeTypeWithActions({ ...nodeType.description })
+							? nodeTypes.extendWithActions({ ...nodeType.description })
 							: { ...nodeType.description };
 
 						if (req.query.includeProperties !== 'true') {

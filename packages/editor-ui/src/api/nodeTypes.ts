@@ -32,7 +32,7 @@ export async function getNodesInformation(
 	context: IRestApiContext,
 	nodeInfos: INodeTypeNameVersion[],
 ): Promise<INodeTypeDescription[]> {
-	return makeRestApiRequest(context, 'POST', '/node-types', { nodeInfos });
+	return makeRestApiRequest(context, 'POST', '/node-types', { nodeInfos, withActions: true });
 }
 
 export async function getNodeParameterOptions(

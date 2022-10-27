@@ -1318,6 +1318,8 @@ export interface INodeAction {
 	displayOptions?: IDisplayOptions;
 	values?: IDataObject;
 	items?: INodeAction[];
+	type?: 'category' | 'action';
+	nodeName?: string;
 }
 
 export interface INodeTypeDescription extends INodeTypeBaseDescription {

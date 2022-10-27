@@ -15,6 +15,7 @@
 			:data-key="item.key"
 		>
 			<creator-item
+				:allow-actions="allowActions"
 				:item="item"
 				:active="activeIndex === index && !disabled"
 				:clickable="!disabled"
@@ -23,7 +24,7 @@
 					index === elements.length - 1 || elements[index + 1].type !== 'node'
 				"
 				@click="$emit('selected', item)"
-				@nodeTypeSelected="$emit('selected', item)"
+				@nodeTypeSelected="onNodeTypeSelected($event, item)"
 				@dragstart="emit('dragstart', item, $event)"
 				@dragend="emit('dragend', item, $event)"
 			/>
@@ -32,7 +33,7 @@
 </template>
 
 <script lang="ts">
-import { INodeCreateElement } from '@/Interface';
+import { INodeCreateElement, INodeItemProps } from '@/Interface';
 
 import Vue, { PropType } from 'vue';
 import CreatorItem from './CreatorItem.vue';
@@ -58,8 +59,17 @@ export default Vue.extend({
 		transitionsEnabled: {
 			type: Boolean,
 		},
+		allowActions: {
+			type: Boolean,
+		},
 	},
 	methods: {
+		onNodeTypeSelected(nodeType: string, item: INodeCreateElement) {
+			if(nodeType) {
+				(item.properties as INodeItemProps).nodeType.name = nodeType;
+			}
+			this.$emit('selected', item);
+		},
 		emit(eventName: string, element: INodeCreateElement, event: Event) {
 			if (this.$props.disabled) {
 				return;

@@ -21,6 +21,7 @@
 			v-else-if="item.type === 'node'"
 			:nodeType="item.properties.nodeType"
 			:simpleStyle="simpleNodeStyle"
+			:allow-actions="allowActions"
 			@dragstart="$listeners.dragstart"
 			@dragend="$listeners.dragend"
 			@nodeTypeSelected="$listeners.nodeTypeSelected"
@@ -56,6 +57,9 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		lastNode: {
+			type: Boolean,
+		},
+		allowActions: {
 			type: Boolean,
 		},
 	},

@@ -16,9 +16,6 @@
 						})
 					}}
 				</span>
-				<span v-if="isTrigger" :class="$style['trigger-icon']">
-					<trigger-icon />
-				</span>
 				<n8n-tooltip v-if="isCommunityNode" placement="top" >
 					<div
 						:class="$style['communityNodeIcon']"
@@ -52,13 +49,13 @@
 		</div>
 		<node-actions
 			:class="$style.actions"
-			v-if="nodeType.actions && showActions"
+			v-if="allowActions && nodeType.actions && showActions"
 			:nodeType="nodeType"
 			:actions="nodeType.actions"
 			@actionSelected="onActionSelected"
 			@back="showActions = false"
 		/>
-		<div :class="$style.actionIcon" v-if="hasActions">
+		<div :class="$style.actionIcon" v-if="allowActions && hasActions">
 			<font-awesome-icon :class="$style.actionArrow" icon="arrow-right" />
 		</div>
 	</div>
@@ -67,21 +64,17 @@
 <script lang="ts">
 
 import Vue, { PropType } from 'vue';
-import { INodeTypeDescription, IDataObject, INodeProperties } from 'n8n-workflow';
-import { INodeTypeDescriptionWithActions } from '@/Interface';
-import { startCase, find } from 'lodash';
+import { INodeTypeDescription, IDataObject } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';
-import TriggerIcon from '@/components/TriggerIcon.vue';
 import NodeActions from './NodeActions.vue';
 
 import { isCommunityPackageName } from '@/components/helpers';
 
 Vue.component('node-icon', NodeIcon);
-Vue.component('trigger-icon', TriggerIcon);
 
 export default Vue.extend({
 	name: 'NodeItem',
@@ -90,7 +83,7 @@ export default Vue.extend({
 	},
 	props: {
 		nodeType: {
-			type: Object as PropType<INodeTypeDescriptionWithActions>,
+			type: Object as PropType<INodeTypeDescription>,
 		},
 		active: {
 			type: Boolean,
@@ -99,6 +92,10 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		hideDescription: {
+			type: Boolean,
+			default: false,
+		},
+		allowActions: {
 			type: Boolean,
 			default: false,
 		},
@@ -136,14 +133,18 @@ export default Vue.extend({
 	},
 	methods: {
 		onClick() {
-			console.log('On click!');
-			if(this.hasActions) this.showActions = true;
+			if(this.hasActions && this.allowActions) this.showActions = true;
 			else this.$emit('nodeTypeSelected', this.nodeType.name);
 		},
 		onActionSelected(action: IDataObject) {
-			this.$emit('nodeTypeSelected', this.nodeType.name);
+			this.$emit('nodeTypeSelected', action.key);
 			// We need some time for the node to be created before setting parameters
-			setTimeout(() => this.$store.commit('setNodeParameters', action), 0);
+			const unsubscribe = this.$store.subscribe((mutation, state) => {
+				if(mutation.type === 'addNode') {
+					this.$store.commit('setLastNodeParameters', action);
+					unsubscribe();
+				}
+			});
 		},
 		onDragStart(event: DragEvent): void {
 			/**

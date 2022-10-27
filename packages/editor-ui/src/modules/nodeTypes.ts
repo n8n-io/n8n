@@ -78,15 +78,15 @@ const module: Module<INodeTypesState, IRootState> = {
 				if (newNodeVersions.length === 0) {
 					const singleVersion = { [DEFAULT_NODETYPE_VERSION]: newNodeType };
 
-					acc[newNodeType.name] = singleVersion;
+					acc[newNodeType.name] = Object.assign(acc[newNodeType.name], singleVersion);
 					return acc;
 				}
 
 				for (const version of newNodeVersions) {
 					if (acc[newNodeType.name]) {
-						acc[newNodeType.name][version] = newNodeType;
+						acc[newNodeType.name][version] = Object.assign(acc[newNodeType.name][version] ?? {}, newNodeType);
 					} else {
-						acc[newNodeType.name] = { [version]: newNodeType };
+						acc[newNodeType.name] = Object.assign(acc[newNodeType.name] ?? {}, { [version]: newNodeType });
 					}
 				}
 
