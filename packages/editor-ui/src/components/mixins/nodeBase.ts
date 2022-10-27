@@ -9,6 +9,7 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getStyleTokenValue } from '../helpers';
+import { readonly } from 'vue';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -16,7 +17,12 @@ export const nodeBase = mixins(
 	mounted () {
 		// Initialize the node
 		if (this.data !== null) {
-			this.__addNode(this.data);
+			try {
+				this.__addNode(this.data);
+			} catch(error) {
+				// This breaks when new nodes are loaded into store but workflow tab is not currently active
+				// Shouldn't affect anything
+			}
 		}
 	},
 	computed: {

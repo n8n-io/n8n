@@ -1,0 +1,47 @@
+name: Test Postgres and MySQL schemas
+
+on:
+  schedule:
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    timeout-minutes: 30
+
+    env:
+      DB_MYSQLDB_PASSWORD: password
+      DB_POSTGRESDB_PASSWORD: password
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'npm'
+
+      - name: Install npm and dependencies
+        run: npm install -g npm@latest && npm install
+
+      - name: Start MySQL & Postgres
+        uses: isbang/compose-action@v1.3.2
+        with:
+          compose-file: ./.github/docker-compose.yml
+
+      - name: Build Core & Workflow
+        run: npm run -w packages/workflow -w packages/core build
+
+      - name: Test MySQL
+        working-directory: packages/cli
+        run: npm run test:mysql
+
+      - name: Test Postgres
+        working-directory: packages/cli
+        run: npm run test:postgres
+
+      - name: Test Postgres (alternate schema)
+        working-directory: packages/cli
+        run: npm run test:postgres:alt-schema

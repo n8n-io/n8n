@@ -1,9 +1,10 @@
-import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER, NON_ACTIVATABLE_TRIGGER_NODE_TYPES } from '@/constants';
+import { CORE_NODES_CATEGORY, MAIN_HEADER_TABS, MAPPING_PARAMS, TEMPLATES_NODES_FILTER, VIEWS, NON_ACTIVATABLE_TRIGGER_NODE_TYPES } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import { isResourceLocatorValue } from '@/typeGuards';
 import dateformat from 'dateformat';
 import {IDataObject, INodeProperties, INodeTypeDescription, NodeParameterValueType,INodeExecutionData, jsonParse} from 'n8n-workflow';
 import { isJsonKeyObject } from "@/utils";
+import { Route } from 'vue-router';
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
@@ -174,4 +175,22 @@ export const clearJsonKey = (userInput: string | object) => {
 	if (!Array.isArray(parsedUserInput)) return parsedUserInput;
 
 	return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
+};
+
+export const getNodeViewTab = (route: Route): string|null => {
+		const routeMeta = route.meta;
+		if (routeMeta && routeMeta.nodeView === true) {
+			return MAIN_HEADER_TABS.WORKFLOW;
+		} else {
+			const executionTabRoutes = [
+				VIEWS.EXECUTION.toString(),
+				VIEWS.EXECUTION_PREVIEW.toString(),
+				VIEWS.EXECUTION_HOME.toString(),
+			];
+
+			if (executionTabRoutes.includes(route.name || '')) {
+				return MAIN_HEADER_TABS.EXECUTIONS;
+			}
+		}
+		return null;
 };
