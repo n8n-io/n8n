@@ -303,6 +303,21 @@
 	--color-json-line: #bfcbd9;
 	--color-json-highlight: #dcdfea;
 
+	--color-code-background: #222020;
+	--color-code-foreground: #f8f8f2;
+	--color-code-caret: #f8f8f0;
+	--color-code-selection: #312b25;
+	--color-code-gutterBackground: #2d2a26;
+	--color-code-gutterForeground: #818080;
+	--color-code-lineHighlight: #312b25;
+	--color-code-tags-comment: #6272a4;
+	--color-code-tags-string: #f1fa8c;
+	--color-code-tags-primitive: #bd93f9;
+	--color-code-tags-keyword: #ff79c6;
+	--color-code-tags-operator: #ff79c6;
+	--color-code-tags-variable: #ea6465;
+	--color-code-tags-definition: #368da5;
+
   // Generated Color Shades from 50 to 950
   // Not yet used in design system
   @each $color in ('neutral', 'success', 'warning', 'danger') {
