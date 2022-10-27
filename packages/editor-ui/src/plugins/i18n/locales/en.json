@@ -237,7 +237,7 @@
 	"codeNodeEditor.linter.eachItem.emptyReturn": "Code doesn't return an object. Please return an object representing the output item",
 	"codeNodeEditor.linter.eachItem.legacyItemAccess": "`item` is not defined. Did you mean `$input.item.json`?",
 	"codeNodeEditor.linter.eachItem.returnArray": "Code doesn't return an object. Array found instead. Please return an object representing the output item",
-	"codeNodeEditor.linter.eachItem.unavailableMethod": "is only available in the 'Run Once for All Items' mode.",
+	"codeNodeEditor.linter.eachItem.unavailableMethod": "Method `$input.{method}()` is only available in the 'Run Once for All Items' mode.",
 	"codeNodeEditor.linter.bothModes.syntaxError": "Syntax error",
 	"collectionParameter.choose": "Choose...",
 	"collectionParameter.noProperties": "No properties",
