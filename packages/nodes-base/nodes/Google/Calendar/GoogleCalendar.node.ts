@@ -13,7 +13,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { encodeURIComponentOnce, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { encodeURIComponentOnce, getCalendars, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { eventFields, eventOperations } from './EventDescription';
 
@@ -72,35 +72,7 @@ export class GoogleCalendar implements INodeType {
 
 	methods = {
 		listSearch: {
-			async getCalendars(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-			): Promise<INodeListSearchResult> {
-				const calendars = await googleApiRequestAllItems.call(
-					this,
-					'items',
-					'GET',
-					'/calendar/v3/users/me/calendarList',
-				) as Array<{ id: string, summary: string }>;
-
-				const results: INodeListSearchItems[] = calendars
-					.map(c => ({
-						name: c.summary,
-						value: c.id,
-					}))
-					.filter(
-						(c) =>
-							!filter ||
-							c.name.toLowerCase().includes(filter.toLowerCase()) ||
-							c.value?.toString() === filter,
-					)
-					.sort((a, b) => {
-						if (a.name.toLowerCase() < b.name.toLowerCase()) return -1;
-						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
-						return 0;
-					});
-				return { results };
-			},
+			getCalendars,
 		},
 		loadOptions: {
 			// Get all the calendars to display them to user so that he can
