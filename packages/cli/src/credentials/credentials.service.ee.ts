@@ -93,8 +93,4 @@ export class EECredentialsService extends CredentialsService {
 
 		return credential;
 	}
-
-	static async getCredentials(filter: FindManyOptions<ICredentialsDb>): Promise<ICredentialsDb[]> {
-		return Db.collections.Credentials.find(filter);
-	}
 }

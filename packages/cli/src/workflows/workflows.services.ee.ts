@@ -74,7 +74,7 @@ export class EEWorkflowsService extends WorkflowsService {
 	}
 
 	static async addOwnerSharingsAndCredentials(
-		workflow: WorkflowEntity & WorkflowWithSharingsAndCredentials,
+		workflow: WorkflowWithSharingsAndCredentials,
 		currentUser: User,
 	): Promise<WorkflowWithSharingsAndCredentials> {
 		workflow.ownedBy = null;
@@ -92,7 +92,6 @@ export class EEWorkflowsService extends WorkflowsService {
 			workflow.sharedWith?.push({ id, email, firstName, lastName });
 		});
 
-		// @ts-ignore
 		delete workflow.shared;
 
 		const userCredentials = await EECredentials.getAll(currentUser);
@@ -102,39 +101,40 @@ export class EEWorkflowsService extends WorkflowsService {
 				return;
 			}
 			Object.keys(node.credentials).forEach((credentialType) => {
-				const credentialId = parseInt(node.credentials?.[credentialType].id ?? '', 10);
+				const credential = node.credentials?.[credentialType];
+				if (!credential?.id) {
+					return;
+				}
+				const credentialId = parseInt(credential.id, 10);
 				credentialIdsUsedByWorkflow.add(credentialId);
 			});
 		});
-		const allCredentials = await EECredentials.getCredentials({
+		const workflowCredentials = await EECredentials.getMany({
 			where: {
 				id: In(Array.from(credentialIdsUsedByWorkflow)),
 			},
 		});
 
-		return EEWorkflowsService.addCredentialsToWorkflow(workflow, allCredentials, userCredentials);
+		return EEWorkflowsService.addCredentialsToWorkflow(
+			workflow,
+			workflowCredentials,
+			userCredentials,
+		);
 	}
 
 	static addCredentialsToWorkflow(
 		workflow: WorkflowWithSharingsAndCredentials,
-		allCredentialsUsedByWorkflow: ICredentialsDb[],
+		workflowCredentials: ICredentialsDb[],
 		userCredentials: ICredentialsDb[],
 	): WorkflowWithSharingsAndCredentials {
 		const userCredentialIds = userCredentials.map((credential) => credential.id.toString());
-		allCredentialsUsedByWorkflow.forEach((credential) => {
-			if (userCredentialIds.includes(credential.id.toString())) {
-				workflow.usedCredentials?.push({
-					id: credential.id.toString(),
-					name: credential.name,
-					userHasAccess: true,
-				});
-			} else {
-				workflow.usedCredentials?.push({
-					id: credential.id.toString(),
-					name: credential.name,
-					userHasAccess: false,
-				});
-			}
+		workflowCredentials.forEach((credential) => {
+			const credentialId = credential.id.toString();
+			workflow.usedCredentials?.push({
+				id: credential.id.toString(),
+				name: credential.name,
+				currentUserHasAccess: userCredentialIds.includes(credentialId),
+			});
 		});
 
 		return workflow;

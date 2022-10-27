@@ -226,7 +226,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id.toString(),
 				name: savedCredential.name,
-				userHasAccess: true,
+				currentUserHasAccess: true,
 			},
 		]);
 
@@ -251,7 +251,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id.toString(),
 				name: savedCredential.name,
-				userHasAccess: true, // owner has access to any cred
+				currentUserHasAccess: true, // owner has access to any cred
 			},
 		]);
 
@@ -276,7 +276,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id.toString(),
 				name: savedCredential.name,
-				userHasAccess: true, // one user has access
+				currentUserHasAccess: true, // one user has access
 			},
 		]);
 		expect(responseMember1.body.data.sharedWith).toHaveLength(1);
@@ -287,7 +287,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id.toString(),
 				name: savedCredential.name,
-				userHasAccess: false, // the other one doesn't
+				currentUserHasAccess: false, // the other one doesn't
 			},
 		]);
 		expect(responseMember2.body.data.sharedWith).toHaveLength(1);
@@ -297,7 +297,7 @@ describe('GET /workflows/:id', () => {
 		const member1 = await testDb.createUser({ globalRole: globalMemberRole });
 		const member2 = await testDb.createUser({ globalRole: globalMemberRole });
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
-		// Both users have access to the credential (none is admin)
+		// Both users have access to the credential (none is owner)
 		await testDb.shareCredentialWithUsers(savedCredential, [member2]);
 
 		const workflowPayload = makeWorkflow({
@@ -313,7 +313,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id.toString(),
 				name: savedCredential.name,
-				userHasAccess: true,
+				currentUserHasAccess: true,
 			},
 		]);
 		expect(responseMember1.body.data.sharedWith).toHaveLength(1);
@@ -324,7 +324,7 @@ describe('GET /workflows/:id', () => {
 			{
 				id: savedCredential.id.toString(),
 				name: savedCredential.name,
-				userHasAccess: true,
+				currentUserHasAccess: true,
 			},
 		]);
 		expect(responseMember2.body.data.sharedWith).toHaveLength(1);
