@@ -1,3 +1,38 @@
+# [0.200.0](https://github.com/n8n-io/n8n/compare/n8n@0.199.0...n8n@0.200.0) (2022-10-27)
+
+
+### Bug Fixes
+
+* **API:** Validate excecutions and workflow filter parameters ([#4424](https://github.com/n8n-io/n8n/issues/4424)) ([dd3c596](https://github.com/n8n-io/n8n/commit/dd3c59677bbdcb49332975fd84d9e88852f76c8d))
+* **core:** Amend typing for `jsonParse()` options ([#4423](https://github.com/n8n-io/n8n/issues/4423)) ([1732324](https://github.com/n8n-io/n8n/commit/1732324965cce2030d0198f7b7e7091edfad6727))
+* **core:** Fix `predefinedCredentialType` in node graph item ([#4379](https://github.com/n8n-io/n8n/issues/4379)) ([77233f2](https://github.com/n8n-io/n8n/commit/77233f23701fa456a7d0170dc0b8118afa71a8c5))
+* **core:** Fix canvas node execution skipping parent nodes ([#4438](https://github.com/n8n-io/n8n/issues/4438)) ([3a9684d](https://github.com/n8n-io/n8n/commit/3a9684df9f26464b3e1f9924871304f136de61fd))
+* **core:** Fix single-node execution failing in `main` mode ([#4421](https://github.com/n8n-io/n8n/issues/4421)) ([5745027](https://github.com/n8n-io/n8n/commit/5745027cee9d3cb92dfc9d9025a0645f50185752))
+* **core:** Set JWT authentication token sameSite policy to lax ([#4425](https://github.com/n8n-io/n8n/issues/4425)) ([1f4eaeb](https://github.com/n8n-io/n8n/commit/1f4eaeb3ae33ad88a4b07e664e2f8f8f1235bc6f))
+* **core:** Update to imports in helpers  ([91bd3c6](https://github.com/n8n-io/n8n/commit/91bd3c6567401dedb0216a07ab31310e451ff1e7))
+* **editor:** Curb item method linting in single-item mode in `CodeNodeEditor` linter ([#4455](https://github.com/n8n-io/n8n/issues/4455)) ([b226aed](https://github.com/n8n-io/n8n/commit/b226aed9bb60981e1a69b799f3b57ba56b7bbaa1))
+* **editor:** Stop rendering expressions as html ([#4420](https://github.com/n8n-io/n8n/issues/4420)) ([779b0d5](https://github.com/n8n-io/n8n/commit/779b0d58f741b9e8eea978f1651701e586d722c4))
+* **Email Trigger (IMAP) Node:** Backport V2 mark-seen-after-processing to V1 ([#4435](https://github.com/n8n-io/n8n/issues/4435)) ([b296fb0](https://github.com/n8n-io/n8n/commit/b296fb06f3222ad56c9d8267f8b8283097fde113))
+* **Email Trigger (IMAP) Node:** Improve connection handling and credentials ([#4393](https://github.com/n8n-io/n8n/issues/4393)) ([1a37f00](https://github.com/n8n-io/n8n/commit/1a37f0003f5d7029bc36ba91d51235e96e8719cc))
+* **HTTP Request Node:** Fix sending previously selected credentials ([#4457](https://github.com/n8n-io/n8n/issues/4457)) ([44ad249](https://github.com/n8n-io/n8n/commit/44ad249827d47e0cc9584edcb2e2bcf7b088f026))
+* **InvoiceNinja Node:** Added support for v5 ([2f4649c](https://github.com/n8n-io/n8n/commit/2f4649cdf44e15b41b40879f27ffe39406a53b1b))
+* **TheHive Node:** Fix node issues ([ca9eca9](https://github.com/n8n-io/n8n/commit/ca9eca9ae9e168886502649458ccdb67d1261c09))
+
+
+### Features
+
+* **Airtable Trigger Node:** Use resource locator component for base and table parameters ([#4391](https://github.com/n8n-io/n8n/issues/4391)) ([227212c](https://github.com/n8n-io/n8n/commit/227212c928535f302879e9be6b585faa41c95b80))
+* **core, editor:** Introduce workflow caller policy ([#4368](https://github.com/n8n-io/n8n/issues/4368)) ([e8935de](https://github.com/n8n-io/n8n/commit/e8935de3b2dbbf25df139c59fbdd298528397eca))
+* **core:** Block workflow update on interim change ([#4397](https://github.com/n8n-io/n8n/issues/4397)) ([cddd012](https://github.com/n8n-io/n8n/commit/cddd012a2fa834ca6b3d85296caadcf3b8cc7bb5))
+* **editor:** Add readonly state for nodes ([#4299](https://github.com/n8n-io/n8n/issues/4299)) ([408bd96](https://github.com/n8n-io/n8n/commit/408bd968152ad8bbafda7037f6eb8f5550d04c77))
+* **editor:** Implement executions preview via the new executions tab in node view ([#4311](https://github.com/n8n-io/n8n/issues/4311)) ([d833345](https://github.com/n8n-io/n8n/commit/d833345092baf3c12828a5a7680c9fb8555d2c57))
+* **editor:** Improve nodes panel search ([#4399](https://github.com/n8n-io/n8n/issues/4399)) ([f6733cf](https://github.com/n8n-io/n8n/commit/f6733cff9d88d9b3298f6afc2c59c0dea59c6464))
+* **editor:** Setup dark-mode for the code-editor, with automatic switching ([#4453](https://github.com/n8n-io/n8n/issues/4453)) ([f29f812](https://github.com/n8n-io/n8n/commit/f29f812b28a7e5f8d08c7a968a6cccd1d5891daa))
+* **HTTP Request Node:** Add option for raw json header & query ([#4408](https://github.com/n8n-io/n8n/issues/4408)) ([8f25da5](https://github.com/n8n-io/n8n/commit/8f25da52b1c2d228018df8186985a2b067bd2123))
+* **Write Binary File Node:** Add option to append to a file ([#4386](https://github.com/n8n-io/n8n/issues/4386)) ([4b13b33](https://github.com/n8n-io/n8n/commit/4b13b3398dce5338f46c80867d6e4c8c685f6c22))
+
+
+
 # [0.199.0](https://github.com/n8n-io/n8n/compare/n8n@0.198.2...n8n@0.199.0) (2022-10-21)
 
 
