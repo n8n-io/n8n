@@ -1,29 +1,8 @@
-import { INodeProperties } from 'n8n-workflow';
+import { IExecuteFunctions } from 'n8n-core';
+import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
-export const folderMessageOperations: INodeProperties[] = [
-	{
-		displayName: 'Operation',
-		name: 'operation',
-		type: 'options',
-		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['folderMessage'],
-			},
-		},
-		options: [
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Get many messages in a folder',
-				action: 'Get many folder messages',
-			},
-		],
-		default: 'create',
-	},
-];
-
-export const folderMessageFields: INodeProperties[] = [
+export const description: INodeProperties[] = [
 	{
 		displayName: 'Folder ID',
 		name: 'folderId',
@@ -99,3 +78,39 @@ export const folderMessageFields: INodeProperties[] = [
 		],
 	},
 ];
+
+export async function execute(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
+	let responseData;
+	const qs: IDataObject = {};
+
+	const folderId = this.getNodeParameter('folderId', index) as string;
+	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
+	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+
+	if (additionalFields.fields) {
+		qs['$select'] = additionalFields.fields;
+	}
+
+	if (additionalFields.filter) {
+		qs['$filter'] = additionalFields.filter;
+	}
+
+	const endpoint = `/mailFolders/${folderId}/messages`;
+	if (returnAll) {
+		responseData = await microsoftApiRequestAllItems.call(this, 'value', 'GET', endpoint, qs);
+	} else {
+		qs['$top'] = this.getNodeParameter('limit', index) as number;
+		responseData = await microsoftApiRequest.call(this, 'GET', endpoint, undefined, qs);
+		responseData = responseData.value;
+	}
+
+	const executionData = this.helpers.constructExecutionMetaData(
+		this.helpers.returnJsonArray(responseData),
+		{ itemData: { item: index } },
+	);
+
+	return executionData;
+}

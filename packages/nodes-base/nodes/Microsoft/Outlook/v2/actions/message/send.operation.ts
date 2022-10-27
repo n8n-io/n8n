@@ -16,8 +16,8 @@ export const description: INodeProperties[] = [
 		description: 'The subject of the message',
 		displayOptions: {
 			show: {
-				resource: ['draft'],
-				operation: ['create'],
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 		type: 'string',
@@ -30,10 +30,24 @@ export const description: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: ['draft'],
-				operation: ['create'],
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
+		default: '',
+	},
+	{
+		displayName: 'Recipients',
+		name: 'toRecipients',
+		description: 'Email addresses of recipients. Multiple can be added separated by comma.',
+		type: 'string',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['send'],
+			},
+		},
+		required: true,
 		default: '',
 	},
 	{
@@ -44,8 +58,8 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['draft'],
-				operation: ['create'],
+				resource: ['message'],
+				operation: ['send'],
 			},
 		},
 		options: [
@@ -199,6 +213,13 @@ export const description: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
+			{
+				displayName: 'Save To Sent Items',
+				name: 'saveToSentItems',
+				description: 'Whether to save the message in Sent Items',
+				type: 'boolean',
+				default: true,
+			},
 		],
 	},
 ];
@@ -211,21 +232,26 @@ export async function execute(
 	let responseData;
 
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const toRecipients = this.getNodeParameter('toRecipients', index) as string;
 	const subject = this.getNodeParameter('subject', index) as string;
 	const bodyContent = this.getNodeParameter('bodyContent', index, '') as string;
 
 	additionalFields.subject = subject;
-
 	additionalFields.bodyContent = bodyContent || ' ';
+	additionalFields.toRecipients = toRecipients;
+
+	const saveToSentItems =
+		additionalFields.saveToSentItems === undefined ? true : additionalFields.saveToSentItems;
+	delete additionalFields.saveToSentItems;
 
 	// Create message object from optional fields
-	const body: IDataObject = createMessage(additionalFields);
+	const message: IDataObject = createMessage(additionalFields);
 
 	if (additionalFields.attachments) {
 		const attachments = (additionalFields.attachments as IDataObject).attachments as IDataObject[];
 
 		// // Handle attachments
-		body['attachments'] = attachments.map((attachment) => {
+		message['attachments'] = attachments.map((attachment) => {
 			const binaryPropertyName = attachment.binaryPropertyName as string;
 
 			if (items[index].binary === undefined) {
@@ -251,10 +277,15 @@ export async function execute(
 		});
 	}
 
-	responseData = await microsoftApiRequest.call(this, 'POST', `/messages`, body, {});
+	const body: IDataObject = {
+		message,
+		saveToSentItems,
+	};
+
+	responseData = await microsoftApiRequest.call(this, 'POST', `/sendMail`, body, {});
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
+		this.helpers.returnJsonArray({ success: true }),
 		{ itemData: { item: index } },
 	);
 

@@ -4,14 +4,14 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
+		displayName: 'Folder ID',
+		name: 'folderId',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['draft'],
+				resource: ['folder'],
 				operation: ['delete'],
 			},
 		},
@@ -24,11 +24,11 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	let responseData;
 
-	const messageId = this.getNodeParameter('messageId', index) as string;
-	responseData = await microsoftApiRequest.call(this, 'DELETE', `/messages/${messageId}`);
+	const folderId = this.getNodeParameter('folderId', index) as string;
+	responseData = await microsoftApiRequest.call(this, 'DELETE', `/mailFolders/${folderId}`);
 
 	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray({ success: true }),
+		this.helpers.returnJsonArray(responseData),
 		{ itemData: { item: index } },
 	);
 

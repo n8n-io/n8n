@@ -11,30 +11,54 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Subject',
-		name: 'subject',
-		description: 'The subject of the message',
+		displayName: 'Reply Type',
+		name: 'replyType',
+		type: 'options',
+		options: [
+			{
+				name: 'Reply',
+				value: 'reply',
+			},
+			{
+				name: 'Reply All',
+				value: 'replyAll',
+			},
+		],
+		default: 'reply',
+		required: true,
 		displayOptions: {
 			show: {
-				resource: ['draft'],
-				operation: ['create'],
+				resource: ['message'],
+				operation: ['reply'],
+			},
+		},
+	},
+	{
+		displayName: 'Comment',
+		name: 'comment',
+		description: 'A comment to include. Can be an empty string.',
+		displayOptions: {
+			show: {
+				resource: ['message'],
+				operation: ['reply'],
 			},
 		},
 		type: 'string',
 		default: '',
 	},
 	{
-		displayName: 'Body Content',
-		name: 'bodyContent',
-		description: 'Message body content',
-		type: 'string',
+		displayName: 'Send',
+		name: 'send',
+		description:
+			'Whether to send the reply message directly. If not set, it will be saved as draft.',
 		displayOptions: {
 			show: {
-				resource: ['draft'],
-				operation: ['create'],
+				resource: ['message'],
+				operation: ['reply'],
 			},
 		},
-		default: '',
+		type: 'boolean',
+		default: true,
 	},
 	{
 		displayName: 'Additional Fields',
@@ -44,8 +68,9 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['draft'],
-				operation: ['create'],
+				resource: ['message'],
+				operation: ['reply'],
+				replyType: ['reply'],
 			},
 		},
 		options: [
@@ -83,6 +108,13 @@ export const description: INodeProperties[] = [
 				default: '',
 			},
 			{
+				displayName: 'Body Content',
+				name: 'bodyContent',
+				description: 'Message body content',
+				type: 'string',
+				default: '',
+			},
+			{
 				displayName: 'Body Content Type',
 				name: 'bodyContentType',
 				description: 'Message body content type',
@@ -98,17 +130,6 @@ export const description: INodeProperties[] = [
 					},
 				],
 				default: 'html',
-			},
-			{
-				displayName: 'Category Names or IDs',
-				name: 'categories',
-				type: 'multiOptions',
-				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsMethod: 'getCategories',
-				},
-				default: [],
 			},
 			{
 				displayName: 'CC Recipients',
@@ -199,6 +220,13 @@ export const description: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
+			{
+				displayName: 'Subject',
+				name: 'subject',
+				description: 'The subject of the message',
+				type: 'string',
+				default: '',
+			},
 		],
 	},
 ];
@@ -210,22 +238,37 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	let responseData;
 
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
-	const subject = this.getNodeParameter('subject', index) as string;
-	const bodyContent = this.getNodeParameter('bodyContent', index, '') as string;
+	const messageId = this.getNodeParameter('messageId', index) as string;
+	const replyType = this.getNodeParameter('replyType', index) as string;
+	const comment = this.getNodeParameter('comment', index) as string;
+	const send = this.getNodeParameter('send', index, false) as boolean;
+	const additionalFields = this.getNodeParameter('additionalFields', index, {}) as IDataObject;
 
-	additionalFields.subject = subject;
+	const body: IDataObject = {};
 
-	additionalFields.bodyContent = bodyContent || ' ';
+	let action = 'createReply';
+	if (replyType === 'replyAll') {
+		body.comment = comment;
+		action = 'createReplyAll';
+	} else {
+		body.comment = comment;
+		body.message = {};
+		Object.assign(body.message, createMessage(additionalFields));
+		//@ts-ignore
+		delete body.message.attachments;
+	}
 
-	// Create message object from optional fields
-	const body: IDataObject = createMessage(additionalFields);
+	responseData = await microsoftApiRequest.call(
+		this,
+		'POST',
+		`/messages/${messageId}/${action}`,
+		body,
+	);
 
 	if (additionalFields.attachments) {
 		const attachments = (additionalFields.attachments as IDataObject).attachments as IDataObject[];
-
 		// // Handle attachments
-		body['attachments'] = attachments.map((attachment) => {
+		const data = attachments.map((attachment) => {
 			const binaryPropertyName = attachment.binaryPropertyName as string;
 
 			if (items[index].binary === undefined) {
@@ -249,9 +292,21 @@ export async function execute(
 				contentBytes: binaryData.data,
 			};
 		});
+
+		for (const attachment of data) {
+			await microsoftApiRequest.call(
+				this,
+				'POST',
+				`/messages/${responseData.id}/attachments`,
+				attachment,
+				{},
+			);
+		}
 	}
 
-	responseData = await microsoftApiRequest.call(this, 'POST', `/messages`, body, {});
+	if (send === true) {
+		await microsoftApiRequest.call(this, 'POST', `/messages/${responseData.id}/send`);
+	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData),

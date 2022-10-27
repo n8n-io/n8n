@@ -1,16 +1,10 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
 import { INodeTypeDescription } from 'n8n-workflow';
 import * as draft from './draft/Draft.resource';
-import { messageFields, messageOperations } from './message/MessageDescription';
-import {
-	messageAttachmentFields,
-	messageAttachmentOperations,
-} from './messageAttachment/MessageAttachmentDescription';
-import { folderFields, folderOperations } from './folder/FolderDescription';
-import {
-	folderMessageFields,
-	folderMessageOperations,
-} from './folderMessage/FolderMessageDecription';
+import * as folder from './folder/Folder.resource';
+import * as folderMessage from './folderMessage/FolderMessage.resource';
+import * as message from './message/Message.resource';
+import * as messageAttachment from './messageAttachment/MessageAttachment.resource';
 
 export const versionDescription: INodeTypeDescription = {
 	displayName: 'Microsoft Outlook',
@@ -62,17 +56,9 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 		...draft.description,
-		// Message
-		...messageOperations,
-		...messageFields,
-		// Message Attachment
-		...messageAttachmentOperations,
-		...messageAttachmentFields,
-		// Folder
-		...folderOperations,
-		...folderFields,
-		// Folder Message
-		...folderMessageOperations,
-		...folderMessageFields,
+		...folder.description,
+		...folderMessage.description,
+		...message.description,
+		...messageAttachment.description,
 	],
 };

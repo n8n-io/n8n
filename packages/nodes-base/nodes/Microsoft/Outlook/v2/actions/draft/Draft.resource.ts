@@ -5,7 +5,7 @@ import * as get from './get.operation';
 import * as send from './send.operation';
 import * as update from './update.operation';
 
-export { create, del, get, send, update };
+export { create, del as delete, get, send, update };
 
 export const description: INodeProperties[] = [
 	{

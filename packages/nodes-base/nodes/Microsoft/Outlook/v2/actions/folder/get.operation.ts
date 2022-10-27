@@ -1,18 +1,17 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { downloadAttachments, microsoftApiRequest } from '../../transport';
-import { additionalFieldsOptions } from '../commonDescrriptions';
+import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
+		displayName: 'Folder ID',
+		name: 'folderId',
 		type: 'string',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: ['draft'],
+				resource: ['folder'],
 				operation: ['get'],
 			},
 		},
@@ -25,11 +24,27 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['draft'],
+				resource: ['folder'],
 				operation: ['get'],
 			},
 		},
-		options: [...additionalFieldsOptions],
+		options: [
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '',
+				description: 'Fields the response will contain. Multiple can be added separated by ,.',
+			},
+			{
+				displayName: 'Filter',
+				name: 'filter',
+				type: 'string',
+				default: '',
+				description:
+					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
+			},
+		],
 	},
 ];
 
@@ -40,7 +55,7 @@ export async function execute(
 	let responseData;
 	const qs: IDataObject = {};
 
-	const messageId = this.getNodeParameter('messageId', index) as string;
+	const folderId = this.getNodeParameter('folderId', index) as string;
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 
 	if (additionalFields.fields) {
@@ -50,20 +65,7 @@ export async function execute(
 	if (additionalFields.filter) {
 		qs['$filter'] = additionalFields.filter;
 	}
-
-	responseData = await microsoftApiRequest.call(
-		this,
-		'GET',
-		`/messages/${messageId}`,
-		undefined,
-		qs,
-	);
-
-	if (additionalFields.dataPropertyAttachmentsPrefixName) {
-		const prefix = additionalFields.dataPropertyAttachmentsPrefixName as string;
-		const data = await downloadAttachments.call(this, responseData, prefix);
-		return data;
-	}
+	responseData = await microsoftApiRequest.call(this, 'GET', `/mailFolders/${folderId}`, {}, qs);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData),

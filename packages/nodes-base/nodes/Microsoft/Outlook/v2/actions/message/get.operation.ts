@@ -5,19 +5,6 @@ import { additionalFieldsOptions } from '../commonDescrriptions';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['get'],
-			},
-		},
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -25,7 +12,7 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['draft'],
+				resource: ['message'],
 				operation: ['get'],
 			},
 		},

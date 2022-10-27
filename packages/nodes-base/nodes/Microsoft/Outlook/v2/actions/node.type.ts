@@ -2,7 +2,7 @@ import { AllEntities, Entity } from 'n8n-workflow';
 
 type MicrosoftOutlookMap = {
 	draft: 'create' | 'delete' | 'get' | 'send' | 'update';
-	folder: 'create' | 'delete' | 'get' | 'getChildren' | 'getMessages';
+	folder: 'create' | 'delete' | 'get' | 'getChildren' | 'getAll' | 'update';
 	folderMessage: 'getAll';
 	message: 'delete' | 'get' | 'getAll' | 'getMime' | 'move' | 'update' | 'send' | 'reply';
 	messageAttachment: 'add' | 'download' | 'getAll' | 'get';

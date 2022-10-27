@@ -6,19 +6,6 @@ import { updateFieldsOptions } from '../commonDescrriptions';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['update'],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -26,7 +13,7 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['draft'],
+				resource: ['message'],
 				operation: ['update'],
 			},
 		},

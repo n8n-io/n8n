@@ -4,15 +4,16 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
+		displayName: 'Folder ID',
+		name: 'folderId',
+		description: 'Target Folder ID',
 		type: 'string',
-		required: true,
 		default: '',
+		required: true,
 		displayOptions: {
 			show: {
-				resource: ['draft'],
-				operation: ['delete'],
+				resource: ['message'],
+				operation: ['move'],
 			},
 		},
 	},
@@ -25,7 +26,12 @@ export async function execute(
 	let responseData;
 
 	const messageId = this.getNodeParameter('messageId', index) as string;
-	responseData = await microsoftApiRequest.call(this, 'DELETE', `/messages/${messageId}`);
+	const destinationId = this.getNodeParameter('folderId', index) as string;
+	const body: IDataObject = {
+		destinationId,
+	};
+
+	responseData = await microsoftApiRequest.call(this, 'POST', `/messages/${messageId}/move`, body);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),
