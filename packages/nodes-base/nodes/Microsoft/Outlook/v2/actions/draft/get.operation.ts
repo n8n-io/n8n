@@ -36,7 +36,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	let responseData: IDataObject | IDataObject[] = [];
+	const responseData: IDataObject | IDataObject[] = [];
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData),
