@@ -292,6 +292,10 @@ export function displayParameter(
 				value = get(nodeValues, propertyName);
 			}
 
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
+			}
+
 			values.length = 0;
 			if (!Array.isArray(value)) {
 				values.push(value);
@@ -323,6 +327,10 @@ export function displayParameter(
 			} else {
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
+			}
+
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
 			}
 
 			values.length = 0;
