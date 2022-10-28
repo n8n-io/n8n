@@ -6,7 +6,6 @@ import {
 	microsoftApiRequest,
 	microsoftApiRequestAllItems,
 } from '../../transport';
-import { additionalFieldsOptions } from '../commonDescrriptions';
 
 export const description: INodeProperties[] = [
 	{
@@ -66,7 +65,7 @@ export const description: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Simple',
+				name: 'Simplified',
 				value: 'simple',
 			},
 			{
@@ -74,7 +73,7 @@ export const description: INodeProperties[] = [
 				value: 'raw',
 			},
 			{
-				name: 'Specify Output Fields',
+				name: 'Select Included Fields',
 				value: 'fields',
 			},
 		],
@@ -109,93 +108,148 @@ export const description: INodeProperties[] = [
 	},
 	{
 		displayName: 'Filters',
-		name: 'filters',
-		type: 'collection',
-		placeholder: 'Add Filter',
+		name: 'filtersUI',
+		type: 'fixedCollection',
+		placeholder: 'Add Filters',
 		default: {},
-		displayOptions: {
-			show: {
-				resource: ['message'],
-				operation: ['getAll'],
-			},
-		},
 		options: [
 			{
-				displayName: 'Include Spam and Trash',
-				name: 'includeSpamTrash',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to include messages from SPAM and TRASH in the results',
-			},
-			{
-				displayName: 'Label Names or IDs',
-				name: 'labelIds',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getLabels',
-				},
-				default: [],
-				description:
-					'Only return messages with labels that match all of the specified label IDs. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Search',
-				name: 'q',
-				type: 'string',
-				default: '',
-				placeholder: 'has:attachment',
-				hint: 'Use the same format as in the Gmail search box. <a href="https://support.google.com/mail/answer/7190?hl=en">More info</a>.',
-				description: 'Only return messages matching the specified query',
-			},
-			{
-				displayName: 'Read Status',
-				name: 'readStatus',
-				type: 'options',
-				default: 'unread',
-				hint: 'Filter messages by whether they have been read or not',
-				options: [
+				displayName: 'Values',
+				name: 'values',
+				values: [
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Unread and read messages',
-						value: 'both',
+						displayName: 'Filter By',
+						name: 'filterBy',
+						type: 'options',
+						options: [
+							{
+								name: 'Filters',
+								value: 'filters',
+							},
+							{
+								name: 'Search',
+								value: 'search',
+							},
+						],
+						default: 'search',
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Unread messages only',
-						value: 'unread',
+						displayName: 'Search',
+						name: 'search',
+						type: 'string',
+						default: '',
+						placeholder: 'pizza',
+						description: 'Only return messages that contains search term',
+						displayOptions: {
+							show: {
+								filterBy: ['search'],
+							},
+						},
 					},
 					{
-						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
-						name: 'Read messages only',
-						value: 'read',
+						displayName: 'Filters',
+						name: 'filters',
+						type: 'collection',
+						placeholder: 'Add Filter',
+						default: {},
+						displayOptions: {
+							show: {
+								filterBy: ['filters'],
+							},
+						},
+						options: [
+							{
+								displayName: 'Custom Filter',
+								name: 'custom',
+								type: 'string',
+								default: '',
+								placeholder: 'isRead eq false',
+								hint: 'Information about the syntax can be found <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">here</a>',
+							},
+							{
+								displayName: 'Message Has Attachments',
+								name: 'hasAttachments',
+								type: 'boolean',
+								default: false,
+							},
+							// {
+							// 	displayName: 'Include Spam and Trash',
+							// 	name: 'includeSpamTrash',
+							// 	type: 'boolean',
+							// 	default: false,
+							// 	description: 'Whether to include messages from SPAM and TRASH in the results',
+							// },
+							{
+								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
+								displayName: 'Folder',
+								name: 'folder',
+								type: 'options',
+								typeOptions: {
+									loadOptionsMethod: 'getFolders',
+								},
+								default: [],
+								description:
+									'Only return messages from selected folder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Read Status',
+								name: 'readStatus',
+								type: 'options',
+								default: 'unread',
+								hint: 'Filter messages by whether they have been read or not',
+								options: [
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Unread and read messages',
+										value: 'both',
+									},
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Unread messages only',
+										value: 'unread',
+									},
+									{
+										// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+										name: 'Read messages only',
+										value: 'read',
+									},
+								],
+							},
+							{
+								displayName: 'Received After',
+								name: 'receivedAfter',
+								type: 'dateTime',
+								default: '',
+								description:
+									'Get all messages received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+							},
+							{
+								displayName: 'Received Before',
+								name: 'receivedBefore',
+								type: 'dateTime',
+								default: '',
+								description:
+									'Get all messages received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
+							},
+							{
+								displayName: 'Sender',
+								name: 'sender',
+								type: 'string',
+								default: '',
+								description: 'Sender name or email to filter by',
+							},
+						],
 					},
 				],
 			},
-			{
-				displayName: 'Received After',
-				name: 'receivedAfter',
-				type: 'dateTime',
-				default: '',
-				description:
-					'Get all messages received after the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
-			},
-			{
-				displayName: 'Received Before',
-				name: 'receivedBefore',
-				type: 'dateTime',
-				default: '',
-				description:
-					'Get all messages received before the specified date. In an expression you can set date using string in ISO format or a timestamp in miliseconds.',
-			},
-			{
-				displayName: 'Sender',
-				name: 'sender',
-				type: 'string',
-				default: '',
-				description: 'Sender name or email to filter by',
-				hint: 'Enter an email or part of a sender name',
-			},
 		],
+		displayOptions: {
+			show: {
+				operation: ['getAll'],
+				resource: ['message'],
+				returnAll: [true],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -238,9 +292,11 @@ export async function execute(
 	const qs = {} as IDataObject;
 
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const filters = this.getNodeParameter('filters', index) as IDataObject;
-	const options = this.getNodeParameter('options', index) as IDataObject;
+	const filters = this.getNodeParameter('filtersUI.values', index, {}) as IDataObject;
+	const options = this.getNodeParameter('options', index, {}) as IDataObject;
 	const output = this.getNodeParameter('output', index) as string;
+
+	let endpoint = '/messages';
 
 	if (output === 'fields') {
 		const fields = this.getNodeParameter('fields', index) as string[];
@@ -252,25 +308,51 @@ export async function execute(
 			'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 	}
 
-	if (Object.keys(filters)) {
-		let filterString: string[] = [];
-
-		if (filters.readStatus && filters.readStatus !== 'both') {
-			filterString.push(`isRead eq ${filters.readStatus === 'read'}`);
-		}
-
-		if (filters.receivedAfter) {
-			filterString.push(`receivedDateTime ge ${filters.receivedAfter}`);
-		}
-
-		if (filters.receivedBefore) {
-			filterString.push(`receivedDateTime le ${filters.receivedBefore}`);
-		}
-
-		qs['$filter'] = filterString.join(' and ');
+	if (filters.filterBy === 'search' && filters.search !== '') {
+		qs['$search'] = `"${filters.search}"`;
 	}
 
-	const endpoint = '/messages';
+	if (filters.filterBy === 'filters') {
+		const selectedFilters = filters.filters as IDataObject;
+		const filterString: string[] = [];
+
+		if (selectedFilters.folder) {
+			endpoint = `/mailFolders/${selectedFilters.folder}/messages`;
+		}
+
+		if (selectedFilters.sender) {
+			const sender = selectedFilters.sender as string;
+			const byMailAddress = `from/emailAddress/address eq '${sender}'`;
+			const byName = `from/emailAddress/name eq '${sender}'`;
+			filterString.push(`(${byMailAddress} or ${byName})`);
+		}
+
+		if (selectedFilters.hasAttachments) {
+			filterString.push(`hasAttachments eq ${selectedFilters.hasAttachments}`);
+		}
+
+		if (selectedFilters.readStatus && selectedFilters.readStatus !== 'both') {
+			filterString.push(`isRead eq ${selectedFilters.readStatus === 'read'}`);
+		}
+
+		if (selectedFilters.receivedAfter) {
+			filterString.push(`receivedDateTime ge ${selectedFilters.receivedAfter}`);
+		}
+
+		if (selectedFilters.receivedBefore) {
+			filterString.push(`receivedDateTime le ${selectedFilters.receivedBefore}`);
+		}
+
+		if (selectedFilters.custom) {
+			filterString.push(selectedFilters.custom as string);
+		}
+
+		if (filterString.length) {
+			qs['$filter'] = filterString.join(' and ');
+		}
+	}
+
+	// console.log(await microsoftApiRequest.call(this, 'GET', '/outlook/masterCategories'));
 
 	if (returnAll === true) {
 		responseData = await microsoftApiRequestAllItems.call(
