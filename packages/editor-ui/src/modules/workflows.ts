@@ -1,4 +1,3 @@
-import { makeRestApiRequest } from '@/api/helpers';
 import { getCurrentExecutions, getFinishedExecutions, getNewWorkflow } from '@/api/workflows';
 import { DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, DEFAULT_NEW_WORKFLOW_NAME } from '@/constants';
 import { IDataObject } from 'n8n-workflow';
