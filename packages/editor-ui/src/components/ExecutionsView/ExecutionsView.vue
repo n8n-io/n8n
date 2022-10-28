@@ -77,7 +77,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		isWorkflowSavingManualExecutions(): boolean {
 			const workflowSettings: IWorkflowSettings = this.$store.getters.workflowSettings;
 			const saveManualExecutionsDefault = this.$store.getters.saveManualExecutions;
-			return workflowSettings.saveManualExecutions === undefined ? saveManualExecutionsDefault: workflowSettings.saveManualExecutions as boolean
+			return workflowSettings.saveManualExecutions === undefined ? saveManualExecutionsDefault: workflowSettings.saveManualExecutions as boolean;
 		},
 	},
 	watch:{
