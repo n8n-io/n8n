@@ -12,5 +12,6 @@ module.exports = {
 	rules: {
 		// TODO: Remove this
 		'import/order': 'off',
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
- };
+};
