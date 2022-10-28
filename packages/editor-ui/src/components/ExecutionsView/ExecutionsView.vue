@@ -9,6 +9,7 @@
 			@filterUpdated="onFilterUpdated"
 			@loadMore="loadMore"
 			@retryExecution="onRetryExecution"
+			@refresh="loadAutoRefresh"
 		/>
 		<div :class="$style.content" v-if="!hidePreview">
 			<router-view name="executionPreview" @deleteCurrentExecution="onDeleteCurrentExecution" @retryExecution="onRetryExecution"/>
@@ -25,7 +26,7 @@
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS, WEBHOOK_NODE_TYPE } from '@/constants';
 import { IExecutionsListResponse, IExecutionsSummary, INodeUi, ITag, IWorkflowDb } from '@/Interface';
-import { IConnection, IConnections, IDataObject, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
+import { IConnection, IConnections, IDataObject, INodeTypeDescription, INodeTypeNameVersion, IWorkflowSettings, NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { restApi } from '../mixins/restApi';
 import { showMessage } from '../mixins/showMessage';
@@ -72,6 +73,11 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		},
 		totalFinishedExecutionsCount(): number {
 			return this.$store.getters['workflows/getTotalFinishedExecutionsCount'];
+		},
+		isWorkflowSavingManualExecutions(): boolean {
+			const workflowSettings: IWorkflowSettings = this.$store.getters.workflowSettings;
+			const saveManualExecutionsDefault = this.$store.getters.saveManualExecutions;
+			return workflowSettings.saveManualExecutions === undefined ? saveManualExecutionsDefault: workflowSettings.saveManualExecutions as boolean;
 		},
 	},
 	watch:{
@@ -242,6 +248,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			const alreadyPresentExecutionIds = existingExecutions.map(exec => parseInt(exec.id, 10));
 			let lastId = 0;
 			const gaps = [] as number[];
+			let updatedActiveExecution = null;
 
 			for(let i = fetchedExecutions.length - 1; i >= 0; i--) {
 				const currentItem = fetchedExecutions[i];
@@ -262,6 +269,9 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 
 					if (existingStillRunning && currentFinished) {
 						existingExecutions[executionIndex] = currentItem;
+						if (currentItem.id === this.activeExecution.id) {
+							updatedActiveExecution = currentItem;
+						}
 					}
 					continue;
 				}
@@ -280,6 +290,9 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 
 			existingExecutions = existingExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', existingExecutions);
+			if (updatedActiveExecution !== null) {
+				this.$store.commit('workflows/setActiveWorkflowExecution', updatedActiveExecution);
+			}
 		},
 		async loadExecutions(): Promise<IExecutionsSummary[]> {
 			if (!this.currentWorkflow) {
@@ -288,6 +301,11 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			try {
 				const executions: IExecutionsSummary[] =
 					await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', this.filter);
+				
+				// Don't show running manual executions if workflow is set up not to save them
+				if (!this.isWorkflowSavingManualExecutions) {
+					return executions.filter(ex => ex.finished === true || ex.mode !== 'manual');
+				}
 				return executions;
 			} catch (error) {
 				this.$showError(
