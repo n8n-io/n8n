@@ -2,13 +2,11 @@ import { INodeProperties } from 'n8n-workflow';
 import * as del from './delete.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
-import * as getMime from './getMime.operation';
-import * as move from './move.operation';
 import * as reply from './reply.operation';
 import * as send from './send.operation';
 import * as update from './update.operation';
 
-export { del as delete, get, getAll, getMime, move, reply, send, update };
+export { del as delete, get, getAll, reply, send, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -39,18 +37,6 @@ export const description: INodeProperties[] = [
 				value: 'getAll',
 				description: "Get many messages in the signed-in user's mailbox",
 				action: 'Get many messages',
-			},
-			{
-				name: 'Get MIME Content',
-				value: 'getMime',
-				description: 'Get MIME content of a message',
-				action: 'Get MIME Content of a message',
-			},
-			{
-				name: 'Move',
-				value: 'move',
-				description: 'Move a message',
-				action: 'Move a message',
 			},
 			{
 				name: 'Reply',
@@ -90,8 +76,6 @@ export const description: INodeProperties[] = [
 	...del.description,
 	...get.description,
 	...getAll.description,
-	...getMime.description,
-	...move.description,
 	...reply.description,
 	...send.description,
 	...update.description,

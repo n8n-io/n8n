@@ -131,7 +131,7 @@ export const description: INodeProperties[] = [
 								value: 'search',
 							},
 						],
-						default: 'search',
+						default: 'filters',
 					},
 					{
 						displayName: 'Search',
@@ -167,29 +167,32 @@ export const description: INodeProperties[] = [
 								hint: 'Information about the syntax can be found <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">here</a>',
 							},
 							{
-								displayName: 'Message Has Attachments',
+								displayName: 'Has Attachments',
 								name: 'hasAttachments',
 								type: 'boolean',
 								default: false,
 							},
-							// {
-							// 	displayName: 'Include Spam and Trash',
-							// 	name: 'includeSpamTrash',
-							// 	type: 'boolean',
-							// 	default: false,
-							// 	description: 'Whether to include messages from SPAM and TRASH in the results',
-							// },
 							{
-								// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
-								displayName: 'Folder',
-								name: 'folder',
-								type: 'options',
+								displayName: 'Folders to Exclude',
+								name: 'foldersToExclude',
+								type: 'multiOptions',
 								typeOptions: {
 									loadOptionsMethod: 'getFolders',
 								},
 								default: [],
 								description:
-									'Only return messages from selected folder. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+									'Only return messages from selected folders. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Folders to Include',
+								name: 'foldersToInclude',
+								type: 'multiOptions',
+								typeOptions: {
+									loadOptionsMethod: 'getFolders',
+								},
+								default: [],
+								description:
+									'Only return messages from selected folders. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Read Status',
@@ -296,8 +299,6 @@ export async function execute(
 	const options = this.getNodeParameter('options', index, {}) as IDataObject;
 	const output = this.getNodeParameter('output', index) as string;
 
-	let endpoint = '/messages';
-
 	if (output === 'fields') {
 		const fields = this.getNodeParameter('fields', index) as string[];
 		qs['$select'] = fields.join(',');
@@ -316,8 +317,19 @@ export async function execute(
 		const selectedFilters = filters.filters as IDataObject;
 		const filterString: string[] = [];
 
-		if (selectedFilters.folder) {
-			endpoint = `/mailFolders/${selectedFilters.folder}/messages`;
+		if (selectedFilters.foldersToInclude) {
+			const folders = (selectedFilters.foldersToInclude as string[])
+				.filter((folder) => folder !== '')
+				.map((folder) => `parentFolderId eq '${folder}'`)
+				.join(' or ');
+
+			filterString.push(folders);
+		}
+
+		if (selectedFilters.foldersToExclude) {
+			for (const folder of selectedFilters.foldersToExclude as string[]) {
+				filterString.push(`parentFolderId ne '${folder}'`);
+			}
 		}
 
 		if (selectedFilters.sender) {
@@ -353,6 +365,7 @@ export async function execute(
 	}
 
 	// console.log(await microsoftApiRequest.call(this, 'GET', '/outlook/masterCategories'));
+	const endpoint = '/messages';
 
 	if (returnAll === true) {
 		responseData = await microsoftApiRequestAllItems.call(
@@ -373,16 +386,17 @@ export async function execute(
 		responseData = simplifyOutputMessages(responseData);
 	}
 
+	let executionData: INodeExecutionData[] = [];
+
 	if (options.downloadAttachments) {
 		const prefix = (options.attachmentsPrefix as string) || 'attachment_';
-		const data = await downloadAttachments.call(this, responseData, prefix);
-		return data;
+		executionData = await downloadAttachments.call(this, responseData, prefix);
+	} else {
+		executionData = this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(responseData),
+			{ itemData: { item: index } },
+		);
 	}
-
-	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
-		{ itemData: { item: index } },
-	);
 
 	return executionData;
 }
