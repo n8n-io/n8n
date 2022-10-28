@@ -1,9 +1,10 @@
-import { AbstractRepository, EntityRepository, In, IsNull, MoreThanOrEqual, Not } from 'typeorm';
+import { EntityRepository, In, IsNull, MoreThanOrEqual, Not } from 'typeorm';
 import { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { validateEntity } from '../../GenericHelpers';
 import { hashPassword, validatePassword } from '../../UserManagement/UserManagementHelper';
 import type { Role } from '../entities/Role';
 import { User } from '../entities/User';
+import { BaseRepository } from './BaseRepository';
 
 const defaultUserProps = Object.freeze({
 	firstName: null,
@@ -16,7 +17,7 @@ const defaultUserProps = Object.freeze({
 type UserRelations = 'globalRole'; // all the @ManyToOne column names
 
 @EntityRepository(User)
-export class UserRepository extends AbstractRepository<User> {
+export class UserRepository extends BaseRepository<User> {
 	async create(fields: QueryDeepPartialEntity<User>): Promise<User> {
 		const user = new User();
 		Object.assign(user, { ...defaultUserProps, ...fields });
@@ -135,9 +136,5 @@ export class UserRepository extends AbstractRepository<User> {
 	async resetUsers(owner: User) {
 		await this.repository.delete({ id: Not(owner.id) });
 		await this.repository.save(Object.assign(owner, defaultUserProps));
-	}
-
-	async clear() {
-		return this.repository.clear();
 	}
 }

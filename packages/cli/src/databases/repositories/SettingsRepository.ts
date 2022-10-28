@@ -1,8 +1,9 @@
-import { AbstractRepository, EntityRepository } from 'typeorm';
+import { EntityRepository } from 'typeorm';
 import { Settings } from '../entities/Settings';
+import { BaseRepository } from './BaseRepository';
 
 @EntityRepository(Settings)
-export class SettingsRepository extends AbstractRepository<Settings> {
+export class SettingsRepository extends BaseRepository<Settings> {
 	async get(key: string): Promise<Settings> {
 		return this.repository.findOneOrFail({ key });
 	}
@@ -13,9 +14,5 @@ export class SettingsRepository extends AbstractRepository<Settings> {
 
 	async update(key: string, value: string) {
 		return this.repository.update({ key }, { value });
-	}
-
-	async clear() {
-		return this.repository.clear();
 	}
 }
