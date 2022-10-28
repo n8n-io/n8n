@@ -2768,13 +2768,18 @@ export default mixins(
 			deleteEveryEndpoint() {
 				// Check as it does not exist on first load
 				if (this.instance) {
-					try {
-						const nodes = this.workflowsStore.allNodes;
-						// @ts-ignore
-						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(node.id));
+					const nodes = this.workflowsStore.allNodes;
+					nodes.forEach((node: INodeUi) => {
+						try {
+							// important to prevent memory leak
+							// @ts-ignore
+							this.instance.destroyDraggable(node.id);
+						} catch (e) {
+							console.error(e);
+						}
+					});
 
-						this.instance.deleteEveryEndpoint();
-					} catch (e) { }
+					this.instance.deleteEveryEndpoint();
 				}
 			},
 			matchCredentials(node: INodeUi) {

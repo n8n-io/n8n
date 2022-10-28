@@ -197,6 +197,10 @@ const router = new Router({
 			},
 		},
 		{
+			path: '/workflow',
+			redirect: '/workflow/new',
+		},
+		{
 			path: '/workflows',
 			name: VIEWS.WORKFLOWS,
 			components: {
