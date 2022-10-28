@@ -319,22 +319,11 @@ export const certificateRequestFields: INodeProperties[] = [
 			{
 				displayName: 'Validity Period',
 				name: 'validityPeriod',
-				type: 'options',
-				options: [
-					{
-						name: '1 Year',
-						value: 'P1Y',
-					},
-					{
-						name: '10 Days',
-						value: 'P10D',
-					},
-					{
-						name: '12 Hours',
-						value: 'PT12H',
-					},
-				],
+				type: 'string',
+				placeholder: 'P1Y',
 				default: 'P1Y',
+				description: 'Specify how long the issued certificate should be valid for. Use ISO8601 format.',
+				hint: 'e.g. 1 year -> P1Y',
 			},
 		],
 	},
