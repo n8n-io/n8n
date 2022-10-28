@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-export const deepCopy = <T>(source: T, hash = new WeakMap()): T => {
+export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 	let clone: any;
 	let i: any;
 	const hasOwnProp = Object.prototype.hasOwnProperty.bind(source);
@@ -8,6 +8,7 @@ export const deepCopy = <T>(source: T, hash = new WeakMap()): T => {
 		return source;
 	}
 	if (hash.has(source)) {
+		console.warn(`Circular reference detected at "source${path}"`);
 		return hash.get(source);
 	}
 	// Date
@@ -19,7 +20,7 @@ export const deepCopy = <T>(source: T, hash = new WeakMap()): T => {
 		clone = [];
 		const len = source.length;
 		for (i = 0; i < len; i++) {
-			clone[i] = deepCopy(source[i], hash);
+			clone[i] = deepCopy(source[i], hash, path + `[${i as string}]`);
 		}
 		return clone;
 	}
@@ -28,7 +29,7 @@ export const deepCopy = <T>(source: T, hash = new WeakMap()): T => {
 	hash.set(source, clone);
 	for (i in source) {
 		if (hasOwnProp(i)) {
-			clone[i] = deepCopy((source as any)[i], hash);
+			clone[i] = deepCopy((source as any)[i], hash, path + `.${i as string}`);
 		}
 	}
 	return clone;

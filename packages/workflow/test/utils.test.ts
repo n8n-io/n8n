@@ -73,6 +73,8 @@ describe('deepCopy', () => {
 		};
 
 		object.circular = object;
+		object.deep.props.circular = object;
+		object.deep.arr.push(object)
 
 		const copy = deepCopy(object);
 		expect(copy).toEqual(object);
