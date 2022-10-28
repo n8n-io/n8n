@@ -52,6 +52,7 @@ import mixins from 'vue-typed-mixins';
 import { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(showMessage).extend({
 	name: 'ImportCurlModal',
@@ -66,9 +67,12 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
-		node(): INodeUi {
-			return this.$store.getters['ndv/activeNode'];
+		...mapStores(
+			useNDVStore,
+			useUIStore,
+		),
+		node(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
 	},
 	methods: {

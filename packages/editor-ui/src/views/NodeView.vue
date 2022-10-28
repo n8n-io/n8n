@@ -237,6 +237,7 @@ import { getNodeViewTab } from '@/components/helpers';
 import { Route } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useNDVStore } from '@/stores/ndv';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -364,13 +365,16 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useNDVStore,
 				useRootStore,
 				useSettingsStore,
 				useUIStore,
 				useUsersStore,
 				useWorkflowsStore,
 			),
-			...mapGetters(['nativelyNumberSuffixedDefaults']), // TODO: This is in new pinia store
+			nativelyNumberSuffixedDefaults(): string[] {
+				return this.rootStore.nativelyNumberSuffixedDefaults;
+			},
 			currentUser(): IUser {
 				return this.usersStore.currentUser || {} as IUser;
 			},
@@ -381,7 +385,7 @@ export default mixins(
 				return this.defaultLocale === 'en';
 			},
 			activeNode(): INodeUi | null {
-				return this.$store.getters['ndv/activeNode'];
+				return this.ndvStore.activeNode;
 			},
 			executionWaitingForWebhook(): boolean {
 				return this.workflowsStore.executionWaitingForWebhook;
@@ -879,7 +883,7 @@ export default mixins(
 					this.createNodeActive = false;
 					if (this.activeNode) {
 						this.$externalHooks().run('dataDisplay.nodeEditingFinished');
-						this.$store.commit('ndv/setActiveNodeName', null);
+						this.ndvStore.activeNodeName = null;
 					}
 
 					return;
@@ -966,7 +970,7 @@ export default mixins(
 						if (lastSelectedNode.type === STICKY_NODE_TYPE && this.isReadOnly) {
 							return;
 						}
-						this.$store.commit('ndv/setActiveNodeName', lastSelectedNode.name);
+						this.ndvStore.activeNodeName = lastSelectedNode.name;
 					}
 				} else if (e.key === 'ArrowRight' && e.shiftKey) {
 					// Select all downstream nodes
@@ -1573,7 +1577,7 @@ export default mixins(
 					this.newNodeInsertPosition = null;
 
 					if (setActive) {
-						this.$store.commit('ndv/setActiveNodeName', node.name);
+						this.ndvStore.activeNodeName = node.name;
 					}
 				}
 			},
@@ -2757,7 +2761,7 @@ export default mixins(
 				this.nodeSelectedByName(newName);
 
 				if (isActive) {
-					this.$store.commit('ndv/setActiveNodeName', newName);
+					this.ndvStore.activeNodeName = newName;
 					this.renamingActive = false;
 				}
 			},

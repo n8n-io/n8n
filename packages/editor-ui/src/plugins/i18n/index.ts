@@ -17,6 +17,7 @@ import {
 import englishBaseText from './locales/en.json';
 import { useUIStore } from "@/stores/ui";
 import { INodeProperties } from "n8n-workflow";
+import { useNDVStore } from "@/stores/ndv";
 
 Vue.use(VueI18n);
 locale.use('en');
@@ -24,7 +25,7 @@ locale.use('en');
 export let i18n: I18nClass;
 
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
-	i18n = new I18nClass(store);
+	i18n = new I18nClass();
 
 	Object.defineProperty(vue, '$locale', {
 		get() { return i18n; },
@@ -36,11 +37,6 @@ export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
 }
 
 export class I18nClass {
-	$store: Store<IRootState>;
-
-	constructor(store: Store<IRootState>) {
-		this.$store = store;
-	}
 
 	private get i18n(): VueI18n {
 		return i18nInstance;
@@ -192,8 +188,9 @@ export class I18nClass {
 	 * except for `eventTriggerDescription`.
 	 */
 	nodeText () {
-		const activeNode = this.$store.getters['ndv/activeNode'];
-		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : ''; // unused in eventTriggerDescription
+		const ndvStore = useNDVStore();
+		const activeNode = ndvStore.activeNode;
+		const nodeType = activeNode ? this.shortNodeType(activeNode.type as string) : ''; // unused in eventTriggerDescription
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
 

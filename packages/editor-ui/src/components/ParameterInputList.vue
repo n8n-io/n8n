@@ -119,6 +119,8 @@ import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import {Component} from "vue";
+import { mapState, mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	workflowHelpers,
@@ -141,6 +143,9 @@ export default mixins(
 			'isReadOnly',
 		],
 		computed: {
+			...mapStores(
+				useNDVStore,
+			),
 			nodeTypeVersion(): number | null {
 				if (this.node) {
 					return this.node.typeVersion;
@@ -159,8 +164,8 @@ export default mixins(
 			filteredParameterNames (): string[] {
 				return this.filteredParameters.map(parameter => parameter.name);
 			},
-			node (): INodeUi {
-				return this.$store.getters['ndv/activeNode'];
+			node (): INodeUi | null {
+				return this.ndvStore.activeNode;
 			},
 			indexToShowSlotAt (): number {
 				let index = 0;
@@ -323,7 +328,7 @@ export default mixins(
 					if (!newValue.includes(parameter)) {
 						const parameterData = {
 							name: `${this.path}.${parameter}`,
-							node: this.$store.getters['ndv/activeNode'].name,
+							node: this.ndvStore.activeNode?.name || '',
 							value: undefined,
 						};
 						this.$emit('valueChanged', parameterData);

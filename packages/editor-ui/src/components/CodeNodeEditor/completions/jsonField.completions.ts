@@ -5,10 +5,12 @@ import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
 import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useWorkflowsStore,
 		),
 	},
@@ -213,11 +215,13 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 		getInputNodeName() {
 			try {
-				const activeNode = this.$store.getters['ndv/activeNode'];
-				const workflow = this.getCurrentWorkflow();
-				const input = workflow.connectionsByDestinationNode[activeNode.name];
+				const activeNode = this.ndvStore.activeNode;
+				if (activeNode) {
+					const workflow = this.getCurrentWorkflow();
+					const input = workflow.connectionsByDestinationNode[activeNode.name];
 
-				return input.main[0][0].node;
+					return input.main[0][0].node;
+				}
 			} catch (_) {
 				return null;
 			}

@@ -22,6 +22,7 @@ import { workflowHelpers } from '../mixins/workflowHelpers';
 import { Route } from 'vue-router';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	pushConnection,
@@ -41,7 +42,10 @@ export default mixins(
 			};
 		},
 		computed: {
-			...mapStores(useUIStore),
+			...mapStores(
+				useNDVStore,
+				useUIStore,
+			),
 			tabBarItems(): ITabBarItem[] {
 				return [
 					{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.workflow') },
@@ -52,7 +56,7 @@ export default mixins(
 				return this.$route.name === VIEWS.EXECUTION;
 			},
 			activeNode (): INodeUi | null {
-				return this.$store.getters['ndv/activeNode'];
+				return this.ndvStore.activeNode;
 			},
 			hideMenuBar(): boolean {
 				return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);

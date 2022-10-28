@@ -140,7 +140,7 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 
-import { INodeUi, IRootState, ITableData, IUiState, NDVState } from '@/Interface';
+import { INodeUi, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/pairedItemUtils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -150,6 +150,7 @@ import { shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
@@ -205,10 +206,11 @@ export default mixins(externalHooks).extend({
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useWorkflowsStore,
 		),
 		hoveringItem(): NDVState['ndv']['hoveringItem'] {
-			return this.$store.getters['ndv/hoveringItem'];
+			return this.ndvStore.hoveringItem;
 		},
 		pairedItemMappings(): {[itemId: string]: Set<string>} {
 			return this.workflowsStore.workflowExecutionPairedItemMappings;
@@ -350,8 +352,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragStart() {
 			this.draggedColumn = true;
-
-			this.$store.commit('ndv/resetMappingTelemetry');
+			this.ndvStore.resetMappingTelemetry();
 		},
 		onCellDragStart(el: HTMLElement) {
 			if (el && el.dataset.value) {
@@ -374,7 +375,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragEnd(column: string, src: string, depth = '0') {
 			setTimeout(() => {
-				const mappingTelemetry = this.$store.getters['ndv/mappingTelemetry'];
+				const mappingTelemetry = this.ndvStore.mappingTelemetry;
 				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: column,

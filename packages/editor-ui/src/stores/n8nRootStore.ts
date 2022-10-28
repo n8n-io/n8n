@@ -1,9 +1,10 @@
+import { STORES } from '@/constants';
 import { IRestApiContext, rootStatePinia } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 
-export const useRootStore = defineStore('root', {
+export const useRootStore = defineStore(STORES.ROOT, {
 	state: (): rootStatePinia => ({
 		// @ts-ignore
 		baseUrl: import.meta.env.VUE_APP_URL_BASE_API ? import.meta.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
@@ -24,21 +25,6 @@ export const useRootStore = defineStore('root', {
 		instanceId: '',
 	}),
 	getters: {
-		// TODO: Waiting for nodetypes store
-
-		/**
-		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
-		 */
-		//  nativelyNumberSuffixedDefaults: (_, getters): string[] => {
-		// 	const { 'nodeTypes/allNodeTypes': allNodeTypes } = getters as {
-		// 		['nodeTypes/allNodeTypes']: Array<INodeTypeDescription & { defaults: { name: string } }>;
-		// 	};
-
-		// 	return allNodeTypes.reduce<string[]>((acc, cur) => {
-		// 		if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
-		// 		return acc;
-		// 	}, []);
-		// },
 		getWebhookUrl(): string {
 			return `${this.urlBaseWebhook}${this.endpointWebhook}`;
 		},
@@ -65,47 +51,63 @@ export const useRootStore = defineStore('root', {
 				sessionId: state.sessionId,
 			};
 		},
+		// TODO: Waiting for nodeTypes store
+
+		/**
+		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
+		 */
+		 nativelyNumberSuffixedDefaults: (): string[] => {
+			// const { 'nodeTypes/allNodeTypes': allNodeTypes } = getters as {
+			// 	['nodeTypes/allNodeTypes']: Array<INodeTypeDescription & { defaults: { name: string } }>;
+			// };
+
+			// return allNodeTypes.reduce<string[]>((acc, cur) => {
+			// 	if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
+			// 	return acc;
+			// }, []);
+			return [];
+		},
 	},
 	actions: {
-		setUrlBaseWebhook(urlBaseWebhook: string) {
+		setUrlBaseWebhook(urlBaseWebhook: string): void {
 			const url = urlBaseWebhook.endsWith('/') ? urlBaseWebhook : `${urlBaseWebhook}/`;
 			Vue.set(this, 'urlBaseWebhook', url);
 		},
-		setUrlBaseEditor(urlBaseEditor: string) {
+		setUrlBaseEditor(urlBaseEditor: string): void {
 			const url = urlBaseEditor.endsWith('/') ? urlBaseEditor : `${urlBaseEditor}/`;
 			Vue.set(this, 'urlBaseEditor', url);
 		},
-		setEndpointWebhook(endpointWebhook: string) {
+		setEndpointWebhook(endpointWebhook: string): void {
 			Vue.set(this, 'endpointWebhook', endpointWebhook);
 		},
-		setEndpointWebhookTest(endpointWebhookTest: string) {
+		setEndpointWebhookTest(endpointWebhookTest: string): void {
 			Vue.set(this, 'endpointWebhookTest', endpointWebhookTest);
 		},
-		setTimezone(timezone: string) {
+		setTimezone(timezone: string): void {
 			Vue.set(this, 'timezone', timezone);
 		},
-		setExecutionTimeout(executionTimeout: number) {
+		setExecutionTimeout(executionTimeout: number): void {
 			Vue.set(this, 'executionTimeout', executionTimeout);
 		},
-		setMaxExecutionTimeout(maxExecutionTimeout: number) {
+		setMaxExecutionTimeout(maxExecutionTimeout: number): void {
 			Vue.set(this, 'maxExecutionTimeout', maxExecutionTimeout);
 		},
-		setVersionCli(version: string) {
+		setVersionCli(version: string): void {
 			Vue.set(this, 'versionCli', version);
 		},
-		setInstanceId(instanceId: string) {
+		setInstanceId(instanceId: string): void {
 			Vue.set(this, 'instanceId', instanceId);
 		},
-		setOauthCallbackUrls(urls: IDataObject) {
+		setOauthCallbackUrls(urls: IDataObject): void {
 			Vue.set(this, 'oauthCallbackUrls', urls);
 		},
-		setN8nMetadata(metadata: IDataObject) {
+		setN8nMetadata(metadata: IDataObject): void {
 			Vue.set(this, 'n8nMetadata', metadata);
 		},
-		setDefaultLocale(locale: string) {
+		setDefaultLocale(locale: string): void {
 			Vue.set(this, 'defaultLocale', locale);
 		},
-		setIsNpmAvailable(isNpmAvailable: boolean) {
+		setIsNpmAvailable(isNpmAvailable: boolean): void {
 			Vue.set(this, 'isNpmAvailable', isNpmAvailable);
 		},
 	},

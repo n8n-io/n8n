@@ -50,6 +50,7 @@ import nodeCreator from './modules/nodeCreator';
 import { isJsonKeyObject } from './utils';
 import {getActiveWorkflows, getWorkflows} from "@/api/workflows";
 import { getPairedItemsMapping } from './pairedItemUtils';
+import { useNDVStore } from './stores/ndv';
 
 Vue.use(Vuex);
 
@@ -956,10 +957,11 @@ export const store = new Vuex.Store({
 		// 		}, 0);
 		// },
 
-		// activeNode: (state, getters, rootState, rootGetters): INodeUi | null => {
-		// 	// kept here for FE hooks
-		// 	return rootGetters['ndv/activeNode'];
-		// },
+		activeNode: (state, getters, rootState, rootGetters): INodeUi | null => {
+			// kept here for FE hooks until updated
+			const ndvStore = useNDVStore();
+			return ndvStore.activeNode;
+		},
 
 		/**
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.

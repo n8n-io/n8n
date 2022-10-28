@@ -78,6 +78,7 @@ import WireMeUp from './WireMeUp.vue';
 import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	workflowHelpers,
@@ -114,10 +115,11 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useWorkflowsStore,
 		),
 		focusedMappableInput(): string {
-			return this.$store.getters['ndv/focusedMappableInput'];
+			return this.ndvStore.focusedMappableInput;
 		},
 		isUserOnboarded(): boolean {
 			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
@@ -152,7 +154,7 @@ export default mixins(
 			return this.workflow as Workflow;
 		},
 		activeNode (): INodeUi | null {
-			return this.$store.getters['ndv/activeNode'];
+			return this.ndvStore.activeNode;
 		},
 		currentNode (): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.currentNodeName);

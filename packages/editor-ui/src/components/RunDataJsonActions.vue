@@ -37,6 +37,7 @@ import { genericHelpers } from "@/components/mixins/genericHelpers";
 import { clearJsonKey, convertPath, executionDataToJson } from "@/components/helpers";
 import { mapStores } from "pinia";
 import { useWorkflowsStore } from "@/stores/workflows";
+import { useNDVStore } from "@/stores/ndv";
 
 type JsonPathData = {
 	path: string;
@@ -86,10 +87,11 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useWorkflowsStore,
 		),
-		activeNode(): INodeUi {
-			return this.$store.getters['ndv/activeNode'];
+		activeNode(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
 		normalisedJsonPath(): string {
 			const isNotSelected = this.selectedJsonPath === nonExistingJsonPath;

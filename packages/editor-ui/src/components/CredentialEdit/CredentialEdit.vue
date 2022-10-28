@@ -149,6 +149,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -240,7 +241,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
 			credentialType: this.credentialTypeName,
 			isEditingCredential: this.mode === 'edit',
-			activeNode: this.$store.getters['ndv/activeNode'],
+			activeNode: this.ndvStore.activeNode,
 		});
 
 		setTimeout(() => {
@@ -258,6 +259,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
+				useNDVStore,
 				useSettingsStore,
 				useUIStore,
 				useUsersStore,
@@ -573,7 +575,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.activeTab = tab;
 			const tabName: string = tab.replaceAll('coming-soon/', '');
 			const credType: string = this.credentialType ? this.credentialType.name : '';
-			const activeNode: INode | null = this.$store.getters['ndv/activeNode'];
+			const activeNode: INode | null = this.ndvStore.activeNode;
 
 			this.$telemetry.track('User viewed credential tab', {
 				credential_type: credType,
@@ -789,8 +791,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 					trackProperties.is_valid = !!this.testedSuccessfully;
 				}
 
-				if (this.$store.getters['ndv/activeNode']) {
-					trackProperties.node_type = this.$store.getters['ndv/activeNode'].type;
+				if (this.ndvStore.activeNode) {
+					trackProperties.node_type = this.ndvStore.activeNode.type;
 				}
 
 				if (this.authError && this.authError !== '') {

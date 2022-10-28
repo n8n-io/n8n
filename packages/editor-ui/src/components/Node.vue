@@ -116,6 +116,7 @@ import { debounceHelper } from './mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	externalHooks,
@@ -132,6 +133,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
 		),
@@ -451,7 +453,7 @@ export default mixins(
 		},
 
 		setNodeActive () {
-			this.$store.commit('ndv/setActiveNodeName', this.data.name);
+			this.ndvStore.activeNodeName = this.data ? this.data.name : '';
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart () {

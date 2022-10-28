@@ -49,6 +49,8 @@ import {
 } from '@/constants';
 import mixins from 'vue-typed-mixins';
 import { debounceHelper } from './mixins/debounce';
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
 
 
 const SIDE_MARGIN = 24;
@@ -116,12 +118,15 @@ export default mixins(debounceHelper).extend({
 		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+		),
 		mainPanelDimensions(): {
 			relativeWidth: number,
 			relativeLeft: number,
 			relativeRight: number
 			} {
-			return this.$store.getters['ndv/mainPanelDimensions'](this.currentNodePaneType);
+			return this.ndvStore.mainPanelDimensions(this.currentNodePaneType as "input" | "output");
 		},
 		supportedResizeDirections() {
 			const supportedDirections = ['right'];
@@ -244,8 +249,8 @@ export default mixins(debounceHelper).extend({
 		setMainPanelWidth(relativeWidth?: number) {
 			const mainPanelRelativeWidth = relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
 
-			this.$store.commit('ndv/setMainPanelDimensions', {
-				panelType: this.currentNodePaneType,
+			this.ndvStore.setMainPanelDimensions({
+				panelType: this.currentNodePaneType as "input" | "output",
 				dimensions: {
 					relativeWidth: mainPanelRelativeWidth,
 				},
@@ -260,8 +265,8 @@ export default mixins(debounceHelper).extend({
 			const isInputless = this.currentNodePaneType === 'inputless';
 
 			if(isMinLeft) {
-				this.$store.commit('ndv/setMainPanelDimensions', {
-					panelType: this.currentNodePaneType,
+				this.ndvStore.setMainPanelDimensions({
+					panelType: this.currentNodePaneType as "input" | "output",
 					dimensions: {
 						relativeLeft: this.minimumLeftPosition,
 						relativeRight: 1 - this.mainPanelDimensions.relativeWidth - this.minimumLeftPosition,
@@ -271,18 +276,18 @@ export default mixins(debounceHelper).extend({
 			}
 
 			if(isMaxRight) {
-				this.$store.commit('ndv/setMainPanelDimensions', {
-					panelType: this.currentNodePaneType,
+				this.ndvStore.setMainPanelDimensions({
+					panelType: this.currentNodePaneType as "input" | "output",
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
-						relativeRight: this.maximumRightPosition,
+						relativeRight: this.maximumRightPosition as number,
 					},
 				});
 				return;
 			}
 
-			this.$store.commit('ndv/setMainPanelDimensions', {
-				panelType: this.currentNodePaneType,
+			this.ndvStore.setMainPanelDimensions({
+				panelType: this.currentNodePaneType as "input" | "output",
 				dimensions: {
 					relativeLeft: isInputless ? this.minimumLeftPosition : mainPanelRelativeLeft,
 					relativeRight: mainPanelRelativeRight,

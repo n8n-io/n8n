@@ -60,6 +60,7 @@ import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
@@ -73,6 +74,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
 		),
@@ -150,10 +152,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
-				this.$store.commit('ndv/setActiveNodeName', this.node.name);
+				this.ndvStore.activeNodeName = this.node.name;
 			}
 			else if (this.isActive && !edit) {
-				this.$store.commit('ndv/setActiveNodeName', null);
+				this.ndvStore.activeNodeName = null;
 			}
 		},
 		onMarkdownClick ( link:HTMLAnchorElement, event: Event ) {

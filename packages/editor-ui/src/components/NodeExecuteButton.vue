@@ -25,6 +25,7 @@ import { pinData } from './mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	workflowRun,
@@ -57,6 +58,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useWorkflowsStore,
 		),
 		node (): INodeUi | null {
@@ -116,7 +118,8 @@ export default mixins(
 			}
 
 			if (this.isTriggerNode && this.hasIssues) {
-				if (this.$store.getters['ndv/activeNode'] && this.$store.getters['ndv/activeNode'].name !== this.nodeName) {
+				const activeNode = this.ndvStore.activeNode;
+				if (activeNode && activeNode.name !== this.nodeName) {
 					return this.$locale.baseText('ndv.execute.fixPrevious');
 				}
 

@@ -176,6 +176,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useNDVStore } from '@/stores/ndv';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -262,6 +263,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useRootStore,
 			useUIStore,
 			useWorkflowsStore,
@@ -289,7 +291,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return this.selectedMode === 'list';
 		},
 		hasCredential(): boolean {
-			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
+			const node = this.ndvStore.activeNode;
 			if (!node) {
 				return false;
 			}
@@ -450,7 +452,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		setWidthOnMainPanelResize(mutation: { type: string }) {
 			// Update the width when main panel dimension change
-			if(mutation.type === 'ndv/setMainPanelDimensions') this.setWidth();
+			// TODO: Check about this:
+			if(mutation.type === 'setMainPanelDimensions') this.setWidth();
 		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {
@@ -489,7 +492,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return parameter.typeOptions[argumentName];
 		},
 		openCredential(): void {
-			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
+			const node = this.ndvStore.activeNode;
 			if (!node || !node.credentials) {
 				return;
 			}

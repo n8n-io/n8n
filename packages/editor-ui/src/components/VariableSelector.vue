@@ -43,6 +43,7 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useNDVStore } from '@/stores/ndv';
 
 // Node types that should not be displayed in variable selector
 const SKIPPED_NODE_TYPES = [
@@ -68,6 +69,7 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useNDVStore,
 				useRootStore,
 				useWorkflowsStore,
 			),
@@ -413,7 +415,7 @@ export default mixins(
 				const runIndex = 0;
 				const returnData: IVariableSelectorOption[] = [];
 
-				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
+				const activeNode: INodeUi | null = this.ndvStore.activeNode;
 
 				if (activeNode === null) {
 					return returnData;
@@ -493,7 +495,7 @@ export default mixins(
 			getFilterResults (filterText: string, itemIndex: number): IVariableSelectorOption[] {
 				const inputName = 'main';
 
-				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
+				const activeNode: INodeUi | null = this.ndvStore.activeNode;
 
 				if (activeNode === null) {
 					return [];

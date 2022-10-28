@@ -152,6 +152,7 @@ import { isCommunityPackageName } from './helpers';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -166,6 +167,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
 		),
@@ -205,8 +207,8 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				'background-color': this.node.color,
 			};
 		},
-		node(): INodeUi {
-			return this.$store.getters['ndv/activeNode'];
+		node(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
 		parametersSetting(): INodeProperties[] {
 			return this.parameters.filter((item) => {
@@ -226,7 +228,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			return this.nodeType.properties;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string } {
-			return this.$store.getters['ndv/outputPanelEditMode'];
+			return this.ndvStore.outputPanelEditMode;
 		},
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.node.type);

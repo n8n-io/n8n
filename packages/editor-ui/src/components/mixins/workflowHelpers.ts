@@ -62,6 +62,7 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { IWorkflowSettings } from 'n8n-workflow';
+import { useNDVStore } from '@/stores/ndv';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -75,6 +76,7 @@ export const workflowHelpers = mixins(
 	.extend({
 		computed: {
 			...mapStores(
+				useNDVStore,
 				useRootStore,
 				useWorkflowsStore,
 				useUIStore,
@@ -546,10 +548,10 @@ export const workflowHelpers = mixins(
 				let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 				const inputName = 'main';
-				const activeNode = this.$store.getters['ndv/activeNode'];
+				const activeNode = this.ndvStore.activeNode;
 				const workflow = this.getCurrentWorkflow();
 				const workflowRunData = this.workflowsStore.getWorkflowRunData as IRunData | null;
-				let parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
+				let parentNode = workflow.getParentNodes(activeNode?.name, inputName, 1);
 				const executionData = this.workflowsStore.getWorkflowExecution as IExecutionResponse | null;
 
 				if (opts?.inputNodeName && !parentNode.includes(opts.inputNodeName)) {

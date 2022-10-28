@@ -930,7 +930,6 @@ export interface rootStatePinia {
 export interface nodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
 }
-
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];

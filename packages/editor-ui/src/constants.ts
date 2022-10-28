@@ -417,4 +417,5 @@ export enum STORES {
 	UI = 'ui',
 	USERS = 'users',
 	WORKFLOWS = 'workflows',
+	NDV = 'ndv',
 }

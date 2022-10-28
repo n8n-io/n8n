@@ -106,6 +106,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -181,6 +182,7 @@ export default mixins(restApi).extend({
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useRootStore,
 			useUIStore,
 			useWorkflowsStore,
@@ -204,7 +206,7 @@ export default mixins(restApi).extend({
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;
-			const activeNode = this.$store.getters['ndv/activeNode'];
+			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 			if (!type || !type.documentationUrl) {

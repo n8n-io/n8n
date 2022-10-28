@@ -10,6 +10,7 @@ import { getPairedItemsMapping } from "@/pairedItemUtils";
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { isJsonKeyObject } from "@/utils";
 import { stringSizeInBytes } from "@/components/helpers";
+import { useNDVStore } from "./ndv";
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): workflowsState => ({
@@ -136,8 +137,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			return this.workflow.pinData;
 		},
 		pinDataSize(): number {
-			// TODO: Waiting for ndv store
-			// const activeNode = {};//rootGetters['ndv/activeNodeName'];
+			const ndvStore = useNDVStore();
+			const activeNode = ndvStore.activeNodeName;
 			return this.workflow.nodes
 				.reduce((acc, node) => {
 					if (typeof node.pinData !== 'undefined' && node.name !== activeNode) {

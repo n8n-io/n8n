@@ -88,6 +88,7 @@ import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
@@ -115,11 +116,12 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
 		),
 		node(): INodeUi {
-			return this.$store.getters['ndv/activeNode'];
+			return this.ndvStore.activeNode;
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
@@ -209,7 +211,7 @@ export default mixins(
 			return updatedAt > runAt;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
-			return this.$store.getters['ndv/outputPanelEditMode'];
+			return this.ndvStore.outputPanelEditMode;
 		},
 		canPinData(): boolean {
 			return this.isPinDataNodeType && !this.isReadOnly;

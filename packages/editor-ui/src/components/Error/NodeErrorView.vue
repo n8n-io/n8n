@@ -109,6 +109,8 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	copyPaste,
@@ -122,11 +124,14 @@ export default mixins(
 		VueJsonPretty,
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+		),
 		displayCause(): boolean {
 			return JSON.stringify(this.error.cause).length < MAX_DISPLAY_DATA_SIZE;
 		},
 		parameters (): INodeProperties[] {
-			const node = this.$store.getters['ndv/activeNode'];
+			const node = this.ndvStore.activeNode;
 			if (!node) {
 				return [];
 			}

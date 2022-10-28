@@ -6,6 +6,7 @@
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { BUILTIN_NODES_DOCS_URL, COMMUNITY_NODES_INSTALLATION_DOCS_URL, NPM_PACKAGE_DOCS_BASE_URL } from '@/constants';
 import { INodeUi, ITab } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
@@ -29,10 +30,11 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useWorkflowsStore,
 		),
-		activeNode(): INodeUi {
-			return this.$store.getters['ndv/activeNode'];
+		activeNode(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
 		documentationUrl (): string {
 			const nodeType = this.nodeType as INodeTypeDescription | null;

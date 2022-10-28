@@ -106,6 +106,7 @@ import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	name: 'TriggerPanel',
@@ -124,6 +125,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
 		),
@@ -376,7 +378,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 						pane: 'input',
 						type: 'open-executions-log',
 					});
-					this.$store.commit('ndv/setActiveNodeName', null);
+					this.ndvStore.activeNodeName = null;
 					this.uiStore.openModal(EXECUTIONS_MODAL_KEY);
 				} else if (target.dataset.key === 'settings') {
 					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);

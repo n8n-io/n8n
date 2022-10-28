@@ -56,6 +56,7 @@ import { hasExpressionMapping } from './helpers';
 import { debounceHelper } from './mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	externalHooks,
@@ -82,6 +83,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNDVStore,
 			useWorkflowsStore,
 		),
 	},
@@ -127,11 +129,11 @@ export default mixins(
 				node_name: string;
 			} = {
 				event_version: '2',
-				node_type_dest: this.$store.getters['ndv/activeNode'].type,
+				node_type_dest: this.ndvStore.activeNode? this.ndvStore.activeNode.type : '',
 				parameter_name_dest: this.parameter.displayName,
 				is_immediate_input: false,
 				variable_expression: eventData.variable,
-				node_name: this.$store.getters['ndv/activeNode'].name,
+				node_name: this.ndvStore.activeNode? this.ndvStore.activeNode.name : '',
 			};
 
 			if (eventData.variable) {
@@ -151,7 +153,7 @@ export default mixins(
 					const sourceNodeName = splitVar[0].split('"')[1];
 					trackProperties.node_type_source = this.workflowsStore.getNodeByName(sourceNodeName)?.type;
 					const nodeConnections: Array<Array<{ node: string }>> = this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
-					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.$store.getters['ndv/activeNode'].name)) ? true : false;
+					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.ndvStore.activeNode?.name || '')) ? true : false;
 
 					if (splitVar[1].startsWith('parameter')) {
 						trackProperties.parameter_name_source = splitVar[1].split('"')[1];
@@ -182,7 +184,7 @@ export default mixins(
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
 					workflow_id: this.workflowsStore.workflowId,
 					source: this.eventSource,
-					session_id: this.$store.getters['ndv/ndvSessionId'],
+					session_id: this.ndvStore.sessionId,
 					has_parameter: this.value.includes('$parameter'),
 					has_mapping: hasExpressionMapping(this.value),
 				};
