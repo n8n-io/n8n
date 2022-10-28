@@ -157,7 +157,6 @@ export class JotFormTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const formId = this.getNodeParameter('form') as string;
