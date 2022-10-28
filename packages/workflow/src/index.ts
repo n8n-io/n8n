@@ -6,6 +6,7 @@ import * as TelemetryHelpers from './TelemetryHelpers';
 export * from './Cron';
 export * from './DeferredPromise';
 export * from './Interfaces';
+export * from './ErrorHandler';
 export * from './Expression';
 export * from './ExpressionError';
 export * from './NodeErrors';

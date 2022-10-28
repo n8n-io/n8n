@@ -1,3 +1,5 @@
+import { ErrorHandler } from './ErrorHandler';
+
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 	let clone: any;
@@ -8,7 +10,7 @@ export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 		return source;
 	}
 	if (hash.has(source)) {
-		console.warn(`Circular reference detected at "source${path}"`);
+		ErrorHandler.captureWarning(`Circular reference detected at "source${path}"`);
 		return hash.get(source);
 	}
 	// Date

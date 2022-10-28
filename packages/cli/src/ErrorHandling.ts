@@ -2,6 +2,7 @@ import * as Sentry from '@sentry/node';
 import { RewriteFrames } from '@sentry/integrations';
 import type { Application } from 'express';
 import config from '../config';
+import { ErrorHandler } from 'n8n-workflow';
 
 let initialized = false;
 
@@ -20,10 +21,7 @@ export const initErrorHandling = (app?: Application) => {
 		dsn,
 		release,
 		environment,
-		integrations: (defaults) => {
-			const integrations = defaults.filter(
-				(i) => !['Console', 'Modules', 'Context', 'LinkedErrors'].includes(i.name),
-			);
+		integrations: (integrations) => {
 			integrations.push(new RewriteFrames({ root: process.cwd() }));
 			return integrations;
 		},
@@ -39,3 +37,11 @@ export const initErrorHandling = (app?: Application) => {
 };
 
 export const captureError = Sentry.captureException;
+
+export const captureWarning = (warning: string) =>
+	Sentry.captureMessage(warning, { level: 'warning' });
+
+Object.assign(ErrorHandler, {
+	captureError,
+	captureWarning,
+});
