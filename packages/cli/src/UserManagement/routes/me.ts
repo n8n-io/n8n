@@ -55,7 +55,7 @@ export function meNamespace(this: N8nApp): void {
 
 				const updatedUser = new User();
 				Object.assign(updatedUser, req.user, req.body);
-				const user = await Db.collections.User.validateAndUpdate(updatedUser);
+				const user = await Db.repositories.User.validateAndUpdate(updatedUser);
 
 				Logger.info('User updated successfully', { userId });
 
@@ -102,7 +102,7 @@ export function meNamespace(this: N8nApp): void {
 				);
 			}
 
-			await Db.collections.User.updatePassword(user, newPassword);
+			await Db.repositories.User.updatePassword(user, newPassword);
 			Logger.info('Password updated successfully', { userId: user.id });
 
 			await issueCookie(res, user);
@@ -140,7 +140,7 @@ export function meNamespace(this: N8nApp): void {
 				);
 			}
 
-			await Db.collections.User.update(req.user, { personalizationAnswers });
+			await Db.repositories.User.update(req.user, { personalizationAnswers });
 
 			Logger.info('User survey updated successfully', { userId: req.user.id });
 
@@ -161,7 +161,7 @@ export function meNamespace(this: N8nApp): void {
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
 			const apiKey = `n8n_api_${randomBytes(40).toString('hex')}`;
 
-			await Db.collections.User.update(req.user, { apiKey });
+			await Db.repositories.User.update(req.user, { apiKey });
 
 			const telemetryData = {
 				user_id: req.user.id,
@@ -180,7 +180,7 @@ export function meNamespace(this: N8nApp): void {
 	this.app.delete(
 		`/${this.restEndpoint}/me/api-key`,
 		ResponseHelper.send(async (req: AuthenticatedRequest) => {
-			await Db.collections.User.update(req.user, { apiKey: null });
+			await Db.repositories.User.update(req.user, { apiKey: null });
 
 			const telemetryData = {
 				user_id: req.user.id,

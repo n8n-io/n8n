@@ -33,6 +33,7 @@ import { SettingsRepository } from '@db/repositories/SettingsRepository';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
+export const repositories = collections;
 
 let connection: Connection;
 

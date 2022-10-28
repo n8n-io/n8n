@@ -635,7 +635,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 // ----------------------------------
 
 export async function isInstanceOwnerSetUp() {
-	const { value } = await Db.collections.Settings.get('userManagement.isInstanceOwnerSetUp');
+	const { value } = await Db.repositories.Settings.get('userManagement.isInstanceOwnerSetUp');
 	return Boolean(value);
 }
 

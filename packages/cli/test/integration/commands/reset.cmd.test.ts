@@ -31,7 +31,7 @@ test('user-management:reset should reset DB to default user state', async () => 
 
 	await Reset.run();
 
-	const user = await Db.collections.User.findOneByGlobalRole(globalOwnerRole);
+	const user = await Db.repositories.User.findOneByGlobalRole(globalOwnerRole);
 
 	if (!user) {
 		fail('No owner found after DB reset to default user state');

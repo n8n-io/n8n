@@ -32,7 +32,7 @@ export function authenticationMethods(this: N8nApp): void {
 
 			let user: User | undefined;
 			try {
-				user = await Db.collections.User.findOneByEmail(email, ['globalRole']);
+				user = await Db.repositories.User.findOneByEmail(email, ['globalRole']);
 			} catch (error) {
 				throw new Error('Unable to access database.');
 			}
@@ -78,7 +78,7 @@ export function authenticationMethods(this: N8nApp): void {
 				throw error;
 			}
 
-			user = await Db.collections.User.findFirst();
+			user = await Db.repositories.User.findFirst();
 
 			if (user.email || user.password) {
 				throw new Error('Invalid database state - user has password set.');

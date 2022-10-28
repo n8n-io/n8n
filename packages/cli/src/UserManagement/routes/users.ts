@@ -109,7 +109,7 @@ export function usersNamespace(this: N8nApp): void {
 				createUsers[invite.email.toLowerCase()] = null;
 			});
 
-			const role = await Db.collections.Role.findOne('member', 'global');
+			const role = await Db.repositories.Role.findOne('member', 'global');
 
 			if (!role) {
 				Logger.error(
@@ -123,7 +123,7 @@ export function usersNamespace(this: N8nApp): void {
 			}
 
 			// remove/exclude existing users from creation
-			const existingUsers = await Db.collections.User.findByEmails(Object.keys(createUsers));
+			const existingUsers = await Db.repositories.User.findByEmails(Object.keys(createUsers));
 			existingUsers.forEach((user) => {
 				if (user.password) {
 					delete createUsers[user.email];
@@ -255,7 +255,7 @@ export function usersNamespace(this: N8nApp): void {
 				}
 			}
 
-			const users = await Db.collections.User.findByIds([inviterId, inviteeId]);
+			const users = await Db.repositories.User.findByIds([inviterId, inviteeId]);
 
 			if (users.length !== 2) {
 				Logger.debug(
@@ -323,7 +323,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const validPassword = validatePassword(password);
 
-			const users = await Db.collections.User.findByIds([inviterId, inviteeId], ['globalRole']);
+			const users = await Db.repositories.User.findByIds([inviterId, inviteeId], ['globalRole']);
 
 			if (users.length !== 2) {
 				Logger.debug(
@@ -354,7 +354,7 @@ export function usersNamespace(this: N8nApp): void {
 			invitee.lastName = lastName;
 			invitee.password = await hashPassword(validPassword);
 
-			const updatedUser = await Db.collections.User.validateAndUpdate(invitee);
+			const updatedUser = await Db.repositories.User.validateAndUpdate(invitee);
 
 			await issueCookie(res, updatedUser);
 
@@ -372,7 +372,7 @@ export function usersNamespace(this: N8nApp): void {
 	this.app.get(
 		`/${this.restEndpoint}/users`,
 		ResponseHelper.send(async () => {
-			const users = await Db.collections.User.findAll();
+			const users = await Db.repositories.User.findAll();
 			return users.map((user): PublicUser => sanitizeUser(user, ['personalizationAnswers']));
 		}),
 	);
@@ -406,7 +406,7 @@ export function usersNamespace(this: N8nApp): void {
 
 			const ids = [idToDelete];
 			if (transferId) ids.push(transferId);
-			const users = await Db.collections.User.findByIds(ids);
+			const users = await Db.repositories.User.findByIds(ids);
 
 			if (!users.length || (transferId && users.length !== 2)) {
 				throw new ResponseHelper.ResponseError(
@@ -502,7 +502,7 @@ export function usersNamespace(this: N8nApp): void {
 				);
 			}
 
-			const reinvitee = await Db.collections.User.findOneById(idToReinvite);
+			const reinvitee = await Db.repositories.User.findOneById(idToReinvite);
 
 			if (!reinvitee) {
 				Logger.debug(

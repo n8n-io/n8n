@@ -9,8 +9,8 @@ export class Reset extends BaseCommand {
 	async run(): Promise<void> {
 		const owner = await this.getInstanceOwner();
 
-		const ownerWorkflowRole = await Db.collections.Role.findOneOrFail('owner', 'workflow');
-		const ownerCredentialRole = await Db.collections.Role.findOneOrFail('owner', 'credential');
+		const ownerWorkflowRole = await Db.repositories.Role.findOneOrFail('owner', 'workflow');
+		const ownerCredentialRole = await Db.repositories.Role.findOneOrFail('owner', 'credential');
 
 		await Db.collections.SharedWorkflow.update(
 			{ user: { id: Not(owner.id) }, role: ownerWorkflowRole },
@@ -22,7 +22,7 @@ export class Reset extends BaseCommand {
 			{ user: owner },
 		);
 
-		await Db.collections.User.resetUsers(owner);
+		await Db.repositories.User.resetUsers(owner);
 
 		const danglingCredentials: CredentialsEntity[] =
 			(await Db.collections.Credentials.createQueryBuilder('credentials')
@@ -38,8 +38,8 @@ export class Reset extends BaseCommand {
 		);
 		await Db.collections.SharedCredentials.save(newSharedCredentials);
 
-		await Db.collections.Settings.update('userManagement.isInstanceOwnerSetUp', 'false');
-		await Db.collections.Settings.update('userManagement.skipInstanceOwnerSetup', 'false');
+		await Db.repositories.Settings.update('userManagement.isInstanceOwnerSetUp', 'false');
+		await Db.repositories.Settings.update('userManagement.skipInstanceOwnerSetup', 'false');
 
 		this.logger.info('Successfully reset the database to default user state.');
 	}

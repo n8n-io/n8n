@@ -156,7 +156,7 @@ test('DELETE /users/:id should delete the user', async () => {
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
-	const user = await Db.collections.User.findOneById(userToDelete.id);
+	const user = await Db.repositories.User.findOneById(userToDelete.id);
 	expect(user).toBeUndefined(); // deleted
 
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOne({
@@ -187,7 +187,7 @@ test('DELETE /users/:id should fail to delete self', async () => {
 
 	expect(response.statusCode).toBe(400);
 
-	const user = await Db.collections.User.findOneById(owner.id);
+	const user = await Db.repositories.User.findOneById(owner.id);
 	expect(user).toBeDefined();
 });
 
@@ -202,7 +202,7 @@ test('DELETE /users/:id should fail if user to delete is transferee', async () =
 
 	expect(response.statusCode).toBe(400);
 
-	const user = await Db.collections.User.findOneById(idToDelete);
+	const user = await Db.repositories.User.findOneById(idToDelete);
 	expect(user).toBeDefined();
 });
 
@@ -240,7 +240,7 @@ test('DELETE /users/:id with transferId should perform transfer', async () => {
 	expect(sharedCredential.credentials).toBeDefined();
 	expect(sharedCredential.credentials.id).toBe(savedCredential.id);
 
-	const deletedUser = await Db.collections.User.findOneById(userToDelete.id);
+	const deletedUser = await Db.repositories.User.findOneById(userToDelete.id);
 
 	expect(deletedUser).toBeUndefined();
 });
@@ -288,7 +288,7 @@ test('GET /resolve-signup-token should fail with invalid inputs', async () => {
 		.query({ inviteeId });
 
 	// cause inconsistent DB state
-	await Db.collections.User.update(owner, { email: '' });
+	await Db.repositories.User.update(owner, { email: '' });
 	const fifth = await authOwnerAgent
 		.get('/resolve-signup-token')
 		.query({ inviterId: owner.id })
@@ -342,7 +342,7 @@ test('POST /users/:id should fill out a user shell', async () => {
 	const authToken = utils.getAuthToken(response);
 	expect(authToken).toBeDefined();
 
-	const member = await Db.collections.User.findOneByIdOrFail(memberShell.id);
+	const member = await Db.repositories.User.findOneByIdOrFail(memberShell.id);
 	expect(member.firstName).toBe(memberData.firstName);
 	expect(member.lastName).toBe(memberData.lastName);
 	expect(member.password).not.toBe(memberData.password);
@@ -355,7 +355,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 
 	const memberShellEmail = randomEmail();
 
-	const memberShell = await Db.collections.User.create({
+	const memberShell = await Db.repositories.User.create({
 		email: memberShellEmail,
 		globalRole: globalMemberRole,
 	});
@@ -394,7 +394,7 @@ test('POST /users/:id should fail with invalid inputs', async () => {
 			const response = await authlessAgent.post(`/users/${memberShell.id}`).send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const storedUser = await Db.collections.User.findOneByEmailOrFail(memberShellEmail);
+			const storedUser = await Db.repositories.User.findOneByEmailOrFail(memberShellEmail);
 
 			expect(storedUser.firstName).toBeNull();
 			expect(storedUser.lastName).toBeNull();
@@ -420,7 +420,7 @@ test('POST /users/:id should fail with already accepted invite', async () => {
 
 	expect(response.statusCode).toBe(400);
 
-	const storedMember = await Db.collections.User.findOneByEmailOrFail(member.email);
+	const storedMember = await Db.repositories.User.findOneByEmailOrFail(member.email);
 	expect(storedMember.firstName).not.toBe(newMemberData.firstName);
 	expect(storedMember.lastName).not.toBe(newMemberData.lastName);
 
@@ -481,7 +481,7 @@ test('POST /users should email invites and create user shells but ignore existin
 			expect(error).toBe('Email could not be sent');
 		}
 
-		const storedUser = await Db.collections.User.findOneByIdOrFail(id);
+		const storedUser = await Db.repositories.User.findOneByIdOrFail(id);
 		const { firstName, lastName, personalizationAnswers, password, resetPasswordToken } =
 			storedUser;
 
@@ -512,7 +512,7 @@ test('POST /users should fail with invalid inputs', async () => {
 			const response = await authOwnerAgent.post('/users').send(invalidPayload);
 			expect(response.statusCode).toBe(400);
 
-			const users = await Db.collections.User.findAll();
+			const users = await Db.repositories.User.findAll();
 			expect(users.length).toBe(1); // DB unaffected
 		}),
 	);
@@ -531,7 +531,7 @@ test('POST /users should ignore an empty payload', async () => {
 	expect(Array.isArray(data)).toBe(true);
 	expect(data.length).toBe(0);
 
-	const users = await Db.collections.User.findAll();
+	const users = await Db.repositories.User.findAll();
 	expect(users.length).toBe(1);
 });
 

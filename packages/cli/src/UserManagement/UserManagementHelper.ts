@@ -51,12 +51,12 @@ export function isUserManagementDisabled(): boolean {
 }
 
 async function getInstanceOwnerRole(): Promise<Role> {
-	return Db.collections.Role.findOneOrFail('owner', 'global');
+	return Db.repositories.Role.findOneOrFail('owner', 'global');
 }
 
 export async function getInstanceOwner(): Promise<User> {
 	const ownerRole = await getInstanceOwnerRole();
-	return Db.collections.User.findOneByGlobalRoleOrFail(ownerRole, ['globalRole']);
+	return Db.repositories.User.findOneByGlobalRoleOrFail(ownerRole, ['globalRole']);
 }
 
 /**
@@ -126,7 +126,7 @@ export function sanitizeUser(user: User, withoutKeys?: string[]): PublicUser {
 }
 
 export async function getUserById(userId: string): Promise<User> {
-	return Db.collections.User.findOneByIdOrFail(userId, ['globalRole']);
+	return Db.repositories.User.findOneByIdOrFail(userId, ['globalRole']);
 }
 
 /**

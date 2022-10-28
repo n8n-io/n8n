@@ -37,9 +37,9 @@ export abstract class BaseCommand extends Command {
 	};
 
 	async getInstanceOwner(): Promise<User> {
-		const ownerGlobalRole = await Db.collections.Role.findOneOrFail('owner', 'global');
-		const owner = await Db.collections.User.findOneByGlobalRole(ownerGlobalRole);
+		const ownerGlobalRole = await Db.repositories.Role.findOneOrFail('owner', 'global');
+		const owner = await Db.repositories.User.findOneByGlobalRole(ownerGlobalRole);
 		if (owner) return owner;
-		return Db.collections.User.create({ globalRole: ownerGlobalRole });
+		return Db.repositories.User.create({ globalRole: ownerGlobalRole });
 	}
 }

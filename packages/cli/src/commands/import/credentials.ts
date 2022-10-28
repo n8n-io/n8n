@@ -153,7 +153,7 @@ export class ImportCredentialsCommand extends Command {
 	}
 
 	private async initOwnerCredentialRole() {
-		const ownerCredentialRole = await Db.collections.Role.findOne('owner', 'credential');
+		const ownerCredentialRole = await Db.repositories.Role.findOne('owner', 'credential');
 
 		if (!ownerCredentialRole) {
 			throw new Error(`Failed to find owner credential role. ${FIX_INSTRUCTION}`);
@@ -181,8 +181,8 @@ export class ImportCredentialsCommand extends Command {
 	}
 
 	private async getOwner() {
-		const ownerGlobalRole = await Db.collections.Role.findOneOrFail('owner', 'global');
-		const owner = await Db.collections.User.findOneByGlobalRole(ownerGlobalRole);
+		const ownerGlobalRole = await Db.repositories.Role.findOneOrFail('owner', 'global');
+		const owner = await Db.repositories.User.findOneByGlobalRole(ownerGlobalRole);
 
 		if (!owner) {
 			throw new Error(`Failed to find owner. ${FIX_INSTRUCTION}`);
@@ -192,6 +192,6 @@ export class ImportCredentialsCommand extends Command {
 	}
 
 	private async getAssignee(userId: string) {
-		return Db.collections.User.findOneByIdOrFail(userId);
+		return Db.repositories.User.findOneByIdOrFail(userId);
 	}
 }

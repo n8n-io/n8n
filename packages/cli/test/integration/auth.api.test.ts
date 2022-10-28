@@ -37,7 +37,7 @@ beforeEach(async () => {
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 
-	await Db.collections.Settings.update('userManagement.isInstanceOwnerSetUp', 'true');
+	await Db.repositories.Settings.update('userManagement.isInstanceOwnerSetUp', 'true');
 });
 
 afterAll(async () => {
@@ -106,7 +106,7 @@ test('GET /login should return cookie if UM is disabled and no cookie is already
 
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
-	await Db.collections.Settings.update('userManagement.isInstanceOwnerSetUp', 'false');
+	await Db.repositories.Settings.update('userManagement.isInstanceOwnerSetUp', 'false');
 
 	const response = await authlessAgent.get('/login');
 

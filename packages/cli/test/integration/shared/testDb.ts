@@ -285,7 +285,7 @@ export async function saveCredential(
 }
 
 export async function shareCredentialWithUsers(credential: CredentialsEntity, users: User[]) {
-	const role = await Db.collections.Role.findOne('user', 'credential');
+	const role = await Db.repositories.Role.findOne('user', 'credential');
 	const newSharedCredentials = users.map((user) =>
 		Db.collections.SharedCredentials.create({
 			user,
@@ -310,7 +310,7 @@ export function affixRoleToSaveCredential(role: Role) {
  */
 export async function createUser(attributes: Partial<User> = {}): Promise<User> {
 	const { email, password, firstName, lastName, globalRole, ...rest } = attributes;
-	return Db.collections.User.create({
+	return Db.repositories.User.create({
 		email: email ?? randomEmail(),
 		password: await hashPassword(password ?? randomValidPassword()),
 		firstName: firstName ?? randomName(),
@@ -335,7 +335,7 @@ export function createUserShell(globalRole: Role): Promise<User> {
 		shell.email = randomEmail();
 	}
 
-	return Db.collections.User.create(shell);
+	return Db.repositories.User.create(shell);
 }
 
 /**
@@ -352,7 +352,7 @@ export async function createManyUsers(
 
 	return Promise.all(
 		[...Array(amount)].map(async () =>
-			Db.collections.User.create({
+			Db.repositories.User.create({
 				email: email ?? randomEmail(),
 				password: await hashPassword(password ?? randomValidPassword()),
 				firstName: firstName ?? randomName(),
@@ -391,7 +391,7 @@ export function saveInstalledNode(
 
 export function addApiKey(user: User): Promise<User> {
 	user.apiKey = randomApiKey();
-	return Db.collections.User.update(user, { apiKey: randomApiKey() });
+	return Db.repositories.User.update(user, { apiKey: randomApiKey() });
 }
 
 // ----------------------------------
@@ -399,23 +399,23 @@ export function addApiKey(user: User): Promise<User> {
 // ----------------------------------
 
 export function getGlobalOwnerRole() {
-	return Db.collections.Role.findOneOrFail('owner', 'global');
+	return Db.repositories.Role.findOneOrFail('owner', 'global');
 }
 
 export function getGlobalMemberRole() {
-	return Db.collections.Role.findOneOrFail('member', 'global');
+	return Db.repositories.Role.findOneOrFail('member', 'global');
 }
 
 export function getWorkflowOwnerRole() {
-	return Db.collections.Role.findOneOrFail('owner', 'workflow');
+	return Db.repositories.Role.findOneOrFail('owner', 'workflow');
 }
 
 export function getWorkflowEditorRole() {
-	return Db.collections.Role.findOneOrFail('editor', 'workflow');
+	return Db.repositories.Role.findOneOrFail('editor', 'workflow');
 }
 
 export function getCredentialOwnerRole() {
-	return Db.collections.Role.findOneOrFail('owner', 'credential');
+	return Db.repositories.Role.findOneOrFail('owner', 'credential');
 }
 
 export function getAllRoles() {

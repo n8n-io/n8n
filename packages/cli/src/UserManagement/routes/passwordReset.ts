@@ -53,7 +53,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 			}
 
 			// User should just be able to reset password if one is already present
-			const user = await Db.collections.User.findOneByEmailIfPasswordSet(email);
+			const user = await Db.repositories.User.findOneByEmailIfPasswordSet(email);
 
 			if (!user?.password) {
 				Logger.debug(
@@ -69,7 +69,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const resetPasswordTokenExpiration = Math.floor(Date.now() / 1000) + 7200;
 
-			await Db.collections.User.update(user, { resetPasswordToken, resetPasswordTokenExpiration });
+			await Db.repositories.User.update(user, { resetPasswordToken, resetPasswordTokenExpiration });
 
 			const baseUrl = getInstanceBaseUrl();
 			const url = new URL(`${baseUrl}/change-password`);
@@ -133,7 +133,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 400);
 			}
 
-			const user = await Db.collections.User.findOneForPasswordReset(id, resetPasswordToken);
+			const user = await Db.repositories.User.findOneForPasswordReset(id, resetPasswordToken);
 
 			if (!user) {
 				Logger.debug(
@@ -179,7 +179,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 
 			const validPassword = validatePassword(password);
 
-			const user = await Db.collections.User.findOneForPasswordReset(userId, resetPasswordToken);
+			const user = await Db.repositories.User.findOneForPasswordReset(userId, resetPasswordToken);
 
 			if (!user) {
 				Logger.debug(
@@ -192,7 +192,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 				throw new ResponseHelper.ResponseError('', undefined, 404);
 			}
 
-			await Db.collections.User.update(user, {
+			await Db.repositories.User.update(user, {
 				password: await hashPassword(validPassword),
 				resetPasswordToken: null,
 				resetPasswordTokenExpiration: null,

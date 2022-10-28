@@ -36,7 +36,7 @@ export function issueJWT(user: User): JwtToken {
 }
 
 export async function resolveJwtContent(jwtPayload: JwtPayload): Promise<User> {
-	const user = await Db.collections.User.findOneById(jwtPayload.id);
+	const user = await Db.repositories.User.findOneById(jwtPayload.id);
 
 	let passwordHash = null;
 	if (user?.password) {

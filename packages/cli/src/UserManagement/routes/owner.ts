@@ -55,7 +55,7 @@ export function ownerNamespace(this: N8nApp): void {
 				);
 			}
 
-			let owner = await Db.collections.User.findOneById(userId);
+			let owner = await Db.repositories.User.findOneById(userId);
 
 			if (!owner || (owner.globalRole.scope === 'global' && owner.globalRole.name !== 'owner')) {
 				Logger.debug(
@@ -74,11 +74,11 @@ export function ownerNamespace(this: N8nApp): void {
 				password: await hashPassword(validPassword),
 			});
 
-			owner = await Db.collections.User.validateAndUpdate(owner);
+			owner = await Db.repositories.User.validateAndUpdate(owner);
 
 			Logger.info('Owner was set up successfully', { userId: req.user.id });
 
-			await Db.collections.Settings.update('userManagement.isInstanceOwnerSetUp', 'true');
+			await Db.repositories.Settings.update('userManagement.isInstanceOwnerSetUp', 'true');
 
 			config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -100,7 +100,7 @@ export function ownerNamespace(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/owner/skip-setup`,
 		ResponseHelper.send(async () => {
-			await Db.collections.Settings.update('userManagement.skipInstanceOwnerSetup', 'true');
+			await Db.repositories.Settings.update('userManagement.skipInstanceOwnerSetup', 'true');
 
 			config.set('userManagement.skipInstanceOwnerSetup', true);
 
