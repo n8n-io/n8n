@@ -83,7 +83,7 @@ export const useNDVStore =  defineStore(STORES.NDV, {
 		outputPanelEditMode(): NDVState['output']['editMode'] {
 			return this.output.editMode;
 		},
-		mainPanelDimensions() {
+		getMainPanelDimensions() {
 			return (panelType: string) => {
 				const defaults = { relativeRight: 1, relativeLeft: 1, relativeWidth: 1 };
 				return {...defaults, ...this.mainPanelDimensions[panelType]};

@@ -126,7 +126,7 @@ export default mixins(debounceHelper).extend({
 			relativeLeft: number,
 			relativeRight: number
 			} {
-			return this.ndvStore.mainPanelDimensions(this.currentNodePaneType as "input" | "output");
+			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType as "input" | "output");
 		},
 		supportedResizeDirections() {
 			const supportedDirections = ['right'];

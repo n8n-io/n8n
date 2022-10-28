@@ -1069,7 +1069,6 @@ export interface IUiState {
 export interface uiState {
 	activeActions: string[];
 	activeCredentialType: string | null;
-	// activeNode: string | null; --> NDV STORE
 	sidebarMenuCollapsed: boolean;
 	modalStack: string[];
 	modals: {
@@ -1077,21 +1076,6 @@ export interface uiState {
 	};
 	isPageLoading: boolean;
 	currentView: string;
-	// ndv: { 		--->		MOVED TO NDV STORE
-	// 	sessionId: string;
-	// 	input: {
-	// 		displayMode: IRunDataDisplayMode;
-	// 	};
-	// 	output: {
-	// 		displayMode: IRunDataDisplayMode;
-	// 		editMode: {
-	// 			enabled: boolean;
-	// 			value: string;
-	// 		};
-	// 	};
-	// 	focusedMappableInput: string;
-	// 	mappingTelemetry: {[key: string]: string | number | boolean};
-	// };
 	mainPanelPosition: number;
 	fakeDoorFeatures: IFakeDoor[];
 	draggable: {
