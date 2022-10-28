@@ -7,7 +7,6 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	jsonParse,
-	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -178,8 +177,9 @@ export class AwsSnsTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const topic = this.getNodeParameter('topic') as string;
 
-		// @ts-ignore
-		const body = jsonParse(req.rawBody.toString());
+		const body = jsonParse<{ Type: string; TopicArn: string; Token: string }>(
+			req.rawBody.toString(),
+		);
 
 		if (body.Type === 'SubscriptionConfirmation' && body.TopicArn === topic) {
 			const { Token } = body;

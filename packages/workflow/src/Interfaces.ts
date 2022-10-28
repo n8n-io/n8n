@@ -4,6 +4,7 @@
 // eslint-disable-next-line max-classes-per-file
 import * as express from 'express';
 import * as FormData from 'form-data';
+import type { IncomingHttpHeaders } from 'http';
 import type { URLSearchParams } from 'url';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { Workflow } from './Workflow';
@@ -784,7 +785,7 @@ export interface ITriggerFunctions {
 export interface IWebhookFunctions {
 	getBodyData(): IDataObject;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
-	getHeaderData(): object;
+	getHeaderData(): IncomingHttpHeaders;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getNodeParameter(
