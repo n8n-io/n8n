@@ -74,7 +74,7 @@ import crypto, { createHmac } from 'crypto';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
 // eslint-disable-next-line import/no-extraneous-dependencies
-import express from 'express';
+import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
 import { OptionsWithUri, OptionsWithUrl } from 'request';
@@ -103,6 +103,7 @@ import {
 } from '.';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
+import { IncomingHttpHeaders } from 'http';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2937,7 +2938,7 @@ export function getExecuteWebhookFunctions(
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);
 			},
-			getHeaderData(): object {
+			getHeaderData(): IncomingHttpHeaders {
 				if (additionalData.httpRequest === undefined) {
 					throw new Error('Request is missing!');
 				}
@@ -2987,13 +2988,13 @@ export function getExecuteWebhookFunctions(
 				}
 				return additionalData.httpRequest.query;
 			},
-			getRequestObject(): express.Request {
+			getRequestObject(): Request {
 				if (additionalData.httpRequest === undefined) {
 					throw new Error('Request is missing!');
 				}
 				return additionalData.httpRequest;
 			},
-			getResponseObject(): express.Response {
+			getResponseObject(): Response {
 				if (additionalData.httpResponse === undefined) {
 					throw new Error('Response is missing!');
 				}
