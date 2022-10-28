@@ -43,6 +43,26 @@ eventEmitter.on(
 	},
 );
 
-eventEmitter.on(eventEmitter.types.nodeFetchedData, (nodeName, runData, execData) => {
-	console.log(nodeName, runData, execData);
+eventEmitter.on(eventEmitter.types.nodeFetchedData, async (workflowId: string) => {
+	// Get the workflow id
+	console.log('event', workflowId);
+	let id: number;
+	try {
+		id = parseInt(workflowId, 10);
+	} catch (error) {
+		console.error(`Error ${error as string} when casting workflow ID to a number`);
+		return;
+	}
+
+	// Update only if necessary
+	console.log('update db');
+	const response = await Db.collections.Workflow.update(
+		{ id, dataLoaded: false },
+		{ dataLoaded: true },
+	);
+
+	// If response.affected is 1 then we know this was the first time data was loaded into the workflow; do posthog event here
+	if (response.affected) {
+		console.log('posthog');
+	}
 });

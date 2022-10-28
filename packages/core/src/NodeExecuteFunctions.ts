@@ -93,6 +93,7 @@ import url, { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
 // eslint-disable-next-line import/no-cycle
 import {
+	eventEmitter,
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
@@ -543,6 +544,7 @@ function digestAuthAxiosConfig(
 }
 
 async function proxyRequestToAxios(
+	workflow: Workflow,
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
 	// tslint:disable-next-line:no-any
@@ -620,6 +622,7 @@ async function proxyRequestToAxios(
 							body = undefined;
 						}
 					}
+					eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflow.id);
 					resolve({
 						body,
 						headers: response.headers,
@@ -636,6 +639,7 @@ async function proxyRequestToAxios(
 							body = undefined;
 						}
 					}
+					eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflow.id);
 					resolve(body);
 				}
 			})
@@ -1446,7 +1450,7 @@ export async function requestWithAuthentication(
 			node,
 			additionalData.timezone,
 		);
-		return await proxyRequestToAxios(requestOptions as IDataObject);
+		return await proxyRequestToAxios(workflow, requestOptions as IDataObject);
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1472,7 +1476,7 @@ export async function requestWithAuthentication(
 						additionalData.timezone,
 					);
 					// retry the request
-					return await proxyRequestToAxios(requestOptions as IDataObject);
+					return await proxyRequestToAxios(workflow, requestOptions as IDataObject);
 				}
 			}
 			throw error;
@@ -1928,7 +1932,9 @@ export function getExecutePollFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, uriOrObject, options);
+				},
 				async requestWithAuthentication(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2093,7 +2099,9 @@ export function getExecuteTriggerFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2361,7 +2369,9 @@ export function getExecuteFunctions(
 				): Promise<Buffer> {
 					return getBinaryDataBuffer.call(this, inputData, itemIndex, propertyName, inputIndex);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2586,7 +2596,9 @@ export function getExecuteSingleFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2721,7 +2733,9 @@ export function getLoadOptionsFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -2867,7 +2881,9 @@ export function getExecuteHookFunctions(
 						additionalCredentialOptions,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
@@ -3054,7 +3070,9 @@ export function getExecuteWebhookFunctions(
 						mimeType,
 					);
 				},
-				request: proxyRequestToAxios,
+				request: async (uriOrObject: string | IDataObject, options?: IDataObject | undefined) => {
+					return proxyRequestToAxios(workflow, uriOrObject, options);
+				},
 				async requestOAuth2(
 					this: IAllExecuteFunctions,
 					credentialsType: string,
