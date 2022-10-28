@@ -89,7 +89,6 @@ export const databaseFields: INodeProperties[] = [
 				displayName: 'Link',
 				name: 'url',
 				type: 'string',
-				hint: "Use Notion's 'copy link' functionality",
 				placeholder:
 					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
 				validation: [

@@ -49,7 +49,6 @@ export const blockFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Page-b4eeb113e118403ba450af65ac25f0b9',
-				hint: "Use Notion's 'copy link' (Pages are also blocks)",
 				validation: [
 					{
 						type: 'regex',
@@ -111,7 +110,6 @@ export const blockFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Page-b4eeb113e118403ba450af65ac25f0b9',
-				hint: "Use Notion's 'copy link' (Pages are also blocks)",
 				validation: [
 					{
 						type: 'regex',

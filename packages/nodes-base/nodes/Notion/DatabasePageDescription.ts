@@ -108,7 +108,6 @@ export const databasePageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
-				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -533,7 +532,6 @@ export const databasePageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
-				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -942,7 +940,6 @@ export const databasePageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
-				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -1028,7 +1025,6 @@ export const databasePageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
-				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',

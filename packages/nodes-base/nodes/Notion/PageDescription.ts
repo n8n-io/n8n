@@ -88,7 +88,6 @@ export const pageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Page-b4eeb113e118403aa450af65ac25f0b9',
-				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
@@ -164,7 +163,6 @@ export const pageFields = [
 				type: 'string',
 				placeholder:
 					'https://www.notion.so/My-Page-b4eeb113e118403aa450af65ac25f0b9',
-				hint: "Use Notion's 'copy link' functionality",
 				validation: [
 					{
 						type: 'regex',
