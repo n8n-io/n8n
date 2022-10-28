@@ -1,15 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
+export const deepCopy = <T>(source: T, hash = new WeakSet(), path = ''): T => {
 	let clone: any;
 	let i: any;
 	const hasOwnProp = Object.prototype.hasOwnProperty.bind(source);
-	// Primitives & Null & Function
-	if (typeof source !== 'object' || source === null || source instanceof Function) {
+	// Primitives & Null & Function & Self-Reference (circular reference)
+	if (
+		typeof source !== 'object' ||
+		source === null ||
+		source instanceof Function ||
+		hash.has(source)
+	) {
 		return source;
 	}
-	if (hash.has(source)) {
-		return hash.get(source);
-	}
+	hash.add(source);
 	// Date
 	if (source instanceof Date) {
 		return new Date(source.getTime()) as T;
@@ -25,7 +28,6 @@ export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 	}
 	// Object
 	clone = {};
-	hash.set(source, clone);
 	for (i in source) {
 		if (hasOwnProp(i)) {
 			clone[i] = deepCopy((source as any)[i], hash, path + `.${i as string}`);
