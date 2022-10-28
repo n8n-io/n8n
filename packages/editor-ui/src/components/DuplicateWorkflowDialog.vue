@@ -49,6 +49,7 @@ import Modal from "./Modal.vue";
 import {restApi} from "@/components/mixins/restApi";
 import { mapStores } from "pinia";
 import { useSettingsStore } from "@/stores/settings";
+import { useWorkflowsStore } from "@/stores/workflows";
 
 export default mixins(showMessage, workflowHelpers, restApi).extend({
 	components: { TagsDropdown, Modal },
@@ -68,11 +69,14 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 		};
 	},
 	async mounted() {
-		this.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName', this.data.name);
+		this.name = await this.workflowsStore.getDuplicateCurrentWorkflowName(this.data.name);
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	computed: {
-		...mapStores(useSettingsStore),
+		...mapStores(
+			useSettingsStore,
+			useWorkflowsStore,
+		),
 	},
 	watch: {
 		isActive(active) {

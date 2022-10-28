@@ -339,6 +339,8 @@ import { mapGetters } from 'vuex';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from './mixins/debounce';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(
 	externalHooks,
@@ -472,6 +474,9 @@ export default mixins(
 			},
 		},
 		computed: {
+			...mapStores(
+				useWorkflowsStore,
+			),
 			...mapGetters('credentials', ['allCredentialTypes']),
 			expressionDisplayValue(): string {
 				if (this.activeDrop || this.forceShowExpression) {
@@ -742,12 +747,14 @@ export default mixins(
 			},
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
 				// Update the values on the node
-				this.$store.commit('updateNodeProperties', updateInformation);
+				this.workflowsStore.updateNodeProperties(updateInformation);
 
-				const node = this.$store.getters.getNodeByName(updateInformation.name);
+				const node = this.workflowsStore.getNodeByName(updateInformation.name);
 
-				// Update the issues
-				this.updateNodeCredentialIssues(node);
+				if (node) {
+					// Update the issues
+					this.updateNodeCredentialIssues(node);
+				}
 
 				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 			},
@@ -827,7 +834,7 @@ export default mixins(
 						parameter_name: this.parameter.displayName,
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						session_id: this.$store.getters['ndv/ndvSessionId'],
 						source: this.eventSource || 'ndv',
 					});
@@ -956,7 +963,7 @@ export default mixins(
 
 				if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
 					this.$telemetry.track('User set node operation or mode', {
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						node_type: this.node && this.node.type,
 						resource: this.node && this.node.parameters.resource,
 						is_custom: value === CUSTOM_API_CALL_KEY,

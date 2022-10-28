@@ -23,6 +23,8 @@ import mixins from 'vue-typed-mixins';
 import { workflowRun } from './mixins/workflowRun';
 import { pinData } from './mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(
 	workflowRun,
@@ -54,8 +56,11 @@ export default mixins(
 		},
 	},
 	computed: {
-		node (): INodeUi {
-			return this.$store.getters.getNodeByName(this.nodeName);
+		...mapStores(
+			useWorkflowsStore,
+		),
+		node (): INodeUi | null {
+			return this.workflowsStore.getNodeByName(this.nodeName);
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
@@ -64,8 +69,8 @@ export default mixins(
 			return null;
 		},
 		nodeRunning (): boolean {
-			const triggeredNode = this.$store.getters.executedNode;
-			const executingNode = this.$store.getters.executingNode;
+			const triggeredNode = this.workflowsStore.executedNode;
+			const executingNode = this.workflowsStore.executingNode;
 			return this.workflowRunning && (executingNode === this.node.name || triggeredNode === this.node.name);
 		},
 		workflowRunning (): boolean {
@@ -87,8 +92,8 @@ export default mixins(
 			return Boolean(this.nodeType && this.nodeType.name === WEBHOOK_NODE_TYPE);
 		},
 		isListeningForEvents(): boolean {
-			const waitingOnWebhook = this.$store.getters.executionWaitingForWebhook as boolean;
-			const executedNode = this.$store.getters.executedNode as string | undefined;
+			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook;
+			const executedNode = this.workflowsStore.executedNode;
 
 			return (
 				this.node &&
@@ -151,7 +156,7 @@ export default mixins(
 	methods: {
 		async stopWaitingForWebhook () {
 			try {
-				await this.restApi().removeTestWebhook(this.$store.getters.workflowId);
+				await this.restApi().removeTestWebhook(this.workflowsStore.workflowId);
 			} catch (error) {
 				this.$showError(
 					error,
@@ -177,14 +182,14 @@ export default mixins(
 
 					if (shouldUnpinAndExecute) {
 						dataPinningEventBus.$emit('data-unpinning', { source: 'unpin-and-execute-modal' });
-						this.$store.commit('unpinData', { node: this.node });
+						this.workflowsStore.unpinData({ node: this.node });
 					}
 				}
 
 				if (!this.hasPinData || shouldUnpinAndExecute) {
 					const telemetryPayload = {
 						node_type: this.nodeType ? this.nodeType.name : null,
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						source: this.telemetrySource,
 					};
 					this.$telemetry.track('User clicked execute node button', telemetryPayload);

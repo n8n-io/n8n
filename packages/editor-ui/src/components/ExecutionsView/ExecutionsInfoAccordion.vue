@@ -13,7 +13,11 @@
 
 <script lang="ts">
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 import { deepCopy, IWorkflowSettings } from 'n8n-workflow';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 interface IWorkflowSaveSettings {
@@ -45,9 +49,9 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		this.defaultValues.saveFailedExecutions = this.$store.getters.saveDataErrorExecution;
-		this.defaultValues.saveSuccessfulExecutions = this.$store.getters.saveDataSuccessExecution;
-		this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
+		this.defaultValues.saveFailedExecutions = this.rootStore.saveDataErrorExecution;
+		this.defaultValues.saveSuccessfulExecutions = this.rootStore.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.rootStore.saveManualExecutions;
 		this.updateSettings(this.workflowSettings);
 	},
 	watch: {
@@ -56,7 +60,12 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-			accordionItems(): Object[] {
+		...mapStores(
+			useRootStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		accordionItems(): Object[] {
 			return [
 				{
 					id: 'productionExecutions',
@@ -100,7 +109,7 @@ export default Vue.extend({
 			}
 		},
 		workflowSettings(): IWorkflowSettings {
-			const workflowSettings = deepCopy(this.$store.getters.workflowSettings);
+			const workflowSettings = deepCopy(this.workflowsStore.workflowSettings);
 			return workflowSettings;
 		},
 		accordionDescription(): string {
@@ -126,13 +135,13 @@ export default Vue.extend({
 		onAccordionClick(event: MouseEvent): void {
 			if (event.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
-				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+				this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			}
 		},
 		onItemTooltipClick(item: string, event: MouseEvent): void {
 			if (item === 'productionExecutions' && event.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
-				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+				this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			}
 		},
 	},

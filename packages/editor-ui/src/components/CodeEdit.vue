@@ -32,6 +32,9 @@ import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 } from '@/constants';
 import { CodeEditor } from './forms';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(
 	genericHelpers,
@@ -42,6 +45,12 @@ export default mixins(
 		CodeEditor,
 	},
 	props: ['codeAutocomplete', 'parameter', 'path', 'type', 'value', 'readonly'],
+	computed: {
+		...mapStores(
+			useRootStore,
+			useWorkflowsStore,
+		),
+	},
 	methods: {
 		loadAutocompleteData(): string[] {
 			if (['function', 'functionItem'].includes(this.codeAutocomplete)) {
@@ -50,7 +59,7 @@ export default mixins(
 				const mode = 'manual';
 				let runIndex = 0;
 
-				const executedWorkflow: IExecutionResponse | null = this.$store.getters.getWorkflowExecution;
+				const executedWorkflow = this.workflowsStore.getWorkflowExecution;
 				const workflow = this.getCurrentWorkflow();
 				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
 				const parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
@@ -59,7 +68,7 @@ export default mixins(
 					destinationIndex: 0,
 				};
 
-				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
+				const executionData = this.workflowsStore.getWorkflowExecution;
 
 				let runExecutionData: IRunExecutionData;
 				if (!executionData || !executionData.data) {
@@ -89,7 +98,7 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, activeNode!.name, connectionInputData || [], {}, mode, this.$store.getters.timezone, additionalProxyKeys);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, activeNode!.name, connectionInputData || [], {}, mode, this.rootStore.timezone, additionalProxyKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				const autoCompleteItems = [

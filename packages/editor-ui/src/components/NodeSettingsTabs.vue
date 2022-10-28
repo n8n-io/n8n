@@ -6,7 +6,9 @@
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { BUILTIN_NODES_DOCS_URL, COMMUNITY_NODES_INSTALLATION_DOCS_URL, NPM_PACKAGE_DOCS_BASE_URL } from '@/constants';
 import { INodeUi, ITab } from '@/Interface';
+import { useWorkflowsStore } from '@/stores/workflows';
 import { INodeTypeDescription } from 'n8n-workflow';
+import { mapStores } from 'pinia';
 
 import mixins from 'vue-typed-mixins';
 import { isCommunityPackageName } from './helpers';
@@ -26,6 +28,9 @@ export default mixins(
 		},
 	},
 	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
 		activeNode(): INodeUi {
 			return this.$store.getters['ndv/activeNode'];
 		},
@@ -113,7 +118,7 @@ export default mixins(
 				this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType as INodeTypeDescription, documentationUrl: this.documentationUrl });
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: 'main',
 					type: 'docs',
@@ -121,7 +126,7 @@ export default mixins(
 			}
 
 			if(tab === 'settings' && this.nodeType) {
-				this.$telemetry.track('User viewed node settings', { node_type: (this.nodeType as INodeTypeDescription).name, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.track('User viewed node settings', { node_type: (this.nodeType as INodeTypeDescription).name, workflow_id: this.workflowsStore.workflowId });
 			}
 
 			if (tab === 'settings' || tab === 'params') {

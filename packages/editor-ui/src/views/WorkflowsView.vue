@@ -77,6 +77,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -109,17 +110,18 @@ export default mixins(
 			useSettingsStore,
 			useUIStore,
 			useUsersStore,
+			useWorkflowsStore,
 		),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || {} as IUser;
 		},
 		allWorkflows(): IWorkflowDb[] {
-			return this.$store.getters['allWorkflows'];
+			return this.workflowsStore.allWorkflows;
 		},
 	},
 	methods: {
 		addWorkflow() {
-			this.$store.commit('ui/setNodeViewInitialized', false);
+			this.uiStore.nodeViewInitialized = false;
 			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 
 			this.$telemetry.track('User clicked add workflow button', {
@@ -133,8 +135,8 @@ export default mixins(
 			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 
 			return await Promise.all([
-				this.$store.dispatch('fetchAllWorkflows'),
-				this.uiStore.fetchActiveWorkflows(),
+				this.workflowsStore.fetchAllWorkflows(),
+				this.workflowsStore.fetchActiveWorkflows(),
 			]);
 		},
 		onClickTag(tagId: string, event: PointerEvent) {

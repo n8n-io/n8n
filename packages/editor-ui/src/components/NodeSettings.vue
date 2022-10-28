@@ -151,6 +151,7 @@ import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from './helpers';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -164,7 +165,10 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		NodeExecuteButton,
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		isCurlImportModalOpen() {
 			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
 		},
@@ -445,12 +449,14 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 		credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 			// Update the values on the node
-			this.$store.commit('updateNodeProperties', updateInformation);
+			this.workflowsStore.updateNodeProperties(updateInformation);
 
-			const node = this.$store.getters.getNodeByName(updateInformation.name);
+			const node = this.workflowsStore.getNodeByName(updateInformation.name);
 
-			// Update the issues
-			this.updateNodeCredentialIssues(node);
+			if (node) {
+				// Update the issues
+				this.updateNodeCredentialIssues(node);
+			}
 
 			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
@@ -474,7 +480,12 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			// Save the node name before we commit the change because
 			// we need the old name to rename the node properly
 			const nodeNameBefore = parameterData.node || this.node.name;
-			const node = this.$store.getters.getNodeByName(nodeNameBefore);
+			const node = this.workflowsStore.getNodeByName(nodeNameBefore);
+
+			if (node === null) {
+				return;
+			}
+
 			if (parameterData.name === 'name') {
 				// Name of node changed so we have to set also the new node name as active
 
@@ -570,9 +581,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				const updateInformation = {
 					name: node.name,
 					value: nodeParameters,
-				};
+				} as IUpdateInformation;
 
-				this.$store.commit('setNodeParameters', updateInformation);
+				this.workflowsStore.setNodeParameters(updateInformation);
 
 				this.updateNodeParameterIssues(node, nodeType);
 				this.updateNodeCredentialIssues(node);
@@ -648,9 +659,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				const updateInformation = {
 					name: node.name,
 					value: nodeParameters,
-				};
+				} as IUpdateInformation;
 
-				this.$store.commit('setNodeParameters', updateInformation);
+				this.workflowsStore.setNodeParameters(updateInformation);
 
 				this.$externalHooks().run('nodeSettings.valueChanged', {
 					parameterPath,
@@ -672,8 +683,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					name: node.name,
 					key: parameterData.name,
 					value: newValue,
-				};
-				this.$store.commit('setNodeValue', updateInformation);
+				} as IUpdateInformation;
+
+				this.workflowsStore.setNodeValue(updateInformation);
 			}
 		},
 		/**

@@ -87,6 +87,7 @@ import { pinData } from "@/components/mixins/pinData";
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
@@ -113,7 +114,10 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		node(): INodeUi {
 			return this.$store.getters['ndv/activeNode'];
 		},
@@ -133,14 +137,14 @@ export default mixins(
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
 		isNodeRunning(): boolean {
-			const executingNode = this.$store.getters.executingNode;
+			const executingNode = this.workflowsStore.executingNode;
 			return this.node && executingNode === this.node.name;
 		},
 		workflowRunning (): boolean {
 			return this.uiStore.isActionActive('workflowRunning');
 		},
 		workflowExecution(): IExecutionResponse | null {
-			return this.$store.getters.getWorkflowExecution;
+			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunData(): IRunData | null {
 			if (this.workflowExecution === null) {
@@ -153,7 +157,7 @@ export default mixins(
 			return executionData.resultData.runData;
 		},
 		hasNodeRun(): boolean {
-			if (this.$store.getters.subworkflowExecutionError) return true;
+			if (this.workflowsStore.subworkflowExecutionError) return true;
 
 			return Boolean(
 				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
@@ -197,7 +201,7 @@ export default mixins(
 			if (!this.node) {
 				return false;
 			}
-			const updatedAt = this.$store.getters.getParametersLastUpdated(this.node.name);
+			const updatedAt = this.workflowsStore.getParametersLastUpdate(this.node.name);
 			if (!updatedAt || !this.runTaskData) {
 				return false;
 			}
@@ -219,7 +223,7 @@ export default mixins(
 				});
 
 				this.$telemetry.track('User clicked ndv link', {
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					node_type: this.node.type,
 					pane: 'output',
@@ -237,7 +241,7 @@ export default mixins(
 			this.$emit('openSettings');
 			this.$telemetry.track('User clicked ndv link', {
 				node_type: this.node.type,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 				session_id: this.sessionId,
 				pane: 'output',
 				type: 'settings',

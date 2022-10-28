@@ -42,6 +42,7 @@ import { getActivatableTriggerNodes, getTriggerNodeServiceName } from './helpers
 import { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default Vue.extend({
 	name: 'ActivationModal',
@@ -60,8 +61,8 @@ export default Vue.extend({
 	},
 	methods: {
 		async showExecutionsList () {
-			const activeExecution = this.$store.getters['workflows/getActiveWorkflowExecution'];
-			const currentWorkflow = this.$store.getters.workflowId;
+			const activeExecution = this.workflowsStore.activeWorkflowExecution;
+			const currentWorkflow = this.workflowsStore.workflowId;
 
 			if (activeExecution) {
 				this.$router.push({
@@ -71,7 +72,7 @@ export default Vue.extend({
 			} else {
 				this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } }).catch(() => {});
 			}
-			this.$store.commit('ui/closeModal', WORKFLOW_ACTIVE_MODAL_KEY);
+			this.uiStore.closeModal(WORKFLOW_ACTIVE_MODAL_KEY);
 		},
 		async showSettings() {
 			this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
@@ -82,9 +83,12 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		triggerContent (): string {
-			const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
+			const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
 			if (!foundTriggers.length) {
 				return '';
 			}

@@ -3,8 +3,15 @@ import { isAllowedInDotNotation, escape, toVariableOption } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { IDataObject, IPinData, IRunData } from 'n8n-workflow';
 import type { CodeNodeEditorMixin } from '../types';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
+	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
+	},
 	methods: {
 		/**
 		 * - Complete `x.first().json.` to `.field`.
@@ -263,7 +270,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 		getJsonOutput(quotedNodeName: string, options?: { accessor?: string; index?: number }) {
 			const nodeName = quotedNodeName.replace(/['"]/g, '');
 
-			const pinData: IPinData | undefined = this.$store.getters.pinData;
+			const pinData: IPinData | undefined = this.workflowsStore.getPinData;
 
 			const nodePinData = pinData && pinData[nodeName];
 
@@ -279,7 +286,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				} catch (_) {}
 			}
 
-			const runData: IRunData | null = this.$store.getters.getWorkflowRunData;
+			const runData: IRunData | null = this.workflowsStore.getWorkflowRunData;
 
 			const nodeRunData = runData && runData[nodeName];
 

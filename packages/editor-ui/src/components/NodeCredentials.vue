@@ -85,6 +85,7 @@ import {getCredentialPermissions} from "@/permissions";
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(
 	genericHelpers,
@@ -110,6 +111,7 @@ export default mixins(
 		...mapStores(
 			useUIStore,
 			useUsersStore,
+			useWorkflowsStore,
 		),
 		...mapGetters('credentials', {
 			allCredentialsByType: 'allCredentialsByType',
@@ -231,7 +233,7 @@ export default mixins(
 			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.uiStore.openNewCredential(credentialType);
-				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.workflowsStore.workflowId });
 				return;
 			}
 
@@ -241,7 +243,7 @@ export default mixins(
 					credential_type: credentialType,
 					node_type: this.node.type,
 					...(this.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					credential_id: credentialId,
 				},
 			);
@@ -254,7 +256,7 @@ export default mixins(
 			// if credentials has been string or neither id matched nor name matched uniquely
 			if (oldCredentials.id === null || (oldCredentials.id && !this.$store.getters['credentials/getCredentialByIdAndType'](oldCredentials.id, credentialType))) {
 				// update all nodes in the workflow with the same old/invalid credentials
-				this.$store.commit('replaceInvalidWorkflowCredentials', {
+				this.workflowsStore.replaceInvalidWorkflowCredentials({
 					credentials: selected,
 					invalid: oldCredentials,
 					type: credentialType,
@@ -328,7 +330,7 @@ export default mixins(
 			const { id } = this.node.credentials[credentialType];
 			this.uiStore.openExistingCredential(id);
 
-			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.workflowsStore.workflowId });
 
 			this.listenForNewCredentials(credentialType);
 		},

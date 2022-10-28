@@ -54,6 +54,8 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 import { hasExpressionMapping } from './helpers';
 import { debounceHelper } from './mixins/debounce';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(
 	externalHooks,
@@ -77,6 +79,11 @@ export default mixins(
 			displayValue: '',
 			latestValue: '',
 		};
+	},
+	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
 	},
 	methods: {
 		valueChanged (value: string, forceUpdate = false) {
@@ -142,8 +149,8 @@ export default mixins(
 
 				if (splitVar[0].startsWith('$node')) {
 					const sourceNodeName = splitVar[0].split('"')[1];
-					trackProperties.node_type_source = this.$store.getters.getNodeByName(sourceNodeName).type;
-					const nodeConnections: Array<Array<{ node: string }>> = this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName).main;
+					trackProperties.node_type_source = this.workflowsStore.getNodeByName(sourceNodeName)?.type;
+					const nodeConnections: Array<Array<{ node: string }>> = this.workflowsStore.outgoingConnectionsByNodeName(sourceNodeName).main;
 					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.$store.getters['ndv/activeNode'].name)) ? true : false;
 
 					if (splitVar[1].startsWith('parameter')) {
@@ -173,7 +180,7 @@ export default mixins(
 			if (!newValue) {
 				const telemetryPayload = {
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					source: this.eventSource,
 					session_id: this.$store.getters['ndv/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),

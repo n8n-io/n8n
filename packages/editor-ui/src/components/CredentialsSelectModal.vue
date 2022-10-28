@@ -58,6 +58,7 @@ import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(externalHooks).extend({
 	name: 'CredentialsSelectModal',
@@ -87,7 +88,10 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		...mapGetters('credentials', ['allCredentialTypes']),
 	},
 	methods: {
@@ -102,7 +106,7 @@ export default mixins(externalHooks).extend({
 				credential_type: this.selected,
 				source: 'primary_menu',
 				new_credential: true,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			};
 
 			this.$telemetry.track('User opened Credential modal', telemetryPayload);

@@ -15,6 +15,7 @@ import {
 import Vue from 'vue';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useSettingsStore } from '@/stores/settings';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 const TEMPLATES_PAGE_SIZE = 10;
 
@@ -188,7 +189,6 @@ const module: Module<ITemplateState, IRootState> = {
 				...response.workflow,
 				full: true,
 			};
-
 			context.commit('addWorkflows', [template]);
 			return template;
 		},

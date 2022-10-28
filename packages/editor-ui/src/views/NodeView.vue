@@ -3140,7 +3140,7 @@ export default mixins(
 			},
 			async loadActiveWorkflows(): Promise<void> {
 				const activeWorkflows = await this.restApi().getActiveWorkflows();
-				this.uiStore.activeWorkflows = activeWorkflows;
+				this.workflowsStore.activeWorkflows = activeWorkflows;
 			},
 			async loadNodeTypes(): Promise<void> {
 				await this.$store.dispatch('nodeTypes/getNodeTypes');

@@ -174,6 +174,8 @@ import { getAppNameFromNodeName } from '../helpers';
 import { isResourceLocatorValue } from '@/typeGuards';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -259,7 +261,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		};
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useRootStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
 		appName(): string {
 			if (!this.node) {
 				return '';
@@ -536,8 +542,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		trackEvent(event: string, params?: {[key: string]: string}): void {
 			this.$telemetry.track(event, {
-				instance_id: this.$store.getters.instanceId,
-				workflow_id: this.$store.getters.workflowId,
+				instance_id: this.rootStore.instanceId,
+				workflow_id: this.workflowsStore.workflowId,
 				node_type: this.node && this.node.type,
 				resource: this.node && this.node.parameters && this.node.parameters.resource,
 				operation: this.node && this.node.parameters && this.node.parameters.operation,

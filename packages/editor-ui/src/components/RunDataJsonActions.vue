@@ -35,6 +35,8 @@ import { pinData } from "@/components/mixins/pinData";
 import { nodeHelpers } from "@/components/mixins/nodeHelpers";
 import { genericHelpers } from "@/components/mixins/genericHelpers";
 import { clearJsonKey, convertPath, executionDataToJson } from "@/components/helpers";
+import { mapStores } from "pinia";
+import { useWorkflowsStore } from "@/stores/workflows";
 
 type JsonPathData = {
 	path: string;
@@ -83,6 +85,9 @@ export default mixins(
 		},
 	},
 	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
 		activeNode(): INodeUi {
 			return this.$store.getters['ndv/activeNode'];
 		},
@@ -189,7 +194,7 @@ export default mixins(
 				run_index: this.runIndex,
 				view: 'json',
 				copy_type: copyType,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 				pane: this.paneType,
 				in_execution_log: this.isReadOnly,
 			});

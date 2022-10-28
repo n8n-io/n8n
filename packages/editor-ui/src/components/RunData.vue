@@ -343,6 +343,7 @@ import {
 	IBinaryDisplayData,
 	IExecutionResponse,
 	INodeUi,
+	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
 	ITab,
 } from '@/Interface';
@@ -372,6 +373,8 @@ import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers'
 import RunDataTable from './RunDataTable.vue';
 import RunDataJson from '@/components/RunDataJson.vue';
 import { isEmpty } from '@/utils';
+import { useWorkflowsStore } from "@/stores/workflows";
+import { mapStores } from "pinia";
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -481,6 +484,9 @@ export default mixins(
 			this.eventBus.$off('data-unpinning', this.onDataUnpinning);
 		},
 		computed: {
+			...mapStores(
+				useWorkflowsStore,
+			),
 			activeNode(): INodeUi {
 				return this.$store.getters['ndv/activeNode'];
 			},
@@ -527,7 +533,7 @@ export default mixins(
 				return Boolean(!this.isExecuting && this.node && (this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name) || this.hasPinData));
 			},
 			subworkflowExecutionError(): Error | null {
-				return this.$store.getters.subworkflowExecutionError;
+				return this.workflowsStore.subworkflowExecutionError;
 			},
 			hasSubworkflowExecutionError(): boolean {
 				return Boolean(this.subworkflowExecutionError);
@@ -536,7 +542,7 @@ export default mixins(
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
 			},
 			workflowExecution (): IExecutionResponse | null {
-				return this.$store.getters.getWorkflowExecution;
+				return this.workflowsStore.getWorkflowExecution;
 			},
 			workflowRunData (): IRunData | null {
 				if (this.workflowExecution === null) {
@@ -695,7 +701,7 @@ export default mixins(
 			},
 			onClickDataPinningDocsLink() {
 				this.$telemetry.track('User clicked ndv link', {
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					node_type: this.activeNode.type,
 					pane: 'output',
@@ -771,7 +777,7 @@ export default mixins(
 				}
 
 				this.$store.commit('ndv/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: clearJsonKey(value) });
+				this.workflowsStore.pinData({ node: this.node, data: clearJsonKey(value) as INodeExecutionData[] });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
@@ -844,11 +850,11 @@ export default mixins(
 
 				if (this.hasPinData) {
 					this.onDataUnpinning({ source });
-					this.$store.commit('unpinData', { node: this.node });
+					this.workflowsStore.unpinData({ node: this.node });
 					return;
 				}
 
-				const data = executionDataToJson(this.rawInputData);
+				const data = executionDataToJson(this.rawInputData) as INodeExecutionData[];
 
 				if (!this.isValidPinDataSize(data)) {
 					this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
@@ -857,7 +863,7 @@ export default mixins(
 
 				this.onDataPinningSuccess({ source: 'pin-icon-click' });
 
-				this.$store.commit('pinData', { node: this.node, data });
+				this.workflowsStore.pinData({ node: this.node, data });
 
 				if (this.maxRunIndex > 0) {
 					this.$showToast({
@@ -893,7 +899,7 @@ export default mixins(
 				this.showData = true;
 				this.$telemetry.track('User clicked ndv button', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: this.paneType,
 					type: 'showTooMuchData',
@@ -908,7 +914,7 @@ export default mixins(
 			onCurrentPageChange() {
 				this.$telemetry.track('User changed ndv page', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: this.paneType,
 					page_selected: this.currentPage,
@@ -925,7 +931,7 @@ export default mixins(
 
 				this.$telemetry.track('User changed ndv page size', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: this.paneType,
 					page_selected: this.currentPage,
@@ -953,7 +959,7 @@ export default mixins(
 						previous_view: previous,
 						new_view: displayMode,
 						node_type: this.activeNode.type,
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						session_id: this.sessionId,
 						pane: this.paneType,
 					});
@@ -1018,7 +1024,7 @@ export default mixins(
 				this.binaryDataDisplayData = null;
 			},
 			clearExecutionData () {
-				this.$store.commit('setWorkflowExecutionData', null);
+				this.workflowsStore.setWorkflowExecutionData(null);
 				this.updateNodesExecutionIssues();
 			},
 			isDownloadable (index: number, key: string): boolean {
@@ -1088,10 +1094,10 @@ export default mixins(
 						name: this.node.name,
 						properties: {
 							disabled: !this.node.disabled,
-						},
-					};
+						} as IDataObject,
+					} as INodeUpdatePropertiesInformation;
 
-					this.$store.commit('updateNodeProperties', updateInformation);
+					this.workflowsStore.updateNodeProperties(updateInformation);
 				}
 			},
 			goToErroredNode() {

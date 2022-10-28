@@ -50,14 +50,16 @@ import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { getStyleTokenValue, isNumber, isString } from './helpers';
-import { INodeUi, XYPosition } from '@/Interface';
+import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation, XYPosition } from '@/Interface';
 
 import {
+	IDataObject,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
@@ -70,7 +72,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		defaultText (): string {
 			if (!this.nodeType) {
 				return '';
@@ -86,8 +91,8 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		nodeType (): INodeTypeDescription | null {
 			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
 		},
-		node (): INodeUi | undefined { // same as this.data but reactive..
-			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
+		node (): INodeUi | null { // same as this.data but reactive..
+			return this.workflowsStore.getNodeByName(this.name);
 		},
 		position (): XYPosition {
 			if (this.node) {
@@ -195,11 +200,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				};
 
 				const updateInformation = {
+					key: this.node.id,
 					name: this.node.name,
 					value: nodeParameters,
-				};
+				} as IUpdateInformation;
 
-				this.$store.commit('setNodeParameters', updateInformation);
+				this.workflowsStore.setNodeParameters(updateInformation);
 			}
 		},
 		setPosition(position: XYPosition) {
@@ -211,10 +217,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				name: this.node.name,
 				properties: {
 					position,
-				},
-			};
+				} as IDataObject,
+			} as INodeUpdatePropertiesInformation;
 
-			this.$store.commit('updateNodeProperties', updateInformation);
+			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
 		touchStart () {
 			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {

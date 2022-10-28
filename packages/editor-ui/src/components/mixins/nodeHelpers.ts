@@ -22,11 +22,13 @@ import {
 	ITaskDataConnections,
 	INode,
 	INodePropertyOptions,
+	IDataObject,
 } from 'n8n-workflow';
 
 import {
 	ICredentialsResponse,
 	INodeUi,
+	INodeUpdatePropertiesInformation,
 	IUser,
 } from '@/Interface';
 
@@ -85,7 +87,7 @@ export const nodeHelpers = mixins(
 
 			// Returns all the issues of the node
 			getNodeIssues (nodeType: INodeTypeDescription | null, node: INodeUi, ignoreIssues?: string[]): INodeIssues | null {
-				const pinDataNodeNames = Object.keys(this.$store.getters.pinData || {});
+				const pinDataNodeNames = Object.keys(this.workflowsStore.getPinData || {});
 
 				let nodeIssues: INodeIssues | null = null;
 				ignoreIssues = ignoreIssues || [];
@@ -168,10 +170,10 @@ export const nodeHelpers = mixins(
 
 			// Updates the execution issues.
 			updateNodesExecutionIssues () {
-				const nodes = this.$store.getters.allNodes;
+				const nodes = this.workflowsStore.allNodes;
 
 				for (const node of nodes) {
-					this.$store.commit('setNodeIssue', {
+					this.workflowsStore.setNodeIssue({
 						node: node.name,
 						type: 'execution',
 						value: this.hasNodeExecutionIssues(node) ? true : null,
@@ -188,11 +190,11 @@ export const nodeHelpers = mixins(
 					newIssues = fullNodeIssues.credentials!;
 				}
 
-				this.$store.commit('setNodeIssue', {
+				this.workflowsStore.setNodeIssue({
 					node: node.name,
 					type: 'credentials',
 					value: newIssues,
-				} as INodeIssueData);
+				});
 			},
 
 			// Updates the parameter-issues of the node
@@ -214,11 +216,11 @@ export const nodeHelpers = mixins(
 					newIssues = fullNodeIssues.parameters!;
 				}
 
-				this.$store.commit('setNodeIssue', {
+				this.workflowsStore.setNodeIssue({
 					node: node.name,
 					type: 'parameters',
 					value: newIssues,
-				} as INodeIssueData);
+				});
 			},
 
 			// Returns all the credential-issues of the node
@@ -369,13 +371,13 @@ export const nodeHelpers = mixins(
 
 			// Updates the node credential issues
 			updateNodesCredentialsIssues () {
-				const nodes = this.$store.getters.allNodes;
+				const nodes = this.workflowsStore.allNodes;
 				let issues: INodeIssues | null;
 
 				for (const node of nodes) {
 					issues = this.getNodeCredentialIssues(node);
 
-					this.$store.commit('setNodeIssue', {
+					this.workflowsStore.setNodeIssue({
 						node: node.name,
 						type: 'credentials',
 						value: issues === null ? null : issues.credentials,
@@ -388,10 +390,10 @@ export const nodeHelpers = mixins(
 					return [];
 				}
 
-				if (this.$store.getters.getWorkflowExecution === null) {
+				if (this.workflowsStore.getWorkflowExecution === null) {
 					return [];
 				}
-				const executionData: IRunExecutionData = this.$store.getters.getWorkflowExecution.data;
+				const executionData = this.workflowsStore.getWorkflowExecution.data;
 				if (!executionData || !executionData.resultData) { // unknown status
 					return [];
 				}
@@ -448,13 +450,13 @@ export const nodeHelpers = mixins(
 						name: node.name,
 						properties: {
 							disabled: !node.disabled,
-						},
-					};
+						} as IDataObject,
+					} as INodeUpdatePropertiesInformation;
 
-					this.$telemetry.track('User set node enabled status', { node_type: node.type, is_enabled: node.disabled, workflow_id: this.$store.getters.workflowId });
+					this.$telemetry.track('User set node enabled status', { node_type: node.type, is_enabled: node.disabled, workflow_id: this.workflowsStore.workflowId });
 
-					this.$store.commit('updateNodeProperties', updateInformation);
-					this.$store.commit('clearNodeExecutionData', node.name);
+					this.workflowsStore.updateNodeProperties(updateInformation);
+					this.workflowsStore.clearNodeExecutionData(node.name);
 					this.updateNodeParameterIssues(node);
 					this.updateNodeCredentialIssues(node);
 				}

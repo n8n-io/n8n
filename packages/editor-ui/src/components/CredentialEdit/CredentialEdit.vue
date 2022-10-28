@@ -148,6 +148,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -260,6 +261,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				useSettingsStore,
 				useUIStore,
 				useUsersStore,
+				useWorkflowsStore,
 			),
 		currentUser(): IUser {
 			return this.usersStore.currentUser || {} as IUser;
@@ -577,7 +579,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				credential_type: credType,
 				node_type: activeNode ? activeNode.type : null,
 				tab: tabName,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 				credential_id: this.credentialId,
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
@@ -775,7 +777,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				const trackProperties: ITelemetryTrackProperties = {
 					credential_type: credentialDetails.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					credential_id: credential.id,
 					is_complete: !!this.requiredPropertiesFilled,
 					is_new: isNewCredential,
@@ -831,7 +833,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.$telemetry.track('User created credentials', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 
 			return credential;

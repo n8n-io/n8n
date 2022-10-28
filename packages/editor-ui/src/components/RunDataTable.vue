@@ -148,6 +148,8 @@ import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
@@ -202,11 +204,14 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
 		hoveringItem(): NDVState['ndv']['hoveringItem'] {
 			return this.$store.getters['ndv/hoveringItem'];
 		},
-		pairedItemMappings(): IRootState['workflowExecutionPairedItemMappings'] {
-			return this.$store.getters['workflowExecutionPairedItemMappings'];
+		pairedItemMappings(): {[itemId: string]: Set<string>} {
+			return this.workflowsStore.workflowExecutionPairedItemMappings;
 		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);

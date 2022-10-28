@@ -76,6 +76,8 @@ import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
 import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(
 	workflowHelpers,
@@ -111,6 +113,9 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
 		focusedMappableInput(): string {
 			return this.$store.getters['ndv/focusedMappableInput'];
 		},
@@ -129,8 +134,8 @@ export default mixins(
 			if (!this.workflowRunning) {
 				return false;
 			}
-			const triggeredNode = this.$store.getters.executedNode;
-			const executingNode = this.$store.getters.executingNode;
+			const triggeredNode = this.workflowsStore.executedNode;
+			const executingNode = this.workflowsStore.executingNode
 			if (this.activeNode && triggeredNode === this.activeNode.name && this.activeNode.name !== executingNode) {
 				return true;
 			}
@@ -150,7 +155,7 @@ export default mixins(
 			return this.$store.getters['ndv/activeNode'];
 		},
 		currentNode (): INodeUi | null {
-			return this.$store.getters.getNodeByName(this.currentNodeName);
+			return this.workflowsStore.getNodeByName(this.currentNodeName);
 		},
 		connectedCurrentNodeOutputs(): number[] | undefined {
 			const search = this.parentNodes.find(({name}) => name === this.currentNodeName);
@@ -214,7 +219,7 @@ export default mixins(
 			if (this.activeNode) {
 				this.$telemetry.track('User clicked ndv button', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: 'input',
 					type: 'executePrevious',
@@ -238,7 +243,7 @@ export default mixins(
 			if (this.activeNode) {
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: 'input',
 					type: 'not-connected-help',

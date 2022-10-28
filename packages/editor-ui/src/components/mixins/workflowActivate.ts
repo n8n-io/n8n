@@ -8,6 +8,7 @@ import { LOCAL_STORAGE_ACTIVATION_FLAG, PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export const workflowActivate = mixins(
 	externalHooks,
@@ -24,16 +25,17 @@ export const workflowActivate = mixins(
 			...mapStores(
 				useSettingsStore,
 				useUIStore,
+				useWorkflowsStore,
 			),
 		},
 		methods: {
 			async activateCurrentWorkflow(telemetrySource?: string) {
-				const workflowId = this.$store.getters.workflowId;
+				const workflowId = this.workflowsStore.workflowId;
 				return this.updateWorkflowActivation(workflowId, true, telemetrySource);
 			},
 			async updateWorkflowActivation(workflowId: string | undefined, newActiveState: boolean, telemetrySource?: string) {
 				this.updatingWorkflowActivation = true;
-				const nodesIssuesExist = this.$store.getters.nodesIssuesExist as boolean;
+				const nodesIssuesExist = this.workflowsStore.nodesIssuesExist as boolean;
 
 				let currWorkflowId: string | undefined = workflowId;
 				if (!currWorkflowId || currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
@@ -42,11 +44,11 @@ export const workflowActivate = mixins(
 						this.updatingWorkflowActivation = false;
 						return;
 					}
-					currWorkflowId = this.$store.getters.workflowId as string;
+					currWorkflowId = this.workflowsStore.workflowId as string;
 				}
-				const isCurrentWorkflow = currWorkflowId === this.$store.getters['workflowId'];
+				const isCurrentWorkflow = currWorkflowId === this.workflowsStore.workflowId;
 
-				const activeWorkflows =  this.uiStore.activeWorkflows;
+				const activeWorkflows =  this.workflowsStore.activeWorkflows;
 				const isWorkflowActive = activeWorkflows.includes(currWorkflowId);
 
 				const telemetryPayload = {

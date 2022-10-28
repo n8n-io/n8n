@@ -6,6 +6,7 @@ import {
 } from '../Interface';
 import { createTag, deleteTag, getTags, updateTag } from '../api/tags';
 import Vue from 'vue';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 const module: Module<ITagsState, IRootState> = {
 	namespaced: true,
@@ -94,7 +95,8 @@ const module: Module<ITagsState, IRootState> = {
 
 			if (deleted) {
 				context.commit('deleteTag', id);
-				context.commit('removeWorkflowTagId', id, {root: true});
+				const workflowsStore = useWorkflowsStore();
+				workflowsStore.removeWorkflowTagId(id);
 			}
 
 			return deleted;

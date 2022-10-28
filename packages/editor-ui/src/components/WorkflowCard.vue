@@ -66,6 +66,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -111,6 +112,7 @@ export default mixins(
 			useSettingsStore,
 			useUIStore,
 			useUsersStore,
+			useWorkflowsStore,
 		),
 		currentUser (): IUser {
 			return this.usersStore.currentUser || {} as IUser;
@@ -194,7 +196,7 @@ export default mixins(
 
 				try {
 					await this.restApi().deleteWorkflow(this.data.id);
-					this.$store.commit('deleteWorkflow', this.data.id);
+					this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
 					this.$showError(
 						error,

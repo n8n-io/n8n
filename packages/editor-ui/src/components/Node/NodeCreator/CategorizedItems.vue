@@ -91,6 +91,9 @@ import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NOD
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
 import { sublimeSearch } from './sortUtils';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(externalHooks, globalLinkActions).extend({
 	name: 'CategorizedItems',
@@ -145,6 +148,10 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		this.unregisterCustomAction('showAllNodeCreatorNodes');
 	},
 	computed: {
+		...mapStores(
+			useRootStore,
+			useWorkflowsStore,
+		),
 		activeSubcategory(): INodeCreateElement | null {
 			return this.activeSubcategoryHistory[this.activeSubcategoryHistory.length - 1] || null;
 		},
@@ -177,7 +184,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			return this.nodeFilter.toLowerCase().trim();
 		},
 		defaultLocale (): string {
-			return this.$store.getters.defaultLocale;
+			return this.rootStore.defaultLocale;
 		},
 		filteredNodeTypes(): INodeCreateElement[] {
 			const filter = this.searchFilter;
@@ -329,7 +336,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 				newValue,
 				selectedType: this.selectedType,
 				filteredNodes: this.filteredNodeTypes,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
 	},
@@ -426,7 +433,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 				);
 			} else {
 				this.activeCategory = [...this.activeCategory, category];
-				this.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: this.workflowsStore.workflowId });
 			}
 
 			this.activeIndex = this.categorized.findIndex(
@@ -438,7 +445,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			this.$store.commit('nodeCreator/setShowTabs', false);
 			this.activeSubcategoryIndex = 0;
 			this.activeSubcategoryHistory.push(selected);
-			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.workflowsStore.workflowId });
 		},
 
 		onSubcategoryClose() {
