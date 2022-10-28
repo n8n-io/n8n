@@ -137,13 +137,25 @@ export const certificateRequestFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Country',
-				name: 'country',
-				type: 'string',
-				default: '',
-				description: 'A 2 letter country code',
+				displayName: 'Key Type',
+				name: 'keyType',
+				type: 'options',
+				options: [
+					{
+						name: 'EC',
+						value: 'EC',
+						description: 'Elliptic Curve (EC)',
+					},
+					{
+						name: 'RSA',
+						value: 'RSA',
+						description: 'Rivest, Shamir, Adleman key (RSA)',
+					},
+				],
+				default: 'RSA',
+				description: 'The encryption algorithm for the public key',
 			},
-			{
+						{
 				displayName: 'Key Curve',
 				name: 'keyCurve',
 				type: 'options',
@@ -183,40 +195,14 @@ export const certificateRequestFields: INodeProperties[] = [
 				description: 'The number of bits to allow for key generation',
 			},
 			{
-				displayName: 'Key Type',
-				name: 'keyType',
-				type: 'options',
-				options: [
-					{
-						name: 'EC',
-						value: 'EC',
-						description: 'Elliptic Curve (EC)',
-					},
-					{
-						name: 'RSA',
-						value: 'RSA',
-						description: 'Rivest, Shamir, Adleman key (RSA)',
-					},
-				],
-				default: 'RSA',
-				description: 'The encryption algorithm for the public key',
-			},
-			{
-				displayName: 'Locality',
-				name: 'locality',
-				type: 'string',
-				default: '',
-				description: 'The name of a city or town',
-			},
-			{
-				displayName: 'Organization',
+				displayName: '(O) Organization',
 				name: 'organization',
 				type: 'string',
 				default: '',
 				description: 'The name of a company or organization',
 			},
 			{
-				displayName: 'Organizational Units',
+				displayName: '(OU) Organizational Unit(s)',
 				name: 'organizationalUnits',
 				type: 'string',
 				typeOptions: {
@@ -226,11 +212,26 @@ export const certificateRequestFields: INodeProperties[] = [
 				description: 'The name of a department or section',
 			},
 			{
-				displayName: 'State',
+				displayName: '(L) City/Locality',
+				name: 'locality',
+				type: 'string',
+				default: '',
+				description: 'The name of a city or town',
+			},
+
+			{
+				displayName: '(ST) State',
 				name: 'state',
 				type: 'string',
 				default: '',
 				description: 'The name of a state or province',
+			},
+			{
+				displayName: '(C) Country',
+				name: 'country',
+				type: 'string',
+				default: '',
+				description: 'A 2 letter country code',
 			},
 			{
 				displayName: 'Subject Alt Names',
