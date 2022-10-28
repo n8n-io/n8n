@@ -1399,6 +1399,7 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
+	constructor: any;
 }
 
 export type IWorkflowDataProxyAdditionalKeys = IDataObject;
