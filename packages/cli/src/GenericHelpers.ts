@@ -4,7 +4,7 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import express from 'express';
+import type express from 'express';
 import { join as pathJoin } from 'path';
 import { readFile as fsReadFile } from 'fs/promises';
 import {
@@ -30,10 +30,8 @@ import {
 import * as ResponseHelper from '@/ResponseHelper';
 // eslint-disable-next-line import/order
 import { Like } from 'typeorm';
-import { WorkflowEntity } from '@db/entities/WorkflowEntity';
-import { CredentialsEntity } from '@db/entities/CredentialsEntity';
-import { TagEntity } from '@db/entities/TagEntity';
-import { User } from '@db/entities/User';
+import type { AbstractEntity } from '@db/entities/AbstractEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CLI_DIR } from '@/constants';
 
 let versionCache: IPackageVersions | undefined;
@@ -198,9 +196,7 @@ export async function generateUniqueName(
 	return `${requestedName} ${maxSuffix + 1}`;
 }
 
-export async function validateEntity(
-	entity: WorkflowEntity | CredentialsEntity | TagEntity | User,
-): Promise<void> {
+export async function validateEntity(entity: AbstractEntity): Promise<void> {
 	const errors = await validate(entity);
 
 	const errorMessages = errors

@@ -10,9 +10,8 @@ import * as ResponseHelper from '@/ResponseHelper';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
-import { validatePassword, sanitizeUser, compareHash, hashPassword } from '../UserManagementHelper';
+import { sanitizeUser, compareHash } from '../UserManagementHelper';
 import type { AuthenticatedRequest, MeRequest } from '@/requests';
-import { validateEntity } from '@/GenericHelpers';
 import { User } from '@db/entities/User';
 
 export function meNamespace(this: N8nApp): void {
