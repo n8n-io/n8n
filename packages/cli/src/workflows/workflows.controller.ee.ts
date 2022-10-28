@@ -90,11 +90,10 @@ EEWorkflowController.get(
 			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
 		}
 
-		const hydrateWorkflow = await EEWorkflows.addCredentialsToWorkflow(
+		return EEWorkflows.addCredentialsToWorkflow(
 			EEWorkflows.addOwnerAndSharings(workflow),
 			req.user,
 		);
-		return hydrateWorkflow;
 	}),
 );
 
