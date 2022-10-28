@@ -6,6 +6,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
+	jsonParse,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
