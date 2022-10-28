@@ -150,7 +150,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			useWorkflowsStore,
 		),
 		isWorkflowActive(): boolean {
-			return this.workflowsStore.isActive;
+			return this.workflowsStore.isWorkflowActive;
 		},
 		workflowName(): string {
 			return this.workflowsStore.workflowName;

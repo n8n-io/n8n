@@ -216,7 +216,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return this.workflowRunning && this.isPollingNode && this.nodeName === triggeredNode;
 		},
 		isWorkflowActive(): boolean {
-			return this.workflowsStore.isActive;
+			return this.workflowsStore.isWorkflowActive;
 		},
 		header(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';

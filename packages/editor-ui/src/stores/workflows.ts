@@ -33,8 +33,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		workflowExecutionData: null,
 		workflowExecutionPairedItemMappings: {},
 		workflowsById: {},
-		subworkflowExecutionError: null,
-		executionId: null,
+		subWorkflowExecutionError: null,
+		activeExecutionId: null,
 		executingNode: null,
 		executionWaitingForWebhook: false,
 		nodeMetadata: {},
@@ -63,7 +63,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		isNewWorkflow() : boolean {
 			return this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		},
-		isActive(): boolean {
+		isWorkflowActive(): boolean {
 			return this.workflow.active;
 		},
 		workflowTriggerNodes() : INodeUi[] {

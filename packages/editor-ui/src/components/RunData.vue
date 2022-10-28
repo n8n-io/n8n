@@ -533,7 +533,7 @@ export default mixins(
 				return Boolean(!this.isExecuting && this.node && (this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name) || this.hasPinData));
 			},
 			subworkflowExecutionError(): Error | null {
-				return this.workflowsStore.subworkflowExecutionError;
+				return this.workflowsStore.subWorkflowExecutionError;
 			},
 			hasSubworkflowExecutionError(): boolean {
 				return Boolean(this.subworkflowExecutionError);

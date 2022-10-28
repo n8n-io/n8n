@@ -191,7 +191,7 @@ export const pushConnection = mixins(
 						return false;
 					}
 					const pushData = receivedData.data;
-					if (this.workflowsStore.executionId !== pushData.executionId) {
+					if (this.workflowsStore.activeExecutionId !== pushData.executionId) {
 						// The data is not for the currently active execution or
 						// we do not have the execution id yet.
 						if (isRetry !== true) {
@@ -205,14 +205,14 @@ export const pushConnection = mixins(
 					// The workflow finished executing
 					const pushData = receivedData.data;
 
-					this.uiStore.finishActiveExecution(pushData);
+					this.workflowsStore.finishActiveExecution(pushData);
 
 					if (!this.uiStore.isActionActive('workflowRunning')) {
 						// No workflow is running so ignore the messages
 						return false;
 					}
 
-					if (this.workflowsStore.executionId !== pushData.executionId) {
+					if (this.workflowsStore.activeExecutionId !== pushData.executionId) {
 						// The workflow which did finish execution did either not get started
 						// by this session or we do not have the execution id yet.
 						if (isRetry !== true) {
@@ -235,7 +235,7 @@ export const pushConnection = mixins(
 
 					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
-						const activeExecutionId = this.workflowsStore.executionId;
+						const activeExecutionId = this.workflowsStore.activeExecutionId;
 						const workflowSettings = this.workflowsStore.workflowSettings;
 						const saveManualExecutions = this.rootStore.saveManualExecutions;
 
@@ -301,7 +301,7 @@ export const pushConnection = mixins(
 						if (runDataExecuted.data.resultData.error?.name === 'SubworkflowOperationError') {
 							const error = runDataExecuted.data.resultData.error as SubworkflowOperationError;
 
-							this.workflowsStore.subworkflowExecutionError =  error;
+							this.workflowsStore.subWorkflowExecutionError =  error;
 
 							this.$showMessage({
 								title: error.message,
@@ -428,7 +428,7 @@ export const pushConnection = mixins(
 
 					if (pushData.workflowId === this.workflowsStore.workflowId) {
 						this.workflowsStore.executionWaitingForWebhook = false;
-						this.workflowsStore.executionId = pushData.executionId;
+						this.workflowsStore.activeExecutionId = pushData.executionId;
 					}
 
 					this.processWaitingPushMessages();

@@ -1279,7 +1279,7 @@ export default mixins(
 			},
 
 			async stopExecution() {
-				const executionId = this.workflowsStore.executionId;
+				const executionId = this.workflowsStore.activeExecutionId;
 				if (executionId === null) {
 					return;
 				}
@@ -3128,7 +3128,7 @@ export default mixins(
 				this.workflowsStore.setWorkflowSettings({});
 				this.workflowsStore.setWorkflowTagIds([]);
 
-				this.workflowsStore.executionId = null;
+				this.workflowsStore.activeExecutionId = null;
 				this.workflowsStore.executingNode = null;
 				this.workflowsStore.executionWaitingForWebhook = false;
 				this.uiStore.removeActiveAction('workflowRunning');

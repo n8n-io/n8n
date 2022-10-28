@@ -891,12 +891,12 @@ export interface workflowsState {
 	activeWorkflows: string[];
 	activeWorkflowExecution: IExecutionsSummary | null;
 	currentWorkflowExecutions: IExecutionsSummary[];
-	executionId: string | null;
+	activeExecutionId: string | null;
 	executingNode: string | null;
 	executionWaitingForWebhook: boolean;
 	finishedExecutionsCount: number;
 	nodeMetadata: nodeMetadataMap;
-	subworkflowExecutionError: Error | null;
+	subWorkflowExecutionError: Error | null;
 	workflow: IWorkflowDb;
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
