@@ -470,7 +470,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 					...values,
 					version: SURVEY_VERSION,
 					personalization_survey_submitted_at: new Date().toISOString(),
-					personalization_survey_n8n_version: this.$store.getters.versionCli,
+					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
 				this.$externalHooks().run('personalizationModal.onSubmit', survey);

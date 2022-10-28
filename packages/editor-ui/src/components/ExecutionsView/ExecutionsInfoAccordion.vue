@@ -14,6 +14,7 @@
 <script lang="ts">
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { deepCopy, IWorkflowSettings } from 'n8n-workflow';
@@ -49,9 +50,9 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		this.defaultValues.saveFailedExecutions = this.rootStore.saveDataErrorExecution;
-		this.defaultValues.saveSuccessfulExecutions = this.rootStore.saveDataSuccessExecution;
-		this.defaultValues.saveManualExecutions = this.rootStore.saveManualExecutions;
+		this.defaultValues.saveFailedExecutions = this.settingsStore.saveDataErrorExecution;
+		this.defaultValues.saveSuccessfulExecutions = this.settingsStore.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
 		this.updateSettings(this.workflowSettings);
 	},
 	watch: {
@@ -62,6 +63,7 @@ export default Vue.extend({
 	computed: {
 		...mapStores(
 			useRootStore,
+			useSettingsStore,
 			useUIStore,
 			useWorkflowsStore,
 		),

@@ -26,6 +26,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			path: '/',
 		},
 		onboardingCallPromptEnabled: false,
+		saveDataErrorExecution: 'all',
+		saveDataSuccessExecution: 'all',
+		saveManualExecutions: false,
 	}),
 	getters: {
 		isEnterpriseFeatureEnabled() {
@@ -129,23 +132,23 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
 			// TODO: This will need to be updated on interface level once vuex store in removed
 			this.setAllowedModules(settings.allowedModules as { builtIn?: string, external?: string });
+			this.setSaveDataErrorExecution(settings.saveDataErrorExecution);
+			this.setSaveDataSuccessExecution(settings.saveDataSuccessExecution);
+			this.setSaveManualExecutions(settings.saveManualExecutions);
 
-			rootStore.urlBaseWebhook = settings.urlBaseWebhook;
-			rootStore.urlBaseEditor = settings.urlBaseEditor;
-			rootStore.endpointWebhook = settings.endpointWebhook;
-			rootStore.endpointWebhookTest = settings.endpointWebhookTest;
-			rootStore.saveDataErrorExecution = settings.saveDataErrorExecution;
-			rootStore.saveDataSuccessExecution = settings.saveDataSuccessExecution;
-			rootStore.saveManualExecutions = settings.saveManualExecutions;
-			rootStore.timezone = settings.timezone;
-			rootStore.executionTimeout = settings.executionTimeout;
-			rootStore.maxExecutionTimeout = settings.maxExecutionTimeout;
-			rootStore.versionCli = settings.versionCli;
-			rootStore.instanceId = settings.instanceId;
-			rootStore.oauthCallbackUrls = settings.oauthCallbackUrls;
-			rootStore.n8nMetadata = settings.n8nMetadata || {};
-			rootStore.defaultLocale = settings.defaultLocale;
-			rootStore.isNpmAvailable =  settings.isNpmAvailable;
+			rootStore.setUrlBaseWebhook(settings.urlBaseWebhook);
+			rootStore.setUrlBaseEditor(settings.urlBaseEditor);
+			rootStore.setEndpointWebhook(settings.endpointWebhook);
+			rootStore.setEndpointWebhookTest(settings.endpointWebhookTest);
+			rootStore.setTimezone(settings.timezone);
+			rootStore.setExecutionTimeout(settings.executionTimeout);
+			rootStore.setMaxExecutionTimeout(settings.maxExecutionTimeout);
+			rootStore.setVersionCli(settings.versionCli);
+			rootStore.setInstanceId(settings.instanceId);
+			rootStore.setOauthCallbackUrls(settings.oauthCallbackUrls);
+			rootStore.setN8nMetadata(settings.n8nMetadata || {});
+			rootStore.setDefaultLocale(settings.defaultLocale);
+			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
 			// TODO: context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 		},
 		stopShowingSetupPage(): void {
@@ -216,6 +219,15 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		async deleteApiKey(): Promise<void> {
 			const rootStore = useRootStore();
 			await deleteApiKey(rootStore.getRestApiContext);
+		},
+		setSaveDataErrorExecution(newValue: string) {
+			Vue.set(this, 'saveDataErrorExecution', newValue);
+		},
+		setSaveDataSuccessExecution(newValue: string) {
+			Vue.set(this, 'saveDataSuccessExecution', newValue);
+		},
+		setSaveManualExecutions(saveManualExecutions: boolean) {
+			Vue.set(this, 'saveManualExecutions', saveManualExecutions);
 		},
 	},
 });

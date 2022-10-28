@@ -43,6 +43,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
 import { useUsersStore } from './stores/users';
+import { useRootStore } from './stores/n8nRootStore';
 
 export default mixins(
 	showMessage,
@@ -58,12 +59,13 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+				useRootStore,
 				useSettingsStore,
 				useUIStore,
 				useUsersStore,
 			),
 		defaultLocale (): string {
-			return this.$store.getters.defaultLocale;
+			return this.rootStore.defaultLocale;
 		},
 	},
 	data() {

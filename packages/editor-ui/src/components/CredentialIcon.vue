@@ -7,7 +7,9 @@
 </template>
 
 <script lang="ts">
+import { useRootStore } from '@/stores/n8nRootStore';
 import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -17,6 +19,9 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useRootStore,
+		),
 		credentialWithIcon(): ICredentialType | null {
 			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
@@ -26,7 +31,7 @@ export default Vue.extend({
 				return null;
 			}
 
-			const restUrl = this.$store.getters.getRestUrl;
+			const restUrl = this.rootStore.getRestUrl;
 
 			return `${restUrl}/credential-icon/${this.credentialWithIcon.name}`;
 		},

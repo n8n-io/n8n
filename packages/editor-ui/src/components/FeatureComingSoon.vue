@@ -67,7 +67,7 @@ export default Vue.extend({
 	methods: {
 		openLinkPage() {
 			if (this.featureInfo) {
-				window.open(`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.settingsStore.versionCli}`, '_blank');
+				window.open(`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.rootStore.versionCli}`, '_blank');
 				this.$telemetry.track('user clicked feature waiting list button', {feature: this.featureId});
 			}
 		},

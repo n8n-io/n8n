@@ -226,9 +226,9 @@ export const store = new Vuex.Store({
 		// },
 		// Set state condition dirty or not
 		// ** Dirty: if current workflow state has been synchronized with database AKA has it been saved
-		setStateDirty(state, dirty: boolean) {
-			state.stateIsDirty = dirty;
-		},
+		// setStateDirty(state, dirty: boolean) {
+		// 	state.stateIsDirty = dirty;
+		// },
 
 		// Selected Nodes
 		// addSelectedNode(state, node: INodeUi) {
@@ -654,13 +654,13 @@ export const store = new Vuex.Store({
 		// setActiveCredentialType(state, activeCredentialType: string) {
 		// 	state.activeCredentialType = activeCredentialType;
 		// },
-		setLastSelectedNode(state, nodeName: string) {
-			state.lastSelectedNode = nodeName;
-		},
+		// setLastSelectedNode(state, nodeName: string) {
+		// 	state.lastSelectedNode = nodeName;
+		// },
 
-		setLastSelectedNodeOutputIndex(state, outputIndex: number | null) {
-			state.lastSelectedNodeOutputIndex = outputIndex;
-		},
+		// setLastSelectedNodeOutputIndex(state, outputIndex: number | null) {
+		// 	state.lastSelectedNodeOutputIndex = outputIndex;
+		// },
 
 		// setWorkflowExecutionData(state, workflowResultData: IExecutionResponse | null) {
 		// 	state.workflowExecutionData = workflowResultData;
@@ -804,10 +804,6 @@ export const store = new Vuex.Store({
 		},
 		getWebhookTestUrl: (state): string => {
 			return `${state.urlBaseEditor}${state.endpointWebhookTest}`;
-		},
-
-		getStateIsDirty: (state): boolean => {
-			return state.stateIsDirty;
 		},
 
 		instanceId: (state): string => {
@@ -1037,9 +1033,9 @@ export const store = new Vuex.Store({
 		// 	return workflowRunData[nodeName];
 		// },
 
-		sidebarMenuItems: (state): IMenuItem[] => {
-			return state.sidebarMenuItems;
-		},
+		// sidebarMenuItems: (state): IMenuItem[] => {
+		// 	return state.sidebarMenuItems;
+		// },
 	},
 	// actions: {
 	// 	// fetchAllWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<IWorkflowDb[]> => {

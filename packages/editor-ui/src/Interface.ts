@@ -907,25 +907,12 @@ export interface workflowsState {
 //	- Make this the only root state once migration is done
 //	- Remove commented out props
 export interface rootStatePinia {
-	// --> UI store
-	// activeExecutions: IExecutionsCurrentSummaryExtended[];
-	// activeWorkflows: string[];
-	// activeActions: string[];
-	// activeCredentialType: string | null;
-	// activeNode: string | null; ---> NDV STORE
 	baseUrl: string;
 	defaultLocale: string;
 	endpointWebhook: string;
 	endpointWebhookTest: string;
-	// executionId: string | null; ---> WF STORE
-	// executingNode: string | null; ---> WF STORE
-	// executionWaitingForWebhook: boolean; ---> WF STORE
 	pushConnectionActive: boolean;
-	saveDataErrorExecution: string;
-	saveDataSuccessExecution: string;
-	saveManualExecutions: boolean;
 	timezone: string;
-	// stateIsDirty: boolean; // --> UI Store
 	executionTimeout: number;
 	maxExecutionTimeout: number;
 	versionCli: string;
@@ -933,19 +920,10 @@ export interface rootStatePinia {
 	n8nMetadata: {
 		[key: string]: string | number | undefined;
 	};
-	// workflowExecutionData: IExecutionResponse | null; // --> WF store
-	// lastSelectedNode: string | null; // --> UI Store
-	// lastSelectedNodeOutputIndex: number | null; // --> UI Store
-	// nodeViewOffsetPosition: XYPosition; // --> UI Store
-	// nodeViewMoveInProgress: boolean; // --> UI Store
-	// selectedNodes: INodeUi[]; // --> UI Store
 	sessionId: string;
 	urlBaseWebhook: string;
 	urlBaseEditor: string;
-	// workflow: IWorkflowDb; // --> WF Store
-	// sidebarMenuItems: IMenuItem[]; // --> UI Store
 	instanceId: string;
-	// nodeMetadata: nodeMetadataMap;// --> WF STORE
 	isNpmAvailable: boolean;
 }
 
@@ -1172,6 +1150,9 @@ export interface ISettingsState {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
+	saveDataErrorExecution: string;
+	saveDataSuccessExecution: string;
+	saveManualExecutions: boolean;
 }
 
 export interface INodeTypesState {

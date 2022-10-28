@@ -42,6 +42,7 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import Modal from './Modal.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(workflowHelpers).extend({
 	components: { Modal },
@@ -54,7 +55,10 @@ export default mixins(workflowHelpers).extend({
 		};
 	},
 	computed: {
-		...mapStores(useSettingsStore),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+		),
 		title(): string {
 			if (this.settingsStore.promptsData && this.settingsStore.promptsData.title) {
 				return this.settingsStore.promptsData.title;
@@ -77,7 +81,7 @@ export default mixins(workflowHelpers).extend({
 		closeDialog(): void {
 			if (!this.isEmailValid) {
 				this.$telemetry.track('User closed email modal', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 					email: null,
 				});
 			}
@@ -88,7 +92,7 @@ export default mixins(workflowHelpers).extend({
 
 				if (response.updated) {
 					this.$telemetry.track('User closed email modal', {
-						instance_id: this.$store.getters.instanceId,
+						instance_id: this.rootStore.instanceId,
 						email: this.email,
 					});
 					this.$showMessage({

@@ -12,7 +12,7 @@
 			<template #menuSuffix>
 				<div :class="$style.versionContainer">
 					<n8n-link @click="onVersionClick" size="small">
-						{{ $locale.baseText('settings.version') }} {{ settingsStore.versionCli }}
+						{{ $locale.baseText('settings.version') }} {{ rootStore.versionCli }}
 					</n8n-link>
 				</div>
 			</template>
@@ -32,6 +32,7 @@ import { BaseTextKey } from '@/plugins/i18n';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(
 	userHelpers,
@@ -40,6 +41,7 @@ export default mixins(
 	name: 'SettingsSidebar',
 	computed: {
 		...mapStores(
+			useRootStore,
 			useSettingsStore,
 			useUIStore,
 		),

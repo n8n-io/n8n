@@ -333,7 +333,7 @@ export default mixins(
 					return;
 				}
 
-				const result = this.uiStore.nodeViewInitialized;
+				const result = this.uiStore.stateIsDirty;
 				if (result) {
 					const confirmModal = await this.confirmModal(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),

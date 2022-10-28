@@ -319,9 +319,9 @@ export default mixins(
 			return;
 		}
 
-		this.defaultValues.saveDataErrorExecution = this.rootStore.saveDataErrorExecution;
-		this.defaultValues.saveDataSuccessExecution = this.rootStore.saveDataSuccessExecution;
-		this.defaultValues.saveManualExecutions = this.rootStore.saveManualExecutions;
+		this.defaultValues.saveDataErrorExecution = this.settingsStore.saveDataErrorExecution;
+		this.defaultValues.saveDataSuccessExecution = this.settingsStore.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
 		this.defaultValues.timezone = this.rootStore.timezone;
 		this.defaultValues.workflowCallerPolicy = this.settingsStore.workflowCallerPolicyDefaultOption;
 
