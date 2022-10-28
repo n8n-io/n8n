@@ -242,14 +242,14 @@ const typeMention: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^(([a-z0-9]{32})|([a-z0-9-]{36}))[ \t]*',
+							regex: '^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
 							errorMessage: 'Not a valid Notion Database ID',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '^([a-z0-9-]{32,36})',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
 				},
 				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
 			},
