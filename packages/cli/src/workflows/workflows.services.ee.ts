@@ -73,10 +73,9 @@ export class EEWorkflowsService extends WorkflowsService {
 		return transaction.save(newSharedWorkflows);
 	}
 
-	static async addOwnerSharingsAndCredentials(
+	static addOwnerAndSharings(
 		workflow: WorkflowWithSharingsAndCredentials,
-		currentUser: User,
-	): Promise<WorkflowWithSharingsAndCredentials> {
+	): WorkflowWithSharingsAndCredentials {
 		workflow.ownedBy = null;
 		workflow.sharedWith = [];
 		workflow.usedCredentials = [];
@@ -94,6 +93,14 @@ export class EEWorkflowsService extends WorkflowsService {
 
 		delete workflow.shared;
 
+		return workflow;
+	}
+
+	static async addCredentialsToWorkflow(
+		workflow: WorkflowWithSharingsAndCredentials,
+		currentUser: User,
+	): Promise<WorkflowWithSharingsAndCredentials> {
+		workflow.usedCredentials = [];
 		const userCredentials = await EECredentials.getAll(currentUser);
 		const credentialIdsUsedByWorkflow = new Set<number>();
 		workflow.nodes.forEach((node) => {
@@ -114,19 +121,6 @@ export class EEWorkflowsService extends WorkflowsService {
 				id: In(Array.from(credentialIdsUsedByWorkflow)),
 			},
 		});
-
-		return EEWorkflowsService.addCredentialsToWorkflow(
-			workflow,
-			workflowCredentials,
-			userCredentials,
-		);
-	}
-
-	static addCredentialsToWorkflow(
-		workflow: WorkflowWithSharingsAndCredentials,
-		workflowCredentials: ICredentialsDb[],
-		userCredentials: ICredentialsDb[],
-	): WorkflowWithSharingsAndCredentials {
 		const userCredentialIds = userCredentials.map((credential) => credential.id.toString());
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id.toString();
