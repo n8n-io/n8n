@@ -8,7 +8,6 @@ export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 		return source;
 	}
 	if (hash.has(source)) {
-		console.warn(`Circular reference detected at "source${path}"`);
 		return hash.get(source);
 	}
 	// Date
