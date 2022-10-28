@@ -38,14 +38,8 @@ export class Reset extends BaseCommand {
 		);
 		await Db.collections.SharedCredentials.save(newSharedCredentials);
 
-		await Db.collections.Settings.update(
-			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: 'false' },
-		);
-		await Db.collections.Settings.update(
-			{ key: 'userManagement.skipInstanceOwnerSetup' },
-			{ value: 'false' },
-		);
+		await Db.collections.Settings.update('userManagement.isInstanceOwnerSetUp', 'false');
+		await Db.collections.Settings.update('userManagement.skipInstanceOwnerSetup', 'false');
 
 		this.logger.info('Successfully reset the database to default user state.');
 	}

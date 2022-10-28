@@ -29,6 +29,7 @@ import {
 } from '@db/config';
 import { UserRepository } from '@db/repositories/UserRepository';
 import { RoleRepository } from '@db/repositories/RoleRepository';
+import { SettingsRepository } from '@db/repositories/SettingsRepository';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
@@ -171,14 +172,14 @@ export async function init(
 	// @ts-ignore
 	collections.Webhook = linkRepository(entities.WebhookEntity);
 	collections.Tag = linkRepository(entities.TagEntity);
-
-	collections.Role = connection.getCustomRepository(RoleRepository);
-	collections.User = connection.getCustomRepository(UserRepository);
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
-	collections.Settings = linkRepository(entities.Settings);
 	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
+
+	collections.Role = connection.getCustomRepository(RoleRepository);
+	collections.Settings = connection.getCustomRepository(SettingsRepository);
+	collections.User = connection.getCustomRepository(UserRepository);
 
 	isInitialized = true;
 

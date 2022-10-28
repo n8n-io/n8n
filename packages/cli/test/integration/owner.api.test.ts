@@ -143,9 +143,7 @@ test('POST /owner/skip-setup should persist skipping setup to the DB', async () 
 	const skipConfig = config.getEnv('userManagement.skipInstanceOwnerSetup');
 	expect(skipConfig).toBe(true);
 
-	const { value } = await Db.collections.Settings.findOneOrFail({
-		key: 'userManagement.skipInstanceOwnerSetup',
-	});
+	const { value } = await Db.collections.Settings.get('userManagement.skipInstanceOwnerSetup');
 	expect(value).toBe('true');
 });
 

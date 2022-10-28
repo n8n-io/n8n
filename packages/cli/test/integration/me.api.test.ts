@@ -230,10 +230,7 @@ describe('Member', () => {
 	beforeEach(async () => {
 		config.set('userManagement.isInstanceOwnerSetUp', true);
 
-		await Db.collections.Settings.update(
-			{ key: 'userManagement.isInstanceOwnerSetUp' },
-			{ value: JSON.stringify(true) },
-		);
+		await Db.collections.Settings.update('userManagement.isInstanceOwnerSetUp', 'true');
 	});
 
 	afterEach(async () => {

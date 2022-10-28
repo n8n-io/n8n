@@ -7,7 +7,7 @@ import config from '@/config';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import type { AuthenticatedRequest, OwnerRequest } from '@/requests';
+import type { OwnerRequest } from '@/requests';
 import { issueCookie } from '../auth/jwt';
 import type { N8nApp } from '../Interfaces';
 import { hashPassword, sanitizeUser, validatePassword } from '../UserManagementHelper';
@@ -78,10 +78,7 @@ export function ownerNamespace(this: N8nApp): void {
 
 			Logger.info('Owner was set up successfully', { userId: req.user.id });
 
-			await Db.collections.Settings.update(
-				{ key: 'userManagement.isInstanceOwnerSetUp' },
-				{ value: JSON.stringify(true) },
-			);
+			await Db.collections.Settings.update('userManagement.isInstanceOwnerSetUp', 'true');
 
 			config.set('userManagement.isInstanceOwnerSetUp', true);
 
@@ -102,12 +99,8 @@ export function ownerNamespace(this: N8nApp): void {
 	 */
 	this.app.post(
 		`/${this.restEndpoint}/owner/skip-setup`,
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		ResponseHelper.send(async (_req: AuthenticatedRequest, _res: express.Response) => {
-			await Db.collections.Settings.update(
-				{ key: 'userManagement.skipInstanceOwnerSetup' },
-				{ value: JSON.stringify(true) },
-			);
+		ResponseHelper.send(async () => {
+			await Db.collections.Settings.update('userManagement.skipInstanceOwnerSetup', 'true');
 
 			config.set('userManagement.skipInstanceOwnerSetup', true);
 

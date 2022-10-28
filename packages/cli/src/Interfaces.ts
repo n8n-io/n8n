@@ -75,7 +75,6 @@ export type IDatabaseCollections = IRepositories & {
 	Tag: Repository<TagEntity>;
 	SharedCredentials: Repository<SharedCredentials>;
 	SharedWorkflow: Repository<SharedWorkflow>;
-	Settings: Repository<Settings>;
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
 };
