@@ -42,8 +42,11 @@ export async function microsoftApiRequest(
 			delete options.body;
 		}
 
-		//@ts-ignore
-		return await this.helpers.requestOAuth2.call(this, 'microsoftOutlookOAuth2Api', options);
+		return await this.helpers.requestWithAuthentication.call(
+			this,
+			'microsoftOutlookOAuth2Api',
+			options,
+		);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

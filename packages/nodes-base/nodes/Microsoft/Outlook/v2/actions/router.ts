@@ -4,7 +4,6 @@ import { IExecuteFunctions } from 'n8n-core';
 import { MicrosoftOutlook } from './node.type';
 import * as draft from './draft/Draft.resource';
 import * as folder from './folder/Folder.resource';
-import * as folderMessage from './folderMessage/FolderMessage.resource';
 import * as message from './message/Message.resource';
 import * as messageAttachment from './messageAttachment/MessageAttachment.resource';
 
@@ -29,9 +28,6 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					break;
 				case 'folder':
 					responseData = await folder[microsoftOutlook.operation].execute.call(this, i);
-					break;
-				case 'folderMessage':
-					responseData = await folderMessage[microsoftOutlook.operation].execute.call(this, i);
 					break;
 				case 'message':
 					responseData = await message[microsoftOutlook.operation].execute.call(this, i, items);

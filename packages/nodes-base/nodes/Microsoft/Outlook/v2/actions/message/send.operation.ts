@@ -259,8 +259,11 @@ export async function execute(
 					itemIndex: index,
 				});
 			}
-			//@ts-ignore
-			if (items[index].binary[binaryPropertyName] === undefined) {
+
+			if (
+				items[index].binary &&
+				(items[index].binary as IDataObject)[binaryPropertyName] === undefined
+			) {
 				throw new NodeOperationError(
 					this.getNode(),
 					`No binary data property "${binaryPropertyName}" does not exists on item!`,

@@ -254,8 +254,8 @@ export async function execute(
 		body.comment = comment;
 		body.message = {};
 		Object.assign(body.message, createMessage(additionalFields));
-		//@ts-ignore
-		delete body.message.attachments;
+
+		delete (body.message as IDataObject).attachments;
 	}
 
 	responseData = await microsoftApiRequest.call(
@@ -276,8 +276,11 @@ export async function execute(
 					itemIndex: index,
 				});
 			}
-			//@ts-ignore
-			if (items[index].binary[binaryPropertyName] === undefined) {
+
+			if (
+				items[index].binary &&
+				(items[index].binary as IDataObject)[binaryPropertyName] === undefined
+			) {
 				throw new NodeOperationError(
 					this.getNode(),
 					`No binary data property "${binaryPropertyName}" does not exists on item!`,

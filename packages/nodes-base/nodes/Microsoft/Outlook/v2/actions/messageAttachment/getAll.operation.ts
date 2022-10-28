@@ -43,7 +43,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['messageAttachment'],
-				operation: ['get', 'getAll'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
