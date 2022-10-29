@@ -74,11 +74,6 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		totalFinishedExecutionsCount(): number {
 			return this.$store.getters['workflows/getTotalFinishedExecutionsCount'];
 		},
-		isWorkflowSavingManualExecutions(): boolean {
-			const workflowSettings: IWorkflowSettings = this.$store.getters.workflowSettings;
-			const saveManualExecutionsDefault = this.$store.getters.saveManualExecutions;
-			return workflowSettings.saveManualExecutions === undefined ? saveManualExecutionsDefault: workflowSettings.saveManualExecutions as boolean;
-		},
 	},
 	watch:{
     $route (to: Route, from: Route) {
@@ -292,6 +287,14 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			this.$store.commit('workflows/setCurrentWorkflowExecutions', existingExecutions);
 			if (updatedActiveExecution !== null) {
 				this.$store.commit('workflows/setActiveWorkflowExecution', updatedActiveExecution);
+			} else {
+				const activeNotInTheList = existingExecutions.find(ex => ex.id === this.activeExecution.id) === undefined;
+				if (activeNotInTheList) {
+					this.$router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+				}).catch(()=>{});;
+				}
 			}
 		},
 		async loadExecutions(): Promise<IExecutionsSummary[]> {
@@ -301,11 +304,6 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			try {
 				const executions: IExecutionsSummary[] =
 					await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', this.filter);
-				
-				// Don't show running manual executions if workflow is set up not to save them
-				if (!this.isWorkflowSavingManualExecutions) {
-					return executions.filter(ex => ex.finished === true || ex.mode !== 'manual');
-				}
 				return executions;
 			} catch (error) {
 				this.$showError(
