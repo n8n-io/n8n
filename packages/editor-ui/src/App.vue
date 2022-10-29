@@ -44,6 +44,7 @@ import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';
 import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
+import { useTemplatesStore } from './stores/templates';
 
 export default mixins(
 	showMessage,
@@ -61,6 +62,7 @@ export default mixins(
 		...mapStores(
 				useRootStore,
 				useSettingsStore,
+				useTemplatesStore,
 				useUIStore,
 				useUsersStore,
 			),
@@ -99,7 +101,7 @@ export default mixins(
 			}
 			try {
 				await this.settingsStore.testTemplatesEndpoint();
-			} catch (e) {
+		} catch (e) {
 			}
 		},
 		logHiringBanner() {
@@ -111,13 +113,13 @@ export default mixins(
 			await this.initSettings();
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
-		trackPage() {
+		trackPage(): void {
 			this.uiStore.currentView = this.$route.name || '';
 			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
-				this.$store.commit('templates/setSessionId');
+				this.templatesStore.setSessionId();
 			}
 			else {
-				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
+				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
 			}
 
 			this.$telemetry.page(this.$route);

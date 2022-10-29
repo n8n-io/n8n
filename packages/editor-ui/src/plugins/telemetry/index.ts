@@ -116,7 +116,7 @@ export class Telemetry {
 			const pageName = route.name;
 			let properties: {[key: string]: string} = {};
 			if (this.store && route.meta && route.meta.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
-				properties = route.meta.telemetry.getProperties(route, this.store);
+				properties = route.meta.telemetry.getProperties(route);
 			}
 
 			const category = (route.meta && route.meta.telemetry && route.meta.telemetry.pageCategory) || 'Editor';

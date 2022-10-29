@@ -63,6 +63,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { IWorkflowSettings } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
+import { useTemplatesStore } from '@/stores/templates';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -78,6 +79,7 @@ export const workflowHelpers = mixins(
 			...mapStores(
 				useNDVStore,
 				useRootStore,
+				useTemplatesStore,
 				useWorkflowsStore,
 				useUIStore,
 			),
@@ -813,7 +815,7 @@ export const workflowHelpers = mixins(
 						this.$telemetry.track('User saved new workflow from template', {
 							template_id: templateId,
 							workflow_id: workflowData.id,
-							wf_template_repo_session_id: this.$store.getters['templates/previousSessionId'],
+							wf_template_repo_session_id: this.templatesStore.previousSessionId,
 						});
 					}
 

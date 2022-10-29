@@ -238,6 +238,7 @@ import { Route } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
+import { useTemplatesStore } from '@/stores/templates';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -368,6 +369,7 @@ export default mixins(
 				useNDVStore,
 				useRootStore,
 				useSettingsStore,
+				useTemplatesStore,
 				useUIStore,
 				useUsersStore,
 				useWorkflowsStore,
@@ -749,7 +751,7 @@ export default mixins(
 				let data: IWorkflowTemplate | undefined;
 				try {
 					this.$externalHooks().run('template.requested', { templateId });
-					data = await this.$store.dispatch('templates/getWorkflowTemplate', templateId);
+					data = await this.templatesStore.getWorkflowTemplate(templateId);
 
 					if (!data) {
 						throw new Error(

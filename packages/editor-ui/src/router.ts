@@ -29,6 +29,7 @@ import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
+import { useTemplatesStore } from './stores/templates';
 
 Vue.use(Router);
 
@@ -93,10 +94,10 @@ const router = new Router({
 				templatesEnabled: true,
 				telemetry: {
 					getProperties(route: Route) {
+						const templatesStore = useTemplatesStore();
 						return {
 							collection_id: route.params.id,
-							//TODO: Update once templates store i migrated:
-							wf_template_repo_session_id: '', //store.getters['templates/currentSessionId'],
+							wf_template_repo_session_id: templatesStore.currentSessionId,
 						};
 					},
 				},
@@ -137,10 +138,10 @@ const router = new Router({
 				getRedirect: getTemplatesRedirect,
 				telemetry: {
 					getProperties(route: Route) {
+						const templatesStore = useTemplatesStore();
 						return {
 							template_id: route.params.id,
-							//TODO: Update once templates store i migrated:
-							wf_template_repo_session_id: '',
+							wf_template_repo_session_id: templatesStore.currentSessionId,
 						};
 					},
 				},
@@ -165,9 +166,9 @@ const router = new Router({
 				scrollOffset: 0,
 				telemetry: {
 					getProperties(route: Route) {
+						const templatesStore = useTemplatesStore();
 						return {
-							//TODO: Update once templates store i migrated:
-							wf_template_repo_session_id: '',
+							wf_template_repo_session_id: templatesStore.currentSessionId,
 						};
 					},
 				},
