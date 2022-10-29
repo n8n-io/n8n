@@ -185,10 +185,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				Promise.reject(error);
 			}
 		},
-		async submitContactInfo(email: string): Promise<any> {
+		async submitContactInfo(email: string): Promise<void> {
 			try {
 				const usersStore = useUsersStore();
-				return await submitContactInfo(this.settings.instanceId, usersStore.currentUserId || '', email);
+				await submitContactInfo(this.settings.instanceId, usersStore.currentUserId || '', email);
 			} catch (error) {
 				Promise.reject(error);
 			}

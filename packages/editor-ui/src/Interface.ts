@@ -886,7 +886,7 @@ export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
 }
 
-export interface workflowsState {
+export interface WorkflowsState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
 	activeWorkflowExecution: IExecutionsSummary | null;
@@ -895,7 +895,7 @@ export interface workflowsState {
 	executingNode: string | null;
 	executionWaitingForWebhook: boolean;
 	finishedExecutionsCount: number;
-	nodeMetadata: nodeMetadataMap;
+	nodeMetadata: NodeMetadataMap;
 	subWorkflowExecutionError: Error | null;
 	workflow: IWorkflowDb;
 	workflowExecutionData: IExecutionResponse | null;
@@ -903,10 +903,7 @@ export interface workflowsState {
 	workflowsById: IWorkflowsMap;
 }
 
-// TODO:
-//	- Make this the only root state once migration is done
-//	- Remove commented out props
-export interface rootStatePinia {
+export interface RootState {
 	baseUrl: string;
 	defaultLocale: string;
 	endpointWebhook: string;
@@ -927,7 +924,7 @@ export interface rootStatePinia {
 	isNpmAvailable: boolean;
 }
 
-export interface nodeMetadataMap {
+export interface NodeMetadataMap {
 	[nodeName: string]: INodeMetadata;
 }
 export interface IRootState {
@@ -967,12 +964,12 @@ export interface IRootState {
 	workflowsById: IWorkflowsMap;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
-	nodeMetadata: nodeMetadataMap;
+	nodeMetadata: NodeMetadataMap;
 	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
 }
 
-export interface communityPackageMap {
+export interface CommunityPackageMap {
 	[name: string]: PublicInstalledPackage;
 }
 
@@ -1066,7 +1063,7 @@ export interface IUiState {
 	executionSidebarAutoRefresh: boolean;
 }
 
-export interface uiState {
+export interface UIState {
 	activeActions: string[];
 	activeCredentialType: string | null;
 	sidebarMenuCollapsed: boolean;
@@ -1186,9 +1183,9 @@ export interface IWorkflowsState {
 	[name: string]: IWorkflowDb;
 }
 
-export interface communityNodesState {
+export interface CommunityNodesState {
 	availablePackageCount: number;
-	installedPackages: communityPackageMap;
+	installedPackages: CommunityPackageMap;
 }
 
 export interface IRestApiContext {
@@ -1258,7 +1255,7 @@ export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
 }
 
-export interface curlToJSONResponse {
+export interface CurlToJSONResponse {
 	"parameters.url": string;
 	"parameters.authentication": string;
 	"parameters.method": string;

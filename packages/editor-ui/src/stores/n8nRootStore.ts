@@ -1,11 +1,11 @@
 import { STORES } from '@/constants';
-import { IRestApiContext, rootStatePinia } from '@/Interface';
+import { IRestApiContext, RootState } from '@/Interface';
 import { IDataObject } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import Vue from 'vue';
 
 export const useRootStore = defineStore(STORES.ROOT, {
-	state: (): rootStatePinia => ({
+	state: (): RootState => ({
 		// @ts-ignore
 		baseUrl: import.meta.env.VUE_APP_URL_BASE_API ? import.meta.env.VUE_APP_URL_BASE_API : (window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH),
 		defaultLocale: 'en',
@@ -33,26 +33,25 @@ export const useRootStore = defineStore(STORES.ROOT, {
 			return `${this.urlBaseEditor}${this.endpointWebhookTest}`;
 		},
 
-		getRestUrl: (state: rootStatePinia): string => {
+		getRestUrl(): string {
 			let endpoint = 'rest';
 			if (import.meta.env.VUE_APP_ENDPOINT_REST) {
 				endpoint = import.meta.env.VUE_APP_ENDPOINT_REST;
 			}
-			return `${state.baseUrl}${endpoint}`;
+			return `${this.baseUrl}${endpoint}`;
 		},
 
-		getRestApiContext: (state: rootStatePinia): IRestApiContext => {
+		getRestApiContext(): IRestApiContext {
 			let endpoint = 'rest';
 			if (import.meta.env.VUE_APP_ENDPOINT_REST) {
 				endpoint = import.meta.env.VUE_APP_ENDPOINT_REST;
 			}
 			return {
-				baseUrl: `${state.baseUrl}${endpoint}`,
-				sessionId: state.sessionId,
+				baseUrl: `${this.baseUrl}${endpoint}`,
+				sessionId: this.sessionId,
 			};
 		},
 		// TODO: Waiting for nodeTypes store
-
 		/**
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */

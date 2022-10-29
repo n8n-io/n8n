@@ -2040,7 +2040,7 @@ export default mixins(
 								},
 							],
 							setStateDirty: true,
-						})
+						});
 					} catch (e) {
 						console.error(e); // eslint-disable-line no-console
 					}

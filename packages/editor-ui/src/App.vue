@@ -88,9 +88,9 @@ export default mixins(
 				throw e;
 			}
 		},
-		async loginWithCookie(): Promise<void> {
+		loginWithCookie(): void {
 			try {
-				await this.usersStore.loginWithCookie();
+				this.usersStore.loginWithCookie();
 			} catch (e) {}
 		},
 		async initTemplates(): Promise<void> {

@@ -29,13 +29,13 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from "@/constants";
 import {
-	curlToJSONResponse,
+	CurlToJSONResponse,
 	IFakeDoorLocation,
 	IMenuItem,
 	INodeUi,
 	IOnboardingCallPrompt,
 	IUser,
-	uiState,
+	UIState,
 	XYPosition,
 } from "@/Interface";
 import Vue from "vue";
@@ -45,7 +45,7 @@ import { getCurlToJson } from "@/api/curlHelper";
 import { useWorkflowsStore } from "./workflows";
 
 export const useUIStore = defineStore(STORES.UI, {
-	state: (): uiState => ({
+	state: (): UIState => ({
 		activeActions: [],
 		activeCredentialType: null,
 		modals: {
@@ -406,7 +406,7 @@ export const useUIStore = defineStore(STORES.UI, {
 		toggleSidebarMenuCollapse (): void {
 			this.sidebarMenuCollapsed = !this.sidebarMenuCollapsed;
 		},
-		async getCurlToJson (curlCommand: string): Promise<curlToJSONResponse> {
+		async getCurlToJson (curlCommand: string): Promise<CurlToJSONResponse> {
 			const rootStore = useRootStore();
 			return await getCurlToJson(rootStore.getRestApiContext, curlCommand);
 		},

@@ -1,5 +1,18 @@
 import { DEFAULT_NEW_WORKFLOW_NAME, DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID, STORES } from "@/constants";
-import { IExecutionResponse, IExecutionsCurrentSummaryExtended, IExecutionsSummary, INewWorkflowData, INodeUi, INodeUpdatePropertiesInformation, IPushDataExecutionFinished, IPushDataNodeExecuteAfter, IUpdateInformation, IWorkflowDb, IWorkflowsMap, workflowsState } from "@/Interface";
+import {
+	IExecutionResponse,
+	IExecutionsCurrentSummaryExtended,
+	IExecutionsSummary,
+	INewWorkflowData,
+	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IPushDataExecutionFinished,
+	IPushDataNodeExecuteAfter,
+	IUpdateInformation,
+	IWorkflowDb,
+	IWorkflowsMap,
+	WorkflowsState,
+} from "@/Interface";
 import { defineStore } from "pinia";
 import { IConnection, IConnections, IDataObject, INode, INodeConnections, INodeCredentials, INodeCredentialsDetails, INodeExecutionData, INodeIssueData, IPinData, IRunData, ITaskData, IWorkflowSettings } from 'n8n-workflow';
 import Vue from "vue";
@@ -13,7 +26,7 @@ import { stringSizeInBytes } from "@/components/helpers";
 import { useNDVStore } from "./ndv";
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
-	state: (): workflowsState => ({
+	state: (): WorkflowsState => ({
 		workflow: {
 			id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
 			name: '',
@@ -85,7 +98,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		getWorkflowResultDataByNodeName() {
 			return (nodeName: string): ITaskData[] | null => {
-				const workflowRunData = this.getWorkflowRunData;;
+				const workflowRunData = this.getWorkflowRunData;
 
 				if (workflowRunData === null) {
 					return null;
@@ -502,7 +515,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 		},
 
-		renameNodeSelectedAndExecution(nameData: { old: any, new: any }): void {
+		renameNodeSelectedAndExecution(nameData: { old: string, new: string }): void {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = true;
 			// If node has any WorkflowResultData rename also that one that the data

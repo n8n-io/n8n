@@ -30,7 +30,7 @@ export const nodeBase = mixins(
 	computed: {
 		...mapStores(
 			useUIStore,
-			useWorkflowsStore
+			useWorkflowsStore,
 		),
 		data (): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.name);

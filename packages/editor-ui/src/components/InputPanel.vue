@@ -137,7 +137,7 @@ export default mixins(
 				return false;
 			}
 			const triggeredNode = this.workflowsStore.executedNode;
-			const executingNode = this.workflowsStore.executingNode
+			const executingNode = this.workflowsStore.executingNode;
 			if (this.activeNode && triggeredNode === this.activeNode.name && this.activeNode.name !== executingNode) {
 				return true;
 			}
