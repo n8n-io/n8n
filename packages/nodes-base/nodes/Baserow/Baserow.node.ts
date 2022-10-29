@@ -14,6 +14,9 @@ import {
 	getJwtToken,
 	TableFieldMapper,
 	toOptions,
+	getDatabaseIdFromName,
+	getTableIdFromName,
+	getFieldIdFromName,
 } from './GenericFunctions';
 
 import { operationFields } from './OperationDescription';
@@ -127,9 +130,10 @@ export class Baserow implements INodeType {
 			},
 
 			async getTableIds(this: ILoadOptionsFunctions) {
+				const databaseId = this.getNodeParameter('databaseId', 0) as string;
+				if (!Number.isInteger(parseInt(databaseId))) return [];
 				const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
-				const databaseId = this.getNodeParameter('databaseId', 0) as string;
 				const endpoint = `/api/database/tables/database/${databaseId}/`;
 				const tables = (await baserowApiRequest.call(
 					this,
@@ -143,9 +147,10 @@ export class Baserow implements INodeType {
 			},
 
 			async getTableFields(this: ILoadOptionsFunctions) {
+				const tableId = this.getNodeParameter('tableId', 0) as string;
+				if (!Number.isInteger(parseInt(tableId))) return [];
 				const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 				const jwtToken = await getJwtToken.call(this, credentials);
-				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const endpoint = `/api/database/fields/table/${tableId}/`;
 				const fields = (await baserowApiRequest.call(
 					this,
@@ -166,9 +171,12 @@ export class Baserow implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const operation = this.getNodeParameter('operation', 0) as Operation;
 
-		const tableId = this.getNodeParameter('tableId', 0) as string;
+		const databaseIdOrName = this.getNodeParameter('databaseId', 0) as string;
+		const tableIdOrName = this.getNodeParameter('tableId', 0) as string;
 		const credentials = (await this.getCredentials('baserowApi')) as BaserowCredentials;
 		const jwtToken = await getJwtToken.call(this, credentials);
+		const databaseId = await getDatabaseIdFromName(this, databaseIdOrName, jwtToken);
+		const tableId = await getTableIdFromName(this, databaseId, tableIdOrName, jwtToken);
 		const fields = await mapper.getTableFields.call(this, tableId, jwtToken);
 		mapper.createMappings(fields);
 
@@ -190,13 +198,18 @@ export class Baserow implements INodeType {
 
 					if (order?.fields) {
 						qs['order_by'] = order.fields
-							.map(({ field, direction }) => `${direction}${mapper.setField(field)}`)
+							.map(
+								({ field, direction }) =>
+									`${direction}${mapper.setField(getFieldIdFromName(fields, field))}`,
+							)
 							.join(',');
 					}
 
 					if (filters?.fields) {
 						filters.fields.forEach(({ field, operator, value }) => {
-							qs[`filter__field_${mapper.setField(field)}__${operator}`] = value;
+							qs[
+								`filter__field_${mapper.setField(getFieldIdFromName(fields, field))}__${operator}`
+							] = value;
 						});
 					}
 
@@ -265,9 +278,13 @@ export class Baserow implements INodeType {
 							mapper.namesToIds(body);
 						}
 					} else {
-						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						for (const field of fields) {
-							body[`field_${field.fieldId}`] = field.fieldValue;
+						const fieldsToSend = this.getNodeParameter(
+							'fieldsUi.fieldValues',
+							i,
+							[],
+						) as FieldsUiValues;
+						for (const field of fieldsToSend) {
+							body[`field_${getFieldIdFromName(fields, field.fieldId)}`] = field.fieldValue;
 						}
 					}
 
@@ -313,9 +330,13 @@ export class Baserow implements INodeType {
 							mapper.namesToIds(body);
 						}
 					} else {
-						const fields = this.getNodeParameter('fieldsUi.fieldValues', i, []) as FieldsUiValues;
-						for (const field of fields) {
-							body[`field_${field.fieldId}`] = field.fieldValue;
+						const fieldsToSend = this.getNodeParameter(
+							'fieldsUi.fieldValues',
+							i,
+							[],
+						) as FieldsUiValues;
+						for (const field of fieldsToSend) {
+							body[`field_${getFieldIdFromName(fields, field.fieldId)}`] = field.fieldValue;
 						}
 					}
 

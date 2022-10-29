@@ -125,6 +125,44 @@ export async function getFieldNamesAndIds(
 	};
 }
 
+export async function getDatabaseIdFromName(that: any, idOrName: string, jwtToken: string) {
+	if (Number.isInteger(parseInt(idOrName))) return idOrName;
+	const endpoint = `/api/applications/`;
+	const databases = (await baserowApiRequest.call(
+		that,
+		'GET',
+		endpoint,
+		{},
+		{},
+		jwtToken,
+	)) as LoadedResource[];
+	return databases.find((database) => database.name === idOrName)?.id + '';
+}
+
+export async function getTableIdFromName(
+	that: any,
+	databaseId: string,
+	idOrName: string,
+	jwtToken: string,
+) {
+	if (Number.isInteger(parseInt(idOrName))) return idOrName;
+	const endpoint = `/api/database/tables/database/${databaseId}/`;
+	const tables = (await baserowApiRequest.call(
+		that,
+		'GET',
+		endpoint,
+		{},
+		{},
+		jwtToken,
+	)) as LoadedResource[];
+	return tables.find((table) => table.name === idOrName)?.id + '';
+}
+
+export function getFieldIdFromName(fields: LoadedResource[], idOrName: string) {
+	if (Number.isInteger(parseInt(idOrName))) return idOrName;
+	return fields.find((field: LoadedResource) => field.name === idOrName)?.id + '';
+}
+
 export const toOptions = (items: LoadedResource[]) =>
 	items.map(({ name, id }) => ({ name, value: id }));
 
