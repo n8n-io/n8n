@@ -89,6 +89,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
@@ -116,21 +117,22 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
 		),
-		node(): INodeUi {
+		node(): INodeUi | null {
 			return this.ndvStore.activeNode;
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
+				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
 		isTriggerNode (): boolean {
-			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
+			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		isPollingTypeNode (): boolean {
 			return !!(this.nodeType && this.nodeType.polling);

@@ -111,6 +111,7 @@ import {
 import { sanitizeHtml } from '@/utils';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	copyPaste,
@@ -125,6 +126,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useNDVStore,
 		),
 		displayCause(): boolean {
@@ -135,7 +137,7 @@ export default mixins(
 			if (!node) {
 				return [];
 			}
-			const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+			const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 			if (nodeType === null) {
 				return [];

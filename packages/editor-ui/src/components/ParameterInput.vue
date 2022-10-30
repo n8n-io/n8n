@@ -342,6 +342,7 @@ import { debounceHelper } from './mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	externalHooks,
@@ -476,6 +477,7 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useNodeTypesStore,
 				useNDVStore,
 				useWorkflowsStore,
 			),
@@ -798,7 +800,7 @@ export default mixins(
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
 
-					const options = await this.$store.dispatch('nodeTypes/getNodeParameterOptions',
+					const options = await this.nodeTypesStore.getNodeParameterOptions(
 						{
 							nodeTypeAndVersion: {
 								name: this.node.type,

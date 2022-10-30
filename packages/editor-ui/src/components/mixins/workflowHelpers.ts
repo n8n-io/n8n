@@ -64,6 +64,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { IWorkflowSettings } from 'n8n-workflow';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 let cachedWorkflowKey: string | null = '';
 let cachedWorkflow: Workflow | null = null;
@@ -77,6 +78,7 @@ export const workflowHelpers = mixins(
 	.extend({
 		computed: {
 			...mapStores(
+				useNodeTypesStore,
 				useNDVStore,
 				useRootStore,
 				useTemplatesStore,
@@ -224,7 +226,7 @@ export const workflowHelpers = mixins(
 
 				const returnData: INodeTypesMaxCount = {};
 
-				const nodeTypes = this.$store.getters['nodeTypes/allNodeTypes'];
+				const nodeTypes = this.nodeTypesStore.allNodeTypes;
 				for (const nodeType of nodeTypes) {
 					if (nodeType.maxNodes !== undefined) {
 						returnData[nodeType.name] = {
@@ -334,7 +336,7 @@ export const workflowHelpers = mixins(
 						return [];
 					},
 					getByNameAndVersion: (nodeType: string, version?: number): INodeType | undefined => {
-						const nodeTypeDescription = this.$store.getters['nodeTypes/getNodeType'](nodeType, version) as INodeTypeDescription | null;
+						const nodeTypeDescription = this.nodeTypesStore.getNodeType(nodeType, version);
 
 						if (nodeTypeDescription === null) {
 							return undefined;
@@ -453,7 +455,7 @@ export const workflowHelpers = mixins(
 
 				// Get the data of the node type that we can get the default values
 				// TODO: Later also has to care about the node-type-version as defaults could be different
-				const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+				const nodeType = this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
 
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly

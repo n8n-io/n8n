@@ -141,6 +141,7 @@ import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	externalHooks,
@@ -192,6 +193,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useNDVStore,
 			useWorkflowsStore,
 		),
@@ -225,7 +227,7 @@ export default mixins(
 		},
 		activeNodeType(): INodeTypeDescription | null {
 			if (this.activeNode) {
-				return this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion);
+				return this.nodeTypesStore.getNodeType(this.activeNode.type, this.activeNode.typeVersion);
 			}
 			return null;
 		},

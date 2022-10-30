@@ -26,6 +26,7 @@ import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -45,6 +46,7 @@ export const pushConnection = mixins(
 		},
 		computed: {
 			...mapStores(
+				useNodeTypesStore,
 				useUIStore,
 				useWorkflowsStore,
 			),
@@ -333,7 +335,7 @@ export const pushConnection = mixins(
 						const execution = this.workflowsStore.getWorkflowExecution;
 						if (execution && execution.executedNode) {
 							const node = this.workflowsStore.getNodeByName(execution.executedNode);
-							const nodeType = node && this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+							const nodeType = node && this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
 							const nodeOutput = execution && execution.executedNode && execution.data && execution.data.resultData && execution.data.resultData.runData && execution.data.resultData.runData[execution.executedNode];
 							if (node && nodeType && !nodeOutput) {
 								this.$showMessage({
@@ -433,8 +435,8 @@ export const pushConnection = mixins(
 
 					this.processWaitingPushMessages();
 				} else if (receivedData.type === 'reloadNodeType') {
-					this.$store.dispatch('nodeTypes/getNodeTypes');
-					this.$store.dispatch('nodeTypes/getFullNodesProperties', [receivedData.data]);
+					this.nodeTypesStore.getNodeTypes();
+					this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
 				} else if (receivedData.type === 'removeNodeType') {
 					const pushData = receivedData.data;
 
@@ -443,7 +445,7 @@ export const pushConnection = mixins(
 					// Force reload of all credential types
 					this.$store.dispatch('credentials/fetchCredentialTypes')
 						.then(() => {
-							this.$store.commit('nodeTypes/removeNodeTypes', nodesToBeRemoved);
+							this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 						});
 				}
 				return true;

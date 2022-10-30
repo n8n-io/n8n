@@ -94,6 +94,7 @@ import { sublimeSearch } from './sortUtils';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(externalHooks, globalLinkActions).extend({
 	name: 'CategorizedItems',
@@ -149,6 +150,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useRootStore,
 			useWorkflowsStore,
 		),
@@ -162,10 +164,10 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			return this.$store.getters['nodeCreator/selectedType'];
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
-			return this.$store.getters['nodeTypes/categoriesWithNodes'];
+			return this.nodeTypesStore.categoriesWithNodes;
 		},
 		categorizedItems(): INodeCreateElement[] {
-			return this.$store.getters['nodeTypes/categorizedItems'];
+			return this.nodeTypesStore.categorizedItems;
 		},
 		activeSubcategoryTitle(): string {
 			if(!this.activeSubcategory || !this.activeSubcategory.properties) return '';

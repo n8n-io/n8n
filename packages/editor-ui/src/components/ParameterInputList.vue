@@ -121,6 +121,7 @@ import mixins from 'vue-typed-mixins';
 import {Component} from "vue";
 import { mapState, mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	workflowHelpers,
@@ -144,6 +145,7 @@ export default mixins(
 		],
 		computed: {
 			...mapStores(
+				useNodeTypesStore,
 				useNDVStore,
 			),
 			nodeTypeVersion(): number | null {
@@ -184,7 +186,7 @@ export default mixins(
 		methods: {
 			getCredentialsDependencies() {
 				const dependencies = new Set();
-				const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+				const nodeType = this.nodeTypesStore.getNodeType(this.node?.type || '', this.node?.typeVersion);
 
 				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
 				if(nodeType && nodeType.credentials) {

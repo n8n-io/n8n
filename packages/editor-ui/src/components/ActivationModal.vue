@@ -43,6 +43,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default Vue.extend({
 	name: 'ActivationModal',
@@ -84,6 +85,7 @@ export default Vue.extend({
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useUIStore,
 			useWorkflowsStore,
 		),
@@ -99,7 +101,7 @@ export default Vue.extend({
 
 			const trigger = foundTriggers[0];
 
-			const triggerNodeType = this.$store.getters['nodeTypes/getNodeType'](trigger.type, trigger.typeVersion) as INodeTypeDescription;
+			const triggerNodeType = this.nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion) as INodeTypeDescription;
 			if (triggerNodeType.activationMessage) {
 				return triggerNodeType.activationMessage;
 			}

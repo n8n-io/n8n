@@ -44,6 +44,7 @@ import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export const nodeHelpers = mixins(
 	restApi,
@@ -51,6 +52,7 @@ export const nodeHelpers = mixins(
 	.extend({
 		computed: {
 			...mapStores(
+				useNodeTypesStore,
 				useSettingsStore,
 				useWorkflowsStore,
 			),
@@ -200,7 +202,7 @@ export const nodeHelpers = mixins(
 			// Updates the parameter-issues of the node
 			updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+					nodeType = this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
 				}
 
 				if (nodeType === null) {
@@ -231,7 +233,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (!nodeType) {
-					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+					nodeType = this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
 				}
 
 				if (!nodeType?.credentials) {

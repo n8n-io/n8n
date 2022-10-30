@@ -31,6 +31,7 @@ import SlideTransition from '../../transitions/SlideTransition.vue';
 import MainPanel from './MainPanel.vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default Vue.extend({
 	name: 'NodeCreator',
@@ -44,12 +45,15 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useNodeTypesStore,
+			useUIStore,
+		),
 		showScrim(): boolean {
 			return this.$store.getters['nodeCreator/showScrim'];
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters['nodeTypes/visibleNodeTypes'];
+			return this.nodeTypesStore.visibleNodeTypes;
 		},
 		searchItems(): INodeCreateElement[] {
 			const sorted = [...this.visibleNodeTypes];

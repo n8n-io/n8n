@@ -107,6 +107,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	name: 'TriggerPanel',
@@ -125,6 +126,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
@@ -134,7 +136,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
+				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 
 			return null;

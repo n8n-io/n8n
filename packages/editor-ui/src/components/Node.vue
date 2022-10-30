@@ -117,6 +117,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	externalHooks,
@@ -133,6 +134,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
@@ -145,7 +147,7 @@ export default mixins(
 			return this.nodeType?.group.includes('schedule') === true;
 		},
 		nodeRunData(): ITaskData[] {
-			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data.name) || [];
+			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
 		},
 		hasIssues (): boolean {
 			if (this.hasPinData) return false;
@@ -192,7 +194,7 @@ export default mixins(
 		},
 		isSingleActiveTriggerNode (): boolean {
 			const nodes = this.workflowsStore.workflowTriggerNodes.filter((node: INodeUi) => {
-				const nodeType =  this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+				const nodeType =  this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
 			});
 
@@ -202,7 +204,7 @@ export default mixins(
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
 		isTriggerNode (): boolean {
-			return this.$store.getters['nodeTypes/isTriggerNode'](this.data.type);
+			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
 		},
 		isTriggerNodeTooltipEmpty () : boolean {
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
@@ -211,7 +213,7 @@ export default mixins(
 			return this.node && this.node.disabled;
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
+			return this.data && this.nodeTypesStore.getNodeType(this.data.type, this.data.typeVersion);
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.workflowsStore.nodesByName[this.name] as INodeUi | undefined;

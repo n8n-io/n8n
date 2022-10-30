@@ -1,7 +1,7 @@
 import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, skipOwnerSetup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from "@/api/users";
 import { PERSONALIZATION_MODAL_KEY, STORES } from "@/constants";
 import { IInviteResponse, IPersonalizationLatestVersion, IUser, IUserResponse, IUsersState } from "@/Interface";
-import { isAuthorized, PERMISSIONS, ROLE } from "@/modules/userHelpers";
+import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from "@/modules/userHelpers";
 import { defineStore } from "pinia";
 import Vue from "vue";
 import { useRootStore } from "./n8nRootStore";
@@ -45,6 +45,18 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				return isAuthorized(PERMISSIONS.USER_SETTINGS.VIEW_UM_SETUP_WARNING, currentUser);
 			}
 			return false;
+		},
+		personalizedNodeTypes(): string[] {
+			const user = this.currentUser as IUser | null;
+			if (!user) {
+				return [];
+			}
+
+			const answers = user.personalizationAnswers;
+			if (!answers) {
+				return [];
+			}
+			return getPersonalizedNodeTypes(answers);
 		},
 	},
 	actions: {

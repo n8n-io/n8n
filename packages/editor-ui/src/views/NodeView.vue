@@ -239,6 +239,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -366,6 +367,7 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useNodeTypesStore,
 				useNDVStore,
 				useRootStore,
 				useSettingsStore,
@@ -471,7 +473,7 @@ export default mixins(
 			triggerNodes(): INodeUi[] {
 				return this.nodes.filter(node =>
 					node.type === START_NODE_TYPE ||
-					this.$store.getters['nodeTypes/isTriggerNode'](node.type),
+					this.nodeTypesStore.isTriggerNode(node.type),
 				);
 			},
 			containsTrigger(): boolean {
@@ -1624,8 +1626,8 @@ export default mixins(
 					};
 
 					await this.loadNodesProperties([newNodeData].map(node => ({name: node.type, version: node.typeVersion})));
-					const nodeType = this.$store.getters['nodeTypes/getNodeType'](newNodeData.type, newNodeData.typeVersion) as INodeTypeDescription;
-				 	const nodeParameters = NodeHelpers.getNodeParameters(nodeType.properties, {}, true, false, newNodeData);
+					const nodeType = this.nodeTypesStore.getNodeType(newNodeData.type, newNodeData.typeVersion);
+				 	const nodeParameters = NodeHelpers.getNodeParameters(nodeType?.properties || [], {}, true, false, newNodeData);
 
 					if (nodeTypeData.credentials) {
 						const authentication = nodeTypeData.credentials.find(type => type.name === defaultCredential.type);
@@ -1666,7 +1668,7 @@ export default mixins(
 			},
 
 			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
-				const nodeTypeData: INodeTypeDescription | null = this.$store.getters['nodeTypes/getNodeType'](nodeTypeName);
+				const nodeTypeData: INodeTypeDescription | null = this.nodeTypesStore.getNodeType(nodeTypeName);
 
 				if (nodeTypeData === null) {
 					this.$showMessage({
@@ -1712,7 +1714,7 @@ export default mixins(
 						let yOffset = 0;
 
 						if (lastSelectedConnection) {
-							const sourceNodeType = this.$store.getters['nodeTypes/getNodeType'](lastSelectedNode.type, lastSelectedNode.typeVersion) as INodeTypeDescription | null;
+							const sourceNodeType = this.nodeTypesStore.getNodeType(lastSelectedNode.type, lastSelectedNode.typeVersion);
 							const offsets = [[-100, 100], [-140, 0, 140], [-240, -100, 100, 240]];
 							if (sourceNodeType && sourceNodeType.outputs.length > 1) {
 								const offset = offsets[sourceNodeType.outputs.length - 2];
@@ -1732,7 +1734,7 @@ export default mixins(
 				} else {
 					// If added node is a trigger and it's the first one added to the canvas
 					// we place it at canvasAddButtonPosition to replace the canvas add button
-					const position = this.$store.getters['nodeTypes/isTriggerNode'](nodeTypeName) && !this.containsTrigger
+					const position = this.nodeTypesStore.isTriggerNode(nodeTypeName) && !this.containsTrigger
 						? this.canvasAddButtonPosition
 						// If no node is active find a free spot
 						: this.lastClickPosition as XYPosition;
@@ -2129,7 +2131,7 @@ export default mixins(
 									const nodeName = (element as HTMLElement).dataset['name'] as string;
 									const node = this.workflowsStore.getNodeByName(nodeName) as INodeUi | null;
 									if (node) {
-										const nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+										const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 										if (nodeType && nodeType.inputs && nodeType.inputs.length === 1) {
 											this.pullConnActiveNodeName = node.name;
 											const endpointUUID = this.getInputEndpointUUID(nodeName, 0);
@@ -2415,7 +2417,7 @@ export default mixins(
 				const node = this.workflowsStore.getNodeByName(nodeName);
 
 				if (node) {
-					const nodeTypeData: INodeTypeDescription | null = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+					const nodeTypeData = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 					if (nodeTypeData && nodeTypeData.maxNodes !== undefined && this.getNodeTypeCount(node.type) >= nodeTypeData.maxNodes) {
 						this.showMaxNodeTypeError(nodeTypeData);
@@ -2636,7 +2638,7 @@ export default mixins(
 
 				let waitForNewConnection = false;
 				// connect nodes before/after deleted node
-				const nodeType: INodeTypeDescription | null = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (nodeType && nodeType.outputs.length === 1
 					&& nodeType.inputs.length === 1) {
 					const { incoming, outgoing } = this.getIncomingOutgoingConnections(node.name);
@@ -2846,7 +2848,7 @@ export default mixins(
 						node.id = uuid();
 					}
 
-					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+					nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 					// Make sure that some properties always exist
 					if (!node.hasOwnProperty('disabled')) {
@@ -3154,7 +3156,7 @@ export default mixins(
 				this.workflowsStore.activeWorkflows = activeWorkflows;
 			},
 			async loadNodeTypes(): Promise<void> {
-				await this.$store.dispatch('nodeTypes/getNodeTypes');
+				await this.nodeTypesStore.getNodeTypes();
 			},
 			async loadCredentialTypes(): Promise<void> {
 				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
@@ -3164,7 +3166,7 @@ export default mixins(
 				await this.$store.dispatch('credentials/fetchForeignCredentials');
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
-				const allNodes: INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
+				const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
 
 				const nodesToBeFetched: INodeTypeNameVersion[] = [];
 				allNodes.forEach(node => {
@@ -3182,7 +3184,7 @@ export default mixins(
 				if (nodesToBeFetched.length > 0) {
 					// Only call API if node information is actually missing
 					this.startLoading();
-					await this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
+					await this.nodeTypesStore.getNodesInformation(nodesToBeFetched);
 					this.stopLoading();
 				}
 			},
@@ -3295,7 +3297,7 @@ export default mixins(
 				this.loadCredentialTypes(),
 			];
 
-			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
+			if (this.nodeTypesStore.allNodeTypes.length === 0) {
 				loadPromises.push(this.loadNodeTypes());
 			}
 

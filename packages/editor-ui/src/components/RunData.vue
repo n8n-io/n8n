@@ -376,6 +376,7 @@ import { isEmpty } from '@/utils';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
+import { useNodeTypesStore } from "@/stores/nodeTypes";
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -486,6 +487,7 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useNodeTypesStore,
 				useNDVStore,
 				useWorkflowsStore,
 			),
@@ -506,12 +508,12 @@ export default mixins(
 			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
-					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
+					return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 				}
 				return null;
 			},
 			isTriggerNode (): boolean {
-				return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
+				return this.nodeTypesStore.isTriggerNode(this.node.type);
 			},
 			canPinData (): boolean {
 				return !this.isPaneTypeInput &&

@@ -177,6 +177,7 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -263,6 +264,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useNDVStore,
 			useRootStore,
 			useUIStore,
@@ -273,8 +275,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return '';
 			}
 
-			const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type);
-			return getAppNameFromNodeName(nodeType.displayName);
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
+			return getAppNameFromNodeName(nodeType?.displayName || '');
 		},
 		selectedMode(): string {
 			if (typeof this.value !== 'object') { // legacy mode
@@ -630,10 +632,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					...(paginationToken ? { paginationToken } : {}),
 				};
 
-				const response: INodeListSearchResult = await this.$store.dispatch(
-					'nodeTypes/getResourceLocatorResults',
-					requestParams,
-				);
+				const response = await this.nodeTypesStore.getResourceLocatorResults(requestParams);
 
 				this.setResponse(paramsKey, {
 					results: (cachedResponse ? cachedResponse.results : []).concat(response.results),

@@ -62,6 +62,7 @@ import Vue from "vue";
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -92,6 +93,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useUIStore,
 			useUsersStore,
 		),
@@ -119,8 +121,8 @@ export default mixins(
 				this.$store.dispatch('credentials/fetchCredentialTypes'),
 			];
 
-			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
-				loadPromises.push(this.$store.dispatch('nodeTypes/getNodeTypes'));
+			if (this.nodeTypesStore.allNodeTypes.length === 0) {
+				loadPromises.push(this.nodeTypesStore.getNodeTypes());
 			}
 
 			await Promise.all(loadPromises);

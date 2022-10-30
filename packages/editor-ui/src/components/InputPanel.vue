@@ -79,6 +79,7 @@ import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, MANUAL_
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	workflowHelpers,
@@ -115,6 +116,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useNDVStore,
 			useWorkflowsStore,
 		),
@@ -181,7 +183,7 @@ export default mixins(
 		activeNodeType () : INodeTypeDescription | null {
 			if (!this.activeNode) return null;
 
-			return this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion);
+			return this.nodeTypesStore.getNodeType(this.activeNode.type, this.activeNode.typeVersion);
 		},
 		isMultiInputNode (): boolean {
 			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;

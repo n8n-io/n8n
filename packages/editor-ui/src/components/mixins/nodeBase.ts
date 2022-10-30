@@ -12,6 +12,7 @@ import { getStyleTokenValue } from '../helpers';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from "@/stores/workflows";
+import { useNodeTypesStore } from "@/stores/nodeTypes";
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -29,6 +30,7 @@ export const nodeBase = mixins(
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useUIStore,
 			useWorkflowsStore,
 		),
@@ -313,10 +315,10 @@ export const nodeBase = mixins(
 			});
 		},
 		__addNode (node: INodeUi) {
-			let nodeTypeData = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+			let nodeTypeData = this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
-				nodeTypeData = this.$store.getters['nodeTypes/getNodeType'](NO_OP_NODE_TYPE) as INodeTypeDescription;
+				nodeTypeData = this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE);
 			}
 
 			this.__addInputEndpoints(node, nodeTypeData);

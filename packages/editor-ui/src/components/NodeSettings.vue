@@ -153,6 +153,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
@@ -167,6 +168,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
@@ -500,10 +502,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				this.$emit('valueChanged', sendData);
 			} else if (parameterData.name === 'parameters') {
 
-				const nodeType = this.$store.getters['nodeTypes/getNodeType'](
-					node.type,
-					node.typeVersion,
-				) as INodeTypeDescription | null;
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) {
 					return;
 				}
@@ -592,10 +591,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			} else if (parameterData.name.startsWith('parameters.')) {
 				// A node parameter changed
 
-				const nodeType = this.$store.getters['nodeTypes/getNodeType'](
-					node.type,
-					node.typeVersion,
-				) as INodeTypeDescription | null;
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) {
 					return;
 				}

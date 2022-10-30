@@ -24,6 +24,7 @@ import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { isJsonKeyObject } from "@/utils";
 import { stringSizeInBytes } from "@/components/helpers";
 import { useNDVStore } from "./ndv";
+import { useNodeTypesStore } from "./nodeTypes";
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
@@ -82,9 +83,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		workflowTriggerNodes() : INodeUi[] {
 			return this.workflow.nodes.filter((node: INodeUi) => {
-				// TODO: Waiting for nodeType store migration...
-				// const nodeType = getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
-				// return nodeType && nodeType.group.includes('trigger');
+				const nodeTypesStore = useNodeTypesStore();
+				const nodeType = nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
+				return nodeType && nodeType.group.includes('trigger');
 			});
 		},
 		currentWorkflowHasWebhookNode(): boolean {

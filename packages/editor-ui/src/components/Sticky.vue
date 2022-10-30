@@ -61,6 +61,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
@@ -74,6 +75,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
@@ -91,7 +93,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !== undefined;
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
+			return this.data && this.nodeTypesStore.getNodeType(this.data.type, this.data.typeVersion);
 		},
 		node (): INodeUi | null { // same as this.data but reactive..
 			return this.workflowsStore.getNodeByName(this.name);

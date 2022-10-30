@@ -45,6 +45,7 @@ import { useSettingsStore } from './stores/settings';
 import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
+import { useNodeTypesStore } from './stores/nodeTypes';
 
 export default mixins(
 	showMessage,
@@ -60,6 +61,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+				useNodeTypesStore,
 				useRootStore,
 				useSettingsStore,
 				useTemplatesStore,
@@ -181,7 +183,7 @@ export default mixins(
 		// this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
-			void this.$store.dispatch('nodeTypes/getNodeTranslationHeaders');
+			await this.nodeTypesStore.getNodeTranslationHeaders();
 		}
 	},
 	watch: {

@@ -86,6 +86,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	genericHelpers,
@@ -109,6 +110,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
@@ -137,7 +139,7 @@ export default mixins(
 
 			if (credType) return [credType];
 
-			const activeNodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+			const activeNodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}

@@ -41,6 +41,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(restApi, showMessage, executionHelpers, debounceHelper, workflowHelpers).extend({
 	name: 'executions-page',
@@ -56,6 +57,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 	},
 	computed: {
 		...mapStores(
+			useNodeTypesStore,
 			useSettingsStore,
 			useUIStore,
 			useWorkflowsStore,
@@ -143,8 +145,8 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 	methods: {
 		async initView(loadWorkflow: boolean) : Promise<void> {
 			if (loadWorkflow) {
-				if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
-					await this.$store.dispatch('nodeTypes/getNodeTypes');
+				if (this.nodeTypesStore.allNodeTypes.length === 0) {
+					await this.nodeTypesStore.getNodeTypes();
 				}
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
@@ -390,7 +392,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 					node.id = uuid();
 				}
 
-				nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+				nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 				// Make sure that some properties always exist
 				if (!node.hasOwnProperty('disabled')) {
@@ -456,7 +458,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			}
 		},
 		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
-			const allNodes: INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
+			const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
 
 			const nodesToBeFetched: INodeTypeNameVersion[] = [];
 			allNodes.forEach(node => {
@@ -473,7 +475,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 
 			if (nodesToBeFetched.length > 0) {
 				// Only call API if node information is actually missing
-				await this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
+				await this.nodeTypesStore.getNodesInformation(nodesToBeFetched);
 			}
 		},
 		async loadActiveWorkflows(): Promise<void> {
