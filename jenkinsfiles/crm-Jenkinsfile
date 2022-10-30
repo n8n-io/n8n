@@ -1,15 +1,10 @@
-@Library('ttt-cd-utils') _
-
-
 pipeline {
     agent {
-        kubernetes {
-            yaml containers('docker-dind', 'kubectl-ali')
-            inheritFrom 'default'
+        node {
+            label 'jenkins-slave'
         }
     }
     environment {
-        ALIYUN_CREDS = credentials('aliyun-acr')
         K8S_CONFIG = credentials('crm-kube-config')
         GIT_TAG = sh(returnStdout: true,script: 'git rev-parse --short HEAD').trim()
     }
@@ -28,12 +23,10 @@ pipeline {
             }
             steps {
                 container ('docker') {
-                    sh "docker login -u ${ALIYUN_CREDS_USR} -p ${ALIYUN_CREDS_PSW} registry.cn-shanghai.aliyuncs.com"
                     sh "ls -l"
                     sh "echo ${GIT_TAG}"
                     sh "docker build -t registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:${GIT_TAG} -f docker/images/n8n-custom/Dockerfile ."
                     sh "docker push registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:${GIT_TAG}"
-                    sh "docker rmi registry.cn-shanghai.aliyuncs.com/cgp-application/n8n:${GIT_TAG}"
                 }
             }
             
@@ -45,7 +38,7 @@ pipeline {
                 }
             }
             steps {
-                container ('kubectl-ali') {
+                container ('kubectl') {
                     sh "mkdir -p ~/.kube"
                     sh "cp ${K8S_CONFIG} ~/.kube/config"
                     sh "kubectl get nodes"
@@ -66,7 +59,7 @@ pipeline {
                 }
             }
             steps {
-                container ('kubectl-ali') {
+                container ('kubectl') {
                     sh "mkdir -p ~/.kube"
                     sh "cp ${K8S_CONFIG} ~/.kube/config"
                     sh "kubectl get nodes"
@@ -76,9 +69,5 @@ pipeline {
             }
         }
         
-    }
-    post {
-        success { script { notify.success() } }
-        failure { script { notify.failure() } }
     }
 }
