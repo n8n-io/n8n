@@ -32,6 +32,8 @@ export interface LdapConfig {
 	syncronization: {
 		enabled: boolean;
 		interval: number; // minutes
+		pageSize: number;
+		searchTimeout: number;
 	};
 }
 

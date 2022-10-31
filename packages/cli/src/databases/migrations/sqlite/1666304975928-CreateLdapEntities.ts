@@ -103,7 +103,11 @@ export class CreateLdapEntities1666304975928 implements MigrationInterface {
 		await queryRunner.query('PRAGMA foreign_keys=ON');
 
 		await queryRunner.query(
-			`CREATE UNIQUE INDEX "IDX_${tablePrefix}9uxg3h65pj2dzm18mugtk565a8" ON "${tablePrefix}user" ("ldapId")`,
+			`CREATE UNIQUE INDEX "IDX_${tablePrefix}fe663198593311ed9b6a0242ac120002" ON "${tablePrefix}user" ("ldapId")`,
+		);
+
+		await queryRunner.query(
+			`CREATE UNIQUE INDEX "IDX_${tablePrefix}26aa9f72593411ed9b6a0242ac120002" ON "${tablePrefix}user" ("email")`,
 		);
 
 		logMigrationEnd(this.name);

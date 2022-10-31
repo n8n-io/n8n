@@ -54,6 +54,8 @@ export const LDAP_DEFAULT_CONFIGURATION = {
 	syncronization: {
 		enabled: false,
 		interval: 60,
+		pageSize: 0,
+		searchTimeout: 60,
 	},
 };
 
@@ -150,8 +152,14 @@ export const LDAP_CONFIG_SCHEMA = {
 				interval: {
 					type: 'number',
 				},
+				pageSize: {
+					type: 'number',
+				},
+				searchTimeout: {
+					type: 'number',
+				},
 			},
-			required: ['enabled', 'interval'],
+			required: ['enabled', 'interval', 'pageSize', 'searchTimeout'],
 			additionalProperties: false,
 		},
 	},
