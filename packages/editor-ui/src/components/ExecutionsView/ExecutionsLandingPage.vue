@@ -27,6 +27,7 @@
 
 <script lang="ts">
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/constants';
+import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
@@ -38,7 +39,10 @@ export default Vue.extend({
 		ExecutionsInfoAccordion,
 	},
 	computed: {
-		...mapStores(useWorkflowsStore),
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		executionCount(): number {
 			return this.workflowsStore.currentWorkflowExecutions.length;
 		},
@@ -48,7 +52,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onSetupFirstStep(event: MouseEvent): void {
-			this.$store.commit('ui/setAddFirstStepOnLoad', true);
+			this.uiStore.addFirstStepOnLoad = true;
 			const workflowRoute = this.getWorkflowRoute();
 			this.$router.push(workflowRoute);
 		},

@@ -317,8 +317,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 
 		// Node actions
-
-
 		setWorkflowExecutionData(workflowResultData: IExecutionResponse | null): void {
 			this.workflowExecutionData = workflowResultData;
 			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
@@ -689,15 +687,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		activeNode(): INodeUi | null {
 			// kept here for FE hooks
-			// TODO: Update once hooks and NDV store are updated
-			// const ndvStore = useNDVStore();
-			// return ndvStore.activeNode;
-			return null;
+			const ndvStore = useNDVStore();
+			return ndvStore.activeNode;
 		},
 
-
 		// Executions actions
-
 
 		addActiveExecution(newActiveExecution: IExecutionsCurrentSummaryExtended) : void {
 			// Check if the execution exists already

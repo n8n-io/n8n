@@ -49,7 +49,7 @@ export const workflowRun = mixins(
 				);
 			}
 
-			this.workflowsStore.subworkflowExecutionError = null;
+			this.workflowsStore.subWorkflowExecutionError = null;
 
 			this.uiStore.addActiveAction('workflowRunning');
 
@@ -63,7 +63,7 @@ export const workflowRun = mixins(
 			}
 
 			if (response.executionId !== undefined) {
-				this.workflowsStore.executionId = response.executionId;
+				this.workflowsStore.activeExecutionId = response.executionId;
 			}
 
 			if (response.waitingForWebhook === true) {

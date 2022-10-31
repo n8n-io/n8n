@@ -290,7 +290,7 @@ export default mixins(
 			];
 		},
 		activeExecutions (): IExecutionsCurrentSummaryExtended[] {
-			return this.uiStore.activeExecutions;
+			return this.workflowsStore.activeExecutions;
 		},
 		combinedExecutions (): IExecutionsSummary[] {
 			const returnData: IExecutionsSummary[] = [];
@@ -505,7 +505,7 @@ export default mixins(
 				}
 			}
 
-			this.uiStore.activeExecutions = activeExecutions;
+			this.workflowsStore.activeExecutions = activeExecutions;
 		},
 		async loadAutoRefresh () : Promise<void> {
 			const filter = this.workflowFilterPast;
@@ -525,7 +525,7 @@ export default mixins(
 				}
 			}
 
-			this.uiStore.activeExecutions = results[1];
+			this.workflowsStore.activeExecutions = results[1];
 
 			// execution IDs are typed as string, int conversion is necessary so we can order.
 			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => parseInt(exec.id, 10));

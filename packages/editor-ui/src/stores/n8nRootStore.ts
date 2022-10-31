@@ -57,17 +57,10 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		 * Getter for node default names ending with a number: `'S3'`, `'Magento 2'`, etc.
 		 */
 		 nativelyNumberSuffixedDefaults: (): string[] => {
-			const nodeTypesStore = useNodeTypesStore();
-			const allNodeTypes = nodeTypesStore.allNodeTypes;
-			// const { 'nodeTypes/allNodeTypes': allNodeTypes } = getters as {
-			// 	['nodeTypes/allNodeTypes']: Array<INodeTypeDescription & { defaults: { name: string } }>;
-			// };
-
-			// return allNodeTypes.reduce<string[]>((acc, cur) => {
-			// 	if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
-			// 	return acc;
-			// }, []);
-			return [];
+			return useNodeTypesStore().allNodeTypes.reduce<string[]>((acc, cur) => {
+				if (/\d$/.test(cur.defaults.name as string)) acc.push(cur.defaults.name as string);
+				return acc;
+			}, []);
 		},
 	},
 	actions: {

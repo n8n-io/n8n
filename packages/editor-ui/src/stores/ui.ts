@@ -202,10 +202,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		getModalData() {
 			return (name: string) => this.modals[name].data;
 		},
-		// TODO: Moved to NDV store
-		// getPanelDisplayMode: (state: uiState)  => {
-		// 	return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
-		// },
 		getFakeDoorByLocation() {
 			return (location: IFakeDoorLocation) => this.fakeDoorFeatures.filter(fakeDoor => fakeDoor.uiLocations.includes(location));
 		},
@@ -215,7 +211,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		isNodeView() : boolean {
 			return [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(this.currentView);
 		},
-		// getNDVDataIsEmpty: (state: uiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
 		isActionActive() {
 			return (action: string) => this.activeActions.includes(action);
 		},
@@ -274,24 +269,6 @@ export const useUIStore = defineStore(STORES.UI, {
 			});
 			this.modalStack = [];
 		},
-		// setNDVSessionId(): void {
-		// 	Vue.set(this.ndv, 'sessionId', `ndv-${Math.random().toString(36).slice(-8)}`);
-		// },
-		// resetNDVSessionId(): void {
-		// 	Vue.set(this.ndv, 'sessionId', '');
-		// },
-		// setPanelDisplayMode(pane: 'input' | 'output', mode: IRunDataDisplayMode): void {
-		// 	Vue.set(this.ndv[pane], 'displayMode', mode);
-		// },
-		// setOutputPanelEditModeEnabled(isEnabled: boolean): void {
-		// 	Vue.set(this.ndv.output.editMode, 'enabled', isEnabled);
-		// },
-		// setOutputPanelEditModeValue(value: string): void {
-		// 	Vue.set(this.ndv.output.editMode, 'value', value);
-		// },
-		// setMappableNDVInputFocus(paramName: string): void {
-		// 	Vue.set(this.ndv, 'focusedMappableInput', paramName);
-		// },
 		draggableStartDragging(type: string, data: string): void {
 			this.draggable = {
 				isDragging: true,
@@ -316,12 +293,6 @@ export const useUIStore = defineStore(STORES.UI, {
 		setDraggableCanDrop(canDrop: boolean): void {
 			Vue.set(this.draggable, 'canDrop', canDrop);
 		},
-		// setMappingTelemetry(telemetry: {[key: string]: string | number | boolean}): void {
-		// 	this.ndv.mappingTelemetry = { ...this.ndv.mappingTelemetry, ...telemetry };
-		// },
-		// resetMappingTelemetry(): void {
-		// 	this.ndv.mappingTelemetry = {};
-		// },
 		openDeleteUserModal(id: string): void {
 			this.setActiveId(DELETE_USER_MODAL_KEY, id);
 			this.openModal(DELETE_USER_MODAL_KEY);

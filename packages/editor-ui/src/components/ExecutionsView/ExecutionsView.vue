@@ -373,7 +373,6 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				const tagIds = tags.map((tag) => tag.id);
 				this.workflowsStore.setWorkflowTagIds(tagIds || []);
 
-				// TODO: Waiting for tags store
 				this.$store.commit('tags/upsertTags', tags);
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });

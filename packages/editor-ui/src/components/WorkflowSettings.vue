@@ -341,7 +341,7 @@ export default mixins(
 			this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
 		}
 
-		const workflowSettings = deepCopy(this.settingsStore.settings) as IWorkflowSettings;
+		const workflowSettings = deepCopy(this.workflowsStore.workflowSettings) as IWorkflowSettings;
 
 		if (workflowSettings.timezone === undefined) {
 			workflowSettings.timezone = 'DEFAULT';
@@ -367,6 +367,10 @@ export default mixins(
 		if (workflowSettings.maxExecutionTimeout === undefined) {
 			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 		}
+
+		console.log('setting');
+		console.log(workflowSettings);
+
 
 		Vue.set(this, 'workflowSettings', workflowSettings);
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
@@ -609,7 +613,7 @@ export default mixins(
 			this.isLoading = true;
 
 			try {
-				await this.restApi().updateWorkflow(this.workflowId, data);
+				await this.restApi().updateWorkflow(this.$route.params.name, data);
 			} catch (error) {
 				this.$showError(
 					error,
@@ -629,7 +633,6 @@ export default mixins(
 
 			const oldSettings = deepCopy(this.settingsStore.settings);
 
-			// TODO: Check if this is correct
 			this.settingsStore.setSettings(localWorkflowSettings as unknown as IN8nUISettings);
 
 			this.isLoading = false;

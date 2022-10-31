@@ -3,6 +3,7 @@ import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } fro
 import { testHealthEndpoint } from "@/api/templates";
 import { CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, STORES, VALUE_SURVEY_MODAL_KEY } from "@/constants";
 import { ILogLevel, IN8nPromptResponse, IN8nPrompts, IN8nUISettings, IN8nValueSurveyData, ISettingsState, WorkflowCallerPolicyDefaultOption } from "@/Interface";
+import { store } from "@/store";
 import { ITelemetrySettings } from "n8n-workflow";
 import { defineStore } from "pinia";
 import Vue from "vue";
@@ -115,6 +116,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	},
 	actions: {
 		setSettings(settings: IN8nUISettings): void {
+
 			this.settings =  settings;
 			this.userManagement.enabled = settings.userManagement.enabled;
 			this.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
@@ -127,10 +129,10 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
 			const settings = await getSettings(rootStore.getRestApiContext);
+			const vuexStore = store;
 
 			this.setSettings(settings);
 			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
-			// TODO: This will need to be updated on interface level once vuex store in removed
 			this.setAllowedModules(settings.allowedModules as { builtIn?: string, external?: string });
 			this.setSaveDataErrorExecution(settings.saveDataErrorExecution);
 			this.setSaveDataSuccessExecution(settings.saveDataSuccessExecution);
@@ -149,7 +151,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
-			// TODO: context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
+			vuexStore.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 		},
 		stopShowingSetupPage(): void {
 			Vue.set(this.userManagement, 'showSetupOnFirstLoad', false);
