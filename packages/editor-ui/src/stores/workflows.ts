@@ -39,6 +39,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			settings: {},
 			tags: [],
 			pinData: {},
+			hash: '',
 		},
 		activeWorkflows: [],
 		activeExecutions: [],
@@ -61,6 +62,9 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 		workflowId(): string {
 			return this.workflow.id;
+		},
+		workflowHash(): string | undefined {
+			return this.workflow.hash;
 		},
 		workflowSettings() : IWorkflowSettings {
 			if (this.workflow.settings === undefined) {
@@ -222,6 +226,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				uiStore.stateIsDirty = true;
 			}
 			this.workflow.name = data.newName;
+		},
+
+		setWorkflowHash(hash: string): void {
+			this.workflow.hash = hash;
 		},
 
 		// replace invalid credentials in workflow

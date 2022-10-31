@@ -607,9 +607,11 @@ export default mixins(
 			delete data.settings!.maxExecutionTimeout;
 
 			this.isLoading = true;
+			data.hash = this.workflowsStore.workflowHash;
 
 			try {
-				await this.restApi().updateWorkflow(this.$route.params.name, data);
+				const workflow = await this.restApi().updateWorkflow(this.$route.params.name, data);
+				this.workflowsStore.setWorkflowHash(workflow.hash || '');
 			} catch (error) {
 				this.$showError(
 					error,

@@ -6,7 +6,7 @@ import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { RoleService } from '../role/role.service';
 import { UserService } from '../user/user.service';
 import { WorkflowsService } from './workflows.services';
-import { WorkflowWithSharings } from './workflows.types';
+import type { WorkflowWithSharingsAndCredentials } from './workflows.types';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
 
 export class EEWorkflowsService extends WorkflowsService {
@@ -74,10 +74,11 @@ export class EEWorkflowsService extends WorkflowsService {
 	}
 
 	static addOwnerAndSharings(
-		workflow: WorkflowEntity & WorkflowWithSharings,
-	): WorkflowEntity & WorkflowWithSharings {
+		workflow: WorkflowWithSharingsAndCredentials,
+	): WorkflowWithSharingsAndCredentials {
 		workflow.ownedBy = null;
 		workflow.sharedWith = [];
+		workflow.usedCredentials = [];
 
 		workflow.shared?.forEach(({ user, role }) => {
 			const { id, email, firstName, lastName } = user;
@@ -90,8 +91,45 @@ export class EEWorkflowsService extends WorkflowsService {
 			workflow.sharedWith?.push({ id, email, firstName, lastName });
 		});
 
-		// @ts-ignore
 		delete workflow.shared;
+
+		return workflow;
+	}
+
+	static async addCredentialsToWorkflow(
+		workflow: WorkflowWithSharingsAndCredentials,
+		currentUser: User,
+	): Promise<WorkflowWithSharingsAndCredentials> {
+		workflow.usedCredentials = [];
+		const userCredentials = await EECredentials.getAll(currentUser);
+		const credentialIdsUsedByWorkflow = new Set<number>();
+		workflow.nodes.forEach((node) => {
+			if (!node.credentials) {
+				return;
+			}
+			Object.keys(node.credentials).forEach((credentialType) => {
+				const credential = node.credentials?.[credentialType];
+				if (!credential?.id) {
+					return;
+				}
+				const credentialId = parseInt(credential.id, 10);
+				credentialIdsUsedByWorkflow.add(credentialId);
+			});
+		});
+		const workflowCredentials = await EECredentials.getMany({
+			where: {
+				id: In(Array.from(credentialIdsUsedByWorkflow)),
+			},
+		});
+		const userCredentialIds = userCredentials.map((credential) => credential.id.toString());
+		workflowCredentials.forEach((credential) => {
+			const credentialId = credential.id.toString();
+			workflow.usedCredentials?.push({
+				id: credential.id.toString(),
+				name: credential.name,
+				currentUserHasAccess: userCredentialIds.includes(credentialId),
+			});
+		});
 
 		return workflow;
 	}
@@ -121,6 +159,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		workflow: WorkflowEntity,
 		workflowId: string,
 		tags?: string[],
+		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
 		const previousVersion = await EEWorkflowsService.get({ id: parseInt(workflowId, 10) });
 		if (!previousVersion) {
@@ -128,13 +167,13 @@ export class EEWorkflowsService extends WorkflowsService {
 		}
 		const allCredentials = await EECredentials.getAll(user);
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 			workflow = WorkflowHelpers.validateWorkflowCredentialUsage(
 				workflow,
 				previousVersion,
 				allCredentials,
 			);
 		} catch (error) {
-			console.log(error);
 			throw new ResponseHelper.ResponseError(
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 				undefined,
@@ -142,6 +181,6 @@ export class EEWorkflowsService extends WorkflowsService {
 			);
 		}
 
-		return super.updateWorkflow(user, workflow, workflowId, tags);
+		return super.updateWorkflow(user, workflow, workflowId, tags, forceSave);
 	}
 }

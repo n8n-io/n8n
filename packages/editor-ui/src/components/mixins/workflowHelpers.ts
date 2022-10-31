@@ -415,9 +415,10 @@ export const workflowHelpers = mixins(
 					nodes,
 					pinData: this.workflowsStore.getPinData,
 					connections: workflowConnections,
-					active: this.workflowsStore.isWorkflowActive,
-					settings: this.workflowsStore.workflowSettings,
-					tags: this.workflowsStore.workflowTags,
+					active: this.$store.getters.isActive,
+					settings: this.$store.getters.workflowSettings,
+					tags: this.$store.getters.workflowTags,
+					hash: this.$store.getters.workflowHash,
 				};
 
 				const workflowId = this.workflowsStore.workflowId;
@@ -678,6 +679,9 @@ export const workflowHelpers = mixins(
 				const isCurrentWorkflow = workflowId === this.workflowsStore.workflowId;
 				if (isCurrentWorkflow) {
 					data = await this.getWorkflowDataToSave();
+				} else {
+					const { hash } = await this.restApi().getWorkflow(workflowId);
+					data.hash = hash as string;
 				}
 
 				if (active !== undefined) {
@@ -685,6 +689,7 @@ export const workflowHelpers = mixins(
 				}
 
 				const workflow = await this.restApi().updateWorkflow(workflowId, data);
+				this.workflowsStore.setWorkflowHash(workflow.hash || '');
 
 				if (isCurrentWorkflow) {
 					this.workflowsStore.setActive(!!workflow.active);
@@ -719,7 +724,10 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 
+					workflowDataRequest.hash = this.workflowsStore.workflowHash;
+
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
+					this.workflowsStore.setWorkflowHash(workflowData.hash || '');
 
 					if (name) {
 						this.workflowsStore.setWorkflowName({newName: workflowData.name, setStateDirty:  false});
@@ -786,6 +794,7 @@ export const workflowHelpers = mixins(
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
 					this.workflowsStore.addWorkflow(workflowData);
+					this.workflowsStore.setWorkflowHash(workflowData.hash || '');
 
 					if (openInNewWindow) {
 						const routeData = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: workflowData.id}});
