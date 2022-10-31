@@ -9,7 +9,7 @@
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
-import { captureError } from './ErrorHandling';
+import { captureError } from './ErrorReporting';
 
 import {
 	ICredentialDataDecryptedObject,

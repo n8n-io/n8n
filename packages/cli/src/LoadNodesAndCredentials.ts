@@ -45,7 +45,7 @@ import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
 } from './CommunityNodes/packageModel';
-import { captureError } from './ErrorHandling';
+import { captureError } from './ErrorReporting';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 

@@ -59,7 +59,7 @@ import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import * as ActiveExecutions from './ActiveExecutions';
 import { createErrorExecution } from './GenericHelpers';
-import { captureError } from './ErrorHandling';
+import { captureError } from './ErrorReporting';
 import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } from './constants';
 
 const activeExecutions = ActiveExecutions.getInstance();

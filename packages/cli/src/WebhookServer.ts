@@ -33,7 +33,7 @@ import {
 import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WEBHOOK_METHODS } from './WebhookHelpers';
-import { initErrorHandling } from './ErrorHandling';
+import { initErrorHandling } from './ErrorReporting';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
 require('body-parser-xml')(bodyParser);

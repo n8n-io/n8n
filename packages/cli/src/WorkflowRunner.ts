@@ -56,7 +56,7 @@ import * as Queue from './Queue';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from './WorkflowHelpers';
-import { initErrorHandling, captureError } from './ErrorHandling';
+import { initErrorHandling, captureError } from './ErrorReporting';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;

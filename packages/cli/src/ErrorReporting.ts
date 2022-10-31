@@ -2,7 +2,7 @@ import * as Sentry from '@sentry/node';
 import { RewriteFrames } from '@sentry/integrations';
 import type { Application } from 'express';
 import config from '../config';
-import { ErrorHandler } from 'n8n-workflow';
+import { ErrorReporter } from 'n8n-workflow';
 
 let initialized = false;
 
@@ -41,7 +41,7 @@ export const captureError = Sentry.captureException;
 export const captureWarning = (warning: string) =>
 	Sentry.captureMessage(warning, { level: 'warning' });
 
-Object.assign(ErrorHandler, {
+Object.assign(ErrorReporter, {
 	captureError,
 	captureWarning,
 });

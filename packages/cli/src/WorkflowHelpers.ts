@@ -44,7 +44,7 @@ import config from '../config';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { User } from './databases/entities/User';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
-import { captureError } from './ErrorHandling';
+import { captureError } from './ErrorReporting';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 

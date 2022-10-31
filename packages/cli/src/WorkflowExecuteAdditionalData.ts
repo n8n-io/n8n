@@ -69,7 +69,7 @@ import {
 import { whereClause } from './WorkflowHelpers';
 import { IWorkflowErrorData } from './Interfaces';
 import { findSubworkflowStart } from './utils';
-import { captureError } from './ErrorHandling';
+import { captureError } from './ErrorReporting';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 

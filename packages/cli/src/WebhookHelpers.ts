@@ -58,7 +58,7 @@ import * as ActiveExecutions from './ActiveExecutions';
 import { User } from './databases/entities/User';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
-import { captureError } from './ErrorHandling';
+import { captureError } from './ErrorReporting';
 
 const activeExecutions = ActiveExecutions.getInstance();
 

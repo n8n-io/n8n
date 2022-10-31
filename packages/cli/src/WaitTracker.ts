@@ -22,7 +22,7 @@ import {
 	WorkflowRunner,
 } from '.';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
-import { captureError } from './ErrorHandling';
+import { captureError } from './ErrorReporting';
 
 export class WaitTrackerClass {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;

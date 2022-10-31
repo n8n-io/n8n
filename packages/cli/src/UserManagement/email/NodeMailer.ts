@@ -3,7 +3,7 @@ import { createTransport, Transporter } from 'nodemailer';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import * as config from '../../../config';
 import { MailData, SendEmailResult, UserManagementMailerImplementation } from './Interfaces';
-import { captureError } from '../../ErrorHandling';
+import { captureError } from '../../ErrorReporting';
 
 export class NodeMailer implements UserManagementMailerImplementation {
 	private transport: Transporter;

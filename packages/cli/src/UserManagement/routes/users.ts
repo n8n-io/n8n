@@ -23,7 +23,7 @@ import {
 
 import * as config from '../../../config';
 import { issueCookie } from '../auth/jwt';
-import { captureError } from '../../ErrorHandling';
+import { captureError } from '../../ErrorReporting';
 
 export function usersNamespace(this: N8nApp): void {
 	/**

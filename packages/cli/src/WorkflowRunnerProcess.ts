@@ -52,7 +52,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 import { loadClassInIsolation } from './CommunityNodes/helpers';
 import { generateFailedExecutionFromError } from './WorkflowHelpers';
-import { captureError, initErrorHandling } from './ErrorHandling';
+import { captureError, initErrorHandling } from './ErrorReporting';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;

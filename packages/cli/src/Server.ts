@@ -154,7 +154,7 @@ import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
 
 import { toHttpNodeParameters } from './CurlConverterHelper';
-import { initErrorHandling, captureError } from './ErrorHandling';
+import { initErrorHandling, captureError } from './ErrorReporting';
 
 require('body-parser-xml')(bodyParser);
 
