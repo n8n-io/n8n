@@ -6,26 +6,24 @@ import { createWorkflow } from './shared/testDb';
 import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
 import { v4 as uuid } from 'uuid';
 
-import type { Role } from '../../src/databases/entities/Role';
-import config from '../../config';
-import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
-import { INode, INodes } from 'n8n-workflow';
+import config from '../../config';
+
+import type { Role } from '../../src/databases/entities/Role';
+import type { AuthAgent, SaveCredentialFunction } from './shared/types';
+import type { INode } from 'n8n-workflow';
 
 jest.mock('../../src/telemetry');
 
-// mock whether sharing is enabled or not
-jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
-
 let app: express.Application;
 let testDbName = '';
-
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let authAgent: AuthAgent;
 let saveCredential: SaveCredentialFunction;
+let isSharingEnabled: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -46,7 +44,9 @@ beforeAll(async () => {
 	utils.initTestLogger();
 	utils.initTestTelemetry();
 
-	config.set('enterprise.workflowSharingEnabled', true);
+	isSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
+
+	config.set('enterprise.workflowSharingEnabled', true); // @TODO: Remove once temp flag is removed
 });
 
 beforeEach(async () => {
@@ -55,6 +55,32 @@ beforeEach(async () => {
 
 afterAll(async () => {
 	await testDb.terminate(testDbName);
+});
+
+test('Router should switch dynamically', async () => {
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+	const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+	const createWorkflowResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+	const { id } = createWorkflowResponse.body.data;
+
+	// free router
+
+	isSharingEnabled.mockReturnValueOnce(false);
+
+	const freeShareResponse = await authAgent(owner)
+		.put(`/workflows/${id}/share`)
+		.send({ shareWithIds: [member.id] });
+
+	expect(freeShareResponse.status).toBe(404);
+
+	// EE router
+
+	const paidShareResponse = await authAgent(owner)
+		.put(`/workflows/${id}/share`)
+		.send({ shareWithIds: [member.id] });
+
+	expect(paidShareResponse.status).toBe(200);
 });
 
 describe('PUT /workflows/:id', () => {
