@@ -4,17 +4,13 @@
 	</transition>
 </template>
 
-<script lang="ts">
-import Vue from 'vue';
+<script lang="ts" setup>
+type BlockUiProps = {
+	show: boolean;
+}
 
-export default Vue.extend({
-	name: 'n8n-block-ui',
-	props: {
-		show: {
-			type: Boolean,
-			default: false,
-		},
-	},
+const props = withDefaults(defineProps<BlockUiProps>(), {
+	show: false,
 });
 </script>
 
