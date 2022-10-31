@@ -54,8 +54,8 @@ import {
 } from '.';
 import * as Queue from './Queue';
 import { InternalHooksManager } from './InternalHooksManager';
-import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from './WorkflowHelpers';
+import { PermissionChecker } from './UserManagement/PermissionChecker';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -261,7 +261,7 @@ export class WorkflowRunner {
 			);
 
 			try {
-				await checkPermissionsForExecution(workflow, data.userId);
+				await PermissionChecker.check(workflow, data.userId);
 			} catch (error) {
 				// Create a failed execution with the data for the node
 				// save it and abort execution

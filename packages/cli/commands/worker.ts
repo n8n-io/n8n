@@ -37,11 +37,9 @@ import { getLogger } from '../src/Logger';
 
 import config from '../config';
 import * as Queue from '../src/Queue';
-import {
-	checkPermissionsForExecution,
-	getWorkflowOwner,
-} from '../src/UserManagement/UserManagementHelper';
+import { getWorkflowOwner } from '../src/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '../src/WorkflowHelpers';
+import { PermissionChecker } from '../src/UserManagement/PermissionChecker';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -197,7 +195,7 @@ export class Worker extends Command {
 		);
 
 		try {
-			await checkPermissionsForExecution(workflow, workflowOwner.id);
+			await PermissionChecker.check(workflow, workflowOwner.id);
 		} catch (error) {
 			const failedExecution = generateFailedExecutionFromError(
 				currentExecutionDb.mode,
