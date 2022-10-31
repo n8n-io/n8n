@@ -1179,15 +1179,15 @@ export async function requestOAuth1(
 		secret: oauthTokenData.oauth_token_secret as string,
 	};
 
-	// @ts-expect-error @TECH_DEBT: Improve typings for requestOptions
+	// @ts-expect-error @TECH_DEBT: Remove request library
 	requestOptions.data = { ...requestOptions.qs, ...requestOptions.form };
 
 	// Fixes issue that OAuth1 library only works with "url" property and not with "uri"
-	// @ts-expect-error @TECH_DEBT: Improve typings for requestOptions
+	// @ts-expect-error @TECH_DEBT: Remove request library
 	if (requestOptions.uri && !requestOptions.url) {
-		// @ts-expect-error @TECH_DEBT: Improve typings for requestOptions
+		// @ts-expect-error @TECH_DEBT: Remove request library
 		requestOptions.url = requestOptions.uri;
-		// @ts-expect-error @TECH_DEBT: Improve typings for requestOptions
+		// @ts-expect-error @TECH_DEBT: Remove request library
 		delete requestOptions.uri;
 	}
 
