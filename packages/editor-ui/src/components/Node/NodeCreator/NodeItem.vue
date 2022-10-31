@@ -55,7 +55,7 @@
 			@actionSelected="onActionSelected"
 			@back="showActions = false"
 		/>
-		<div :class="$style.actionIcon" v-if="allowActions && hasActions">
+		<div :class="{[$style.actionIcon]: true, [$style.visible]: allowActions && hasActions}" >
 			<font-awesome-icon :class="$style.actionArrow" icon="arrow-right" />
 		</div>
 	</div>
@@ -67,7 +67,7 @@ import Vue, { PropType } from 'vue';
 import { INodeTypeDescription, IDataObject } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
-import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
+import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import NodeActions from './NodeActions.vue';
@@ -113,7 +113,7 @@ export default Vue.extend({
 	},
 	computed: {
 		hasActions(): boolean {
-			return this.nodeType?.actions?.length > 0;
+			return (this.nodeType?.actions?.length || 0) > 0;
 		},
 		shortNodeType(): string {
 			return this.$locale.shortNodeType(this.nodeType.name);
@@ -136,8 +136,9 @@ export default Vue.extend({
 			if(this.hasActions && this.allowActions) this.showActions = true;
 			else this.$emit('nodeTypeSelected', this.nodeType.name);
 		},
-		onActionSelected(action: IDataObject) {
+		async onActionSelected(action: IDataObject) {
 			this.$emit('nodeTypeSelected', action.key);
+
 			// We need some time for the node to be created before setting parameters
 			const unsubscribe = this.$store.subscribe((mutation, state) => {
 				if(mutation.type === 'addNode') {
@@ -208,14 +209,18 @@ export default Vue.extend({
 	justify-content: flex-end;
 	align-items: center;
 	margin-left: 8px;
+	color: var(--color-text-lighter);
+
+	&.visible {
+		opacity: 1;
+	}
 }
 .nodeItem:hover .actionIcon {
-	opacity: 1;
+	color: var(--color-text-light)
 }
 .actionArrow {
 	font-size: 12px;
 	width: 12px;
-	color: $node-creator-arrow-color;
 }
 .nodeItem {
 	padding: 11px 8px 11px 0;

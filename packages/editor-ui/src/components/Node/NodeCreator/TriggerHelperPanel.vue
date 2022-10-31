@@ -31,8 +31,6 @@ import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY
 import ItemIterator from './ItemIterator.vue';
 import CategorizedItems from './CategorizedItems.vue';
 import SearchBar from './SearchBar.vue';
-import { IDataObject } from 'n8n-workflow';
-import { startCase } from 'lodash';
 
 export default mixins(externalHooks).extend({
 	name: 'TriggerHelperPanel',
@@ -43,7 +41,7 @@ export default mixins(externalHooks).extend({
 	},
 	props: {
 		searchItems: {
-			type: Array as PropType<INodeCreateElement[] | null>,
+			type: Array as PropType<INodeCreateElement[]>,
 		},
 	},
 	data() {
@@ -54,7 +52,7 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
-		items() {
+		items(): INodeCreateElement[] {
 			return [{
 					key: "app_nodes",
 					type: "subcategory",

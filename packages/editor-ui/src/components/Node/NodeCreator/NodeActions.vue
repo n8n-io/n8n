@@ -32,6 +32,7 @@
 							:class="$style.categoryAction"
 						>
 							<button :class="$style.categoryActionButton" @click="onActionClick(item)">
+								<node-icon :class="$style.nodeIcon" :nodeType="nodeType"/>
 								<p v-text="item.title" />
 								<trigger-icon v-if="isTriggerAction(item)" :class="$style.triggerIcon" />
 							</button>
@@ -116,7 +117,6 @@ const { subtractedCategories, search } = toRefs(state);
 .nodeActions {
 	border: $node-creator-border-color solid 1px;
 	z-index: 1;
-	overflow: hidden;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -130,8 +130,15 @@ const { subtractedCategories, search } = toRefs(state);
 .content {
 	height: 100%;
 	padding: var(--spacing-s);
-	overflow: auto;
+	padding-top: 1px;
+	overflow-y: auto;
+	overflow-x: visible;
 	padding-bottom: 3rem;
+	scrollbar-width: none;
+
+	&::-webkit-scrollbar {
+    display: none;
+	}
 }
 
 .search {
@@ -142,7 +149,7 @@ const { subtractedCategories, search } = toRefs(state);
 	height: 50px;
 	background-color: $node-creator-subcategory-panel-header-bacground-color;
 
-	font-size: 18px;
+	font-size: var(--font-size-l);
 	font-weight: 600;
 	line-height: 16px;
 
@@ -165,9 +172,11 @@ const { subtractedCategories, search } = toRefs(state);
 	background: none;
 	display: flex;
 	align-items: center;
+	text-align: left;
 	position: relative;
 	cursor: pointer;
 	padding: 0;
+	color: var(--color-text-dark);
 
 	&:hover:before {
 		content: "";
@@ -186,6 +195,12 @@ const { subtractedCategories, search } = toRefs(state);
 	line-height: 11px;
 	letter-spacing: 1px;
 	text-transform: uppercase;
+	// padding-top: 10px;
+}
+.categoryArrow {
+	font-size: 12px;
+	width: 12px;
+	color: $node-creator-arrow-color;
 }
 .backButton {
 	background: transparent;
@@ -201,24 +216,25 @@ const { subtractedCategories, search } = toRefs(state);
 	padding: 0;
 }
 .categoryHeader {
-	border-bottom: 1px solid #DBDFE7;
-	padding-bottom: 12px;
-	margin-bottom: 16px;
+	border-bottom: 1px solid $node-creator-border-color;
+	padding: 10px 0;
 	cursor: pointer;
+	display: flex;
+	align-items: center;
 }
 .categoryActions {
-
+	margin: 16px 0;
 }
 .category {
 	&:not(:first-of-type) {
-		margin-top: 30px;
+		// margin-top: 30px;
 	}
 }
 .categoryAction {
 	font-weight: 600;
-	font-size: 14px;
+	font-size: var(--font-size-s);
 	line-height: 14px;
-	color: #555555;
+	color: var(--color-text-dark);
 	display: flex;
 	align-items: center;
 
@@ -230,14 +246,10 @@ const { subtractedCategories, search } = toRefs(state);
 	display: flex;
 	align-items: center;
 	font-weight: 600;
-	font-size: 16px;
+	font-size: var(--font-size-m);
 	line-height: 22px;
-	/* identical to box height */
 
-
-	/* Typography/Primary heading */
-
-	color: #555555;
+	color: var(--color-text-dark);
 }
 .triggerIcon {
 	border: none;
@@ -245,6 +257,6 @@ const { subtractedCategories, search } = toRefs(state);
 	height: 20px;
 }
 .nodeIcon {
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing-s);
 }
 </style>

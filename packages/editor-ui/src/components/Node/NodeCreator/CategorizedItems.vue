@@ -2,8 +2,8 @@
 	<transition :name="activeSubcategoryTitle ? 'panel-slide-in' : 'panel-slide-out'" >
 		<div
 			:class="$style.categorizedItems"
-			ref="mainPanelContainer"
 			@click="onClickInside"
+			ref="mainPanelContainer"
 			tabindex="0"
 			@keydown.capture="nodeFilterKeyDown"
 			:key="`${activeSubcategoryTitle}_transition`"
@@ -80,14 +80,12 @@
 	</transition>
 </template>
 
-<script lang="ts">
-import Vue, { PropType } from 'vue';
+<script lang="ts" setup>
+import Vue, { computed, reactive, onMounted, watch, getCurrentInstance, toRefs, onUnmounted } from 'vue';
 import camelcase from 'lodash.camelcase';
-
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
 
-import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
@@ -97,412 +95,409 @@ import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
 import { cloneDeep } from 'lodash';
 import { sublimeSearch } from './sortUtils';
+import { store } from '@/store';
 
-export default mixins(externalHooks, globalLinkActions).extend({
-	name: 'CategorizedItems',
-	components: {
-		ItemIterator,
-		NoResults,
-		SearchBar,
-	},
-	props: {
-		flatten: {
-			type: Boolean,
-		},
-		searchItems: {
-			type: Array as PropType<INodeCreateElement[]>,
-		},
-		excludedCategories: {
-			type: Array as PropType<string[]>,
-			default: () => [],
-		},
-		excludedSubcategories: {
-			type: Array as PropType<string[]>,
-			default: () => [],
-		},
-		firstLevelItems: {
-			type: Array as PropType<INodeCreateElement[]>,
-			default: () => [],
-		},
-		initialActiveCategories: {
-			type: Array as PropType<string[]>,
-			default: () => [],
-		},
-		initialActiveIndex: {
-			type: Number,
-			default: 1,
-		},
-	},
-	data() {
-		return {
-			activeCategory: this.initialActiveCategories || [] as string[],
-			// Keep track of activated subcategories so we could traverse back more than one level
-			activeSubcategoryHistory: [] as INodeCreateElement[],
-			activeIndex: this.initialActiveIndex,
-			activeSubcategoryIndex: 0,
-			searchEventBus: new Vue(),
-			ALL_NODE_FILTER,
-			TRIGGER_NODE_FILTER,
-			REGULAR_NODE_FILTER,
-		};
-	},
-	mounted() {
-		this.registerCustomAction('showAllNodeCreatorNodes', this.switchToAllTabAndFilter);
-	},
-	destroyed() {
-		this.$store.commit('nodeCreator/setFilter', '');
-		this.unregisterCustomAction('showAllNodeCreatorNodes');
-	},
-	computed: {
-		activeSubcategory(): INodeCreateElement | null {
-			return this.activeSubcategoryHistory[this.activeSubcategoryHistory.length - 1] || null;
-		},
-		nodeFilter(): string {
-			return this.$store.getters['nodeCreator/itemsFilter'];
-		},
-		selectedType(): INodeFilterType {
-			return this.$store.getters['nodeCreator/selectedType'];
-		},
-		categoriesWithNodes(): ICategoriesWithNodes {
-			return this.$store.getters['nodeTypes/categoriesWithNodes'];
-		},
-		categorizedItems(): INodeCreateElement[] {
-			return this.$store.getters['nodeTypes/categorizedItems'];
-		},
-		activeSubcategoryTitle(): string {
-			if(!this.activeSubcategory || !this.activeSubcategory.properties) return '';
-			const subcategoryName = camelcase((this.activeSubcategory.properties as ISubcategoryItemProps).subcategory);
-			const titleLocaleKey = `nodeCreator.subcategoryTitles.${subcategoryName}` as BaseTextKey;
-			const nameLocaleKey = `nodeCreator.subcategoryNames.${subcategoryName}` as BaseTextKey;
+export interface Props {
+	flatten?: boolean;
+	searchItems?: INodeCreateElement[];
+	excludedCategories?: string[];
+	excludedSubcategories?: string[];
+	firstLevelItems?: INodeCreateElement[];
+	initialActiveCategories?: string[];
+	initialActiveIndex?: number;
+}
 
-			const titleLocale = this.$locale.baseText(titleLocaleKey);
-			const nameLocale = this.$locale.baseText(nameLocaleKey);
-
-			// If resolved title locale is same as the locale key it means it doesn't exist
-			// so we fallback to the subcategoryName
-			return titleLocale === titleLocaleKey ? nameLocale : titleLocale;
-		},
-		searchFilter(): string {
-			return this.nodeFilter.toLowerCase().trim();
-		},
-		defaultLocale (): string {
-			return this.$store.getters.defaultLocale;
-		},
-		matchedTypeNodes(): INodeCreateElement[] {
-			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
-
-			if(this.isAppEventSubcategory) return searchableNodes;
-			return searchableNodes.filter((el: INodeCreateElement) => matchesSelectType(el, this.selectedType));
-		},
-		filteredNodeTypes(): INodeCreateElement[] {
-			const filter = this.searchFilter;
-			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
-
-			let returnItems: INodeCreateElement[] = [];
-			if (this.defaultLocale !== 'en') {
-				returnItems = searchableNodes.filter((el: INodeCreateElement) => {
-					return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
-				});
-			}
-			else {
-				const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, this.selectedType));
-				const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
-				returnItems = matchedCategorizedNodes.map(({item}) => item);;
-			}
-
-
-			setTimeout(() => {
-				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
-					nodeFilter: this.nodeFilter,
-					result: returnItems,
-					selectedType: this.selectedType,
-				});
-			}, 0);
-
-			return returnItems;
-		},
-		filteredAllNodeTypes(): INodeCreateElement[] {
-			if(this.filteredNodeTypes.length > 0) return [];
-
-			const matchedAllNodex = this.searchItems.filter((el: INodeCreateElement) => {
-				return this.searchFilter && matchesNodeType(el, this.searchFilter);
-			});
-
-			return matchedAllNodex;
-		},
-		categorized(): INodeCreateElement[] {
-			return this.categorizedItems && this.categorizedItems
-				.reduce((accu: INodeCreateElement[], el: INodeCreateElement) => {
-					if((this.excludedCategories || []).includes(el.category)) return accu;
-
-					if(
-						el.type === 'subcategory' &&
-						(this.excludedSubcategories || []).includes((el.properties as ISubcategoryItemProps).subcategory)
-					) {
-						return accu;
-					}
-
-					if (
-						el.type !== 'category' &&
-						!this.activeCategory.includes(el.category)
-					) {
-						return accu;
-					}
-
-					if (!matchesSelectType(el, this.selectedType)) {
-						return accu;
-					}
-
-					if (el.type === 'category') {
-						accu.push({
-							...el,
-							properties: {
-								expanded: this.activeCategory.includes(el.category),
-							},
-						} as INodeCreateElement);
-						return accu;
-					}
-
-					accu.push(el);
-					return accu;
-				}, []);
-		},
-
-		subcategorizedItems(): INodeCreateElement[] {
-			const activeSubcategory = this.activeSubcategory;
-			if(!activeSubcategory) return [];
-
-			const category = activeSubcategory.category;
-			const subcategory = (activeSubcategory.properties as ISubcategoryItemProps).subcategory;
-
-			// If no category is set, we use all categorized nodes
-			const nodes = category
-				? this.categoriesWithNodes[category][subcategory].nodes
-				: this.categorized;
-
-			return nodes.filter((el: INodeCreateElement) => matchesSelectType(el, this.selectedType));
-		},
-		isAppEventSubcategory(): boolean {
-			return this.activeSubcategory?.key === 'app_nodes';
-		},
-		subcategorizedNodes(): INodeCreateElement[] {
-			if(this.isAppEventSubcategory) {
-				// On App Event is a special subcategory because we want to
-				// show merged regular nodes with actions and trigger nodes
-				const mergedNodes = this.searchItems.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
-					const clonedNode = cloneDeep(node);
-					const isRegularNode = clonedNode.includedByRegular === true;
-					const isTriggerNode = clonedNode.includedByTrigger === true;
-					const nodeType = clonedNode.properties.nodeType;
-					const actions = nodeType.actions || [];
-					const hasActions = actions?.length > 0;
-					const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
-
-					if(isRegularNode && !hasActions) return acc;
-					if(isTriggerNode && !!this.subcategorizedItems.find(i => i.key === node.key)) return acc;
-
-					const existingNode = acc[normalizedName];
-					if(existingNode) {
-						existingNode.properties.nodeType.actions.push(...actions);
-					} else {
-						acc[normalizedName] = clonedNode;
-					}
-
-					return acc;
-
-				}, {});
-
-				return Object.values(mergedNodes);
-			}
-			return this.subcategorizedItems.filter(node => node.type === 'node');
-		},
-
-		renderedItems(): INodeCreateElement[] {
-			if(this.firstLevelItems.length > 0 && this.activeSubcategory === null) return this.firstLevelItems;
-			if(this.flatten) return this.matchedTypeNodes;
-			if(this.subcategorizedItems.length === 0) return this.categorized;
-
-			return this.subcategorizedItems;
-		},
-
-		isSearchVisible(): boolean {
-			if(this.subcategorizedItems.length === 0) return true;
-
-			let totalItems = 0;
-			for (const item of this.subcategorizedItems) {
-				// Category contains many nodes so we need to count all of them
-				// for the current selectedType
-				if(item.type === 'category') {
-					const categoryItems = this.categoriesWithNodes[item.key];
-					const categoryItemsCount = Object.values(categoryItems)?.[0];
-					const countKeys = NODE_TYPE_COUNT_MAPPER[this.selectedType];
-
-					for (const countKey of countKeys) {
-						totalItems += categoryItemsCount[(countKey as "triggerCount" | "regularCount")];
-					}
-
-					continue;
-				}
-				// If it's not category, it must be just a node item so we count it as 1
-				totalItems += 1;
-			}
-
-			return totalItems > 9;
-		},
-	},
-	watch: {
-		isSearchVisible(isVisible) {
-			if(isVisible === false) {
-				// Focus the root container when search is hidden to make sure
-				// keyboard navigation still works
-				this.$nextTick(() => {
-					(this.$refs.mainPanelContainer as HTMLElement).focus();
-				});
-			}
-		},
-		nodeFilter(newValue, oldValue) {
-			// Reset the index whenver the filter-value changes
-			this.activeIndex = 0;
-			this.activeSubcategoryIndex = 0;
-			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', {
-				oldValue,
-				newValue,
-				selectedType: this.selectedType,
-				filteredNodes: this.filteredNodeTypes,
-			});
-			this.$telemetry.trackNodesPanel('nodeCreateList.nodeFilterChanged', {
-				oldValue,
-				newValue,
-				selectedType: this.selectedType,
-				filteredNodes: this.filteredNodeTypes,
-				workflow_id: this.$store.getters.workflowId,
-			});
-		},
-	},
-	methods: {
-		switchToAllTabAndFilter() {
-			const currentFilter = this.nodeFilter;
-			this.$store.commit('nodeCreator/setShowTabs', true);
-			this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
-			this.activeSubcategoryHistory = [];
-
-			this.$nextTick(() => this.$store.commit('nodeCreator/setFilter', currentFilter));
-		},
-		onNodeFilterChange(filter: string) {
-			this.$store.commit('nodeCreator/setFilter', filter);
-		},
-		selectWebhook() {
-			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
-		},
-		selectHttpRequest() {
-			this.$emit('nodeTypeSelected', HTTP_REQUEST_NODE_TYPE);
-		},
-		nodeFilterKeyDown(e: KeyboardEvent) {
-			// We only want to propagate 'Escape' as it closes the node-creator and
-			// 'Tab' which toggles it
-			if (!['Escape', 'Tab'].includes(e.key)) e.stopPropagation();
-
-			// Prevent cursors position change
-			if(['ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault();
-
-			if (this.activeSubcategory) {
-				const activeList = this.subcategorizedItems;
-				const activeNodeType = activeList[this.activeSubcategoryIndex];
-
-				if (e.key === 'ArrowDown' && this.activeSubcategory) {
-					this.activeSubcategoryIndex++;
-					this.activeSubcategoryIndex = Math.min(
-						this.activeSubcategoryIndex,
-						activeList.length - 1,
-					);
-				}
-				else if (e.key === 'ArrowUp' && this.activeSubcategory) {
-					this.activeSubcategoryIndex--;
-					this.activeSubcategoryIndex = Math.max(this.activeSubcategoryIndex, 0);
-				}
-				else if (e.key === 'Enter') {
-					this.selected(activeNodeType);
-				} else if (e.key === 'ArrowLeft' && activeNodeType?.type === 'category' && (activeNodeType.properties as ICategoryItemProps).expanded) {
-					this.selected(activeNodeType);
-				} else if (e.key === 'ArrowLeft') {
-					this.onSubcategoryClose();
-				} else if (e.key === 'ArrowRight' && activeNodeType?.type === 'category' && !(activeNodeType.properties as ICategoryItemProps).expanded) {
-					this.selected(activeNodeType);
-				}
-				return;
-			}
-
-			const activeList = this.searchFilter.length > 0 ? this.filteredNodeTypes : this.renderedItems;
-			const activeNodeType = activeList[this.activeIndex];
-
-			if (e.key === 'ArrowDown') {
-				this.activeIndex++;
-				// Make sure that we stop at the last nodeType
-				this.activeIndex = Math.min(
-					this.activeIndex,
-					activeList.length - 1,
-				);
-			} else if (e.key === 'ArrowUp') {
-				this.activeIndex--;
-				// Make sure that we do not get before the first nodeType
-				this.activeIndex = Math.max(this.activeIndex, 0);
-			} else if (e.key === 'Enter' && activeNodeType) {
-				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowRight' && activeNodeType?.type === 'subcategory') {
-				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowRight' && activeNodeType?.type === 'category' && !(activeNodeType.properties as ICategoryItemProps).expanded) {
-				this.selected(activeNodeType);
-			} else if (e.key === 'ArrowLeft' && activeNodeType?.type === 'category' && (activeNodeType.properties as ICategoryItemProps).expanded) {
-				this.selected(activeNodeType);
-			}
-		},
-		selected(element: INodeCreateElement) {
-			const typeHandler = {
-				node: () => this.$emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name),
-				category: () => this.onCategorySelected(element.category),
-				subcategory: () => this.onSubcategorySelected(element),
-			};
-
-			typeHandler[element.type]();
-		},
-		onCategorySelected(category: string) {
-			if (this.activeCategory.includes(category)) {
-				this.activeCategory = this.activeCategory.filter(
-					(active: string) => active !== category,
-				);
-			} else {
-				this.activeCategory = [...this.activeCategory, category];
-				this.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: this.$store.getters.workflowId });
-			}
-
-			this.activeIndex = this.categorized.findIndex(
-				(el: INodeCreateElement) => el.category === category,
-			);
-		},
-		onSubcategorySelected(selected: INodeCreateElement) {
-			this.$emit('onSubcategorySelected', selected);
-			this.$store.commit('nodeCreator/setShowTabs', false);
-			this.activeSubcategoryIndex = 0;
-			this.activeSubcategoryHistory.push(selected);
-			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.$store.getters.workflowId });
-		},
-
-		onSubcategoryClose() {
-			this.$emit('subcategoryClose', this.activeSubcategory);
-			this.activeSubcategoryHistory.pop();
-			this.activeSubcategoryIndex = 0;
-			this.$store.commit('nodeCreator/setFilter', '');
-
-			if(!this.$store.getters['nodeCreator/showScrim']) {
-				this.$store.commit('nodeCreator/setShowTabs', true);
-			}
-		},
-
-		onClickInside() {
-			this.searchEventBus.$emit('focus');
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	searchItems: () => [],
+	excludedCategories: () => [],
+	excludedSubcategories: () => [],
+	firstLevelItems: () => [],
+	initialActiveCategories: () => [],
 });
+
+const emit = defineEmits<{
+	(event: 'subcategoryClose', value: INodeCreateElement): void,
+	(event: 'onSubcategorySelected', value: INodeCreateElement): void,
+	(event: 'nodeTypeSelected', value: string): void,
+}>();
+
+const instance = getCurrentInstance();
+const { registerCustomAction, unregisterCustomAction } = new globalLinkActions();
+const { $externalHooks } = new externalHooks();
+
+const state = reactive({
+	activeCategory: props.initialActiveCategories,
+	// Keep track of activated subcategories so we could traverse back more than one level
+	activeSubcategoryHistory: [] as INodeCreateElement[],
+	activeIndex: props.initialActiveIndex || 0,
+	activeSubcategoryIndex: 0,
+	searchEventBus: new Vue(),
+	ALL_NODE_FILTER,
+	TRIGGER_NODE_FILTER,
+	REGULAR_NODE_FILTER,
+	mainPanelContainer: null as HTMLElement | null,
+});
+
+const activeSubcategory = computed<INodeCreateElement | null> (
+	() => state.activeSubcategoryHistory[state.activeSubcategoryHistory.length - 1] || null,
+);
+
+const nodeFilter = computed<string> (() => store.getters['nodeCreator/itemsFilter']);
+
+const selectedType = computed<INodeFilterType> (() => store.getters['nodeCreator/selectedType']);
+
+const categoriesWithNodes = computed<ICategoriesWithNodes> (() => store.getters['nodeTypes/categoriesWithNodes']);
+
+const categorizedItems = computed<INodeCreateElement[]> (() => {
+  return store.getters['nodeTypes/categorizedItems'];
+});
+
+const activeSubcategoryTitle = computed<string> (() => {
+  if(!activeSubcategory.value || !activeSubcategory.value.properties) return '';
+  const subcategoryName = camelcase((activeSubcategory.value.properties as ISubcategoryItemProps).subcategory);
+
+  const titleLocaleKey = `nodeCreator.subcategoryTitles.${subcategoryName}` as BaseTextKey;
+  const nameLocaleKey = `nodeCreator.subcategoryNames.${subcategoryName}` as BaseTextKey;
+
+  const titleLocale = instance?.proxy?.$locale.baseText(titleLocaleKey) as string;
+  const nameLocale = instance?.proxy?.$locale.baseText(nameLocaleKey) as string;
+
+  // If resolved title locale is same as the locale key it means it doesn't exist
+  // so we fallback to the subcategoryName
+  return titleLocale === titleLocaleKey ? nameLocale : titleLocale;
+});
+
+const searchFilter = computed<string> (() => nodeFilter.value.toLowerCase().trim());
+
+const defaultLocale = computed<string> (() => store.getters.defaultLocale);
+
+const matchedTypeNodes = computed<INodeCreateElement[]> (() => {
+  const searchableNodes = subcategorizedNodes.value.length > 0 ? subcategorizedNodes.value : props.searchItems;
+
+  if(isAppEventSubcategory.value) return searchableNodes;
+  return searchableNodes.filter((el: INodeCreateElement) => matchesSelectType(el, selectedType.value));
+});
+
+const filteredNodeTypes = computed<INodeCreateElement[]> (() => {
+  const filter = searchFilter.value;
+  const searchableNodes = subcategorizedNodes.value.length > 0 ? subcategorizedNodes.value : props.searchItems;
+
+  let returnItems: INodeCreateElement[] = [];
+  if (defaultLocale.value !== 'en') {
+    returnItems = searchableNodes.filter((el: INodeCreateElement) => {
+      return filter && matchesSelectType(el, selectedType.value) && matchesNodeType(el, filter);
+    });
+  }
+  else {
+    const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, selectedType.value));
+    const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
+    returnItems = matchedCategorizedNodes.map(({item}) => item);;
+  }
+
+  return returnItems;
+});
+
+const filteredAllNodeTypes = computed<INodeCreateElement[]> (() => {
+  if(filteredNodeTypes.value.length > 0) return [];
+
+  const matchedAllNodex = props.searchItems.filter((el: INodeCreateElement) => {
+    return searchFilter.value && matchesNodeType(el, searchFilter.value);
+  });
+
+  return matchedAllNodex;
+});
+
+const categorized = computed<INodeCreateElement[]> (() => {
+  return categorizedItems.value
+    .reduce((accu: INodeCreateElement[], el: INodeCreateElement) => {
+      if((props.excludedCategories || []).includes(el.category)) return accu;
+
+      if(
+        el.type === 'subcategory' &&
+        (props.excludedSubcategories || []).includes((el.properties as ISubcategoryItemProps).subcategory)
+      ) {
+        return accu;
+      }
+
+      if (
+        el.type !== 'category' &&
+        !state.activeCategory.includes(el.category)
+      ) {
+        return accu;
+      }
+
+      if (!matchesSelectType(el, selectedType.value)) {
+        return accu;
+      }
+
+      if (el.type === 'category') {
+        accu.push({
+          ...el,
+          properties: {
+            expanded: state.activeCategory.includes(el.category),
+          },
+        } as INodeCreateElement);
+        return accu;
+      }
+
+      accu.push(el);
+      return accu;
+    }, []);
+});
+
+const subcategorizedItems = computed<INodeCreateElement[]> (() => {
+  if(!activeSubcategory.value) return [];
+
+  const category = activeSubcategory.value.category;
+  const subcategory = (activeSubcategory.value.properties as ISubcategoryItemProps).subcategory;
+
+  // If no category is set, we use all categorized nodes
+  const nodes = category
+    ? categoriesWithNodes.value[category][subcategory].nodes
+    : categorized.value;
+
+  return nodes.filter((el: INodeCreateElement) => matchesSelectType(el, selectedType.value));
+});
+
+const isAppEventSubcategory = computed<boolean> (() => activeSubcategory.value?.key === 'app_nodes');
+
+const subcategorizedNodes = computed<INodeCreateElement[]> (() => {
+  if(isAppEventSubcategory.value) {
+    // On App Event is a special subcategory because we want to
+    // show merged regular nodes with actions and trigger nodes
+    const mergedNodes = props.searchItems.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
+      const clonedNode = cloneDeep(node);
+      const isRegularNode = clonedNode.includedByRegular === true;
+      const isTriggerNode = clonedNode.includedByTrigger === true;
+      const nodeType = (clonedNode.properties as INodeItemProps).nodeType;
+      const actions = nodeType.actions || [];
+      const hasActions = actions?.length > 0;
+      const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
+
+      if(isRegularNode && !hasActions) return acc;
+      if(isTriggerNode && !!subcategorizedItems.value.find(i => i.key === node.key)) return acc;
+
+      const existingNode = acc[normalizedName];
+      if(existingNode) {
+        (existingNode.properties as INodeItemProps).nodeType.actions.push(...actions);
+      } else {
+        acc[normalizedName] = clonedNode;
+      }
+
+      return acc;
+
+    }, {});
+
+    return Object.values(mergedNodes);
+  }
+  return subcategorizedItems.value.filter(node => node.type === 'node');
+});
+
+const renderedItems = computed<INodeCreateElement[]> (() => {
+  if(props.firstLevelItems.length > 0 && activeSubcategory.value === null) return props.firstLevelItems;
+  if(props.flatten) return matchedTypeNodes.value;
+  if(subcategorizedItems.value.length === 0) return categorized.value;
+
+  return subcategorizedItems.value;
+});
+
+const isSearchVisible = computed<boolean> (() => {
+  if(subcategorizedItems.value.length === 0) return true;
+
+  let totalItems = 0;
+  for (const item of subcategorizedItems.value) {
+    // Category contains many nodes so we need to count all of them
+    // for the current selectedType
+    if(item.type === 'category') {
+      const categoryItems = categoriesWithNodes.value[item.key];
+      const categoryItemsCount = Object.values(categoryItems)?.[0];
+      const countKeys = NODE_TYPE_COUNT_MAPPER[selectedType.value];
+
+      for (const countKey of countKeys) {
+        totalItems += categoryItemsCount[(countKey as "triggerCount" | "regularCount")];
+      }
+
+      continue;
+    }
+    // If it's not category, it must be just a node item so we count it as 1
+    totalItems += 1;
+  }
+  return totalItems > 9;
+});
+
+// Methods
+function switchToAllTabAndFilter() {
+  const currentFilter = nodeFilter.value;
+  store.commit('nodeCreator/setShowTabs', true);
+  store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
+  state.activeSubcategoryHistory = [];
+
+  Vue.nextTick(() => store.commit('nodeCreator/setFilter', currentFilter));
+}
+
+function onNodeFilterChange(filter: string) {
+  store.commit('nodeCreator/setFilter', filter);
+}
+
+function selectWebhook() {
+  emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
+}
+
+function selectHttpRequest() {
+  emit('nodeTypeSelected', HTTP_REQUEST_NODE_TYPE);
+}
+
+function nodeFilterKeyDown(e: KeyboardEvent) {
+  // We only want to propagate 'Escape' as it closes the node-creator and
+  // 'Tab' which toggles it
+  if (!['Escape', 'Tab'].includes(e.key)) e.stopPropagation();
+
+  // Prevent cursors position change
+  if(['ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault();
+
+  if (activeSubcategory.value) {
+    const activeList = subcategorizedItems.value;
+    const activeNodeType = activeList[state.activeSubcategoryIndex];
+
+    if (e.key === 'ArrowDown' && activeSubcategory.value) {
+      state.activeSubcategoryIndex++;
+      state.activeSubcategoryIndex = Math.min(
+        state.activeSubcategoryIndex,
+        activeList.length - 1,
+      );
+    }
+    else if (e.key === 'ArrowUp' && activeSubcategory.value) {
+      state.activeSubcategoryIndex--;
+      state.activeSubcategoryIndex = Math.max(state.activeSubcategoryIndex, 0);
+    }
+    else if (e.key === 'Enter') {
+      selected(activeNodeType);
+    } else if (e.key === 'ArrowLeft' && activeNodeType?.type === 'category' && (activeNodeType.properties as ICategoryItemProps).expanded) {
+      selected(activeNodeType);
+    } else if (e.key === 'ArrowLeft') {
+      onSubcategoryClose();
+    } else if (e.key === 'ArrowRight' && activeNodeType?.type === 'category' && !(activeNodeType.properties as ICategoryItemProps).expanded) {
+      selected(activeNodeType);
+    }
+    return;
+  }
+
+  const activeList = searchFilter.value.length > 0 ? filteredNodeTypes.value : renderedItems.value;
+  const activeNodeType = activeList[state.activeIndex];
+
+  if (e.key === 'ArrowDown') {
+    state.activeIndex++;
+    // Make sure that we stop at the last nodeType
+    state.activeIndex = Math.min(
+      state.activeIndex,
+      activeList.length - 1,
+    );
+  } else if (e.key === 'ArrowUp') {
+    state.activeIndex--;
+    // Make sure that we do not get before the first nodeType
+    state.activeIndex = Math.max(state.activeIndex, 0);
+  } else if (e.key === 'Enter' && activeNodeType) {
+    selected(activeNodeType);
+  } else if (e.key === 'ArrowRight' && activeNodeType?.type === 'subcategory') {
+    selected(activeNodeType);
+  } else if (e.key === 'ArrowRight' && activeNodeType?.type === 'category' && !(activeNodeType.properties as ICategoryItemProps).expanded) {
+    selected(activeNodeType);
+  } else if (e.key === 'ArrowLeft' && activeNodeType?.type === 'category' && (activeNodeType.properties as ICategoryItemProps).expanded) {
+    selected(activeNodeType);
+  }
+}
+function selected(element: INodeCreateElement) {
+  const typeHandler = {
+    node: () => emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name),
+    category: () => onCategorySelected(element.category),
+    subcategory: () => onSubcategorySelected(element),
+  };
+
+  typeHandler[element.type]();
+}
+
+function onCategorySelected(category: string) {
+  if (state.activeCategory.includes(category)) {
+    state.activeCategory = state.activeCategory.filter(
+      (active: string) => active !== category,
+    );
+  } else {
+    state.activeCategory = [...state.activeCategory, category];
+    instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: store.getters.workflowId });
+  }
+
+  state.activeIndex = categorized.value.findIndex(
+    (el: INodeCreateElement) => el.category === category,
+  );
+}
+
+function onSubcategorySelected(selected: INodeCreateElement) {
+  emit('onSubcategorySelected', selected);
+  store.commit('nodeCreator/setShowTabs', false);
+  state.activeSubcategoryIndex = 0;
+  state.activeSubcategoryHistory.push(selected);
+  instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: store.getters.workflowId });
+}
+
+function onSubcategoryClose() {
+  emit('subcategoryClose', activeSubcategory.value);
+  state.activeSubcategoryHistory.pop();
+  state.activeSubcategoryIndex = 0;
+  store.commit('nodeCreator/setFilter', '');
+
+  if(!store.getters['nodeCshowScrimreator/']) {
+    store.commit('nodeCreator/setShowTabs', true);
+  }
+}
+
+function onClickInside() {
+  state.searchEventBus.$emit('focus');
+}
+
+onMounted(() => {
+	registerCustomAction('showAllNodeCreatorNodes', switchToAllTabAndFilter);
+});
+
+onUnmounted(() => {
+	store.commit('nodeCreator/setFilter', '');
+	unregisterCustomAction('showAllNodeCreatorNodes');
+});
+
+watch(filteredNodeTypes, (returnItems) => {
+	$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
+		nodeFilter: nodeFilter.value,
+		result: returnItems,
+		selectedType: selectedType.value,
+	});
+});
+
+watch(isSearchVisible, (isVisible) => {
+	if(isVisible === false) {
+		// Focus the root container when search is hidden to make sure
+		// keyboard navigation still works
+		Vue.nextTick(() => state.mainPanelContainer?.focus());
+	}
+});
+watch(nodeFilter, (newValue, oldValue) => {
+	// Reset the index whenver the filter-value changes
+	state.activeIndex = 0;
+	state.activeSubcategoryIndex = 0;
+	$externalHooks().run('nodeCreateList.nodeFilterChanged', {
+		oldValue,
+		newValue,
+		selectedType: selectedType.value,
+		filteredNodes: filteredNodeTypes.value,
+	});
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.nodeFilterChanged', {
+		oldValue,
+		newValue,
+		selectedType: selectedType.value,
+		filteredNodes: filteredNodeTypes.value,
+		workflow_id: store.getters.workflowId,
+	});
+});
+
+const { searchEventBus, activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state);
 </script>
 
 <style lang="scss" module>

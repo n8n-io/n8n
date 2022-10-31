@@ -37,7 +37,7 @@ export default Vue.extend({
 			return this.$store.getters['nodeTypes/categorizedItems'];
 		},
 		categoryName() {
-			return camelcase(this.item.category);
+			return camelcase(this.item.category) as CategoryName;
 		},
 		nodesCount(): number {
 			const currentCategory = this.categoriesWithNodes[this.item.category];
