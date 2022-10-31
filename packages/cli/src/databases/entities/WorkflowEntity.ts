@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { Length } from 'class-validator';
 
 import type {
@@ -10,6 +11,9 @@ import type {
 } from 'n8n-workflow';
 
 import {
+	AfterLoad,
+	AfterUpdate,
+	AfterInsert,
 	Column,
 	Entity,
 	Index,
@@ -84,6 +88,30 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 		transformer: sqlite.jsonColumn,
 	})
 	pinData: ISimplifiedPinData;
+
+	/**
+	 * Hash of editable workflow state.
+	 */
+	hash: string;
+
+	@AfterLoad()
+	@AfterUpdate()
+	@AfterInsert()
+	setHash(): void {
+		const { name, active, nodes, connections, settings, staticData, pinData } = this;
+
+		const state = JSON.stringify({
+			name,
+			active,
+			nodes,
+			connections,
+			settings,
+			staticData,
+			pinData,
+		});
+
+		this.hash = crypto.createHash('md5').update(state).digest('hex');
+	}
 }
 
 /**
