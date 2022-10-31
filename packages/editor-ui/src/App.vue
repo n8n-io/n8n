@@ -164,7 +164,7 @@ export default mixins(
 			this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
-			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect(this.$store);
+			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect();
 			if (redirect) {
 				this.$router.replace(redirect);
 			}
@@ -180,7 +180,7 @@ export default mixins(
 
 		this.trackPage();
 		// TODO: Un-comment once front-end hooks are updated to work with pinia store
-		// this.$externalHooks().run('app.mount');
+		this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();

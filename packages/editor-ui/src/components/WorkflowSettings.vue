@@ -368,10 +368,6 @@ export default mixins(
 			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 		}
 
-		console.log('setting');
-		console.log(workflowSettings);
-
-
 		Vue.set(this, 'workflowSettings', workflowSettings);
 		this.timeoutHMS = this.convertToHMS(workflowSettings.executionTimeout);
 		this.isLoading = false;
