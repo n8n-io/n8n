@@ -794,6 +794,8 @@ export default mixins(
 				this.$store.commit('setWorkflowName', { newName: data.name, setStateDirty: false });
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 				this.$store.commit('setWorkflowPinData', data.pinData || {});
+				this.$store.commit('setWorkflowHash', data.hash);
+
 				const tags = (data.tags || []) as ITag[];
 				this.$store.commit('tags/upsertTags', tags);
 				const tagIds = tags.map((tag) => tag.id);
@@ -2753,13 +2755,18 @@ export default mixins(
 			deleteEveryEndpoint() {
 				// Check as it does not exist on first load
 				if (this.instance) {
-					try {
-						const nodes = this.$store.getters.allNodes as INodeUi[];
-						// @ts-ignore
-						nodes.forEach((node: INodeUi) => this.instance.destroyDraggable(node.id));
+					const nodes = this.$store.getters.allNodes as INodeUi[];
+					nodes.forEach((node: INodeUi) => {
+						try {
+							// important to prevent memory leak
+							// @ts-ignore
+							this.instance.destroyDraggable(node.id);
+						} catch (e) {
+							console.error(e);
+						}
+					});
 
-						this.instance.deleteEveryEndpoint();
-					} catch (e) { }
+					this.instance.deleteEveryEndpoint();
 				}
 			},
 			matchCredentials(node: INodeUi) {
