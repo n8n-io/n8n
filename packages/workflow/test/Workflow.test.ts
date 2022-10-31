@@ -1,9 +1,12 @@
 import {
+	IBinaryKeyData,
 	IConnections,
+	IDataObject,
 	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRunExecutionData,
+	NodeParameterValueType,
 	Workflow,
 } from '../src';
 
@@ -696,7 +699,17 @@ describe('Workflow', () => {
 	});
 
 	describe('getParameterValue', () => {
-		const tests = [
+		const tests: {
+			description: string;
+			input: {
+				[nodeName: string]: {
+					parameters: Record<string, NodeParameterValueType>;
+					outputJson?: IDataObject;
+					outputBinary?: IBinaryKeyData;
+				};
+			};
+			output: Record<string, unknown>;
+		}[] = [
 			{
 				description: 'read simple not expression value',
 				input: {
@@ -881,6 +894,7 @@ describe('Workflow', () => {
 							binaryKey: {
 								data: '',
 								type: '',
+								mimeType: 'test',
 								fileName: 'test-file1.jpg',
 							},
 						},
@@ -908,6 +922,7 @@ describe('Workflow', () => {
 							binaryKey: {
 								data: '',
 								type: '',
+								mimeType: 'test',
 								fileName: 'test-file1.jpg',
 							},
 						},
@@ -1134,8 +1149,7 @@ describe('Workflow', () => {
 					{
 						name: 'Node3',
 						parameters: testData.input.hasOwnProperty('Node3')
-							? // @ts-ignore
-							  testData.input.Node3.parameters
+							? testData.input.Node3?.parameters
 							: {},
 						type: 'test.set',
 						typeVersion: 1,
@@ -1145,8 +1159,7 @@ describe('Workflow', () => {
 					{
 						name: 'Node 4 with spaces',
 						parameters: testData.input.hasOwnProperty('Node4')
-							? // @ts-ignore
-							  testData.input.Node4.parameters
+							? testData.input.Node4.parameters
 							: {},
 						type: 'test.set',
 						typeVersion: 1,
@@ -1187,6 +1200,11 @@ describe('Workflow', () => {
 						runData: {
 							Node1: [
 								{
+									source: [
+										{
+											previousNode: 'test',
+										},
+									],
 									startTime: 1,
 									executionTime: 1,
 									data: {
@@ -1194,7 +1212,6 @@ describe('Workflow', () => {
 											[
 												{
 													json: testData.input.Node1.outputJson || testData.input.Node1.parameters,
-													// @ts-ignore
 													binary: testData.input.Node1.outputBinary,
 												},
 											],
@@ -1226,7 +1243,6 @@ describe('Workflow', () => {
 						timezone,
 						{},
 					);
-					// @ts-ignore
 					expect(result).toEqual(testData.output[parameterName]);
 				}
 			});
@@ -1278,7 +1294,6 @@ describe('Workflow', () => {
 		//     const workflow = new Workflow({ nodes, connections, active: false, nodeTypes });
 		//     const activeNodeName = 'Node2';
 
-		//     // @ts-ignore
 		//     const parameterValue = nodes.find((node) => node.name === activeNodeName).parameters.name;
 		//     // const parameterValue = '=[data.propertyName]'; // TODO: Make this dynamic from node-data via "activeNodeName"!
 		//     const runData: RunData = {
