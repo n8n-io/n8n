@@ -156,7 +156,6 @@ export class WorkflowExecute {
 		startNodes: string[],
 		destinationNode: string,
 		pinData?: IPinData,
-		// @ts-ignore
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
@@ -783,7 +782,6 @@ export class WorkflowExecute {
 						gotCancel = true;
 					}
 
-					// @ts-ignore
 					if (gotCancel) {
 						return Promise.resolve();
 					}
@@ -911,7 +909,6 @@ export class WorkflowExecute {
 					}
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
-						// @ts-ignore
 						if (gotCancel) {
 							return Promise.resolve();
 						}
