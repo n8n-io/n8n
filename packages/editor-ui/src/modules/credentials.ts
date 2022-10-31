@@ -32,6 +32,9 @@ import {i18n} from "@/plugins/i18n";
 import {credentialsEEModule} from "@/modules/credentials.ee";
 import {EnterpriseEditionFeature} from "@/constants";
 import { useUsersStore } from '@/stores/users';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings';
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -128,7 +131,8 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			return (credentialTypeName: string) => {
-				const allLatestNodeTypes: INodeTypeDescription[] = rootGetters['nodeTypes/allLatestNodeTypes'];
+				const nodeTypesStore = useNodeTypesStore();
+				const allLatestNodeTypes: INodeTypeDescription[] = nodeTypesStore.allLatestNodeTypes;
 
 				return allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => {
 					if (!nodeType.credentials) {
@@ -188,28 +192,34 @@ const module: Module<ICredentialsState, IRootState> = {
 			if (context.getters.allCredentialTypes.length > 0 && forceFetch !== true) {
 				return;
 			}
-			const credentialTypes = await getCredentialTypes(context.rootGetters.getRestApiContext);
+			const rootStore = useRootStore();
+			const credentialTypes = await getCredentialTypes(rootStore.getRestApiContext);
 			context.commit('setCredentialTypes', credentialTypes);
 		},
 		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
-			const credentials = await getAllCredentials(context.rootGetters.getRestApiContext);
+			const rootStore = useRootStore();
+			const credentials = await getAllCredentials(rootStore.getRestApiContext);
 			context.commit('setCredentials', credentials);
 
 			return credentials;
 		},
 		fetchForeignCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
-			const credentials = await getForeignCredentials(context.rootGetters.getRestApiContext);
+			const rootStore = useRootStore();
+			const credentials = await getForeignCredentials(rootStore.getRestApiContext);
 			context.commit('setForeignCredentials', credentials);
 
 			return credentials;
 		},
 		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
-			return await getCredentialData(context.rootGetters.getRestApiContext, id);
+			const rootStore = useRootStore();
+			return await getCredentialData(rootStore.getRestApiContext, id);
 		},
 		createNewCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted) => {
-			const credential = await createNewCredential(context.rootGetters.getRestApiContext, data);
+			const rootStore = useRootStore();
+			const settingsStore = useSettingsStore();
+			const credential = await createNewCredential(rootStore.getRestApiContext, data);
 
-			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				context.commit('upsertCredential', credential);
 
 				if (data.ownedBy) {
@@ -234,9 +244,11 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		updateCredential: async (context: ActionContext<ICredentialsState, IRootState>, params: {data: ICredentialsDecrypted, id: string}) => {
 			const { id, data } = params;
-			const credential = await updateCredential(context.rootGetters.getRestApiContext, id, data);
+			const rootStore = useRootStore();
+			const settingsStore = useSettingsStore();
+			const credential = await updateCredential(rootStore.getRestApiContext, id, data);
 
-			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				context.commit('upsertCredential', credential);
 
 				if (data.ownedBy) {
@@ -260,19 +272,23 @@ const module: Module<ICredentialsState, IRootState> = {
 			return credential;
 		},
 		deleteCredential: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
-			const deleted = await deleteCredential(context.rootGetters.getRestApiContext, id);
+			const rootStore = useRootStore();
+			const deleted = await deleteCredential(rootStore.getRestApiContext, id);
 			if (deleted) {
 				context.commit('deleteCredential', id);
 			}
 		},
 		oAuth2Authorize: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsResponse) => {
-			return oAuth2CredentialAuthorize(context.rootGetters.getRestApiContext, data);
+			const rootStore = useRootStore();
+			return oAuth2CredentialAuthorize(rootStore.getRestApiContext, data);
 		},
 		oAuth1Authorize: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsResponse) => {
-			return oAuth1CredentialAuthorize(context.rootGetters.getRestApiContext, data);
+			const rootStore = useRootStore();
+			return oAuth1CredentialAuthorize(rootStore.getRestApiContext, data);
 		},
 		testCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted): Promise<INodeCredentialTestResult> => {
-			return testCredential(context.rootGetters.getRestApiContext, { credentials: data });
+			const rootStore = useRootStore();
+			return testCredential(rootStore.getRestApiContext, { credentials: data });
 		},
 		getNewCredentialName: async (context: ActionContext<ICredentialsState, IRootState>, params: { credentialTypeName: string }) => {
 			try {
@@ -283,8 +299,8 @@ const module: Module<ICredentialsState, IRootState> = {
 					newName = getAppNameFromCredType(displayName);
 					newName = newName.length > 0 ? `${newName} ${DEFAULT_CREDENTIAL_POSTFIX}` : DEFAULT_CREDENTIAL_NAME;
 				}
-
-				const res = await getCredentialsNewName(context.rootGetters.getRestApiContext, newName);
+				const rootStore = useRootStore();
+				const res = await getCredentialsNewName(rootStore.getRestApiContext, newName);
 				return res.name;
 			} catch (e) {
 				return DEFAULT_CREDENTIAL_NAME;
