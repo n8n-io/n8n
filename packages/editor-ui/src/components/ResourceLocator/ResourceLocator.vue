@@ -254,7 +254,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
-			mainPanelMutationSubscription: () => {},
 			showResourceDropdown: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
@@ -438,24 +437,20 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	mounted() {
 		this.$on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
-		this.mainPanelMutationSubscription = this.$store.subscribe(this.setWidthOnMainPanelResize);
+		useNDVStore().$subscribe((mutation, state) => {
+			// Update the width when main panel dimension change
+			this.setWidth();
+		});
 		setTimeout(() => {
 			this.setWidth();
 		}, 0);
 	},
 	beforeDestroy() {
-		// Unsubscribe
-		this.mainPanelMutationSubscription();
 		window.removeEventListener('resize', this.setWidth);
 	},
 	methods: {
 		setWidth() {
 			this.width = (this.$refs.container as HTMLElement).offsetWidth;
-		},
-		setWidthOnMainPanelResize(mutation: { type: string }) {
-			// Update the width when main panel dimension change
-			// TODO: Check about this:
-			if(mutation.type === 'setMainPanelDimensions') this.setWidth();
 		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {

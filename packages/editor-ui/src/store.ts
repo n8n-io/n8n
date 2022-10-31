@@ -28,6 +28,14 @@ const modules = {
 		namespaced: true,
 		getters: { globalRoleName () { return useUsersStore().globalRoleName; } },
 	},
+	ui: {
+		namespaced: true,
+		getters: { getFakeDoorFeatures () { return useUIStore().fakeDoorFeatures; } },
+	},
+	settings: {
+		namespaced: true,
+		getters: { isUserManagementEnabled () { return useSettingsStore().isUserManagementEnabled; } },
+	},
 };
 
 export const store = new Vuex.Store({
