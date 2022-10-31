@@ -321,7 +321,7 @@
 				</n8n-select>
 			</div>
 		</div>
-
+		<n8n-block-ui :show="blockUI" :class="$style.uiBlocker" />
 	</div>
 </template>
 
@@ -367,7 +367,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { pinData } from '@/components/mixins/pinData';
 import { CodeEditor } from "@/components/forms";
-import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
 import RunDataJson from '@/components/RunDataJson.vue';
@@ -436,6 +436,10 @@ export default mixins(
 			},
 			showMappingHint: {
 				type: Boolean,
+			},
+			blockUI: {
+				type: Boolean,
+				default: false,
 			},
 		},
 		data () {
@@ -1381,6 +1385,11 @@ export default mixins(
 
 .stretchVertically {
 	height: 100%;
+}
+
+.uiBlocker {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
 </style>
