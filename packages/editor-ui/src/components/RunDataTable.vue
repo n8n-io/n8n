@@ -66,6 +66,21 @@
 							</draggable>
 						</n8n-tooltip>
 					</th>
+					<th v-if="columnLimitExceeded" :class="$style.header">
+						<n8n-tooltip placement="bottom-end">
+							<div
+								slot="content"
+								v-html="$locale.baseText(
+									'dataMapping.tableView.tableColumnsExceededTooltip',
+									{ interpolate: { columnLimit, paneType } }
+									)"
+							/>
+							<span>
+								<font-awesome-icon :class="$style['warningTooltip']" icon="exclamation-triangle"></font-awesome-icon>
+								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
+							</span>
+						</n8n-tooltip>
+					</th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
@@ -129,6 +144,7 @@
 								</template>
 							</n8n-tree>
 						</td>
+						<td v-if="columnLimitExceeded"></td>
 						<td :class="$style.tableRightMargin"></td>
 					</tr>
 				</template>
@@ -138,18 +154,20 @@
 </template>
 
 <script lang="ts">
-/* eslint-disable prefer-spread */
-
-import { INodeUi, IRootState, ITableData, IUiState, NDVState } from '@/Interface';
+import { INodeUi, IRootState, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/pairedItemUtils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import Draggable from './Draggable.vue';
-import { shorten } from './helpers';
-import { externalHooks } from './mixins/externalHooks';
+import Draggable from '@/components/Draggable.vue';
+import { shorten } from '@/components/helpers';
+import { externalHooks } from '@/components/mixins/externalHooks';
+import { globalLinkActions } from "@/components/mixins/globalLinkActions";
 
-export default mixins(externalHooks).extend({
+export default mixins(
+	externalHooks,
+	globalLinkActions,
+).extend({
 	name: 'run-data-table',
 	components: { Draggable },
 	props: {
@@ -180,6 +198,9 @@ export default mixins(externalHooks).extend({
 		hasDefaultHoverState: {
 			type: Boolean,
 		},
+		paneType: {
+			type: String,
+		},
 	},
 	data() {
 		return {
@@ -202,6 +223,10 @@ export default mixins(externalHooks).extend({
 				});
 			}
 		}
+		this.registerCustomAction('switchToJsonView' + this.paneType, this.switchToJsonView.bind(this));
+	},
+	destroyed() {
+		this.unregisterCustomAction('switchToJsonView' + this.paneType);
 	},
 	computed: {
 		hoveringItem(): NDVState['hoveringItem'] {
@@ -458,7 +483,7 @@ export default mixins(externalHooks).extend({
 			tableData.forEach((entryRows) => {
 				if (tableColumns.length > entryRows.length) {
 					// Has fewer entries so add the missing ones
-					entryRows.push.apply(entryRows, new Array(tableColumns.length - entryRows.length));
+					entryRows.push(...new Array(tableColumns.length - entryRows.length));
 				}
 			});
 
@@ -467,6 +492,9 @@ export default mixins(externalHooks).extend({
 				columns: tableColumns,
 				data: tableData,
 			};
+		},
+		switchToJsonView(){
+			this.$emit('displayModeChange', 'json');
 		},
 	},
 });
@@ -661,4 +689,9 @@ export default mixins(externalHooks).extend({
 		background-color: var(--color-secondary);
 	}
 }
+
+.warningTooltip {
+	color: var(--color-warning);
+}
+
 </style>
