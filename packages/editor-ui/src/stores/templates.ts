@@ -12,7 +12,7 @@ function getSearchKey(query: ITemplatesQuery): string {
 }
 
 export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
-    state: (): ITemplateState => ({
+		state: (): ITemplateState => ({
 			categories: {},
 			collections: {},
 			workflows: {},
@@ -20,7 +20,7 @@ export const useTemplatesStore = defineStore(STORES.TEMPLATES, {
 			workflowSearches: {},
 			currentSessionId: '',
 			previousSessionId: '',
-    }),
+		}),
 		getters: {
 			allCategories(): ITemplatesCategory[] {
 				return Object.values(this.categories).sort((a: ITemplatesCategory, b: ITemplatesCategory) => a.name > b.name ? 1: -1);
