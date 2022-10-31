@@ -189,6 +189,8 @@ export default mixins(externalHooks).extend({
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
 			activeRow: null as number | null,
+			columnLimit: 100,
+			columnLimitExceeded: false,
 		};
 	},
 	mounted() {
@@ -202,7 +204,7 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		hoveringItem(): NDVState['ndv']['hoveringItem'] {
+		hoveringItem(): NDVState['hoveringItem'] {
 			return this.$store.getters['ndv/hoveringItem'];
 		},
 		pairedItemMappings(): IRootState['workflowExecutionPairedItemMappings'] {
@@ -411,7 +413,12 @@ export default mixins(externalHooks).extend({
 
 				// Go over all keys of entry
 				entryRows = [];
-				leftEntryColumns = Object.keys(entry || {});
+				const entryColumns = Object.keys(entry || {});
+
+				if(entryColumns.length > this.columnLimit) {
+					this.columnLimitExceeded = true;
+					leftEntryColumns = entryColumns.slice(0, this.columnLimit);
+				}
 
 				// Go over all the already existing column-keys
 				tableColumns.forEach((key) => {
@@ -450,7 +457,7 @@ export default mixins(externalHooks).extend({
 			// Make sure that all entry-rows have the same length
 			tableData.forEach((entryRows) => {
 				if (tableColumns.length > entryRows.length) {
-					// Has to less entries so add the missing ones
+					// Has fewer entries so add the missing ones
 					entryRows.push.apply(entryRows, new Array(tableColumns.length - entryRows.length));
 				}
 			});
