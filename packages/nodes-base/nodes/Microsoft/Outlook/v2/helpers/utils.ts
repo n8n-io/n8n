@@ -99,3 +99,28 @@ export function simplifyOutputMessages(data: IDataObject[]) {
 		};
 	});
 }
+
+export function prepareContactFields(fields: IDataObject) {
+	const typeStringCollection = [
+		'businessPhones',
+		'categories',
+		'children',
+		'homePhones',
+		'imAddresses',
+	];
+	const typeValuesToExtract = ['businessAddress', 'emailAddresses', 'homePhones', 'otherAddress'];
+
+	Object.keys(fields).map((field: string) => {
+		if (typeStringCollection.includes(field) && fields[field]) {
+			fields[field] = (fields[field] as string).split(',');
+		}
+		if (
+			typeValuesToExtract.includes(field) &&
+			(fields[field] as IDataObject).values !== undefined
+		) {
+			fields[field] = (fields[field] as IDataObject).values;
+		}
+	});
+
+	return fields;
+}

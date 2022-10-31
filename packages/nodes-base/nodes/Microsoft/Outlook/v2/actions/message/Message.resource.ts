@@ -68,7 +68,7 @@ export const description: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['message'],
-				operation: ['delete', 'get', 'getMime', 'move', 'update', 'reply'],
+				operation: ['delete', 'get', 'move', 'update', 'reply'],
 			},
 		},
 	},

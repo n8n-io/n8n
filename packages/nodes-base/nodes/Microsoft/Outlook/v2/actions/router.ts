@@ -2,6 +2,7 @@ import { INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 import { IExecuteFunctions } from 'n8n-core';
 
 import { MicrosoftOutlook } from './node.type';
+import * as contact from './contact/Contact.resource';
 import * as draft from './draft/Draft.resource';
 import * as folder from './folder/Folder.resource';
 import * as message from './message/Message.resource';
@@ -23,6 +24,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	for (let i = 0; i < items.length; i++) {
 		try {
 			switch (microsoftOutlook.resource) {
+				case 'contact':
+					responseData = await contact[microsoftOutlook.operation].execute.call(this, i);
+					break;
 				case 'draft':
 					responseData = await draft[microsoftOutlook.operation].execute.call(this, i, items);
 					break;

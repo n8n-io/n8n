@@ -12,7 +12,7 @@ export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 			name: 'scope',
 			type: 'hidden',
 			default:
-				'openid offline_access Mail.ReadWrite Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared MailboxSettings.Read',
+				'openid offline_access Mail.ReadWrite Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared MailboxSettings.Read Contacts.Read Contacts.ReadWrite',
 		},
 		{
 			displayName: 'Use Shared Mailbox',

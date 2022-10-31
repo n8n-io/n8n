@@ -1,7 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { downloadAttachments, microsoftApiRequest } from '../../transport';
-import { additionalFieldsOptions } from '../commonDescrriptions';
 
 export const description: INodeProperties[] = [
 	{
@@ -29,7 +28,32 @@ export const description: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
-		options: [...additionalFieldsOptions],
+		options: [
+			{
+				displayName: 'Attachments Prefix',
+				name: 'dataPropertyAttachmentsPrefixName',
+				type: 'string',
+				default: 'attachment_',
+				description:
+					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
+			},
+			{
+				displayName: 'Fields',
+				name: 'fields',
+				type: 'string',
+				default: '',
+				description: 'Fields the response will contain. Multiple can be added separated by comma.',
+			},
+			{
+				displayName: 'Filter',
+				name: 'filter',
+				type: 'string',
+				default: '',
+				placeholder: 'isRead eq false',
+				description:
+					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
+			},
+		],
 	},
 ];
 
