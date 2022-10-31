@@ -149,6 +149,8 @@ export default mixins(
 				startTLS: string;
 				syncronizationInterval: string;
 				userFilter: string;
+				pageSize: string;
+				searchTimeout: string;
 				}) {
 			if (!this.hasAnyChanges) {
 				return;
@@ -183,6 +185,8 @@ export default mixins(
 				syncronization: {
 					enabled: form.syncronizationEnabled === 'true' ? true : false,
 					interval: parseInt(form.syncronizationInterval || '60', 10),
+					pageSize:  parseInt(form.pageSize || '0', 10),
+					searchTimeout: parseInt(form.searchTimeout || '60', 10),
 				},
 			};
 
@@ -527,12 +531,33 @@ export default mixins(
 						},
 					},
 					{
-						name: 'syncronizationInterval',
+						name: 'syncronizationInterval (Minutes)',
 						initialValue:this.adConfig.syncronization.interval,
 						properties: {
 							label: 'Syncronization Interval',
 							type: 'text',
-							required: true,
+						},
+						shouldDisplay(values): boolean {
+							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';
+						},
+					},
+					{
+						name: 'pageSize',
+						initialValue:this.adConfig.syncronization.pageSize,
+						properties: {
+							label: 'Page Size',
+							type: 'text',
+						},
+						shouldDisplay(values): boolean {
+							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';
+						},
+					},
+					{
+						name: 'searchTimeout (Seconds)',
+						initialValue:this.adConfig.syncronization.searchTimeout,
+						properties: {
+							label: 'Search Timeout',
+							type: 'text',
 						},
 						shouldDisplay(values): boolean {
 							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';

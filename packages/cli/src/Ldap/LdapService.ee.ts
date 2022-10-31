@@ -72,7 +72,12 @@ export class LdapService {
 		if (this.client) {
 			const { searchEntries } = await this.client.search(this._config.binding.baseDn, {
 				filter,
+				timeLimit: this._config.syncronization.searchTimeout,
+				paged: {
+					pageSize: this._config.syncronization.pageSize,
+				},
 			});
+
 			await this.client.unbind();
 			return searchEntries;
 		}
