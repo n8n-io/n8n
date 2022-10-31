@@ -121,6 +121,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		workflow: WorkflowEntity,
 		workflowId: string,
 		tags?: string[],
+		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
 		const previousVersion = await EEWorkflowsService.get({ id: parseInt(workflowId, 10) });
 		if (!previousVersion) {
@@ -128,13 +129,13 @@ export class EEWorkflowsService extends WorkflowsService {
 		}
 		const allCredentials = await EECredentials.getAll(user);
 		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 			workflow = WorkflowHelpers.validateWorkflowCredentialUsage(
 				workflow,
 				previousVersion,
 				allCredentials,
 			);
 		} catch (error) {
-			console.log(error);
 			throw new ResponseHelper.ResponseError(
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
 				undefined,
@@ -142,6 +143,6 @@ export class EEWorkflowsService extends WorkflowsService {
 			);
 		}
 
-		return super.updateWorkflow(user, workflow, workflowId, tags);
+		return super.updateWorkflow(user, workflow, workflowId, tags, forceSave);
 	}
 }
