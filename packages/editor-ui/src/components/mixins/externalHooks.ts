@@ -5,6 +5,7 @@ import { Store } from 'vuex';
 
 export async function runExternalHook(
 	eventName: string,
+	store: Store<IRootState>,
 	metadata?: IDataObject,
 ) {
 	// @ts-ignore
@@ -20,7 +21,7 @@ export async function runExternalHook(
 		const hookMethods = window.n8nExternalHooks[resource][operator];
 
 		for (const hookmethod of hookMethods) {
-			await hookmethod(metadata);
+			await hookmethod(store, metadata);
 		}
 	}
 }
@@ -30,7 +31,7 @@ export const externalHooks = Vue.extend({
 		$externalHooks(): IExternalHooks {
 			return {
 				run: async (eventName: string, metadata?: IDataObject): Promise<void> => {
-					await runExternalHook.call(this, eventName, metadata);
+					await runExternalHook.call(this, eventName, this.$store, metadata);
 				},
 			};
 		},
