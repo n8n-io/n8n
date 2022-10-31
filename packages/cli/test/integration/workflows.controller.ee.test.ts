@@ -11,7 +11,8 @@ import config from '../../config';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
-import { INode, INodes } from 'n8n-workflow';
+import { ActiveWorkflowRunner } from '../../src';
+import { INode } from 'n8n-workflow';
 
 jest.mock('../../src/telemetry');
 
@@ -26,6 +27,7 @@ let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let authAgent: AuthAgent;
 let saveCredential: SaveCredentialFunction;
+let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -47,6 +49,9 @@ beforeAll(async () => {
 	utils.initTestTelemetry();
 
 	config.set('enterprise.workflowSharingEnabled', true);
+
+	await utils.initNodeTypes();
+	workflowRunner = await utils.initActiveWorkflowRunner();
 });
 
 beforeEach(async () => {
@@ -287,35 +292,39 @@ describe('POST /workflows', () => {
 	});
 });
 
-describe('PATCH /workflows/:id', () => {
+describe('PATCH /workflows/:id - validate credential permissions to user', () => {
 	it('Should succeed when saving unchanged workflow nodes', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-		const workflow = await createWorkflow(
-			{
-				nodes: [
-					{
-						id: 'uuid-1234',
-						name: 'Start',
-						parameters: {},
-						position: [-20, 260],
-						type: 'n8n-nodes-base.start',
-						typeVersion: 1,
-						credentials: {
-							default: {
-								id: savedCredential.id.toString(),
-								name: savedCredential.name,
-							},
+		const workflow = {
+			name: 'test',
+			active: false,
+			connections: {},
+			nodes: [
+				{
+					id: 'uuid-1234',
+					name: 'Start',
+					parameters: {},
+					position: [-20, 260],
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					credentials: {
+						default: {
+							id: savedCredential.id.toString(),
+							name: savedCredential.name,
 						},
 					},
-				],
-			},
-			owner,
-		);
+				},
+			],
+		};
 
-		const response = await authAgent(owner).patch(`/workflows/${workflow.id}`).send({
+		const createResponse = await authAgent(owner).post('/workflows').send(workflow);
+		const { id, hash } = createResponse.body.data;
+
+		const response = await authAgent(owner).patch(`/workflows/${id}`).send({
 			name: 'new name',
+			hash,
 		});
 
 		expect(response.statusCode).toBe(200);
@@ -326,11 +335,35 @@ describe('PATCH /workflows/:id', () => {
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
-		const workflow = await createWorkflow({}, owner);
+		const workflow = {
+			name: 'test',
+			active: false,
+			connections: {},
+			nodes: [
+				{
+					id: 'uuid-1234',
+					name: 'Start',
+					parameters: {},
+					position: [-20, 260],
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					credentials: {
+						default: {
+							id: savedCredential.id.toString(),
+							name: savedCredential.name,
+						},
+					},
+				},
+			],
+		};
+
+		const createResponse = await authAgent(owner).post('/workflows').send(workflow);
+		const { id, hash } = createResponse.body.data;
 
 		const response = await authAgent(owner)
-			.patch(`/workflows/${workflow.id}`)
+			.patch(`/workflows/${id}`)
 			.send({
+				hash,
 				nodes: [
 					{
 						id: 'uuid-1234',
@@ -357,11 +390,36 @@ describe('PATCH /workflows/:id', () => {
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
 		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
-		const workflow = await createWorkflow({}, member);
+
+		const workflow = {
+			name: 'test',
+			active: false,
+			connections: {},
+			nodes: [
+				{
+					id: 'uuid-1234',
+					name: 'Start',
+					parameters: {},
+					position: [-20, 260],
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					credentials: {
+						default: {
+							id: savedCredential.id.toString(),
+							name: savedCredential.name,
+						},
+					},
+				},
+			],
+		};
+
+		const createResponse = await authAgent(owner).post('/workflows').send(workflow);
+		const { id, hash } = createResponse.body.data;
 
 		const response = await authAgent(member)
-			.patch(`/workflows/${workflow.id}`)
+			.patch(`/workflows/${id}`)
 			.send({
+				hash,
 				nodes: [
 					{
 						id: 'uuid-1234',
@@ -432,14 +490,242 @@ describe('PATCH /workflows/:id', () => {
 			},
 		];
 
-		const workflow = await createWorkflow({ nodes: originalNodes }, member1);
-		await testDb.shareWorkflowWithUsers(workflow, [member2]);
+		const workflow = {
+			name: 'test',
+			active: false,
+			connections: {},
+			nodes: originalNodes,
+		};
 
-		const response = await authAgent(member2).patch(`/workflows/${workflow.id}`).send({
+		const createResponse = await authAgent(member1).post('/workflows').send(workflow);
+		const { id, hash } = createResponse.body.data;
+
+		await authAgent(member1)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member2.id] });
+
+		const response = await authAgent(member2).patch(`/workflows/${id}`).send({
+			hash,
 			nodes: changedNodes,
 		});
 
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.nodes).toMatchObject(originalNodes);
+	});
+});
+
+describe('PATCH /workflows/:id - validate interim updates', () => {
+	it('should block owner updating workflow nodes on interim update by member', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, hash: ownerHash } = createResponse.body.data;
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses and updates workflow name
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { hash: memberHash } = memberGetResponse.body.data;
+
+		await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Update by member', hash: memberHash });
+
+		// owner blocked from updating workflow nodes
+
+		const updateAttemptResponse = await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ nodes: [], hash: ownerHash });
+
+		expect(updateAttemptResponse.status).toBe(400);
+		expect(updateAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
+	});
+
+	it('should block member updating workflow nodes on interim update by owner', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates, updates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, hash: ownerFirstHash } = createResponse.body.data;
+
+		const updateResponse = await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Update by owner', hash: ownerFirstHash });
+
+		const { hash: ownerSecondHash } = updateResponse.body.data;
+
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses workflow
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { hash: memberHash } = memberGetResponse.body.data;
+
+		// owner re-updates workflow
+
+		await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Owner update again', hash: ownerSecondHash });
+
+		// member blocked from updating workflow
+
+		const updateAttemptResponse = await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ nodes: [], hash: memberHash });
+
+		expect(updateAttemptResponse.status).toBe(400);
+		expect(updateAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
+	});
+
+	it('should block owner activation on interim activation by member', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, hash: ownerHash } = createResponse.body.data;
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses and activates workflow
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { hash: memberHash } = memberGetResponse.body.data;
+		await authAgent(member).patch(`/workflows/${id}`).send({ active: true, hash: memberHash });
+
+		// owner blocked from activating workflow
+
+		const activationAttemptResponse = await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ active: true, hash: ownerHash });
+
+		expect(activationAttemptResponse.status).toBe(400);
+		expect(activationAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
+	});
+
+	it('should block member activation on interim activation by owner', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates, updates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, hash: ownerFirstHash } = createResponse.body.data;
+
+		const updateResponse = await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Update by owner', hash: ownerFirstHash });
+		const { hash: ownerSecondHash } = updateResponse.body.data;
+
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses workflow
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { hash: memberHash } = memberGetResponse.body.data;
+
+		// owner activates workflow
+
+		await authAgent(owner).patch(`/workflows/${id}`).send({ active: true, hash: ownerSecondHash });
+
+		// member blocked from activating workflow
+
+		const updateAttemptResponse = await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ active: true, hash: memberHash });
+
+		expect(updateAttemptResponse.status).toBe(400);
+		expect(updateAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
+	});
+
+	it('should block member updating workflow settings on interim update by owner', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, hash: ownerHash } = createResponse.body.data;
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses workflow
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { hash: memberHash } = memberGetResponse.body.data;
+
+		// owner updates workflow name
+
+		await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ name: 'Another name', hash: ownerHash });
+
+		// member blocked from updating workflow settings
+
+		const updateAttemptResponse = await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ settings: { saveManualExecutions: true }, hash: memberHash });
+
+		expect(updateAttemptResponse.status).toBe(400);
+		expect(updateAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
+	});
+
+	it('should block member updating workflow name on interim update by owner', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		// owner creates and shares workflow
+
+		const createResponse = await authAgent(owner).post('/workflows').send(makeWorkflow());
+		const { id, hash: ownerHash } = createResponse.body.data;
+		await authAgent(owner)
+			.put(`/workflows/${id}/share`)
+			.send({ shareWithIds: [member.id] });
+
+		// member accesses workflow
+
+		const memberGetResponse = await authAgent(member).get(`/workflows/${id}`);
+		const { hash: memberHash } = memberGetResponse.body.data;
+
+		// owner updates workflow settings
+
+		await authAgent(owner)
+			.patch(`/workflows/${id}`)
+			.send({ settings: { saveManualExecutions: true }, hash: ownerHash });
+
+		// member blocked from updating workflow name
+
+		const updateAttemptResponse = await authAgent(member)
+			.patch(`/workflows/${id}`)
+			.send({ settings: { saveManualExecutions: true }, hash: memberHash });
+
+		expect(updateAttemptResponse.status).toBe(400);
+		expect(updateAttemptResponse.body.message).toContain(
+			'cannot be saved because it was changed by another user',
+		);
 	});
 });

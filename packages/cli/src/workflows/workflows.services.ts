@@ -52,6 +52,7 @@ export class WorkflowsService {
 		workflow: WorkflowEntity,
 		workflowId: string,
 		tags?: string[],
+		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
 		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations: ['workflow'],
@@ -71,6 +72,14 @@ export class WorkflowsService {
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
 				undefined,
 				404,
+			);
+		}
+
+		if (!forceSave && workflow.hash !== shared.workflow.hash) {
+			throw new ResponseHelper.ResponseError(
+				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
+				undefined,
+				400,
 			);
 		}
 
@@ -118,7 +127,9 @@ export class WorkflowsService {
 			await validateEntity(workflow);
 		}
 
-		await Db.collections.Workflow.update(workflowId, workflow);
+		const { hash, ...rest } = workflow;
+
+		await Db.collections.Workflow.update(workflowId, rest);
 
 		if (tags && !config.getEnv('workflowTagsDisabled')) {
 			const tablePrefix = config.getEnv('database.tablePrefix');
