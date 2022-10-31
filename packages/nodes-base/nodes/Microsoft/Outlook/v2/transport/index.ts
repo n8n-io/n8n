@@ -48,7 +48,18 @@ export async function microsoftApiRequest(
 			options,
 		);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		let message = (error.message as string) || '';
+		if (
+			message.toLowerCase().includes('bad request') ||
+			message.toLowerCase().includes('unknown error')
+		) {
+			message = error.description;
+		}
+
+		throw new NodeApiError(this.getNode(), error, {
+			message,
+			...error,
+		});
 	}
 }
 
@@ -191,20 +202,6 @@ export async function getMimeContent(
 	if (response.headers['content-type']) {
 		mimeType = response.headers['content-type'];
 	}
-
-	// const newItem: INodeExecutionData = {
-	// 	json: items[index].json,
-	// 	binary: {},
-	// };
-
-	// if (items[index].binary !== undefined) {
-	// 	// Create a shallow copy of the binary data so that the old
-	// 	// data references which do not get changed still stay behind
-	// 	// but the incoming data does not get changed.
-	// 	Object.assign(newItem.binary!, items[index].binary);
-	// }
-
-	// items[index] = newItem;
 
 	const fileName = `${outputFileName || messageId}.eml`;
 	const data = Buffer.from(response.body as string, 'utf8');

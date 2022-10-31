@@ -111,7 +111,7 @@ export function prepareContactFields(fields: IDataObject) {
 	const typeValuesToExtract = ['businessAddress', 'emailAddresses', 'homePhones', 'otherAddress'];
 
 	Object.keys(fields).map((field: string) => {
-		if (typeStringCollection.includes(field) && fields[field]) {
+		if (typeStringCollection.includes(field) && fields[field] && !Array.isArray(fields[field])) {
 			fields[field] = (fields[field] as string).split(',');
 		}
 		if (
