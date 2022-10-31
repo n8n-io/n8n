@@ -23,5 +23,6 @@ module.exports = {
 		'@typescript-eslint/prefer-nullish-coalescing': 'off',
 		'@typescript-eslint/prefer-optional-chain': 'off',
 		'@typescript-eslint/restrict-template-expressions': 'off',
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	}
 };
