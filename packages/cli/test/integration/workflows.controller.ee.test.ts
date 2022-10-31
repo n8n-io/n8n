@@ -213,6 +213,127 @@ describe('GET /workflows/:id', () => {
 
 		expect(response.body.data.sharedWith).toHaveLength(2);
 	});
+
+	test('GET should return workflow with credentials owned by user', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+
+		const workflowPayload = makeWorkflow({
+			withPinData: false,
+			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+		});
+		const workflow = await createWorkflow(workflowPayload, owner);
+
+		const response = await authAgent(owner).get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.usedCredentials).toMatchObject([
+			{
+				id: savedCredential.id.toString(),
+				name: savedCredential.name,
+				currentUserHasAccess: true,
+			},
+		]);
+
+		expect(response.body.data.sharedWith).toHaveLength(0);
+	});
+
+	test('GET should return workflow with credentials saying owner has access even when not shared', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member });
+
+		const workflowPayload = makeWorkflow({
+			withPinData: false,
+			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+		});
+		const workflow = await createWorkflow(workflowPayload, owner);
+
+		const response = await authAgent(owner).get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.usedCredentials).toMatchObject([
+			{
+				id: savedCredential.id.toString(),
+				name: savedCredential.name,
+				currentUserHasAccess: true, // owner has access to any cred
+			},
+		]);
+
+		expect(response.body.data.sharedWith).toHaveLength(0);
+	});
+
+	test('GET should return workflow with credentials for all users with or without access', async () => {
+		const member1 = await testDb.createUser({ globalRole: globalMemberRole });
+		const member2 = await testDb.createUser({ globalRole: globalMemberRole });
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
+
+		const workflowPayload = makeWorkflow({
+			withPinData: false,
+			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+		});
+		const workflow = await createWorkflow(workflowPayload, member1);
+		await testDb.shareWorkflowWithUsers(workflow, [member2]);
+
+		const responseMember1 = await authAgent(member1).get(`/workflows/${workflow.id}`);
+		expect(responseMember1.statusCode).toBe(200);
+		expect(responseMember1.body.data.usedCredentials).toMatchObject([
+			{
+				id: savedCredential.id.toString(),
+				name: savedCredential.name,
+				currentUserHasAccess: true, // one user has access
+			},
+		]);
+		expect(responseMember1.body.data.sharedWith).toHaveLength(1);
+
+		const responseMember2 = await authAgent(member2).get(`/workflows/${workflow.id}`);
+		expect(responseMember2.statusCode).toBe(200);
+		expect(responseMember2.body.data.usedCredentials).toMatchObject([
+			{
+				id: savedCredential.id.toString(),
+				name: savedCredential.name,
+				currentUserHasAccess: false, // the other one doesn't
+			},
+		]);
+		expect(responseMember2.body.data.sharedWith).toHaveLength(1);
+	});
+
+	test('GET should return workflow with credentials for all users with access', async () => {
+		const member1 = await testDb.createUser({ globalRole: globalMemberRole });
+		const member2 = await testDb.createUser({ globalRole: globalMemberRole });
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: member1 });
+		// Both users have access to the credential (none is owner)
+		await testDb.shareCredentialWithUsers(savedCredential, [member2]);
+
+		const workflowPayload = makeWorkflow({
+			withPinData: false,
+			withCredential: { id: savedCredential.id.toString(), name: savedCredential.name },
+		});
+		const workflow = await createWorkflow(workflowPayload, member1);
+		await testDb.shareWorkflowWithUsers(workflow, [member2]);
+
+		const responseMember1 = await authAgent(member1).get(`/workflows/${workflow.id}`);
+		expect(responseMember1.statusCode).toBe(200);
+		expect(responseMember1.body.data.usedCredentials).toMatchObject([
+			{
+				id: savedCredential.id.toString(),
+				name: savedCredential.name,
+				currentUserHasAccess: true,
+			},
+		]);
+		expect(responseMember1.body.data.sharedWith).toHaveLength(1);
+
+		const responseMember2 = await authAgent(member2).get(`/workflows/${workflow.id}`);
+		expect(responseMember2.statusCode).toBe(200);
+		expect(responseMember2.body.data.usedCredentials).toMatchObject([
+			{
+				id: savedCredential.id.toString(),
+				name: savedCredential.name,
+				currentUserHasAccess: true,
+			},
+		]);
+		expect(responseMember2.body.data.sharedWith).toHaveLength(1);
+	});
 });
 
 describe('POST /workflows', () => {
