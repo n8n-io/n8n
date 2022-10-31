@@ -714,9 +714,9 @@ export function makeWorkflow(options?: {
 
 	const node: INode = {
 		id: uuid(),
-		name: 'Spotify',
-		type: 'n8n-nodes-base.spotify',
-		parameters: { resource: 'track', operation: 'get', id: '123' },
+		name: 'Cron',
+		type: 'n8n-nodes-base.cron',
+		parameters: {},
 		typeVersion: 1,
 		position: [740, 240],
 	};
