@@ -143,7 +143,7 @@ export default mixins(
 			hint (): string | null {
 				return this.$locale.nodeText().hint(this.parameter, this.path);
 			},
-			isInputTypeMappable (): boolean {
+			isInputTypeString (): boolean {
 				return this.parameter.type === 'string';
 			},
 			isResourceLocator (): boolean {
@@ -162,7 +162,7 @@ export default mixins(
 				return this.$store.getters['ndv/inputPanelDisplayMode'];
 			},
 			showMappingTooltip (): boolean {
-				return this.focused && this.isInputTypeMappable && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
+				return this.focused && this.isInputTypeString && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 			},
 		},
 		methods: {
