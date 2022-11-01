@@ -89,9 +89,11 @@ EEWorkflowController.get(
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
 			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
 		}
-		// @TODO: also return the credentials used by the workflow
 
-		return EEWorkflows.addOwnerAndSharings(workflow);
+		return EEWorkflows.addCredentialsToWorkflow(
+			EEWorkflows.addOwnerAndSharings(workflow),
+			req.user,
+		);
 	}),
 );
 
