@@ -47,15 +47,15 @@ import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
 import { mapGetters } from "vuex";
+import {restApi} from "@/components/mixins/restApi";
+import {IWorkflowDb} from "@/Interface";
 
-export default mixins(showMessage, workflowHelpers).extend({
+export default mixins(showMessage, workflowHelpers, restApi).extend({
 	components: { TagsDropdown, Modal },
 	name: "DuplicateWorkflow",
-	props: ["modalName", "isActive"],
+	props: ["modalName", "isActive", "data"],
 	data() {
-		const currentTagIds = this.$store.getters[
-			"workflowTags"
-		] as string[];
+		const currentTagIds = this.data.tags;
 
 		return {
 			name: '',
@@ -68,7 +68,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 		};
 	},
 	async mounted() {
-		this.$data.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName');
+		this.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName', this.data.name);
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	computed: {
@@ -113,21 +113,29 @@ export default mixins(showMessage, workflowHelpers).extend({
 				return;
 			}
 
-			const currentWorkflowId = this.$store.getters.workflowId;
+			const currentWorkflowId = this.data.id;
 
-			this.$data.isSaving = true;
+			this.isSaving = true;
 
-			const saved = await this.saveAsNewWorkflow({name, tags: this.currentTagIds, resetWebhookUrls: true, openInNewWindow: true, resetNodeIds: true});
+			const { createdAt, updatedAt, ...workflow } = await this.restApi().getWorkflow(this.data.id);
+			const saved = await this.saveAsNewWorkflow({
+				name,
+				data: workflow,
+				tags: this.currentTagIds,
+				resetWebhookUrls: true,
+				openInNewWindow: true,
+				resetNodeIds: true,
+			});
 
 			if (saved) {
 				this.closeDialog();
 				this.$telemetry.track('User duplicated workflow', {
 					old_workflow_id: currentWorkflowId,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.data.id,
 				});
 			}
 
-			this.$data.isSaving = false;
+			this.isSaving = false;
 		},
 		closeDialog(): void {
 			this.modalBus.$emit("close");

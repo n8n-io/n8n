@@ -62,10 +62,10 @@
 		<PushConnectionTracker class="actions">
 			<template>
 				<span class="activator">
-					<span>{{ $locale.baseText('workflowDetails.active') + ':' }}</span>
-					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId"/>
+					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
 				<SaveButton
+					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
 					@click="onSaveButtonClick"
@@ -86,6 +86,7 @@ import { mapGetters } from "vuex";
 import {
 	DUPLICATE_MODAL_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 } from "@/constants";
@@ -145,29 +146,29 @@ export default mixins(workflowHelpers, titleChange).extend({
 		}),
 		...mapGetters('settings', ['areTagsEnabled']),
 		isNewWorkflow(): boolean {
-			return !this.$route.params.name;
+			return !this.currentWorkflowId || (this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID || this.currentWorkflowId === 'new');
 		},
 		isWorkflowSaving(): boolean {
 			return this.$store.getters.isActionActive("workflowSaving");
 		},
 		currentWorkflowId(): string {
-			return this.$route.params.name;
-		},
-		currentWorkflow (): string {
-			return this.$route.params.name;
+			return this.$store.getters.workflowId;
 		},
 		workflowName (): string {
 			return this.$store.getters.workflowName;
 		},
 		onWorkflowPage(): boolean {
-			return this.$route.meta && this.$route.meta.nodeView;
+			return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
+		},
+		onExecutionsTab(): boolean {
+			return [ VIEWS.EXECUTION_HOME.toString(), VIEWS.EXECUTIONS.toString(), VIEWS.EXECUTION_PREVIEW ].includes(this.$route.name || '');
 		},
 		workflowMenuItems(): Array<{}> {
 			return [
 				{
 					id: WORKFLOW_MENU_ACTIONS.DUPLICATE,
 					label: this.$locale.baseText('menuActions.duplicate'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+					disabled: !this.onWorkflowPage || !this.currentWorkflowId,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.DOWNLOAD,
@@ -177,22 +178,22 @@ export default mixins(workflowHelpers, titleChange).extend({
 				{
 					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_URL,
 					label: this.$locale.baseText('menuActions.importFromUrl'),
-					disabled: !this.onWorkflowPage,
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE,
 					label: this.$locale.baseText('menuActions.importFromFile'),
-					disabled: !this.onWorkflowPage,
+					disabled: !this.onWorkflowPage || this.onExecutionsTab,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.SETTINGS,
 					label: this.$locale.baseText('generic.settings'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+					disabled: !this.onWorkflowPage || this.isNewWorkflow,
 				},
 				{
 					id: WORKFLOW_MENU_ACTIONS.DELETE,
 					label: this.$locale.baseText('menuActions.delete'),
-					disabled: !this.onWorkflowPage || !this.currentWorkflow,
+					disabled: !this.onWorkflowPage || this.isNewWorkflow,
 					customClass: this.$style.deleteItem,
 					divided: true,
 				},
@@ -201,7 +202,13 @@ export default mixins(workflowHelpers, titleChange).extend({
 	},
 	methods: {
 		async onSaveButtonClick () {
-			const saved = await this.saveCurrentWorkflow();
+			let currentId = undefined;
+			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				currentId = this.currentWorkflowId;
+			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
+				currentId = this.$route.params.name;
+			}
+			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
 			if (saved) this.$store.dispatch('settings/fetchPromptsData');
 		},
 		onTagsEditEnable() {
@@ -307,7 +314,14 @@ export default mixins(workflowHelpers, titleChange).extend({
 		async onWorkflowMenuSelect(action: string): Promise<void> {
 			switch (action) {
 				case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
-					this.$store.dispatch('ui/openModal', DUPLICATE_MODAL_KEY);
+					await this.$store.dispatch('ui/openModalWithData', {
+						name: DUPLICATE_MODAL_KEY,
+						data: {
+							id: this.$store.getters.workflowId,
+							name: this.$store.getters.workflowName,
+							tags: this.$store.getters.workflowTags,
+						},
+					});
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.DOWNLOAD: {
@@ -346,15 +360,15 @@ export default mixins(workflowHelpers, titleChange).extend({
 						this.$locale.baseText('mainSidebar.prompt.workflowUrl') + ':',
 						this.$locale.baseText('mainSidebar.prompt.importWorkflowFromUrl') + ':',
 						{
-							confirmButtonText: this.$locale.baseText('mainSidebar.prompt.import'),
-							cancelButtonText: this.$locale.baseText('mainSidebar.prompt.cancel'),
-							inputErrorMessage: this.$locale.baseText('mainSidebar.prompt.invalidUrl'),
-							inputPattern: /^http[s]?:\/\/.*\.json$/i,
-						},
-					) as MessageBoxInputData;
+								confirmButtonText: this.$locale.baseText('mainSidebar.prompt.import'),
+								cancelButtonText: this.$locale.baseText('mainSidebar.prompt.cancel'),
+								inputErrorMessage: this.$locale.baseText('mainSidebar.prompt.invalidUrl'),
+								inputPattern: /^http[s]?:\/\/.*\.json$/i,
+							},
+						) as MessageBoxInputData;
 
-					this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
-				} catch (e) {}
+						this.$root.$emit('importWorkflowUrl', { url: promptResponse.value });
+					} catch (e) {}
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.IMPORT_FROM_FILE: {
@@ -382,7 +396,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 					}
 
 					try {
-						await this.restApi().deleteWorkflow(this.currentWorkflow);
+						await this.restApi().deleteWorkflow(this.currentWorkflowId);
 					} catch (error) {
 						this.$showError(
 							error,
@@ -464,7 +478,6 @@ $--header-spacing: 20px;
 
 .tags {
 	flex: 1;
-	padding-right: 20px;
 	margin-right: $--header-spacing;
 }
 

@@ -5,6 +5,10 @@ declare module 'markdown-it-emoji';
 declare module 'markdown-it-task-lists';
 
 declare global {
+	interface Window {
+		BASE_PATH: string;
+	}
+
 	namespace JSX {
 		// tslint:disable no-empty-interface
 		interface Element extends VNode {}

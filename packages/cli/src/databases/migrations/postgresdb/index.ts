@@ -19,6 +19,8 @@ import { AddNodeIds1658932090381 } from './1658932090381-AddNodeIds';
 import { AddJsonKeyPinData1659902242948 } from './1659902242948-AddJsonKeyPinData';
 import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
 import { CreateWorkflowsEditorRole1663755770893 } from './1663755770893-CreateWorkflowsEditorRole';
+import { CreateCredentialUsageTable1665484192212 } from './1665484192212-CreateCredentialUsageTable';
+import { RemoveCredentialUsageTable1665754637025 } from './1665754637025-RemoveCredentialUsageTable';
 
 export const postgresMigrations = [
 	InitialMigration1587669153312,
@@ -42,4 +44,6 @@ export const postgresMigrations = [
 	AddNodeIds1658932090381,
 	AddJsonKeyPinData1659902242948,
 	CreateWorkflowsEditorRole1663755770893,
+	CreateCredentialUsageTable1665484192212,
+	RemoveCredentialUsageTable1665754637025,
 ];

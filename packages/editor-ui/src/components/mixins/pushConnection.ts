@@ -14,12 +14,14 @@ import {
 	IDataObject,
 	INodeTypeNameVersion,
 	IWorkflowBase,
+	SubworkflowOperationError,
 	TelemetryHelpers,
 } from 'n8n-workflow';
 
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '../helpers';
+import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -215,6 +217,14 @@ export const pushConnection = mixins(
 
 					const runDataExecutedErrorMessage = this.$getExecutionError(runDataExecuted.data);
 
+					const lineNumber = runDataExecuted &&
+						runDataExecuted.data &&
+						runDataExecuted.data.resultData &&
+						runDataExecuted.data.resultData.error &&
+						runDataExecuted.data.resultData.error.lineNumber;
+
+					codeNodeEditorEventBus.$emit('error-line-number', lineNumber || 'final');
+
 					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
 						const {
@@ -235,7 +245,7 @@ export const pushConnection = mixins(
 							action = '<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
 						}
 						else {
-							action = `<a href="/execution/${activeExecutionId}" target="_blank">View the execution</a> to see what happened after this node.`;
+							action = `<a href="/workflow/${workflow.id}/executions/${activeExecutionId}">View the execution</a> to see what happened after this node.`;
 						}
 
 						// Workflow did start but had been put to wait
@@ -250,7 +260,7 @@ export const pushConnection = mixins(
 						this.$titleSet(workflow.name as string, 'ERROR');
 
 						if (
-							runDataExecuted.data.resultData.error!.name === 'ExpressionError' &&
+							runDataExecuted.data.resultData.error?.name === 'ExpressionError' &&
 							(runDataExecuted.data.resultData.error as ExpressionError).context.functionality === 'pairedItem'
 						) {
 							const error = runDataExecuted.data.resultData.error as ExpressionError;
@@ -282,19 +292,34 @@ export const pushConnection = mixins(
 
 						}
 
-						let title: string;
-						if (runDataExecuted.data.resultData.lastNodeExecuted) {
-							title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+						if (runDataExecuted.data.resultData.error?.name === 'SubworkflowOperationError') {
+							const error = runDataExecuted.data.resultData.error as SubworkflowOperationError;
+
+							this.$store.commit('setSubworkflowExecutionError', error);
+
+							this.$showMessage({
+								title: error.message,
+								message: error.description,
+								type: 'error',
+								duration: 0,
+							});
+
 						} else {
-							title = 'Problem executing workflow';
+							let title: string;
+							if (runDataExecuted.data.resultData.lastNodeExecuted) {
+								title = `Problem in node ‘${runDataExecuted.data.resultData.lastNodeExecuted}‘`;
+							} else {
+								title = 'Problem executing workflow';
+							}
+
+							this.$showMessage({
+								title,
+								message: runDataExecutedErrorMessage,
+								type: 'error',
+								duration: 0,
+							});
 						}
 
-						this.$showMessage({
-							title,
-							message: runDataExecutedErrorMessage,
-							type: 'error',
-							duration: 0,
-						});
 					} else {
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');

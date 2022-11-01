@@ -13,6 +13,7 @@
 				:bold="false"
 				:set="issues = getIssues(credentialTypeDescription.name)"
 				size="small"
+				color="text-dark"
 			>
 				<div v-if="isReadOnly">
 					<n8n-input
@@ -146,6 +147,7 @@ export default mixins(
 			return this.node.credentials || {};
 		},
 	},
+
 	methods: {
 		getCredentialOptions(type: string): ICredentialsResponse[] {
 			return (this.allCredentialsByType as Record<string, ICredentialsResponse[]>)[type].filter((credential) => {

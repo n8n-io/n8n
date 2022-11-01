@@ -86,7 +86,9 @@ export default mixins(
 		},
 	},
 	computed: {
-		...mapGetters('users', ['currentUser']),
+		currentUser (): IUser {
+			return this.$store.getters['users/currentUser'];
+		},
 		credentialType(): ICredentialType {
 			return this.$store.getters['credentials/getCredentialTypeByName'](this.data.type);
 		},

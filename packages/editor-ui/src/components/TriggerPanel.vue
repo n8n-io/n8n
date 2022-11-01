@@ -28,6 +28,12 @@
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						@copy="onTestLinkCopied"
 					></CopyInput>
+					<NodeExecuteButton
+						:nodeName="nodeName"
+						@execute="onNodeExecute"
+						size="medium"
+						telemetrySource="inputs"
+					/>
 				</div>
 				<div v-else>
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
@@ -60,7 +66,6 @@
 					</div>
 
 					<NodeExecuteButton
-						v-if="!isActivelyPolling"
 						:nodeName="nodeName"
 						@execute="onNodeExecute"
 						size="medium"
@@ -369,7 +374,7 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 						pane: 'input',
 						type: 'open-executions-log',
 					});
-					this.$store.commit('setActiveNode', null);
+					this.$store.commit('ndv/setActiveNodeName', null);
 					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
 				} else if (target.dataset.key === 'settings') {
 					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);

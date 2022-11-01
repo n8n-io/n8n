@@ -17,7 +17,6 @@ import {
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
@@ -28,12 +27,11 @@ import {
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
-	IFakeDoor,
 	IFakeDoorLocation,
 	IRootState,
-	IRunDataDisplayMode,
 	IUiState,
 	XYPosition,
+	IFakeDoor,
 } from '../Interface';
 
 const module: Module<IUiState, IRootState> = {
@@ -76,9 +74,6 @@ const module: Module<IUiState, IRootState> = {
 			[TAGS_MANAGER_MODAL_KEY]: {
 				open: false,
 			},
-			[WORKFLOW_OPEN_MODAL_KEY]: {
-				open: false,
-			},
 			[VALUE_SURVEY_MODAL_KEY]: {
 				open: false,
 			},
@@ -109,39 +104,9 @@ const module: Module<IUiState, IRootState> = {
 			},
 		},
 		modalStack: [],
-		sidebarMenuCollapsed: true,
+		sidebarMenuCollapsed: false,
 		isPageLoading: true,
 		currentView: '',
-		mainPanelDimensions: {},
-		ndv: {
-			sessionId: '',
-			input: {
-				displayMode: 'table',
-				data: {
-					isEmpty: true,
-				},
-			},
-			output: {
-				displayMode: 'table',
-				data: {
-					isEmpty: true,
-				},
-				editMode: {
-					enabled: false,
-					value: '',
-				},
-			},
-			focusedMappableInput: '',
-			mappingTelemetry: {},
-		},
-		mainPanelPosition: 0.5,
-		draggable: {
-			isDragging: false,
-			type: '',
-			data: '',
-			canDrop: false,
-			stickyPosition: null,
-		},
 		fakeDoorFeatures: [
 			{
 				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
@@ -172,11 +137,11 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['credentialsModal'],
 			},
 		],
+		nodeViewInitialized: false,
+		addFirstStepOnLoad: false,
+		executionSidebarAutoRefresh: true,
 	},
 	getters: {
-		areExpressionsDisabled(state: IUiState) {
-			return state.currentView === VIEWS.DEMO;
-		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
 		},
@@ -198,15 +163,10 @@ const module: Module<IUiState, IRootState> = {
 		getModalMode: (state: IUiState) => {
 			return (name: string) => state.modals[name].mode;
 		},
-		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
-		ndvSessionId: (state: IUiState): string => state.ndv.sessionId,
-		getPanelDisplayMode: (state: IUiState)  => {
-			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
+		getModalData: (state: IUiState) => {
+			return (name: string) => state.modals[name].data;
 		},
-		inputPanelDisplayMode: (state: IUiState) => state.ndv.input.displayMode,
-		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
-		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
-		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
+		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 		getFakeDoorFeatures: (state: IUiState): IFakeDoor[] => {
 			return state.fakeDoorFeatures;
 		},
@@ -216,30 +176,14 @@ const module: Module<IUiState, IRootState> = {
 		getFakeDoorById: (state: IUiState, getters) => (id: string) => {
 			return getters.getFakeDoorFeatures.find((fakeDoor: IFakeDoor) => fakeDoor.id.toString() === id);
 		},
-		focusedMappableInput: (state: IUiState) => state.ndv.focusedMappableInput,
-		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
-		draggableType: (state: IUiState) => state.draggable.type,
-		draggableData: (state: IUiState) => state.draggable.data,
-		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
-		mainPanelDimensions: (state: IUiState) => (panelType: string) => {
-			const defaults = { relativeRight: 1, relativeLeft: 1, relativeWidth: 1 };
-
-			return {...defaults, ...state.mainPanelDimensions[panelType]};
-		},
-		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
-		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
 		getCurrentView: (state: IUiState) => state.currentView,
 		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
 		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
+		isNodeViewInitialized: (state: IUiState) => state.nodeViewInitialized,
+		getAddFirstStepOnLoad: (state: IUiState) => state.addFirstStepOnLoad,
+		isExecutionSidebarAutoRefreshOn: (state: IUiState) => state.executionSidebarAutoRefresh,
 	},
 	mutations: {
-		setMainPanelDimensions: (state: IUiState, params: { panelType:string, dimensions: { relativeLeft?: number, relativeRight?: number, relativeWidth?: number }}) => {
-			Vue.set(
-				state.mainPanelDimensions,
-				params.panelType,
-				{...state.mainPanelDimensions[params.panelType], ...params.dimensions },
-			);
-		},
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
 			const { name, mode } = params;
 			Vue.set(state.modals[name], 'mode', mode);
@@ -250,6 +194,11 @@ const module: Module<IUiState, IRootState> = {
 		setActiveId: (state: IUiState, params: {name: string, id: string}) => {
 			const { name, id } = params;
 			Vue.set(state.modals[name], 'activeId', id);
+		},
+		setModalData: (state: IUiState, params: { name: string, data: Record<string, unknown> }) => {
+			const { name, data } = params;
+
+			Vue.set(state.modals[name], 'data', data);
 		},
 		setCurlCommand: (state: IUiState, params: {name: string, command: string}) => {
 			const { name, command } = params;
@@ -304,6 +253,9 @@ const module: Module<IUiState, IRootState> = {
 		setOutputPanelEditModeValue: (state: IUiState, payload: string) => {
 			Vue.set(state.ndv.output.editMode, 'value', payload);
 		},
+		setMainPanelRelativePosition(state: IUiState, relativePosition: number) {
+			state.mainPanelPosition = relativePosition;
+		},
 		setMappableNDVInputFocus(state: IUiState, paramName: string) {
 			Vue.set(state.ndv, 'focusedMappableInput', paramName);
 		},
@@ -337,13 +289,32 @@ const module: Module<IUiState, IRootState> = {
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
 		},
+		setHoveringItem(state: IUiState, item: null | IUiState['ndv']['hoveringItem']) {
+			Vue.set(state.ndv, 'hoveringItem', item);
+		},
+		setNDVBranchIndex(state: IUiState, e: {pane: 'input' | 'output', branchIndex: number}) {
+			Vue.set(state.ndv[e.pane], 'branch', e.branchIndex);
+		},
 		setNDVPanelDataIsEmpty(state: IUiState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
 			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
+		},
+		setNodeViewInitialized(state: IUiState, isInitialized: boolean) {
+			state.nodeViewInitialized = isInitialized;
+		},
+		setAddFirstStepOnLoad(state: IUiState, addStep: boolean) {
+			state.addFirstStepOnLoad = addStep;
+		},
+		setExecutionsSidebarAutoRefresh(state: IUiState, autoRefresh: boolean) {
+			state.executionSidebarAutoRefresh = autoRefresh;
 		},
 	},
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
 			context.commit('openModal', modalKey);
+		},
+		openModalWithData: async (context: ActionContext<IUiState, IRootState>, payload: { name: string, data: Record<string, unknown> }) => {
+			context.commit('setModalData', payload);
+			context.commit('openModal', payload.name);
 		},
 		openDeleteUserModal: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: DELETE_USER_MODAL_KEY, id });
