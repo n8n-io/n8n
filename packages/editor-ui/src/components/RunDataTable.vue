@@ -210,7 +210,7 @@ export default mixins(
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
 			activeRow: null as number | null,
-			columnLimit: 100,
+			columnLimit: 40,
 			columnLimitExceeded: false,
 		};
 	},
