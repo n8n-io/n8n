@@ -78,8 +78,6 @@
 <script lang="ts">
 import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
-import { intersection } from '@/utils';
-import { INodeTypeDescription } from 'n8n-workflow';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
@@ -88,10 +86,11 @@ import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
-import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType, INodeUi } from '@/Interface';
+import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
+import { intersection } from '@/utils';
 import { sublimeSearch } from './sortUtils';
 
 export default mixins(externalHooks, globalLinkActions).extend({
