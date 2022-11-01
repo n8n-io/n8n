@@ -49,6 +49,7 @@ export type AuthenticatedRequest<
 export declare namespace LdapConfig {
 	type Update = AuthenticatedRequest<{}, {}, LdapConfig, {}>;
 	type Sync = AuthenticatedRequest<{}, {}, { type: RunningMode }, {}>;
+	type GetSync = AuthenticatedRequest<{}, {}, {}, { page?: string; perPage?: string }>;
 }
 
 export interface SyncronizationList {

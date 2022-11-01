@@ -75,6 +75,13 @@
 					:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
 				>
 				</el-table-column>
+
+				<infinite-loading
+					slot="append"
+					@infinite="getLdapSyncronizations"
+					force-use-infinite-wrapper=".el-table__body-wrapper"
+				>
+				</infinite-loading>
 			</el-table>
 		</div>
 		<div :class="$style.syncronizationActionButtons">
@@ -108,8 +115,9 @@ import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
 import humanizeDuration from 'humanize-duration';
-import { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
+import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
 import { capitalizeFirstLetter } from '@/utils';
+import InfiniteLoading from 'vue-infinite-loading';
 
 type tableRow = {
 	status: string;
@@ -127,6 +135,7 @@ export default mixins(showMessage).extend({
 	name: 'SettingsLdapView',
 	components: {
 		SettingsView,
+		InfiniteLoading,
 	},
 	data() {
 		return {
@@ -140,11 +149,11 @@ export default mixins(showMessage).extend({
 			formInputs: null as null | IFormInputs,
 			formBus: new Vue(),
 			readyToSubmit: false,
+			page: 0,
 		};
 	},
 	async mounted() {
 		await this.getLdapConfig();
-		await this.getLdapSyncronizations();
 	},
 	computed: {
 		currentUser() {
@@ -174,6 +183,22 @@ export default mixins(showMessage).extend({
 		},
 		onReadyToSubmit(ready: boolean) {
 			this.readyToSubmit = ready;
+		},
+		syncDataMapper(sync: ILdapSyncData): ILdapSyncTable {
+			const startedAt = new Date(sync.startedAt);
+			const endedAt = new Date(sync.endedAt);
+			const runTimeInMinutes = endedAt.getTime() - startedAt.getTime();
+			return {
+				runTime: humanizeDuration(runTimeInMinutes),
+				runMode: capitalizeFirstLetter(sync.runMode),
+				status: capitalizeFirstLetter(sync.status),
+				endedAt: convertToDisplayDate(endedAt.getTime()),
+				details: this.$locale.baseText('settings.ldap.usersScanned', {
+					interpolate: {
+						scanned: sync.scanned.toString(),
+					},
+				}),
+			};
 		},
 		async onSubmit(form: {
 			loginEnabled: string;
@@ -283,7 +308,7 @@ export default mixins(showMessage).extend({
 				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
 			} finally {
 				this.loadingDryRun = false;
-				await this.getLdapSyncronizations();
+				await this.reloadLdapSyncronizations();
 			}
 		},
 		async onLiveRunClick() {
@@ -299,7 +324,7 @@ export default mixins(showMessage).extend({
 				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
 			} finally {
 				this.loadingLiveRun = false;
-				await this.getLdapSyncronizations();
+				await this.reloadLdapSyncronizations();
 			}
 		},
 		async getLdapConfig() {
@@ -632,31 +657,33 @@ export default mixins(showMessage).extend({
 				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			}
 		},
-		async getLdapSyncronizations() {
+		async getLdapSyncronizations(state: any) {
 			try {
 				this.loadingTable = true;
-				const data = (await this.$store.dispatch(
-					'settings/getLdapSyncronizations',
-				)) as ILdapSyncData[];
+				const data = (await this.$store.dispatch('settings/getLdapSyncronizations', {
+					page: this.page,
+				})) as ILdapSyncData[];
 
-				const syncDataMapper = (sync: ILdapSyncData): ILdapSyncTable => {
-					const startedAt = new Date(sync.startedAt);
-					const endedAt = new Date(sync.endedAt);
-					const runTimeInMinutes = endedAt.getTime() - startedAt.getTime();
-					return {
-						runTime: humanizeDuration(runTimeInMinutes),
-						runMode: capitalizeFirstLetter(sync.runMode),
-						status: capitalizeFirstLetter(sync.status),
-						endedAt: convertToDisplayDate(endedAt.getTime()),
-						details: this.$locale.baseText('settings.ldap.usersScanned', {
-							interpolate: {
-								scanned: sync.scanned.toString(),
-							},
-						}),
-					};
-				};
-
-				this.dataTable = data.map(syncDataMapper);
+				if (data.length !== 0) {
+					this.dataTable.push(...data.map(this.syncDataMapper));
+					state.loaded();
+					this.page++;
+				} else {
+					state.complete();
+				}
+				this.loadingTable = false;
+			} catch (error) {
+				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
+			}
+		},
+		async reloadLdapSyncronizations() {
+			try {
+				this.page = 0;
+				this.loadingTable = true;
+				const data = (await this.$store.dispatch('settings/getLdapSyncronizations', {
+					page: 0,
+				})) as ILdapSyncData[];
+				this.dataTable = data.map(this.syncDataMapper);
 				this.loadingTable = false;
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));

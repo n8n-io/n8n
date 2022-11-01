@@ -240,8 +240,8 @@ const module: Module<ISettingsState, IRootState> = {
 			const config = await getLdapConfig(context.rootGetters['getRestApiContext']);
 			return config;
 		},
-		async getLdapSyncronizations(context: ActionContext<ISettingsState, IRootState>) {
-			const syncronizations = await getLdapSyncronizations(context.rootGetters['getRestApiContext']);
+		async getLdapSyncronizations(context: ActionContext<ISettingsState, IRootState>, pagination: { page: number }) {
+			const syncronizations = await getLdapSyncronizations(context.rootGetters['getRestApiContext'], pagination);
 			return syncronizations;
 		},
 		async testLdapConnection(context: ActionContext<ISettingsState, IRootState>) {

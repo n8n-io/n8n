@@ -390,11 +390,17 @@ export const saveLdapSyncronization = async (sync: LdapSyncHistory): Promise<voi
  * in the database
  * @returns Promise
  */
-export const getLdapSyncronizations = async (): Promise<LdapSyncHistory[]> => {
+export const getLdapSyncronizations = async (
+	page: number,
+	perPage: number,
+): Promise<LdapSyncHistory[]> => {
+	const _page = Math.abs(page);
 	return Db.collections.LdapSyncHistory.find({
 		order: {
 			id: 'DESC',
 		},
+		take: perPage,
+		skip: _page * perPage,
 	});
 };
 
