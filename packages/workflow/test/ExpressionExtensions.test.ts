@@ -47,7 +47,7 @@ describe('Data Transformation Functions', () => {
 		});
 
 		test('.beginningOf("week") should work correctly on a date', () => {
-			expect(evaluate('={{DateTime.now().beginningOf("week")}}')).toEqual(
+			expect(evaluate('={{(new Date).beginningOf("week")}}')).toEqual(
 				dateExtensions.functions.beginningOf(new Date(), ['week']),
 			);
 		});
