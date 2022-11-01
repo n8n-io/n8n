@@ -78,6 +78,8 @@
 <script lang="ts">
 import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
+import { intersection } from 'lodash';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
@@ -86,7 +88,7 @@ import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
-import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
+import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType, INodeUi } from '@/Interface';
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
@@ -181,7 +183,10 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		},
 		filteredNodeTypes(): INodeCreateElement[] {
 			const filter = this.searchFilter;
-			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
+
+			const searchableNodes = this.subcategorizedNodes.length > 0 && this.activeSubcategory?.key !== '*'
+				? this.subcategorizedNodes
+				: this.searchItems;
 
 			let returnItems: INodeCreateElement[] = [];
 			if (this.defaultLocale !== 'en') {
@@ -196,15 +201,19 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			}
 
 
+			const filteredNodeTypes = this.excludedCategories.length === 0
+				? returnItems
+				: this.filterOutNodexFromExcludedCategories(returnItems);
+
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
 					nodeFilter: this.nodeFilter,
-					result: returnItems,
+					result: filteredNodeTypes,
 					selectedType: this.selectedType,
 				});
 			}, 0);
 
-			return returnItems;
+			return filteredNodeTypes;
 		},
 		filteredAllNodeTypes(): INodeCreateElement[] {
 			if(this.filteredNodeTypes.length > 0) return [];
@@ -334,6 +343,16 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		},
 	},
 	methods: {
+		filterOutNodexFromExcludedCategories(nodes: INodeCreateElement[]) {
+			return nodes.filter(node => {
+				const excludedCategoriesIntersect = intersection(
+					this.excludedCategories,
+					((node.properties as INodeItemProps)?.nodeType.codex?.categories || []),
+				);
+
+				return excludedCategoriesIntersect.length === 0;
+			});
+		},
 		switchToAllTabAndFilter() {
 			const currentFilter = this.nodeFilter;
 			this.$store.commit('nodeCreator/setShowTabs', true);
