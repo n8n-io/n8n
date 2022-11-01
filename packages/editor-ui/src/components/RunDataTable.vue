@@ -443,6 +443,8 @@ export default mixins(
 				if(entryColumns.length > this.columnLimit) {
 					this.columnLimitExceeded = true;
 					leftEntryColumns = entryColumns.slice(0, this.columnLimit);
+				} else {
+					leftEntryColumns = entryColumns;
 				}
 
 				// Go over all the already existing column-keys
