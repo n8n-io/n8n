@@ -255,7 +255,7 @@ export class TiDB implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
-					const connection = await createConnection(credentials);
+					const connection = await createConnection(this, credentials);
 					connection.end();
 				} catch (error) {
 					return {
@@ -276,7 +276,7 @@ export class TiDB implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('tiDBApi');
-		const connection = await createConnection(credentials);
+		const connection = await createConnection(this, credentials);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 		let returnItems: INodeExecutionData[] = [];
