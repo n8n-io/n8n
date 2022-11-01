@@ -19,7 +19,6 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 		description: 'Consume Venafi TLS Protect Datacenter​',
 		defaults: {
 			name: 'Venafi TLS Protect Datacenter​',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

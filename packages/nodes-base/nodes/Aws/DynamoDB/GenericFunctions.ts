@@ -6,6 +6,7 @@ import {
 } from 'n8n-core';
 
 import {
+	deepCopy,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IHttpRequestOptions,
@@ -93,7 +94,7 @@ export function copyInputItem(item: INodeExecutionData, properties: string[]): I
 		if (item.json[property] === undefined) {
 			newItem[property] = null;
 		} else {
-			newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+			newItem[property] = deepCopy(item.json[property]);
 		}
 	}
 	return newItem;

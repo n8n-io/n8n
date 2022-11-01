@@ -2,7 +2,7 @@
 	<div class="node-wrapper" :style="nodePosition" :id="nodeId">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
-			<div :class="nodeClass" :style="nodeStyle" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
+			<div :class="nodeClass" :style="nodeStyle" @click.left="onClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
@@ -63,10 +63,10 @@
 				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')" v-if="isDuplicatable">
 					<font-awesome-icon icon="clone" />
 				</div>
-				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')" v-if="!isReadOnly">
+				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')">
 					<font-awesome-icon class="execute-icon" icon="cog" />
 				</div>
-				<div v-touch:tap="executeNode" class="option" :title="$locale.baseText('node.executeNode')" v-if="!isReadOnly && !workflowRunning">
+				<div v-touch:tap="executeNode" class="option" :title="$locale.baseText('node.executeNode')" v-if="!workflowRunning">
 					<font-awesome-icon class="execute-icon" icon="play-circle" />
 				</div>
 			</div>
@@ -112,6 +112,7 @@ import mixins from 'vue-typed-mixins';
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
 import { INodeUi, XYPosition } from '@/Interface';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
@@ -119,6 +120,7 @@ export default mixins(
 	nodeHelpers,
 	workflowHelpers,
 	pinData,
+	debounceHelper,
 ).extend({
 	name: 'Node',
 	components: {
@@ -372,9 +374,11 @@ export default mixins(
 	},
 	mounted() {
 		this.setSubtitle();
-		setTimeout(() => {
-			this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
-		}, 0);
+		if (this.nodeRunData) {
+			setTimeout(() => {
+				this.$emit('run', {name: this.data && this.data.name, data: this.nodeRunData, waiting: !!this.waiting});
+			}, 0);
+		}
 	},
 	data () {
 		return {
@@ -426,8 +430,21 @@ export default mixins(
 			});
 		},
 
+		onClick(event: MouseEvent) {
+			this.callDebounced('onClickDebounced', { debounceTime: 300, trailing: true }, event);
+		},
+
+		onClickDebounced(event: MouseEvent) {
+			const isDoubleClick = event.detail >= 2;
+			if (isDoubleClick) {
+				this.setNodeActive();
+			} else {
+				this.mouseLeftClick(event);
+			}
+		},
+
 		setNodeActive () {
-			this.$store.commit('setActiveNode', this.data.name);
+			this.$store.commit('ndv/setActiveNodeName', this.data.name);
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart () {

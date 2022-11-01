@@ -59,6 +59,7 @@ module.exports = {
 		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/return-await': 'off',
 		'@typescript-eslint/unbound-method': 'off',
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
 
 	overrides: [
@@ -87,6 +88,7 @@ module.exports = {
 				'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'error',
 				'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-missing-subtitle': 'error',
+				'n8n-nodes-base/node-class-description-non-core-color-present': 'error',
 				'n8n-nodes-base/node-class-description-name-unsuffixed-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-outputs-wrong': 'error',
 				'n8n-nodes-base/node-dirname-against-convention': 'error',

@@ -36,7 +36,6 @@ export class KoBoToolbox implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'KoBoToolbox',
-			color: '#64C0FF',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

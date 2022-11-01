@@ -95,8 +95,7 @@ export class ActiveWorkflows {
 				throw new WorkflowActivationError(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem activating the workflow: "${error.message}"`,
-					error,
-					triggerNode,
+					{ cause: error as Error, node: triggerNode },
 				);
 			}
 		}
@@ -122,8 +121,7 @@ export class ActiveWorkflows {
 					throw new WorkflowActivationError(
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 						`There was a problem activating the workflow: "${error.message}"`,
-						error,
-						pollNode,
+						{ cause: error as Error, node: pollNode },
 					);
 				}
 			}

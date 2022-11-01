@@ -40,6 +40,7 @@
 				:rows="getArgument('rows')"
 				:value="expressionDisplayValue"
 				:title="displayTitle"
+				:readOnly="isReadOnly"
 				@keydown.stop
 			/>
 			<div
@@ -64,6 +65,7 @@
 					:value="value"
 					:parameter="parameter"
 					:path="path"
+					:isReadOnly="isReadOnly"
 					@closeDialog="closeTextEditDialog"
 					@valueChanged="expressionUpdated"
 				></text-edit>
@@ -73,7 +75,7 @@
 					:mode="node.parameters.mode"
 					:jsCode="node.parameters.jsCode"
 					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
+					@valueChanged="valueChangedDebounced"
 				/>
 
 				<div v-else-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
@@ -336,12 +338,14 @@ import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
 	nodeHelpers,
 	showMessage,
 	workflowHelpers,
+	debounceHelper,
 )
 	.extend({
 		name: 'parameter-input',
@@ -495,7 +499,7 @@ export default mixins(
 				}
 
 				// Get the resolved parameter values of the current node
-				const currentNodeParameters = this.$store.getters.activeNode.parameters;
+				const currentNodeParameters = this.$store.getters['ndv/activeNode'].parameters;
 				try {
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
@@ -510,7 +514,7 @@ export default mixins(
 				}
 			},
 			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			displayTitle (): string {
 				const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -780,7 +784,7 @@ export default mixins(
 				// Get the resolved parameter values of the current node
 
 				try {
-					const currentNodeParameters = (this.$store.getters.activeNode as INodeUi).parameters;
+					const currentNodeParameters = (this.$store.getters['ndv/activeNode'] as INodeUi).parameters;
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
@@ -824,7 +828,7 @@ export default mixins(
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
 						workflow_id: this.$store.getters.workflowId,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						session_id: this.$store.getters['ndv/ndvSessionId'],
 						source: this.eventSource || 'ndv',
 					});
 				}
@@ -922,6 +926,9 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
+			valueChangedDebounced (value: NodeParameterValueType | {} | Date) {
+				this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+			},
 			valueChanged (value: NodeParameterValueType | {} | Date) {
 				if (this.parameter.name === 'nodeCredentialType') {
 					this.activeCredentialType = value as string;
@@ -953,7 +960,7 @@ export default mixins(
 						node_type: this.node && this.node.type,
 						resource: this.node && this.node.parameters.resource,
 						is_custom: value === CUSTOM_API_CALL_KEY,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						session_id: this.$store.getters['ndv/ndvSessionId'],
 						parameter: this.parameter.name,
 					});
 				}
