@@ -72,6 +72,7 @@
 						:linkedRuns="linked"
 						:sessionId="sessionId"
 						:isReadOnly="readOnly || hasForeignCredential"
+						:blockUI="blockUi && isTriggerNode"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -87,8 +88,10 @@
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
 						:isReadOnly="readOnly || hasForeignCredential"
+						:blockUI="blockUi && showTriggerPanel"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
+						@stopExecution="onStopExecution"
 						@activate="onWorkflowActivate"
 					/>
 					<a
@@ -225,14 +228,10 @@ export default mixins(
 			return null;
 		},
 		showTriggerPanel(): boolean {
-			const isWebhookBasedNode = this.activeNodeType && this.activeNodeType.webhooks && this.activeNodeType.webhooks.length;
-			const isPollingNode = this.activeNodeType && this.activeNodeType.polling;
-			const override = this.activeNodeType && this.activeNodeType.triggerPanel;
-			return Boolean(
-				!this.readOnly &&
-				this.isTriggerNode &&
-				(isWebhookBasedNode || isPollingNode || override),
-			);
+			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
+			const isPollingNode = this.activeNodeType?.polling;
+			const override = !!this.activeNodeType?.triggerPanel;
+			return !this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override);
 		},
 		workflow(): Workflow {
 			return this.getCurrentWorkflow();
@@ -342,6 +341,15 @@ export default mixins(
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
 			return this.$store.getters['ndv/outputPanelEditMode'];
+		},
+		isWorkflowRunning(): boolean {
+			return this.$store.getters.isActionActive('workflowRunning');
+		},
+		isExecutionWaitingForWebhook(): boolean {
+			return this.$store.getters.executionWaitingForWebhook;
+		},
+		blockUi(): boolean {
+			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
 		},
 	},
 	watch: {
@@ -608,8 +616,13 @@ export default mixins(
 			});
 		},
 		checkForeignCredentials() {
-			const issues = this.getNodeCredentialIssues(this.activeNode);
-			this.hasForeignCredential = !!issues?.credentials?.foreign;
+			if(this.activeNode){
+				const issues = this.getNodeCredentialIssues(this.activeNode);
+				this.hasForeignCredential = !!issues?.credentials?.foreign;
+			}
+		},
+		onStopExecution(){
+			this.$emit('stopExecution');
 		},
 	},
 });
