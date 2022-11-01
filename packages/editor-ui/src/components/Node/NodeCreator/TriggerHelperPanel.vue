@@ -8,7 +8,7 @@
 			:initialActiveIndex="0"
 			:searchItems="searchItems"
 			:firstLevelItems="isRoot ? items : []"
-			:excludedCategories="[CORE_NODES_CATEGORY]"
+			:excludedCategories="isRoot ? [] : [CORE_NODES_CATEGORY]"
 			:initialActiveCategories="[COMMUNICATION_CATEGORY]"
 		>
 			<template #header>
@@ -53,7 +53,7 @@ export default mixins(externalHooks).extend({
 	computed: {
 		items() {
 			return [{
-					key: "core_nodes",
+					key: "*",
 					type: "subcategory",
 					title: this.$locale.baseText('nodeCreator.subcategoryNames.appTriggerNodes'),
 					properties: {
