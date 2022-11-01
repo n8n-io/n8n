@@ -30,7 +30,7 @@ export const findSubworkflowStart = findWorkflowStart('integrated');
 
 export const findCliWorkflowStart = findWorkflowStart('cli');
 
-export const alphabetizeKeys = (obj: INode) => {
+export const alphabetizeKeys = (obj: INode) =>
 	Object.keys(obj)
 		.sort()
 		.reduce<Partial<INode>>(
@@ -41,4 +41,3 @@ export const alphabetizeKeys = (obj: INode) => {
 			}),
 			{},
 		);
-};
