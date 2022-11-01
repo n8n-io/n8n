@@ -14,6 +14,7 @@ export async function theHiveApiRequest(
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	query: IDataObject = {},
+	headers: any = {},
 	uri?: string,
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
@@ -22,6 +23,7 @@ export async function theHiveApiRequest(
 
 	let options: OptionsWithUri = {
 		method,
+		headers: headers || {},
 		qs: query,
 		uri: uri || `${credentials.url}/api${resource}`,
 		body,
