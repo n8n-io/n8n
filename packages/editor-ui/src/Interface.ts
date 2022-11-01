@@ -1185,15 +1185,15 @@ export interface ILdapConfig {
 			user: string;
 		};
 		connection: {
-			useSsl: boolean;
 			url: string;
 			allowUnauthorizedCerts: boolean;
-			startTLS: boolean;
+			port: number;
+			security: string;
 		};
 		syncronization: {
 			enabled: boolean;
 			interval: number; // minutes
 			searchTimeout: string;
-			pageSize: string;
+			pageSize: number;
 		};
 }

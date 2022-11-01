@@ -15,6 +15,12 @@ export enum SignInType {
 	EMAIL = 'email',
 }
 
+export enum ConnectionSecurity {
+	NONE = 'none',
+	TLS = 'tls',
+	STARTTLS = 'startTls',
+}
+
 export enum RunningMode {
 	DRY = 'dry',
 	LIVE = 'live',
@@ -32,9 +38,9 @@ export const LDAP_DEFAULT_CONFIGURATION = {
 	},
 	connection: {
 		url: '',
-		useSsl: true,
 		allowUnauthorizedCerts: false,
-		startTLS: false,
+		security: '',
+		port: 389,
 	},
 	binding: {
 		baseDn: '',
@@ -107,17 +113,17 @@ export const LDAP_CONFIG_SCHEMA = {
 				url: {
 					type: 'string',
 				},
-				useSsl: {
-					type: 'boolean',
+				security: {
+					type: 'string',
+				},
+				port: {
+					type: 'number',
 				},
 				allowUnauthorizedCerts: {
 					type: 'boolean',
 				},
-				startTLS: {
-					type: 'boolean',
-				},
 			},
-			required: ['url', 'useSsl'],
+			required: ['url', 'allowUnauthorizedCerts', 'security', 'port'],
 			additionalProperties: false,
 		},
 		filter: {

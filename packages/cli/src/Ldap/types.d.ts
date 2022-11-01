@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import express from 'express';
 import type { User } from '../databases/entities/User';
-import { RunningMode, SyncStatus } from './constants';
+import { ConnectionSecurity, RunningMode, SyncStatus } from './constants';
 
 export interface LdapConfig {
 	login: {
@@ -10,9 +10,9 @@ export interface LdapConfig {
 	};
 	connection: {
 		url: string;
-		useSsl: boolean;
 		allowUnauthorizedCerts: boolean;
-		startTLS: boolean;
+		security: ConnectionSecurity;
+		port: number;
 	};
 	binding: {
 		baseDn: string;

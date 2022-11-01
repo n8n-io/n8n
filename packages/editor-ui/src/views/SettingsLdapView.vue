@@ -108,6 +108,20 @@ import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
 import humanizeDuration from 'humanize-duration';
+import { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
+import { capitalizeFirstLetter } from '@/utils';
+
+type tableRow = {
+	status: string;
+	startAt: string;
+	endedAt: string;
+	error: string;
+	runMode: string;
+};
+
+type rowType = rowCallbackParams & tableRow;
+
+type cellType = cellCallbackParams & { property: keyof tableRow };
 
 export default mixins(showMessage).extend({
 	name: 'SettingsLdapView',
@@ -138,8 +152,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	methods: {
-		// @ts-ignore
-		cellClassStyle({ row, column }) {
+		cellClassStyle({ row, column }: { row: rowType; column: cellType }) {
 			if (column.property === 'status') {
 				if (row.status === 'Success') {
 					return { color: 'green' };
@@ -154,6 +167,7 @@ export default mixins(showMessage).extend({
 					return { color: 'blue' };
 				}
 			}
+			return {};
 		},
 		onInput() {
 			this.hasAnyChanges = true;
@@ -175,13 +189,13 @@ export default mixins(showMessage).extend({
 			firstName: string;
 			ldapId: string;
 			syncronizationEnabled: string;
-			useSsl: string;
 			allowUnauthorizedCerts: string;
-			startTLS: string;
 			syncronizationInterval: string;
 			userFilter: string;
 			pageSize: string;
 			searchTimeout: string;
+			port: string;
+			connectionSecurity: string;
 		}) {
 			if (!this.hasAnyChanges) {
 				return;
@@ -194,9 +208,9 @@ export default mixins(showMessage).extend({
 				},
 				connection: {
 					url: form.serverAddress,
-					useSsl: form.useSsl === 'true' ? true : false,
 					allowUnauthorizedCerts: form.allowUnauthorizedCerts === 'true' ? true : false,
-					startTLS: form.startTLS === 'true' ? true : false,
+					port: form.port ?? 389,
+					security: form.connectionSecurity,
 				},
 				binding: {
 					baseDn: form.baseDn,
@@ -229,7 +243,7 @@ export default mixins(showMessage).extend({
 					type: 'success',
 				});
 			} catch (error) {
-				// do something
+				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			} finally {
 				this.hasAnyChanges = false;
 			}
@@ -266,6 +280,7 @@ export default mixins(showMessage).extend({
 					type: 'success',
 				});
 			} catch (error) {
+				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
 			} finally {
 				this.loadingDryRun = false;
 				await this.getLdapSyncronizations();
@@ -281,6 +296,7 @@ export default mixins(showMessage).extend({
 					type: 'success',
 				});
 			} catch (error) {
+				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
 			} finally {
 				this.loadingLiveRun = false;
 				await this.getLdapSyncronizations();
@@ -295,7 +311,7 @@ export default mixins(showMessage).extend({
 						initialValue: this.adConfig.login.enabled.toString(),
 						properties: {
 							type: 'select',
-							label: 'Enabled LDAP Login',
+							label: 'Enable LDAP Login',
 							required: true,
 							options: [
 								{
@@ -316,7 +332,7 @@ export default mixins(showMessage).extend({
 						properties: {
 							label: 'Login Label',
 							required: false,
-							placeholder: 'LDAP Username or Email',
+							placeholder: 'E.g.: LDAP Username or Email',
 							infoText: 'The placeholder text that appears in the login field on the login page.',
 						},
 					},
@@ -331,29 +347,43 @@ export default mixins(showMessage).extend({
 						name: 'serverAddress',
 						initialValue: this.adConfig.connection.url,
 						properties: {
-							label: 'Server Address',
+							label: 'LDAP Server Address',
 							required: true,
-							autocomplete: 'given-name',
 							capitalize: true,
+							infoText: 'IP or domain of the LDAP server.',
 						},
 					},
 					{
-						name: 'useSsl',
-						initialValue: this.adConfig.connection.useSsl.toString(),
+						name: 'port',
+						initialValue: this.adConfig.connection.port,
+						properties: {
+							label: 'LDAP Server Port',
+							capitalize: true,
+							infoText: 'The port used to connect to the LDAP server. Default 389.',
+						},
+					},
+					{
+						name: 'connectionSecurity',
+						initialValue: this.adConfig.connection.security,
 						properties: {
 							type: 'select',
-							label: 'Use SSL',
-							required: true,
+							label: 'Connection Security',
 							options: [
 								{
-									label: 'True',
-									value: 'true',
+									label: 'None',
+									value: 'none',
 								},
 								{
-									label: 'False',
-									value: 'false',
+									label: 'TLS',
+									value: 'tls',
+								},
+								{
+									label: 'STARTTLS',
+									value: 'startTls',
 								},
 							],
+							required: true,
+							capitalize: true,
 						},
 					},
 					{
@@ -375,31 +405,7 @@ export default mixins(showMessage).extend({
 							],
 						},
 						shouldDisplay(values): boolean {
-							return values['useSsl'] === 'true';
-						},
-					},
-					{
-						name: 'startTLS',
-						initialValue: this.adConfig.connection.startTLS.toString(),
-						properties: {
-							type: 'select',
-							label: 'StartTLS',
-							required: false,
-							options: [
-								{
-									label: 'True',
-									value: 'true',
-								},
-								{
-									label: 'False',
-									value: 'false',
-								},
-							],
-							infoText:
-								'Performs a StartTLS extended operation against the LDAP server to initiate a TLS-secured communication channel over an otherwise clear-text connection.',
-						},
-						shouldDisplay(values): boolean {
-							return values['useSsl'] === 'true';
+							return values['connectionSecurity'] !== 'none';
 						},
 					},
 					{
@@ -559,7 +565,7 @@ export default mixins(showMessage).extend({
 						initialValue: this.adConfig.syncronization.enabled.toString(),
 						properties: {
 							type: 'select',
-							label: 'Enabled LDAP Syncronization',
+							label: 'Enable LDAP Syncronization',
 							required: true,
 							options: [
 								{
@@ -623,7 +629,7 @@ export default mixins(showMessage).extend({
 					},
 				];
 			} catch (error) {
-				//this.$showError(error, this.$locale.baseText('settings.api.view.error'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			}
 		},
 		async getLdapSyncronizations() {
@@ -639,17 +645,21 @@ export default mixins(showMessage).extend({
 					const runTimeInMinutes = endedAt.getTime() - startedAt.getTime();
 					return {
 						runTime: humanizeDuration(runTimeInMinutes),
-						runMode: sync.runMode.charAt(0).toLocaleUpperCase() + sync.runMode.slice(1),
-						status: sync.status.charAt(0).toLocaleUpperCase() + sync.status.slice(1),
+						runMode: capitalizeFirstLetter(sync.runMode),
+						status: capitalizeFirstLetter(sync.status),
 						endedAt: convertToDisplayDate(endedAt.getTime()),
-						details: `Users scanned: ${sync.scanned}`,
+						details: this.$locale.baseText('settings.ldap.usersScanned', {
+							interpolate: {
+								scanned: sync.scanned.toString(),
+							},
+						}),
 					};
 				};
 
 				this.dataTable = data.map(syncDataMapper);
 				this.loadingTable = false;
 			} catch (error) {
-				//this.$showError(error, this.$locale.baseText('settings.api.view.error'));
+				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
 			}
 		},
 	},
@@ -701,14 +711,5 @@ export default mixins(showMessage).extend({
 .sectionHeader {
 	margin-bottom: var(--spacing-s);
 }
-
-// .el-table .success-row > .cell {
-// 	color: green !important;
-// 	background-color: black !important;
-// }
-
-// .el-table .error-row > .cell {
-// 	color: red !important;
-// }
 </style>
 

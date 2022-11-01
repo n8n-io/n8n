@@ -15,6 +15,7 @@ import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper'
 import { LdapManager } from './LdapManager.ee';
 
 import {
+	ConnectionSecurity,
 	LDAP_CONFIG_SCHEMA,
 	LDAP_ENABLED,
 	LDAP_FEATURE_NAME,
@@ -395,4 +396,9 @@ export const getLdapSyncronizations = async (): Promise<LdapSyncHistory[]> => {
 			id: 'DESC',
 		},
 	});
+};
+
+export const formatUrl = (url: string, port: number, security: ConnectionSecurity) => {
+	const protocol = ['tls', 'startTls'].includes(security) ? 'ldaps' : 'ldap';
+	return `${protocol}://${url}:${port}`;
 };
