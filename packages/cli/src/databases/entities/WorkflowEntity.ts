@@ -29,6 +29,7 @@ import { SharedWorkflow } from './SharedWorkflow';
 import { objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import type { IWorkflowDb } from '../../Interfaces';
+import { alphabetizeKeys } from '../../utils';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
@@ -103,7 +104,7 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 		const state = JSON.stringify({
 			name,
 			active,
-			nodes,
+			nodes: nodes ? nodes.map(alphabetizeKeys) : [],
 			connections,
 			settings,
 			staticData,
