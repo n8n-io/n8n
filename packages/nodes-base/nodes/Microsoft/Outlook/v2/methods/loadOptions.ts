@@ -29,3 +29,22 @@ export async function getFolders(this: ILoadOptionsFunctions): Promise<INodeProp
 	}
 	return returnData;
 }
+export async function getCalendarGroups(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const calendars = await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		'/calendarGroups',
+		{},
+	);
+	for (const calendar of calendars) {
+		returnData.push({
+			name: calendar.name as string,
+			value: calendar.id as string,
+		});
+	}
+	return returnData;
+}

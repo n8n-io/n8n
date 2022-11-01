@@ -250,7 +250,7 @@ export const description: INodeProperties[] = [
 			show: {
 				operation: ['getAll'],
 				resource: ['message'],
-				returnAll: [true],
+				// returnAll: [true],
 			},
 		},
 	},

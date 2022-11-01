@@ -9,7 +9,7 @@ export const description: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: ['contact'],
+				resource: ['calendar'],
 				operation: ['getAll'],
 			},
 		},
@@ -22,7 +22,7 @@ export const description: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: ['contact'],
+				resource: ['calendar'],
 				operation: ['getAll'],
 				returnAll: [false],
 			},
@@ -34,19 +34,7 @@ export const description: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-	{
-		displayName: 'Simplify',
-		name: 'simple',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['getAll'],
-				resource: ['contact'],
-			},
-		},
-		default: true,
-		description: 'Whether to return a simplified version of the response instead of the raw data',
-	},
+
 	{
 		displayName: 'Filters',
 		name: 'filters',
@@ -55,7 +43,7 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['contact'],
+				resource: ['calendar'],
 				operation: ['getAll'],
 				// returnAll: [true],
 			},
@@ -66,16 +54,8 @@ export const description: INodeProperties[] = [
 				name: 'custom',
 				type: 'string',
 				default: '',
-				placeholder: "displayName eq 'John Doe'",
+				placeholder: 'canShare eq true',
 				hint: 'Information about the syntax can be found <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">here</a>',
-			},
-			{
-				displayName: 'Email Address',
-				name: 'emailAddress',
-				type: 'string',
-				default: '',
-				description: 'Filter contacts based on their email addresses',
-				hint: 'Multiple emails can be added separated by ,',
 			},
 		],
 	},
@@ -89,22 +69,10 @@ export async function execute(
 	const qs = {} as IDataObject;
 
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const simplify = this.getNodeParameter('simple', index) as boolean;
 	const filters = this.getNodeParameter('filters', index, {}) as IDataObject;
-
-	if (simplify) {
-		qs['$select'] = 'id,displayName,emailAddresses,businessPhones,mobilePhone';
-	}
 
 	if (Object.keys(filters).length) {
 		const filterString: string[] = [];
-
-		if (filters.emailAddress) {
-			const emails = (filters.emailAddress as string)
-				.split(',')
-				.map((email) => `emailAddresses/any(a:a/address eq '${email.trim()}')`);
-			filterString.push(emails.join(' and '));
-		}
 
 		if (filters.custom) {
 			filterString.push(filters.custom as string);
@@ -115,7 +83,7 @@ export async function execute(
 		}
 	}
 
-	const endpoint = '/contacts';
+	const endpoint = '/calendars';
 
 	if (returnAll === true) {
 		responseData = await microsoftApiRequestAllItems.call(

@@ -1,5 +1,20 @@
 import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
+const scopes = [
+	'openid',
+	'offline_access',
+	'Contacts.Read',
+	'Contacts.ReadWrite',
+	'Calendars.Read',
+	'Calendars.Read.Shared',
+	'Calendars.ReadWrite',
+	'Mail.ReadWrite',
+	'Mail.ReadWrite.Shared',
+	'Mail.Send',
+	'Mail.Send.Shared',
+	'MailboxSettings.Read',
+];
+
 export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 	name = 'microsoftOutlookOAuth2Api';
 	extends = ['microsoftOAuth2Api'];
@@ -11,8 +26,7 @@ export class MicrosoftOutlookOAuth2Api implements ICredentialType {
 			displayName: 'Scope',
 			name: 'scope',
 			type: 'hidden',
-			default:
-				'openid offline_access Mail.ReadWrite Mail.ReadWrite.Shared Mail.Send Mail.Send.Shared MailboxSettings.Read Contacts.Read Contacts.ReadWrite',
+			default: scopes.join(' '),
 		},
 		{
 			displayName: 'Use Shared Mailbox',
