@@ -276,6 +276,7 @@ export default mixins(
 									value: 'false',
 								},
 							],
+							infoText: 'Whether to allow n8n users to sign-in using LDAP.'
 						},
 					},
 					{
@@ -285,6 +286,7 @@ export default mixins(
 							label: 'Login Label',
 							required: false,
 							placeholder: 'LDAP Username or Email',
+							infoText: 'The placeholder text that appears in the login field on the login page.',
 						},
 					},
 					{
@@ -362,6 +364,7 @@ export default mixins(
 									value: 'false',
 								},
 							],
+							infoText: 'Performs a StartTLS extended operation against the LDAP server to initiate a TLS-secured communication channel over an otherwise clear-text connection.'
 						},
 						shouldDisplay(values): boolean {
 							return values['useSsl'] === 'true';
@@ -373,8 +376,8 @@ export default mixins(
 						properties: {
 							label: 'Base DN',
 							required: true,
-							autocomplete: 'family-name',
 							capitalize: true,
+							infoText: 'Distinguished Name of the location where n8n should start its search for user in the AD/LDAP tree.'
 						},
 					},
 					{
@@ -400,8 +403,8 @@ export default mixins(
 						initialValue: this.adConfig.binding.adminDn,
 						properties: {
 							label: 'Binding DN',
-							autocomplete: 'family-name',
 							capitalize: true,
+							infoText: 'Distinguished Name of user used to perform the search.'
 						},
 						shouldDisplay(values): boolean {
 							return values['bindingType'] === 'admin';
@@ -414,6 +417,7 @@ export default mixins(
 							label: 'Binding Password',
 							type: 'password',
 							capitalize: true,
+							infoText: 'Password of the user provided in the Binding DN field.'
 						},
 						shouldDisplay(values): boolean {
 							return values['bindingType'] === 'admin';
@@ -434,6 +438,7 @@ export default mixins(
 							type: 'text',
 							required: false,
 							capitalize: true,
+							infoText: 'LDAP query to use when searching for user. Only users returned by this filter will be allowed to sign-in in n8n.'
 						},
 					},
 					{
@@ -449,9 +454,9 @@ export default mixins(
 						properties: {
 							label: 'ID',
 							type: 'text',
-							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							infoText: 'The atribute in the LDAP server used as a unique identifier in n8n. It shoud be an unique LDAP attribute like uid.'
 						},
 					},
 					{
@@ -463,6 +468,7 @@ export default mixins(
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							infoText: 'The attribute in the LDAP server used to log-in in n8n.'
 						},
 					},
 					{
@@ -474,6 +480,7 @@ export default mixins(
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							infoText: 'The attribute in the LDAP server used to populate the email in n8n.'
 						},
 					},
 					{
@@ -485,6 +492,8 @@ export default mixins(
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							placeholder: 'givenName',
+							infoText: 'The attribute in the LDAP server used to populate the first name in n8n.'
 						},
 					},
 					{
@@ -496,6 +505,8 @@ export default mixins(
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							placeholder: 'sn',
+							infoText: 'The attribute in the LDAP server used to populate the last name in n8n.'
 						},
 					},
 					{
@@ -525,17 +536,19 @@ export default mixins(
 									value: 'false',
 								},
 							],
+							infoText: 'Whether to enable background syncronizations.'
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === 'true';
 						},
 					},
 					{
-						name: 'syncronizationInterval (Minutes)',
+						name: 'syncronizationInterval',
 						initialValue:this.adConfig.syncronization.interval,
 						properties: {
-							label: 'Syncronization Interval',
+							label: 'Syncronization Interval (Minutes)',
 							type: 'text',
+							infoText: 'How often the syncronization should run.'
 						},
 						shouldDisplay(values): boolean {
 							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';
@@ -547,17 +560,19 @@ export default mixins(
 						properties: {
 							label: 'Page Size',
 							type: 'text',
+							infoText: 'Max number of records to return per page during syncronization. 0 for unlimited.'
 						},
 						shouldDisplay(values): boolean {
 							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';
 						},
 					},
 					{
-						name: 'searchTimeout (Seconds)',
+						name: 'searchTimeout',
 						initialValue:this.adConfig.syncronization.searchTimeout,
 						properties: {
-							label: 'Search Timeout',
+							label: 'Search Timeout (Seconds)',
 							type: 'text',
+							infoText: 'The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server.'
 						},
 						shouldDisplay(values): boolean {
 							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';
