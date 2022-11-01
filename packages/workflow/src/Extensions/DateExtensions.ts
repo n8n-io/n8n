@@ -3,13 +3,23 @@
 import {
 	DateTime,
 	DateTimeFormatOptions,
+	DateTimeUnit,
 	Duration,
 	DurationObjectUnits,
 	LocaleOptions,
 } from 'luxon';
 import { ExtensionMap } from './Extensions';
 
-type DurationUnit = 'minute' | 'hour' | 'day' | 'week' | 'month' | 'year';
+type DurationUnit =
+	| 'milliseconds'
+	| 'seconds'
+	| 'minutes'
+	| 'hours'
+	| 'days'
+	| 'weeks'
+	| 'months'
+	| 'quarter'
+	| 'years';
 type DatePart =
 	| 'day'
 	| 'month'
@@ -17,9 +27,45 @@ type DatePart =
 	| 'hour'
 	| 'minute'
 	| 'second'
+	| 'millisecond'
 	| 'weekNumber'
 	| 'yearDayNumber'
 	| 'weekday';
+
+const DURATION_MAP: Record<string, DurationUnit> = {
+	day: 'days',
+	month: 'months',
+	year: 'years',
+	week: 'weeks',
+	hour: 'hours',
+	minute: 'minutes',
+	second: 'seconds',
+	millisecond: 'milliseconds',
+	ms: 'milliseconds',
+	sec: 'seconds',
+	secs: 'seconds',
+	hr: 'hours',
+	hrs: 'hours',
+	min: 'minutes',
+	mins: 'minutes',
+};
+
+const DATETIMEUNIT_MAP: Record<string, DateTimeUnit> = {
+	days: 'day',
+	months: 'month',
+	years: 'year',
+	hours: 'hour',
+	minutes: 'minute',
+	seconds: 'second',
+	milliseconds: 'millisecond',
+	hrs: 'hour',
+	hr: 'hour',
+	mins: 'minute',
+	min: 'minute',
+	secs: 'second',
+	sec: 'second',
+	ms: 'millisecond',
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function isDateTime(date: any): date is DateTime {
@@ -31,16 +77,21 @@ function isDateTime(date: any): date is DateTime {
 }
 
 function generateDurationObject(durationValue: number, unit: DurationUnit) {
-	return { [`${unit}s`]: durationValue } as DurationObjectUnits;
+	const convertedUnit = DURATION_MAP[unit] || unit;
+	return { [`${convertedUnit}`]: durationValue } as DurationObjectUnits;
 }
 
 function beginningOf(date: Date | DateTime, extraArgs: DurationUnit[]): Date {
 	const [unit = 'week'] = extraArgs;
 
 	if (isDateTime(date)) {
-		return date.startOf(unit).toJSDate();
+		return date.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 	}
-	return DateTime.fromJSDate(date).startOf(unit).toJSDate();
+	let datetime = DateTime.fromJSDate(date);
+	if (date.getTimezoneOffset() === 0) {
+		datetime = datetime.setZone('UTC');
+	}
+	return datetime.startOf(DATETIMEUNIT_MAP[unit] || unit).toJSDate();
 }
 
 function endOfMonth(date: Date | DateTime): Date {
@@ -65,11 +116,11 @@ function extract(inputDate: Date | DateTime, extraArgs: DatePart[]): number | Da
 		return Math.floor(diff / (1000 * 60 * 60 * 24));
 	}
 
-	return DateTime.fromJSDate(date).get(part);
+	return DateTime.fromJSDate(date).get((DATETIMEUNIT_MAP[part] as keyof DateTime) || part);
 }
 
 function format(date: Date | DateTime, extraArgs: unknown[]): string {
-	const [dateFormat, localeOpts] = extraArgs as [string, LocaleOptions];
+	const [dateFormat, localeOpts = {}] = extraArgs as [string, LocaleOptions];
 	if (isDateTime(date)) {
 		return date.toFormat(dateFormat, { ...localeOpts });
 	}
@@ -92,7 +143,7 @@ function isDst(date: Date): boolean {
 }
 
 function isInLast(date: Date | DateTime, extraArgs: unknown[]): boolean {
-	const [durationValue = 0, unit = 'minute'] = extraArgs as [number, DurationUnit];
+	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
 	const dateInThePast = DateTime.now().minus(generateDurationObject(durationValue, unit));
 	let thisDate = date;
@@ -111,7 +162,7 @@ function isWeekend(date: Date): boolean {
 }
 
 function minus(date: Date | DateTime, extraArgs: unknown[]): Date {
-	const [durationValue = 0, unit = 'minute'] = extraArgs as [number, DurationUnit];
+	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
 	if (isDateTime(date)) {
 		return date.minus(generateDurationObject(durationValue, unit)).toJSDate();
@@ -120,7 +171,7 @@ function minus(date: Date | DateTime, extraArgs: unknown[]): Date {
 }
 
 function plus(date: Date | DateTime, extraArgs: unknown[]): Date {
-	const [durationValue = 0, unit = 'minute'] = extraArgs as [number, DurationUnit];
+	const [durationValue = 0, unit = 'minutes'] = extraArgs as [number, DurationUnit];
 
 	if (isDateTime(date)) {
 		return date.plus(generateDurationObject(durationValue, unit)).toJSDate();
@@ -129,42 +180,49 @@ function plus(date: Date | DateTime, extraArgs: unknown[]): Date {
 }
 
 function toLocaleString(date: Date | DateTime, extraArgs: unknown[]): string {
-	const [dateFormat, localeOpts] = extraArgs as [DateTimeFormatOptions, LocaleOptions];
+	const [locale, dateFormat = { timeStyle: 'short', dateStyle: 'short' }] = extraArgs as [
+		string | undefined,
+		DateTimeFormatOptions,
+	];
 
 	if (isDateTime(date)) {
-		return date.toLocaleString(dateFormat, localeOpts);
+		return date.toLocaleString(dateFormat, { locale });
 	}
-	return DateTime.fromJSDate(date).toLocaleString(dateFormat, localeOpts);
+	return DateTime.fromJSDate(date).toLocaleString(dateFormat, { locale });
 }
 
 function toTimeFromNow(date: Date): string {
-	let diffObj: DurationObjectUnits;
+	let diffObj: Duration;
 	if (isDateTime(date)) {
-		diffObj = date.diffNow().toObject();
+		diffObj = date.diffNow();
 	} else {
-		diffObj = DateTime.fromJSDate(date).diffNow().toObject();
+		diffObj = DateTime.fromJSDate(date).diffNow();
 	}
 
-	if (diffObj.years) {
-		return `${diffObj.years} years ago`;
+	const as = (unit: DurationUnit) => {
+		return Math.round(Math.abs(diffObj.as(unit)));
+	};
+
+	if (as('years')) {
+		return `${as('years')} years ago`;
 	}
-	if (diffObj.months) {
-		return `${diffObj.months} months ago`;
+	if (as('months')) {
+		return `${as('months')} months ago`;
 	}
-	if (diffObj.weeks) {
-		return `${diffObj.weeks} weeks ago`;
+	if (as('weeks')) {
+		return `${as('weeks')} weeks ago`;
 	}
-	if (diffObj.days) {
-		return `${diffObj.days} days ago`;
+	if (as('days')) {
+		return `${as('days')} days ago`;
 	}
-	if (diffObj.hours) {
-		return `${diffObj.hours} hours ago`;
+	if (as('hours')) {
+		return `${as('hours')} hours ago`;
 	}
-	if (diffObj.minutes) {
-		return `${diffObj.minutes} minutes ago`;
+	if (as('minutes')) {
+		return `${as('minutes')} minutes ago`;
 	}
-	if (diffObj.seconds && diffObj.seconds > 10) {
-		return `${diffObj.seconds} seconds ago`;
+	if (as('seconds') && as('seconds') > 10) {
+		return `${as('seconds')} seconds ago`;
 	}
 	return 'just now';
 }
@@ -173,9 +231,9 @@ function timeTo(date: Date | DateTime, extraArgs: unknown[]): Duration {
 	const [diff = new Date().toISOString(), unit = 'seconds'] = extraArgs as [string, DurationUnit];
 	const diffDate = new Date(diff);
 	if (isDateTime(date)) {
-		return date.diff(DateTime.fromJSDate(diffDate), unit);
+		return date.diff(DateTime.fromJSDate(diffDate), DURATION_MAP[unit] || unit);
 	}
-	return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), unit);
+	return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), DURATION_MAP[unit] || unit);
 }
 
 // Small hack since we parse all ISO strings to dates
