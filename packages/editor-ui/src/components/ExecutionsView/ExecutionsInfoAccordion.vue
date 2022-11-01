@@ -3,18 +3,33 @@
 		:class="[$style.accordion, 'mt-2xl']"
 		:title="$locale.baseText('executionsLandingPage.emptyState.accordion.title')"
 		:items="accordionItems"
-		:description="accordionDescription"
 		:initiallyExpanded="shouldExpandAccordion"
 		:headerIcon="accordionIcon"
 		@click="onAccordionClick"
 		@tooltipClick="onItemTooltipClick"
-	></n8n-info-accordion>
+	>
+		<template #customContent>
+			<footer class="mt-2xs">
+				{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer') }}
+				<n8n-tooltip :disabled="!isNewWorkflow">
+					<div slot="content">
+						<n8n-link @click.prevent="onSaveWorkflowClick">{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipLink') }}</n8n-link>
+						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipText') }}
+					</div>
+					<n8n-link @click.prevent="openWorkflowSettings" :class="{[$style.disabled]: isNewWorkflow}">
+						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.settingsLink') }}
+					</n8n-link>
+				</n8n-tooltip>
+			</footer>
+		</template>
+	</n8n-info-accordion>
 </template>
 
 <script lang="ts">
-import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { deepCopy, IWorkflowSettings } from 'n8n-workflow';
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+import { workflowHelpers } from '../mixins/workflowHelpers';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean,
@@ -22,7 +37,7 @@ interface IWorkflowSaveSettings {
 	saveManualExecutions: boolean,
 };
 
-export default Vue.extend({
+export default mixins(workflowHelpers).extend({
 	name: 'executions-info-accordion',
 	props: {
 		initiallyExpanded: {
@@ -103,18 +118,23 @@ export default Vue.extend({
 			const workflowSettings = deepCopy(this.$store.getters.workflowSettings);
 			return workflowSettings;
 		},
-		accordionDescription(): string {
-			return `
-				<footer class="mt-2xs">
-					${this.$locale.baseText('executionsLandingPage.emptyState.accordion.footer')}
-				</footer>
-			`;
-		},
 		accordionIcon(): { icon: string, color: string }|null {
 			if (this.workflowSaveSettings.saveManualExecutions !== true || this.productionExecutionsStatus !== 'saving') {
 				return { icon: 'exclamation-triangle', color: 'warning' };
 			}
 			return null;
+		},
+		currentWorkflowId(): string {
+			return this.$store.getters.workflowId;
+		},
+		isNewWorkflow(): boolean {
+			return !this.currentWorkflowId || (this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID || this.currentWorkflowId === 'new');
+		},
+		workflowName(): string {
+			return this.$store.getters.workflowName;
+		},
+		currentWorkflowTagIds(): string[] {
+			return this.$store.getters.workflowTags;
 		},
 	},
 	methods: {
@@ -134,6 +154,19 @@ export default Vue.extend({
 				event.preventDefault();
 				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
 			}
+		},
+		openWorkflowSettings(event: MouseEvent): void {
+			this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+		},
+		async onSaveWorkflowClick(event: MouseEvent): void {
+			let currentId = undefined;
+			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				currentId = this.currentWorkflowId;
+			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
+				currentId = this.$route.params.name;
+			}
+			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
+			if (saved) this.$store.dispatch('settings/fetchPromptsData');
 		},
 	},
 });
@@ -168,6 +201,14 @@ export default Vue.extend({
 	footer {
 		text-align: left;
 		width: 100%;
+		font-size: var(--font-size-2xs);
+	}
+
+	.disabled a {
+		color: currentColor;
+		cursor: not-allowed;
+		opacity: 0.5;
+		text-decoration: none;
 	}
 }
 
