@@ -1,17 +1,12 @@
 import { ExtensionMap } from './Extensions';
 
 function format(value: number, extraArgs: unknown[]): string {
-	const [locales = 'en-US', config] = extraArgs as [
+	const [locales = 'en-US', config = {}] = extraArgs as [
 		string | string[],
-		{ compactDisplay: string; notation: string; style: string },
+		Intl.NumberFormatOptions,
 	];
 
-	return new Intl.NumberFormat(locales, {
-		...config,
-		notation: 'compact',
-		compactDisplay: 'short',
-		style: 'decimal',
-	}).format(value);
+	return new Intl.NumberFormat(locales, config).format(value);
 }
 
 function isBlank(value: number): boolean {
