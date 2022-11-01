@@ -11,11 +11,11 @@
 		};
 	},
 	mounted() {
-		window.addEventListener('click', this.delegateClick, { capture: true, passive: true });
+		window.addEventListener('click', this.delegateClick);
 		this.$root.$on('registerGlobalLinkAction', this.registerCustomAction);
 	},
 	destroyed() {
-		window.removeEventListener('click', this.delegateClick, { capture: true });
+		window.removeEventListener('click', this.delegateClick);
 		this.$root.$off('registerGlobalLinkAction', this.registerCustomAction);
 	},
 	computed: {
@@ -28,7 +28,7 @@
 	},
 	methods: {
 		registerCustomAction(key: string, action: Function) {
-			Vue.set(this.customActions, key, action);
+			this.customActions[key] = action;
 		},
 		unregisterCustomAction(key: string) {
 			Vue.delete(this.customActions, key);
@@ -39,6 +39,7 @@
 
 			const actionAttribute = clickedElement.getAttribute('data-action');
 			if(actionAttribute && typeof this.availableActions[actionAttribute] === 'function') {
+				e.preventDefault();
 				this.availableActions[actionAttribute]();
 			}
 		},
