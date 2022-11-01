@@ -123,7 +123,7 @@ export const LDAP_CONFIG_SCHEMA = {
 					type: 'boolean',
 				},
 			},
-			required: ['url', 'useSsl', 'security', 'port'],
+			required: ['url', 'allowUnauthorizedCerts', 'security', 'port'],
 			additionalProperties: false,
 		},
 		filter: {
