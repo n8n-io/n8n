@@ -311,7 +311,8 @@ export enum VIEWS {
 export enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
-	SHARING = 'sharing',
+	CREDENTIALS_SHARING = 'credentialsSharing',
+	WORKFLOWS_SHARING = 'workflowsSharing',
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;

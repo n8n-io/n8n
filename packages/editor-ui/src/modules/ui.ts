@@ -170,12 +170,21 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['settings'],
 			},
 			{
-				id: FAKE_DOOR_FEATURES.SHARING,
+				id: FAKE_DOOR_FEATURES.CREDENTIALS_SHARING,
 				featureName: 'fakeDoor.credentialEdit.sharing.name',
 				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
 				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
 				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
 				uiLocations: ['credentialsModal'],
+			},
+			{
+				id: FAKE_DOOR_FEATURES.WORKFLOWS_SHARING,
+				featureName: 'fakeDoor.workflowsSharing.name',
+				actionBoxTitle: 'workflows.shareModal.title', // Use this translation in modal title when removing fakeDoor
+				actionBoxDescription: 'fakeDoor.workflowsSharing.description',
+				actionBoxButtonLabel: 'fakeDoor.workflowsSharing.button',
+				linkURL: 'https://n8n.cloud',
+				uiLocations: ['workflowShareModal'],
 			},
 		],
 	},

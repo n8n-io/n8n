@@ -1,7 +1,7 @@
 <template>
 	<Modal
 		width="460px"
-		:title="$locale.baseText('workflows.shareModal.title', { interpolate: { name: workflow.name } })"
+		:title="$locale.baseText(fakeDoor.actionBoxTitle, { interpolate: { name: workflow.name } })"
 		:eventBus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
@@ -50,7 +50,7 @@
 					</n8n-users-list>
 					<template #fallback>
 						<n8n-text>
-							{{ $locale.baseText('workflows.shareModal.notAvailable') }}
+							{{ $locale.baseText(fakeDoor.actionBoxDescription) }}
 						</n8n-text>
 					</template>
 				</enterprise-edition>
@@ -77,13 +77,14 @@
 				</n8n-button>
 
 				<template #fallback>
-					<n8n-button
-						@click="onSave"
-						:loading="loading"
-						size="medium"
-					>
-						{{ $locale.baseText('workflows.shareModal.notAvailable.button') }}
-					</n8n-button>
+					<n8n-link :to="fakeDoor.linkURL">
+						<n8n-button
+							:loading="loading"
+							size="medium"
+						>
+							{{ $locale.baseText(fakeDoor.actionBoxButtonLabel) }}
+						</n8n-button>
+					</n8n-link>
 				</template>
 			</enterprise-edition>
 		</template>
@@ -93,8 +94,8 @@
 <script lang="ts">
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import {EnterpriseEditionFeature, WORKFLOW_SHARE_MODAL_KEY} from '../constants';
-import {IUser, IWorkflowDb} from "@/Interface";
+import {EnterpriseEditionFeature, FAKE_DOOR_FEATURES, WORKFLOW_SHARE_MODAL_KEY} from '../constants';
+import {IFakeDoor, IUser, IWorkflowDb} from "@/Interface";
 import { getWorkflowPermissions, IPermissions } from "@/permissions";
 import mixins from "vue-typed-mixins";
 import {showMessage} from "@/components/mixins/showMessage";
@@ -148,11 +149,14 @@ export default mixins(
 		isSharingAvailable(): boolean {
 			return this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing) === true;
 		},
+		fakeDoor(): IFakeDoor {
+			return this.$store.getters['ui/getFakeDoorById'](FAKE_DOOR_FEATURES.WORKFLOWS_SHARING);
+		},
 	},
 	methods: {
 		async onSave() {
 			this.loading = true;
-			await this.$store.dispatch('setWorkflowSharedWith', {});
+			await this.$store.dispatch('setWorkflowSharedWith', { workflowId: this.workflow.id, sharedWith: this.sharedWith });
 			this.loading = false;
 
 			this.modalBus.$emit('close');
