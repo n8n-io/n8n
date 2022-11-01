@@ -161,6 +161,8 @@ import Draggable from '@/components/Draggable.vue';
 import { shorten } from '@/components/helpers';
 import { externalHooks } from '@/components/mixins/externalHooks';
 
+const MAX_COLUMNS_LIMIT = 40;
+
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
 	components: { Draggable },
@@ -201,7 +203,6 @@ export default mixins(externalHooks).extend({
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
 			activeRow: null as number | null,
-			columnLimit: 40,
 			columnLimitExceeded: false,
 		};
 	},
@@ -427,9 +428,9 @@ export default mixins(externalHooks).extend({
 				entryRows = [];
 				const entryColumns = Object.keys(entry || {});
 
-				if(entryColumns.length > this.columnLimit) {
+				if(entryColumns.length > MAX_COLUMNS_LIMIT) {
 					this.columnLimitExceeded = true;
-					leftEntryColumns = entryColumns.slice(0, this.columnLimit);
+					leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
 				} else {
 					leftEntryColumns = entryColumns;
 				}
