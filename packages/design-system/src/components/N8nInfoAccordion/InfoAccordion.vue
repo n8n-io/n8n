@@ -19,6 +19,7 @@
 			<n8n-text color="text-base" size="small" align="left">
 				<span v-html="description"></span>
 			</n8n-text>
+			 <slot name="customContent"></slot>
 		</div>
 	</div>
 </template>
