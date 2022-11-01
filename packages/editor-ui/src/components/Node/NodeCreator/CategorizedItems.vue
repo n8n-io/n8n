@@ -78,7 +78,7 @@
 <script lang="ts">
 import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
-import { intersection } from 'lodash';
+import { intersection } from '@/utils';
 import { INodeTypeDescription } from 'n8n-workflow';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
