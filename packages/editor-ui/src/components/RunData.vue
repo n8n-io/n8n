@@ -227,7 +227,6 @@
 				:pageOffset="currentPageOffset"
 				:totalRuns="maxRunIndex"
 				:hasDefaultHoverState="paneType === 'input'"
-				:paneType="paneType"
 				@mounted="$emit('tableMounted', $event)"
 				@activeRowChanged="onItemHover"
 				@displayModeChange="onDisplayModeChange"
