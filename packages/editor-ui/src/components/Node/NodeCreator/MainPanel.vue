@@ -7,7 +7,7 @@
 			<trigger-helper-panel
 				v-if="selectedType === TRIGGER_NODE_FILTER"
 				:searchItems="searchItems"
-				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
+				@nodeTypeSelected="$listeners.nodeTypeSelected"
 			>
 				<type-selector slot="header" />
 			</trigger-helper-panel>
@@ -16,7 +16,7 @@
 				:searchItems="searchItems"
 				:excludedSubcategories="[OTHER_TRIGGER_NODES_SUBCATEGORY]"
 				:initialActiveCategories="[CORE_NODES_CATEGORY]"
-				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
+				@nodeTypeSelected="$listeners.nodeTypeSelected"
 			>
 				<type-selector slot="header" />
 			</categorized-items>

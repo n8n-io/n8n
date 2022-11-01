@@ -24,7 +24,7 @@
 					index === elements.length - 1 || elements[index + 1].type !== 'node'
 				"
 				@click="$emit('selected', item)"
-				@nodeTypeSelected="onNodeTypeSelected($event, item)"
+				@nodeTypeSelected="$listeners.nodeTypeSelected"
 				@dragstart="emit('dragstart', item, $event)"
 				@dragend="emit('dragend', item, $event)"
 			/>
@@ -64,14 +64,8 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onNodeTypeSelected(nodeType: string, item: INodeCreateElement) {
-			if(nodeType) {
-				(item.properties as INodeItemProps).nodeType.name = nodeType;
-			}
-			this.$emit('selected', item);
-		},
 		emit(eventName: string, element: INodeCreateElement, event: Event) {
-			if (this.$props.disabled) {
+			if (this.disabled) {
 				return;
 			}
 

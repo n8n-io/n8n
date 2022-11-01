@@ -134,13 +134,19 @@ export default Vue.extend({
 	methods: {
 		onClick() {
 			if(this.hasActions && this.allowActions) this.showActions = true;
-			else this.$emit('nodeTypeSelected', this.nodeType.name);
+			else this.$emit('nodeTypeSelected', [this.nodeType.name]);
 		},
 		async onActionSelected(action: IDataObject) {
-			this.$emit('nodeTypeSelected', action.key);
+			const isTriggerAction = action.key?.toString().toLocaleLowerCase().includes('trigger');
+			const workflowContainsTrigger = this.$store.getters.workflowTriggerNodes.length > 0;
 
-			// We need some time for the node to be created before setting parameters
-			const unsubscribe = this.$store.subscribe((mutation, state) => {
+			this.$emit('nodeTypeSelected', !isTriggerAction && !workflowContainsTrigger
+				? [MANUAL_TRIGGER_NODE_TYPE, action.key]
+				: [action.key],
+			);
+
+			// We can only set parameters after the node was created and set in store
+			const unsubscribe = this.$store.subscribe((mutation) => {
 				if(mutation.type === 'addNode') {
 					this.$store.commit('setLastNodeParameters', action);
 					unsubscribe();

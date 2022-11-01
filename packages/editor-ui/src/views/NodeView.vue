@@ -1647,7 +1647,7 @@ export default mixins(
 				return newNodeData;
 			},
 
-			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
+			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true) {
 				const nodeTypeData: INodeTypeDescription | null = this.$store.getters['nodeTypes/getNodeType'](nodeTypeName);
 
 				if (nodeTypeData === null) {
@@ -1757,9 +1757,11 @@ export default mixins(
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
-				setTimeout(() => {
-					this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
-				});
+				if(showDetail) {
+					setTimeout(() => {
+						this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
+					});
+				}
 
 				return newNodeData;
 			},
@@ -1795,7 +1797,8 @@ export default mixins(
 
 				this.__addConnection(connectionData, true);
 			},
-			async addNode(nodeTypeName: string, options: AddNodeOptions = {}) {
+			async addNode(nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true) {
+				console.log("🚀 ~ file: NodeView.vue ~ line 1799 ~ addNode ~ nodeTypeName", nodeTypeName);
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -1804,7 +1807,7 @@ export default mixins(
 				const lastSelectedNode = this.lastSelectedNode;
 				const lastSelectedNodeOutputIndex = this.$store.getters.lastSelectedNodeOutputIndex;
 
-				const newNodeData = await this.injectNode(nodeTypeName, options);
+				const newNodeData = await this.injectNode(nodeTypeName, options, showDetail);
 				if (!newNodeData) {
 					return;
 				}
@@ -3258,8 +3261,16 @@ export default mixins(
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.$store.getters.workflowId });
 			},
-			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
-				this.addNode(nodeTypeName, { position });
+			onAddNode(nodeTypes: any[]) {
+				nodeTypes.forEach(({ nodeTypeName, position }, index) => {
+					setTimeout(() => {
+						this.addNode(nodeTypeName, { position }, nodeTypes.length === 1 || index > 0);
+						if(index > 0) {
+							const lastAddedNode = this.nodes[this.nodes.length - 1];
+							this.nodeSelectedByName(lastAddedNode.name, true);
+						}
+					}, index * 3000);
+				});
 			},
 		},
 		async mounted() {

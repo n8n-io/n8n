@@ -32,6 +32,7 @@
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					:transitionsEnabled="true"
 					@selected="selected"
+					@nodeTypeSelected="$listeners.nodeTypeSelected"
 					:simple-node-style="isAppEventSubcategory"
 					:allow-actions="isAppEventSubcategory"
 				/>
@@ -44,6 +45,7 @@
 					:elements="filteredNodeTypes"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					@selected="selected"
+					@nodeTypeSelected="$listeners.nodeTypeSelected"
 					:simple-node-style="isAppEventSubcategory"
 					:allow-actions="isAppEventSubcategory"
 				/>
@@ -118,7 +120,7 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
 	(event: 'subcategoryClose', value: INodeCreateElement): void,
 	(event: 'onSubcategorySelected', value: INodeCreateElement): void,
-	(event: 'nodeTypeSelected', value: string): void,
+	(event: 'nodeTypeSelected', value: string[]): void,
 }>();
 
 const instance = getCurrentInstance();
@@ -340,11 +342,11 @@ function onNodeFilterChange(filter: string) {
 }
 
 function selectWebhook() {
-  emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
+  emit('nodeTypeSelected', [WEBHOOK_NODE_TYPE]);
 }
 
 function selectHttpRequest() {
-  emit('nodeTypeSelected', HTTP_REQUEST_NODE_TYPE);
+  emit('nodeTypeSelected', [HTTP_REQUEST_NODE_TYPE]);
 }
 
 function nodeFilterKeyDown(e: KeyboardEvent) {
@@ -408,12 +410,11 @@ function nodeFilterKeyDown(e: KeyboardEvent) {
 }
 function selected(element: INodeCreateElement) {
   const typeHandler = {
-    node: () => emit('nodeTypeSelected', (element.properties as INodeItemProps).nodeType.name),
     category: () => onCategorySelected(element.category),
     subcategory: () => onSubcategorySelected(element),
   };
 
-  typeHandler[element.type]();
+  typeHandler[element.type as "category" | "subcategory"]();
 }
 
 function onCategorySelected(category: string) {

@@ -12,7 +12,7 @@
 			 	@drop="onDrop"
 			>
 				<main-panel
-					@nodeTypeSelected="nodeTypeSelected"
+					@nodeTypeSelected="$listeners.nodeTypeSelected"
 					:searchItems="searchItems"
 				/>
 			</div>
@@ -77,9 +77,6 @@ export default Vue.extend({
 			if (e.type === 'click') {
 				this.$emit('closeNodeCreator');
 			}
-		},
-		nodeTypeSelected (nodeTypeName: string) {
-			this.$emit('nodeTypeSelected', nodeTypeName);
 		},
 		onDragOver(event: DragEvent) {
 			event.preventDefault();

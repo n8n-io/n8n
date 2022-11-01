@@ -4,7 +4,7 @@
 			ref="categorizedItems"
 			@subcategoryClose="onSubcategoryClose"
 			@onSubcategorySelected="onSubcategorySelected"
-			@nodeTypeSelected="onNodeSelected"
+			@nodeTypeSelected="$listeners.nodeTypeSelected"
 			:initialActiveIndex="0"
 			:searchItems="searchItems"
 			:firstLevelItems="isRoot ? items : []"
@@ -25,7 +25,7 @@ import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { INodeCreateElement, INodeItemProps } from '@/Interface';
+import { INodeCreateElement } from '@/Interface';
 import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
 
 import ItemIterator from './ItemIterator.vue';
@@ -152,9 +152,6 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	methods: {
-		onNodeSelected(nodeType: string) {
-			this.$emit('nodeTypeSelected', nodeType);
-		},
 		isRootSubcategory(subcategory: INodeCreateElement) {
 			return this.items.find(item => item.key === subcategory.key) !== undefined;
 		},
