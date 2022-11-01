@@ -1,8 +1,7 @@
-import _Vue from "vue";
+import Vue from 'vue';
 import axios from 'axios';
 import VueI18n from 'vue-i18n';
 import { Store } from "vuex";
-import Vue from 'vue';
 import { INodeTranslationHeaders, IRootState } from '@/Interface';
 import {
 	deriveMiddleKey,
@@ -22,7 +21,7 @@ locale.use('en');
 
 export let i18n: I18nClass;
 
-export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
+export function I18nPlugin(vue: typeof Vue, store: Store<IRootState>): void {
 	i18n = new I18nClass(store);
 
 	Object.defineProperty(vue, '$locale', {
@@ -230,14 +229,14 @@ export class I18nClass {
 			 * Hint for an input, whether top-level or nested.
 			 */
 			hint(
-				parameter: { name: string; hint: string; type: string },
+				parameter: INodeProperties,
 				path: string,
 			) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.hint`,
-					fallback: parameter.hint,
+					fallback: parameter.hint || '',
 				});
 			},
 

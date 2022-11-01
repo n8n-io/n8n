@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 
 import {
 	IN8nButton,
@@ -68,15 +68,15 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
-import ParameterOptions from './ParameterOptions.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/components/mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { hasExpressionMapping } from './helpers';
-import ParameterInputWrapper from './ParameterInputWrapper.vue';
-import { hasOnlyListMode } from './ResourceLocator/helpers';
-import { INodePropertyMode } from 'n8n-workflow';
+import { hasExpressionMapping } from '@/components/helpers';
+import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
+import { hasOnlyListMode } from '@/components/ResourceLocator/helpers';
+import { INodeParameters, INodeProperties, INodePropertyMode } from 'n8n-workflow';
 import { isResourceLocatorValue } from '@/typeGuards';
 import { BaseTextKey } from "@/plugins/i18n";
 
@@ -98,14 +98,31 @@ export default mixins(
 				dataMappingTooltipButtons: [] as IN8nButton[],
 			};
 		},
-		props: [
-			'displayOptions',
-			'isReadOnly',
-			'parameter',
-			'path',
-			'value',
-			'hideLabel',
-		],
+		props: {
+			displayOptions: {
+				type: Boolean,
+				default: false,
+			},
+			isReadOnly: {
+				type: Boolean,
+				default: false,
+			},
+			parameter: {
+				type: Object as PropType<INodeProperties>,
+				required: true,
+			},
+			path: {
+				type: String,
+				required: true,
+			},
+			value: {
+				type: [Number, String, Boolean, Array, Object] as PropType<INodeParameters>,
+			},
+			hideLabel: {
+				type: Boolean,
+				default: false,
+			},
+		},
 		created() {
 			const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
 			this.dataMappingTooltipButtons = [
@@ -126,6 +143,9 @@ export default mixins(
 			hint (): string | null {
 				return this.$locale.nodeText().hint(this.parameter, this.path);
 			},
+			isInputTypeMappable (): boolean {
+				return this.parameter.type === 'string';
+			},
 			isResourceLocator (): boolean {
 				return  this.parameter.type === 'resourceLocator';
 			},
@@ -142,7 +162,7 @@ export default mixins(
 				return this.$store.getters['ndv/inputPanelDisplayMode'];
 			},
 			showMappingTooltip (): boolean {
-				return this.focused && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
+				return this.focused && this.isInputTypeMappable && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 			},
 		},
 		methods: {
