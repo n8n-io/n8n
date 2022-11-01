@@ -717,8 +717,7 @@ export class ActiveWorkflowRunner {
 				// Run Error Workflow if defined
 				const activationError = new WorkflowActivationError(
 					`There was a problem with the trigger node "${node.name}", for that reason did the workflow had to be deactivated`,
-					error,
-					node,
+					{ cause: error, node },
 				);
 				this.executeErrorWorkflow(activationError, workflowData, mode);
 

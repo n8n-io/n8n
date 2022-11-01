@@ -37,6 +37,7 @@ import {
 } from './Interface';
 
 import nodeTypes from './modules/nodeTypes';
+import ndv from './modules/ndv';
 import credentials from './modules/credentials';
 import settings from './modules/settings';
 import tags from './modules/tags';
@@ -60,7 +61,6 @@ const state: IRootState = {
 	activeExecutions: [],
 	activeWorkflows: [],
 	activeActions: [],
-	activeNode: null,
 	activeCredentialType: null,
 	// @ts-ignore
 	baseUrl: import.meta.env.VUE_APP_URL_BASE_API ?? window.BASE_PATH ?? '/',
@@ -103,6 +103,7 @@ const state: IRootState = {
 		settings: {},
 		tags: [],
 		pinData: {},
+		hash: '',
 	},
 	workflowsById: {},
 	sidebarMenuItems: [],
@@ -123,6 +124,7 @@ const modules = {
 	ui,
 	communityNodes,
 	nodeCreator,
+	ndv,
 };
 
 export const store = new Vuex.Store({
@@ -462,7 +464,7 @@ export const store = new Vuex.Store({
 
 		// Id
 		setWorkflowId (state, id: string) {
-			state.workflow.id = id;
+			state.workflow.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
 		},
 
 		// Name
@@ -471,6 +473,10 @@ export const store = new Vuex.Store({
 				state.stateIsDirty = true;
 			}
 			state.workflow.name = data.newName;
+		},
+
+		setWorkflowHash(state, hash: string) {
+			state.workflow.hash = hash;
 		},
 
 		// replace invalid credentials in workflow
@@ -657,13 +663,9 @@ export const store = new Vuex.Store({
 		setIsNpmAvailable(state, isNpmAvailable: boolean) {
 			Vue.set(state, 'isNpmAvailable', isNpmAvailable);
 		},
-		setActiveNode(state, nodeName: string) {
-			state.activeNode = nodeName;
-		},
 		setActiveCredentialType(state, activeCredentialType: string) {
 			state.activeCredentialType = activeCredentialType;
 		},
-
 		setLastSelectedNode(state, nodeName: string) {
 			state.lastSelectedNode = nodeName;
 		},
@@ -766,6 +768,9 @@ export const store = new Vuex.Store({
 
 		subworkflowExecutionError: (state): Error | null => {
 			return state.subworkflowExecutionError;
+		},
+		workflowHash: (state): string | undefined => {
+			return state.workflow.hash;
 		},
 
 		isActionActive: (state) => (action: string): boolean => {
@@ -952,7 +957,6 @@ export const store = new Vuex.Store({
 		/**
 		 * Pin data
 		 */
-
 		pinData: (state): IPinData | undefined => {
 			return state.workflow.pinData;
 		},
@@ -961,15 +965,21 @@ export const store = new Vuex.Store({
 
 			return state.workflow.pinData[nodeName].map(item => item.json);
 		},
-		pinDataSize: (state) => {
+		pinDataSize: (state, getters, rootState, rootGetters) => {
+			const activeNode = rootGetters['ndv/activeNodeName'];
 			return state.workflow.nodes
 				.reduce((acc, node) => {
-					if (typeof node.pinData !== 'undefined' && node.name !== state.activeNode) {
+					if (typeof node.pinData !== 'undefined' && node.name !== activeNode) {
 						acc += stringSizeInBytes(node.pinData);
 					}
 
 					return acc;
 				}, 0);
+		},
+
+		activeNode: (state, getters, rootState, rootGetters): INodeUi | null => {
+			// kept here for FE hooks
+			return rootGetters['ndv/activeNode'];
 		},
 
 		/**
@@ -984,9 +994,6 @@ export const store = new Vuex.Store({
 				if (/\d$/.test(cur.defaults.name)) acc.push(cur.defaults.name);
 				return acc;
 			}, []);
-		},
-		activeNode: (state, getters): INodeUi | null => {
-			return getters.getNodeByName(state.activeNode);
 		},
 		lastSelectedNode: (state, getters): INodeUi | null => {
 			return getters.getNodeByName(state.lastSelectedNode);

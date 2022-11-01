@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import moment from 'moment';
 import { Eq } from './QueryFunctions';
@@ -78,7 +78,11 @@ export function prepareOptional(optionals: IDataObject): IDataObject {
 			} else if (moment(optionals[key] as string, moment.ISO_8601).isValid()) {
 				response[key] = Date.parse(optionals[key] as string);
 			} else if (key === 'artifacts') {
-				response[key] = JSON.parse(optionals[key] as string);
+				try {
+					response[key] = jsonParse(optionals[key] as string);
+				} catch (error) {
+					throw new Error('Invalid JSON for artifacts');
+				}
 			} else if (key === 'tags') {
 				response[key] = splitTags(optionals[key] as string);
 			} else {
@@ -96,15 +100,26 @@ export async function prepareCustomFields(
 ): Promise<IDataObject | undefined> {
 	// Check if the additionalFields object contains customFields
 	if (jsonParameters === true) {
-		const customFieldsJson = additionalFields.customFieldsJson;
+		let customFieldsJson = additionalFields.customFieldsJson;
 		// Delete from additionalFields as some operations (e.g. alert:update) do not run prepareOptional
 		// which would remove the extra fields
 		delete additionalFields.customFieldsJson;
 
 		if (typeof customFieldsJson === 'string') {
-			return JSON.parse(customFieldsJson);
-		} else if (typeof customFieldsJson === 'object') {
-			return customFieldsJson as IDataObject;
+			try {
+				customFieldsJson = jsonParse(customFieldsJson);
+			} catch (error) {
+				throw new Error('Invalid JSON for customFields');
+			}
+		}
+
+		if (typeof customFieldsJson === 'object') {
+			const customFields = Object.keys(customFieldsJson as IDataObject).reduce((acc, curr) => {
+				acc[`customFields.${curr}`] = (customFieldsJson as IDataObject)[curr];
+				return acc;
+			}, {} as IDataObject);
+
+			return customFields;
 		} else if (customFieldsJson) {
 			throw Error('customFieldsJson value is invalid');
 		}
@@ -136,9 +151,8 @@ export async function prepareCustomFields(
 
 				// Might be able to do some type conversions here if needed, TODO
 
-				acc[fieldName] = {
-					[referenceTypeMapping[fieldName]]: curr.value,
-				};
+				const updatedField = `customFields.${fieldName}.${[referenceTypeMapping[fieldName]]}`;
+				acc[updatedField] = curr.value;
 				return acc;
 			},
 			{} as IDataObject,
@@ -151,18 +165,10 @@ export async function prepareCustomFields(
 }
 
 export function buildCustomFieldSearch(customFields: IDataObject): IDataObject[] {
-	const customFieldTypes = ['boolean', 'date', 'float', 'integer', 'number', 'string'];
 	const searchQueries: IDataObject[] = [];
+
 	Object.keys(customFields).forEach((customFieldName) => {
-		const customField = customFields[customFieldName] as IDataObject;
-
-		// Figure out the field type from the object's keys
-		const fieldType = Object.keys(customField).filter(
-			(key) => customFieldTypes.indexOf(key) > -1,
-		)[0];
-		const fieldValue = customField[fieldType];
-
-		searchQueries.push(Eq(`customFields.${customFieldName}.${fieldType}`, fieldValue));
+		searchQueries.push(Eq(customFieldName, customFields[customFieldName]));
 	});
 	return searchQueries;
 }

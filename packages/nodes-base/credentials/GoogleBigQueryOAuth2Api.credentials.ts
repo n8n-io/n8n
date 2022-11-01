@@ -6,7 +6,7 @@ export class GoogleBigQueryOAuth2Api implements ICredentialType {
 	name = 'googleBigQueryOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google BigQuery OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

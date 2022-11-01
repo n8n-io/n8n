@@ -7,16 +7,18 @@
 					class="node-name"
 					:value="node && node.name"
 					:nodeType="nodeType"
+					:isReadOnly="isReadOnly"
 					@input="nameChanged"
-					:readOnly="isReadOnly"
 				></NodeTitle>
 				<div v-if="!isReadOnly">
 					<NodeExecuteButton
+						v-if="!blockUI"
 						:nodeName="node.name"
-						:disabled="outputPanelEditMode.enabled"
+						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
 						size="small"
 						telemetrySource="parameters"
 						@execute="onNodeExecute"
+						@stopExecution="onStopExecution"
 					/>
 				</div>
 			</div>
@@ -72,11 +74,11 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path="parameters"
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
-
 					<node-credentials :node="node" @credentialSelected="credentialSelected" />
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -99,6 +101,7 @@
 				<parameter-input-list
 					:parameters="parametersSetting"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path="parameters"
 					@valueChanged="valueChanged"
 				/>
@@ -106,11 +109,13 @@
 					:parameters="nodeSettings"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path=""
 					@valueChanged="valueChanged"
 				/>
 			</div>
 		</div>
+		<n8n-block-ui :show="blockUI" />
 	</div>
 </template>
 
@@ -142,14 +147,13 @@ import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from './helpers';
 
-export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
+export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
 	components: {
 		NodeTitle,
@@ -198,7 +202,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			};
 		},
 		node(): INodeUi {
-			return this.$store.getters.activeNode;
+			return this.$store.getters['ndv/activeNode'];
 		},
 		parametersSetting(): INodeProperties[] {
 			return this.parameters.filter((item) => {
@@ -218,10 +222,13 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			return this.nodeType.properties;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string } {
-			return this.$store.getters['ui/outputPanelEditMode'];
+			return this.$store.getters['ndv/outputPanelEditMode'];
 		},
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.node.type);
+		},
+		isTriggerNode(): boolean {
+			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
 		},
 	},
 	props: {
@@ -234,6 +241,13 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		},
 		nodeType: {
 			type: Object as PropType<INodeTypeDescription>,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		blockUI: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
@@ -753,6 +767,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 				package_name: this.node.type.split('.')[0],
 				node_type: this.node.type,
 			});
+		},
+		onStopExecution(){
+			this.$emit('stopExecution');
 		},
 	},
 	mounted() {

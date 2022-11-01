@@ -56,10 +56,12 @@ const ERROR_STATUS_PROPERTIES = [
  */
 const ERROR_NESTING_PROPERTIES = ['error', 'err', 'response', 'body', 'data'];
 
+interface ExecutionBaseErrorOptions {
+	cause?: Error | JsonObject;
+}
+
 export abstract class ExecutionBaseError extends Error {
 	description: string | null | undefined;
-
-	cause: Error | JsonObject;
 
 	timestamp: number;
 
@@ -67,18 +69,15 @@ export abstract class ExecutionBaseError extends Error {
 
 	lineNumber: number | undefined;
 
-	constructor(error: Error | ExecutionBaseError | JsonObject) {
-		super();
+	constructor(message: string, { cause }: ExecutionBaseErrorOptions) {
+		const options = cause instanceof Error ? { cause } : {};
+		super(message, options);
+
 		this.name = this.constructor.name;
-		this.cause = error;
 		this.timestamp = Date.now();
 
-		if (error.message) {
-			this.message = error.message as string;
-		}
-
-		if (error instanceof ExecutionBaseError) {
-			this.context = error.context;
+		if (cause instanceof ExecutionBaseError) {
+			this.context = cause.context;
 		}
 	}
 }
@@ -91,7 +90,8 @@ abstract class NodeError extends ExecutionBaseError {
 	node: INode;
 
 	constructor(node: INode, error: Error | JsonObject) {
-		super(error);
+		const message = error instanceof Error ? error.message : '';
+		super(message, { cause: error });
 		this.node = node;
 	}
 
@@ -120,23 +120,23 @@ abstract class NodeError extends ExecutionBaseError {
 	 *
 	 */
 	protected findProperty(
-		error: JsonObject,
+		jsonError: JsonObject,
 		potentialKeys: string[],
 		traversalKeys: string[] = [],
 	): string | null {
 		// eslint-disable-next-line no-restricted-syntax
 		for (const key of potentialKeys) {
-			const value = error[key];
+			const value = jsonError[key];
 			if (value) {
 				if (typeof value === 'string') return value;
 				if (typeof value === 'number') return value.toString();
 				if (Array.isArray(value)) {
 					const resolvedErrors: string[] = value
-						.map((error) => {
-							if (typeof error === 'string') return error;
-							if (typeof error === 'number') return error.toString();
-							if (this.isTraversableObject(error)) {
-								return this.findProperty(error, potentialKeys);
+						.map((jsonError) => {
+							if (typeof jsonError === 'string') return jsonError;
+							if (typeof jsonError === 'number') return jsonError.toString();
+							if (this.isTraversableObject(jsonError)) {
+								return this.findProperty(jsonError, potentialKeys);
 							}
 							return null;
 						})
@@ -158,7 +158,7 @@ abstract class NodeError extends ExecutionBaseError {
 
 		// eslint-disable-next-line no-restricted-syntax
 		for (const key of traversalKeys) {
-			const value = error[key];
+			const value = jsonError[key];
 			if (this.isTraversableObject(value)) {
 				const property = this.findProperty(value, potentialKeys, traversalKeys);
 				if (property) {
@@ -209,33 +209,27 @@ abstract class NodeError extends ExecutionBaseError {
 	}
 }
 
+interface NodeOperationErrorOptions {
+	description?: string;
+	runIndex?: number;
+	itemIndex?: number;
+}
+
 /**
  * Class for instantiating an operational error, e.g. an invalid credentials error.
  */
 export class NodeOperationError extends NodeError {
 	lineNumber: number | undefined;
 
-	constructor(
-		node: INode,
-		error: Error | string,
-		options?: { description?: string; runIndex?: number; itemIndex?: number },
-	) {
+	constructor(node: INode, error: Error | string, options: NodeOperationErrorOptions = {}) {
 		if (typeof error === 'string') {
 			error = new Error(error);
 		}
 		super(node, error);
 
-		if (options?.description) {
-			this.description = options.description;
-		}
-
-		if (options?.runIndex !== undefined) {
-			this.context.runIndex = options.runIndex;
-		}
-
-		if (options?.itemIndex !== undefined) {
-			this.context.itemIndex = options.itemIndex;
-		}
+		this.description = options.description;
+		this.context.runIndex = options.runIndex;
+		this.context.itemIndex = options.itemIndex;
 	}
 }
 
@@ -258,6 +252,12 @@ const STATUS_CODE_MESSAGES: IStatusCodeMessages = {
 
 const UNKNOWN_ERROR_MESSAGE = 'UNKNOWN ERROR - check the detailed error for more information';
 
+interface NodeApiErrorOptions extends NodeOperationErrorOptions {
+	message?: string;
+	httpCode?: string;
+	parseXml?: boolean;
+}
+
 /**
  * Class for instantiating an error in an API response, e.g. a 404 Not Found response,
  * with an HTTP error code, an error message and a description.
@@ -268,21 +268,7 @@ export class NodeApiError extends NodeError {
 	constructor(
 		node: INode,
 		error: JsonObject,
-		{
-			message,
-			description,
-			httpCode,
-			parseXml,
-			runIndex,
-			itemIndex,
-		}: {
-			message?: string;
-			description?: string;
-			httpCode?: string;
-			parseXml?: boolean;
-			runIndex?: number;
-			itemIndex?: number;
-		} = {},
+		{ message, description, httpCode, parseXml, runIndex, itemIndex }: NodeApiErrorOptions = {},
 	) {
 		super(node, error);
 		if (error.error) {

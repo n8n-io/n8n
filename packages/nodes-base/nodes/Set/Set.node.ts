@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IDataObject,
 	INodeExecutionData,
 	INodeParameters,
@@ -162,7 +163,7 @@ export class Set implements INodeType {
 					Object.assign(newItem.binary, item.binary);
 				}
 
-				newItem.json = JSON.parse(JSON.stringify(item.json));
+				newItem.json = deepCopy(item.json);
 			}
 
 			// Add boolean values

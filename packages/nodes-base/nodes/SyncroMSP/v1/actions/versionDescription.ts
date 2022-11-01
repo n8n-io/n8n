@@ -17,7 +17,6 @@ export const versionDescription: INodeTypeDescription = {
 	description: 'Gets data from SyncroMSP',
 	defaults: {
 		name: 'SyncroMSP',
-		color: '#08a4ab',
 	},
 	inputs: ['main'],
 	outputs: ['main'],

@@ -113,6 +113,7 @@ export default mixins(
 	},
 	methods: {
 		addWorkflow() {
+			this.$store.commit('ui/setNodeViewInitialized', false);
 			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 
 			this.$telemetry.track('User clicked add workflow button', {
