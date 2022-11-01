@@ -13,7 +13,7 @@ export class PermissionChecker {
 
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
-		if (workflowCredIds.length === 0) return true;
+		if (workflowCredIds.length === 0) return;
 
 		// allow if requesting user is instance owner
 
@@ -21,13 +21,14 @@ export class PermissionChecker {
 			relations: ['globalRole'],
 		});
 
-		if (user.globalRole.name === 'owner') return true;
+		if (user.globalRole.name === 'owner') return;
 
 		// allow if all creds used in this workflow are a subset of
 		// all creds accessible to users who have access to this workflow
 
 		const workflowSharings = await Db.collections.SharedWorkflow.find({
-			where: { workflow },
+			relations: ['workflow'],
+			where: { workflow: { id: Number(workflow.id) } },
 		});
 
 		const workflowUserIds = workflowSharings.map((s) => s.userId);
@@ -40,7 +41,7 @@ export class PermissionChecker {
 
 		const inaccessibleCredIds = workflowCredIds.filter((id) => !accessibleCredIds.includes(id));
 
-		if (inaccessibleCredIds.length === 0) return true;
+		if (inaccessibleCredIds.length === 0) return;
 
 		// if disallowed, flag only first node using first inaccessible cred
 
