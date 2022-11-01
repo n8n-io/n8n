@@ -1,8 +1,11 @@
 /* eslint-disable no-underscore-dangle */
 import { Client, Entry, ClientOptions } from 'ldapts';
-import { IDataObject, LoggerProxy as Logger } from 'n8n-workflow';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 // eslint-disable-next-line import/no-cycle
 import type { LdapConfig } from './types';
+import { formatUrl } from './helpers';
+import { ConnectionSecurity } from './constants';
+import { ConnectionOptions } from 'tls';
 
 export class LdapService {
 	private client: Client | undefined;
@@ -30,17 +33,25 @@ export class LdapService {
 		}
 		if (this.client === undefined) {
 			Logger.info(`LDAP - Creating new LDAP client`);
-			const ldapOptions: ClientOptions = { url: this._config.connection.url };
-			const tlsOptions: IDataObject = {};
-			if (this._config.connection.useSsl) {
-				tlsOptions.rejectUnauthorized = !this._config.connection.allowUnauthorizedCerts;
-				if (!this._config.connection.startTLS) {
+			const url = formatUrl(
+				this._config.connection.url,
+				this._config.connection.port,
+				this._config.connection.security,
+			);
+			const ldapOptions: ClientOptions = { url };
+			const tlsOptions: ConnectionOptions = {};
+
+			if (this._config.connection.security !== ConnectionSecurity.NONE) {
+				Object.assign(tlsOptions, {
+					rejectUnauthorized: !this._config.connection.allowUnauthorizedCerts,
+				});
+				if (this._config.connection.security === ConnectionSecurity.TLS) {
 					ldapOptions.tlsOptions = tlsOptions;
 				}
 			}
 
 			this.client = new Client(ldapOptions);
-			if (this._config.connection.startTLS) {
+			if (this._config.connection.security === ConnectionSecurity.STARTTLS) {
 				await this.client.startTLS(tlsOptions);
 			}
 		}

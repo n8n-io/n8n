@@ -1339,5 +1339,8 @@
 	"settings.ldap.syncronizationTable.column.runTime": "Run Time",
 	"settings.ldap.syncronizationTable.column.details": "Details",
 	"settings.ldap.dryRun": "Dry Run",
-	"settings.ldap.synchronizeNow": "Synchronize Now"
+	"settings.ldap.synchronizeNow": "Synchronize Now",
+	"settings.ldap.syncronizationError": "LDAP Syncronization Error",
+	"settings.ldap.configurationError": "LDAP Configuration Error",
+	"settings.ldap.usersScanned": "Users scanned {scanned}"
 }
