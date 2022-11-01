@@ -17,7 +17,7 @@ export function randomApiKey() {
 
 const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
 
-const randomDigit = () => Math.floor(Math.random() * 10);
+export const randomDigit = () => Math.floor(Math.random() * 10);
 
 const randomUppercaseLetter = () => chooseRandomly('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
 
