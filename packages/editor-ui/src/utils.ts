@@ -56,3 +56,5 @@ export const isEmpty = (value?: unknown): boolean => {
 	}
 	return false;
 };
+
+export const intersection = <T>(a: T[], b:T[]): T[] => a.filter(Set.prototype.has, new Set(b));
