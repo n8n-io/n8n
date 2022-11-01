@@ -1,11 +1,13 @@
 import { INodeProperties } from 'n8n-workflow';
 import * as create from './create.operation';
+import * as createEvent from './createEvent.operation';
 import * as get from './get.operation';
 import * as getAll from './getAll.operation';
+import * as getEvents from './getEvents.operation';
 import * as del from './delete.operation';
 import * as update from './update.operation';
 
-export { create, del as delete, get, getAll, update };
+export { create, createEvent, del as delete, get, getAll, getEvents, update };
 
 export const description: INodeProperties[] = [
 	{
@@ -79,8 +81,10 @@ export const description: INodeProperties[] = [
 	},
 
 	...create.description,
+	...createEvent.description,
 	...del.description,
 	...get.description,
 	...getAll.description,
+	...getEvents.description,
 	...update.description,
 ];

@@ -1,4 +1,4 @@
-import { IDataObject, INodeExecutionData, NodeApiError } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export const messageFields = [
 	'bccRecipients',
@@ -27,6 +27,48 @@ export const messageFields = [
 	'sentDateTime',
 	'subject',
 	'toRecipients',
+	'webLink',
+].map((field) => ({ name: field, value: field }));
+
+export const eventfields = [
+	'allowNewTimeProposals',
+	'attendees',
+	'body',
+	'bodyPreview',
+	'categories',
+	'changeKey',
+	'createdDateTime',
+	'end',
+	'hasAttachments',
+	'hideAttendees',
+	'iCalUId',
+	'importance',
+	'isAllDay',
+	'isCancelled',
+	'isDraft',
+	'isOnlineMeeting',
+	'isOrganizer',
+	'isReminderOn',
+	'lastModifiedDateTime',
+	'location',
+	'locations',
+	'onlineMeeting',
+	'onlineMeetingProvider',
+	'onlineMeetingUrl',
+	'organizer',
+	'originalEndTimeZone',
+	'originalStartTimeZone',
+	'recurrence',
+	'reminderMinutesBeforeStart',
+	'responseRequested',
+	'responseStatus',
+	'sensitivity',
+	'seriesMasterId',
+	'showAs',
+	'start',
+	'subject',
+	'transactionId',
+	'type',
 	'webLink',
 ].map((field) => ({ name: field, value: field }));
 

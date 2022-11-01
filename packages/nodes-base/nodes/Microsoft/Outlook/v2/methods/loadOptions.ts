@@ -48,3 +48,14 @@ export async function getCalendarGroups(
 	}
 	return returnData;
 }
+export async function getCalendars(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const calendars = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/calendars');
+	for (const calendar of calendars) {
+		returnData.push({
+			name: calendar.name as string,
+			value: calendar.id as string,
+		});
+	}
+	return returnData;
+}

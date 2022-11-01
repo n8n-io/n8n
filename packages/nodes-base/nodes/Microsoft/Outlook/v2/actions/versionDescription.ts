@@ -4,6 +4,7 @@ import * as calendar from './calendar/Calendar.resource';
 import * as contact from './contact/Contact.resource';
 import * as draft from './draft/Draft.resource';
 import * as folder from './folder/Folder.resource';
+import * as folderMessage from './folderMessage/FolderMessage.resource';
 import * as message from './message/Message.resource';
 import * as messageAttachment from './messageAttachment/MessageAttachment.resource';
 
@@ -51,6 +52,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'folder',
 				},
 				{
+					name: 'Folder Message',
+					value: 'folderMessage',
+				},
+				{
 					name: 'Message',
 					value: 'message',
 				},
@@ -64,6 +69,7 @@ export const versionDescription: INodeTypeDescription = {
 		...contact.description,
 		...draft.description,
 		...folder.description,
+		...folderMessage.description,
 		...message.description,
 		...messageAttachment.description,
 	],
