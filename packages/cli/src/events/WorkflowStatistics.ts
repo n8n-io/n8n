@@ -45,7 +45,6 @@ eventEmitter.on(
 
 eventEmitter.on(eventEmitter.types.nodeFetchedData, async (workflowId: string) => {
 	// Get the workflow id
-	console.log('event', workflowId);
 	let id: number;
 	try {
 		id = parseInt(workflowId, 10);
@@ -55,7 +54,6 @@ eventEmitter.on(eventEmitter.types.nodeFetchedData, async (workflowId: string) =
 	}
 
 	// Update only if necessary
-	console.log('update db');
 	const response = await Db.collections.Workflow.update(
 		{ id, dataLoaded: false },
 		{ dataLoaded: true },

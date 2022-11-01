@@ -433,6 +433,11 @@ export class WorkflowRunnerProcess {
 					await this.sendHookToParentProcess('workflowExecuteAfter', [fullRunData, newStaticData]);
 				},
 			],
+			nodeFetchedData: [
+				async (workflowId: string) => {
+					await this.sendHookToParentProcess('nodeFetchedData', [workflowId]);
+				},
+			],
 		};
 
 		const preExecuteFunctions = WorkflowExecuteAdditionalData.hookFunctionsPreExecute();

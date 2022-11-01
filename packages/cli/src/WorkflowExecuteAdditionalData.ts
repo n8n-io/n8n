@@ -651,6 +651,11 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 				}
 			},
 		],
+		nodeFetchedData: [
+			async (workflowId: string) => {
+				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId);
+			},
+		],
 	};
 }
 
@@ -742,8 +747,17 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 						this.retryOf,
 					);
 				} finally {
-					eventEmitter.emit('saveWorkflowStatistics', this.workflowData, fullRunData);
+					eventEmitter.emit(
+						eventEmitter.types.workflowExecutionCompleted,
+						this.workflowData,
+						fullRunData,
+					);
 				}
+			},
+		],
+		nodeFetchedData: [
+			async (workflowId: string) => {
+				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId);
 			},
 		],
 	};
