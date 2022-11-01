@@ -19,49 +19,82 @@
 			</div>
 
 			<div>
-				<n8n-button float="right" :label="$locale.baseText('settings.ldap.save')" size="large" :disabled="!hasAnyChanges || !readyToSubmit" @click="onSaveClick" />
-				<n8n-button float="left" :label=" loadingTestConnection ? $locale.baseText('settings.ldap.testingConnection') : $locale.baseText('settings.ldap.testConnection')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingTestConnection" @click="onTestConnectionClick" />
+				<n8n-button
+					float="right"
+					:label="$locale.baseText('settings.ldap.save')"
+					size="large"
+					:disabled="!hasAnyChanges || !readyToSubmit"
+					@click="onSaveClick"
+				/>
+				<n8n-button
+					float="left"
+					:label="
+						loadingTestConnection
+							? $locale.baseText('settings.ldap.testingConnection')
+							: $locale.baseText('settings.ldap.testConnection')
+					"
+					size="large"
+					:disabled="hasAnyChanges || !readyToSubmit"
+					:loading="loadingTestConnection"
+					@click="onTestConnectionClick"
+				/>
 			</div>
 		</div>
 		<div :class="$style.syncTable">
 			<el-table
-			v-loading="loadingTable"
-			:border="true"
-			:stripe="true"
-			:data="dataTable"
-			:cell-style="cellClassStyle"
-			style="width: 100%"
-			height="250">
-			<el-table-column
-				prop="status"
-				:label="$locale.baseText('settings.ldap.syncronizationTable.column.status')"
+				v-loading="loadingTable"
+				:border="true"
+				:stripe="true"
+				:data="dataTable"
+				:cell-style="cellClassStyle"
+				style="width: 100%"
+				height="250"
+			>
+				<el-table-column
+					prop="status"
+					:label="$locale.baseText('settings.ldap.syncronizationTable.column.status')"
 				>
-			</el-table-column>
-			<el-table-column
-				prop="endedAt"
-				:label="$locale.baseText('settings.ldap.syncronizationTable.column.endedAt')"
-			>
-			</el-table-column>
-			<el-table-column
-				prop="runMode"
-				:label="$locale.baseText('settings.ldap.syncronizationTable.column.runMode')"
-			>
-			</el-table-column>
-			<el-table-column
-				prop="runTime"
-				:label="$locale.baseText('settings.ldap.syncronizationTable.column.runTime')"
-			>
-			</el-table-column>
-			<el-table-column
-				prop="details"
-				:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
+				</el-table-column>
+				<el-table-column
+					prop="endedAt"
+					:label="$locale.baseText('settings.ldap.syncronizationTable.column.endedAt')"
 				>
-			</el-table-column>
-		</el-table>
+				</el-table-column>
+				<el-table-column
+					prop="runMode"
+					:label="$locale.baseText('settings.ldap.syncronizationTable.column.runMode')"
+				>
+				</el-table-column>
+				<el-table-column
+					prop="runTime"
+					:label="$locale.baseText('settings.ldap.syncronizationTable.column.runTime')"
+				>
+				</el-table-column>
+				<el-table-column
+					prop="details"
+					:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
+				>
+				</el-table-column>
+			</el-table>
 		</div>
 		<div :class="$style.syncronizationActionButtons">
-			<n8n-button float="right" :label="$locale.baseText('settings.ldap.dryRun')" type="secondary" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingDryRun" @click="onDryRunClick" />
-			<n8n-button float="left" :label="$locale.baseText('settings.ldap.synchronizeNow')" size="large" :disabled="hasAnyChanges || !readyToSubmit" :loading="loadingLiveRun" @click="onLiveRunClick" />
+			<n8n-button
+				float="right"
+				:label="$locale.baseText('settings.ldap.dryRun')"
+				type="secondary"
+				size="large"
+				:disabled="hasAnyChanges || !readyToSubmit"
+				:loading="loadingDryRun"
+				@click="onDryRunClick"
+			/>
+			<n8n-button
+				float="left"
+				:label="$locale.baseText('settings.ldap.synchronizeNow')"
+				size="large"
+				:disabled="hasAnyChanges || !readyToSubmit"
+				:loading="loadingLiveRun"
+				@click="onLiveRunClick"
+			/>
 		</div>
 	</SettingsView>
 </template>
@@ -76,9 +109,7 @@ import mixins from 'vue-typed-mixins';
 import SettingsView from './SettingsView.vue';
 import humanizeDuration from 'humanize-duration';
 
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'SettingsLdapView',
 	components: {
 		SettingsView,
@@ -111,16 +142,16 @@ export default mixins(
 		cellClassStyle({ row, column }) {
 			if (column.property === 'status') {
 				if (row.status === 'Success') {
-					return { color: 'green'};
+					return { color: 'green' };
 				} else if (row.status === 'Error') {
-					return { color: 'red'};
+					return { color: 'red' };
 				}
 			}
 			if (column.property === 'runMode') {
 				if (row.runMode === 'Dry') {
-					return { color: 'orange'};
+					return { color: 'orange' };
 				} else if (row.runMode === 'Live') {
-					return { color: 'blue'};
+					return { color: 'blue' };
 				}
 			}
 		},
@@ -131,27 +162,27 @@ export default mixins(
 			this.readyToSubmit = ready;
 		},
 		async onSubmit(form: {
-				loginEnabled: string,
-				loginLabel: string,
-				serverAddress: string,
-				baseDn: string,
-				bindingType: string,
-				adminDn: string,
-				adminPassword: string,
-				loginId: string,
-				email: string,
-				lastName: string,
-				firstName: string,
-				ldapId: string,
-				syncronizationEnabled: string,
-				useSsl: string;
-				allowUnauthorizedCerts: string;
-				startTLS: string;
-				syncronizationInterval: string;
-				userFilter: string;
-				pageSize: string;
-				searchTimeout: string;
-				}) {
+			loginEnabled: string;
+			loginLabel: string;
+			serverAddress: string;
+			baseDn: string;
+			bindingType: string;
+			adminDn: string;
+			adminPassword: string;
+			loginId: string;
+			email: string;
+			lastName: string;
+			firstName: string;
+			ldapId: string;
+			syncronizationEnabled: string;
+			useSsl: string;
+			allowUnauthorizedCerts: string;
+			startTLS: string;
+			syncronizationInterval: string;
+			userFilter: string;
+			pageSize: string;
+			searchTimeout: string;
+		}) {
 			if (!this.hasAnyChanges) {
 				return;
 			}
@@ -185,7 +216,7 @@ export default mixins(
 				syncronization: {
 					enabled: form.syncronizationEnabled === 'true' ? true : false,
 					interval: parseInt(form.syncronizationInterval || '60', 10),
-					pageSize:  parseInt(form.pageSize || '0', 10),
+					pageSize: parseInt(form.pageSize || '0', 10),
 					searchTimeout: parseInt(form.searchTimeout || '60', 10),
 				},
 			};
@@ -276,6 +307,7 @@ export default mixins(
 									value: 'false',
 								},
 							],
+							infoText: 'Whether to allow n8n users to sign-in using LDAP.',
 						},
 					},
 					{
@@ -285,6 +317,7 @@ export default mixins(
 							label: 'Login Label',
 							required: false,
 							placeholder: 'LDAP Username or Email',
+							infoText: 'The placeholder text that appears in the login field on the login page.',
 						},
 					},
 					{
@@ -362,6 +395,8 @@ export default mixins(
 									value: 'false',
 								},
 							],
+							infoText:
+								'Performs a StartTLS extended operation against the LDAP server to initiate a TLS-secured communication channel over an otherwise clear-text connection.',
 						},
 						shouldDisplay(values): boolean {
 							return values['useSsl'] === 'true';
@@ -373,8 +408,9 @@ export default mixins(
 						properties: {
 							label: 'Base DN',
 							required: true,
-							autocomplete: 'family-name',
 							capitalize: true,
+							infoText:
+								'Distinguished Name of the location where n8n should start its search for user in the AD/LDAP tree.',
 						},
 					},
 					{
@@ -400,8 +436,8 @@ export default mixins(
 						initialValue: this.adConfig.binding.adminDn,
 						properties: {
 							label: 'Binding DN',
-							autocomplete: 'family-name',
 							capitalize: true,
+							infoText: 'Distinguished Name of user used to perform the search.',
 						},
 						shouldDisplay(values): boolean {
 							return values['bindingType'] === 'admin';
@@ -409,11 +445,12 @@ export default mixins(
 					},
 					{
 						name: 'adminPassword',
-						initialValue:this.adConfig.binding.adminPassword,
+						initialValue: this.adConfig.binding.adminPassword,
 						properties: {
 							label: 'Binding Password',
 							type: 'password',
 							capitalize: true,
+							infoText: 'Password of the user provided in the Binding DN field.',
 						},
 						shouldDisplay(values): boolean {
 							return values['bindingType'] === 'admin';
@@ -434,6 +471,8 @@ export default mixins(
 							type: 'text',
 							required: false,
 							capitalize: true,
+							infoText:
+								'LDAP query to use when searching for user. Only users returned by this filter will be allowed to sign-in in n8n.',
 						},
 					},
 					{
@@ -449,9 +488,10 @@ export default mixins(
 						properties: {
 							label: 'ID',
 							type: 'text',
-							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							infoText:
+								'The atribute in the LDAP server used as a unique identifier in n8n. It shoud be an unique LDAP attribute like uid.',
 						},
 					},
 					{
@@ -463,6 +503,7 @@ export default mixins(
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							infoText: 'The attribute in the LDAP server used to log-in in n8n.',
 						},
 					},
 					{
@@ -474,6 +515,7 @@ export default mixins(
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							infoText: 'The attribute in the LDAP server used to populate the email in n8n.',
 						},
 					},
 					{
@@ -485,6 +527,8 @@ export default mixins(
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							placeholder: 'givenName',
+							infoText: 'The attribute in the LDAP server used to populate the first name in n8n.',
 						},
 					},
 					{
@@ -496,6 +540,8 @@ export default mixins(
 							autocomplete: 'email',
 							required: true,
 							capitalize: true,
+							placeholder: 'sn',
+							infoText: 'The attribute in the LDAP server used to populate the last name in n8n.',
 						},
 					},
 					{
@@ -525,42 +571,54 @@ export default mixins(
 									value: 'false',
 								},
 							],
+							infoText: 'Whether to enable background syncronizations.',
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === 'true';
 						},
 					},
 					{
-						name: 'syncronizationInterval (Minutes)',
-						initialValue:this.adConfig.syncronization.interval,
+						name: 'syncronizationInterval',
+						initialValue: this.adConfig.syncronization.interval,
 						properties: {
-							label: 'Syncronization Interval',
+							label: 'Syncronization Interval (Minutes)',
 							type: 'text',
+							infoText: 'How often the syncronization should run.',
 						},
 						shouldDisplay(values): boolean {
-							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';
+							return (
+								values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true'
+							);
 						},
 					},
 					{
 						name: 'pageSize',
-						initialValue:this.adConfig.syncronization.pageSize,
+						initialValue: this.adConfig.syncronization.pageSize,
 						properties: {
 							label: 'Page Size',
 							type: 'text',
+							infoText:
+								'Max number of records to return per page during syncronization. 0 for unlimited.',
 						},
 						shouldDisplay(values): boolean {
-							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';
+							return (
+								values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true'
+							);
 						},
 					},
 					{
-						name: 'searchTimeout (Seconds)',
-						initialValue:this.adConfig.syncronization.searchTimeout,
+						name: 'searchTimeout',
+						initialValue: this.adConfig.syncronization.searchTimeout,
 						properties: {
-							label: 'Search Timeout',
+							label: 'Search Timeout (Seconds)',
 							type: 'text',
+							infoText:
+								'The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server.',
 						},
 						shouldDisplay(values): boolean {
-							return values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true';
+							return (
+								values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true'
+							);
 						},
 					},
 				];
@@ -571,7 +629,9 @@ export default mixins(
 		async getLdapSyncronizations() {
 			try {
 				this.loadingTable = true;
-				const data = await this.$store.dispatch('settings/getLdapSyncronizations') as ILdapSyncData[];
+				const data = (await this.$store.dispatch(
+					'settings/getLdapSyncronizations',
+				)) as ILdapSyncData[];
 
 				const syncDataMapper = (sync: ILdapSyncData): ILdapSyncTable => {
 					const startedAt = new Date(sync.startedAt);
@@ -605,11 +665,11 @@ export default mixins(
 }
 
 .syncTable {
-		margin-bottom: var(--spacing-2xl);
+	margin-bottom: var(--spacing-2xl);
 }
 
 .syncronizationActionButtons {
-		padding-bottom: var(--spacing-3xl);
+	padding-bottom: var(--spacing-3xl);
 }
 
 .header {
@@ -623,19 +683,19 @@ export default mixins(
 }
 
 .enableFeatureContainer {
-	margin-bottom: var(--spacing-1xl),
+	margin-bottom: var(--spacing-1xl);
 }
 
 .enableFeatureContainer > span {
 	font-size: var(--font-size-s);
 	font-weight: var(--font-weight-bold);
-	padding: 0
+	padding: 0;
 }
 
 .enableFeatureContainer {
 	> * {
-    padding: .5em;
-  }
+		padding: 0.5em;
+	}
 }
 
 .sectionHeader {
@@ -650,6 +710,5 @@ export default mixins(
 // .el-table .error-row > .cell {
 // 	color: red !important;
 // }
-
 </style>
 
