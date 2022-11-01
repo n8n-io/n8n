@@ -3,7 +3,7 @@ import { IsString, Length } from 'class-validator';
 
 import { ITagDb } from '@/Interfaces';
 import { idStringifier } from '../utils/transformers';
-import { WorkflowEntity } from './WorkflowEntity';
+import type { WorkflowEntity } from './WorkflowEntity';
 import { AbstractEntity } from './AbstractEntity';
 
 @Entity()
@@ -20,6 +20,6 @@ export class TagEntity extends AbstractEntity implements ITagDb {
 	@Length(1, 24, { message: 'Tag name must be $constraint1 to $constraint2 characters long.' })
 	name: string;
 
-	@ManyToMany(() => WorkflowEntity, (workflow) => workflow.tags)
+	@ManyToMany('WorkflowEntity', 'tags')
 	workflows: WorkflowEntity[];
 }
