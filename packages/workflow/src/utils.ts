@@ -1,37 +1,41 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
-
-type Serializable = { toJSON?: () => string };
-
-export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
+type Primitives = string | number | boolean | bigint | symbol | null | undefined;
+export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
+	source: T,
+	hash = new WeakMap(),
+	path = '',
+): T => {
 	let clone: any;
+	let i: any;
 	const hasOwnProp = Object.prototype.hasOwnProperty.bind(source);
 	// Primitives & Null & Function
-	if (typeof source !== 'object' || source === null || source instanceof Function) {
+	if (typeof source !== 'object' || source === null || typeof source === 'function') {
 		return source;
 	}
-	// Date and other Serializable objects
-	const toJSON = (source as Serializable).toJSON;
-	if (typeof toJSON === 'function') {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		return toJSON.call(source) as T;
+	// TODO: remove this when other code parts not expecting objects with `.toJSON` method called
+	if (typeof source.toJSON === 'function') {
+		return source.toJSON() as T;
 	}
-	// Break any cyclic dependencies
 	if (hash.has(source)) {
 		return hash.get(source);
+	}
+	// Date
+	if (source instanceof Date) {
+		return new Date(source.getTime()) as T;
 	}
 	// Array
 	if (Array.isArray(source)) {
 		clone = [];
 		const len = source.length;
-		for (let i = 0; i < len; i++) {
-			clone[i] = deepCopy(source[i], hash, path + `[${i}]`);
+		for (i = 0; i < len; i++) {
+			clone[i] = deepCopy(source[i], hash, path + `[${i as string}]`);
 		}
 		return clone;
 	}
 	// Object
 	clone = {};
 	hash.set(source, clone);
-	for (const i in source) {
+	for (i in source) {
 		if (hasOwnProp(i)) {
 			clone[i] = deepCopy((source as any)[i], hash, path + `.${i as string}`);
 		}
