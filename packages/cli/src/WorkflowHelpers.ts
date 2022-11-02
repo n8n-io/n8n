@@ -233,7 +233,7 @@ export async function executeErrorWorkflow(
 		const workflowRunner = new WorkflowRunner();
 		await workflowRunner.run(runData);
 	} catch (error) {
-		ErrorReporterProxy.getInstance().error(error);
+		if (error instanceof Error) ErrorReporterProxy.getInstance().error(error);
 		Logger.error(
 			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 			{ workflowId: workflowErrorData.workflow.id },
@@ -409,10 +409,10 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 				// eslint-disable-next-line @typescript-eslint/no-use-before-define
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
-			} catch (e) {
-				ErrorReporterProxy.getInstance().error(e);
+			} catch (error) {
+				if (error instanceof Error) ErrorReporterProxy.getInstance().error(error);
 				Logger.error(
-					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`,
+					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 					{ workflowId: workflow.id },
 				);
 			}

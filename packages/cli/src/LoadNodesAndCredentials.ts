@@ -141,7 +141,7 @@ class LoadNodesAndCredentialsClass {
 				await this.loadDataFromPackage(packagePath);
 				// eslint-disable-next-line no-empty
 			} catch (error) {
-				ErrorReporterProxy.getInstance().error(error);
+				if (error instanceof Error) ErrorReporterProxy.getInstance().error(error);
 			}
 		}
 	}

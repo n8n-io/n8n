@@ -159,7 +159,7 @@ export function usersNamespace(this: N8nApp): void {
 					public_api: false,
 				});
 			} catch (error) {
-				ErrorReporterProxy.getInstance().error(error);
+				if (error instanceof Error) ErrorReporterProxy.getInstance().error(error);
 				Logger.error('Failed to create user shells', { userShells: createUsers });
 				throw new ResponseHelper.ResponseError('An error occurred during user creation');
 			}
