@@ -64,9 +64,6 @@ export default mixins(
 			value: {
 				type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
 			},
-			hideLabel: {
-				type: Boolean,
-			},
 			droppable: {
 				type: Boolean,
 			},
