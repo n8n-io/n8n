@@ -3044,7 +3044,7 @@ export default mixins(
 				// Add the nodes with the changed node names, expressions and connections
 				await this.addNodes(Object.values(tempWorkflow.nodes), tempWorkflow.connectionsBySourceNode);
 
-				uiStore.stateIsDirty = true;
+				this.uiStore.stateIsDirty = true;
 
 				return {
 					nodes: Object.values(tempWorkflow.nodes),

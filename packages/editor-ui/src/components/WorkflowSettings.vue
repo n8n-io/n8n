@@ -629,9 +629,9 @@ export default mixins(
 				}
 			}
 
-			const oldSettings = deepCopy(this.settingsStore.settings);
+			const oldSettings = deepCopy(this.workflowsStore.workflowSettings);
 
-			this.settingsStore.setSettings(localWorkflowSettings as unknown as IN8nUISettings);
+			this.workflowsStore.setWorkflowSettings(localWorkflowSettings);
 
 			this.isLoading = false;
 

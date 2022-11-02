@@ -300,7 +300,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
 				const activeNotInTheList = existingExecutions.find(ex => ex.id === this.activeExecution.id) === undefined;
-				if (activeNotInTheList) {
+				if (activeNotInTheList && this.executions.length > 0) {
 					this.$router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
 					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
