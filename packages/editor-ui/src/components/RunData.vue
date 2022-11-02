@@ -229,6 +229,7 @@
 				:hasDefaultHoverState="paneType === 'input'"
 				@mounted="$emit('tableMounted', $event)"
 				@activeRowChanged="onItemHover"
+				@displayModeChange="onDisplayModeChange"
 			/>
 
 			<run-data-json
