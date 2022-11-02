@@ -1,13 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-type Primitives = string | number | boolean | bigint | symbol;
-type WithToJSON = (object | Date) & { toJSON?: () => string };
-export const deepCopy = <T extends WithToJSON | Primitives>(
+type Primitives = string | number | boolean | bigint | symbol | null | undefined;
+export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
 	source: T,
 	hash = new WeakMap(),
 	path = '',
 ): T => {
 	let clone: any;
-	let i: string | number;
+	let i: any;
 	const hasOwnProp = Object.prototype.hasOwnProperty.bind(source);
 	// Primitives & Null & Function
 	if (typeof source !== 'object' || source === null || typeof source === 'function') {
@@ -29,7 +28,7 @@ export const deepCopy = <T extends WithToJSON | Primitives>(
 		clone = [];
 		const len = source.length;
 		for (i = 0; i < len; i++) {
-			clone[i] = deepCopy(source[i], hash, path + `[${i}]`);
+			clone[i] = deepCopy(source[i], hash, path + `[${i as string}]`);
 		}
 		return clone;
 	}
@@ -38,7 +37,7 @@ export const deepCopy = <T extends WithToJSON | Primitives>(
 	hash.set(source, clone);
 	for (i in source) {
 		if (hasOwnProp(i)) {
-			clone[i] = deepCopy((source as any)[i], hash, path + `.${i}`);
+			clone[i] = deepCopy((source as any)[i], hash, path + `.${i as string}`);
 		}
 	}
 	return clone;
