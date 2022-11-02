@@ -91,7 +91,8 @@
     "@types/uuid": "^8.3.2",
     "@types/validator": "^13.7.0",
     "@types/yamljs": "^0.2.31",
-    "concurrently": "^5.1.0"
+    "concurrently": "^5.1.0",
+    "nodemon": "^2.0.2"
   },
   "dependencies": {
     "@oclif/command": "^1.8.16",
