@@ -9,6 +9,13 @@ export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 	if (typeof source !== 'object' || source === null || source instanceof Function) {
 		return source;
 	}
+	// Date and other Serializable objects
+	const toJSON = (source as Serializable).toJSON;
+	if (typeof toJSON === 'function') {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		return toJSON.call(source) as T;
+	}
+	// Break any cyclic dependencies
 	if (hash.has(source)) {
 		return hash.get(source);
 	}
@@ -21,13 +28,6 @@ export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 		}
 		return clone;
 	}
-	// Date and other Serializable objects
-	const toJSON = (source as Serializable).toJSON;
-	if (typeof toJSON === 'function') {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		return toJSON.call(source) as T;
-	}
-
 	// Object
 	clone = {};
 	hash.set(source, clone);
