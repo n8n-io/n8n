@@ -224,7 +224,7 @@ export default mixins(externalHooks).extend({
 			useWorkflowsStore,
 		),
 		hoveringItem(): NDVState['hoveringItem'] {
-			return this.$store.getters['ndv/hoveringItem'];
+			return this.ndvStore.hoveringItem;
 		},
 		pairedItemMappings(): {[itemId: string]: Set<string>} {
 			return this.workflowsStore.workflowExecutionPairedItemMappings;

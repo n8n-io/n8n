@@ -145,6 +145,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(
 	externalHooks,
@@ -198,6 +199,7 @@ export default mixins(
 		...mapStores(
 			useNodeTypesStore,
 			useNDVStore,
+			useUIStore,
 			useWorkflowsStore,
 		),
 		sessionId(): string {
@@ -350,10 +352,10 @@ export default mixins(
 			return this.ndvStore.outputPanelEditMode;
 		},
 		isWorkflowRunning(): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		isExecutionWaitingForWebhook(): boolean {
-			return this.$store.getters.executionWaitingForWebhook;
+			return this.workflowsStore.executionWaitingForWebhook;
 		},
 		blockUi(): boolean {
 			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;

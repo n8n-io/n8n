@@ -136,16 +136,16 @@ export default mixins(workflowHelpers).extend({
 			return null;
 		},
 		currentWorkflowId(): string {
-			return this.$store.getters.workflowId;
+			return this.workflowsStore.workflowId;
 		},
 		isNewWorkflow(): boolean {
 			return !this.currentWorkflowId || (this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID || this.currentWorkflowId === 'new');
 		},
 		workflowName(): string {
-			return this.$store.getters.workflowName;
+			return this.workflowsStore.workflowName;
 		},
 		currentWorkflowTagIds(): string[] {
-			return this.$store.getters.workflowTags;
+			return this.workflowsStore.workflowTags;
 		},
 	},
 	methods: {
@@ -167,7 +167,7 @@ export default mixins(workflowHelpers).extend({
 			}
 		},
 		openWorkflowSettings(event: MouseEvent): void {
-			this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+			this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 		},
 		async onSaveWorkflowClick(event: MouseEvent): void {
 			let currentId = undefined;
@@ -177,7 +177,7 @@ export default mixins(workflowHelpers).extend({
 				currentId = this.$route.params.name;
 			}
 			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
-			if (saved) this.$store.dispatch('settings/fetchPromptsData');
+			if (saved) this.settingsStore.fetchPromptsData();
 		},
 	},
 });

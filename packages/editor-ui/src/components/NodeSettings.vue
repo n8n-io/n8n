@@ -239,7 +239,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			return isCommunityPackageName(this.node.type);
 		},
 		isTriggerNode(): boolean {
-			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
+			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 	},
 	props: {
