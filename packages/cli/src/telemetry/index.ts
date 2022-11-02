@@ -21,6 +21,7 @@ interface IExecutionsBuffer {
 		manual_success?: IExecutionTrackData;
 		prod_error?: IExecutionTrackData;
 		prod_success?: IExecutionTrackData;
+		user_id: string | undefined;
 	};
 }
 
@@ -81,11 +82,15 @@ export class Telemetry {
 		}
 
 		const allPromises = Object.keys(this.executionCountsBuffer).map(async (workflowId) => {
-			const promise = this.track('Workflow execution count', {
-				event_version: '2',
-				workflow_id: workflowId,
-				...this.executionCountsBuffer[workflowId],
-			});
+			const promise = this.track(
+				'Workflow execution count',
+				{
+					event_version: '2',
+					workflow_id: workflowId,
+					...this.executionCountsBuffer[workflowId],
+				},
+				{ withPostHog: true },
+			);
 
 			return promise;
 		});
@@ -100,7 +105,9 @@ export class Telemetry {
 			const execTime = new Date();
 			const workflowId = properties.workflow_id;
 
-			this.executionCountsBuffer[workflowId] = this.executionCountsBuffer[workflowId] ?? {};
+			this.executionCountsBuffer[workflowId] = this.executionCountsBuffer[workflowId] ?? {
+				user_id: properties.user_id,
+			};
 
 			const key: ExecutionTrackDataKey = `${properties.is_manual ? 'manual' : 'prod'}_${
 				properties.success ? 'success' : 'error'
