@@ -9,28 +9,23 @@ interface IErrorReporter {
 }
 
 class ErrorReporterProxy {
-	constructor(private reporter: IErrorReporter) {}
-
-	error(error: Error) {
-		this.reporter.error(error);
-	}
-
-	warn(warning: string) {
-		this.reporter.warn(warning);
-	}
+	constructor(readonly reporter: IErrorReporter) {}
 }
 
-const stub = new ErrorReporterProxy({
-	error: (error: Error) => console.trace('ERROR', error.message, error.stack),
-	warn: (warning) => console.trace('WARN', warning),
-});
+const isTesting = process.env.NODE_ENV === 'test';
+const consoleReporter: IErrorReporter = {
+	error: (error) => isTesting || console.error('ERROR', error.message, error.stack),
+	warn: (warning) => isTesting || console.warn('WARN', warning),
+};
 
 let instance: ErrorReporterProxy;
-export function getInstance(): ErrorReporterProxy {
-	if (instance) return instance;
+export function getInstance(): IErrorReporter {
+	if (instance) return instance.reporter;
 
-	console.warn('ErrorReporterProxy is not yet initialized');
-	return stub;
+	if (!isTesting) {
+		console.warn('ErrorReporterProxy is not yet initialized');
+	}
+	return consoleReporter;
 }
 
 export function init(errorReporter: IErrorReporter) {
