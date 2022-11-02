@@ -38,7 +38,7 @@ export const nodeBase = mixins(
 			return this.workflowsStore.getNodeByName(this.name);
 		},
 		nodeId (): string {
-			return this.data ? this.data.id as string : '';
+			return this.data?.id  || '';
 		},
 	},
 	props: {
@@ -315,7 +315,7 @@ export const nodeBase = mixins(
 			});
 		},
 		__addNode (node: INodeUi) {
-			let nodeTypeData = this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
+			let nodeTypeData = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
 				nodeTypeData = this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE);

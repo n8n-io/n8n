@@ -335,7 +335,7 @@ export const pushConnection = mixins(
 						const execution = this.workflowsStore.getWorkflowExecution;
 						if (execution && execution.executedNode) {
 							const node = this.workflowsStore.getNodeByName(execution.executedNode);
-							const nodeType = node && this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
+							const nodeType = node && this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 							const nodeOutput = execution && execution.executedNode && execution.data && execution.data.resultData && execution.data.resultData.runData && execution.data.resultData.runData[execution.executedNode];
 							if (node && nodeType && !nodeOutput) {
 								this.$showMessage({

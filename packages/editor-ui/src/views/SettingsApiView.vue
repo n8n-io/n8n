@@ -107,8 +107,8 @@ export default mixins(
 			useSettingsStore,
 			useUsersStore,
 		),
-		currentUser(): IUser {
-			return this.usersStore.currentUser || {} as IUser;
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
 		},
 	},
 	methods: {

@@ -380,8 +380,8 @@ export default mixins(
 			nativelyNumberSuffixedDefaults(): string[] {
 				return this.rootStore.nativelyNumberSuffixedDefaults;
 			},
-			currentUser(): IUser {
-				return this.usersStore.currentUser || {} as IUser;
+			currentUser(): IUser | null {
+				return this.usersStore.currentUser;
 			},
 			defaultLocale(): string {
 				return this.rootStore.defaultLocale;
@@ -1944,15 +1944,17 @@ export default mixins(
 						const sourceInfo = info.sourceEndpoint.getParameters();
 						const targetInfo = info.targetEndpoint.getParameters();
 
-						const sourceNodeName = this.workflowsStore.getNodeById(sourceInfo.nodeId)?.name || '';
-						const targetNodeName = this.workflowsStore.getNodeById(targetInfo.nodeId)?.name || '';
+						const sourceNodeName = this.workflowsStore.getNodeById(sourceInfo.nodeId)?.name;
+						const targetNodeName = this.workflowsStore.getNodeById(targetInfo.nodeId)?.name;
 
-						info.connection.__meta = {
-							sourceNodeName,
-							sourceOutputIndex: sourceInfo.index,
-							targetNodeName,
-							targetOutputIndex: targetInfo.index,
-						};
+						if (sourceNodeName && targetNodeName) {
+							info.connection.__meta = {
+								sourceNodeName,
+								sourceOutputIndex: sourceInfo.index,
+								targetNodeName,
+								targetOutputIndex: targetInfo.index,
+							};
+						}
 
 						CanvasHelpers.resetConnection(info.connection);
 
@@ -2509,20 +2511,24 @@ export default mixins(
 			},
 			getIncomingOutgoingConnections(nodeName: string): { incoming: Connection[], outgoing: Connection[] } {
 				const node = this.workflowsStore.getNodeByName(nodeName);
-				// @ts-ignore
-				const outgoing = this.instance.getConnections({
-					source: node !== null ? node.id : '',
-				}) as Connection[];
 
-				// @ts-ignore
-				const incoming = this.instance.getConnections({
-					target: node !== null ? node.id : '',
-				}) as Connection[];
+				if (node) {
+					// @ts-ignore
+					const outgoing = this.instance.getConnections({
+						source: node.id,
+					});
 
-				return {
-					incoming,
-					outgoing,
-				};
+					// @ts-ignore
+					const incoming = this.instance.getConnections({
+						target: node.id,
+					}) as Connection[];
+
+					return {
+						incoming,
+						outgoing,
+					};
+				}
+				return { incoming: [], outgoing: [] };
 			},
 			onNodeMoved(node: INodeUi) {
 				const { incoming, outgoing } = this.getIncomingOutgoingConnections(node.name);
@@ -3345,8 +3351,9 @@ export default mixins(
 			this.$externalHooks().run('nodeView.mount').catch(e => {});
 
 			if (
-				this.currentUser.personalizationAnswers !== null &&
+				this.currentUser?.personalizationAnswers !== null &&
 				this.settingsStore.onboardingCallPromptEnabled &&
+				this.currentUser &&
 				getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX
 			) {
 				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
