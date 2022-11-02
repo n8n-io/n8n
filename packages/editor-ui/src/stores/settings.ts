@@ -187,12 +187,12 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				Promise.reject(error);
 			}
 		},
-		async submitContactInfo(email: string): Promise<void> {
+		async submitContactInfo(email: string): Promise<IN8nPromptResponse | undefined> {
 			try {
 				const usersStore = useUsersStore();
-				await submitContactInfo(this.settings.instanceId, usersStore.currentUserId || '', email);
+				return await submitContactInfo(this.settings.instanceId, usersStore.currentUserId || '', email);
 			} catch (error) {
-				Promise.reject(error);
+				return;
 			}
 		},
 		async submitValueSurvey(params: IN8nValueSurveyData): Promise<IN8nPromptResponse | undefined> {

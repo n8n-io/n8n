@@ -10,7 +10,7 @@ export async function getPromptsData(instanceId: string, userId: string): Promis
 	return await get(N8N_IO_BASE_URL, '/prompts', {}, {'n8n-instance-id': instanceId, 'n8n-user-id': userId});
 }
 
-export async function submitContactInfo(instanceId: string, userId: string, email: string): Promise<void> {
+export async function submitContactInfo(instanceId: string, userId: string, email: string): Promise<IN8nPromptResponse> {
 	return await post(N8N_IO_BASE_URL, '/prompt', { email }, {'n8n-instance-id': instanceId, 'n8n-user-id': userId});
 }
 
