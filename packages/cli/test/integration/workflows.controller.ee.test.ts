@@ -135,6 +135,40 @@ describe('PUT /workflows/:id', () => {
 	});
 });
 
+describe('GET /workflows', () => {
+	test('should return workflows with ownership and sharing details', async () => {
+		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+		const member = await testDb.createUser({ globalRole: globalMemberRole });
+
+		const workflow = await createWorkflow({}, owner);
+
+		await testDb.shareWorkflowWithUsers(workflow, [member]);
+
+		const response = await authAgent(owner).get('/workflows');
+
+		const [fetchedWorkflow] = response.body.data;
+
+		expect(response.statusCode).toBe(200);
+		expect(fetchedWorkflow.ownedBy).toMatchObject({
+			id: owner.id,
+			email: owner.email,
+			firstName: owner.firstName,
+			lastName: owner.lastName,
+		});
+
+		expect(fetchedWorkflow.sharedWith).toHaveLength(1);
+
+		const [sharee] = fetchedWorkflow.sharedWith;
+
+		expect(sharee).toMatchObject({
+			id: member.id,
+			email: member.email,
+			firstName: member.firstName,
+			lastName: member.lastName,
+		});
+	});
+});
+
 describe('GET /workflows/:id', () => {
 	test('GET should fail with invalid id due to route rule', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
