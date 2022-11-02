@@ -119,19 +119,13 @@ checked out and set up:
    git remote add upstream https://github.com/n8n-io/n8n.git
    ```
 
-5. Enable pnpm via corepack
-
-   ```
-   corepack prepare --activate
-   ```
-
-6. Install all dependencies of all modules and link them together:
+5. Install all dependencies of all modules and link them together:
 
    ```
    pnpm install
    ```
 
-7. Build all the code:
+6. Build all the code:
    ```
    pnpm build
    ```
