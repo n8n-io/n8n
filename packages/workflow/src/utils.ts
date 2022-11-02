@@ -12,16 +12,13 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 	if (typeof source !== 'object' || source === null || typeof source === 'function') {
 		return source;
 	}
-	// TODO: remove this when other code parts not expecting objects with `.toJSON` method called
+	// Date and other objects with toJSON method
+	// TODO: remove this when other code parts not expecting objects with `.toJSON` method called and add back checking for Date and cloning it properly
 	if (typeof source.toJSON === 'function') {
 		return source.toJSON() as T;
 	}
 	if (hash.has(source)) {
 		return hash.get(source);
-	}
-	// Date
-	if (source instanceof Date) {
-		return new Date(source.getTime()) as T;
 	}
 	// Array
 	if (Array.isArray(source)) {
