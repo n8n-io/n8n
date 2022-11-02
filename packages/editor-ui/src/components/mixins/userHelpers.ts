@@ -12,14 +12,14 @@ export const userHelpers = Vue.extend({
 			return this.canUserAccessRoute(route);
 		},
 
-		canUserAccessCurrentRoute() {
+		canUserAccessCurrentRoute(): boolean {
 			return this.canUserAccessRoute(this.$route);
 		},
 
 		canUserAccessRoute(route: Route): boolean {
 			const permissions: IPermissions = route.meta && route.meta.permissions;
 			const usersStore = useUsersStore();
-			const currentUser = usersStore.currentUser || {} as IUser;
+			const currentUser = usersStore.currentUser;
 
 			if (permissions && isAuthorized(permissions, currentUser)) {
 				return true;
