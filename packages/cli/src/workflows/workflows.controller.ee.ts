@@ -89,9 +89,11 @@ EEWorkflowController.get(
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
 			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
 		}
-		// @TODO: also return the credentials used by the workflow
 
-		return EEWorkflows.addOwnerAndSharings(workflow);
+		return EEWorkflows.addCredentialsToWorkflow(
+			EEWorkflows.addOwnerAndSharings(workflow),
+			req.user,
+		);
 	}),
 );
 
@@ -183,6 +185,7 @@ EEWorkflowController.patch(
 	'/:id(\\d+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
+		const forceSave = req.query.forceSave === 'true';
 
 		const updateData = new WorkflowEntity();
 		const { tags, ...rest } = req.body;
@@ -193,6 +196,7 @@ EEWorkflowController.patch(
 			updateData,
 			workflowId,
 			tags,
+			forceSave,
 		);
 
 		const { id, ...remainder } = updatedWorkflow;

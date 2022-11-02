@@ -28,6 +28,12 @@
 						:copy-button-text="$locale.baseText('generic.clickToCopy')"
 						@copy="onTestLinkCopied"
 					></CopyInput>
+					<NodeExecuteButton
+						:nodeName="nodeName"
+						@execute="onNodeExecute"
+						size="medium"
+						telemetrySource="inputs"
+					/>
 				</div>
 				<div v-else>
 					<n8n-text tag="div" size="large" color="text-dark" class="mb-2xs" bold>{{
@@ -60,7 +66,6 @@
 					</div>
 
 					<NodeExecuteButton
-						v-if="!isActivelyPolling"
 						:nodeName="nodeName"
 						@execute="onNodeExecute"
 						size="medium"

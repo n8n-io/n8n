@@ -159,10 +159,10 @@ importers:
       lodash.split: ^4.4.2
       lodash.unset: ^4.5.2
       mysql2: ~2.3.0
-      n8n-core: ~0.140.0
-      n8n-editor-ui: ~0.166.0
-      n8n-nodes-base: ~0.198.0
-      n8n-workflow: ~0.122.0
+      n8n-core: ~0.140.1
+      n8n-editor-ui: ~0.166.1
+      n8n-nodes-base: ~0.198.1
+      n8n-workflow: ~0.122.1
       nodemailer: ^6.7.1
       oauth-1.0a: ^2.2.6
       open: ^7.0.0
@@ -308,7 +308,7 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.122.0
+      n8n-workflow: ~0.122.1
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
       qs: ^6.10.1
@@ -480,7 +480,7 @@ importers:
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
       n8n-design-system: ~0.40.0
-      n8n-workflow: ~0.122.0
+      n8n-workflow: ~0.122.1
       normalize-wheel: ^1.0.1
       prismjs: ^1.17.1
       quill: 2.0.0-dev.4
@@ -607,8 +607,8 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.140.0
-      n8n-workflow: ~0.122.0
+      n8n-core: ~0.140.1
+      n8n-workflow: ~0.122.1
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
       request: ^2.88.2
@@ -670,7 +670,7 @@ importers:
       chokidar: 3.5.2
       cron: ~1.7.2
       currency-codes: ^2.1.0
-      eslint-plugin-n8n-nodes-base: ^1.10.0
+      eslint-plugin-n8n-nodes-base: ^1.11.0
       eventsource: ^2.0.2
       fast-glob: ^3.2.5
       fflate: ^0.7.0
@@ -698,8 +698,8 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.140.0
-      n8n-workflow: ~0.122.0
+      n8n-core: ~0.140.1
+      n8n-workflow: ~0.122.1
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
@@ -807,7 +807,7 @@ importers:
       '@types/tmp': 0.2.3
       '@types/uuid': 8.3.4
       '@types/xml2js': 0.4.11
-      eslint-plugin-n8n-nodes-base: 1.10.0_wyqvi574yv7oiwfeinomdzmc3m
+      eslint-plugin-n8n-nodes-base: 1.11.0_wyqvi574yv7oiwfeinomdzmc3m
       gulp: 4.0.2
       n8n-workflow: link:../workflow
       tslint: 6.1.3_typescript@4.8.4
@@ -10715,8 +10715,8 @@ packages:
     resolution: {integrity: sha512-qe6sVFDP1Vj5eXlqZxYZpIjwYvhuqXlI0P8OfPyhiPOhMkFtr0TpFphD8/6WCzkm7LJCvG1eJEzURCtMIsFTAg==}
     dev: true
 
-  /eslint-plugin-n8n-nodes-base/1.10.0_wyqvi574yv7oiwfeinomdzmc3m:
-    resolution: {integrity: sha512-idQlzyCnlEyX6PvP/Rl6UFRFVv9JRN5gBqbkn++jUwLB+Jg8DQmA+Fy0jvYoe06fN0AKY0asoXSDjCTZD5EimQ==}
+  /eslint-plugin-n8n-nodes-base/1.11.0_wyqvi574yv7oiwfeinomdzmc3m:
+    resolution: {integrity: sha512-1V0H+adPap9plU+nRyq7LFsetncXAWvCnH/LQwfoJJIzYpPuOlDKkz/WkcDUeI0orJDMWLrr3uTVCAKZT7IPJA==}
     dependencies:
       '@typescript-eslint/utils': 5.40.0_wyqvi574yv7oiwfeinomdzmc3m
       camel-case: 4.1.2
