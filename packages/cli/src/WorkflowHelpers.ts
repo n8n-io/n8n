@@ -18,6 +18,7 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	ErrorReporterProxy,
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
@@ -44,7 +45,6 @@ import config from '../config';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { User } from './databases/entities/User';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
-import { captureError } from './ErrorReporting';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -233,7 +233,7 @@ export async function executeErrorWorkflow(
 		const workflowRunner = new WorkflowRunner();
 		await workflowRunner.run(runData);
 	} catch (error) {
-		captureError(error);
+		ErrorReporterProxy.getInstance().error(error);
 		Logger.error(
 			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 			{ workflowId: workflowErrorData.workflow.id },
@@ -410,7 +410,7 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (e) {
-				captureError(e);
+				ErrorReporterProxy.getInstance().error(e);
 				Logger.error(
 					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`,
 					{ workflowId: workflow.id },

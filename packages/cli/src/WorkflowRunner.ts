@@ -15,6 +15,7 @@
 import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {
+	ErrorReporterProxy,
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -56,7 +57,7 @@ import * as Queue from './Queue';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from './WorkflowHelpers';
-import { initErrorHandling, captureError } from './ErrorReporting';
+import { initErrorHandling } from './ErrorReporting';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -101,7 +102,7 @@ export class WorkflowRunner {
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
-		captureError(error);
+		ErrorReporterProxy.getInstance().error(error);
 
 		const fullRunData: IRun = {
 			data: {
@@ -174,8 +175,8 @@ export class WorkflowRunner {
 				);
 			})
 			.catch((error) => {
+				ErrorReporterProxy.getInstance().error(error);
 				console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
-				captureError(error);
 			});
 
 		if (externalHooks.exists('workflow.postExecute')) {
@@ -188,8 +189,8 @@ export class WorkflowRunner {
 					]);
 				})
 				.catch((error) => {
+					ErrorReporterProxy.getInstance().error(error);
 					console.error('There was a problem running hook "workflow.postExecute"', error);
-					captureError(error);
 				});
 		}
 
@@ -270,7 +271,7 @@ export class WorkflowRunner {
 			try {
 				await checkPermissionsForExecution(workflow, data.userId);
 			} catch (error) {
-				captureError(error);
+				ErrorReporterProxy.getInstance().error(error);
 				// Create a failed execution with the data for the node
 				// save it and abort execution
 				const failedExecution = generateFailedExecutionFromError(
@@ -511,7 +512,7 @@ export class WorkflowRunner {
 						clearWatchdogInterval();
 					}
 				} catch (error) {
-					captureError(error);
+					ErrorReporterProxy.getInstance().error(error);
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(

@@ -70,6 +70,7 @@ import {
 	jsonParse,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
+	ErrorReporterProxy,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -154,7 +155,7 @@ import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
 
 import { toHttpNodeParameters } from './CurlConverterHelper';
-import { initErrorHandling, captureError } from './ErrorReporting';
+import { initErrorHandling } from './ErrorReporting';
 
 require('body-parser-xml')(bodyParser);
 
@@ -746,7 +747,7 @@ class App {
 				// DB ping
 				await connection.query('SELECT 1');
 			} catch (err) {
-				captureError(err);
+				ErrorReporterProxy.getInstance().error(err);
 				LoggerProxy.error('No Database connection!', err);
 				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);

@@ -22,6 +22,7 @@ import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions } from 'n8n-co
 
 import {
 	createDeferredPromise,
+	ErrorReporterProxy,
 	IBinaryKeyData,
 	IDataObject,
 	IDeferredPromise,
@@ -58,7 +59,6 @@ import * as ActiveExecutions from './ActiveExecutions';
 import { User } from './databases/entities/User';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
-import { captureError } from './ErrorReporting';
 
 const activeExecutions = ActiveExecutions.getInstance();
 
@@ -435,7 +435,7 @@ export async function executeWebhook(
 					didSendResponse = true;
 				})
 				.catch(async (error) => {
-					captureError(error);
+					ErrorReporterProxy.getInstance().error(error);
 					Logger.error(
 						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 						{ executionId, workflowId: workflow.id },

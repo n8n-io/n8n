@@ -4,17 +4,12 @@ export interface IReportingOptions {
 }
 
 interface IErrorReporter {
-	init: () => void;
 	error: (error: Error, options?: IReportingOptions) => void;
 	warn: (warning: string, options?: IReportingOptions) => void;
 }
 
 class ErrorReporterProxy {
 	constructor(private reporter: IErrorReporter) {}
-
-	init() {
-		this.reporter.init();
-	}
 
 	error(error: Error) {
 		this.reporter.error(error);
@@ -26,9 +21,8 @@ class ErrorReporterProxy {
 }
 
 const stub = new ErrorReporterProxy({
-	init: () => {},
-	error: (error: Error) => console.error('ERROR', error),
-	warn: (warning) => console.warn('WARN', warning),
+	error: (error: Error) => console.trace('ERROR', error.message, error.stack),
+	warn: (warning) => console.trace('WARN', warning),
 });
 
 let instance: ErrorReporterProxy;

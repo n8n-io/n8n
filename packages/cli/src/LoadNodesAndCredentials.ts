@@ -22,6 +22,7 @@ import {
 	IVersionedNodeType,
 	LoggerProxy,
 	jsonParse,
+	ErrorReporterProxy,
 } from 'n8n-workflow';
 
 import {
@@ -45,7 +46,6 @@ import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
 } from './CommunityNodes/packageModel';
-import { captureError } from './ErrorReporting';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -126,14 +126,14 @@ class LoadNodesAndCredentialsClass {
 		const nodePackages = [];
 		try {
 			// Read downloaded nodes and credentials
-			const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+			const downloadedNodesFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 			const downloadedNodesFolderModules = path.join(downloadedNodesFolder, 'node_modules');
 			await fsAccess(downloadedNodesFolderModules);
 			const downloadedPackages = await this.getN8nNodePackages(downloadedNodesFolderModules);
 			nodePackages.push(...downloadedPackages);
-			// eslint-disable-next-line no-empty
 		} catch (error) {
-			captureError(error);
+			// Folder does not exist so ignore and return
+			return;
 		}
 
 		for (const packagePath of nodePackages) {
@@ -141,7 +141,7 @@ class LoadNodesAndCredentialsClass {
 				await this.loadDataFromPackage(packagePath);
 				// eslint-disable-next-line no-empty
 			} catch (error) {
-				captureError(error);
+				ErrorReporterProxy.getInstance().error(error);
 			}
 		}
 	}
@@ -236,7 +236,7 @@ class LoadNodesAndCredentialsClass {
 	}
 
 	async loadNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
-		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 		const command = `npm install ${packageName}${version ? `@${version}` : ''}`;
 
 		await executeCommand(command);
@@ -290,7 +290,7 @@ class LoadNodesAndCredentialsClass {
 		packageName: string,
 		installedPackage: InstalledPackages,
 	): Promise<InstalledPackages> {
-		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
 		const command = `npm i ${packageName}@latest`;
 

@@ -14,27 +14,26 @@ export const initErrorHandling = (app?: Application) => {
 		return;
 	}
 
-	ErrorReporterProxy.init({
-		init() {
-			const dsn = config.getEnv('diagnostics.config.sentry.dsn');
-			const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
+	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
+	const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
 
-			Sentry.init({
-				dsn,
-				release,
-				environment,
-				integrations: (integrations) => {
-					integrations.push(new RewriteFrames({ root: process.cwd() }));
-					return integrations;
-				},
-			});
-
-			if (app) {
-				const { requestHandler, errorHandler } = Sentry.Handlers;
-				app.use(requestHandler());
-				app.use(errorHandler());
-			}
+	Sentry.init({
+		dsn,
+		release,
+		environment,
+		integrations: (integrations) => {
+			integrations.push(new RewriteFrames({ root: process.cwd() }));
+			return integrations;
 		},
+	});
+
+	if (app) {
+		const { requestHandler, errorHandler } = Sentry.Handlers;
+		app.use(requestHandler());
+		app.use(errorHandler());
+	}
+
+	ErrorReporterProxy.init({
 		warn: (warning, options) => {
 			Sentry.captureMessage(warning, { level: 'warning', ...options });
 		},
@@ -45,6 +44,3 @@ export const initErrorHandling = (app?: Application) => {
 
 	initialized = true;
 };
-
-export const captureError = (e: Error) => ErrorReporterProxy.getInstance().error(e);
-export const captureWarning = (warning: string) => ErrorReporterProxy.getInstance().warn(warning);
