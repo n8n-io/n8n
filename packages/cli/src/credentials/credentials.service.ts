@@ -7,7 +7,7 @@ import {
 	INodeCredentialTestResult,
 	LoggerProxy,
 } from 'n8n-workflow';
-import { FindOneOptions, In } from 'typeorm';
+import { FindManyOptions, FindOneOptions, In } from 'typeorm';
 
 import {
 	createCredentialsFromCredentialsEntity,
@@ -69,6 +69,10 @@ export class CredentialsService {
 				id: In(userSharings.map((x) => x.credentialId)),
 			},
 		});
+	}
+
+	static async getMany(filter: FindManyOptions<ICredentialsDb>): Promise<ICredentialsDb[]> {
+		return Db.collections.Credentials.find(filter);
 	}
 
 	/**

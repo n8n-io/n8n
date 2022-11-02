@@ -23,6 +23,7 @@ export class DiscourseApi implements ICredentialType {
 			name: 'apiKey',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
