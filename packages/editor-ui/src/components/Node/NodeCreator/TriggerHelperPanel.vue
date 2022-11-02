@@ -6,10 +6,12 @@
 			@nodeTypeSelected="$listeners.nodeTypeSelected"
 			:initialActiveIndex="0"
 			:searchItems="searchItems"
-			:firstLevelItems="isRoot ? items : []"
+			:withActions="isAppEventSubcategory"
+			:firstLevelItems="firstLevelItems"
 			:excludedCategories="[CORE_NODES_CATEGORY]"
 			:initialActiveCategories="[COMMUNICATION_CATEGORY]"
 			:flatten="true"
+			:subcategoryItems="{'app_nodes': mergedNodes}"
 		>
 			<template #header>
 				<slot name="header" />
@@ -20,24 +22,26 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, toRefs, getCurrentInstance } from 'vue';
+import { reactive, toRefs, getCurrentInstance, computed } from 'vue';
 
-import { INodeCreateElement } from '@/Interface';
+import { INodeCreateElement, INodeItemProps } from '@/Interface';
 import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
+import { deepCopy } from 'n8n-workflow';
 
 export interface Props {
 	searchItems: INodeCreateElement[];
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const instance = getCurrentInstance();
 const state = reactive({
 	isRoot: true,
+	selectedSubcategory: '',
 });
 
-const items = [{
+const items: INodeCreateElement[] = [{
 		key: "app_nodes",
 		type: "subcategory",
 		title: instance?.proxy.$locale.baseText('nodeCreator.subcategoryNames.appTriggerNodes'),
@@ -137,12 +141,44 @@ const items = [{
 function isRootSubcategory(subcategory: INodeCreateElement) {
 	return items.find(item => item.key === subcategory.key) !== undefined;
 }
-function onSubcategorySelected() {
+function onSubcategorySelected(subcategory: INodeCreateElement) {
 	state.isRoot = false;
+	state.selectedSubcategory = subcategory.key;
 }
 function onSubcategoryClose(subcategory: INodeCreateElement) {
 	state.isRoot = isRootSubcategory(subcategory);
 }
+
+const isAppEventSubcategory = computed(() => state.selectedSubcategory === "app_nodes");
+
+const firstLevelItems = computed(() => isRoot.value ? items : []);
+
+// On App Event is a special subcategory because we want to
+// show merged regular nodes with actions and trigger nodes
+const mergedNodes = computed<INodeCreateElement[]>(() => {
+	const mergedNodes = props.searchItems.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
+		const clonedNode = deepCopy(node);
+		const isRegularNode = clonedNode.includedByRegular === true;
+		const nodeType = (clonedNode.properties as INodeItemProps).nodeType;
+		const actions = nodeType.actions || [];
+		const hasActions = actions?.length > 0;
+		const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
+
+		if(isRegularNode && !hasActions) return acc;
+
+		const existingNode = acc[normalizedName];
+		if(existingNode) {
+			(existingNode.properties as INodeItemProps).nodeType.actions?.push(...actions);
+		} else {
+			acc[normalizedName] = clonedNode;
+		}
+
+		return acc;
+
+	}, {});
+
+	return Object.values(mergedNodes);
+});
 
 const { isRoot } = toRefs(state);
 </script>

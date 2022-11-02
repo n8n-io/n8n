@@ -16,8 +16,9 @@
 			:placeholder="`Search ${nodeNameTitle} Actions...`"
 		/>
 		<main :class="$style.content">
-			<template v-for="(action, index) in orderedActions">
-				<div v-if="action.type === 'category'" :key="`${action.key} + ${index}`" :class="$style.category">
+			<template v-for="action in filteredActions">
+				<!-- Categorised actions -->
+				<div v-if="action.type === 'category'" :key="`${action.key} + ${action.title}`" :class="$style.category">
 					<header :class="$style.categoryHeader" @click="toggleCategory(action.key)" v-if="actions.length > 1">
 						<p v-text="action.title" :class="$style.categoryTitle" />
 						<font-awesome-icon
@@ -26,19 +27,30 @@
 						/>
 					</header>
 					<ul :class="$style.categoryActions" v-show="!subtractedCategories.includes(action.key)">
-						<li
+						<node-action
 							v-for="item in action.items"
 							:key="`${action.key}_${item.key}`"
-							:class="$style.categoryAction"
-						>
-							<button :class="$style.categoryActionButton" @click="onActionClick(item)">
-								<node-icon :class="$style.nodeIcon" :nodeType="nodeType"/>
-								<p v-text="item.title" />
-								<trigger-icon v-if="isTriggerAction(item)" :class="$style.triggerIcon" />
-							</button>
-						</li>
+							:action="item"
+							:nodeType="nodeType"
+							@click="onActionClick(item)"
+
+							@dragstart="$e => onDragStart($e, item)"
+							@dragend="$emit('dragend')"
+						/>
 					</ul>
 				</div>
+
+				<!-- Flat actions -->
+				<node-action
+					v-else
+					:key="`${action.key}__${action.title}`"
+					:action="action"
+					:nodeType="nodeType"
+					@click="onActionClick(action)"
+
+					@dragstart="$e => onDragStart($e, action)"
+					@dragend="$emit('dragend')"
+				/>
 			</template>
 		</main>
 	</aside>
@@ -49,8 +61,9 @@ import { reactive, computed, toRefs } from 'vue';
 import { IDataObject, INodeTypeDescription, INodeAction } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
-import TriggerIcon from '@/components/TriggerIcon.vue';
 import SearchBar from './SearchBar.vue';
+import NodeAction from './NodeAction.vue';
+import { sublimeSearch } from './sortUtils';
 
 export interface Props {
 	nodeType: INodeTypeDescription,
@@ -62,6 +75,8 @@ const props = defineProps<Props>();
 const emit = defineEmits<{
 	(event: 'actionSelected', action: { key: string, value: IDataObject }): void,
 	(event: 'back'): void,
+	(event: 'dragstart', $e: DragEvent): void,
+	(event: 'dragend', $e: DragEvent): void,
 }>();
 
 const state = reactive({
@@ -79,7 +94,20 @@ const orderedActions = computed(() => {
 	];
 });
 
-const isTriggerAction = (action: INodeAction) => action.nodeName?.toLowerCase().includes('trigger');
+const filteredActions = computed(() => {
+	if(state.search.length === 0) return orderedActions.value;
+
+
+	const flattenActions = orderedActions.value.flatMap(actionCategory => actionCategory.items) || [];
+	const matchedActions = sublimeSearch<INodeAction>(
+		state.search, flattenActions as INodeAction[],
+		[{key: 'title', weight: 1}],
+	);
+
+	return matchedActions.map(({item}) => item);
+});
+
+
 
 function toggleCategory(category: string) {
 	if (state.subtractedCategories.includes(category)) {
@@ -89,7 +117,7 @@ function toggleCategory(category: string) {
 	}
 }
 
-function onActionClick(actionItem: INodeAction) {
+function getActionData(actionItem: INodeAction) {
 	const displayOptions = actionItem?.displayOptions ;
 
 	const displayConditions = Object.keys(displayOptions?.show || {})
@@ -99,16 +127,28 @@ function onActionClick(actionItem: INodeAction) {
 		}, {});
 
 
-	emit('actionSelected', {
+	return {
 		key: actionItem.nodeName as string,
 		value: { ...actionItem.values , ...displayConditions},
-	});
+	};
+}
+
+function onActionClick(actionItem: INodeAction) {
+	emit('actionSelected', getActionData(actionItem));
 }
 
 function onBack() {
 	emit('back');
 }
 
+function onDragStart(event: DragEvent, action: INodeAction) {
+	event.dataTransfer?.setData('actionData', JSON.stringify(getActionData(action)));
+	emit('dragstart', event);
+}
+
+function onDragEnd(event: DragEvent) {
+	event.dataTransfer?.setData('text/plain', 'drag');
+}
 const { subtractedCategories, search } = toRefs(state);
 </script>
 
@@ -132,14 +172,13 @@ const { subtractedCategories, search } = toRefs(state);
 	padding-top: 1px;
 	overflow-y: auto;
 	overflow-x: visible;
-	padding-bottom: 3rem;
+	padding-bottom: var(--spacing-2xl);
 	scrollbar-width: none;
 
 	&::-webkit-scrollbar {
     display: none;
 	}
 }
-
 .search {
 	margin: var(--spacing-s);
 }
@@ -149,8 +188,8 @@ const { subtractedCategories, search } = toRefs(state);
 	background-color: $node-creator-subcategory-panel-header-bacground-color;
 
 	font-size: var(--font-size-l);
-	font-weight: 600;
-	line-height: 16px;
+	font-weight: var(-font-weight-bold);
+	line-height: var(--font-line-height-compact);
 
 	display: flex;
 	align-items: center;
@@ -161,32 +200,6 @@ const { subtractedCategories, search } = toRefs(state);
 	align-items: center;
 	justify-content: space-between;
 }
-.categoryAction {
-	list-style: none;
-	cursor: pointer;
-}
-
-.categoryActionButton {
-	border: none;
-	background: none;
-	display: flex;
-	align-items: center;
-	text-align: left;
-	position: relative;
-	cursor: pointer;
-	padding: 0;
-	color: var(--color-text-dark);
-
-	&:hover:before {
-		content: "";
-		position: absolute;
-		right: calc(100% + var(--spacing-s) - 1px);
-		top: 0;
-		bottom: 0;
-		width: 2px;
-		background: var(--color-primary);
-	}
-}
 .categoryTitle {
 	font-weight: 700;
 	font-size: 11px;
@@ -195,7 +208,7 @@ const { subtractedCategories, search } = toRefs(state);
 	text-transform: uppercase;
 }
 .categoryArrow {
-	font-size: 12px;
+	font-size: var(--font-size-2xs);
 	width: 12px;
 	color: $node-creator-arrow-color;
 }
@@ -214,39 +227,22 @@ const { subtractedCategories, search } = toRefs(state);
 }
 .categoryHeader {
 	border-bottom: 1px solid $node-creator-border-color;
-	padding: 10px 0;
+	padding: var(--spacing-xs) 0;
 	cursor: pointer;
 	display: flex;
 	align-items: center;
 }
 .categoryActions {
-	margin: 16px 0;
-}
-.categoryAction {
-	font-weight: 600;
-	font-size: var(--font-size-s);
-	line-height: 14px;
-	color: var(--color-text-dark);
-	display: flex;
-	align-items: center;
-
-	&:not(:last-child) {
-		margin-bottom: 20px;
-	}
+	margin: var(--spacing-xs) 0;
 }
 .headerContent {
 	display: flex;
 	align-items: center;
-	font-weight: 600;
+	font-weight: var(-font-weight-bold);
 	font-size: var(--font-size-m);
-	line-height: 22px;
+	line-height: var(--font-line-height-loose);
 
 	color: var(--color-text-dark);
-}
-.triggerIcon {
-	border: none;
-	width: 20px;
-	height: 20px;
 }
 .nodeIcon {
 	margin-right: var(--spacing-s);

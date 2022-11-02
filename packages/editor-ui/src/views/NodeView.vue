@@ -1530,17 +1530,25 @@ export default mixins(
 					return;
 				}
 
-				const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
-				if (nodeTypeName) {
+				const nodeTypeNames = event.dataTransfer.getData('nodeTypeName').split(',');
+
+				if (nodeTypeNames) {
 					const mousePosition = this.getMousePositionWithinNodeView(event);
 
-					this.addNode(nodeTypeName, {
-						position: [
-							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2,
-							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2,
-						],
-						dragAndDrop: true,
+					const nodesToAdd = nodeTypeNames.map((nodeTypeName: string, index: number) => {
+
+						return {
+							nodeTypeName,
+							position: [
+								// If adding more than one node, offset the X position
+								(mousePosition[0] - CanvasHelpers.NODE_SIZE / 2) + (CanvasHelpers.NODE_SIZE * (index * 2)),
+								mousePosition[1] - CanvasHelpers.NODE_SIZE / 2,
+							] as XYPosition,
+							dragAndDrop: true,
+						};
 					});
+
+					this.onAddNode(nodesToAdd, true);
 					this.createNodeActive = false;
 				}
 			},
@@ -3265,9 +3273,9 @@ export default mixins(
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.$store.getters.workflowId });
 			},
-			onAddNode(nodeTypes: any[]) {
+			onAddNode(nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>, dragAndDrop: boolean) {
 				nodeTypes.forEach(({ nodeTypeName, position }, index) => {
-					this.addNode(nodeTypeName, { position }, nodeTypes.length === 1 || index > 0);
+					this.addNode(nodeTypeName, { position, dragAndDrop }, nodeTypes.length === 1 || index > 0);
 					if(index === 0) return;
 					// If there's more than one node, we want to connect them
 					// this has to be done in mutation subscriber to make sure both nodes already

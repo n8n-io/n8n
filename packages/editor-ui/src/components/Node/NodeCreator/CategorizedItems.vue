@@ -33,8 +33,8 @@
 					:transitionsEnabled="true"
 					@selected="selected"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
-					:simple-node-style="isAppEventSubcategory"
-					:allow-actions="isAppEventSubcategory"
+					:simple-node-style="withActions"
+					:allow-actions="withActions"
 				/>
 			</div>
 			<div
@@ -46,8 +46,8 @@
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					@selected="selected"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
-					:simple-node-style="isAppEventSubcategory"
-					:allow-actions="isAppEventSubcategory"
+					:simple-node-style="withActions"
+					:allow-actions="withActions"
 				/>
 			</div>
 			<no-results v-else :showRequest="filteredAllNodeTypes.length === 0" :show-icon="filteredAllNodeTypes.length === 0">
@@ -91,22 +91,23 @@ import useGlobalLinkActions from '@/components/composables/useGlobalLinkActions'
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
-import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
+import { INodeCreateElement, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
-import { cloneDeep } from 'lodash';
 import { sublimeSearch } from './sortUtils';
 import { store } from '@/store';
 
 export interface Props {
 	flatten?: boolean;
+	withActions?: boolean;
 	searchItems?: INodeCreateElement[];
 	excludedCategories?: string[];
 	excludedSubcategories?: string[];
 	firstLevelItems?: INodeCreateElement[];
 	initialActiveCategories?: string[];
 	initialActiveIndex?: number;
+	subcategoryItems?: {[key: string]: INodeCreateElement[]};
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -193,7 +194,7 @@ const filteredNodeTypes = computed<INodeCreateElement[]> (() => {
   else {
     const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, selectedType.value));
     const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
-    returnItems = matchedCategorizedNodes.map(({item}) => item);;
+    returnItems = matchedCategorizedNodes.map(({item}) => item);
   }
 
   return returnItems;
@@ -264,35 +265,9 @@ const subcategorizedItems = computed<INodeCreateElement[]> (() => {
 const isAppEventSubcategory = computed<boolean> (() => activeSubcategory.value?.key === 'app_nodes');
 
 const subcategorizedNodes = computed<INodeCreateElement[]> (() => {
-  if(isAppEventSubcategory.value) {
-    // On App Event is a special subcategory because we want to
-    // show merged regular nodes with actions and trigger nodes
-    const mergedNodes = props.searchItems.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
-      const clonedNode = cloneDeep(node);
-      const isRegularNode = clonedNode.includedByRegular === true;
-      const isTriggerNode = clonedNode.includedByTrigger === true;
-      const nodeType = (clonedNode.properties as INodeItemProps).nodeType;
-      const actions = nodeType.actions || [];
-      const hasActions = actions?.length > 0;
-      const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
+	const subcategorizedNodesOverride = props.subcategoryItems?.[activeSubcategory.value?.key as string];
 
-      if(isRegularNode && !hasActions) return acc;
-      if(isTriggerNode && !!subcategorizedItems.value.find(i => i.key === node.key)) return acc;
-
-      const existingNode = acc[normalizedName];
-      if(existingNode) {
-        (existingNode.properties as INodeItemProps).nodeType.actions?.push(...actions);
-      } else {
-        acc[normalizedName] = clonedNode;
-      }
-
-      return acc;
-
-    }, {});
-
-    return Object.values(mergedNodes);
-  }
-  return subcategorizedItems.value.filter(node => node.type === 'node');
+  return subcategorizedNodesOverride || subcategorizedItems.value.filter(node => node.type === 'node');
 });
 
 const renderedItems = computed<INodeCreateElement[]> (() => {

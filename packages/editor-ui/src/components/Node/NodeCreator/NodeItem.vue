@@ -53,6 +53,9 @@
 			:actions="nodeType.actions"
 			@actionSelected="onActionSelected"
 			@back="showActions = false"
+
+			@dragstart="onDragStart"
+			@dragend="onDragEnd"
 		/>
 		<div :class="{[$style.actionIcon]: true, [$style.visible]: allowActions && hasActions}" >
 			<font-awesome-icon :class="$style.actionArrow" icon="arrow-right" />
@@ -123,15 +126,19 @@ function onClick() {
 	else emit('nodeTypeSelected', [props.nodeType.name]);
 }
 
-async function onActionSelected(action: IDataObject) {
-	const isTriggerAction = action.key?.toString().toLocaleLowerCase().includes('trigger');
+function getActionNodeTypes(action: IDataObject): string[] {
+	const actionKey = action.key as string;
+	const isTriggerAction = actionKey.toLocaleLowerCase().includes('trigger');
 	const workflowContainsTrigger = store.getters.workflowTriggerNodes.length > 0;
 
 	const nodeTypes = !isTriggerAction && !workflowContainsTrigger
-		? [MANUAL_TRIGGER_NODE_TYPE, action.key]
-		: [action.key];
+		? [MANUAL_TRIGGER_NODE_TYPE, actionKey]
+		: [actionKey];
 
-	emit('nodeTypeSelected', nodeTypes as string[]);
+	return nodeTypes;
+}
+
+function setAddedNodeActionParameters(action: IDataObject) {
 	// We can only set parameters after the node was created and set in store
 	const unsubscribe = store.subscribe((mutation) => {
 		if(mutation.type === 'addNode') {
@@ -141,6 +148,13 @@ async function onActionSelected(action: IDataObject) {
 	});
 }
 
+function onActionSelected(action: IDataObject) {
+	emit('nodeTypeSelected', getActionNodeTypes(action));
+	setAddedNodeActionParameters(action);
+}
+function onDragActionSelected(action: IDataObject) {
+	setAddedNodeActionParameters(action);
+}
 function onDragStart(event: DragEvent): void {
 	/**
 	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
@@ -148,6 +162,7 @@ function onDragStart(event: DragEvent): void {
 	 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
 	 */
 	document.body.addEventListener("dragover", onDragOver);
+
 	const { pageX: x, pageY: y } = event;
 
 	emit('dragstart', event);
@@ -155,8 +170,20 @@ function onDragStart(event: DragEvent): void {
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = "copy";
 		event.dataTransfer.dropEffect = "copy";
-		event.dataTransfer.setData('nodeTypeName', props.nodeType.name);
 		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
+		event.dataTransfer.setData('nodeTypeName', props.nodeType.name);
+
+		const actionData = event.dataTransfer.getData('actionData');
+		if(actionData) {
+			try {
+				const action = JSON.parse(actionData) as IDataObject;
+
+				event.dataTransfer.setData('nodeTypeName', getActionNodeTypes(action).join(','));
+				document.body.addEventListener("dragend", () => onDragActionSelected(action));
+			} catch (error) {
+				// Fail silently
+			}
+		}
 	}
 
 	state.dragging = true;
@@ -175,6 +202,7 @@ function onDragOver(event: DragEvent): void {
 
 function onDragEnd(event: DragEvent): void {
 	document.body.removeEventListener("dragover", onDragOver);
+
 	emit('dragend', event);
 
 	state.dragging = false;

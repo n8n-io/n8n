@@ -73,11 +73,11 @@ function renderCategoryName(categoryName: CategoryName) {
 <style lang="scss" module>
 .category {
 	font-size: 11px;
-	font-weight: 700;
+	font-weight: var(--font-weight-bold);
 	letter-spacing: 1px;
 	line-height: 11px;
 	padding: 10px 0;
-	margin: 0 12px;
+	margin: 0 var(--spacing-xs);
 	border-bottom: 1px solid $node-creator-border-color;
 	display: flex;
 	text-transform: uppercase;
@@ -89,7 +89,7 @@ function renderCategoryName(categoryName: CategoryName) {
 }
 
 .arrow {
-	font-size: 12px;
+	font-size: var(--font-size-2xs);
 	width: 12px;
 	color: $node-creator-arrow-color;
 }

@@ -796,6 +796,7 @@ export type WorkflowTitleStatus = 'EXECUTING' | 'IDLE' | 'ERROR';
 export interface ISubcategoryItemProps {
 	subcategory: string;
 	description: string;
+	key?: string;
 	icon?: string;
 	defaults?: INodeParameters;
 	iconData?: {
