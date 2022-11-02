@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-type Primitives = string | number | boolean | bigint | symbol;
+type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
 	source: T,
 	hash = new WeakMap(),
@@ -28,7 +28,7 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 		return clone as T;
 	}
 	// Object
-	const clone = {} as T;
+	const clone = Object.create(Object.getPrototypeOf(source));
 	hash.set(source, clone);
 	for (const i in source) {
 		if (hasOwnProp(i)) {
