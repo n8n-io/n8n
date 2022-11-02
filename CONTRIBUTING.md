@@ -64,6 +64,8 @@ We suggest using [Node.js](https://nodejs.org/en/) version 16.9 or newer for dev
 
 After that we recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`, and [pnpm](https://pnpm.io/) with `corepack prepare pnpm --activate`.
 
+**IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
+
 #### Build tools
 
 The packages which n8n uses depend on a few build tools:
