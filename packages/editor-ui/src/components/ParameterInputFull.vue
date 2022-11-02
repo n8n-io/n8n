@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="hideLabel? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltipText="hideLabel? '': $locale.nodeText().inputLabelDescription(parameter, path)"
+		:label="hideLabel ? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
+		:tooltipText="hideLabel ? '': $locale.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
 		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
@@ -107,20 +107,18 @@ export default mixins(
 				type: Boolean,
 				default: false,
 			},
-			parameter: {
-				type: Object as PropType<INodeProperties>,
-				required: true,
-			},
-			path: {
-				type: String,
-				required: true,
-			},
-			value: {
-				type: [Number, String, Boolean, Array, Object] as PropType<INodeParameters>,
-			},
 			hideLabel: {
 				type: Boolean,
 				default: false,
+			},
+			parameter: {
+				type: Object as PropType<INodeProperties>,
+			},
+			path: {
+				type: String,
+			},
+			value: {
+				type: [Number, String, Boolean, Array, Object] as PropType<INodeParameters>,
 			},
 		},
 		created() {
