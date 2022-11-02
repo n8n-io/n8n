@@ -82,5 +82,8 @@ export const store = new Vuex.Store({
 		nodeByName: (state: IRootState) => (nodeName: string): INodeUi | null => {
 			return useWorkflowsStore().getNodeByName(nodeName);
 		},
+		allNodes(): INodeUi[] {
+			return useWorkflowsStore().allNodes;
+		},
 	},
 });

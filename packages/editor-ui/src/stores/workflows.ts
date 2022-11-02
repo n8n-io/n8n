@@ -284,7 +284,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			const uiStore = useUIStore();
 			uiStore.stateIsDirty = false;
 			const index = this.activeWorkflows.indexOf(workflowId);
-			if (index !== -1) {
+			if (index === -1) {
 				this.activeWorkflows.push(workflowId);
 			}
 		},

@@ -415,10 +415,10 @@ export const workflowHelpers = mixins(
 					nodes,
 					pinData: this.workflowsStore.getPinData,
 					connections: workflowConnections,
-					active: this.$store.getters.isActive,
-					settings: this.$store.getters.workflowSettings,
-					tags: this.$store.getters.workflowTags,
-					hash: this.$store.getters.workflowHash,
+					active: this.workflowsStore.isWorkflowActive,
+					settings: this.workflowsStore.workflow.settings,
+					tags: this.workflowsStore.workflowTags,
+					hash: this.workflowsStore.workflow.hash,
 				};
 
 				const workflowId = this.workflowsStore.workflowId;
