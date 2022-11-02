@@ -16,9 +16,6 @@ import { INode } from 'n8n-workflow';
 
 jest.mock('../../src/telemetry');
 
-// mock whether sharing is enabled or not
-jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
-
 let app: express.Application;
 let testDbName = '';
 
@@ -28,6 +25,7 @@ let credentialOwnerRole: Role;
 let authAgent: AuthAgent;
 let saveCredential: SaveCredentialFunction;
 let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {
 	app = await utils.initTestServer({
@@ -52,6 +50,9 @@ beforeAll(async () => {
 
 	await utils.initNodeTypes();
 	workflowRunner = await utils.initActiveWorkflowRunner();
+
+	config.set('enterprise.features.sharing', true);
+	sharingSpy = jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true); // @TODO: Remove on release
 });
 
 beforeEach(async () => {
@@ -136,7 +137,7 @@ describe('PUT /workflows/:id', () => {
 });
 
 describe('GET /workflows', () => {
-	test('should return workflows with ownership and sharing details', async () => {
+	test.only('should return workflows with ownership and sharing details', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -147,6 +148,8 @@ describe('GET /workflows', () => {
 		const response = await authAgent(owner).get('/workflows');
 
 		const [fetchedWorkflow] = response.body.data;
+
+		console.log(response.body.data);
 
 		expect(response.statusCode).toBe(200);
 		expect(fetchedWorkflow.ownedBy).toMatchObject({
