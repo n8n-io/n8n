@@ -79,8 +79,8 @@ export default mixins(
 		};
 	},
 	async mounted() {
-		const inviterId = this.$route.query.inviterId.toString() || '';
-		const inviteeId = this.$route.query.inviteeId.toString() || '';
+		const inviterId = this.$route.query.inviterId as string || '';
+		const inviteeId = this.$route.query.inviteeId as string || '';
 		try {
 			if (!inviterId || !inviteeId) {
 				throw new Error(this.$locale.baseText('auth.signup.missingTokenError'));
