@@ -3,6 +3,7 @@ import { set } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	deepCopy,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -483,7 +484,7 @@ export class Crypto implements INodeType {
 				if (dataPropertyName.includes('.')) {
 					// Uses dot notation so copy all data
 					newItem = {
-						json: JSON.parse(JSON.stringify(item.json)),
+						json: deepCopy(item.json),
 						pairedItem: {
 							item: i,
 						},

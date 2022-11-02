@@ -9,14 +9,16 @@
 				[$style.sidebarCollapsed]: sidebarMenuCollapsed
 			}"
 		>
-			<div id="header" :class="$style['header']">
+			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
-			<div id="sidebar" :class="$style['sidebar']">
+			<div id="sidebar" :class="$style.sidebar">
 				<router-view name="sidebar"></router-view>
 			</div>
-			<div id="content" :class="$style['content']">
-				<router-view />
+			<div id="content" :class="$style.content">
+				<keep-alive include="NodeView" :max="1">
+					<router-view />
+				</keep-alive>
 			</div>
 			<Modals />
 			<Telemetry />
@@ -28,14 +30,14 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, VIEWS } from './constants';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
 import { IUser } from './Interface';
 import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
-import { addHeaders, loadLanguage } from './plugins/i18n';
+import { loadLanguage } from './plugins/i18n';
 import { restApi } from '@/components/mixins/restApi';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
 
@@ -157,8 +159,15 @@ export default mixins(
 				this.$router.replace(redirect);
 			}
 		},
+		setTheme() {
+			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
+			if (theme) {
+				window.document.body.classList.add(`theme-${theme}`);
+			}
+		},
 	},
 	async mounted() {
+		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
 		this.authenticate();

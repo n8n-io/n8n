@@ -185,6 +185,12 @@ export const schema = {
 			default: false,
 			env: 'N8N_ONBOARDING_FLOW_DISABLED',
 		},
+		callerPolicyDefaultOption: {
+			doc: 'Default option for which workflows may call the current workflow',
+			format: ['any', 'none', 'workflowsFromAList'] as const,
+			default: 'any',
+			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
+		},
 	},
 
 	executions: {

@@ -50,12 +50,14 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFilter,
+	faFlask,
 	faFolderOpen,
 	faGlobeAmericas,
 	faGift,
 	faGlobe,
 	faGraduationCap,
 	faGripVertical,
+	faHandPointLeft,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -173,11 +175,13 @@ addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
 addIcon(faFilter);
+addIcon(faFlask);
 addIcon(faFolderOpen);
 addIcon(faGift);
 addIcon(faGlobe);
 addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
+addIcon(faHandPointLeft);
 addIcon(faHdd);
 addIcon(faHome);
 addIcon(faHourglass);

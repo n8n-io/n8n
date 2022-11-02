@@ -126,7 +126,7 @@ export default mixins(
 			return JSON.stringify(this.error.cause).length < MAX_DISPLAY_DATA_SIZE;
 		},
 		parameters (): INodeProperties[] {
-			const node = this.$store.getters.activeNode;
+			const node = this.$store.getters['ndv/activeNode'];
 			if (!node) {
 				return [];
 			}

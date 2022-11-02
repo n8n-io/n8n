@@ -1,7 +1,7 @@
 <template>
 	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
 		<el-dropdown :placement="placement" :trigger="trigger" @command="onSelect">
-			<div :class="$style.activator">
+			<div :class="$style.activator" @click.prevent>
 				<n8n-icon :icon="activatorIcon"/>
 			</div>
 			<el-dropdown-menu slot="dropdown" :class="$style.userActionsMenu">
@@ -18,7 +18,7 @@
 						[item.customClass]: item.customClass !== undefined,
 					}">
 						<span v-if="item.icon" :class="$style.icon">
-							<n8n-icon :icon="item.icon"/>
+							<n8n-icon :icon="item.icon" :size="item.iconSize"/>
 						</span>
 						<span :class="$style.label">
 							{{ item.label }}
@@ -74,6 +74,12 @@ export default Vue.extend({
 		activatorIcon: {
 			type: String,
 			default: 'ellipsis-v',
+		},
+		iconSize: {
+			type: String,
+			default: 'medium',
+			validator: (value: string): boolean =>
+				['small', 'medium', 'large'].includes(value),
 		},
 		trigger: {
 			type: String,

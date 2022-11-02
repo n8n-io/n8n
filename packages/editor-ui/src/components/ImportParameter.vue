@@ -3,6 +3,7 @@
 		<n8n-button
 			type="secondary"
 			:label="$locale.baseText('importParameter.label')"
+			:disabled="isReadOnly"
 			size="mini"
 			@click="onImportCurlClicked"
 		/>
@@ -16,6 +17,12 @@ import { showMessage } from './mixins/showMessage';
 
 export default mixins(showMessage).extend({
 	name: 'import-parameter',
+	props: {
+		isReadOnly: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	methods: {
 		onImportCurlClicked() {
 			this.$store.dispatch('ui/openModal', IMPORT_CURL_MODAL_KEY);

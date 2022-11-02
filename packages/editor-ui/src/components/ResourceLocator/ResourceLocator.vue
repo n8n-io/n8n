@@ -84,6 +84,7 @@
 									:size="inputSize"
 									:value="expressionDisplayValue"
 									:title="displayTitle"
+									:disabled="isReadOnly"
 									@keydown.stop
 									ref="input"
 								/>
@@ -279,7 +280,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return this.selectedMode === 'list';
 		},
 		hasCredential(): boolean {
-			const node = this.$store.getters.activeNode as INodeUi | null;
+			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
 			if (!node) {
 				return false;
 			}
@@ -440,7 +441,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		setWidthOnMainPanelResize(mutation: { type: string }) {
 			// Update the width when main panel dimension change
-			if(mutation.type === 'ui/setMainPanelDimensions') this.setWidth();
+			if(mutation.type === 'ndv/setMainPanelDimensions') this.setWidth();
 		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {
@@ -479,7 +480,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return parameter.typeOptions[argumentName];
 		},
 		openCredential(): void {
-			const node = this.$store.getters.activeNode as INodeUi | null;
+			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
 			if (!node || !node.credentials) {
 				return;
 			}

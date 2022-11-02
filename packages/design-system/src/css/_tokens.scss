@@ -412,6 +412,21 @@
 		var(--color-sticky-default-border-l)
 	);
 
+	--color-code-background: #ffffff;
+	--color-code-foreground: #4d4d4c;
+	--color-code-caret: #aeafad;
+	--color-code-selection: #d6d6d6;
+	--color-code-gutterBackground: #ffffff;
+	--color-code-gutterForeground: #4d4d4c80;
+	--color-code-lineHighlight: #efefef;
+	--color-code-tags-comment: #8e908c;
+	--color-code-tags-string: #718c00;
+	--color-code-tags-primitive: #f5871f;
+	--color-code-tags-keyword: #8959a8;
+	--color-code-tags-operator: #3e999f;
+	--color-code-tags-variable: #c82829;
+	--color-code-tags-definition: #4271ae;
+
 	// Generated Color Shades from 50 to 950
 	// Not yet used in design system
 	@each $color in ('neutral', 'success', 'warning', 'danger') {

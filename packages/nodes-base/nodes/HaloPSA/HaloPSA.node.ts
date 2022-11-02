@@ -45,7 +45,6 @@ export class HaloPSA implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'HaloPSA',
-			color: '#fd314e',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
