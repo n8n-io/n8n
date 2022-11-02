@@ -3,7 +3,7 @@
 		<div slot="content">{{ disabledHint }}</div>
 		<div>
 			<n8n-button
-				:loading="nodeRunning && !isListeningForEvents"
+				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
 				:disabled="disabled || !!disabledHint"
 				:label="buttonLabel"
 				:type="type"
@@ -16,7 +16,7 @@
 </template>
 
 <script lang="ts">
-import { WEBHOOK_NODE_TYPE } from '@/constants';
+import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
@@ -72,7 +72,10 @@ export default mixins(
 			return this.$store.getters.isActionActive('workflowRunning');
 		},
 		isTriggerNode (): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
+		},
+		isManualTriggerNode (): boolean {
+			return Boolean(this.nodeType && this.nodeType.name === MANUAL_TRIGGER_NODE_TYPE);
 		},
 		isPollingTypeNode (): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
@@ -95,6 +98,9 @@ export default mixins(
 				(!executedNode || executedNode === this.nodeName)
 			);
 		},
+		isListeningForWorkflowEvents(): boolean {
+			return this.nodeRunning && this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode;
+		},
 		hasIssues (): boolean {
 			return Boolean(this.node && this.node.issues && (this.node.issues.parameters || this.node.issues.credentials));
 		},
@@ -108,7 +114,7 @@ export default mixins(
 			}
 
 			if (this.isTriggerNode && this.hasIssues) {
-				if (this.$store.getters.activeNode && this.$store.getters.activeNode.name !== this.nodeName) {
+				if (this.$store.getters['ndv/activeNode'] && this.$store.getters['ndv/activeNode'].name !== this.nodeName) {
 					return this.$locale.baseText('ndv.execute.fixPrevious');
 				}
 
@@ -122,7 +128,7 @@ export default mixins(
 			return '';
 		},
 		buttonLabel(): string {
-			if (this.isListeningForEvents) {
+			if (this.isListeningForEvents || this.isListeningForWorkflowEvents) {
 				return this.$locale.baseText('ndv.execute.stopListening');
 			}
 
@@ -138,7 +144,7 @@ export default mixins(
 				return this.$locale.baseText('ndv.execute.fetchEvent');
 			}
 
-			if (this.isTriggerNode && !this.isScheduleTrigger) {
+			if (this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode) {
 				return this.$locale.baseText('ndv.execute.listenForEvent');
 			}
 
@@ -161,6 +167,8 @@ export default mixins(
 		async onClick() {
 			if (this.isListeningForEvents) {
 				this.stopWaitingForWebhook();
+			} else if (this.isListeningForWorkflowEvents) {
+				this.$emit('stopExecution');
 			} else {
 				let shouldUnpinAndExecute = false;
 				if (this.hasPinData) {

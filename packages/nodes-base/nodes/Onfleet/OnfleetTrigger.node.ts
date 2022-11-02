@@ -25,7 +25,6 @@ export class OnfleetTrigger implements INodeType {
 		description: 'Starts the workflow when Onfleet events occur',
 		defaults: {
 			name: 'Onfleet Trigger',
-			color: '#AA81F3',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -133,7 +132,6 @@ export class OnfleetTrigger implements INodeType {
 
 	/**
 	 * Triggered function when an Onfleet webhook is executed
-	 * @returns {Promise<IWebhookResponseData>} Response data
 	 */
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();

@@ -1478,7 +1478,7 @@ export class GoogleDrive implements INodeType {
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				required: true,
-				hint: 'The Google Drive drive to operator on',
+				hint: 'The Google Drive drive to operate on',
 				modes: [
 					{
 						displayName: 'Drive',

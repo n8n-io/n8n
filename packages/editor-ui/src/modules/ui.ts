@@ -1,3 +1,4 @@
+import { getCurlToJson } from '@/api/curlHelper';
 import { applyForOnboardingCall, fetchNextOnboardingPrompt, submitEmailOnSignup } from '@/api/workflow-webhooks';
 import {
 	ABOUT_MODAL_KEY,
@@ -7,7 +8,6 @@ import {
 	CREDENTIAL_SELECT_MODAL_KEY,
 	CHANGE_PASSWORD_MODAL_KEY,
 	CONTACT_PROMPT_MODAL_KEY,
-	CREDENTIAL_LIST_MODAL_KEY,
 	DELETE_USER_MODAL_KEY,
 	DUPLICATE_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
@@ -17,22 +17,21 @@ import {
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_OPEN_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	VIEWS,
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	FAKE_DOOR_FEATURES,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
+	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
 import {
-	IFakeDoor,
 	IFakeDoorLocation,
 	IRootState,
-	IRunDataDisplayMode,
 	IUiState,
 	XYPosition,
+	IFakeDoor,
 } from '../Interface';
 
 const module: Module<IUiState, IRootState> = {
@@ -52,9 +51,6 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 				mode: '',
 				activeId: null,
-			},
-			[CREDENTIAL_LIST_MODAL_KEY]: {
-				open: false,
 			},
 			[CREDENTIAL_SELECT_MODAL_KEY]: {
 				open: false,
@@ -76,9 +72,6 @@ const module: Module<IUiState, IRootState> = {
 				open: false,
 			},
 			[TAGS_MANAGER_MODAL_KEY]: {
-				open: false,
-			},
-			[WORKFLOW_OPEN_MODAL_KEY]: {
 				open: false,
 			},
 			[VALUE_SURVEY_MODAL_KEY]: {
@@ -104,34 +97,16 @@ const module: Module<IUiState, IRootState> = {
 				mode: '',
 				activeId: null,
 			},
+			[IMPORT_CURL_MODAL_KEY]: {
+				open: false,
+				curlCommand: '',
+				httpNodeParameters: '',
+			},
 		},
 		modalStack: [],
-		sidebarMenuCollapsed: true,
+		sidebarMenuCollapsed: false,
 		isPageLoading: true,
 		currentView: '',
-		ndv: {
-			sessionId: '',
-			input: {
-				displayMode: 'table',
-			},
-			output: {
-				displayMode: 'table',
-				editMode: {
-					enabled: false,
-					value: '',
-				},
-			},
-			focusedMappableInput: '',
-			mappingTelemetry: {},
-		},
-		mainPanelPosition: 0.5,
-		draggable: {
-			isDragging: false,
-			type: '',
-			data: '',
-			canDrop: false,
-			stickyPosition: null,
-		},
 		fakeDoorFeatures: [
 			{
 				id: FAKE_DOOR_FEATURES.ENVIRONMENTS,
@@ -162,13 +137,19 @@ const module: Module<IUiState, IRootState> = {
 				uiLocations: ['credentialsModal'],
 			},
 		],
+		nodeViewInitialized: false,
+		addFirstStepOnLoad: false,
+		executionSidebarAutoRefresh: true,
 	},
 	getters: {
-		areExpressionsDisabled(state: IUiState) {
-			return state.currentView === VIEWS.DEMO;
-		},
 		isVersionsOpen: (state: IUiState) => {
 			return state.modals[VERSIONS_MODAL_KEY].open;
+		},
+		getCurlCommand: (state: IUiState) => {
+			return state.modals[IMPORT_CURL_MODAL_KEY].curlCommand;
+		},
+		getHttpNodeParameters: (state: IUiState) => {
+			return state.modals[IMPORT_CURL_MODAL_KEY].httpNodeParameters;
 		},
 		isModalOpen: (state: IUiState) => {
 			return (name: string) => state.modals[name].open;
@@ -182,15 +163,10 @@ const module: Module<IUiState, IRootState> = {
 		getModalMode: (state: IUiState) => {
 			return (name: string) => state.modals[name].mode;
 		},
-		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
-		ndvSessionId: (state: IUiState): string => state.ndv.sessionId,
-		getPanelDisplayMode: (state: IUiState)  => {
-			return (panel: 'input' | 'output') => state.ndv[panel].displayMode;
+		getModalData: (state: IUiState) => {
+			return (name: string) => state.modals[name].data;
 		},
-		inputPanelDisplayMode: (state: IUiState) => state.ndv.input.displayMode,
-		outputPanelDisplayMode: (state: IUiState) => state.ndv.output.displayMode,
-		outputPanelEditMode: (state: IUiState): IUiState['ndv']['output']['editMode'] => state.ndv.output.editMode,
-		mainPanelPosition: (state: IUiState) => state.mainPanelPosition,
+		sidebarMenuCollapsed: (state: IUiState): boolean => state.sidebarMenuCollapsed,
 		getFakeDoorFeatures: (state: IUiState): IFakeDoor[] => {
 			return state.fakeDoorFeatures;
 		},
@@ -200,13 +176,12 @@ const module: Module<IUiState, IRootState> = {
 		getFakeDoorById: (state: IUiState, getters) => (id: string) => {
 			return getters.getFakeDoorFeatures.find((fakeDoor: IFakeDoor) => fakeDoor.id.toString() === id);
 		},
-		focusedMappableInput: (state: IUiState) => state.ndv.focusedMappableInput,
-		isDraggableDragging: (state: IUiState) => state.draggable.isDragging,
-		draggableType: (state: IUiState) => state.draggable.type,
-		draggableData: (state: IUiState) => state.draggable.data,
-		canDraggableDrop: (state: IUiState) => state.draggable.canDrop,
-		draggableStickyPos: (state: IUiState) => state.draggable.stickyPosition,
-		mappingTelemetry: (state: IUiState) => state.ndv.mappingTelemetry,
+		getCurrentView: (state: IUiState) => state.currentView,
+		isNodeView: (state: IUiState) => [VIEWS.NEW_WORKFLOW.toString(), VIEWS.WORKFLOW.toString(), VIEWS.EXECUTION.toString()].includes(state.currentView),
+		getNDVDataIsEmpty: (state: IUiState) => (panel: 'input' | 'output'): boolean => state.ndv[panel].data.isEmpty,
+		isNodeViewInitialized: (state: IUiState) => state.nodeViewInitialized,
+		getAddFirstStepOnLoad: (state: IUiState) => state.addFirstStepOnLoad,
+		isExecutionSidebarAutoRefreshOn: (state: IUiState) => state.executionSidebarAutoRefresh,
 	},
 	mutations: {
 		setMode: (state: IUiState, params: {name: string, mode: string}) => {
@@ -219,6 +194,19 @@ const module: Module<IUiState, IRootState> = {
 		setActiveId: (state: IUiState, params: {name: string, id: string}) => {
 			const { name, id } = params;
 			Vue.set(state.modals[name], 'activeId', id);
+		},
+		setModalData: (state: IUiState, params: { name: string, data: Record<string, unknown> }) => {
+			const { name, data } = params;
+
+			Vue.set(state.modals[name], 'data', data);
+		},
+		setCurlCommand: (state: IUiState, params: {name: string, command: string}) => {
+			const { name, command } = params;
+			Vue.set(state.modals[name], 'curlCommand', command);
+		},
+		setHttpNodeParameters: (state: IUiState, params: {name: string, parameters: string}) => {
+			const { name, parameters } = params;
+			Vue.set(state.modals[name], 'httpNodeParameters', parameters);
 		},
 		openModal: (state: IUiState, name: string) => {
 			Vue.set(state.modals[name], 'open', true);
@@ -240,6 +228,12 @@ const module: Module<IUiState, IRootState> = {
 		},
 		toggleSidebarMenuCollapse: (state: IUiState) => {
 			state.sidebarMenuCollapsed = !state.sidebarMenuCollapsed;
+		},
+		collapseSidebarMenu: (state: IUiState) => {
+			state.sidebarMenuCollapsed = true;
+		},
+		expandSidebarMenu: (state: IUiState) => {
+			state.sidebarMenuCollapsed = false;
 		},
 		setCurrentView: (state: IUiState, currentView: string) => {
 			state.currentView = currentView;
@@ -295,16 +289,49 @@ const module: Module<IUiState, IRootState> = {
 		resetMappingTelemetry(state: IUiState) {
 			state.ndv.mappingTelemetry = {};
 		},
+		setHoveringItem(state: IUiState, item: null | IUiState['ndv']['hoveringItem']) {
+			Vue.set(state.ndv, 'hoveringItem', item);
+		},
+		setNDVBranchIndex(state: IUiState, e: {pane: 'input' | 'output', branchIndex: number}) {
+			Vue.set(state.ndv[e.pane], 'branch', e.branchIndex);
+		},
+		setNDVPanelDataIsEmpty(state: IUiState, payload: {panel: 'input' | 'output', isEmpty: boolean}) {
+			Vue.set(state.ndv[payload.panel].data, 'isEmpty', payload.isEmpty);
+		},
+		setNodeViewInitialized(state: IUiState, isInitialized: boolean) {
+			state.nodeViewInitialized = isInitialized;
+		},
+		setAddFirstStepOnLoad(state: IUiState, addStep: boolean) {
+			state.addFirstStepOnLoad = addStep;
+		},
+		setExecutionsSidebarAutoRefresh(state: IUiState, autoRefresh: boolean) {
+			state.executionSidebarAutoRefresh = autoRefresh;
+		},
 	},
 	actions: {
 		openModal: async (context: ActionContext<IUiState, IRootState>, modalKey: string) => {
 			context.commit('openModal', modalKey);
+		},
+		openModalWithData: async (context: ActionContext<IUiState, IRootState>, payload: { name: string, data: Record<string, unknown> }) => {
+			context.commit('setModalData', payload);
+			context.commit('openModal', payload.name);
 		},
 		openDeleteUserModal: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: DELETE_USER_MODAL_KEY, id });
 			context.commit('openModal', DELETE_USER_MODAL_KEY);
 		},
 		openExistingCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
+			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id });
+			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' });
+			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
+		},
+		setCurlCommand: async (context: ActionContext<IUiState, IRootState>, { command }: {command: string}) => {
+			context.commit('setCurlCommand', { name: IMPORT_CURL_MODAL_KEY, command });
+		},
+		setHttpNodeParameters: async (context: ActionContext<IUiState, IRootState>, { parameters }) => {
+			context.commit('setHttpNodeParameters', { name: IMPORT_CURL_MODAL_KEY, parameters });
+		},
+		openExisitngCredential: async (context: ActionContext<IUiState, IRootState>, { id }: {id: string}) => {
 			context.commit('setActiveId', { name: CREDENTIAL_EDIT_MODAL_KEY, id });
 			context.commit('setMode', { name: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' });
 			context.commit('openModal', CREDENTIAL_EDIT_MODAL_KEY);
@@ -339,6 +366,9 @@ const module: Module<IUiState, IRootState> = {
 			context.commit('setActiveId', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,  id: packageName});
 			context.commit('setMode', { name: COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, mode: COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE });
 			context.commit('openModal', COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY);
+		},
+		async getCurlToJson(context: ActionContext<IUiState, IRootState>, curlCommand) {
+			return await getCurlToJson(context.rootGetters['getRestApiContext'], curlCommand);
 		},
 	},
 };

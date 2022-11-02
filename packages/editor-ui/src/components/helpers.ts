@@ -1,8 +1,10 @@
-import { CORE_NODES_CATEGORY, ERROR_TRIGGER_NODE_TYPE, MAPPING_PARAMS, TEMPLATES_NODES_FILTER } from '@/constants';
+import { CORE_NODES_CATEGORY, MAIN_HEADER_TABS, MAPPING_PARAMS, TEMPLATES_NODES_FILTER, VIEWS, NON_ACTIVATABLE_TRIGGER_NODE_TYPES } from '@/constants';
 import { INodeUi, ITemplatesNode } from '@/Interface';
 import { isResourceLocatorValue } from '@/typeGuards';
 import dateformat from 'dateformat';
-import {IDataObject, INodeProperties, INodeTypeDescription, NodeParameterValueType} from 'n8n-workflow';
+import {IDataObject, INodeProperties, INodeTypeDescription, NodeParameterValueType,INodeExecutionData, jsonParse} from 'n8n-workflow';
+import { isJsonKeyObject } from "@/utils";
+import { Route } from 'vue-router';
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
@@ -48,10 +50,7 @@ export function getTriggerNodeServiceName(nodeType: INodeTypeDescription): strin
 }
 
 export function getActivatableTriggerNodes(nodes: INodeUi[]) {
-	return nodes.filter((node: INodeUi) => {
-		// Error Trigger does not behave like other triggers and workflows using it can not be activated
-		return !node.disabled && node.type !== ERROR_TRIGGER_NODE_TYPE;
-	});
+	return nodes.filter((node: INodeUi) => !node.disabled && !NON_ACTIVATABLE_TRIGGER_NODE_TYPES.includes(node.type));
 }
 
 export function filterTemplateNodes(nodes: ITemplatesNode[]) {
@@ -71,6 +70,10 @@ export function setPageTitle(title: string) {
 
 export function isString(value: unknown): value is string {
 	return typeof value === 'string';
+}
+
+export function isStringNumber(value: unknown): value is string {
+	return !isNaN(Number(value));
 }
 
 export function isNumber(value: unknown): value is number {
@@ -118,3 +121,76 @@ export function isValueExpression (parameter: INodeProperties, paramValue: NodeP
 	}
 	return false;
 }
+
+export function convertRemToPixels(rem: string) {
+	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);
+}
+
+export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObject[] => inputData.reduce<IDataObject[]>(
+	(acc, item) => isJsonKeyObject(item) ? acc.concat(item.json) : acc,
+	[],
+);
+
+export const convertPath = (path: string): string => {
+	// TODO: That can for sure be done fancier but for now it works
+	const placeholder = '*___~#^#~___*';
+	let inBrackets = path.match(/\[(.*?)]/g);
+
+	if (inBrackets === null) {
+		inBrackets = [];
+	} else {
+		inBrackets = inBrackets.map(item => item.slice(1, -1)).map(item => {
+			if (item.startsWith('"') && item.endsWith('"')) {
+				return item.slice(1, -1);
+			}
+			return item;
+		});
+	}
+	const withoutBrackets = path.replace(/\[(.*?)]/g, placeholder);
+	const pathParts = withoutBrackets.split('.');
+	const allParts = [] as string[];
+	pathParts.forEach(part => {
+		let index = part.indexOf(placeholder);
+		while(index !== -1) {
+			if (index === 0) {
+				allParts.push(inBrackets!.shift() as string);
+				part = part.substr(placeholder.length);
+			} else {
+				allParts.push(part.substr(0, index));
+				part = part.substr(index);
+			}
+			index = part.indexOf(placeholder);
+		}
+		if (part !== '') {
+			allParts.push(part);
+		}
+	});
+
+	return '["' + allParts.join('"]["') + '"]';
+};
+
+export const clearJsonKey = (userInput: string | object) => {
+	const parsedUserInput = typeof userInput === 'string' ? jsonParse(userInput) : userInput;
+
+	if (!Array.isArray(parsedUserInput)) return parsedUserInput;
+
+	return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
+};
+
+export const getNodeViewTab = (route: Route): string|null => {
+		const routeMeta = route.meta;
+		if (routeMeta && routeMeta.nodeView === true) {
+			return MAIN_HEADER_TABS.WORKFLOW;
+		} else {
+			const executionTabRoutes = [
+				VIEWS.EXECUTION.toString(),
+				VIEWS.EXECUTION_PREVIEW.toString(),
+				VIEWS.EXECUTION_HOME.toString(),
+			];
+
+			if (executionTabRoutes.includes(route.name || '')) {
+				return MAIN_HEADER_TABS.EXECUTIONS;
+			}
+		}
+		return null;
+};

@@ -181,11 +181,7 @@ function numericId(length = positiveDigit()) {
 }
 
 function alphanumericId() {
-	return chooseRandomly([
-		`john${numericId()}`,
-		`title${numericId(1)}`,
-		numericId(),
-	]);
+	return chooseRandomly([`john${numericId()}`, `title${numericId(1)}`, numericId()]);
 }
 
 const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];

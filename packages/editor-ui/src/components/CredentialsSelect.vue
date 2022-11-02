@@ -7,6 +7,8 @@
 				:value="displayValue"
 				:placeholder="parameter.placeholder ? getPlaceholder() : $locale.baseText('parameterInput.select')"
 				:title="displayTitle"
+				:disabled="isReadOnly"
+				ref="innerSelect"
 				@change="(value) => $emit('valueChanged', value)"
 				@keydown.stop
 				@focus="$emit('setFocus')"
@@ -82,6 +84,12 @@ export default Vue.extend({
 		},
 	},
 	methods: {
+		focus() {
+			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
+			if (select) {
+				select.focus();
+			}
+		},
 		/**
 		 * Check if a credential type belongs to one of the supported sets defined
 		 * in the `credentialTypes` key in a `credentialsSelect` parameter

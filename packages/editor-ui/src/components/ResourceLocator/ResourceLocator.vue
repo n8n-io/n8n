@@ -1,5 +1,5 @@
 <template>
-	<div class="resource-locator">
+	<div class="resource-locator" ref="container">
 		<resource-locator-dropdown
 			:value="value ? value.value: ''"
 			:show="showResourceDropdown"
@@ -10,6 +10,7 @@
 			:filter="searchFilter"
 			:hasMore="currentQueryHasMore"
 			:errorView="currentQueryError"
+			:width="width"
 			@input="onListItemSelected"
 			@hide="onDropdownHide"
 			@filter="onSearchFilter"
@@ -26,7 +27,6 @@
 						<a @click="openCredential">{{
 							$locale.baseText('resourceLocator.mode.list.error.description.part2')
 						}}</a>
-						{{ $locale.baseText('resourceLocator.mode.list.error.description.part3') }}
 					</n8n-text>
 				</div>
 			</template>
@@ -82,8 +82,9 @@
 									v-if="isValueExpression || droppable || forceShowExpression"
 									type="text"
 									:size="inputSize"
-									:value="activeDrop || forceShowExpression ? '' : expressionDisplayValue"
+									:value="expressionDisplayValue"
 									:title="displayTitle"
+									:disabled="isReadOnly"
 									@keydown.stop
 									ref="input"
 								/>
@@ -137,7 +138,6 @@
 				</div>
 			</div>
 		</resource-locator-dropdown>
-		<parameter-input-hint v-if="infoText" class="mt-4xs" :hint="infoText" />
 	</div>
 </template>
 
@@ -163,7 +163,6 @@ import {
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
-import ParameterInputHint from '@/components/ParameterInputHint.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
 import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
@@ -172,7 +171,7 @@ import stringify from 'fast-json-stable-stringify';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { nodeHelpers } from '../mixins/nodeHelpers';
 import { getAppNameFromNodeName } from '../helpers';
-import { type } from 'os';
+import { isResourceLocatorValue } from '@/typeGuards';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -187,7 +186,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		DraggableTarget,
 		ExpressionEdit,
 		ParameterIssues,
-		ParameterInputHint,
 		ResourceLocatorDropdown,
 	},
 	props: {
@@ -197,10 +195,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		value: {
 			type: [Object, String] as PropType<INodeParameterResourceLocator | NodeParameterValue | undefined>,
-		},
-		mode: {
-			type: String,
-			default: '',
 		},
 		inputSize: {
 			type: String,
@@ -219,13 +213,16 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			type: String,
 			default: '',
 		},
-		expressionDisplayValue: {
+		expressionComputedValue: {
 			type: String,
 			default: '',
 		},
 		isReadOnly: {
 			type: Boolean,
 			default: false,
+		},
+		expressionDisplayValue: {
+			type: String,
 		},
 		forceShowExpression: {
 			type: Boolean,
@@ -251,10 +248,12 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
+			mainPanelMutationSubscription: () => {},
 			showResourceDropdown: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
 			hasCompletedASearch: false,
+			width: 0,
 		};
 	},
 	computed: {
@@ -281,7 +280,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return this.selectedMode === 'list';
 		},
 		hasCredential(): boolean {
-			const node = this.$store.getters.activeNode as INodeUi | null;
+			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
 			if (!node) {
 				return false;
 			}
@@ -298,9 +297,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			};
 
 			return defaults[this.selectedMode] || '';
-		},
-		infoText(): string {
-			return this.currentMode.hint ? this.currentMode.hint : '';
 		},
 		currentMode(): INodePropertyMode {
 			return this.findModeByName(this.selectedMode) || ({} as INodePropertyMode);
@@ -328,8 +324,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 
 			if (this.selectedMode === 'url') {
-				if (this.isValueExpression && typeof this.expressionDisplayValue === 'string' && this.expressionDisplayValue.startsWith('http')) {
-					return this.expressionDisplayValue;
+				if (this.isValueExpression && typeof this.expressionComputedValue === 'string' && this.expressionComputedValue.startsWith('http')) {
+					return this.expressionComputedValue;
 				}
 
 				if (typeof this.valueToDisplay === 'string' && this.valueToDisplay.startsWith('http')) {
@@ -338,7 +334,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			}
 
 			if (this.currentMode.url) {
-				const value = this.isValueExpression? this.expressionDisplayValue : this.valueToDisplay;
+				const value = this.isValueExpression? this.expressionComputedValue : this.valueToDisplay;
 				if (typeof value === 'string') {
 					const expression = this.currentMode.url.replace(/\{\{\$value\}\}/g, value);
 					const resolved = this.resolveExpression(expression);
@@ -420,11 +416,33 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				this.switchFromListMode();
 			}
 		},
+		currentMode(mode: INodePropertyMode) {
+			if (mode.extractValue && mode.extractValue.regex && isResourceLocatorValue(this.value) && this.value.__regex !== mode.extractValue.regex) {
+				this.$emit('input', {...this.value, __regex: mode.extractValue.regex});
+			}
+		},
 	},
 	mounted() {
 		this.$on('refreshList', this.refreshList);
+		window.addEventListener('resize', this.setWidth);
+		this.mainPanelMutationSubscription = this.$store.subscribe(this.setWidthOnMainPanelResize);
+		setTimeout(() => {
+			this.setWidth();
+		}, 0);
+	},
+	beforeDestroy() {
+		// Unsubscribe
+		this.mainPanelMutationSubscription();
+		window.removeEventListener('resize', this.setWidth);
 	},
 	methods: {
+		setWidth() {
+			this.width = (this.$refs.container as HTMLElement).offsetWidth;
+		},
+		setWidthOnMainPanelResize(mutation: { type: string }) {
+			// Update the width when main panel dimension change
+			if(mutation.type === 'ndv/setMainPanelDimensions') this.setWidth();
+		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {
 				return this.$locale.baseText('resourceLocator.openSpecificResource', { interpolate: { entity, appName: this.appName } });
@@ -462,7 +480,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return parameter.typeOptions[argumentName];
 		},
 		openCredential(): void {
-			const node = this.$store.getters.activeNode as INodeUi | null;
+			const node = this.$store.getters['ndv/activeNode'] as INodeUi | null;
 			if (!node || !node.credentials) {
 				return;
 			}
@@ -487,7 +505,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return null;
 		},
 		onInputChange(value: string): void {
-			const params: INodeParameterResourceLocator = { value, mode: this.selectedMode };
+			const params: INodeParameterResourceLocator = { __rl: true, value, mode: this.selectedMode };
 			if (this.isListMode) {
 				const resource = this.currentQueryResults.find((resource) => resource.value === value);
 				if (resource && resource.name) {
@@ -502,13 +520,13 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		onModeSelected(value: string): void {
 			if (typeof this.value !== 'object') {
-				this.$emit('input', { value: this.value, mode: value });
+				this.$emit('input', { __rl: true, value: this.value, mode: value });
 			} else if (value === 'url' && this.value && this.value.cachedResultUrl) {
-				this.$emit('input', { mode: value, value: this.value.cachedResultUrl });
+				this.$emit('input', { __rl: true, mode: value, value: this.value.cachedResultUrl });
 			} else if (value === 'id' && this.selectedMode === 'list' && this.value && this.value.value) {
-				this.$emit('input', { mode: value, value: this.value.value });
+				this.$emit('input', { __rl: true, mode: value, value: this.value.value });
 			} else {
-				this.$emit('input', { mode: value, value: '' });
+				this.$emit('input', { __rl: true, mode: value, value: '' });
 			}
 
 			this.trackEvent('User changed resource locator mode', { mode: value });
@@ -639,7 +657,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				}
 
 				if (mode) {
-					this.$emit('input', { value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
+					this.$emit('input', { __rl: true, value: ((this.value && typeof this.value === 'object')? this.value.value: ''), mode: mode.name });
 				}
 			}
 		},

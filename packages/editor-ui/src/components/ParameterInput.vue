@@ -2,7 +2,7 @@
 	<div @keydown.stop :class="parameterInputClasses">
 		<expression-edit
 			:dialogVisible="expressionEditDialogVisible"
-			:value="isResourceLocatorParameter ? (value ? value.value : '') : value"
+			:value="isResourceLocatorParameter && typeof value !== 'string' ? (value ? value.value : '') : value"
 			:parameter="parameter"
 			:path="path"
 			:eventSource="eventSource || 'ndv'"
@@ -21,6 +21,7 @@
 				:value="value"
 				:displayTitle="displayTitle"
 				:expressionDisplayValue="expressionDisplayValue"
+				:expressionComputedValue="expressionEvaluated"
 				:isValueExpression="isValueExpression"
 				:isReadOnly="isReadOnly"
 				:parameterIssues="getIssues"
@@ -37,8 +38,9 @@
 				:size="inputSize"
 				:type="getStringInputType"
 				:rows="getArgument('rows')"
-				:value="activeDrop || forceShowExpression? '': expressionDisplayValue"
+				:value="expressionDisplayValue"
 				:title="displayTitle"
+				:readOnly="isReadOnly"
 				@keydown.stop
 			/>
 			<div
@@ -63,11 +65,20 @@
 					:value="value"
 					:parameter="parameter"
 					:path="path"
+					:isReadOnly="isReadOnly"
 					@closeDialog="closeTextEditDialog"
 					@valueChanged="expressionUpdated"
 				></text-edit>
 
-				<div v-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
+				<code-node-editor
+					v-if="getArgument('editor') === 'codeNodeEditor' && isCodeNode(node)"
+					:mode="node.parameters.mode"
+					:jsCode="node.parameters.jsCode"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChangedDebounced"
+				/>
+
+				<div v-else-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
 					<prism-editor
 						v-if="!codeEditDialogVisible"
 						:lineNumbers="true"
@@ -282,6 +293,8 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable prefer-spread */
+
 import { get } from 'lodash';
 
 import {
@@ -295,10 +308,14 @@ import {
 	INodeParameters,
 	INodePropertyOptions,
 	Workflow,
+	INodeProperties,
+	INodePropertyCollection,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 
 import CodeEdit from '@/components/CodeEdit.vue';
 import CredentialsSelect from '@/components/CredentialsSelect.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import ScopesNotice from '@/components/ScopesNotice.vue';
@@ -308,27 +325,33 @@ import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
+import CodeNodeEditor from '@/components/CodeNodeEditor/CodeNodeEditor.vue';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { hasExpressionMapping, isValueExpression } from './helpers';
+import { isResourceLocatorValue } from '@/typeGuards';
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
 import { mapGetters } from 'vuex';
-import { hasExpressionMapping, isValueExpression } from './helpers';
-import { isResourceLocatorValue } from '@/typeGuards';
+import { CODE_NODE_TYPE } from '@/constants';
+import { PropType } from 'vue';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
 	nodeHelpers,
 	showMessage,
 	workflowHelpers,
+	debounceHelper,
 )
 	.extend({
 		name: 'parameter-input',
 		components: {
 			CodeEdit,
+			CodeNodeEditor,
 			ExpressionEdit,
 			NodeCredentials,
 			CredentialsSelect,
@@ -338,22 +361,58 @@ export default mixins(
 			ParameterIssues,
 			ResourceLocator,
 			TextEdit,
+			ImportParameter,
 		},
-		props: [
-			'inputSize',
-			'isReadOnly',
-			'documentationUrl',
-			'parameter', // NodeProperties
-			'path', // string
-			'value',
-			'hideIssues', // boolean
-			'errorHighlight',
-			'isForCredential', // boolean
-			'eventSource', // string
-			'activeDrop',
-			'droppable',
-			'forceShowExpression',
-		],
+		props: {
+			isReadOnly: {
+				type: Boolean,
+			},
+			parameter: {
+				type: Object as PropType<INodeProperties>,
+			},
+			path: {
+				type: String,
+			},
+			value: {
+				type: [String, Number, Boolean, Array, Object] as PropType<NodeParameterValueType>,
+			},
+			hideLabel: {
+				type: Boolean,
+			},
+			droppable: {
+				type: Boolean,
+			},
+			activeDrop: {
+				type: Boolean,
+			},
+			forceShowExpression: {
+				type: Boolean,
+			},
+			hint: {
+				type: String as PropType<string | undefined>,
+			},
+			inputSize: {
+				type: String,
+			},
+			hideIssues: {
+				type: Boolean,
+			},
+			documentationUrl: {
+				type: String as PropType<string | undefined>,
+			},
+			errorHighlight: {
+				type: Boolean,
+			},
+			isForCredential: {
+				type: Boolean,
+			},
+			eventSource: {
+				type: String,
+			},
+			expressionEvaluated: {
+				type: String as PropType<string | undefined>,
+			},
+		},
 		data () {
 			return {
 				codeEditDialogVisible: false,
@@ -414,11 +473,20 @@ export default mixins(
 		},
 		computed: {
 			...mapGetters('credentials', ['allCredentialTypes']),
+			expressionDisplayValue(): string {
+				if (this.activeDrop || this.forceShowExpression) {
+					return '';
+				}
+
+				const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
+				if (typeof value === 'string' && value.startsWith('=')) {
+					return value.slice(1);
+				}
+
+				return '';
+			},
 			isValueExpression(): boolean {
 				return isValueExpression(this.parameter, this.value);
-			},
-			areExpressionsDisabled(): boolean {
-				return this.$store.getters['ui/areExpressionsDisabled'];
 			},
 			codeAutocomplete (): string | undefined {
 				return this.getArgument('codeAutocomplete') as string | undefined;
@@ -431,7 +499,7 @@ export default mixins(
 				}
 
 				// Get the resolved parameter values of the current node
-				const currentNodeParameters = this.$store.getters.activeNode.parameters;
+				const currentNodeParameters = this.$store.getters['ndv/activeNode'].parameters;
 				try {
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
@@ -446,7 +514,7 @@ export default mixins(
 				}
 			},
 			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			displayTitle (): string {
 				const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -481,9 +549,9 @@ export default mixins(
 
 				let returnValue;
 				if (this.isValueExpression === false) {
-					returnValue = this.isResourceLocatorParameter ? (this.value ? this.value.value: '') : this.value;
+					returnValue = this.isResourceLocatorParameter ? (isResourceLocatorValue(this.value) ? this.value.value: '') : this.value;
 				} else {
-					returnValue = this.expressionValueComputed;
+					returnValue = this.expressionEvaluated;
 				}
 
 				if (this.parameter.type === 'credentialsSelect') {
@@ -514,39 +582,6 @@ export default mixins(
 
 				return returnValue;
 			},
-			expressionDisplayValue (): string {
-				const value = this.displayValue;
-
-				// address type errors for text input
-				if (typeof value === 'number' || typeof value === 'boolean') {
-					return JSON.stringify(value);
-				}
-
-				if (value === null) {
-					return '';
-				}
-
-				return value;
-			},
-			expressionValueComputed (): NodeParameterValue | string[] | null {
-				if (this.areExpressionsDisabled) {
-					return this.value;
-				}
-
-				if (this.node === null) {
-					return null;
-				}
-
-				let computedValue: NodeParameterValue;
-
-				try {
-					computedValue = this.resolveExpression(this.value.value || this.value) as NodeParameterValue;
-				} catch (error) {
-					computedValue = `[${this.$locale.baseText('parameterInput.error')}}: ${error.message}]`;
-				}
-
-				return computedValue;
-			},
 			getStringInputType () {
 				if (this.getArgument('password') === true) {
 					return 'password';
@@ -557,7 +592,7 @@ export default mixins(
 					return 'textarea';
 				}
 
-				if (this.parameter.type === 'code') {
+				if (this.parameter.typeOptions && this.parameter.typeOptions.editor === 'code') {
 					return 'textarea';
 				}
 
@@ -582,13 +617,14 @@ export default mixins(
 				} else if (
 					['options', 'multiOptions'].includes(this.parameter.type) &&
 					this.remoteParameterOptionsLoading === false &&
-					this.remoteParameterOptionsLoadingIssues === null
+					this.remoteParameterOptionsLoadingIssues === null &&
+					this.parameterOptions
 				) {
 					// Check if the value resolves to a valid option
 					// Currently it only displays an error in the node itself in
 					// case the value is not valid. The workflow can still be executed
 					// and the error is not displayed on the node in the workflow
-					const validOptions = this.parameterOptions!.map((options: INodePropertyOptions) => options.value);
+					const validOptions = this.parameterOptions.map((options) => (options as INodePropertyOptions).value);
 
 					const checkValues: string[] = [];
 
@@ -635,7 +671,7 @@ export default mixins(
 			editorType (): string {
 				return this.getArgument('editor') as string;
 			},
-			parameterOptions (): INodePropertyOptions[] {
+			parameterOptions (): Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> | undefined {
 				if (this.hasRemoteMethod === false) {
 					// Options are already given
 					return this.parameter.options;
@@ -748,7 +784,7 @@ export default mixins(
 				// Get the resolved parameter values of the current node
 
 				try {
-					const currentNodeParameters = (this.$store.getters.activeNode as INodeUi).parameters;
+					const currentNodeParameters = (this.$store.getters['ndv/activeNode'] as INodeUi).parameters;
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
@@ -792,7 +828,7 @@ export default mixins(
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
 						workflow_id: this.$store.getters.workflowId,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						session_id: this.$store.getters['ndv/ndvSessionId'],
 						source: this.eventSource || 'ndv',
 					});
 				}
@@ -819,14 +855,10 @@ export default mixins(
 				return this.parameter.typeOptions[argumentName];
 			},
 			expressionUpdated (value: string) {
-				const val = this.isResourceLocatorParameter ? { value, mode: this.value.mode } : value;
+				const val: NodeParameterValueType = this.isResourceLocatorParameter ? { __rl: true, value, mode: this.value.mode } : value;
 				this.valueChanged(val);
 			},
 			openExpressionEdit() {
-				if (this.areExpressionsDisabled) {
-					return;
-				}
-
 				if (this.isValueExpression) {
 					this.expressionEditDialogVisible = true;
 					this.trackExpressionEditOpen();
@@ -872,6 +904,9 @@ export default mixins(
 
 				this.$emit('focus');
 			},
+			isCodeNode(node: INodeUi): boolean {
+				return node.type === CODE_NODE_TYPE;
+			},
 			rgbaToHex (value: string): string | null {
 				// Convert rgba to hex from: https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb
 				const valueMatch = (value as string).match(/^rgba\((\d+),\s*(\d+),\s*(\d+),\s*(\d+(\.\d+)?)\)$/);
@@ -891,7 +926,10 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
-			valueChanged (value: string[] | string | number | boolean | Date | {} | null) {
+			valueChangedDebounced (value: NodeParameterValueType | {} | Date) {
+				this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+			},
+			valueChanged (value: NodeParameterValueType | {} | Date) {
 				if (this.parameter.name === 'nodeCredentialType') {
 					this.activeCredentialType = value as string;
 				}
@@ -900,7 +938,7 @@ export default mixins(
 					value = value.toISOString();
 				}
 
-				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && value !== null && value.toString().charAt(0) !== '#') {
+				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && value !== null && value !== undefined && value.toString().charAt(0) !== '#') {
 					const newValue = this.rgbaToHex(value as string);
 					if (newValue !== null) {
 						this.tempValue = newValue;
@@ -922,7 +960,7 @@ export default mixins(
 						node_type: this.node && this.node.type,
 						resource: this.node && this.node.parameters.resource,
 						is_custom: value === CUSTOM_API_CALL_KEY,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						session_id: this.$store.getters['ndv/ndvSessionId'],
 						parameter: this.parameter.name,
 					});
 				}
@@ -935,15 +973,17 @@ export default mixins(
 				} else if (command === 'openExpression') {
 					this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
-					if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
-						this.valueChanged({ value: `={{${this.value}}}`, mode: this.value.mode });
-					} else if (this.isResourceLocatorParameter) {
+					if (this.isResourceLocatorParameter) {
 						if (isResourceLocatorValue(this.value)) {
-							this.valueChanged({ value: `=${this.value.value}`, mode: this.value.mode });
+							this.valueChanged({ __rl: true, value: `=${this.value.value}`, mode: this.value.mode });
 						} else {
-							this.valueChanged({ value: `=${this.value}`, mode: '' });
+							this.valueChanged({ __rl: true, value: `=${this.value}`, mode: '' });
 						}
-					} else {
+					}
+					else if (this.parameter.type === 'number' || this.parameter.type === 'boolean') {
+						this.valueChanged(`={{${this.value}}}`);
+					}
+					else {
 						this.valueChanged(`=${this.value}`);
 					}
 
@@ -952,15 +992,15 @@ export default mixins(
 						this.trackExpressionEditOpen();
 					}, 375);
 				} else if (command === 'removeExpression') {
-					let value = this.expressionValueComputed;
+					let value: NodeParameterValueType = this.expressionEvaluated;
 
 					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
 						value = (value || '').split(',')
-							.filter((value) => (this.parameterOptions || []).find((option) => option.value === value));
+							.filter((value) => (this.parameterOptions || []).find((option) => (option as INodePropertyOptions).value === value));
 					}
 
-					if (this.isResourceLocatorParameter) {
-						this.valueChanged({ value, mode: this.value.mode });
+					if (this.isResourceLocatorParameter && isResourceLocatorValue(this.value)) {
+						this.valueChanged({ __rl: true, value, mode: this.value.mode });
 					} else {
 						this.valueChanged(typeof value !== 'undefined' ? value : null);
 					}
@@ -1129,7 +1169,6 @@ export default mixins(
 }
 
 .list-option {
-	max-width: 340px;
 	margin: 6px 0;
 	white-space: normal;
 	padding-right: 20px;
@@ -1145,7 +1184,7 @@ export default mixins(
 		font-size: var(--font-size-2xs);
 		font-weight: var(--font-weight-regular);
 		line-height: var(--font-line-height-xloose);
-		color: $--custom-font-very-light;
+		color: $custom-font-very-light;
 	}
 }
 

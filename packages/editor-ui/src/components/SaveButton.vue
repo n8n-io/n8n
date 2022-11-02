@@ -7,6 +7,7 @@
 			:loading="isSaving"
 			:disabled="disabled"
 			:class="$style.button"
+			:type="type"
 			@click="$emit('click')"
 		/>
 	</span>
@@ -36,6 +37,10 @@ export default Vue.extend({
 		savedLabel: {
 			type: String,
 		},
+		type: {
+			type: String,
+			default: 'primary',
+		},
 	},
 	computed: {
 		saveButtonLabel() {
@@ -60,7 +65,7 @@ export default Vue.extend({
 }
 
 .saved {
-	color: $--custom-font-very-light;
+	color: $custom-font-very-light;
 	font-size: 12px;
 	font-weight: 600;
 	line-height: 12px;

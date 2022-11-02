@@ -10,6 +10,7 @@ import {
 	ICredentialType,
 	IDataObject,
 	IExecuteFunctions,
+	INode,
 	INodeExecutionData,
 	INodeParameters,
 	INodeTypeData,
@@ -41,7 +42,7 @@ import { authenticationMethods as authEndpoints } from '../../../src/UserManagem
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { nodesController } from '../../../src/api/nodes.api';
-import { workflowsController } from '../../../src/api/workflows.api';
+import { workflowsController } from '../../../src/workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
 import { credentialsController } from '../../../src/credentials/credentials.controller';
 import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
@@ -65,6 +66,8 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
+import { v4 as uuid } from 'uuid';
 
 /**
  * Initialize a test server.
@@ -698,3 +701,42 @@ export const emptyPackage = () => {
 
 	return Promise.resolve(installedPackage);
 };
+
+// ----------------------------------
+//           workflow
+// ----------------------------------
+
+export function makeWorkflow(options?: {
+	withPinData: boolean;
+	withCredential?: { id: string; name: string };
+}) {
+	const workflow = new WorkflowEntity();
+
+	const node: INode = {
+		id: uuid(),
+		name: 'Cron',
+		type: 'n8n-nodes-base.cron',
+		parameters: {},
+		typeVersion: 1,
+		position: [740, 240],
+	};
+
+	if (options?.withCredential) {
+		node.credentials = {
+			spotifyApi: options.withCredential,
+		};
+	}
+
+	workflow.name = 'My Workflow';
+	workflow.active = false;
+	workflow.connections = {};
+	workflow.nodes = [node];
+
+	if (options?.withPinData) {
+		workflow.pinData = MOCK_PINDATA;
+	}
+
+	return workflow;
+}
+
+export const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };

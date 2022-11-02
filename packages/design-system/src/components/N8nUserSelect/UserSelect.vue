@@ -1,5 +1,5 @@
 <template>
-	<el-select
+	<n8n-select
 		:value="value"
 		:filterable="true"
 		:filterMethod="setFilter"
@@ -16,19 +16,21 @@
 		<template #prefix v-if="$slots.prefix">
 			<slot name="prefix" />
 		</template>
-		<el-option
+		<n8n-option
 			v-for="user in sortedUsers"
 			:key="user.id"
 			:value="user.id"
 			:class="$style.itemContainer"
 			:label="getLabel(user)"
+			:disabled="user.disabled"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
-		</el-option>
-	</el-select>
+		</n8n-option>
+	</n8n-select>
 </template>
 
 <script lang="ts">
+/* tslint:disable: @typescript-eslint/no-unsafe-assignment */
 import Vue from 'vue';
 import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../types';
@@ -42,8 +44,8 @@ export default mixins(Locale).extend({
 	name: 'n8n-user-select',
 	components: {
 		N8nUserInfo,
-		ElSelect,
-		ElOption,
+		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElOption, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
 		users: {
@@ -104,7 +106,7 @@ export default mixins(Locale).extend({
 				});
 		},
 		sortedUsers(): IUser[] {
-			return [...(this.fitleredUsers as IUser[])].sort((a: IUser, b: IUser) => {
+			return [...(this.fitleredUsers )].sort((a: IUser, b: IUser) => {
 				if (a.lastName && b.lastName && a.lastName !== b.lastName) {
 					return a.lastName > b.lastName ? 1 : -1;
 				}

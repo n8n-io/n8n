@@ -30,14 +30,14 @@
 /* eslint-disable no-await-in-loop */
 
 import { exec as callbackExec } from 'child_process';
-import { promises, readFileSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
+import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
 import os from 'os';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import _ from 'lodash';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
@@ -67,6 +67,7 @@ import {
 	ITelemetrySettings,
 	LoggerProxy,
 	NodeHelpers,
+	jsonParse,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
@@ -90,11 +91,12 @@ import { WEBHOOK_METHODS } from './WebhookHelpers';
 import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 
 import { nodesController } from './api/nodes.api';
-import { workflowsController } from './api/workflows.api';
+import { workflowsController } from './workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './credentials/credentials.controller';
 import { oauth2CredentialController } from './credentials/oauth2Credential.api';
 import type {
+	CurlHelper,
 	ExecutionRequest,
 	NodeListSearchRequest,
 	NodeParameterOptionsRequest,
@@ -107,12 +109,12 @@ import { resolveJwt } from './UserManagement/auth/jwt';
 import { executionsController } from './api/executions.api';
 import { nodeTypesController } from './api/nodeTypes.api';
 import { tagsController } from './api/tags.api';
-import { isCredentialsSharingEnabled } from './credentials/helpers';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
+	isSharingEnabled,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import {
@@ -147,7 +149,10 @@ import {
 	WebhookServer,
 	WorkflowExecuteAdditionalData,
 } from '.';
+import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
+
+import { toHttpNodeParameters } from './CurlConverterHelper';
 
 require('body-parser-xml')(bodyParser);
 
@@ -216,6 +221,7 @@ class App {
 
 	constructor() {
 		this.app = express();
+		this.app.disable('x-powered-by');
 
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
@@ -278,6 +284,7 @@ class App {
 			saveManualExecutions: this.saveManualExecutions,
 			executionTimeout: this.executionTimeout,
 			maxExecutionTimeout: this.maxExecutionTimeout,
+			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
 			timezone: this.timezone,
 			urlBaseWebhook,
 			urlBaseEditor: instanceBaseUrl,
@@ -323,8 +330,13 @@ class App {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
+			allowedModules: {
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+			},
 			enterprise: {
 				sharing: false,
+				workflowSharing: false,
 			},
 		};
 	}
@@ -332,8 +344,6 @@ class App {
 	/**
 	 * Returns the current epoch time
 	 *
-	 * @returns {number}
-	 * @memberof App
 	 */
 	getCurrentDate(): Date {
 		return new Date();
@@ -354,7 +364,8 @@ class App {
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
-			sharing: isCredentialsSharingEnabled(),
+			sharing: isSharingEnabled(),
+			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -389,20 +400,18 @@ class App {
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
+			'assets',
 			'healthz',
 			'metrics',
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
-		];
-		if (!config.getEnv('publicApi.disabled')) {
-			ignoredEndpoints.push(this.publicApiEndpoint);
-		}
-		// eslint-disable-next-line prefer-spread
-		ignoredEndpoints.push.apply(ignoredEndpoints, excludeEndpoints.split(':'));
+			config.getEnv('publicApi.disabled') ? this.publicApiEndpoint : '',
+			...excludeEndpoints.split(':'),
+		].filter((u) => !!u);
 
 		// eslint-disable-next-line no-useless-escape
-		const authIgnoreRegex = new RegExp(`^\/(${_(ignoredEndpoints).compact().join('|')})\/?.*$`);
+		const authIgnoreRegex = new RegExp(`^\/(${ignoredEndpoints.join('|')})\/?.*$`);
 
 		// Check for basic auth credentials if activated
 		const basicAuthActive = config.getEnv('security.basicAuth.active');
@@ -613,7 +622,6 @@ class App {
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
-			// @ts-ignore
 			req.rawBody = Buffer.from('', 'base64');
 			next();
 		});
@@ -623,7 +631,6 @@ class App {
 			bodyParser.json({
 				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -640,7 +647,6 @@ class App {
 					explicitArray: false, // Only put properties in array if length > 1
 				},
 				verify: (req: express.Request, res: any, buf: any) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -650,7 +656,6 @@ class App {
 			bodyParser.text({
 				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -661,18 +666,7 @@ class App {
 			history({
 				rewrites: [
 					{
-						from: new RegExp(
-							`^/(${[
-								'healthz',
-								'metrics',
-								'css',
-								'js',
-								this.restEndpoint,
-								this.endpointWebhook,
-								this.endpointWebhookTest,
-								...(excludeEndpoints.length ? excludeEndpoints.split(':') : []),
-							].join('|')})/?.*$`,
-						),
+						from: new RegExp(`^/(${[this.restEndpoint, ...ignoredEndpoints].join('|')})/?.*$`),
 						to: (context) => {
 							return context.parsedUrl.pathname!.toString();
 						},
@@ -687,7 +681,6 @@ class App {
 				limit: `${this.payloadSizeMax}mb`,
 				extended: false,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -791,20 +784,20 @@ class App {
 			`/${this.restEndpoint}/node-parameter-options`,
 			ResponseHelper.send(
 				async (req: NodeParameterOptionsRequest): Promise<INodePropertyOptions[]> => {
-					const nodeTypeAndVersion = JSON.parse(
+					const nodeTypeAndVersion = jsonParse(
 						req.query.nodeTypeAndVersion,
 					) as INodeTypeNameVersion;
 
 					const { path, methodName } = req.query;
 
-					const currentNodeParameters = JSON.parse(
+					const currentNodeParameters = jsonParse(
 						req.query.currentNodeParameters,
 					) as INodeParameters;
 
 					let credentials: INodeCredentials | undefined;
 
 					if (req.query.credentials) {
-						credentials = JSON.parse(req.query.credentials);
+						credentials = jsonParse(req.query.credentials);
 					}
 
 					const loadDataInstance = new LoadNodeParameterOptions(
@@ -827,7 +820,7 @@ class App {
 					if (req.query.loadOptions) {
 						return loadDataInstance.getOptionsViaRequestProperty(
 							// @ts-ignore
-							JSON.parse(req.query.loadOptions as string),
+							jsonParse(req.query.loadOptions as string),
 							additionalData,
 						);
 					}
@@ -846,7 +839,7 @@ class App {
 					req: NodeListSearchRequest,
 					res: express.Response,
 				): Promise<INodeListSearchResult | undefined> => {
-					const nodeTypeAndVersion = JSON.parse(
+					const nodeTypeAndVersion = jsonParse(
 						req.query.nodeTypeAndVersion,
 					) as INodeTypeNameVersion;
 
@@ -856,14 +849,14 @@ class App {
 						throw new ResponseError('Parameter currentNodeParameters is required.', undefined, 400);
 					}
 
-					const currentNodeParameters = JSON.parse(
+					const currentNodeParameters = jsonParse(
 						req.query.currentNodeParameters,
 					) as INodeParameters;
 
 					let credentials: INodeCredentials | undefined;
 
 					if (req.query.credentials) {
-						credentials = JSON.parse(req.query.credentials);
+						credentials = jsonParse(req.query.credentials);
 					}
 
 					const listSearchInstance = new LoadNodeListSearch(
@@ -964,7 +957,7 @@ class App {
 					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
 
 					try {
-						await promises.access(`${headersPath}.js`);
+						await fsAccess(`${headersPath}.js`);
 					} catch (_) {
 						return; // no headers available
 					}
@@ -1073,6 +1066,27 @@ class App {
 			}),
 		);
 
+		// ----------------------------------------
+		// curl-converter
+		// ----------------------------------------
+		this.app.post(
+			`/${this.restEndpoint}/curl-to-json`,
+			ResponseHelper.send(
+				async (
+					req: CurlHelper.ToJson,
+					res: express.Response,
+				): Promise<{ [key: string]: string }> => {
+					const curlCommand = req.body.curlCommand ?? '';
+
+					try {
+						const parameters = toHttpNodeParameters(curlCommand);
+						return ResponseHelper.flattenObject(parameters, 'parameters');
+					} catch (e) {
+						throw new ResponseHelper.ResponseError(`Invalid cURL command`, undefined, 400);
+					}
+				},
+			),
+		);
 		// ----------------------------------------
 		// Credential-Types
 		// ----------------------------------------
@@ -1189,12 +1203,12 @@ class App {
 					timezone,
 				);
 
-				const signatureMethod = _.get(oauthCredentials, 'signatureMethod') as string;
+				const signatureMethod = oauthCredentials.signatureMethod as string;
 
 				const oAuthOptions: clientOAuth1.Options = {
 					consumer: {
-						key: _.get(oauthCredentials, 'consumerKey') as string,
-						secret: _.get(oauthCredentials, 'consumerSecret') as string,
+						key: oauthCredentials.consumerKey as string,
+						secret: oauthCredentials.consumerSecret as string,
 					},
 					signature_method: signatureMethod,
 					// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -1217,7 +1231,7 @@ class App {
 
 				const options: RequestOptions = {
 					method: 'POST',
-					url: _.get(oauthCredentials, 'requestTokenUrl') as string,
+					url: oauthCredentials.requestTokenUrl as string,
 					data: oauthRequestData,
 				};
 
@@ -1234,9 +1248,7 @@ class App {
 
 				const responseJson = Object.fromEntries(paramsParser.entries());
 
-				const returnUri = `${_.get(oauthCredentials, 'authUrl')}?oauth_token=${
-					responseJson.oauth_token
-				}`;
+				const returnUri = `${oauthCredentials.authUrl}?oauth_token=${responseJson.oauth_token}`;
 
 				// Encrypt the data
 				const credentials = new Credentials(
@@ -1329,7 +1341,7 @@ class App {
 
 					const options: AxiosRequestConfig = {
 						method: 'POST',
-						url: _.get(oauthCredentials, 'accessTokenUrl') as string,
+						url: oauthCredentials.accessTokenUrl as string,
 						params: {
 							oauth_token,
 							oauth_verifier,
@@ -1439,7 +1451,7 @@ class App {
 						if (!sharedWorkflowIds.length) return [];
 
 						if (req.query.filter) {
-							const { workflowId } = JSON.parse(req.query.filter);
+							const { workflowId } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
 								Object.assign(findOptions.where!, { workflowId });
 							}
@@ -1466,7 +1478,7 @@ class App {
 
 					const returnData: IExecutionsSummary[] = [];
 
-					const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+					const filter = req.query.filter ? jsonParse<any>(req.query.filter) : {};
 
 					const sharedWorkflowIds = await getSharedWorkflowIds(req.user).then((ids) =>
 						ids.map((id) => id.toString()),
@@ -1750,18 +1762,11 @@ class App {
 
 		if (!config.getEnv('endpoints.disableUi')) {
 			// Read the index file and replace the path placeholder
-			const editorUiPath = require.resolve('n8n-editor-ui');
-			const filePath = pathJoin(pathDirname(editorUiPath), 'dist', 'index.html');
 			const n8nPath = config.getEnv('path');
-
-			let readIndexFile = readFileSync(filePath, 'utf8');
-			readIndexFile = readIndexFile.replace(/\/%BASE_PATH%\//g, n8nPath);
-			readIndexFile = readIndexFile.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`);
-
+			const basePathRegEx = /\/{{BASE_PATH}}\//g;
 			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
 
 			let scriptsString = '';
-
 			if (hooksUrls) {
 				scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
 					return `${acc}<script src="${curr}"></script>`;
@@ -1782,34 +1787,38 @@ class App {
 				scriptsString += phLoadingScript;
 			}
 
-			const firstLinkedScriptSegment = '<link href="/js/';
-			readIndexFile = readIndexFile.replace(
-				firstLinkedScriptSegment,
-				scriptsString + firstLinkedScriptSegment,
-			);
+			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
+			const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
 
-			// Serve the altered index.html file separately
-			this.app.get(`/index.html`, async (req: express.Request, res: express.Response) => {
-				res.send(readIndexFile);
+			const closingTitleTag = '</title>';
+			const compileFile = async (fileName: string) => {
+				const filePath = pathJoin(editorUiDistDir, fileName);
+				if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
+					const srcFile = await readFile(filePath, 'utf8');
+					let payload = srcFile
+						.replace(basePathRegEx, n8nPath)
+						.replace(/\/static\//g, n8nPath + 'static/');
+					if (filePath.endsWith('index.html')) {
+						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
+					}
+					const destFile = pathJoin(generatedStaticDir, fileName);
+					await mkdir(pathDirname(destFile), { recursive: true });
+					await writeFile(destFile, payload, 'utf-8');
+				}
+			};
+
+			await compileFile('index.html');
+			const files = await glob('**/*.{css,js}', { cwd: editorUiDistDir });
+			await Promise.all(files.map(compileFile));
+
+			this.app.use('/', express.static(generatedStaticDir), express.static(editorUiDistDir));
+
+			const startTime = new Date().toUTCString();
+			this.app.use('/index.html', (req, res, next) => {
+				res.setHeader('Last-Modified', startTime);
+				next();
 			});
-
-			// Serve the website
-			this.app.use(
-				'/',
-				express.static(pathJoin(pathDirname(editorUiPath), 'dist'), {
-					index: 'index.html',
-					setHeaders: (res, path) => {
-						if (res.req && res.req.url === '/index.html') {
-							// Set last modified date manually to n8n start time so
-							// that it hopefully refreshes the page when a new version
-							// got used
-							res.setHeader('Last-Modified', startTime);
-						}
-					},
-				}),
-			);
 		}
-		const startTime = new Date().toUTCString();
 	}
 }
 

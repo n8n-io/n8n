@@ -100,8 +100,8 @@ import OauthButton from './OauthButton.vue';
 import { restApi } from '@/components/mixins/restApi';
 import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
-import {EnterpriseEditionFeature} from '@/constants';
-import {IPermissions} from "@/permissions";
+import { BUILTIN_CREDENTIALS_DOCS_URL, EnterpriseEditionFeature } from '@/constants';
+import { IPermissions } from "@/permissions";
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -195,7 +195,7 @@ export default mixins(restApi).extend({
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;
-			const activeNode = this.$store.getters.activeNode;
+			const activeNode = this.$store.getters['ndv/activeNode'];
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 			if (!type || !type.documentationUrl) {
@@ -206,9 +206,9 @@ export default mixins(restApi).extend({
 				return type.documentationUrl;
 			}
 
-			return  isCommunityNode ?
+			return isCommunityNode ?
 				'' : // Don't show documentation link for community nodes if the URL is not an absolute path
-				`https://docs.n8n.io/credentials/${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
+				`${BUILTIN_CREDENTIALS_DOCS_URL}${type.documentationUrl}/?utm_source=n8n_app&utm_medium=left_nav_menu&utm_campaign=create_new_credentials_modal`;
 		},
 		isGoogleOAuthType(): boolean {
 			return this.credentialTypeName === 'googleOAuth2Api' || this.parentTypes.includes('googleOAuth2Api');

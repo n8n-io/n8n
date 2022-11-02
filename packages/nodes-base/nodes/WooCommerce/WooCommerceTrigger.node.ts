@@ -156,21 +156,17 @@ export class WooCommerceTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const headerData = this.getHeaderData();
 		const webhookData = this.getWorkflowStaticData('node');
-		//@ts-ignore
 		if (headerData['x-wc-webhook-id'] === undefined) {
 			return {};
 		}
 
 		const computedSignature = createHmac('sha256', webhookData.secret as string)
-			//@ts-ignore
 			.update(req.rawBody)
 			.digest('base64');
-		//@ts-ignore
 		if (headerData['x-wc-webhook-signature'] !== computedSignature) {
 			// Signature is not valid so ignore call
 			return {};

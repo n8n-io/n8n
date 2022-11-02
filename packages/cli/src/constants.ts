@@ -34,3 +34,6 @@ export const NPM_COMMAND_TOKENS = {
 export const NPM_PACKAGE_STATUS_GOOD = 'OK';
 
 export const UNKNOWN_FAILURE_REASON = 'Unknown failure reason';
+
+export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000;
+export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 180000;

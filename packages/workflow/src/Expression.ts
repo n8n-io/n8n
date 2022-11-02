@@ -1,9 +1,7 @@
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
-// eslint-disable-next-line import/no-cycle
 import {
-	ExpressionError,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -14,10 +12,11 @@ import {
 	IWorkflowDataProxyData,
 	NodeParameterValue,
 	NodeParameterValueType,
-	Workflow,
-	WorkflowDataProxy,
 	WorkflowExecuteMode,
-} from '.';
+} from './Interfaces';
+import { ExpressionError } from './ExpressionError';
+import { WorkflowDataProxy } from './WorkflowDataProxy';
+import type { Workflow } from './Workflow';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -42,9 +41,6 @@ export class Expression {
 	 * Converts an object to a string in a way to make it clear that
 	 * the value comes from an object
 	 *
-	 * @param {object} value
-	 * @returns {string}
-	 * @memberof Workflow
 	 */
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
@@ -55,15 +51,8 @@ export class Expression {
 	 * Resolves the parameter value.  If it is an expression it will execute it and
 	 * return the result. For everything simply the supplied value will be returned.
 	 *
-	 * @param {NodeParameterValue} parameterValue
 	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
 	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
 	 */
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
@@ -111,16 +100,19 @@ export class Expression {
 		const data = dataProxy.getDataProxy();
 
 		// Support only a subset of process properties
-		data.process = {
-			arch: process.arch,
-			env: process.env,
-			platform: process.platform,
-			pid: process.pid,
-			ppid: process.ppid,
-			release: process.release,
-			version: process.pid,
-			versions: process.versions,
-		};
+		data.process =
+			typeof process !== 'undefined'
+				? {
+						arch: process.arch,
+						env: process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true' ? {} : process.env,
+						platform: process.platform,
+						pid: process.pid,
+						ppid: process.ppid,
+						release: process.release,
+						version: process.pid,
+						versions: process.versions,
+				  }
+				: {};
 
 		/**
 		 * Denylist
@@ -165,7 +157,6 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		// @ts-ignore
 		data.constructor = {};
 
 		// Deprecated
@@ -293,11 +284,7 @@ export class Expression {
 	/**
 	 * Resolves value of parameter. But does not work for workflow-data.
 	 *
-	 * @param {INode} node
 	 * @param {(string | undefined)} parameterValue
-	 * @param {string} [defaultValue]
-	 * @returns {(string | undefined)}
-	 * @memberof Workflow
 	 */
 	getSimpleParameterValue(
 		node: INode,
@@ -340,11 +327,8 @@ export class Expression {
 	/**
 	 * Resolves value of complex parameter. But does not work for workflow-data.
 	 *
-	 * @param {INode} node
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)} [defaultValue]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)}
-	 * @memberof Workflow
 	 */
 	getComplexParameterValue(
 		node: INode,
@@ -411,13 +395,7 @@ export class Expression {
 	 *
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
 	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
 	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
 	 */
 	getParameterValue(
 		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,

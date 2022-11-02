@@ -52,7 +52,7 @@ export default mixins(
 
 				const executedWorkflow: IExecutionResponse | null = this.$store.getters.getWorkflowExecution;
 				const workflow = this.getCurrentWorkflow();
-				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
 				const parentNode = workflow.getParentNodes(activeNode!.name, inputName, 1);
 				const nodeConnection = workflow.getNodeConnectionIndexes(activeNode!.name, parentNode[0]) || {
 					sourceIndex: 0,
@@ -78,6 +78,13 @@ export default mixins(
 				const connectionInputData = this.connectionInputData(parentNode, activeNode!.name, inputName, runIndex, nodeConnection);
 
 				const additionalProxyKeys: IWorkflowDataProxyAdditionalKeys = {
+					$execution: {
+						id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+						mode: 'test',
+						resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					},
+
+					// deprecated
 					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};

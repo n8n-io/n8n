@@ -6,13 +6,14 @@ import {
 	IN8nValueSurveyData,
 	IRootState,
 	ISettingsState,
+	WorkflowCallerPolicyDefaultOption,
 } from '../Interface';
 import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings } from '../api/settings';
 import Vue from 'vue';
 import {CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, VALUE_SURVEY_MODAL_KEY} from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
-import {createApiKey, deleteApiKey, getApiKey} from "@/api/api-keys";
+import {createApiKey, deleteApiKey, getApiKey } from "@/api/api-keys";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -57,6 +58,9 @@ const module: Module<ISettingsState, IRootState> = {
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
 		},
+		isDesktopDeployment(state: ISettingsState) {
+			return state.settings.deployment?.type.startsWith('desktop_');
+		},
 		isCloudDeployment(state: ISettingsState) {
 			return state.settings.deployment && state.settings.deployment.type === 'cloud';
 		},
@@ -99,8 +103,17 @@ const module: Module<ISettingsState, IRootState> = {
 		isNpmAvailable: (state): boolean => {
 			return state.settings.isNpmAvailable;
 		},
+		allowedModules: (state): { builtIn?: string[]; external?: string[] } => {
+			return state.settings.allowedModules;
+		},
 		isQueueModeEnabled: (state): boolean => {
 			return state.settings.executionMode === 'queue';
+		},
+		workflowCallerPolicyDefaultOption: (state): WorkflowCallerPolicyDefaultOption => {
+			return state.settings.workflowCallerPolicyDefaultOption;
+		},
+		isWorkflowSharingEnabled: (state): boolean => {
+			return state.settings.isWorkflowSharingEnabled;
 		},
 	},
 	mutations: {
@@ -125,6 +138,18 @@ const module: Module<ISettingsState, IRootState> = {
 		},
 		setCommunityNodesFeatureEnabled(state: ISettingsState, isEnabled: boolean) {
 			state.settings.communityNodesEnabled = isEnabled;
+		},
+		setIsWorkflowSharingEnabled(state: ISettingsState, enabled: boolean) {
+			state.settings.isWorkflowSharingEnabled = enabled;
+		},
+		setWorkflowCallerPolicyDefaultOption(state: ISettingsState, defaultOption: WorkflowCallerPolicyDefaultOption) {
+			state.settings.workflowCallerPolicyDefaultOption = defaultOption;
+		},
+		setAllowedModules(state, allowedModules: { builtIn?: string, external?: string }) {
+			state.settings.allowedModules = {
+				...(allowedModules.builtIn && { builtIn: allowedModules.builtIn.split(',') }),
+				...(allowedModules.external && { external: allowedModules.external.split(',') }),
+			};
 		},
 	},
 	actions: {
@@ -151,6 +176,9 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setIsNpmAvailable', settings.isNpmAvailable, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
 			context.commit('setCommunityNodesFeatureEnabled', settings.communityNodesEnabled === true);
+			context.commit('settings/setAllowedModules', settings.allowedModules, {root: true});
+			context.commit('settings/setWorkflowCallerPolicyDefaultOption', settings.workflowCallerPolicyDefaultOption, {root: true});
+			context.commit('settings/setIsWorkflowSharingEnabled', settings.enterprise.workflowSharing, {root: true});
 		},
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
 			if (!context.getters.isTelemetryEnabled) {
@@ -183,6 +211,7 @@ const module: Module<ISettingsState, IRootState> = {
 				return e;
 			}
 		},
+
 		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IN8nValueSurveyData) {
 			try {
 				const instanceId = context.state.settings.instanceId;

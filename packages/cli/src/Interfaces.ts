@@ -17,6 +17,7 @@ import {
 	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	Workflow,
+	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -45,6 +46,13 @@ export interface IActivationError {
 	error: {
 		message: string;
 	};
+}
+
+export interface IQueuedWorkflowActivations {
+	activationMode: WorkflowActivateMode;
+	lastTimeout: number;
+	timeout: NodeJS.Timeout;
+	workflowData: IWorkflowDb;
 }
 
 export interface ICustomRequest extends Request {
@@ -475,6 +483,7 @@ export interface IN8nUISettings {
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
+	workflowCallerPolicyDefaultOption: 'any' | 'none' | 'workflowsFromAList';
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;
@@ -508,8 +517,13 @@ export interface IN8nUISettings {
 		type: string;
 	};
 	isNpmAvailable: boolean;
+	allowedModules: {
+		builtIn?: string;
+		external?: string;
+	};
 	enterprise: {
 		sharing: boolean;
+		workflowSharing: boolean;
 	};
 }
 

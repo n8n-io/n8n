@@ -40,7 +40,6 @@ export class Supabase implements INodeType {
 		description: 'Add, get, delete and update data in a table',
 		defaults: {
 			name: 'Supabase',
-			color: '#ea5929',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

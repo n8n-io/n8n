@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -14,6 +15,7 @@ export class FunctionItem implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Function Item',
 		name: 'functionItem',
+		hidden: true,
 		icon: 'fa:code',
 		group: ['transform'],
 		version: 1,
@@ -26,6 +28,12 @@ export class FunctionItem implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
+				displayName: 'A newer version of this node type is available, called the ‘Code’ node',
+				name: 'notice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'JavaScript Code',
 				name: 'functionCode',
 				typeOptions: {
@@ -36,7 +44,7 @@ export class FunctionItem implements INodeType {
 				},
 				type: 'string',
 				default: `// Code here will run once per input item.
-// More info and help: https://docs.n8n.io/nodes/n8n-nodes-base.functionItem
+// More info and help: https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.functionitem/
 // Tip: You can use luxon for dates and $jmespath for querying JSON structures
 
 // Add a new field called 'myNewField' to the JSON of the item
@@ -67,7 +75,7 @@ return item;`,
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
 						// Is some special object like a Date so stringify
-						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+						inputData[key] = deepCopy(inputData[key]);
 					}
 				}
 			});
@@ -82,7 +90,7 @@ return item;`,
 				item.index = itemIndex;
 
 				// Copy the items as they may get changed in the functions
-				item = JSON.parse(JSON.stringify(item));
+				item = deepCopy(item);
 
 				// Define the global objects for the custom function
 				const sandbox = {

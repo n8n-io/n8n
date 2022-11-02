@@ -4,6 +4,7 @@ import { IconDefinition, library } from '@fortawesome/fontawesome-svg-core';
 import {
 	faAngleDoubleLeft,
 	faAngleDown,
+	faAngleLeft,
 	faAngleRight,
 	faAngleUp,
 	faArrowLeft,
@@ -49,11 +50,14 @@ import {
 	faFileImport,
 	faFilePdf,
 	faFilter,
+	faFlask,
 	faFolderOpen,
 	faGlobeAmericas,
 	faGift,
+	faGlobe,
 	faGraduationCap,
 	faGripVertical,
+	faHandPointLeft,
 	faHdd,
 	faHome,
 	faHourglass,
@@ -65,6 +69,7 @@ import {
 	faLink,
 	faLightbulb,
 	faMapSigns,
+	faMousePointer,
 	faNetworkWired,
 	faPause,
 	faPauseCircle,
@@ -81,11 +86,13 @@ import {
 	faRedo,
 	faRss,
 	faSave,
+	faSatelliteDish,
 	faSearch,
 	faSearchMinus,
 	faSearchPlus,
 	faServer,
 	faSignInAlt,
+	faSignOutAlt,
 	faSlidersH,
 	faSpinner,
 	faStop,
@@ -120,6 +127,7 @@ function addIcon(icon: any) { // tslint:disable-line:no-any
 
 addIcon(faAngleDoubleLeft);
 addIcon(faAngleDown);
+addIcon(faAngleLeft);
 addIcon(faAngleRight);
 addIcon(faAngleUp);
 addIcon(faArrowLeft);
@@ -166,10 +174,13 @@ addIcon(faFileExport);
 addIcon(faFileImport);
 addIcon(faFilePdf);
 addIcon(faFilter);
+addIcon(faFlask);
 addIcon(faFolderOpen);
 addIcon(faGift);
+addIcon(faGlobe);
 addIcon(faGlobeAmericas);
 addIcon(faGraduationCap);
+addIcon(faHandPointLeft);
 addIcon(faHdd);
 addIcon(faHome);
 addIcon(faHourglass);
@@ -181,6 +192,7 @@ addIcon(faKey);
 addIcon(faLink);
 addIcon(faLightbulb);
 addIcon(faMapSigns);
+addIcon(faMousePointer);
 addIcon(faNetworkWired);
 addIcon(faPause);
 addIcon(faPauseCircle);
@@ -197,11 +209,13 @@ addIcon(faQuestionCircle);
 addIcon(faRedo);
 addIcon(faRss);
 addIcon(faSave);
+addIcon(faSatelliteDish);
 addIcon(faSearch);
 addIcon(faSearchMinus);
 addIcon(faSearchPlus);
 addIcon(faServer);
 addIcon(faSignInAlt);
+addIcon(faSignOutAlt);
 addIcon(faSlidersH);
 addIcon(faSpinner);
 addIcon(faSolidStickyNote);

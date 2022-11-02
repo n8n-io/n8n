@@ -1,8 +1,10 @@
 import Vue from 'vue';
 import N8nActionBox from '../components/N8nActionBox';
+import N8nActionDropdown from '../components/N8nActionDropdown';
 import N8nActionToggle from '../components/N8nActionToggle';
 import N8nAvatar from '../components/N8nAvatar';
 import N8nBadge from "../components/N8nBadge";
+import N8nBlockUi from "../components/N8nBlockUi";
 import N8nButton from '../components/N8nButton';
 import { N8nElButton } from '../components/N8nButton/overrides';
 import N8nCallout from '../components/N8nCallout';
@@ -40,14 +42,17 @@ import N8nTree from '../components/N8nTree';
 import N8nUserInfo from '../components/N8nUserInfo';
 import N8nUserSelect from '../components/N8nUserSelect';
 import N8nUsersList from '../components/N8nUsersList';
+import N8nResizeWrapper from '../components/N8nResizeWrapper';
 
 export default {
 	install: (app: typeof Vue, options?: {}) => {
 		app.component('n8n-info-accordion', N8nInfoAccordion);
 		app.component('n8n-action-box', N8nActionBox);
+		app.component('n8n-action-dropdown', N8nActionDropdown);
 		app.component('n8n-action-toggle', N8nActionToggle);
 		app.component('n8n-avatar', N8nAvatar);
 		app.component('n8n-badge', N8nBadge);
+		app.component('n8n-block-ui', N8nBlockUi);
 		app.component('n8n-button', N8nButton);
 		app.component('el-button', N8nElButton);
 		app.component('n8n-callout', N8nCallout);
@@ -84,5 +89,6 @@ export default {
 		app.component('n8n-tree', N8nTree);
 		app.component('n8n-users-list', N8nUsersList);
 		app.component('n8n-user-select', N8nUserSelect);
+		app.component('n8n-resize-wrapper', N8nResizeWrapper);
 	},
 };

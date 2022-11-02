@@ -1,7 +1,7 @@
 <template>
 	<n8n-popover
 		placement="bottom"
-		width="318"
+		:width="width"
 		:popper-class="$style.popover"
 		:value="show"
 		trigger="manual"
@@ -89,6 +89,9 @@ export default Vue.extend({
 		},
 		filterRequired: {
 			type: Boolean,
+		},
+		width: {
+			type: Number,
 		},
 	},
 	data() {
@@ -254,7 +257,7 @@ export default Vue.extend({
 	--input-font-size: var(--font-size-2xs);
 	position: absolute;
 	top: 0;
-	width: 316px;
+	width: 100%;
 	z-index: 1;
 }
 

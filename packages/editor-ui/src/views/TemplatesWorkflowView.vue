@@ -7,7 +7,7 @@
 						template.name
 					}}</n8n-heading>
 					<n8n-text v-if="template && template.name" color="text-base" size="small">
-						{{ $locale.baseText('templates.workflow') }}
+						{{ $locale.baseText('generic.workflow') }}
 					</n8n-text>
 					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
 				</div>
@@ -110,9 +110,13 @@ export default mixins(workflowHelpers).extend({
 			this.showPreview = false;
 		},
 		scrollToTop() {
-			window.scrollTo({
-				top: 0,
-			});
+			const contentArea = document.getElementById('content');
+
+			if (contentArea) {
+				contentArea.scrollTo({
+					top: 0,
+				});
+			}
 		},
 	},
 	watch: {
@@ -164,6 +168,10 @@ export default mixins(workflowHelpers).extend({
 
 .image {
 	width: 100%;
+	height: 500px;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	overflow: hidden;
 
 	img {
 		width: 100%;
@@ -175,7 +183,7 @@ export default mixins(workflowHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		display: block;
 	}
 }
@@ -185,7 +193,7 @@ export default mixins(workflowHelpers).extend({
 	padding-right: var(--spacing-2xl);
 	margin-bottom: var(--spacing-l);
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		width: 100%;
 	}
 }

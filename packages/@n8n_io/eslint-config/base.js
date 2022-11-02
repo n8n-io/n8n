@@ -1,7 +1,7 @@
 /**
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
-module.exports = {
+const config = (module.exports = {
 	parser: '@typescript-eslint/parser',
 	parserOptions: {
 		sourceType: 'module',
@@ -13,6 +13,7 @@ module.exports = {
 		'node_modules/**',
 		'dist/**',
 		'test/**', // TODO: remove this
+		'jest.config.js', // TODO: remove this
 	],
 
 	plugins: [
@@ -34,12 +35,11 @@ module.exports = {
 		 */
 		'eslint-plugin-prettier',
 
-		/**
-		 * Plugin to lint only changes
-		 *
-		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+		/*
+		 * Plugin to allow specifying local ESLint rules.
+		 * https://github.com/ivov/eslint-plugin-n8n-local-rules
 		 */
-		'eslint-plugin-diff',
+		'eslint-plugin-n8n-local-rules',
 	],
 
 	extends: [
@@ -71,13 +71,6 @@ module.exports = {
 		 * https://github.com/prettier/eslint-config-prettier
 		 */
 		'eslint-config-prettier',
-
-		/**
-		 * Config for eslint-plugin-diff
-		 *
-		 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
-		 */
-		'plugin:diff/diff',
 	],
 
 	rules: {
@@ -144,7 +137,7 @@ module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
 		 */
-		'@typescript-eslint/ban-ts-comment': 'off',
+		'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-types.md
@@ -324,6 +317,13 @@ module.exports = {
 		 */
 		'import/order': 'error',
 
+		// ----------------------------------
+		//   eslint-plugin-n8n-local-rules
+		// ----------------------------------
+		'n8n-local-rules/no-uncaught-json-parse': 'error',
+
+		'n8n-local-rules/no-json-parse-json-stringify': 'error',
+
 		// ******************************************************************
 		//                    overrides to base ruleset
 		// ******************************************************************
@@ -362,6 +362,13 @@ module.exports = {
 		 */
 		'prefer-spread': 'error',
 
+		/**
+		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
+		 *
+		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
+		 */
+		'@typescript-eslint/no-unused-vars': 'warn',
+
 		// ----------------------------------
 		//              import
 		// ----------------------------------
@@ -371,4 +378,20 @@ module.exports = {
 		 */
 		'import/prefer-default-export': 'off',
 	},
-};
+});
+
+if ('ESLINT_PLUGIN_DIFF_COMMIT' in process.env) {
+	/**
+	 * Plugin to lint only changes
+	 *
+	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+	 */
+	config.plugins.push('eslint-plugin-diff');
+
+	/**
+	 * Config for eslint-plugin-diff
+	 *
+	 * https://github.com/paleite/eslint-plugin-diff#plugindiffdiff-recommended
+	 */
+	config.extends.push('plugin:diff/diff');
+}

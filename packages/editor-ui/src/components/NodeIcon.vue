@@ -81,8 +81,7 @@ export default Vue.extend({
 				}
 				// Otherwise, extract it from icon prop
 				if (nodeType.icon) {
-					let type, path;
-					[type, path] = nodeType.icon.split(':');
+					const [type, path] = nodeType.icon.split(':');
 					if (type === 'file') {
 						iconSource.path = `${restUrl}/node-icon/${nodeType.name}`;
 					} else {

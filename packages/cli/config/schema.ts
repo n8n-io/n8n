@@ -185,6 +185,12 @@ export const schema = {
 			default: false,
 			env: 'N8N_ONBOARDING_FLOW_DISABLED',
 		},
+		callerPolicyDefaultOption: {
+			doc: 'Default option for which workflows may call the current workflow',
+			format: ['any', 'none', 'workflowsFromAList'] as const,
+			default: 'any',
+			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
+		},
 	},
 
 	executions: {
@@ -881,6 +887,12 @@ export const schema = {
 				format: Boolean,
 				default: false,
 			},
+		},
+		// This is a temporary flag (acting as feature toggle)
+		// Will be removed when feature goes live
+		workflowSharingEnabled: {
+			format: Boolean,
+			default: false,
 		},
 	},
 
