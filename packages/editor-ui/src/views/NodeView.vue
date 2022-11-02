@@ -3286,9 +3286,6 @@ export default mixins(
 		async mounted() {
 			this.$titleReset();
 			window.addEventListener('message', this.onPostMessageReceived);
-			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
-			this.$root.$on('newWorkflow', this.newWorkflow);
-			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 
 			this.startLoading();
 			this.resetWorkspace();
