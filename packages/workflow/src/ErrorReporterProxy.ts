@@ -3,23 +3,23 @@ export interface IReportingOptions {
 	extra: Record<string, unknown>;
 }
 
-interface IErrorReporter {
+interface ErrorReporter {
 	error: (error: Error, options?: IReportingOptions) => void;
 	warn: (warning: string, options?: IReportingOptions) => void;
 }
 
 class ErrorReporterProxy {
-	constructor(readonly reporter: IErrorReporter) {}
+	constructor(readonly reporter: ErrorReporter) {}
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
-const consoleReporter: IErrorReporter = {
+const consoleReporter: ErrorReporter = {
 	error: (error) => isProduction && console.error('ERROR', error.message, error.stack),
 	warn: (warning) => isProduction && console.warn('WARN', warning),
 };
 
 let instance: ErrorReporterProxy;
-export function getInstance(): IErrorReporter {
+export function getInstance(): ErrorReporter {
 	if (instance) return instance.reporter;
 
 	if (isProduction) {
@@ -28,6 +28,6 @@ export function getInstance(): IErrorReporter {
 	return consoleReporter;
 }
 
-export function init(errorReporter: IErrorReporter) {
+export function init(errorReporter: ErrorReporter) {
 	instance = new ErrorReporterProxy(errorReporter);
 }
