@@ -11,6 +11,7 @@ import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '../TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
+import { WorkflowsService } from './workflows.services';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -178,6 +179,21 @@ EEWorkflowController.post(
 			id: id.toString(),
 			...rest,
 		};
+	}),
+);
+
+/**
+ * (EE) GET /workflows
+ */
+EEWorkflowController.get(
+	'/',
+	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
+		const workflows = (await WorkflowsService.getMany(
+			req.user,
+			req.query.filter,
+		)) as unknown as WorkflowEntity[];
+
+		return workflows.map((workflow) => EEWorkflows.addOwnerAndSharings(workflow));
 	}),
 );
 
