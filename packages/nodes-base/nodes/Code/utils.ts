@@ -5,7 +5,7 @@ import type { IDataObject } from 'n8n-workflow';
  */
 export function standardizeOutput(output: IDataObject) {
 	for (const [key, value] of Object.entries(output)) {
-		if (!isTraversable(value)) continue;
+		if (!isTraversable(value) || value.isLuxonDateTime) continue;
 
 		output[key] =
 			value.constructor.name !== 'Object'
