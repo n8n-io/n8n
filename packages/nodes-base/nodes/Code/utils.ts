@@ -5,7 +5,7 @@ import type { IDataObject } from 'n8n-workflow';
  */
 export function standardizeOutput(output: IDataObject) {
 	for (const [key, value] of Object.entries(output)) {
-		if (!isTraversable(value) || value.isLuxonDateTime) continue;
+		if (!isTraversable(value)) continue;
 
 		output[key] =
 			value.constructor.name !== 'Object'
@@ -21,7 +21,7 @@ export function isObject(maybe: unknown): maybe is { [key: string]: unknown } {
 }
 
 function isTraversable(maybe: unknown): maybe is IDataObject {
-	return isObject(maybe) && Object.keys(maybe).length > 0;
+	return isObject(maybe) && typeof maybe.toJSON !== 'function' && Object.keys(maybe).length > 0;
 }
 
 export type CodeNodeMode = 'runOnceForAllItems' | 'runOnceForEachItem';
