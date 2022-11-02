@@ -1,7 +1,13 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
+
+type Serializable = any & { toJSON?: (key?: any) => string };
+
+export const deepCopy = <T extends any | Serializable>(
+	source: T,
+	hash = new WeakMap(),
+	path = '',
+): T => {
 	let clone: any;
-	let i: any;
 	const hasOwnProp = Object.prototype.hasOwnProperty.bind(source);
 	// Primitives & Null & Function
 	if (typeof source !== 'object' || source === null || source instanceof Function) {
@@ -10,23 +16,26 @@ export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 	if (hash.has(source)) {
 		return hash.get(source);
 	}
-	// Date
-	if (source instanceof Date) {
-		return new Date(source.getTime()) as T;
-	}
 	// Array
 	if (Array.isArray(source)) {
 		clone = [];
 		const len = source.length;
-		for (i = 0; i < len; i++) {
-			clone[i] = deepCopy(source[i], hash, path + `[${i as string}]`);
+		for (let i = 0; i < len; i++) {
+			clone[i] = deepCopy(source[i], hash, path + `[${i}]`);
 		}
 		return clone;
 	}
+	// Date and other Serializable objects
+	const toJSON = (source as Serializable).toJSON;
+	if (typeof toJSON === 'function') {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		return toJSON.call(source) as T;
+	}
+
 	// Object
 	clone = {};
 	hash.set(source, clone);
-	for (i in source) {
+	for (const i in source) {
 		if (hasOwnProp(i)) {
 			clone[i] = deepCopy((source as any)[i], hash, path + `.${i as string}`);
 		}
