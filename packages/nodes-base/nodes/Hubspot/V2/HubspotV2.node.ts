@@ -1034,6 +1034,17 @@ export class HubspotV2 implements INodeType {
 					})),
 				};
 			},
+			async searchOwners(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const endpoint = '/owners/v2/owners';
+				const owners = await hubspotApiRequest.call(this, 'GET', endpoint, {});
+				return {
+					// tslint:disable-next-line: no-any
+					results: owners.map((b: any) => ({
+						name: b.email,
+						value: b.ownerId,
+					})),
+				};
+			},
 		},
 	};
 
@@ -2175,6 +2186,13 @@ export class HubspotV2 implements INodeType {
 								body.properties.push({
 									name: 'dealname',
 									value: additionalFields.dealName as string,
+								});
+							}
+							if (additionalFields.dealOwner) {
+								const dealOwner = additionalFields.dealOwner as IDataObject;
+								body.properties.push({
+									name: 'hubspot_owner_id',
+									value: dealOwner.value,
 								});
 							}
 							if (additionalFields.closeDate) {
