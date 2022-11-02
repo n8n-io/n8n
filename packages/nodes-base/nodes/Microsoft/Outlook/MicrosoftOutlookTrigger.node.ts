@@ -82,14 +82,7 @@ export class MicrosoftOutlookTrigger implements INodeType {
 
 				const uri = `https://graph.microsoft.com/v1.0/subscriptions`;
 
-				const { id } = await microsoftApiRequest.call(
-					this,
-					'POST',
-					``,
-					body,
-					{ validationToken: 'xxx' },
-					uri,
-				);
+				const { id } = await microsoftApiRequest.call(this, 'POST', ``, body, {}, uri);
 
 				webhookData.webhookId = id;
 				console.log('webhookData', webhookData);
@@ -111,6 +104,13 @@ export class MicrosoftOutlookTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
+		const res = this.getResponseObject();
+		if (req.query.validationToken) {
+			res.status(200).send(req.query.validationToken);
+			return {
+				noWebhookResponse: true,
+			};
+		}
 		return {
 			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
