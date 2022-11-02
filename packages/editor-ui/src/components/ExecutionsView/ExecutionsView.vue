@@ -372,6 +372,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				const tags = (data.tags || []) as ITag[];
 				const tagIds = tags.map((tag) => tag.id);
 				this.workflowsStore.setWorkflowTagIds(tagIds || []);
+				this.workflowsStore.setWorkflowHash(data.hash);
 
 				this.$store.commit('tags/upsertTags', tags);
 

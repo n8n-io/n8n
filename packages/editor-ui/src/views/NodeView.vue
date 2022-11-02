@@ -77,6 +77,7 @@
 			:readOnly="isReadOnly"
 			:renaming="renamingActive"
 			@valueChanged="valueChanged"
+			@stopExecution="stopExecution"
 		/>
 		<node-creation
 			v-if="!isReadOnly"
@@ -120,15 +121,15 @@
 				class="stop-execution" type="secondary" :title="stopExecutionInProgress
 					? $locale.baseText('nodeView.stoppingCurrentExecution')
 					: $locale.baseText('nodeView.stopCurrentExecution')
-				" :loading="stopExecutionInProgress" @click.stop="stopExecution()" />
+				" :loading="stopExecutionInProgress" @click.stop="stopExecution" />
 
 			<n8n-icon-button v-if="workflowRunning === true && executionWaitingForWebhook === true" class="stop-execution"
 				icon="stop" size="large" :title="$locale.baseText('nodeView.stopWaitingForWebhookCall')" type="secondary"
-				@click.stop="stopWaitingForWebhook()" />
+				@click.stop="stopWaitingForWebhook" />
 
 			<n8n-icon-button v-if="!isReadOnly && workflowExecution && !workflowRunning && !allTriggersDisabled"
 				:title="$locale.baseText('nodeView.deletesTheCurrentExecutionData')" icon="trash" size="large"
-				@click.stop="clearExecutionData()" />
+				@click.stop="clearExecutionData" />
 		</div>
 	</div>
 </div>

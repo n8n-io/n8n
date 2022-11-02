@@ -12,11 +12,13 @@
 				></NodeTitle>
 				<div v-if="!isReadOnly">
 					<NodeExecuteButton
+						v-if="!blockUI"
 						:nodeName="node.name"
-						:disabled="outputPanelEditMode.enabled"
+						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
 						size="small"
 						telemetrySource="parameters"
 						@execute="onNodeExecute"
+						@stopExecution="onStopExecution"
 					/>
 				</div>
 			</div>
@@ -113,6 +115,7 @@
 				/>
 			</div>
 		</div>
+		<n8n-block-ui :show="blockUI" />
 	</div>
 </template>
 
@@ -235,6 +238,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.node.type);
 		},
+		isTriggerNode(): boolean {
+			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
+		},
 	},
 	props: {
 		eventBus: {},
@@ -249,6 +255,10 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		},
 		isReadOnly: {
 			type: Boolean,
+		},
+		blockUI: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
@@ -770,6 +780,9 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				package_name: this.node.type.split('.')[0],
 				node_type: this.node.type,
 			});
+		},
+		onStopExecution(){
+			this.$emit('stopExecution');
 		},
 	},
 	mounted() {

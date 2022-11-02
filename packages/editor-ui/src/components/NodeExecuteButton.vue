@@ -3,7 +3,7 @@
 		<div slot="content">{{ disabledHint }}</div>
 		<div>
 			<n8n-button
-				:loading="nodeRunning && !isListeningForEvents"
+				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
 				:disabled="disabled || !!disabledHint"
 				:label="buttonLabel"
 				:type="type"
@@ -107,6 +107,9 @@ export default mixins(
 				(!executedNode || executedNode === this.nodeName)
 			);
 		},
+		isListeningForWorkflowEvents(): boolean {
+			return this.nodeRunning && this.isTriggerNode && !this.isScheduleTrigger && !this.isManualTriggerNode;
+		},
 		hasIssues (): boolean {
 			return Boolean(this.node && this.node.issues && (this.node.issues.parameters || this.node.issues.credentials));
 		},
@@ -135,7 +138,7 @@ export default mixins(
 			return '';
 		},
 		buttonLabel(): string {
-			if (this.isListeningForEvents) {
+			if (this.isListeningForEvents || this.isListeningForWorkflowEvents) {
 				return this.$locale.baseText('ndv.execute.stopListening');
 			}
 
@@ -174,6 +177,8 @@ export default mixins(
 		async onClick() {
 			if (this.isListeningForEvents) {
 				this.stopWaitingForWebhook();
+			} else if (this.isListeningForWorkflowEvents) {
+				this.$emit('stopExecution');
 			} else {
 				let shouldUnpinAndExecute = false;
 				if (this.hasPinData) {
