@@ -5,6 +5,7 @@ import { MicrosoftOutlook } from './node.type';
 import * as calendar from './calendar/Calendar.resource';
 import * as contact from './contact/Contact.resource';
 import * as draft from './draft/Draft.resource';
+import * as event from './event/Event.resource';
 import * as folder from './folder/Folder.resource';
 import * as folderMessage from './folderMessage/FolderMessage.resource';
 import * as message from './message/Message.resource';
@@ -34,6 +35,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 					break;
 				case 'draft':
 					responseData = await draft[microsoftOutlook.operation].execute.call(this, i, items);
+					break;
+				case 'event':
+					responseData = await event[microsoftOutlook.operation].execute.call(this, i);
 					break;
 				case 'folder':
 					responseData = await folder[microsoftOutlook.operation].execute.call(this, i);

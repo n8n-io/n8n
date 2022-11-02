@@ -19,8 +19,8 @@ export const description: INodeProperties[] = [
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['createEvent'],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -32,8 +32,8 @@ export const description: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['createEvent'],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -45,8 +45,8 @@ export const description: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['createEvent'],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -58,8 +58,8 @@ export const description: INodeProperties[] = [
 		default: DateTime.now().plus({ minutes: 30 }).toISO(),
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['createEvent'],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -71,8 +71,8 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['createEvent'],
+				resource: ['event'],
+				operation: ['create'],
 			},
 		},
 		options: [

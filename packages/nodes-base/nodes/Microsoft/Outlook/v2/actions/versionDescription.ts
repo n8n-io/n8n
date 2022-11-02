@@ -3,6 +3,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import * as calendar from './calendar/Calendar.resource';
 import * as contact from './contact/Contact.resource';
 import * as draft from './draft/Draft.resource';
+import * as event from './event/Event.resource';
 import * as folder from './folder/Folder.resource';
 import * as folderMessage from './folderMessage/FolderMessage.resource';
 import * as message from './message/Message.resource';
@@ -48,6 +49,10 @@ export const versionDescription: INodeTypeDescription = {
 					value: 'draft',
 				},
 				{
+					name: 'Event',
+					value: 'event',
+				},
+				{
 					name: 'Folder',
 					value: 'folder',
 				},
@@ -68,6 +73,7 @@ export const versionDescription: INodeTypeDescription = {
 		...calendar.description,
 		...contact.description,
 		...draft.description,
+		...event.description,
 		...folder.description,
 		...folderMessage.description,
 		...message.description,

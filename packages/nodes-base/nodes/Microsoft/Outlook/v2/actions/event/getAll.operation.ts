@@ -18,8 +18,8 @@ export const description: INodeProperties[] = [
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['getEvents'],
+				resource: ['event'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -29,8 +29,8 @@ export const description: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['getEvents'],
+				resource: ['event'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -42,8 +42,8 @@ export const description: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['getEvents'],
+				resource: ['event'],
+				operation: ['getAll'],
 				returnAll: [false],
 			},
 		},
@@ -61,8 +61,8 @@ export const description: INodeProperties[] = [
 		default: 'simple',
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['getEvents'],
+				resource: ['event'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -86,8 +86,8 @@ export const description: INodeProperties[] = [
 		type: 'multiOptions',
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['getEvents'],
+				resource: ['event'],
+				operation: ['getAll'],
 				output: ['fields'],
 			},
 		},
@@ -102,8 +102,8 @@ export const description: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: ['calendar'],
-				operation: ['getEvents'],
+				resource: ['event'],
+				operation: ['getAll'],
 				// returnAll: [true],
 			},
 		},
