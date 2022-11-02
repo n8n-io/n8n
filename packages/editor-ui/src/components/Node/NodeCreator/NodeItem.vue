@@ -40,7 +40,6 @@
 				<div
 					:class="$style.draggable"
 					:style="draggableStyle"
-					ref="draggable"
 					v-show="dragging"
 				>
 					<node-icon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
@@ -61,144 +60,136 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 
-import Vue, { PropType } from 'vue';
+import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
 import { INodeTypeDescription, IDataObject } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
+import { isCommunityPackageName } from '@/components/helpers';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
+import { store } from '@/store';
+
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import NodeActions from './NodeActions.vue';
 
-import { isCommunityPackageName } from '@/components/helpers';
+export interface Props {
+	nodeType: INodeTypeDescription;
+	active?: boolean;
+	simpleStyle?: boolean;
+	hideDescription?: boolean;
+	allowActions?: boolean;
+}
 
-Vue.component('node-icon', NodeIcon);
-
-export default Vue.extend({
-	name: 'NodeItem',
-	components: {
-		NodeActions,
-	},
-	props: {
-		nodeType: {
-			type: Object as PropType<INodeTypeDescription>,
-		},
-		active: {
-			type: Boolean,
-		},
-		simpleStyle: {
-			type: Boolean,
-		},
-		hideDescription: {
-			type: Boolean,
-			default: false,
-		},
-		allowActions: {
-			type: Boolean,
-			default: false,
-		},
-	},
-	data() {
-		return {
-			dragging: false,
-			showActions: false,
-			draggablePosition: {
-				x: -100,
-				y: -100,
-			},
-			COMMUNITY_NODES_INSTALLATION_DOCS_URL,
-		};
-	},
-	computed: {
-		hasActions(): boolean {
-			return (this.nodeType?.actions?.length || 0) > 0;
-		},
-		shortNodeType(): string {
-			return this.$locale.shortNodeType(this.nodeType.name);
-		},
-		isTrigger (): boolean {
-			return this.nodeType.group.includes('trigger');
-		},
-		draggableStyle(): { top: string; left: string; } {
-			return {
-				top: `${this.draggablePosition.y}px`,
-				left: `${this.draggablePosition.x}px`,
-			};
-		},
-		isCommunityNode(): boolean {
-			return isCommunityPackageName(this.nodeType.name);
-		},
-	},
-	methods: {
-		onClick() {
-			if(this.hasActions && this.allowActions) this.showActions = true;
-			else this.$emit('nodeTypeSelected', [this.nodeType.name]);
-		},
-		async onActionSelected(action: IDataObject) {
-			const isTriggerAction = action.key?.toString().toLocaleLowerCase().includes('trigger');
-			const workflowContainsTrigger = this.$store.getters.workflowTriggerNodes.length > 0;
-
-			this.$emit('nodeTypeSelected', !isTriggerAction && !workflowContainsTrigger
-				? [MANUAL_TRIGGER_NODE_TYPE, action.key]
-				: [action.key],
-			);
-
-			// We can only set parameters after the node was created and set in store
-			const unsubscribe = this.$store.subscribe((mutation) => {
-				if(mutation.type === 'addNode') {
-					this.$store.commit('setLastNodeParameters', action);
-					unsubscribe();
-				}
-			});
-		},
-		onDragStart(event: DragEvent): void {
-			/**
-			 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
-			 * All browsers attach the correct page coordinates to the "dragover" event.
-			 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
-			 */
-			document.body.addEventListener("dragover", this.onDragOver);
-			const { pageX: x, pageY: y } = event;
-
-			this.$emit('dragstart', event);
-
-			if (event.dataTransfer) {
-				event.dataTransfer.effectAllowed = "copy";
-				event.dataTransfer.dropEffect = "copy";
-				event.dataTransfer.setData('nodeTypeName', this.nodeType.name);
-				event.dataTransfer.setDragImage(this.$refs.draggableDataTransfer as Element, 0, 0);
-			}
-
-			this.dragging = true;
-			this.draggablePosition = { x, y };
-		},
-		onDragOver(event: DragEvent): void {
-			if (!this.dragging || event.pageX === 0 && event.pageY === 0) {
-				return;
-			}
-
-			const [x,y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
-
-			this.draggablePosition = { x, y };
-		},
-		onDragEnd(event: DragEvent): void {
-			document.body.removeEventListener("dragover", this.onDragOver);
-			this.$emit('dragend', event);
-
-			this.dragging = false;
-			setTimeout(() => {
-				this.draggablePosition = { x: -100, y: -100 };
-			}, 300);
-		},
-		onCommunityNodeTooltipClick(event: MouseEvent) {
-			if ((event.target as Element).localName === 'a') {
-				this.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
-			}
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	active: false,
+	simpleStyle: false,
+	hideDescription: false,
+	allowActions: false,
 });
+
+const emit = defineEmits<{
+	(event: 'dragstart', $e: DragEvent): void,
+	(event: 'dragend', $e: DragEvent): void,
+	(event: 'nodeTypeSelected', value: string[]): void,
+}>();
+
+const instance = getCurrentInstance();
+
+const state = reactive({
+	dragging: false,
+	showActions: false,
+	draggablePosition: {
+		x: -100,
+		y: -100,
+	},
+	draggableDataTransfer: null as Element | null,
+});
+
+const hasActions = computed<boolean>(() => (props.nodeType.actions?.length || 0) > 0);
+
+const shortNodeType = computed<string>(() => instance?.proxy.$locale.shortNodeType(props.nodeType.name) || '');
+
+const draggableStyle = computed<{ top: string; left: string; }>(() => ({
+	top: `${state.draggablePosition.y}px`,
+	left: `${state.draggablePosition.x}px`,
+}));
+
+const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
+
+function onClick() {
+	if(hasActions.value && props.allowActions) state.showActions = true;
+	else emit('nodeTypeSelected', [props.nodeType.name]);
+}
+
+async function onActionSelected(action: IDataObject) {
+	const isTriggerAction = action.key?.toString().toLocaleLowerCase().includes('trigger');
+	const workflowContainsTrigger = store.getters.workflowTriggerNodes.length > 0;
+
+	const nodeTypes = !isTriggerAction && !workflowContainsTrigger
+		? [MANUAL_TRIGGER_NODE_TYPE, action.key]
+		: [action.key];
+
+	emit('nodeTypeSelected', nodeTypes as string[]);
+	// We can only set parameters after the node was created and set in store
+	const unsubscribe = store.subscribe((mutation) => {
+		if(mutation.type === 'addNode') {
+			store.commit('setLastNodeParameters', action);
+			unsubscribe();
+		}
+	});
+}
+
+function onDragStart(event: DragEvent): void {
+	/**
+	 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
+	 * All browsers attach the correct page coordinates to the "dragover" event.
+	 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
+	 */
+	document.body.addEventListener("dragover", onDragOver);
+	const { pageX: x, pageY: y } = event;
+
+	emit('dragstart', event);
+
+	if (event.dataTransfer) {
+		event.dataTransfer.effectAllowed = "copy";
+		event.dataTransfer.dropEffect = "copy";
+		event.dataTransfer.setData('nodeTypeName', props.nodeType.name);
+		event.dataTransfer.setDragImage(state.draggableDataTransfer as Element, 0, 0);
+	}
+
+	state.dragging = true;
+	state.draggablePosition = { x, y };
+}
+
+function onDragOver(event: DragEvent): void {
+	if (!state.dragging || event.pageX === 0 && event.pageY === 0) {
+		return;
+	}
+
+	const [x,y] = getNewNodePosition([], [event.pageX - NODE_SIZE / 2, event.pageY - NODE_SIZE / 2]);
+
+	state.draggablePosition = { x, y };
+}
+
+function onDragEnd(event: DragEvent): void {
+	document.body.removeEventListener("dragover", onDragOver);
+	emit('dragend', event);
+
+	state.dragging = false;
+	setTimeout(() => {
+		state.draggablePosition = { x: -100, y: -100 };
+	}, 300);
+}
+
+function onCommunityNodeTooltipClick(event: MouseEvent) {
+	if ((event.target as Element).localName === 'a') {
+		instance?.proxy.$telemetry.track('user clicked cnr docs link', { source: 'nodes panel node' });
+	}
+}
+
+const { showActions, dragging, draggableDataTransfer } = toRefs(state);
 </script>
 
 <style lang="scss" module>

@@ -24,67 +24,55 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { PropType } from 'vue';
+<script setup lang="ts">
+import { computed, watch, getCurrentInstance, onMounted, onUnmounted } from 'vue';
 import { externalHooks } from '@/components/mixins/externalHooks';
-import mixins from 'vue-typed-mixins';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
 import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY, CORE_NODES_CATEGORY } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import TypeSelector from './TypeSelector.vue';
 import { INodeCreateElement } from '@/Interface';
+import { store } from '@/store';
 
-export default mixins(externalHooks).extend({
-	name: 'NodeCreateList',
-	components: {
-		TriggerHelperPanel,
-		CategorizedItems,
-		TypeSelector,
-	},
-	props: {
-		searchItems: {
-			type: Array as PropType<INodeCreateElement[]>,
-			default: () => [],
-		},
-	},
-	data() {
-		return {
-			CORE_NODES_CATEGORY,
-			TRIGGER_NODE_FILTER,
-			ALL_NODE_FILTER,
-			OTHER_TRIGGER_NODES_SUBCATEGORY,
-		};
-	},
-	computed: {
-		selectedType(): string {
-			return this.$store.getters['nodeCreator/selectedType'];
-		},
-	},
-	watch: {
-		selectedType(newValue, oldValue) {
-			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', {
-				oldValue,
-				newValue,
-			});
-			this.$telemetry.trackNodesPanel('nodeCreateList.selectedTypeChanged', {
-				old_filter: oldValue,
-				new_filter: newValue,
-				workflow_id: this.$store.getters.workflowId,
-			});
-		},
-	},
-	mounted() {
-		this.$externalHooks().run('nodeCreateList.mounted');
-		// Make sure tabs are visible on mount
-		this.$store.commit('nodeCreator/setShowTabs', true);
-	},
-	destroyed() {
-		this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
-		this.$externalHooks().run('nodeCreateList.destroyed');
-		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.$store.getters.workflowId });
-	},
+export interface Props {
+	searchItems?: INodeCreateElement[];
+}
+
+withDefaults(defineProps<Props>(), {
+	searchItems: () => [],
 });
+
+const instance = getCurrentInstance();
+const { $externalHooks } = new externalHooks();
+
+const selectedType = computed<string> (() => store.getters['nodeCreator/selectedType']);
+
+watch(selectedType, (newValue, oldValue) => {
+	$externalHooks().run('nodeCreateList.selectedTypeChanged', {
+		oldValue,
+		newValue,
+	});
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.selectedTypeChanged', {
+		old_filter: oldValue,
+		new_filter: newValue,
+		workflow_id: store.getters.workflowId,
+	});
+});
+
+onMounted(() => {
+	$externalHooks().run('nodeCreateList.mounted');
+	// Make sure tabs are visible on mount
+	store.commit('nodeCreator/setShowTabs', true);
+});
+
+onUnmounted(() => {
+	store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
+	$externalHooks().run('nodeCreateList.destroyed');
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: store.getters.workflowId });
+});
+
 </script>
+
 <style lang="scss" scoped>
 .container {
 	height: 100%;

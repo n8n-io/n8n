@@ -19,72 +19,65 @@
 				:item="item"
 				:active="activeIndex === index && !disabled"
 				:clickable="!disabled"
+				:disabled="disabled"
 				:simple-node-style="simpleNodeStyle"
 				:lastNode="
 					index === elements.length - 1 || elements[index + 1].type !== 'node'
 				"
-				@click="$emit('selected', item)"
+				@click="wrappedEmit('selected', item)"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
-				@dragstart="emit('dragstart', item, $event)"
-				@dragend="emit('dragend', item, $event)"
+				@dragstart="wrappedEmit('dragstart', item, $event)"
+				@dragend="wrappedEmit('dragend', item, $event)"
 			/>
 		</div>
 	</div>
 </template>
 
-<script lang="ts">
-import { INodeCreateElement, INodeItemProps } from '@/Interface';
-
-import Vue, { PropType } from 'vue';
+<script setup lang="ts">
+import { INodeCreateElement } from '@/Interface';
 import CreatorItem from './CreatorItem.vue';
 
-export default Vue.extend({
-	name: 'ItemIterator',
-	components: {
-		CreatorItem,
-	},
-	props: {
-		elements: {
-			type: Array as PropType<INodeCreateElement[]>,
-		},
-		activeIndex: {
-			type: Number,
-		},
-		disabled: {
-			type: Boolean,
-		},
-		simpleNodeStyle: {
-			type: Boolean,
-		},
-		transitionsEnabled: {
-			type: Boolean,
-		},
-		allowActions: {
-			type: Boolean,
-		},
-	},
-	methods: {
-		emit(eventName: string, element: INodeCreateElement, event: Event) {
-			if (this.disabled) {
-				return;
-			}
+export interface Props {
+	elements: INodeCreateElement[];
+	activeIndex?: number;
+	disabled?: boolean;
+	simpleNodeStyle?: boolean;
+	transitionsEnabled?: boolean;
+	allowActions?: boolean;
+}
 
-			this.$emit(eventName, { element, event });
-		},
-		beforeEnter(el: HTMLElement) {
-			el.style.height = '0';
-		},
-		enter(el: HTMLElement) {
-			el.style.height = `${el.scrollHeight}px`;
-		},
-		beforeLeave(el: HTMLElement) {
-			el.style.height = `${el.scrollHeight}px`;
-		},
-		leave(el: HTMLElement) {
-			el.style.height = '0';
-		},
-	},
+const props = withDefaults(defineProps<Props>(), {
+	elements: () => [],
 });
+
+const emit = defineEmits<{
+	(event: 'selected', element: INodeCreateElement, $e?: Event): void,
+	(event: 'dragstart', element: INodeCreateElement, $e: Event): void,
+	(event: 'dragend', element: INodeCreateElement, $e: Event): void,
+}>();
+
+function wrappedEmit(event: 'selected' | 'dragstart' | 'dragend', element: INodeCreateElement, $e?: Event) {
+	if (props.disabled) return;
+
+	emit((event as 'selected' || 'dragstart' || 'dragend'), element, $e);
+}
+
+function beforeEnter(el: HTMLElement) {
+	el.style.height = '0';
+}
+
+function enter(el: HTMLElement) {
+	el.style.height = `${el.scrollHeight}px`;
+}
+
+function beforeLeave(el: HTMLElement) {
+	el.style.height = `${el.scrollHeight}px`;
+}
+
+function leave(el: HTMLElement) {
+	el.style.height = '0';
+}
+
 </script>
 
 

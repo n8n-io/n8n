@@ -86,7 +86,7 @@
 import Vue, { computed, reactive, onMounted, watch, getCurrentInstance, toRefs, onUnmounted } from 'vue';
 import camelcase from 'lodash.camelcase';
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import useGlobalLinkActions from '@/components/composables/useGlobalLinkActions';
 
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
@@ -124,9 +124,9 @@ const emit = defineEmits<{
 }>();
 
 const instance = getCurrentInstance();
-const { registerCustomAction, unregisterCustomAction } = new globalLinkActions();
-const { $externalHooks } = new externalHooks();
+const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 
+const { $externalHooks } = new externalHooks();
 const state = reactive({
 	activeCategory: props.initialActiveCategories,
 	// Keep track of activated subcategories so we could traverse back more than one level
@@ -281,7 +281,7 @@ const subcategorizedNodes = computed<INodeCreateElement[]> (() => {
 
       const existingNode = acc[normalizedName];
       if(existingNode) {
-        (existingNode.properties as INodeItemProps).nodeType.actions.push(...actions);
+        (existingNode.properties as INodeItemProps).nodeType.actions?.push(...actions);
       } else {
         acc[normalizedName] = clonedNode;
       }
@@ -441,7 +441,7 @@ function onSubcategorySelected(selected: INodeCreateElement) {
 }
 
 function onSubcategoryClose() {
-  emit('subcategoryClose', activeSubcategory.value);
+  emit('subcategoryClose', activeSubcategory.value as INodeCreateElement);
   state.activeSubcategoryHistory.pop();
   state.activeSubcategoryIndex = 0;
   store.commit('nodeCreator/setFilter', '');

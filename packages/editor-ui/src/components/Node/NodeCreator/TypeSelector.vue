@@ -8,33 +8,17 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
+import { computed } from 'vue';
 import { ALL_NODE_FILTER, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
-import Vue from 'vue';
+import { store } from '@/store';
 
-export default Vue.extend({
-	name: 'NodeCreateTypeSelector',
-	data() {
-		return {
-			REGULAR_NODE_FILTER,
-			TRIGGER_NODE_FILTER,
-			ALL_NODE_FILTER,
-		};
-	},
-	methods: {
-		setType(type: string) {
-			this.$store.commit('nodeCreator/setSelectedType', type);
-		},
-	},
-	computed: {
-		showTabs(): boolean {
-			return this.$store.getters['nodeCreator/showTabs'];
-		},
-		selectedType(): string {
-			return this.$store.getters['nodeCreator/selectedType'];
-		},
-	},
-});
+const showTabs = computed<boolean>(() => store.getters['nodeCreator/showTabs']);
+const selectedType = computed<string>(() => store.getters['nodeCreator/selectedType']);
+
+function setType(type: string) {
+	store.commit('nodeCreator/setSelectedType', type);
+}
 </script>
 <style lang="scss" scoped>
 ::v-deep .el-tabs__item {

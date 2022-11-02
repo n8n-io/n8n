@@ -6,65 +6,67 @@
 		<font-awesome-icon
 			:class="$style.arrow"
 			icon="chevron-down"
-			v-if="item.properties.expanded"
+			v-if="isExpadned"
 		/>
 		<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 	</div>
 </template>
 
-<script lang="ts">
-import Vue, { PropType } from 'vue';
+<script lang="ts" setup>
+import { computed, getCurrentInstance } from 'vue';
 import camelcase from 'lodash.camelcase';
 import { CategoryName } from '@/plugins/i18n';
-import { INodeCreateElement, ICategoriesWithNodes } from '@/Interface';
+import { INodeCreateElement, ICategoriesWithNodes, ICategoryItemProps } from '@/Interface';
 import { NODE_TYPE_COUNT_MAPPER } from '@/constants';
+import { store } from '@/store';
 
+export interface Props {
+	item: INodeCreateElement;
+}
+const props = defineProps<Props>();
+const instance = getCurrentInstance();
 
-export default Vue.extend({
-	props: {
-		item: {
-			type: Object as PropType<INodeCreateElement>,
-		},
-	},
-	computed: {
-		selectedType(): "Regular" | "Trigger" | "All" {
-			return this.$store.getters['nodeCreator/selectedType'];
-		},
-		categoriesWithNodes(): ICategoriesWithNodes {
-			return this.$store.getters['nodeTypes/categoriesWithNodes'];
-		},
-		categorizedItems(): INodeCreateElement[] {
-			return this.$store.getters['nodeTypes/categorizedItems'];
-		},
-		categoryName() {
-			return camelcase(this.item.category) as CategoryName;
-		},
-		nodesCount(): number {
-			const currentCategory = this.categoriesWithNodes[this.item.category];
-			const subcategories = Object.keys(currentCategory);
-
-			// We need to sum subcategories count for the curent nodeType view
-			// to get the total count of category
-			const count = subcategories.reduce((accu: number, subcategory: string) => {
-				const countKeys = NODE_TYPE_COUNT_MAPPER[this.selectedType];
-
-				for (const countKey of countKeys) {
-					accu += currentCategory[subcategory][(countKey as "triggerCount" | "regularCount")];
-				}
-
-				return accu;
-			}, 0);
-			return count;
-		},
-	},
-	methods: {
-		renderCategoryName(categoryName: CategoryName) {
-			const key = `nodeCreator.categoryNames.${categoryName}` as const;
-
-			return this.$locale.exists(key) ? this.$locale.baseText(key) : categoryName;
-		},
-	},
+const selectedType = computed<"Regular" | "Trigger" | "All">(() => {
+	return store.getters['nodeCreator/selectedType'];
 });
+
+const categoriesWithNodes = computed<ICategoriesWithNodes>(() => {
+	return store.getters['nodeTypes/categoriesWithNodes'];
+});
+
+const isExpadned = computed<boolean>(() => {
+	return (props.item.properties as ICategoryItemProps).expanded;
+});
+
+const categoryName = computed<CategoryName>(() => {
+	return camelcase(props.item.category) as CategoryName;
+});
+
+const nodesCount = computed<number>(() => {
+	const currentCategory = categoriesWithNodes.value[props.item.category];
+	const subcategories = Object.keys(currentCategory);
+
+	// We need to sum subcategories count for the curent nodeType view
+	// to get the total count of category
+	const count = subcategories.reduce((accu: number, subcategory: string) => {
+		const countKeys = NODE_TYPE_COUNT_MAPPER[selectedType.value];
+
+		for (const countKey of countKeys) {
+			accu += currentCategory[subcategory][(countKey as "triggerCount" | "regularCount")];
+		}
+
+		return accu;
+	}, 0);
+	return count;
+});
+
+function renderCategoryName(categoryName: CategoryName) {
+	const key = `nodeCreator.categoryNames.${categoryName}` as const;
+
+	return instance?.proxy.$locale.exists(key)
+		? instance?.proxy.$locale.baseText(key)
+		: categoryName;
+}
 </script>
 
 

@@ -1,7 +1,6 @@
 <template>
 	<div :class="{ [$style.triggerHelperContainer]: true, [$style.isRoot]: isRoot }">
 		<categorized-items
-			ref="categorizedItems"
 			@subcategoryClose="onSubcategoryClose"
 			@onSubcategorySelected="onSubcategorySelected"
 			@nodeTypeSelected="$listeners.nodeTypeSelected"
@@ -20,149 +19,132 @@
 	</div>
 </template>
 
-<script lang="ts">
-import { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+<script setup lang="ts">
+import { reactive, toRefs, getCurrentInstance } from 'vue';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
 import { INodeCreateElement } from '@/Interface';
 import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
-
-import ItemIterator from './ItemIterator.vue';
 import CategorizedItems from './CategorizedItems.vue';
-import SearchBar from './SearchBar.vue';
 
-export default mixins(externalHooks).extend({
-	name: 'TriggerHelperPanel',
-	components: {
-		ItemIterator,
-		CategorizedItems,
-		SearchBar,
-	},
-	props: {
-		searchItems: {
-			type: Array as PropType<INodeCreateElement[]>,
-		},
-	},
-	data() {
-		return {
-			CORE_NODES_CATEGORY,
-			COMMUNICATION_CATEGORY,
-			isRoot: true,
-		};
-	},
-	computed: {
-		items(): INodeCreateElement[] {
-			return [{
-					key: "app_nodes",
-					type: "subcategory",
-					title: this.$locale.baseText('nodeCreator.subcategoryNames.appTriggerNodes'),
-					properties: {
-						subcategory: "App Trigger Nodes",
-						description: this.$locale.baseText('nodeCreator.subcategoryDescriptions.appTriggerNodes'),
-						icon: "fa:satellite-dish",
-						defaults: {
-							color: "#7D838F",
-						},
-					},
-				},
-				{
-					key: SCHEDULE_TRIGGER_NODE_TYPE,
-					type: "node",
-					properties: {
-						nodeType: {
+export interface Props {
+	searchItems: INodeCreateElement[];
+}
 
-							group: [],
-							name: SCHEDULE_TRIGGER_NODE_TYPE,
-							displayName: this.$locale.baseText('nodeCreator.triggerHelperPanel.scheduleTriggerDisplayName'),
-							description: this.$locale.baseText('nodeCreator.triggerHelperPanel.scheduleTriggerDescription'),
-							icon: "fa:clock",
-							defaults: {
-								color: "#7D838F",
-							},
-						},
-					},
-				},
-				{
-					key: WEBHOOK_NODE_TYPE,
-					type: "node",
-					properties: {
-						nodeType: {
-							group: [],
-							name: WEBHOOK_NODE_TYPE,
-							displayName: this.$locale.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
-							description: this.$locale.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
-							iconData: {
-								type: "file",
-								icon: "webhook",
-								fileBuffer: "/static/webhook-icon.svg",
-							},
-							defaults: {
-								color: "#7D838F",
-							},
-						},
-					},
-				},
-				{
-					key: MANUAL_TRIGGER_NODE_TYPE,
-					type: "node",
-					properties: {
-						nodeType: {
-							group: [],
-							name: MANUAL_TRIGGER_NODE_TYPE,
-							displayName: this.$locale.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
-							description: this.$locale.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
-							icon: "fa:mouse-pointer",
-							defaults: {
-								color: "#7D838F",
-							},
-						},
-					},
-				},
-				{
-					key: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-					type: "node",
-					properties: {
-						nodeType: {
-							group: [],
-							name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-							displayName: this.$locale.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDisplayName'),
-							description: this.$locale.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDescription'),
-							icon: "fa:sign-out-alt",
-							defaults: {
-								color: "#7D838F",
-							},
-						},
-					},
-				},
-				{
-					type: "subcategory",
-					key: OTHER_TRIGGER_NODES_SUBCATEGORY,
-					category: CORE_NODES_CATEGORY,
-					properties: {
-						subcategory: OTHER_TRIGGER_NODES_SUBCATEGORY,
-						description: this.$locale.baseText('nodeCreator.subcategoryDescriptions.otherTriggerNodes'),
-						icon: "fa:folder-open",
-						defaults: {
-							color: "#7D838F",
-						},
-					},
-				},
-			];
-		},
-	},
-	methods: {
-		isRootSubcategory(subcategory: INodeCreateElement) {
-			return this.items.find(item => item.key === subcategory.key) !== undefined;
-		},
-		onSubcategorySelected() {
-			this.isRoot = false;
-		},
-		onSubcategoryClose(subcategory: INodeCreateElement) {
-			this.isRoot = this.isRootSubcategory(subcategory);
-		},
-	},
+defineProps<Props>();
+
+const instance = getCurrentInstance();
+const state = reactive({
+	isRoot: true,
 });
+
+const items = [{
+		key: "app_nodes",
+		type: "subcategory",
+		title: instance?.proxy.$locale.baseText('nodeCreator.subcategoryNames.appTriggerNodes'),
+		properties: {
+			subcategory: "App Trigger Nodes",
+			description: instance?.proxy.$locale.baseText('nodeCreator.subcategoryDescriptions.appTriggerNodes'),
+			icon: "fa:satellite-dish",
+			defaults: {
+				color: "#7D838F",
+			},
+		},
+	},
+	{
+		key: SCHEDULE_TRIGGER_NODE_TYPE,
+		type: "node",
+		properties: {
+			nodeType: {
+
+				group: [],
+				name: SCHEDULE_TRIGGER_NODE_TYPE,
+				displayName: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.scheduleTriggerDisplayName'),
+				description: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.scheduleTriggerDescription'),
+				icon: "fa:clock",
+				defaults: {
+					color: "#7D838F",
+				},
+			},
+		},
+	},
+	{
+		key: WEBHOOK_NODE_TYPE,
+		type: "node",
+		properties: {
+			nodeType: {
+				group: [],
+				name: WEBHOOK_NODE_TYPE,
+				displayName: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDisplayName'),
+				description: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.webhookTriggerDescription'),
+				iconData: {
+					type: "file",
+					icon: "webhook",
+					fileBuffer: "/static/webhook-icon.svg",
+				},
+				defaults: {
+					color: "#7D838F",
+				},
+			},
+		},
+	},
+	{
+		key: MANUAL_TRIGGER_NODE_TYPE,
+		type: "node",
+		properties: {
+			nodeType: {
+				group: [],
+				name: MANUAL_TRIGGER_NODE_TYPE,
+				displayName: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.manualTriggerDisplayName'),
+				description: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.manualTriggerDescription'),
+				icon: "fa:mouse-pointer",
+				defaults: {
+					color: "#7D838F",
+				},
+			},
+		},
+	},
+	{
+		key: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+		type: "node",
+		properties: {
+			nodeType: {
+				group: [],
+				name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+				displayName: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDisplayName'),
+				description: instance?.proxy.$locale.baseText('nodeCreator.triggerHelperPanel.workflowTriggerDescription'),
+				icon: "fa:sign-out-alt",
+				defaults: {
+					color: "#7D838F",
+				},
+			},
+		},
+	},
+	{
+		type: "subcategory",
+		key: OTHER_TRIGGER_NODES_SUBCATEGORY,
+		category: CORE_NODES_CATEGORY,
+		properties: {
+			subcategory: OTHER_TRIGGER_NODES_SUBCATEGORY,
+			description: instance?.proxy.$locale.baseText('nodeCreator.subcategoryDescriptions.otherTriggerNodes'),
+			icon: "fa:folder-open",
+			defaults: {
+				color: "#7D838F",
+			},
+		},
+	},
+];
+
+function isRootSubcategory(subcategory: INodeCreateElement) {
+	return items.find(item => item.key === subcategory.key) !== undefined;
+}
+function onSubcategorySelected() {
+	state.isRoot = false;
+}
+function onSubcategoryClose(subcategory: INodeCreateElement) {
+	state.isRoot = isRootSubcategory(subcategory);
+}
+
+const { isRoot } = toRefs(state);
 </script>
 
 <style lang="scss" module>

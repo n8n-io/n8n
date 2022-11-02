@@ -39,19 +39,25 @@ import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
 import { restApi } from '@/components/mixins/restApi';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import useGlobalLinkActions from '@/components/composables/useGlobalLinkActions';
 
 export default mixins(
 	showMessage,
 	userHelpers,
 	restApi,
-	globalLinkActions,
 ).extend({
 	name: 'App',
 	components: {
 		LoadingView,
 		Telemetry,
 		Modals,
+	},
+	setup() {
+		const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+		return {
+			registerCustomAction,
+			unregisterCustomAction,
+		};
 	},
 	computed: {
 		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),

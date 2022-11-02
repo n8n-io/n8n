@@ -20,54 +20,57 @@
 	</div>
 </template>
 
-<script lang="ts">
-import Vue, { PropType } from 'vue';
-import mixins from 'vue-typed-mixins';
+<script setup lang="ts">
+import Vue, { onMounted, onUnmounted, reactive, toRefs } from 'vue';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
 
-export default mixins(externalHooks).extend({
-	name: "SearchBar",
-	props: {
-		value: {
-			type: String,
-		},
-		eventBus: {
-			type: Object as PropType<Vue>,
-		},
-		placeholder: {
-			type: String,
-		},
-	},
-	mounted() {
-		if (this.eventBus) {
-			this.eventBus.$on("focus", this.focus);
-		}
-		setTimeout(this.focus, 0);
+export interface Props {
+	placeholder: string;
+	value: string;
+	eventBus?: Vue;
+}
 
-		this.$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: this.$refs['input'] });
-	},
-	methods: {
-		focus() {
-			const input = this.$refs.input as HTMLInputElement;
-			if (input) {
-				input.focus();
-			}
-		},
-		onInput(event: InputEvent) {
-			const input = event.target as HTMLInputElement;
-			this.$emit("input", input.value);
-		},
-		clear() {
-			this.$emit("input", "");
-		},
-	},
-	beforeDestroy() {
-		if (this.eventBus) {
-			this.eventBus.$off("focus", this.focus);
-		}
-	},
+const props = withDefaults(defineProps<Props>(), {
+	placeholder: '',
+	value: '',
 });
+
+const emit = defineEmits<{
+	(event: 'input', value: string): void,
+}>();
+
+const { $externalHooks } = new externalHooks();
+
+const state = reactive({
+	input: null as HTMLInputElement | null,
+});
+
+function focus() {
+	state.input?.focus();
+}
+
+function onInput(event: Event) {
+	const input = event.target as HTMLInputElement;
+	emit("input", input.value);
+}
+
+function clear() {
+	emit("input", "");
+}
+
+onMounted(() => {
+	props.eventBus?.$on("focus", focus);
+	setTimeout(focus, 0);
+
+	$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: state.input });
+});
+
+onUnmounted(() => {
+	props.eventBus?.$off("focus", focus);
+});
+
+const { input } = toRefs(state);
 </script>
 
 <style lang="scss" module>

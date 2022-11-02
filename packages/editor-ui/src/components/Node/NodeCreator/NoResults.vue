@@ -29,30 +29,16 @@
 </template>
 
 
-<script lang="ts">
+<script setup lang="ts">
 import { REQUEST_NODE_FORM_URL } from '@/constants';
-import Vue from 'vue';
 import NoResultsIcon from './NoResultsIcon.vue';
 
-export default Vue.extend({
-	name: 'NoResults',
-	props: {
-		showRequest: {
-			type: Boolean,
-		},
-		showIcon: {
-			type: Boolean,
-		},
-	},
-	components: {
-		NoResultsIcon,
-	},
-	data() {
-		return {
-			REQUEST_NODE_FORM_URL,
-		};
-	},
-});
+export interface Props {
+	showIcon?: boolean;
+	showRequest?: boolean;
+}
+
+defineProps<Props>();
 </script>
 
 <style lang="scss" module>

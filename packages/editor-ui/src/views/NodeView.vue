@@ -166,7 +166,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { mouseSelect } from '@/components/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
 import { restApi } from '@/components/mixins/restApi';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import useGlobalLinkActions from '@/components/composables/useGlobalLinkActions';
 import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { newVersions } from '@/components/mixins/newVersions';
@@ -248,7 +248,6 @@ export default mixins(
 	workflowHelpers,
 	workflowRun,
 	newVersions,
-	globalLinkActions,
 	debounceHelper,
 )
 	.extend({
@@ -261,6 +260,13 @@ export default mixins(
 			Sticky,
 			CanvasAddButton,
 			NodeCreation: () => import('@/components/Node/NodeCreation.vue'),
+		},
+		setup() {
+			const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+			return {
+				registerCustomAction,
+				unregisterCustomAction,
+			};
 		},
 		errorCaptured: (err, vm, info) => {
 			console.error('errorCaptured'); // eslint-disable-line no-console
@@ -1704,7 +1710,6 @@ export default mixins(
 						}
 
 						// If a node is active then add the new node directly after the current one
-						// newNodeData.position = [activeNode.position[0], activeNode.position[1] + 60];
 						newNodeData.position = CanvasHelpers.getNewNodePosition(
 							this.nodes,
 							[lastSelectedNode.position[0] + CanvasHelpers.PUSH_NODES_OFFSET, lastSelectedNode.position[1] + yOffset],
@@ -1798,7 +1803,6 @@ export default mixins(
 				this.__addConnection(connectionData, true);
 			},
 			async addNode(nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true) {
-				console.log("🚀 ~ file: NodeView.vue ~ line 1799 ~ addNode ~ nodeTypeName", nodeTypeName);
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -3263,13 +3267,21 @@ export default mixins(
 			},
 			onAddNode(nodeTypes: any[]) {
 				nodeTypes.forEach(({ nodeTypeName, position }, index) => {
-					setTimeout(() => {
-						this.addNode(nodeTypeName, { position }, nodeTypes.length === 1 || index > 0);
-						if(index > 0) {
+					this.addNode(nodeTypeName, { position }, nodeTypes.length === 1 || index > 0);
+					if(index === 0) return;
+					// If there's more than one node, we want to connect them
+					// this has to be done in mutation subscriber to make sure both nodes already
+					// exist
+					const unsubscribe = this.$store.subscribe((mutation) => {
+						if(mutation.type === 'addNode' && mutation.payload.type === nodeTypeName) {
 							const lastAddedNode = this.nodes[this.nodes.length - 1];
-							this.nodeSelectedByName(lastAddedNode.name, true);
+							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
+							this.$nextTick(() => {
+								this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
+								unsubscribe();
+							});
 						}
-					}, index * 3000);
+					});
 				});
 			},
 		},

@@ -43,6 +43,7 @@ export default Vue.extend({
 	},
 	methods: {
 		onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
+			console.log('Mouse hover in');
 			const buttonsWrapper = mouseinEvent.target as Element;
 
 			// Once the popup menu is hovered, it's pointer events are disabled so it's not interfering with element underneath it.

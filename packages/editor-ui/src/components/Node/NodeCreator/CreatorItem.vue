@@ -29,41 +29,21 @@
 	</div>
 </template>
 
-<script lang="ts">
-import Vue, { PropType } from 'vue';
+<script setup lang="ts">
 import { INodeCreateElement } from '@/Interface';
 import NodeItem from './NodeItem.vue';
 import SubcategoryItem from './SubcategoryItem.vue';
 import CategoryItem from './CategoryItem.vue';
 
-export default Vue.extend({
-	name: 'CreatorItem',
-	components: {
-		CategoryItem,
-		SubcategoryItem,
-		NodeItem,
-	},
-	props: {
-		item: {
-			type: Object as PropType<INodeCreateElement>,
-		},
-		active: {
-			type: Boolean,
-		},
-		simpleNodeStyle: {
-			type: Boolean,
-		},
-		clickable: {
-			type: Boolean,
-		},
-		lastNode: {
-			type: Boolean,
-		},
-		allowActions: {
-			type: Boolean,
-		},
-	},
-});
+export interface Props {
+	item: INodeCreateElement;
+	active?: boolean;
+	simpleNodeStyle?: boolean;
+	clickable?: boolean;
+	lastNode?: boolean;
+	allowActions?: boolean;
+}
+defineProps<Props>();
 </script>
 
 <style lang="scss" scoped>

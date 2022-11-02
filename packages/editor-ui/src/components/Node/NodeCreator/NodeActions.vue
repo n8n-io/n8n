@@ -45,25 +45,24 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, PropType } from 'vue';
-import { IDataObject, INodeTypeDescription, INodeAction, INode } from 'n8n-workflow';
+import { reactive, computed, toRefs } from 'vue';
+import { IDataObject, INodeTypeDescription, INodeAction } from 'n8n-workflow';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TriggerIcon from '@/components/TriggerIcon.vue';
 import SearchBar from './SearchBar.vue';
 
-const emit = defineEmits(['actionSelected', 'back']);
+export interface Props {
+	nodeType: INodeTypeDescription,
+	actions: INodeAction[],
+}
 
-const props = defineProps({
-	nodeType: {
-		type: Object as PropType<INodeTypeDescription>,
-		required: true,
-	},
-	actions: {
-		type: Array as PropType<INodeAction[]>,
-		required: true,
-	},
-});
+const props = defineProps<Props>();
+
+const emit = defineEmits<{
+	(event: 'actionSelected', action: { key: string, value: IDataObject }): void,
+	(event: 'back'): void,
+}>();
 
 const state = reactive({
 	subtractedCategories: [] as string[],
@@ -101,7 +100,7 @@ function onActionClick(actionItem: INodeAction) {
 
 
 	emit('actionSelected', {
-		key: actionItem.nodeName,
+		key: actionItem.nodeName as string,
 		value: { ...actionItem.values , ...displayConditions},
 	});
 }
@@ -185,7 +184,6 @@ const { subtractedCategories, search } = toRefs(state);
 		top: 0;
 		bottom: 0;
 		width: 2px;
-		// height: 10px;
 		background: var(--color-primary);
 	}
 }
@@ -195,7 +193,6 @@ const { subtractedCategories, search } = toRefs(state);
 	line-height: 11px;
 	letter-spacing: 1px;
 	text-transform: uppercase;
-	// padding-top: 10px;
 }
 .categoryArrow {
 	font-size: 12px;
@@ -224,11 +221,6 @@ const { subtractedCategories, search } = toRefs(state);
 }
 .categoryActions {
 	margin: 16px 0;
-}
-.category {
-	&:not(:first-of-type) {
-		// margin-top: 30px;
-	}
 }
 .categoryAction {
 	font-weight: 600;

@@ -20,87 +20,91 @@
 	</div>
 </template>
 
-<script lang="ts">
+<script setup lang="ts">
 
-import Vue from 'vue';
+import { computed, watch, reactive, toRefs } from 'vue';
 
 import { INodeCreateElement } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
-import SlideTransition from '../../transitions/SlideTransition.vue';
+import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
+import { store } from '@/store';
 
-export default Vue.extend({
-	name: 'NodeCreator',
-	components: {
-		MainPanel,
-		SlideTransition,
-	},
-	props: {
-		active: {
-			type: Boolean,
-		},
-	},
-	computed: {
-		showScrim(): boolean {
-			return this.$store.getters['nodeCreator/showScrim'];
-		},
-		sidebarMenuCollapsed(): boolean {
-			return this.$store.getters['ui/sidebarMenuCollapsed'];
-		},
-		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters['nodeTypes/visibleNodeTypes'];
-		},
-		searchItems(): INodeCreateElement[] {
-			const sorted = [...this.visibleNodeTypes];
-			sorted.sort((a, b) => {
-				const textA = a.displayName.toLowerCase();
-				const textB = b.displayName.toLowerCase();
-				return textA < textB ? -1 : textA > textB ? 1 : 0;
-			});
+export interface Props {
+	active?: boolean;
+}
 
-			return sorted.map((nodeType) => ({
-				type: 'node',
-				category: '',
-				key: `${nodeType.name}`,
-				properties: {
-					nodeType,
-					subcategory: '',
-				},
-				includedByTrigger: nodeType.group.includes('trigger'),
-				includedByRegular: !nodeType.group.includes('trigger'),
-			}));
-		},
-	},
-	methods: {
-		onClickOutside (e: Event) {
-			if (e.type === 'click') {
-				this.$emit('closeNodeCreator');
-			}
-		},
-		onDragOver(event: DragEvent) {
-			event.preventDefault();
-		},
-		onDrop(event: DragEvent) {
-			if (!event.dataTransfer) {
-				return;
-			}
+const props = defineProps<Props>();
 
-			const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
-			const nodeCreatorBoundingRect = (this.$refs.nodeCreator as Element).getBoundingClientRect();
+const emit = defineEmits<{
+	(event: 'closeNodeCreator'): void,
+}>();
 
-			// Abort drag end event propagation if dropped inside nodes panel
-			if (nodeTypeName && event.pageX >= nodeCreatorBoundingRect.x && event.pageY >= nodeCreatorBoundingRect.y) {
-				event.stopPropagation();
-			}
-		},
-	},
-	watch: {
-		active(isActive) {
-			if(isActive === false) this.$store.commit('nodeCreator/setShowScrim', false);
-		},
-	},
+const state = reactive({
+	nodeCreator: null as HTMLElement | null,
 });
+
+const showScrim = computed<boolean>(() => {
+	return store.getters['nodeCreator/showScrim'];
+});
+
+const sidebarMenuCollapsed = computed<boolean>(() => {
+	return store.getters['ui/sidebarMenuCollapsed'];
+});
+
+const visibleNodeTypes = computed<INodeTypeDescription[]>(() => {
+	return store.getters['nodeTypes/visibleNodeTypes'];
+});
+
+const searchItems = computed<INodeCreateElement[]>(() => {
+	const sorted = [...visibleNodeTypes.value];
+	sorted.sort((a, b) => {
+		const textA = a.displayName.toLowerCase();
+		const textB = b.displayName.toLowerCase();
+		return textA < textB ? -1 : textA > textB ? 1 : 0;
+	});
+
+	return sorted.map((nodeType) => ({
+		type: 'node',
+		category: '',
+		key: `${nodeType.name}`,
+		properties: {
+			nodeType,
+			subcategory: '',
+		},
+		includedByTrigger: nodeType.group.includes('trigger'),
+		includedByRegular: !nodeType.group.includes('trigger'),
+	}));
+});
+
+function onClickOutside (event: Event) {
+	if (event.type === 'click') {
+		emit('closeNodeCreator');
+	}
+}
+function onDragOver(event: DragEvent) {
+	event.preventDefault();
+}
+function onDrop(event: DragEvent) {
+	if (!event.dataTransfer) {
+		return;
+	}
+
+	const nodeTypeName = event.dataTransfer.getData('nodeTypeName');
+	const nodeCreatorBoundingRect = (state.nodeCreator as Element).getBoundingClientRect();
+
+	// Abort drag end event propagation if dropped inside nodes panel
+	if (nodeTypeName && event.pageX >= nodeCreatorBoundingRect.x && event.pageY >= nodeCreatorBoundingRect.y) {
+		event.stopPropagation();
+	}
+}
+
+watch(() => props.active, (isActive) => {
+	if(isActive === false) store.commit('nodeCreator/setShowScrim', false);
+});
+
+const { nodeCreator } = toRefs(state);
 </script>
 
 <style scoped lang="scss">
