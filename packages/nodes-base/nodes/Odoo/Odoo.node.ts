@@ -119,19 +119,17 @@ export class Odoo implements INodeType {
 
 				const responce = await odooGetModelFields.call(this, db, userID, password, resource, url);
 				const options = Object.entries(responce).map(([key, field]) => {
-					const optionField = field;
-					optionField.name = key;
-					let name = '';
+					const optionField = field as { [key: string]: string};
 					try {
-						name = capitalCase(optionField.string);
+						optionField.name = capitalCase(optionField.string);
 					} catch (error) {
-						name = optionField.string;
+						optionField.name = optionField.string;
 					}
 					return {
-						name,
-						value: optionField.name,
+						name: optionField.name,
+						value: key,
 						// nodelinter-ignore-next-line
-						description: `name: ${optionField?.name}, type: ${optionField?.type} required: ${optionField?.required}`,
+						description: `name: ${key}, type: ${optionField?.type} required: ${optionField?.required}`,
 					};
 				});
 
