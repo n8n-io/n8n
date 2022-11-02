@@ -28,7 +28,7 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 		return clone as T;
 	}
 	// Object
-	const clone = Object.create(Object.getPrototypeOf(source));
+	const clone = Object.create(Object.getPrototypeOf({}));
 	hash.set(source, clone);
 	for (const i in source) {
 		if (hasOwnProp(i)) {
