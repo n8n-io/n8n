@@ -20,7 +20,7 @@
 		</template-details-block>
 
 		<template-details-block
-			v-if="!loading && (template.categories && template.categories.length > 0)"
+			v-if="!loading && template?.categories.length > 0"
 			:title="$locale.baseText('template.details.categories')"
 		>
 			<n8n-tags :tags="template.categories" @click="redirectToCategory" />

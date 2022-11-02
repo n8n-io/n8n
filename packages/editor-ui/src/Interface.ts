@@ -1007,6 +1007,7 @@ export interface IModalState {
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
+export type nodePanelType = 'input' | 'output';
 
 export interface TargetItem {
 	nodeName: string;

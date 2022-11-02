@@ -51,6 +51,7 @@ import mixins from 'vue-typed-mixins';
 import { debounceHelper } from './mixins/debounce';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
+import { nodePanelType } from '@/Interface';
 
 
 const SIDE_MARGIN = 24;
@@ -126,7 +127,7 @@ export default mixins(debounceHelper).extend({
 			relativeLeft: number,
 			relativeRight: number
 			} {
-			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType as "input" | "output");
+			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType as nodePanelType);
 		},
 		supportedResizeDirections() {
 			const supportedDirections = ['right'];
@@ -250,7 +251,7 @@ export default mixins(debounceHelper).extend({
 			const mainPanelRelativeWidth = relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
 
 			this.ndvStore.setMainPanelDimensions({
-				panelType: this.currentNodePaneType as "input" | "output",
+				panelType: this.currentNodePaneType as nodePanelType,
 				dimensions: {
 					relativeWidth: mainPanelRelativeWidth,
 				},
@@ -266,7 +267,7 @@ export default mixins(debounceHelper).extend({
 
 			if(isMinLeft) {
 				this.ndvStore.setMainPanelDimensions({
-					panelType: this.currentNodePaneType as "input" | "output",
+					panelType: this.currentNodePaneType as nodePanelType,
 					dimensions: {
 						relativeLeft: this.minimumLeftPosition,
 						relativeRight: 1 - this.mainPanelDimensions.relativeWidth - this.minimumLeftPosition,
@@ -277,7 +278,7 @@ export default mixins(debounceHelper).extend({
 
 			if(isMaxRight) {
 				this.ndvStore.setMainPanelDimensions({
-					panelType: this.currentNodePaneType as "input" | "output",
+					panelType: this.currentNodePaneType as nodePanelType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
 						relativeRight: this.maximumRightPosition as number,
@@ -287,7 +288,7 @@ export default mixins(debounceHelper).extend({
 			}
 
 			this.ndvStore.setMainPanelDimensions({
-				panelType: this.currentNodePaneType as "input" | "output",
+				panelType: this.currentNodePaneType as nodePanelType,
 				dimensions: {
 					relativeLeft: isInputless ? this.minimumLeftPosition : mainPanelRelativeLeft,
 					relativeRight: mainPanelRelativeRight,

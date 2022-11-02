@@ -73,7 +73,7 @@ export default mixins(
 		this.formInputs = [
 			{
 				name: 'firstName',
-				initialValue: this.currentUser.firstName,
+				initialValue: this.currentUser?.firstName,
 				properties: {
 					label: this.$locale.baseText('auth.firstName'),
 					maxlength: 32,
@@ -84,7 +84,7 @@ export default mixins(
 			},
 			{
 				name: 'lastName',
-				initialValue: this.currentUser.lastName,
+				initialValue: this.currentUser?.lastName,
 				properties: {
 					label: this.$locale.baseText('auth.lastName'),
 					maxlength: 32,
@@ -95,7 +95,7 @@ export default mixins(
 			},
 			{
 				name: 'email',
-				initialValue: this.currentUser.email,
+				initialValue: this.currentUser?.email,
 				properties: {
 					label: this.$locale.baseText('auth.email'),
 					type: 'email',
@@ -112,8 +112,8 @@ export default mixins(
 			useUIStore,
 			useUsersStore,
 		),
-		currentUser() {
-			return this.usersStore.currentUser || {} as IUser;
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
 		},
 	},
 	methods: {
@@ -124,12 +124,12 @@ export default mixins(
 			this.readyToSubmit = ready;
 		},
 		async onSubmit(form: {firstName: string, lastName: string, email: string}) {
-			if (!this.hasAnyChanges) {
+			if (!this.hasAnyChanges || !this.usersStore.currentUserId) {
 				return;
 			}
 			try {
 				await this.usersStore.updateUser({
-					id: this.usersStore.currentUserId || '',
+					id: this.usersStore.currentUserId,
 					firstName: form.firstName,
 					lastName: form.lastName,
 					email: form.email,

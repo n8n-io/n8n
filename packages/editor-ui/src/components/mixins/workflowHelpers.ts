@@ -456,7 +456,7 @@ export const workflowHelpers = mixins(
 
 				// Get the data of the node type that we can get the default values
 				// TODO: Later also has to care about the node-type-version as defaults could be different
-				const nodeType = this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 				if (nodeType !== null) {
 					// Node-Type is known so we can save the parameters correctly
@@ -555,9 +555,9 @@ export const workflowHelpers = mixins(
 				const inputName = 'main';
 				const activeNode = this.ndvStore.activeNode;
 				const workflow = this.getCurrentWorkflow();
-				const workflowRunData = this.workflowsStore.getWorkflowRunData as IRunData | null;
+				const workflowRunData = this.workflowsStore.getWorkflowRunData;
 				let parentNode = workflow.getParentNodes(activeNode?.name, inputName, 1);
-				const executionData = this.workflowsStore.getWorkflowExecution as IExecutionResponse | null;
+				const executionData = this.workflowsStore.getWorkflowExecution;
 
 				if (opts?.inputNodeName && !parentNode.includes(opts.inputNodeName)) {
 					return null;

@@ -72,9 +72,8 @@ export default mixins(
 				},
 			],
 		};
-
-		const token = this.$route.query.token.toString();
-		const userId = this.$route.query.userId.toString();
+		const token = (!this.$route.query.token || typeof this.$route.query.token !== 'string') ? null : this.$route.query.token;
+		const userId = (!this.$route.query.userId || typeof this.$route.query.userId !== 'string') ? null : this.$route.query.userId;
 		try {
 			if (!token) {
 				throw new Error(this.$locale.baseText('auth.changePassword.missingTokenError'));

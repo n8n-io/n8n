@@ -202,7 +202,7 @@ export const nodeHelpers = mixins(
 			// Updates the parameter-issues of the node
 			updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
 				if (nodeType === undefined) {
-					nodeType = this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
+					nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				}
 
 				if (nodeType === null) {
@@ -233,7 +233,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (!nodeType) {
-					nodeType = this.nodeTypesStore.getNodeType(node.type as string, node.typeVersion as number);
+					nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				}
 
 				if (!nodeType?.credentials) {

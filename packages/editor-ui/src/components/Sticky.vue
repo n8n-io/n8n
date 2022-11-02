@@ -217,12 +217,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return;
 			}
 
-			const updateInformation = {
+			const updateInformation: INodeUpdatePropertiesInformation = {
 				name: this.node.name,
 				properties: {
-					position,
-				} as IDataObject,
-			} as INodeUpdatePropertiesInformation;
+					position: { position },
+				},
+			};
 
 			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
