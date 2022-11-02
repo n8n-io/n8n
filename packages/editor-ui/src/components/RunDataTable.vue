@@ -165,6 +165,8 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 
+const MAX_COLUMNS_LIMIT = 40;
+
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
 	components: { Draggable },
