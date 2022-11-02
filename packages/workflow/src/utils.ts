@@ -1,12 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 
-type Serializable = any & { toJSON?: (key?: any) => string };
+type Serializable = { toJSON?: () => string };
 
-export const deepCopy = <T extends any | Serializable>(
-	source: T,
-	hash = new WeakMap(),
-	path = '',
-): T => {
+export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 	let clone: any;
 	const hasOwnProp = Object.prototype.hasOwnProperty.bind(source);
 	// Primitives & Null & Function
