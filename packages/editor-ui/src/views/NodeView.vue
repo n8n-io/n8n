@@ -1363,54 +1363,56 @@ export default mixins(
 			 * This method gets called when data got pasted into the window
 			 */
 			async receivedCopyPasteData(plainTextData: string): Promise<void> {
-				let workflowData: IWorkflowDataUpdate | undefined;
-
-				if (this.editAllowedCheck() === false) {
-					return;
-				}
-				// Check if it is an URL which could contain workflow data
-				if (plainTextData.match(/^http[s]?:\/\/.*\.json$/i)) {
-					// Pasted data points to a possible workflow JSON file
-
-					if (!this.editAllowedCheck()) {
+				const currentTab = getNodeViewTab(this.$route);
+				if (currentTab === MAIN_HEADER_TABS.WORKFLOW) {
+					let workflowData: IWorkflowDataUpdate | undefined;
+					if (this.editAllowedCheck() === false) {
 						return;
 					}
-
-					const importConfirm = await this.confirmMessage(
-						this.$locale.baseText(
-							'nodeView.confirmMessage.receivedCopyPasteData.message',
-							{ interpolate: { plainTextData } },
-						),
-						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.headline'),
-						'warning',
-						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText'),
-						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
-					);
-
-					if (!importConfirm) {
-						return;
-					}
-
-					workflowData = await this.getWorkflowDataFromUrl(plainTextData);
-					if (workflowData === undefined) {
-						return;
-					}
-				} else {
-					// Pasted data is is possible workflow data
-					try {
-						// Check first if it is valid JSON
-						workflowData = JSON.parse(plainTextData);
+					// Check if it is an URL which could contain workflow data
+					if (plainTextData.match(/^http[s]?:\/\/.*\.json$/i)) {
+						// Pasted data points to a possible workflow JSON file
 
 						if (!this.editAllowedCheck()) {
 							return;
 						}
-					} catch (e) {
-						// Is no valid JSON so ignore
-						return;
-					}
-				}
 
-				return this.importWorkflowData(workflowData!, false, 'paste');
+						const importConfirm = await this.confirmMessage(
+							this.$locale.baseText(
+								'nodeView.confirmMessage.receivedCopyPasteData.message',
+								{ interpolate: { plainTextData } },
+							),
+							this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.headline'),
+							'warning',
+							this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.confirmButtonText'),
+							this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
+						);
+
+						if (!importConfirm) {
+							return;
+						}
+
+						workflowData = await this.getWorkflowDataFromUrl(plainTextData);
+						if (workflowData === undefined) {
+							return;
+						}
+					} else {
+						// Pasted data is is possible workflow data
+						try {
+							// Check first if it is valid JSON
+							workflowData = JSON.parse(plainTextData);
+
+							if (!this.editAllowedCheck()) {
+								return;
+							}
+						} catch (e) {
+							// Is no valid JSON so ignore
+							return;
+						}
+					}
+
+					return this.importWorkflowData(workflowData!, false, 'paste');
+				}
 			},
 
 			// Returns the workflow data from a given URL. If no data gets found or
