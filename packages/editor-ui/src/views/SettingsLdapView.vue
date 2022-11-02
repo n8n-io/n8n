@@ -49,6 +49,7 @@
 				:cell-style="cellClassStyle"
 				style="width: 100%"
 				height="250"
+				:key="tableKey"
 			>
 				<el-table-column
 					prop="status"
@@ -140,6 +141,7 @@ export default mixins(showMessage).extend({
 	data() {
 		return {
 			dataTable: [] as ILdapSyncTable[],
+			tableKey: 0,
 			adConfig: {} as ILdapConfig,
 			loadingTestConnection: false,
 			loadingDryRun: false,
@@ -667,7 +669,7 @@ export default mixins(showMessage).extend({
 				if (data.length !== 0) {
 					this.dataTable.push(...data.map(this.syncDataMapper));
 					state.loaded();
-					this.page++;
+					this.page += 1;
 				} else {
 					state.complete();
 				}
@@ -678,13 +680,8 @@ export default mixins(showMessage).extend({
 		},
 		async reloadLdapSyncronizations() {
 			try {
-				this.page = 0;
-				this.loadingTable = true;
-				const data = (await this.$store.dispatch('settings/getLdapSyncronizations', {
-					page: 0,
-				})) as ILdapSyncData[];
-				this.dataTable = data.map(this.syncDataMapper);
-				this.loadingTable = false;
+				this.page = 1;
+				this.tableKey += 1;
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
 			}
