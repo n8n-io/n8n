@@ -64,7 +64,8 @@ ldapController.post('/sync', async (req: LdapConfig.Sync, res: express.Response)
 /**
  * GET /active-directory/sync
  */
-ldapController.get('/sync', async (req: express.Request, res: express.Response) => {
-	const data = await getLdapSyncronizations();
+ldapController.get('/sync', async (req: LdapConfig.GetSync, res: express.Response) => {
+	const { page = '0', perPage = '20' } = req.query;
+	const data = await getLdapSyncronizations(parseInt(page, 10), parseInt(perPage, 10));
 	return res.status(200).json({ data });
 });
