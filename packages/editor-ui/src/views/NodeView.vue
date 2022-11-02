@@ -820,6 +820,7 @@ export default mixins(
 				this.$store.commit('tags/upsertTags', tags);
 
 				await this.addNodes(data.nodes, data.connections);
+
 				if (!this.credentialsUpdated) {
 					this.uiStore.stateIsDirty = false;
 				}
@@ -3152,6 +3153,7 @@ export default mixins(
 				this.uiStore.resetSelectedNodes();
 				this.uiStore.nodeViewOffsetPosition = [0, 0];
 
+				this.credentialsUpdated = false;
 				return Promise.resolve();
 			},
 			async loadActiveWorkflows(): Promise<void> {
