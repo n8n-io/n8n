@@ -67,7 +67,7 @@
     "vue-agile": "^2.0.0",
     "vue-fragment": "1.5.1",
     "vue-i18n": "^8.26.7",
-    "vue-json-pretty": "1.9.2",
+    "vue-json-pretty": "1.9.3",
     "vue-prism-editor": "^0.3.0",
     "vue-router": "^3.0.6",
     "vue-template-compiler": "~2.7.10",
