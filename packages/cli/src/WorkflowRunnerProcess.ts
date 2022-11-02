@@ -9,7 +9,7 @@
 import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
-	ErrorReporterProxy,
+	ErrorReporterProxy as ErrorReporter,
 	ExecutionError,
 	ICredentialType,
 	ICredentialTypeData,
@@ -271,7 +271,7 @@ export class WorkflowRunnerProcess {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				await sendToParentProcess('sendMessageToUI', { source, message });
 			} catch (error) {
-				ErrorReporterProxy.getInstance().error(error);
+				ErrorReporter.error(error);
 				this.logger.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem sending UI data to parent process: "${error.message}"`,
@@ -409,7 +409,7 @@ export class WorkflowRunnerProcess {
 				parameters,
 			});
 		} catch (error) {
-			ErrorReporterProxy.getInstance().error(error);
+			ErrorReporter.error(error);
 			this.logger.error(`There was a problem sending hook: "${hook}"`, { parameters, error });
 		}
 	}

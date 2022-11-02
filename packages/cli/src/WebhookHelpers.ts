@@ -22,7 +22,6 @@ import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions } from 'n8n-co
 
 import {
 	createDeferredPromise,
-	ErrorReporterProxy,
 	IBinaryKeyData,
 	IDataObject,
 	IDeferredPromise,
@@ -35,6 +34,7 @@ import {
 	IWebhookResponseData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
+	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	NodeHelpers,
 	Workflow,
@@ -435,7 +435,7 @@ export async function executeWebhook(
 					didSendResponse = true;
 				})
 				.catch(async (error) => {
-					ErrorReporterProxy.getInstance().error(error);
+					ErrorReporter.error(error);
 					Logger.error(
 						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 						{ executionId, workflowId: workflow.id },

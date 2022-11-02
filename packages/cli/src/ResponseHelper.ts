@@ -6,7 +6,7 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
-import { ErrorReporterProxy } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -156,7 +156,7 @@ export function send<T, R extends Request, S extends Response>(
 			sendSuccessResponse(res, data, raw);
 		} catch (error) {
 			if (error instanceof Error) {
-				ErrorReporterProxy.getInstance().error(error);
+				ErrorReporter.error(error);
 
 				if (isUniqueConstraintError(error)) {
 					error.message = 'There is already an entry with this name';

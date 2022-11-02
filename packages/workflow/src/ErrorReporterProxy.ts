@@ -8,26 +8,21 @@ interface ErrorReporter {
 	warn: (warning: string, options?: IReportingOptions) => void;
 }
 
-class ErrorReporterProxy {
-	constructor(readonly reporter: ErrorReporter) {}
-}
-
 const isProduction = process.env.NODE_ENV === 'production';
-const consoleReporter: ErrorReporter = {
+
+const instance: ErrorReporter = {
 	error: (error) => isProduction && console.error('ERROR', error.message, error.stack),
 	warn: (warning) => isProduction && console.warn('WARN', warning),
 };
 
-let instance: ErrorReporterProxy;
-export function getInstance(): ErrorReporter {
-	if (instance) return instance.reporter;
-
-	if (isProduction) {
-		console.warn('ErrorReporterProxy is not yet initialized');
-	}
-	return consoleReporter;
-}
-
 export function init(errorReporter: ErrorReporter) {
-	instance = new ErrorReporterProxy(errorReporter);
+	instance.error = errorReporter.error;
+	instance.warn = errorReporter.warn;
 }
+
+export const error = (e: unknown, options?: IReportingOptions) => {
+	if (e instanceof Error) instance.error(e, options);
+};
+
+export const warn = (warning: string, options?: IReportingOptions) =>
+	instance.warn(warning, options);

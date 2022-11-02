@@ -38,8 +38,8 @@ import {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	LoggerProxy as Logger,
+	ErrorReporterProxy as ErrorReporter,
 	IHttpRequestHelper,
-	ErrorReporterProxy,
 } from 'n8n-workflow';
 
 // eslint-disable-next-line import/no-cycle
@@ -673,7 +673,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				credentialsDecrypted,
 			);
 		} catch (error) {
-			ErrorReporterProxy.getInstance().error(error);
+			ErrorReporter.error(error);
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {

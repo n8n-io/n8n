@@ -22,7 +22,7 @@ import {
 	IVersionedNodeType,
 	LoggerProxy,
 	jsonParse,
-	ErrorReporterProxy,
+	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
 import {
@@ -141,7 +141,7 @@ class LoadNodesAndCredentialsClass {
 				await this.loadDataFromPackage(packagePath);
 				// eslint-disable-next-line no-empty
 			} catch (error) {
-				if (error instanceof Error) ErrorReporterProxy.getInstance().error(error);
+				ErrorReporter.error(error);
 			}
 		}
 	}

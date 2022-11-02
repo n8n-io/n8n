@@ -70,7 +70,7 @@ import {
 	jsonParse,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
-	ErrorReporterProxy,
+	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -747,7 +747,7 @@ class App {
 				// DB ping
 				await connection.query('SELECT 1');
 			} catch (err) {
-				ErrorReporterProxy.getInstance().error(err);
+				ErrorReporter.error(err);
 				LoggerProxy.error('No Database connection!', err);
 				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);

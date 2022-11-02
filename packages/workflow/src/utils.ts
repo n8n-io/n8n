@@ -1,4 +1,4 @@
-import * as ErrorReporterProxy from './ErrorReporterProxy';
+import * as ErrorReporter from './ErrorReporterProxy';
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
@@ -10,7 +10,7 @@ export const deepCopy = <T>(source: T, hash = new WeakMap(), path = ''): T => {
 		return source;
 	}
 	if (hash.has(source)) {
-		ErrorReporterProxy.getInstance().warn(`Circular reference detected at "source${path}"`);
+		ErrorReporter.warn(`Circular reference detected at "source${path}"`);
 		return hash.get(source);
 	}
 	// Date
