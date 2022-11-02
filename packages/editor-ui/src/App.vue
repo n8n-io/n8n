@@ -30,7 +30,7 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, VIEWS } from './constants';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
@@ -159,8 +159,15 @@ export default mixins(
 				this.$router.replace(redirect);
 			}
 		},
+		setTheme() {
+			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
+			if (theme) {
+				window.document.body.classList.add(`theme-${theme}`);
+			}
+		},
 	},
 	async mounted() {
+		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
 		this.authenticate();
