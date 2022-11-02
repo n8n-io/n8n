@@ -14,7 +14,7 @@ import {
 } from 'n8n-design-system';
 
 import englishBaseText from './locales/en.json';
-import { INodeProperties } from "n8n-workflow";
+import {INodeProperties, INodePropertyCollection, INodePropertyOptions} from "n8n-workflow";
 
 Vue.use(VueI18n);
 locale.use('en');
@@ -105,7 +105,7 @@ export class I18nClass {
 			 * Display name for a top-level param.
 			 */
 			inputLabelDisplayName(
-				{ name: parameterName, displayName }: { name: string; displayName: string; },
+				{ name: parameterName, displayName }: Pick<INodeProperties, 'name' | 'displayName'>,
 			) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
 					return context.dynamicRender({
@@ -124,11 +124,11 @@ export class I18nClass {
 			 * Hint for a top-level param.
 			 */
 			hint(
-				{ name: parameterName, hint }: { name: string; hint?: string; },
+				{ name: parameterName, hint }: Pick<INodeProperties, 'name' | 'hint'>,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.hint`,
-					fallback: hint || '',
+					fallback: hint ?? '',
 				});
 			},
 
@@ -136,11 +136,11 @@ export class I18nClass {
 			 * Description (tooltip text) for an input label param.
 			 */
 			inputLabelDescription(
-				{ name: parameterName, description }: { name: string; description: string; },
+				{ name: parameterName, description }: Pick<INodeProperties, 'name' | 'description'>,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.description`,
-					fallback: description,
+					fallback: description ?? '',
 				});
 			},
 
@@ -148,8 +148,8 @@ export class I18nClass {
 			 * Display name for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDisplayName(
-				{ name: parameterName }: { name: string; },
-				{ value: optionName, name: displayName }: { value: string; name: string; },
+				{ name: parameterName }: Pick<INodeProperties, 'name'>,
+				{ value: optionName, name: displayName }: Pick<INodePropertyOptions, 'value' | 'name'>,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.options.${optionName}.displayName`,
@@ -161,12 +161,12 @@ export class I18nClass {
 			 * Description for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDescription(
-				{ name: parameterName }: { name: string; },
-				{ value: optionName, description }: { value: string; description: string; },
+				{ name: parameterName }: Pick<INodeProperties, 'name'>,
+				{ value: optionName, description }: Pick<INodePropertyOptions, 'value' | 'description'>,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.options.${optionName}.description`,
-					fallback: description,
+					fallback: description ?? '',
 				});
 			},
 
@@ -174,11 +174,11 @@ export class I18nClass {
 			 * Placeholder for a `string` param.
 			 */
 			placeholder(
-				{ name: parameterName, placeholder }: { name: string; placeholder?: string; },
+				{ name: parameterName, placeholder }: Pick<INodeProperties, 'name' | 'placeholder'>,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
-					fallback: placeholder || '',
+					fallback: placeholder ?? '',
 				});
 			},
 		};
@@ -199,7 +199,7 @@ export class I18nClass {
 			 * Display name for an input label, whether top-level or nested.
 			 */
 			inputLabelDisplayName(
-				parameter: { name: string; displayName: string; type: string },
+				parameter: INodeProperties,
 				path: string,
 			) {
 				const middleKey = deriveMiddleKey(path, parameter);
@@ -214,14 +214,14 @@ export class I18nClass {
 			 * Description (tooltip text) for an input label, whether top-level or nested.
 			 */
 			inputLabelDescription(
-				parameter: { name: string; description: string; type: string },
+				parameter: INodeProperties,
 				path: string,
 			) {
 				const middleKey = deriveMiddleKey(path, parameter);
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.description`,
-					fallback: parameter.description,
+					fallback: parameter.description ?? '',
 				});
 			},
 
@@ -236,7 +236,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.hint`,
-					fallback: parameter.hint || '',
+					fallback: parameter.hint ?? '',
 				});
 			},
 
@@ -247,7 +247,7 @@ export class I18nClass {
 			 * - For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
 			placeholder(
-				parameter: { name: string; placeholder?: string; type: string },
+				parameter: Pick<INodeProperties, 'name' | 'type' | 'placeholder'>,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -259,7 +259,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.placeholder`,
-					fallback: parameter.placeholder || '',
+					fallback: parameter.placeholder ?? '',
 				});
 			},
 
@@ -268,8 +268,8 @@ export class I18nClass {
 			 * whether top-level or nested.
 			 */
 			optionsOptionDisplayName(
-				parameter: { name: string; },
-				{ value: optionName, name: displayName }: { value: string; name: string; },
+				parameter: Pick<INodeProperties, 'name'>,
+				{ value: optionName, name: displayName }: Pick<INodePropertyOptions, 'value' | 'name'>,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -290,8 +290,8 @@ export class I18nClass {
 			 * whether top-level or nested.
 			 */
 			optionsOptionDescription(
-				parameter: { name: string; },
-				{ value: optionName, description }: { value: string; description: string; },
+				parameter: Pick<INodeProperties, 'name'>,
+				{ value: optionName, description }: Pick<INodePropertyOptions, 'value' | 'description'>,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -303,7 +303,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.options.${optionName}.description`,
-					fallback: description,
+					fallback: description ?? '',
 				});
 			},
 
@@ -313,8 +313,8 @@ export class I18nClass {
 			 * be nested in a `collection` or in a `fixedCollection`.
 			 */
 			collectionOptionDisplayName(
-				parameter: { name: string; },
-				{ name: optionName, displayName }: { name: string; displayName: string; },
+				parameter: Pick<INodeProperties, 'name'>,
+				{ name: optionName, displayName }: Pick<INodePropertyCollection, 'name' | 'displayName'>,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -335,7 +335,7 @@ export class I18nClass {
 			 * `fixedCollection` param having `multipleValues: true`.
 			 */
 			multipleValueButtonText(
-				{ name: parameterName, typeOptions}: INodeProperties,
+				{ name: parameterName, typeOptions}: Pick<INodeProperties, 'name' | 'typeOptions'>,
 			) {
 				return context.dynamicRender({
 					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
