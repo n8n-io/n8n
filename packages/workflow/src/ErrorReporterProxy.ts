@@ -1,11 +1,11 @@
 export interface IReportingOptions {
-	tags: Record<string, string>;
-	extra: Record<string, unknown>;
+	tags?: Record<string, string>;
+	extra?: Record<string, unknown>;
 }
 
 interface ErrorReporter {
 	error: (error: Error, options?: IReportingOptions) => void;
-	warn: (warning: string, options?: IReportingOptions) => void;
+	warn: (warning: Error | string, options?: IReportingOptions) => void;
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -24,5 +24,5 @@ export const error = (e: unknown, options?: IReportingOptions) => {
 	if (e instanceof Error) instance.error(e, options);
 };
 
-export const warn = (warning: string, options?: IReportingOptions) =>
+export const warn = (warning: Error | string, options?: IReportingOptions) =>
 	instance.warn(warning, options);
