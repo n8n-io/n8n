@@ -2,6 +2,10 @@
 import axios, { AxiosResponse } from 'axios';
 import { aws4Interceptor } from 'aws4-axios';
 import { v4 as uuid } from 'uuid';
+import xml, { convertableToString } from 'xml2js';
+import util from 'util';
+
+const parseString = util.promisify(xml.parseString);
 
 const client = axios.create();
 
@@ -45,54 +49,58 @@ type DeleteSecretResponse = {
 
 type UpdateSecretResponse = DeleteSecretResponse;
 
+client.interceptors.request.use(
+	aws4Interceptor(
+		{
+			region: process.env[AWS_DEFAULT_REGION] ?? DEFAULT_REGION,
+		},
+		{
+			accessKeyId: process.env[AWS_ACCESS_KEY_ID] ?? '',
+			secretAccessKey: process.env[AWS_SECRET_ACCESS_KEY] ?? '',
+		},
+	),
+);
+
 export class AwsSecretManager implements SecretManagerBase {
 	displayName: 'AWS Secret Manager';
 
+	#idKey = 'aws:';
+
 	#hasBeenChecked = false;
 
-	constructor() {
+	async canHandle(id: string): Promise<boolean> {
+		return this.#hasBeenChecked && id.startsWith('aws') ? true : false;
+	}
+
+	async isEnabled() {
 		const requiredEnvVariables = [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY];
 		const missingEnvVariable = !requiredEnvVariables.every((key) => process.env[key] !== undefined);
 
-		if (missingEnvVariable) {
-			throw new Error(`Missing env varialbe. Set ${requiredEnvVariables.join(',')}`);
+		if (missingEnvVariable) return false;
+
+		try {
+			const response = (await client({
+				method: 'POST',
+				url: `https://${STS_SERVICE}.${REGION}.amazonaws.com/`,
+				params: {
+					Action: 'GetCallerIdentity',
+					Version: '2011-06-15',
+				},
+				headers: {
+					'Content-Type': 'application/x-amz-json-1.1',
+				},
+			})) as AxiosResponse<convertableToString>;
+
+			(await parseString(response.data)) as {
+				GetCallerIdentityResponse: { GetCallerIdentityResult: [] };
+			};
+		} catch (e) {
+			return false;
 		}
 
-		const interceptor = aws4Interceptor(
-			{
-				region: process.env[AWS_DEFAULT_REGION] ?? DEFAULT_REGION,
-			},
-			{
-				accessKeyId: process.env[AWS_ACCESS_KEY_ID] ?? '',
-				secretAccessKey: process.env[AWS_SECRET_ACCESS_KEY] ?? '',
-			},
-		);
-
-		client.interceptors.request.use(interceptor);
+		this.#hasBeenChecked = true;
+		return true;
 	}
-
-	async canHandle(id: string): Promise<boolean> {
-		return id.startsWith('aws') ? Promise.resolve(true) : Promise.resolve(false);
-	}
-
-	// async isEnabled() {
-	// 	const interceptor = aws4Interceptor(
-	// 		{
-	// 			region: process.env[AWS_DEFAULT_REGION] ?? DEFAULT_REGION,
-	// 			service: SECRET_MANAGER_SERVICE,
-	// 		},
-	// 		{
-	// 			accessKeyId: process.env[AWS_ACCESS_KEY_ID] ?? '',
-	// 			secretAccessKey: process.env[AWS_SECRET_ACCESS_KEY] ?? '',
-	// 		},
-	// 	);
-
-	// 	this.#hasBeenChecked = true;
-	// }
-
-	// baseURL: '=https://sts.{{$credentials.region}}.amazonaws.com',
-	// url: '?Action=GetCallerIdentity&Version=2011-06-15',
-	// method: 'POST',
 
 	async create(name: string, value: object): Promise<{ id: string }> {
 		const response = (await client({
@@ -108,7 +116,7 @@ export class AwsSecretManager implements SecretManagerBase {
 				ClientRequestToken: uuid(),
 			},
 		})) as AxiosResponse<CreateSecretResponse>;
-		return { id: response.data.Name };
+		return { id: `${this.#idKey}${response.data.Name}` };
 	}
 
 	async get(id: string): Promise<{ id: string; data: object }> {
@@ -120,11 +128,14 @@ export class AwsSecretManager implements SecretManagerBase {
 				'Content-Type': 'application/x-amz-json-1.1',
 			},
 			data: {
-				SecretId: id,
+				SecretId: id.replace(this.#idKey, ''),
 			},
 		})) as AxiosResponse<GetSecretResponse>;
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, n8n-local-rules/no-uncaught-json-parse
-		return { id: response.data.Name, data: JSON.parse(response.data.SecretString) };
+		return {
+			id: `${this.#idKey}${response.data.Name}`,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, n8n-local-rules/no-uncaught-json-parse
+			data: JSON.parse(response.data.SecretString),
+		};
 	}
 
 	async delete(id: string): Promise<{ id: string }> {
@@ -136,10 +147,10 @@ export class AwsSecretManager implements SecretManagerBase {
 				'Content-Type': 'application/x-amz-json-1.1',
 			},
 			data: {
-				SecretId: id,
+				SecretId: id.replace(this.#idKey, ''),
 			},
 		})) as AxiosResponse<DeleteSecretResponse>;
-		return { id: response.data.Name };
+		return { id: `${this.#idKey}${response.data.Name}` };
 	}
 
 	async update(id: string, value: object): Promise<{ id: string }> {
@@ -151,11 +162,11 @@ export class AwsSecretManager implements SecretManagerBase {
 				'Content-Type': 'application/x-amz-json-1.1',
 			},
 			data: {
-				SecretId: id,
+				SecretId: id.replace(this.#idKey, ''),
 				SecretString: JSON.stringify(value),
 				ClientRequestToken: uuid(),
 			},
 		})) as AxiosResponse<UpdateSecretResponse>;
-		return { id: response.data.Name };
+		return { id: `${this.#idKey}${response.data.Name}` };
 	}
 }
