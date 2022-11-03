@@ -20,7 +20,7 @@ const REGION = process.env[AWS_DEFAULT_REGION] ?? DEFAULT_REGION;
 interface SecretManagerBase {
 	displayName: string;
 
-	create(id: string, value: object): Promise<{ id: string }>;
+	create(id: string, value: object | string): Promise<{ id: string }>;
 	delete(id: string): Promise<{ id: string }>;
 	update(id: string, value: object): Promise<{ id: string }>;
 	get(id: string): Promise<{ id: string; data: object }>;
@@ -102,7 +102,7 @@ export class AwsSecretManager implements SecretManagerBase {
 		return true;
 	}
 
-	async create(name: string, value: object): Promise<{ id: string }> {
+	async create(name: string, value: object | string): Promise<{ id: string }> {
 		const response = (await client({
 			method: 'POST',
 			url: `https://${SECRET_MANAGER_SERVICE}.${REGION}.amazonaws.com/`,
@@ -112,7 +112,7 @@ export class AwsSecretManager implements SecretManagerBase {
 			},
 			data: {
 				Name: name,
-				SecretString: JSON.stringify(value),
+				SecretString: typeof value === 'string' ? value : JSON.stringify(value),
 				ClientRequestToken: uuid(),
 			},
 		})) as AxiosResponse<CreateSecretResponse>;

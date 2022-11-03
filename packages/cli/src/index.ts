@@ -19,6 +19,7 @@ import * as Db from './Db';
 import * as GenericHelpers from './GenericHelpers';
 import * as Push from './Push';
 import * as ResponseHelper from './ResponseHelper';
+import * as SecretManagerHelper from './SecretManagerHelper';
 import * as Server from './Server';
 import * as TestWebhooks from './TestWebhooks';
 import * as WebhookHelpers from './WebhookHelpers';
@@ -33,6 +34,7 @@ export {
 	GenericHelpers,
 	Push,
 	ResponseHelper,
+	SecretManagerHelper,
 	Server,
 	TestWebhooks,
 	WebhookHelpers,

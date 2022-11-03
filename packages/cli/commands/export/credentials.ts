@@ -129,7 +129,7 @@ export class ExportCredentialsCommand extends Command {
 					const { name, type, nodesAccess, data } = credentials[i];
 					const id = credentials[i].id as string;
 					const credential = new Credentials({ id, name }, type, nodesAccess, data);
-					const plainData = credential.getData(encryptionKey);
+					const plainData = await credential.getData(encryptionKey);
 					(credentials[i] as ICredentialsDecryptedDb).data = plainData;
 				}
 			}

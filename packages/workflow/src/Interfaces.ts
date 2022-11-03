@@ -99,9 +99,16 @@ export abstract class ICredentials {
 		this.data = data;
 	}
 
-	abstract getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject;
+	abstract getData(
+		encryptionKey: string,
+		nodeType?: string,
+	): Promise<ICredentialDataDecryptedObject>;
 
-	abstract getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation;
+	abstract getDataKey(
+		key: string,
+		encryptionKey: string,
+		nodeType?: string,
+	): Promise<CredentialInformation>;
 
 	abstract getDataToSave(): ICredentialsEncrypted;
 

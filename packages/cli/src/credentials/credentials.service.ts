@@ -15,6 +15,7 @@ import {
 	Db,
 	ICredentialsDb,
 	ResponseHelper,
+	SecretManagerHelper,
 } from '..';
 import { RESPONSE_ERROR_MESSAGES } from '../constants';
 import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
@@ -24,6 +25,8 @@ import { externalHooks } from '../Server';
 
 import type { User } from '../databases/entities/User';
 import type { CredentialRequest } from '../requests';
+
+import { v4 as uuid } from 'uuid';
 
 export class CredentialsService {
 	static async get(
@@ -166,18 +169,28 @@ export class CredentialsService {
 		return updateData;
 	}
 
-	static createEncryptedData(
+	static async createEncryptedData(
 		encryptionKey: string,
 		credentialsId: string | null,
 		data: CredentialsEntity,
-	): ICredentialsDb {
+	): Promise<ICredentialsDb> {
 		const credentials = new Credentials(
 			{ id: credentialsId, name: data.name },
 			data.type,
 			data.nodesAccess,
 		);
 
-		credentials.setData(data.data as unknown as ICredentialDataDecryptedObject, encryptionKey);
+		const awsSecretManager = new SecretManagerHelper.AwsSecretManager();
+		if (await awsSecretManager.isEnabled()) {
+			const credentialIdentifier = uuid();
+			const storedValue = await awsSecretManager.create(
+				`${data.type}_${credentialIdentifier}`,
+				data.data,
+			);
+			credentials.data = storedValue.id;
+		} else {
+			credentials.setData(data.data as unknown as ICredentialDataDecryptedObject, encryptionKey);
+		}
 
 		const newCredentialData = credentials.getDataToSave() as ICredentialsDb;
 
@@ -203,6 +216,15 @@ export class CredentialsService {
 		encryptionKey: string,
 		credential: CredentialsEntity,
 	): Promise<ICredentialDataDecryptedObject> {
+		const awsSecretManager = new SecretManagerHelper.AwsSecretManager();
+		if (
+			(await awsSecretManager.isEnabled()) &&
+			(await awsSecretManager.canHandle(credential.data))
+		) {
+			const storedValue = await awsSecretManager.get(credential.data);
+			return storedValue.data as unknown as ICredentialDataDecryptedObject;
+		}
+
 		const coreCredential = createCredentialsFromCredentialsEntity(credential);
 		return coreCredential.getData(encryptionKey);
 	}

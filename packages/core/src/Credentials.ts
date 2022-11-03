@@ -32,10 +32,10 @@ export class Credentials extends ICredentials {
 	/**
 	 * Sets new credentials for given key
 	 */
-	setDataKey(key: string, data: CredentialInformation, encryptionKey: string): void {
+	async setDataKey(key: string, data: CredentialInformation, encryptionKey: string): Promise<void> {
 		let fullData;
 		try {
-			fullData = this.getData(encryptionKey);
+			fullData = await this.getData(encryptionKey);
 		} catch (e) {
 			fullData = {};
 		}
@@ -48,7 +48,7 @@ export class Credentials extends ICredentials {
 	/**
 	 * Returns the decrypted credential object
 	 */
-	getData(encryptionKey: string, nodeType?: string): ICredentialDataDecryptedObject {
+	async getData(encryptionKey: string, nodeType?: string): Promise<ICredentialDataDecryptedObject> {
 		if (nodeType && !this.hasNodeAccess(nodeType)) {
 			throw new Error(
 				`The node of type "${nodeType}" does not have access to credentials "${this.name}" of type "${this.type}".`,
@@ -74,8 +74,12 @@ export class Credentials extends ICredentials {
 	/**
 	 * Returns the decrypted credentials for given key
 	 */
-	getDataKey(key: string, encryptionKey: string, nodeType?: string): CredentialInformation {
-		const fullData = this.getData(encryptionKey, nodeType);
+	async getDataKey(
+		key: string,
+		encryptionKey: string,
+		nodeType?: string,
+	): Promise<CredentialInformation> {
+		const fullData = await this.getData(encryptionKey, nodeType);
 
 		if (fullData === null) {
 			throw new Error(`No data was set.`);

@@ -130,7 +130,7 @@ credentialsController.post(
 		const newCredential = await CredentialsService.prepareCreateData(req.body);
 
 		const key = await CredentialsService.getEncryptionKey();
-		const encryptedData = CredentialsService.createEncryptedData(key, null, newCredential);
+		const encryptedData = await CredentialsService.createEncryptedData(key, null, newCredential);
 		const { id, ...rest } = await CredentialsService.save(newCredential, encryptedData, req.user);
 
 		void InternalHooksManager.getInstance().onUserCreatedCredentials({
@@ -173,7 +173,7 @@ credentialsController.patch(
 			req.body,
 			decryptedData,
 		);
-		const newCredentialData = CredentialsService.createEncryptedData(
+		const newCredentialData = await CredentialsService.createEncryptedData(
 			key,
 			credentialId,
 			preparedCredentialData,

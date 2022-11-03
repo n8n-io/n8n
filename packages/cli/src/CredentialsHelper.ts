@@ -325,7 +325,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		expressionResolveValues?: ICredentialsExpressionResolveValues,
 	): Promise<ICredentialDataDecryptedObject> {
 		const credentials = await this.getCredentials(nodeCredentials, type);
-		const decryptedDataOriginal = credentials.getData(this.encryptionKey);
+		const decryptedDataOriginal = await credentials.getData(this.encryptionKey);
 
 		if (raw === true) {
 			return decryptedDataOriginal;
