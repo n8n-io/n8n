@@ -1,6 +1,7 @@
 import { COMMANDS } from '@/constants';
 import { Command, Undoable } from '@/Interface';
 import { useHistoryStore } from '@/stores/history';
+import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
@@ -26,6 +27,7 @@ function getReversedCommand(command: Command): Undoable | undefined {
 export const historyHelper = Vue.extend({
 	computed: {
 		...mapStores(
+			useUIStore,
 			useHistoryStore,
 			useWorkflowsStore,
 		),
@@ -67,6 +69,7 @@ export const historyHelper = Vue.extend({
 				if (reverse) {
 					this.historyStore.pushUndoableToRedo(reverse);
 				}
+				this.uiStore.stateIsDirty = true;
 			}
 		},
 		async redo() {
@@ -84,6 +87,7 @@ export const historyHelper = Vue.extend({
 				if (reverse) {
 					this.historyStore.pushUndoableToUndo(reverse, false);
 				}
+				this.uiStore.stateIsDirty = true;
 			}
 		},
 	},
