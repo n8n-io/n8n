@@ -20,6 +20,24 @@ function getReversedCommand(command: Command): Undoable | undefined {
 			},
 		};
 	}
+	else if (command.data.action === COMMANDS.ADD_NODE) {
+		return {
+			type: 'command',
+			data: {
+				action: COMMANDS.REMOVE_NODE,
+				options: command.data.options,
+			},
+		};
+	}
+	else if (command.data.action === COMMANDS.REMOVE_NODE) {
+		return {
+			type: 'command',
+			data: {
+				action: COMMANDS.ADD_NODE,
+				options: command.data.options,
+			},
+		};
+	}
 
 	if (command.data.action === COMMANDS.ADD_CONNECTION) {
 		return {
@@ -82,6 +100,12 @@ export const historyHelper = Vue.extend({
 			}
 			else if (command.data.action === COMMANDS.REMOVE_CONNECTION) {
 				this.$root.$emit('addConnection', command.data.options);
+			}
+			else if (command.data.action === COMMANDS.ADD_NODE) {
+				this.$root.$emit('addNode', command.data.options.node);
+			}
+			else if (command.data.action === COMMANDS.REMOVE_NODE) {
+				this.$root.$emit('removeNode', command.data.options.node);
 			}
 		},
 		async undo() {

@@ -1,5 +1,5 @@
 import { COMMANDS, STORES } from "@/constants";
-import { BulkCommands, Command, HistoryState, Undoable, XYPosition } from "@/Interface";
+import { BulkCommands, Command, HistoryState, INodeUi, Undoable, XYPosition } from "@/Interface";
 import { IConnection } from "n8n-workflow";
 import { defineStore } from "pinia";
 
@@ -96,6 +96,28 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 					action: COMMANDS.ADD_CONNECTION,
 					options: {
 						connection,
+					},
+				},
+			});
+		},
+		addNode(node: INodeUi): void {
+			this.pushUndoableToUndo({
+				type: 'command',
+				data: {
+					action: COMMANDS.ADD_NODE,
+					options: {
+						node,
+					},
+				},
+			});
+		},
+		removeNode(node: INodeUi): void {
+			this.pushUndoableToUndo({
+				type: 'command',
+				data: {
+					action: COMMANDS.REMOVE_NODE,
+					options: {
+						node,
 					},
 				},
 			});

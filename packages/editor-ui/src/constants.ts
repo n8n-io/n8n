@@ -428,6 +428,8 @@ export enum COMMANDS {
 	POSITION_CHANGE = 'nodePositionChange',
 	ADD_CONNECTION = 'addConnection',
 	REMOVE_CONNECTION = 'removeConnection',
+	ADD_NODE = 'addNode',
+	REMOVE_NODE = 'removeNode',
 }
 
 export enum BULK_COMMANDS {

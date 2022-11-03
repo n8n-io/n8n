@@ -1139,6 +1139,20 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
+export interface AddNodeCommand {
+	action: COMMANDS.ADD_NODE,
+	options: {
+		node: INodeUi,
+	},
+}
+
+export interface RemoveNodeCommand {
+	action: COMMANDS.REMOVE_NODE,
+	options: {
+		node: INodeUi,
+	},
+}
+
 export interface NodePositionChangeCommand {
 	action: COMMANDS.POSITION_CHANGE,
 	options: {
@@ -1165,7 +1179,7 @@ export interface CommandBase {
 
 export interface Command extends CommandBase {
 	type: 'command';
-	data: NodePositionChangeCommand | AddOrRemoveConnectionCommand;
+	data: NodePositionChangeCommand | AddOrRemoveConnectionCommand | AddNodeCommand | RemoveNodeCommand;
 }
 
 export interface BulkCommands {

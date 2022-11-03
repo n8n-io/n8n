@@ -3306,6 +3306,14 @@ export default mixins(
 			onRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
 				this.__removeConnection(connection, true);
 			},
+			onAddNodeEvent({node}: {node: INodeUi}): void {
+				console.log('ADD NODE');
+				console.log(node);
+			},
+			onRemoveNode({node}: {node: INodeUi}): void {
+				console.log('REMOVE NODE');
+				console.log(node);
+			},
 		},
 		async mounted() {
 			this.$titleReset();
@@ -3412,6 +3420,8 @@ export default mixins(
 			this.$root.$on('nodeMove', this.onMoveNode);
 			this.$root.$on('addConnection', this.onAddConnection);
 			this.$root.$on('removeConnection', this.onRemoveConnection);
+			this.$root.$on('addNode', this.onAddNodeEvent);
+			this.$root.$on('removeNode', this.onRemoveNode);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3425,6 +3435,8 @@ export default mixins(
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 			this.$root.$off('addConnection', this.onAddConnection);
 			this.$root.$off('removeConnection', this.onRemoveConnection);
+			this.$root.$off('addNode', this.onAddNodeEvent);
+			this.$root.$off('removeNode', this.onRemoveNode);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
