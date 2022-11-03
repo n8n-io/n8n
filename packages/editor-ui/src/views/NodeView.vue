@@ -143,6 +143,7 @@ import {
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { jsPlumb, OnConnectionBindInfo } from 'jsplumb';
 import once from 'lodash/once';
+import { set } from 'lodash';
 
 import {
 	FIRST_ONBOARDING_PROMPT_TIMEOUT,
@@ -156,6 +157,7 @@ import {
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	QUICKSTART_NOTE_NAME,
 	START_NODE_TYPE,
+	HTTP_REQUEST_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
@@ -1342,18 +1344,21 @@ export default mixins(
 			 */
 			async receivedCopyPasteData(plainTextData: string): Promise<void> {
 				let workflowData: IWorkflowDataUpdate | undefined;
+				if (this.editAllowedCheck() === false) return;
 
-				if (this.editAllowedCheck() === false) {
-					return;
+				const isCurl = plainTextData.match(/^curl\s/);
+				const isUrlJSON = plainTextData.match(/^http[s]?:\/\/.*\.json$/i);
+
+				// Check if it is a curl command
+				if (isCurl) {
+					const httpNodeData = await this.getHttpNodeFromCurl(plainTextData);
+					if(httpNodeData === null) return;
+
+					return this.importWorkflowData(httpNodeData!, false, 'paste');
 				}
 				// Check if it is an URL which could contain workflow data
-				if (plainTextData.match(/^http[s]?:\/\/.*\.json$/i)) {
+				if (isUrlJSON) {
 					// Pasted data points to a possible workflow JSON file
-
-					if (!this.editAllowedCheck()) {
-						return;
-					}
-
 					const importConfirm = await this.confirmMessage(
 						this.$locale.baseText(
 							'nodeView.confirmMessage.receivedCopyPasteData.message',
@@ -1365,23 +1370,16 @@ export default mixins(
 						this.$locale.baseText('nodeView.confirmMessage.receivedCopyPasteData.cancelButtonText'),
 					);
 
-					if (!importConfirm) {
-						return;
-					}
+					if (!importConfirm) return;
 
 					workflowData = await this.getWorkflowDataFromUrl(plainTextData);
-					if (workflowData === undefined) {
-						return;
-					}
+					if (workflowData === undefined) return;
+
 				} else {
 					// Pasted data is is possible workflow data
 					try {
 						// Check first if it is valid JSON
 						workflowData = JSON.parse(plainTextData);
-
-						if (!this.editAllowedCheck()) {
-							return;
-						}
 					} catch (e) {
 						// Is no valid JSON so ignore
 						return;
@@ -1390,7 +1388,42 @@ export default mixins(
 
 				return this.importWorkflowData(workflowData!, false, 'paste');
 			},
+			async getHttpNodeFromCurl(curlCommand: string): Promise<IWorkflowDataUpdate | null> {
+				try {
+					const parsedCurlData = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
 
+					let position = this.lastClickPosition || CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, [0, 0]);
+
+					position[0] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
+					position[1] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
+					position = CanvasHelpers.getNewNodePosition(this.nodes, position);
+
+					const nodeData: INode = {
+						id: uuid(),
+						name: "Curl HTTP Request",
+						type: HTTP_REQUEST_NODE_TYPE,
+						typeVersion: 3,
+						parameters: {},
+						position,
+					};
+
+					Object.keys(parsedCurlData).forEach((key) => set(nodeData, key, parsedCurlData[key]));
+					return {
+						nodes: [nodeData],
+						"connections": {},
+					};
+				} catch (error) {
+					console.error(error);
+
+					this.$showMessage({
+						title: this.$locale.baseText('importParameter.showError.invalidCurlCommand.title'),
+						message: this.$locale.baseText('importParameter.showError.invalidCurlCommand.message'),
+						type: 'error',
+					});
+
+					return null;
+				}
+			},
 			// Returns the workflow data from a given URL. If no data gets found or
 			// data is invalid it returns undefined and displays an error message by itself.
 			async getWorkflowDataFromUrl(url: string): Promise<IWorkflowDataUpdate | undefined> {
