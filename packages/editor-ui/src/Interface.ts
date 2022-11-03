@@ -1139,6 +1139,9 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
+export interface HistoryState {
+}
+
 export interface INodeTypesState {
 	nodeTypes: {
 		[nodeType: string]: {

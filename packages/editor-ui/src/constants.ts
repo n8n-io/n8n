@@ -421,4 +421,5 @@ export enum STORES {
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',
+	HISTORY = 'history',
 }
