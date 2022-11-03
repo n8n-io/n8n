@@ -2299,6 +2299,7 @@ export default mixins(
 					}
 				}
 				this.uiStore.nodeViewInitialized = true;
+				this.historyStore.reset();
 				document.addEventListener('keydown', this.keyDown);
 				document.addEventListener('keyup', this.keyUp);
 				window.addEventListener("beforeunload", (e) => {
@@ -2365,12 +2366,16 @@ export default mixins(
 			},
 			__removeConnection(connection: [IConnection, IConnection], removeVisualConnection = false) {
 				if (removeVisualConnection) {
-					const sourceId = this.workflowsStore.getNodeByName(connection[0].node);
-					const targetId = this.workflowsStore.getNodeByName(connection[1].node);
+					const sourceNode = this.workflowsStore.getNodeByName(connection[0].node);
+					const targetNode = this.workflowsStore.getNodeByName(connection[1].node);
+					if (!sourceNode || !targetNode) {
+						return;
+					}
+
 					// @ts-ignore
 					const connections = this.instance.getConnections({
-						source: sourceId,
-						target: targetId,
+						source: sourceNode.id,
+						target: targetNode.id,
 					});
 
 					// @ts-ignore
@@ -2401,7 +2406,7 @@ export default mixins(
 				const targetNode = this.workflowsStore.getNodeById(targetInfo.nodeId);
 
 				if (sourceNode && targetNode) {
-					const connectionInfo = [
+					const connectionInfo: [IConnection, IConnection] = [
 						{
 							node: sourceNode.name,
 							type: sourceInfo.type,
@@ -2412,13 +2417,8 @@ export default mixins(
 							type: targetInfo.type,
 							index: targetInfo.index,
 						},
-					] as [IConnection, IConnection];
-
-					if (removeVisualConnection) {
-						this.__deleteJSPlumbConnection(info.connection);
-					}
-
-					this.workflowsStore.removeConnection({ connection: connectionInfo });
+					];
+					this.__removeConnection(connectionInfo);
 				}
 			},
 			async duplicateNode(nodeName: string) {
@@ -3300,7 +3300,11 @@ export default mixins(
 					}
 				}, 0);
 			},
-			onAddConnection({ connection }) {
+			onAddConnection({ connection }: { connection: [IConnection, IConnection]}) {
+				this.__addConnection(connection, true);
+			},
+			onRemoveConnection({ connection }: { connection: [IConnection, IConnection]}) {
+				this.__removeConnection(connection, true);
 			},
 		},
 		async mounted() {
@@ -3407,6 +3411,7 @@ export default mixins(
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 			this.$root.$on('nodeMove', this.onMoveNode);
 			this.$root.$on('addConnection', this.onAddConnection);
+			this.$root.$on('removeConnection', this.onRemoveConnection);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3419,6 +3424,7 @@ export default mixins(
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 			this.$root.$off('addConnection', this.onAddConnection);
+			this.$root.$off('removeConnection', this.onRemoveConnection);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
@@ -3431,6 +3437,7 @@ export default mixins(
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 			this.$root.$off('addConnection', this.onAddConnection);
+			this.$root.$off('removeConnection', this.onRemoveConnection);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);

@@ -21,6 +21,30 @@ function getReversedCommand(command: Command): Undoable | undefined {
 		};
 	}
 
+	if (command.data.action === COMMANDS.ADD_CONNECTION) {
+		return {
+			type: 'command',
+			data: {
+				action: COMMANDS.REMOVE_CONNECTION,
+				options: {
+					...command.data.options,
+				},
+			},
+		};
+	}
+
+	if (command.data.action === COMMANDS.REMOVE_CONNECTION) {
+		return {
+			type: 'command',
+			data: {
+				action: COMMANDS.ADD_CONNECTION,
+				options: {
+					...command.data.options,
+				},
+			},
+		};
+	}
+
 	return undefined;
 }
 
@@ -54,6 +78,9 @@ export const historyHelper = Vue.extend({
 				this.$root.$emit('nodeMove', { nodeName: command.data.options.nodeName, position: command.data.options.oldPosition });
 			}
 			else if (command.data.action === COMMANDS.ADD_CONNECTION) {
+				this.$root.$emit('removeConnection', command.data.options);
+			}
+			else if (command.data.action === COMMANDS.REMOVE_CONNECTION) {
 				this.$root.$emit('addConnection', command.data.options);
 			}
 		},

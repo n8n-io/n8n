@@ -43,6 +43,10 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		clearRedoStack() {
 			this.redoStack = [];
 		},
+		reset() {
+			this.clearRedoStack();
+			this.clearUndoStack();
+		},
 		popUndoableToRedo(): Undoable | undefined {
 			if (this.redoStack.length > 0) {
 				return this.redoStack.pop();

@@ -1148,8 +1148,8 @@ export interface NodePositionChangeCommand {
 	}
 }
 
-export interface AddConnectionCommand {
-	action: COMMANDS.ADD_CONNECTION,
+export interface AddOrRemoveConnectionCommand {
+	action: COMMANDS.ADD_CONNECTION | COMMANDS.REMOVE_CONNECTION,
 	options: {
 		connection: [IConnection, IConnection];
 	}
@@ -1165,7 +1165,7 @@ export interface CommandBase {
 
 export interface Command extends CommandBase {
 	type: 'command';
-	data: NodePositionChangeCommand | AddConnectionCommand;
+	data: NodePositionChangeCommand | AddOrRemoveConnectionCommand;
 }
 
 export interface BulkCommands {
