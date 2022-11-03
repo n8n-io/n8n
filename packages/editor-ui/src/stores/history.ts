@@ -40,8 +40,8 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 
 			return undefined;
 		},
-		pushUndoableToRedo(command: Command): void {
-			this.redoStack.push(command);
+		pushUndoableToRedo(undoable: Undoable): void {
+			this.redoStack.push(undoable);
 			if (this.redoStack.length > STACK_LIMIT) {
 				this.redoStack.shift();
 			}

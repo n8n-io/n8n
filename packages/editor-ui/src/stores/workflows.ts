@@ -12,6 +12,7 @@ import {
 	IWorkflowDb,
 	IWorkflowsMap,
 	WorkflowsState,
+	XYPosition,
 } from "@/Interface";
 import { defineStore } from "pinia";
 import { GenericValue, IConnection, IConnections, IDataObject, INode, INodeConnections, INodeCredentials, INodeCredentialsDetails, INodeExecutionData, INodeIssueData, IPinData, IRunData, ITaskData, IWorkflowSettings } from 'n8n-workflow';
@@ -629,29 +630,28 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			});
 
 			if (node) {
-				const oldProperties: IDataObject = {};
+				const oldPosition: XYPosition = node.position;
+				const historyStore = useHistoryStore();
 				for (const key of Object.keys(updateInformation.properties)) {
 					const uiStore = useUIStore();
 					uiStore.stateIsDirty = true;
 
-					if (UNDOABLE_NODE_PROPERTIES.has(key)) {
-						oldProperties[key] = node[key as keyof INodeUi];
-					}
 					Vue.set(node, key, updateInformation.properties[key]);
-				}
 
-				const historyStore = useHistoryStore();
-				historyStore.pushUndoableToUndo({
-					type: 'command',
-					data: {
-						action: COMMANDS.PROPERTY_CHANGE,
-						options: {
-							nodeId: node.id,
-							oldProperties,
-							newProperties: updateInformation.properties,
-						},
-					},
-				});
+					if(key === 'position') {
+						historyStore.pushUndoableToUndo({
+							type: 'command',
+							data: {
+								action: COMMANDS.POSITION_CHANGE,
+								options: {
+									nodeName: node.name,
+									oldPosition,
+									newPosition: updateInformation.properties[key],
+								},
+							},
+						});
+					}
+				}
 			}
 		},
 

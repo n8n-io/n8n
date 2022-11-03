@@ -425,7 +425,7 @@ export enum STORES {
 }
 
 export enum COMMANDS {
-	PROPERTY_CHANGE = 'nodePropertyChange',
+	POSITION_CHANGE = 'nodePositionChange',
 }
 
 export enum BULK_COMMANDS {

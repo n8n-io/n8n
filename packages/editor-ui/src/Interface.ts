@@ -162,7 +162,7 @@ export interface IUpdateInformation {
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
 	properties: {
-		[key: string]: IDataObject;
+		[key: string]: IDataObject | XYPosition;
 	};
 }
 
@@ -1138,14 +1138,15 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
-export interface NodePropertyChangeCommand {
-	action: COMMANDS.PROPERTY_CHANGE,
+export interface NodePositionChange {
+	action: COMMANDS.POSITION_CHANGE,
 	options: {
-		nodeId: string;
-		oldProperties: IDataObject;
-		newProperties: IDataObject;
+		nodeName: string;
+		oldPosition: XYPosition,
+		newPosition: XYPosition,
 	}
 }
+
 
 export interface CommandBase {
 	type: string;
@@ -1157,7 +1158,7 @@ export interface CommandBase {
 
 export interface Command extends CommandBase {
 	type: 'command';
-	data: NodePropertyChangeCommand;
+	data: NodePositionChange;
 }
 
 export interface BulkCommands {
