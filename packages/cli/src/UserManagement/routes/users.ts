@@ -5,11 +5,11 @@ import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-
 import { In } from 'typeorm';
 import validator from 'validator';
 
-import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '../..';
-import { SharedCredentials } from '../../databases/entities/SharedCredentials';
-import { SharedWorkflow } from '../../databases/entities/SharedWorkflow';
-import { User } from '../../databases/entities/User';
-import { UserRequest } from '../../requests';
+import { Db, InternalHooksManager, ITelemetryUserDeletionData, ResponseHelper } from '~/index';
+import { SharedCredentials } from '~/databases/entities/SharedCredentials';
+import { SharedWorkflow } from '~/databases/entities/SharedWorkflow';
+import { User } from '~/databases/entities/User';
+import { UserRequest } from '~/requests';
 import * as UserManagementMailer from '../email/UserManagementMailer';
 import { N8nApp, PublicUser } from '../Interfaces';
 import {
@@ -21,7 +21,7 @@ import {
 	validatePassword,
 } from '../UserManagementHelper';
 
-import * as config from '../../../config';
+import config from '~/config';
 import { issueCookie } from '../auth/jwt';
 
 export function usersNamespace(this: N8nApp): void {

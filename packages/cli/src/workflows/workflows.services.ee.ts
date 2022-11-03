@@ -1,8 +1,8 @@
 import { DeleteResult, EntityManager, In, Not } from 'typeorm';
 import { Db, ICredentialsDb, ResponseHelper, WorkflowHelpers } from '..';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { User } from '../databases/entities/User';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
+import { SharedWorkflow } from '~/databases/entities/SharedWorkflow';
+import { User } from '~/databases/entities/User';
+import { WorkflowEntity } from '~/databases/entities/WorkflowEntity';
 import { RoleService } from '../role/role.service';
 import { UserService } from '../user/user.service';
 import { WorkflowsService } from './workflows.services';

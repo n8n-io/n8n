@@ -36,7 +36,7 @@ import path from 'path';
 import pick from 'lodash.pick';
 import { IN8nNodePackageJson } from './Interfaces';
 import { getLogger } from './Logger';
-import config from '../config';
+import config from './config';
 import { NodeTypes } from '.';
 import { InstalledPackages } from './databases/entities/InstalledPackages';
 import { InstalledNodes } from './databases/entities/InstalledNodes';

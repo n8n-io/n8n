@@ -16,14 +16,14 @@ import {
 	ICredentialsDb,
 	ResponseHelper,
 } from '..';
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { validateEntity } from '../GenericHelpers';
+import { RESPONSE_ERROR_MESSAGES } from '~/constants';
+import { CredentialsEntity } from '~/databases/entities/CredentialsEntity';
+import { SharedCredentials } from '~/databases/entities/SharedCredentials';
+import { validateEntity } from '~/GenericHelpers';
 import { externalHooks } from '../Server';
 
-import type { User } from '../databases/entities/User';
-import type { CredentialRequest } from '../requests';
+import type { User } from '~/databases/entities/User';
+import type { CredentialRequest } from '~/requests';
 
 export class CredentialsService {
 	static async get(

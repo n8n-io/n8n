@@ -20,12 +20,12 @@ import {
 	NodeTypes,
 	WorkflowHelpers,
 	WorkflowRunner,
-} from '../src';
+} from '..';
 
-import { getLogger } from '../src/Logger';
-import config from '../config';
-import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
-import { findCliWorkflowStart } from '../src/utils';
+import { getLogger } from '~/Logger';
+import config from '~/config';
+import { getInstanceOwner } from '~/UserManagement/UserManagementHelper';
+import { findCliWorkflowStart } from '~/utils';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';

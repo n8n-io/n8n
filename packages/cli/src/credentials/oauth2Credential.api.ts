@@ -18,17 +18,17 @@ import {
 import { resolve as pathResolve } from 'path';
 
 import { Db, ICredentialsDb, ResponseHelper } from '..';
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import { RESPONSE_ERROR_MESSAGES } from '~/constants';
 import {
 	CredentialsHelper,
 	getCredentialForUser,
 	getCredentialWithoutUser,
-} from '../CredentialsHelper';
-import { getLogger } from '../Logger';
-import { OAuthRequest } from '../requests';
-import { externalHooks } from '../Server';
-import config from '../../config';
-import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
+} from '~/CredentialsHelper';
+import { getLogger } from '~/Logger';
+import { OAuthRequest } from '~/requests';
+import { externalHooks } from '~/Server';
+import config from '~/config';
+import { getInstanceBaseUrl } from '~/UserManagement/UserManagementHelper';
 
 export const oauth2CredentialController = express.Router();
 

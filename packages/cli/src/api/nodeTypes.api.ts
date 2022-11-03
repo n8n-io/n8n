@@ -13,7 +13,7 @@ import {
 } from 'n8n-workflow';
 
 import { CredentialTypes, NodeTypes, ResponseHelper } from '..';
-import config from '../../config';
+import config from '~/config';
 import { getNodeTranslationPath } from '../TranslationHelpers';
 
 function isOAuth(credType: ICredentialType) {

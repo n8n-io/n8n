@@ -30,7 +30,7 @@ import {
 	WaitingWebhooks,
 } from '.';
 
-import config from '../config';
+import config from './config';
 // eslint-disable-next-line import/no-cycle
 import { WEBHOOK_METHODS } from './WebhookHelpers';
 import { initErrorHandling } from './ErrorReporting';

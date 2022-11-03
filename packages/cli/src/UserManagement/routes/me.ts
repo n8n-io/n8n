@@ -10,9 +10,9 @@ import { Db, InternalHooksManager, ResponseHelper } from '../..';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { validatePassword, sanitizeUser, compareHash, hashPassword } from '../UserManagementHelper';
-import type { AuthenticatedRequest, MeRequest } from '../../requests';
-import { validateEntity } from '../../GenericHelpers';
-import { User } from '../../databases/entities/User';
+import type { AuthenticatedRequest, MeRequest } from '~/requests';
+import { validateEntity } from '~/GenericHelpers';
+import { User } from '~/databases/entities/User';
 
 export function meNamespace(this: N8nApp): void {
 	/**

@@ -8,10 +8,10 @@ import { compare, genSaltSync, hash } from 'bcryptjs';
 
 import { PublicUser } from './Interfaces';
 import { Db, ResponseHelper } from '..';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
-import { Role } from '../databases/entities/Role';
-import { AuthenticatedRequest } from '../requests';
-import * as config from '../../config';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '~/databases/entities/User';
+import { Role } from '~/databases/entities/Role';
+import { AuthenticatedRequest } from '~/requests';
+import config from '~/config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {

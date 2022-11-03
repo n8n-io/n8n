@@ -19,7 +19,7 @@ import { TlsOptions } from 'tls';
 // eslint-disable-next-line import/no-cycle
 import { DatabaseType, GenericHelpers, IDatabaseCollections } from '.';
 
-import config from '../config';
+import config from './config';
 
 // eslint-disable-next-line import/no-cycle
 import { entities } from './databases/entities';

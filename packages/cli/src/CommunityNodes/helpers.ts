@@ -15,11 +15,11 @@ import {
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
 	UNKNOWN_FAILURE_REASON,
-} from '../constants';
-import { InstalledPackages } from '../databases/entities/InstalledPackages';
-import config from '../../config';
+} from '~/constants';
+import { InstalledPackages } from '~/databases/entities/InstalledPackages';
+import config from '~/config';
 
-import type { CommunityPackages } from '../Interfaces';
+import type { CommunityPackages } from '~/Interfaces';
 
 const {
 	PACKAGE_NAME_NOT_PROVIDED,

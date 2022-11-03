@@ -21,7 +21,7 @@ import {
 import { InstalledPackages } from '../../src/databases/entities/InstalledPackages';
 import { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
 import { randomName } from '../integration/shared/random';
-import config from '../../config';
+import config from '../../src/config';
 import { installedPackagePayload, installedNodePayload } from '../integration/shared/utils';
 
 import type { CommunityPackages } from '../../src/Interfaces';

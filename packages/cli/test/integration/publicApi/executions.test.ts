@@ -1,14 +1,14 @@
 import express from 'express';
 
 import { ActiveWorkflowRunner } from '../../../src';
-import config from '../../../config';
+import config from '../../../src/config';
 import { Role } from '../../../src/databases/entities/Role';
 import { randomApiKey } from '../shared/random';
 
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
 
-jest.mock('../../../src/telemetry');
+jest.mock('~/telemetry');
 
 let app: express.Application;
 let testDbName = '';

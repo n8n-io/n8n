@@ -18,7 +18,7 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
-import config from '../config';
+import config from './config';
 
 // eslint-disable-next-line import/no-cycle
 import {

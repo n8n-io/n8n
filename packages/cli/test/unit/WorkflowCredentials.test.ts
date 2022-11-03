@@ -22,7 +22,7 @@ async function mockFind({ id, type }): Promise<IWorkflowCredentials | null> {
 	};
 }
 
-jest.mock('../../src/Db', () => {
+jest.mock('~/Db', () => {
 	return {
 		collections: {
 			Credentials: {

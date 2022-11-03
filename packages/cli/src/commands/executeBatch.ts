@@ -20,7 +20,7 @@ import { diff } from 'json-diff';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { pick } from 'lodash';
-import { getLogger } from '../src/Logger';
+import { getLogger } from '~/Logger';
 
 import {
 	ActiveExecutions,
@@ -35,11 +35,11 @@ import {
 	LoadNodesAndCredentials,
 	NodeTypes,
 	WorkflowRunner,
-} from '../src';
-import config from '../config';
-import { User } from '../src/databases/entities/User';
-import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
-import { findCliWorkflowStart } from '../src/utils';
+} from '..';
+import config from '~/config';
+import { User } from '~/databases/entities/User';
+import { getInstanceOwner } from '~/UserManagement/UserManagementHelper';
+import { findCliWorkflowStart } from '~/utils';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';

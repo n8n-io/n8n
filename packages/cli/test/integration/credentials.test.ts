@@ -10,11 +10,11 @@ import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
-import config from '../../config';
+import config from '../../src/config';
 import type { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import type { AuthAgent } from './shared/types';
 
-jest.mock('../../src/telemetry');
+jest.mock('~/telemetry');
 
 // mock that credentialsSharing is not enabled
 const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');

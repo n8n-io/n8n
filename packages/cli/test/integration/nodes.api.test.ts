@@ -21,11 +21,11 @@ import type { AuthAgent } from './shared/types';
 import type { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 
-jest.mock('../../src/telemetry');
+jest.mock('~/telemetry');
 
-jest.mock('../../src/Push');
+jest.mock('~/Push');
 
-jest.mock('../../src/CommunityNodes/helpers', () => {
+jest.mock('~/CommunityNodes/helpers', () => {
 	return {
 		...jest.requireActual('../../src/CommunityNodes/helpers'),
 		checkNpmPackageStatus: jest.fn(),
@@ -36,7 +36,7 @@ jest.mock('../../src/CommunityNodes/helpers', () => {
 	};
 });
 
-jest.mock('../../src/CommunityNodes/packageModel', () => {
+jest.mock('~/CommunityNodes/packageModel', () => {
 	return {
 		...jest.requireActual('../../src/CommunityNodes/packageModel'),
 		isPackageInstalled: jest.fn(),

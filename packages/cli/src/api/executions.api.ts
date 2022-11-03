@@ -35,13 +35,13 @@ import {
 	WorkflowRunner,
 	ResponseHelper,
 } from '..';
-import * as config from '../../config';
-import { User } from '../databases/entities/User';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '../GenericHelpers';
-import { getLogger } from '../Logger';
-import * as Queue from '../Queue';
-import type { ExecutionRequest } from '../requests';
-import { getSharedWorkflowIds } from '../WorkflowHelpers';
+import config from '~/config';
+import { User } from '~/databases/entities/User';
+import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '~/GenericHelpers';
+import { getLogger } from '~/Logger';
+import * as Queue from '~/Queue';
+import type { ExecutionRequest } from '~/requests';
+import { getSharedWorkflowIds } from '~/WorkflowHelpers';
 
 export const executionsController = express.Router();
 

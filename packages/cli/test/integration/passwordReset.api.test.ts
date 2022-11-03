@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 
 import * as utils from './shared/utils';
 import { Db } from '../../src';
-import config from '../../config';
+import config from '../../src/config';
 import { compare } from 'bcryptjs';
 import {
 	randomEmail,
@@ -14,8 +14,8 @@ import {
 import * as testDb from './shared/testDb';
 import type { Role } from '../../src/databases/entities/Role';
 
-jest.mock('../../src/telemetry');
-jest.mock('../../src/UserManagement/email/NodeMailer');
+jest.mock('~/telemetry');
+jest.mock('~/UserManagement/email/NodeMailer');
 
 let app: express.Application;
 let testDbName = '';
@@ -37,7 +37,7 @@ beforeAll(async () => {
 beforeEach(async () => {
 	await testDb.truncate(['User'], testDbName);
 
-	jest.mock('../../config');
+	jest.mock('~/config');
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 	config.set('userManagement.emails.mode', '');

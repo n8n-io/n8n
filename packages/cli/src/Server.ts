@@ -83,8 +83,7 @@ import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
 import bodyParser from 'body-parser';
-
-import config from '../config';
+import config from './config';
 import * as Queue from './Queue';
 
 import { InternalHooksManager } from './InternalHooksManager';

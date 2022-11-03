@@ -9,11 +9,11 @@
 import express from 'express';
 
 import { Db, ExternalHooks, IExternalHooksClass, ITagWithCountDb, ResponseHelper } from '..';
-import config from '../../config';
-import * as TagHelpers from '../TagHelpers';
-import { validateEntity } from '../GenericHelpers';
-import { TagEntity } from '../databases/entities/TagEntity';
-import { TagsRequest } from '../requests';
+import config from '~/config';
+import * as TagHelpers from '~/TagHelpers';
+import { validateEntity } from '~/GenericHelpers';
+import { TagEntity } from '~/databases/entities/TagEntity';
+import { TagsRequest } from '~/requests';
 
 export const externalHooks: IExternalHooksClass = ExternalHooks();
 

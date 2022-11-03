@@ -14,7 +14,7 @@ import { getInstanceBaseUrl, hashPassword, validatePassword } from '../UserManag
 import * as UserManagementMailer from '../email';
 import type { PasswordResetRequest } from '../../requests';
 import { issueCookie } from '../auth/jwt';
-import * as config from '../../../config';
+import config from '~/config';
 
 export function passwordResetNamespace(this: N8nApp): void {
 	/**

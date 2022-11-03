@@ -1,7 +1,7 @@
 import express from 'express';
 
 import { Db } from '../../../src';
-import { Reset } from '../../../commands/user-management/reset';
+import { Reset } from '../../../src/commands/user-management/reset';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
 import type { Role } from '../../../src/databases/entities/Role';

@@ -32,7 +32,7 @@ import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-import config from '../config';
+import config from './config';
 // eslint-disable-next-line import/no-cycle
 import {
 	ActiveExecutions,

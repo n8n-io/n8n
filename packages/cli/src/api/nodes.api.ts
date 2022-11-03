@@ -3,7 +3,7 @@ import express from 'express';
 import { PublicInstalledPackage } from 'n8n-workflow';
 
 import { InternalHooksManager, LoadNodesAndCredentials, Push, ResponseHelper } from '..';
-import config from '../../config';
+import config from '~/config';
 
 import {
 	checkNpmPackageStatus,
@@ -16,22 +16,22 @@ import {
 	parseNpmPackageName,
 	removePackageFromMissingList,
 	sanitizeNpmPackageName,
-} from '../CommunityNodes/helpers';
+} from '~/CommunityNodes/helpers';
 import {
 	findInstalledPackage,
 	getAllInstalledPackages,
 	isPackageInstalled,
-} from '../CommunityNodes/packageModel';
+} from '~/CommunityNodes/packageModel';
 import {
 	RESPONSE_ERROR_MESSAGES,
 	STARTER_TEMPLATE_NAME,
 	UNKNOWN_FAILURE_REASON,
-} from '../constants';
-import { isAuthenticatedRequest } from '../UserManagement/UserManagementHelper';
+} from '~/constants';
+import { isAuthenticatedRequest } from '~/UserManagement/UserManagementHelper';
 
-import { InstalledPackages } from '../databases/entities/InstalledPackages';
-import type { CommunityPackages } from '../Interfaces';
-import type { NodeRequest } from '../requests';
+import { InstalledPackages } from '~/databases/entities/InstalledPackages';
+import type { CommunityPackages } from '~/Interfaces';
+import type { NodeRequest } from '~/requests';
 
 const { PACKAGE_NOT_INSTALLED, PACKAGE_NAME_NOT_PROVIDED } = RESPONSE_ERROR_MESSAGES;
 

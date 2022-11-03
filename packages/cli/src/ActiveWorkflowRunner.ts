@@ -54,7 +54,7 @@ import {
 	WorkflowRunner,
 	ExternalHooks,
 } from '.';
-import config from '../config';
+import config from './config';
 import { User } from './databases/entities/User';
 import { whereClause } from './WorkflowHelpers';
 import { WorkflowEntity } from './databases/entities/WorkflowEntity';

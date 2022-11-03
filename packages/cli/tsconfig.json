@@ -1,14 +1,20 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
+		"rootDir": "src",
 		"outDir": "dist",
-		"types": ["node", "jest"],
+		"types": ["node"],
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
+		"baseUrl": "src",
+		"paths": {
+			"~/*": ["./*"]
+		},
 		// TODO: remove all options below this line
 		"strict": false,
 		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["**/*.d.ts", "commands/**/*", "config/**/*", "src/**/*"]
+	"include": ["src/**/*.ts"],
+	"exclude": ["test/**"]
 }

@@ -4,9 +4,9 @@
 import RudderStack from '@rudderstack/rudder-sdk-node';
 import PostHog from 'posthog-node';
 import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
-import config from '../../config';
-import { IExecutionTrackProperties } from '../Interfaces';
-import { getLogger } from '../Logger';
+import config from '~/config';
+import { IExecutionTrackProperties } from '~/Interfaces';
+import { getLogger } from '~/Logger';
 
 type ExecutionTrackDataKey = 'manual_error' | 'manual_success' | 'prod_error' | 'prod_success';
 

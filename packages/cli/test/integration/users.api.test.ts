@@ -1,7 +1,7 @@
 import express from 'express';
 import validator from 'validator';
 
-import config from '../../config';
+import config from '../../src/config';
 import { Db } from '../../src';
 import { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
 import type { Role } from '../../src/databases/entities/Role';
@@ -22,8 +22,8 @@ import * as utils from './shared/utils';
 import * as UserManagementMailer from '../../src/UserManagement/email/UserManagementMailer';
 import { NodeMailer } from '../../src/UserManagement/email/NodeMailer';
 
-jest.mock('../../src/telemetry');
-jest.mock('../../src/UserManagement/email/NodeMailer');
+jest.mock('~/telemetry');
+jest.mock('~/UserManagement/email/NodeMailer');
 
 let app: express.Application;
 let testDbName = '';
@@ -62,7 +62,7 @@ beforeEach(async () => {
 		testDbName,
 	);
 
-	jest.mock('../../config');
+	jest.mock('~/config');
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);

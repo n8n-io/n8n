@@ -14,7 +14,7 @@ const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
 shell.rm('-rf', path.resolve(ROOT_DIR, 'dist'));
 
-const tscCompilation = shell.exec('tsc', { silent: true })
+const tscCompilation = shell.exec('tsc', { silent: true });
 if (tscCompilation.code !== 0) {
 	shell.echo('Typescript Compilation failed:');
 	shell.echo(tscCompilation.stdout);
@@ -33,7 +33,7 @@ if (publicApiEnabled) {
 function copyUserManagementEmailTemplates(rootDir = ROOT_DIR) {
 	const templates = {
 		source: path.resolve(rootDir, 'src', 'UserManagement', 'email', 'templates'),
-		destination: path.resolve(rootDir, 'dist', 'src', 'UserManagement', 'email'),
+		destination: path.resolve(rootDir, 'dist', 'UserManagement', 'email'),
 	};
 
 	shell.cp('-r', templates.source, templates.destination);
@@ -42,7 +42,7 @@ function copyUserManagementEmailTemplates(rootDir = ROOT_DIR) {
 function copySwaggerTheme(rootDir = ROOT_DIR, themeFilename = SPEC_THEME_FILENAME) {
 	const swaggerTheme = {
 		source: path.resolve(rootDir, 'src', 'PublicApi', themeFilename),
-		destination: path.resolve(rootDir, 'dist', 'src', 'PublicApi'),
+		destination: path.resolve(rootDir, 'dist', 'PublicApi'),
 	};
 
 	shell.cp('-r', swaggerTheme.source, swaggerTheme.destination);

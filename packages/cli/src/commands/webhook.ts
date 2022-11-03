@@ -10,7 +10,7 @@ import { Command, flags } from '@oclif/command';
 import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
-import config from '../config';
+import config from '~/config';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
@@ -23,9 +23,9 @@ import {
 	LoadNodesAndCredentials,
 	NodeTypes,
 	WebhookServer,
-} from '../src';
+} from '..';
 
-import { getLogger } from '../src/Logger';
+import { getLogger } from '~/Logger';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;

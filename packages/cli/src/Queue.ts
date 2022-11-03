@@ -1,6 +1,6 @@
 import Bull from 'bull';
 import { IExecuteResponsePromiseData } from 'n8n-workflow';
-import config from '../config';
+import config from './config';
 // eslint-disable-next-line import/no-cycle
 import * as ActiveExecutions from './ActiveExecutions';
 // eslint-disable-next-line import/no-cycle

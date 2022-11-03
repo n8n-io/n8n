@@ -5,13 +5,13 @@ import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 
 import { GenericHelpers, InternalHooksManager, ResponseHelper } from '..';
-import config from '../../config';
-import { getLogger } from '../Logger';
+import config from '~/config';
+import { getLogger } from '~/Logger';
 import { EECredentialsController } from './credentials.controller.ee';
 import { CredentialsService } from './credentials.service';
 
 import type { ICredentialsResponse } from '..';
-import type { CredentialRequest } from '../requests';
+import type { CredentialRequest } from '~/requests';
 
 export const credentialsController = express.Router();
 

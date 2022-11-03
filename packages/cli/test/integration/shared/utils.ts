@@ -27,7 +27,7 @@ import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
-import config from '../../../config';
+import config from '../../../src/config';
 import {
 	ActiveWorkflowRunner,
 	CredentialTypes,

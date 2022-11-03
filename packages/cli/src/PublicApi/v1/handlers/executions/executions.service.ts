@@ -1,9 +1,9 @@
 import { parse } from 'flatted';
 import { In, Not, Raw, LessThan, IsNull, FindOperator } from 'typeorm';
 
-import { Db, IExecutionFlattedDb, IExecutionResponseApi } from '../../../..';
-import { ExecutionEntity } from '../../../../databases/entities/ExecutionEntity';
-import { ExecutionStatus } from '../../../types';
+import { Db, IExecutionFlattedDb, IExecutionResponseApi } from '~/index';
+import { ExecutionEntity } from '~/databases/entities/ExecutionEntity';
+import { ExecutionStatus } from '~/PublicApi/types';
 
 function prepareExecutionData(
 	execution: IExecutionFlattedDb | undefined,

@@ -5,9 +5,9 @@ import { Db, ICredentialsDb } from '..';
 import { RoleService } from '../role/role.service';
 import { CredentialsService } from './credentials.service';
 
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { User } from '../databases/entities/User';
+import { CredentialsEntity } from '~/databases/entities/CredentialsEntity';
+import { SharedCredentials } from '~/databases/entities/SharedCredentials';
+import { User } from '~/databases/entities/User';
 import { UserService } from '../user/user.service';
 import type { CredentialWithSharings } from './credentials.types';
 

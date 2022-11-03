@@ -42,7 +42,7 @@ import {
 
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
-import config from '../config';
+import config from './config';
 import {
 	ActiveExecutions,
 	CredentialsHelper,

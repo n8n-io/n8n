@@ -2,7 +2,7 @@ import express from 'express';
 import { IsNull } from 'typeorm';
 import validator from 'validator';
 
-import config from '../../config';
+import config from '../../src/config';
 import { Db } from '../../src';
 import type { Role } from '../../src/databases/entities/Role';
 import { SUCCESS_RESPONSE_BODY } from './shared/constants';
@@ -17,7 +17,7 @@ import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
-jest.mock('../../src/telemetry');
+jest.mock('~/telemetry');
 
 let app: express.Application;
 let testDbName = '';

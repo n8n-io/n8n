@@ -2,10 +2,10 @@
 import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 import { Db, InternalHooksManager, ResponseHelper } from '..';
-import type { CredentialsEntity } from '../databases/entities/CredentialsEntity';
+import type { CredentialsEntity } from '~/databases/entities/CredentialsEntity';
 
-import type { CredentialRequest } from '../requests';
-import { isSharingEnabled, rightDiff } from '../UserManagement/UserManagementHelper';
+import type { CredentialRequest } from '~/requests';
+import { isSharingEnabled, rightDiff } from '~/UserManagement/UserManagementHelper';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 import type { CredentialWithSharings } from './credentials.types';
 

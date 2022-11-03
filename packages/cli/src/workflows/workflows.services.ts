@@ -8,13 +8,13 @@ import {
 	whereClause,
 	WorkflowHelpers,
 } from '..';
-import config from '../../config';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { User } from '../databases/entities/User';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { validateEntity } from '../GenericHelpers';
+import config from '~/config';
+import { SharedWorkflow } from '~/databases/entities/SharedWorkflow';
+import { User } from '~/databases/entities/User';
+import { WorkflowEntity } from '~/databases/entities/WorkflowEntity';
+import { validateEntity } from '~/GenericHelpers';
 import { externalHooks } from '../Server';
-import * as TagHelpers from '../TagHelpers';
+import * as TagHelpers from '~/TagHelpers';
 
 export class WorkflowsService {
 	static async getSharing(

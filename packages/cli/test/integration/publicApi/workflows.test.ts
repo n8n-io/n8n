@@ -1,7 +1,7 @@
 import express from 'express';
 
 import { ActiveWorkflowRunner, Db } from '../../../src';
-import config from '../../../config';
+import config from '../../../src/config';
 import { Role } from '../../../src/databases/entities/Role';
 import { randomApiKey } from '../shared/random';
 
@@ -16,7 +16,7 @@ let globalMemberRole: Role;
 let workflowOwnerRole: Role;
 let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
 
-jest.mock('../../../src/telemetry');
+jest.mock('~/telemetry');
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });

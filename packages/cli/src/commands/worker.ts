@@ -31,17 +31,17 @@ import {
 	ResponseHelper,
 	WebhookHelpers,
 	WorkflowExecuteAdditionalData,
-} from '../src';
+} from '..';
 
-import { getLogger } from '../src/Logger';
+import { getLogger } from '~/Logger';
 
-import config from '../config';
-import * as Queue from '../src/Queue';
+import config from '~/config';
+import * as Queue from '~/Queue';
 import {
 	checkPermissionsForExecution,
 	getWorkflowOwner,
-} from '../src/UserManagement/UserManagementHelper';
-import { generateFailedExecutionFromError } from '../src/WorkflowHelpers';
+} from '~/UserManagement/UserManagementHelper';
+import { generateFailedExecutionFromError } from '~/WorkflowHelpers';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';

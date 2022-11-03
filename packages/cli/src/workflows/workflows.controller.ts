@@ -22,16 +22,16 @@ import {
 	WorkflowRunner,
 	IWorkflowDb,
 } from '..';
-import config from '../../config';
-import * as TagHelpers from '../TagHelpers';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { validateEntity } from '../GenericHelpers';
-import { InternalHooksManager } from '../InternalHooksManager';
-import { externalHooks } from '../Server';
-import { getLogger } from '../Logger';
-import type { WorkflowRequest } from '../requests';
-import { getSharedWorkflowIds, isBelowOnboardingThreshold } from '../WorkflowHelpers';
+import config from '~/config';
+import * as TagHelpers from '~/TagHelpers';
+import { SharedWorkflow } from '~/databases/entities/SharedWorkflow';
+import { WorkflowEntity } from '~/databases/entities/WorkflowEntity';
+import { validateEntity } from '~/GenericHelpers';
+import { InternalHooksManager } from '~/InternalHooksManager';
+import { externalHooks } from '~/Server';
+import { getLogger } from '~/Logger';
+import type { WorkflowRequest } from '~/requests';
+import { getSharedWorkflowIds, isBelowOnboardingThreshold } from '~/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
 import { validate as jsonSchemaValidate } from 'jsonschema';

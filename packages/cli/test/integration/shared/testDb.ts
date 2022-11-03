@@ -1,7 +1,7 @@
 import { UserSettings } from 'n8n-core';
 import { Connection, ConnectionOptions, createConnection, getConnection } from 'typeorm';
 
-import config from '../../../config';
+import config from '../../../src/config';
 import { DatabaseType, Db, ICredentialsDb } from '../../../src';
 import { createCredentialsFromCredentialsEntity } from '../../../src/CredentialsHelper';
 import { entities } from '../../../src/databases/entities';

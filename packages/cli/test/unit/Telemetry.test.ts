@@ -1,5 +1,5 @@
 import { Telemetry } from '../../src/telemetry';
-import config from '../../config';
+import config from '../../src/config';
 
 jest.spyOn(Telemetry.prototype as any, 'initRudderStack').mockImplementation(() => {
 	return {

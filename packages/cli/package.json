@@ -13,7 +13,7 @@
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "main": "dist/index",
-  "types": "dist/src/index.d.ts",
+  "types": "dist/index.d.ts",
   "oclif": {
     "commands": "./dist/commands",
     "bin": "n8n"
@@ -97,6 +97,7 @@
     "run-script-os": "^1.0.7",
     "supertest": "^6.2.2",
     "ts-node": "^8.9.1",
+    "tsconfig-paths": "^3.14.1",
     "typescript": "~4.8.0"
   },
   "dependencies": {

@@ -1,5 +1,6 @@
+import 'tsconfig-paths/register';
 import { createConnection } from 'typeorm';
-import config from '../config';
+import config from '../src/config';
 import { getBootstrapDBOptions } from './integration/shared/testDb';
 
 export default async () => {

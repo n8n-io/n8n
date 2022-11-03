@@ -14,7 +14,7 @@ import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import { createHash } from 'crypto';
-import config from '../config';
+import config from '~/config';
 import {
 	ActiveExecutions,
 	ActiveWorkflowRunner,
@@ -30,10 +30,10 @@ import {
 	Server,
 	TestWebhooks,
 	WaitTracker,
-} from '../src';
+} from '..';
 
-import { getLogger } from '../src/Logger';
-import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
+import { getLogger } from '~/Logger';
+import { getAllInstalledPackages } from '~/CommunityNodes/packageModel';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');

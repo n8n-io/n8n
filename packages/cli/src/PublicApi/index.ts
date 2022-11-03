@@ -11,9 +11,9 @@ import swaggerUi from 'swagger-ui-express';
 import validator from 'validator';
 import YAML from 'yamljs';
 
-import config from '../../config';
+import config from '~/config';
 import { Db, InternalHooksManager } from '..';
-import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl } from '~/UserManagement/UserManagementHelper';
 
 function createApiRouter(
 	version: string,

@@ -1,8 +1,8 @@
 /* eslint-disable import/no-cycle */
 import { INodeTypeData, INodeTypeNameVersion, LoggerProxy } from 'n8n-workflow';
 import { Db } from '..';
-import { InstalledNodes } from '../databases/entities/InstalledNodes';
-import { InstalledPackages } from '../databases/entities/InstalledPackages';
+import { InstalledNodes } from '~/databases/entities/InstalledNodes';
+import { InstalledPackages } from '~/databases/entities/InstalledPackages';
 
 export async function findInstalledPackage(
 	packageName: string,

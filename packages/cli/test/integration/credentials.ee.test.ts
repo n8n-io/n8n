@@ -2,7 +2,7 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { In } from 'typeorm';
 
-import { Db } from '../../src';
+import * as Db from '../../src/Db';
 import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
 import type { CredentialWithSharings } from '../../src/credentials/credentials.types';
 import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
@@ -13,7 +13,7 @@ import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 import type { IUser } from 'n8n-workflow';
 
-jest.mock('../../src/telemetry');
+jest.mock('~/telemetry');
 
 let app: express.Application;
 let testDbName = '';

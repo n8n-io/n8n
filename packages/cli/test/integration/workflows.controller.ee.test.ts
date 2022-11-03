@@ -7,14 +7,14 @@ import * as UserManagementHelpers from '../../src/UserManagement/UserManagementH
 import { v4 as uuid } from 'uuid';
 
 import type { Role } from '../../src/databases/entities/Role';
-import config from '../../config';
+import config from '../../src/config';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
 import { ActiveWorkflowRunner } from '../../src';
 import { INode } from 'n8n-workflow';
 
-jest.mock('../../src/telemetry');
+jest.mock('~/telemetry');
 
 // mock whether sharing is enabled or not
 jest.spyOn(UserManagementHelpers, 'isSharingEnabled').mockReturnValue(true);
