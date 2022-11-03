@@ -24,40 +24,40 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
-import {SignupPage} from "../pages/signup";
+import { SigninPage, SignupPage } from "../pages";
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args)
 })
 
 Cypress.Commands.add('signin', (email, password) => {
+	const signinPage = new SigninPage();
+
 	cy.session([email, password], () => {
-		cy.visit('/signin');
+		cy.visit(signinPage.url);
 
-		cy.getByTestId('signin-form').within(() => {
-			cy.getByTestId('email').type(email);
-			cy.getByTestId('password').type(password);
-
-			cy.get('button').click();
+		signinPage.get('form').within(() => {
+			signinPage.get('email').type(email);
+			signinPage.get('password').type(password);
+			signinPage.get('submit').click();
 		});
 
-		// we should be redirected to /dashboard
-		cy.url().should('include', '/workflow');
+		// we should be redirected to /workflows
+		cy.url().should('include', '/workflows');
 
 		// our auth cookie should be present
 		cy.getCookie('n8n-auth').should('exist');
 	});
 });
 
-const signupPage = new SignupPage();
-
 Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
+	const signupPage = new SignupPage();
 	cy.visit(signupPage.url);
 	signupPage.get('form').within(() => {
 		signupPage.get('email').type(email);
 		signupPage.get('firstName').type(firstName);
 		signupPage.get('lastName').type(lastName);
 		signupPage.get('password').type(password);
-		signupPage.get('button').click();
+		signupPage.get('submit').click();
 	});
 })

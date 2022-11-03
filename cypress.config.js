@@ -5,7 +5,11 @@ module.exports = defineConfig({
 		baseUrl: 'http://localhost:5678',
 		experimentalSessionAndOrigin: true,
 		setupNodeEvents(on, config) {
-			// implement node event listeners here
+			on('task', {
+				async 'db:reset'() {
+
+				},
+			})
 		},
 	}
 });

@@ -1,16 +1,20 @@
-const username = 'test@n8n.io';
-const password = 'CypressTest123';
+import { randEmail, randPassword, randFirstName, randLastName } from '@ngneat/falso';
+
+const username = randEmail();
+const password = randPassword();
+const firstName = randFirstName();
+const lastName = randLastName();
 
 describe('Create user', () => {
 	it('should sign user up', () => {
-		cy.signup(username, 'John', 'Doe', password);
+		cy.signup(username, firstName, lastName, password);
 	});
 });
 
 describe('Smoke test', () => {
-	// beforeEach(() => {
-	// 	cy.signin(username, password);
-	// });
+	beforeEach(() => {
+		cy.signin(username, password);
+	});
 
 	// describe('Onboarding', () => {
 	// 	it('should fill in the customize form and submit', () => {
