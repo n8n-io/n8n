@@ -1,11 +1,13 @@
-export interface IReportingOptions {
-	tags?: Record<string, string>;
+import type { Primitives } from './utils';
+
+export interface ReportingOptions {
+	tags?: Record<string, Primitives>;
 	extra?: Record<string, unknown>;
 }
 
 interface ErrorReporter {
-	error: (error: Error, options?: IReportingOptions) => void;
-	warn: (warning: Error | string, options?: IReportingOptions) => void;
+	error: (error: Error, options?: ReportingOptions) => void;
+	warn: (warning: Error | string, options?: ReportingOptions) => void;
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -20,9 +22,9 @@ export function init(errorReporter: ErrorReporter) {
 	instance.warn = errorReporter.warn;
 }
 
-export const error = (e: unknown, options?: IReportingOptions) => {
+export const error = (e: unknown, options?: ReportingOptions) => {
 	if (e instanceof Error) instance.error(e, options);
 };
 
-export const warn = (warning: Error | string, options?: IReportingOptions) =>
+export const warn = (warning: Error | string, options?: ReportingOptions) =>
 	instance.warn(warning, options);
