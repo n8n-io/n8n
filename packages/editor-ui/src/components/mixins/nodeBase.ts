@@ -13,6 +13,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { useNodeTypesStore } from "@/stores/nodeTypes";
+import { useHistoryStore } from "@/stores/history";
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -33,6 +34,7 @@ export const nodeBase = mixins(
 			useNodeTypesStore,
 			useUIStore,
 			useWorkflowsStore,
+			useHistoryStore,
 		),
 		data (): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.name);
@@ -305,7 +307,9 @@ export const nodeBase = mixins(
 								},
 							};
 
+							const oldPosition = node.position;
 							this.workflowsStore.updateNodeProperties(updateInformation);
+							this.historyStore.updateNodePosition(node.name, oldPosition, newNodePosition);
 						});
 
 						this.$emit('moved', node);

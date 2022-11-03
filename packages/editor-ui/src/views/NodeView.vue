@@ -3306,9 +3306,9 @@ export default mixins(
 						endpoints.forEach(endpoint => {
 							endpoint.repaint();
 						});
-						this.onNodeMoved(node);
 						// TODO: Figure out how NOT to repaint everything
 						this.instance.repaintEverything();
+						this.onNodeMoved(node);
 					}
 				}, 0);
 			},

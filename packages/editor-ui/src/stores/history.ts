@@ -1,5 +1,5 @@
-import { STORES } from "@/constants";
-import { BulkCommands, Command, HistoryState, Undoable } from "@/Interface";
+import { COMMANDS, STORES } from "@/constants";
+import { BulkCommands, Command, HistoryState, Undoable, XYPosition } from "@/Interface";
 import { defineStore } from "pinia";
 
 const STACK_LIMIT = 100;
@@ -61,6 +61,19 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 				this.checkUndoStackLimit();
 				this.currentBulkAction = null;
 			}
+		},
+		updateNodePosition(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition) {
+			this.pushUndoableToUndo({
+				type: 'command',
+				data: {
+					action: COMMANDS.POSITION_CHANGE,
+					options: {
+						nodeName,
+						oldPosition,
+						newPosition,
+					},
+				},
+			});
 		},
 	},
 });

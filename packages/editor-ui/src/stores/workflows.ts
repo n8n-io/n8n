@@ -630,27 +630,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			});
 
 			if (node) {
-				const oldPosition: XYPosition = node.position;
-				const historyStore = useHistoryStore();
 				for (const key of Object.keys(updateInformation.properties)) {
 					const uiStore = useUIStore();
 					uiStore.stateIsDirty = true;
 
 					Vue.set(node, key, updateInformation.properties[key]);
-
-					if(key === 'position') {
-						historyStore.pushUndoableToUndo({
-							type: 'command',
-							data: {
-								action: COMMANDS.POSITION_CHANGE,
-								options: {
-									nodeName: node.name,
-									oldPosition,
-									newPosition: updateInformation.properties[key],
-								},
-							},
-						});
-					}
 				}
 			}
 		},
