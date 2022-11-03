@@ -169,7 +169,6 @@ export interface INodeUpdatePropertiesInformation {
 export type XYPosition = [number, number];
 
 export interface INodeUi extends INode {
-	[x: string]: unknown;
 	position: XYPosition;
 	color?: string;
 	notes?: string;
@@ -1139,21 +1138,12 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
-export interface MoveNodeCommand {
-	action: COMMANDS.MOVE_NODE,
+export interface NodePropertyChangeCommand {
+	action: COMMANDS.PROPERTY_CHANGE,
 	options: {
 		nodeId: string;
-		newPosition: XYPosition;
-		oldPosition: XYPosition;
-	}
-}
-
-export interface RenameNodeCommand {
-	action: COMMANDS.RENAME_NODE,
-	options: {
-		nodeId: string;
-		newName: string;
-		oldName: string;
+		oldProperties: IDataObject;
+		newProperties: IDataObject;
 	}
 }
 
@@ -1167,7 +1157,7 @@ export interface CommandBase {
 
 export interface Command extends CommandBase {
 	type: 'command';
-	data: RenameNodeCommand | MoveNodeCommand;
+	data: NodePropertyChangeCommand;
 }
 
 export interface BulkCommands {

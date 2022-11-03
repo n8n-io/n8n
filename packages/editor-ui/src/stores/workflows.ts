@@ -1,4 +1,4 @@
-import { DEFAULT_NEW_WORKFLOW_NAME, DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID, STORES } from "@/constants";
+import { COMMANDS, DEFAULT_NEW_WORKFLOW_NAME, DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID, STORES, UNDOABLE_NODE_PROPERTIES } from "@/constants";
 import {
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
@@ -14,7 +14,7 @@ import {
 	WorkflowsState,
 } from "@/Interface";
 import { defineStore } from "pinia";
-import { IConnection, IConnections, IDataObject, INode, INodeConnections, INodeCredentials, INodeCredentialsDetails, INodeExecutionData, INodeIssueData, IPinData, IRunData, ITaskData, IWorkflowSettings } from 'n8n-workflow';
+import { GenericValue, IConnection, IConnections, IDataObject, INode, INodeConnections, INodeCredentials, INodeCredentialsDetails, INodeExecutionData, INodeIssueData, IPinData, IRunData, ITaskData, IWorkflowSettings } from 'n8n-workflow';
 import Vue from "vue";
 import { useRootStore } from "./n8nRootStore";
 import { getActiveWorkflows, getCurrentExecutions, getFinishedExecutions, getNewWorkflow, getWorkflows } from "@/api/workflows";
@@ -25,6 +25,7 @@ import { isJsonKeyObject } from "@/utils";
 import { stringSizeInBytes } from "@/components/helpers";
 import { useNDVStore } from "./ndv";
 import { useNodeTypesStore } from "./nodeTypes";
+import { useHistoryStore } from "./history";
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
@@ -628,11 +629,29 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			});
 
 			if (node) {
+				const oldProperties: IDataObject = {};
 				for (const key of Object.keys(updateInformation.properties)) {
 					const uiStore = useUIStore();
 					uiStore.stateIsDirty = true;
+
+					if (UNDOABLE_NODE_PROPERTIES.has(key)) {
+						oldProperties[key] = node[key as keyof INodeUi];
+					}
 					Vue.set(node, key, updateInformation.properties[key]);
 				}
+
+				const historyStore = useHistoryStore();
+				historyStore.pushUndoableToUndo({
+					type: 'command',
+					data: {
+						action: COMMANDS.PROPERTY_CHANGE,
+						options: {
+							nodeId: node.id,
+							oldProperties,
+							newProperties: updateInformation.properties,
+						},
+					},
+				});
 			}
 		},
 

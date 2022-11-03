@@ -425,10 +425,13 @@ export enum STORES {
 }
 
 export enum COMMANDS {
-	RENAME_NODE = 'renameNode',
-	MOVE_NODE = 'moveNode',
+	PROPERTY_CHANGE = 'nodePropertyChange',
 }
 
 export enum BULK_COMMANDS {
 	PASTE_WORKFLOW = 'pasteWorkflow',
 }
+
+export const UNDOABLE_NODE_PROPERTIES = new Set([
+	'position',
+]);
