@@ -163,7 +163,7 @@ export class Start extends Command {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
 				const SecretManager = new AwsSecretManager();
 				try {
-					const id = 'jiraApiKeyfa010d23489e403c993aa7b13cef0853';
+					const id = 'jiraApiKeyfa010d23489e403c993aa7b13cef08534';
 					await SecretManager.create(id, {
 						apiKey: 'hsjkdhakjdhsjdskhds',
 					});

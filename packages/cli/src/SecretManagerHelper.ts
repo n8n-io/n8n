@@ -9,6 +9,7 @@ const AWS_ACCESS_KEY_ID = 'AWS_ACCESS_KEY_ID';
 const AWS_SECRET_ACCESS_KEY = 'AWS_SECRET_ACCESS_KEY';
 const AWS_DEFAULT_REGION = 'AWS_DEFAULT_REGION';
 const SECRET_MANAGER_SERVICE = 'secretsmanager';
+const STS_SERVICE = 'sts';
 const DEFAULT_REGION = 'us-east-1';
 const REGION = process.env[AWS_DEFAULT_REGION] ?? DEFAULT_REGION;
 
@@ -19,6 +20,8 @@ interface SecretManagerBase {
 	delete(id: string): Promise<{ id: string }>;
 	update(id: string, value: object): Promise<{ id: string }>;
 	get(id: string): Promise<{ id: string; data: object }>;
+	isEnabled(): Promise<boolean>;
+	canHandle(id: string): Promise<boolean>;
 }
 
 type CreateSecretResponse = {
@@ -45,6 +48,8 @@ type UpdateSecretResponse = DeleteSecretResponse;
 export class AwsSecretManager implements SecretManagerBase {
 	displayName: 'AWS Secret Manager';
 
+	#hasBeenChecked = false;
+
 	constructor() {
 		const requiredEnvVariables = [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY];
 		const missingEnvVariable = !requiredEnvVariables.every((key) => process.env[key] !== undefined);
@@ -56,7 +61,6 @@ export class AwsSecretManager implements SecretManagerBase {
 		const interceptor = aws4Interceptor(
 			{
 				region: process.env[AWS_DEFAULT_REGION] ?? DEFAULT_REGION,
-				service: SECRET_MANAGER_SERVICE,
 			},
 			{
 				accessKeyId: process.env[AWS_ACCESS_KEY_ID] ?? '',
@@ -66,6 +70,29 @@ export class AwsSecretManager implements SecretManagerBase {
 
 		client.interceptors.request.use(interceptor);
 	}
+
+	async canHandle(id: string): Promise<boolean> {
+		return id.startsWith('aws') ? Promise.resolve(true) : Promise.resolve(false);
+	}
+
+	// async isEnabled() {
+	// 	const interceptor = aws4Interceptor(
+	// 		{
+	// 			region: process.env[AWS_DEFAULT_REGION] ?? DEFAULT_REGION,
+	// 			service: SECRET_MANAGER_SERVICE,
+	// 		},
+	// 		{
+	// 			accessKeyId: process.env[AWS_ACCESS_KEY_ID] ?? '',
+	// 			secretAccessKey: process.env[AWS_SECRET_ACCESS_KEY] ?? '',
+	// 		},
+	// 	);
+
+	// 	this.#hasBeenChecked = true;
+	// }
+
+	// baseURL: '=https://sts.{{$credentials.region}}.amazonaws.com',
+	// url: '?Action=GetCallerIdentity&Version=2011-06-15',
+	// method: 'POST',
 
 	async create(name: string, value: object): Promise<{ id: string }> {
 		const response = (await client({
