@@ -96,7 +96,6 @@ export class WebSocket implements INodeType {
 		const address = this.getNodeParameter('address', 0) as string;
 		const options = this.getNodeParameter('options', 0) as IDataObject;
 		const useInputData = this.getNodeParameter('useInputData', 0) as boolean;
-		const encoding = options?.encoding ? (options.encoding as string) : 'utf8';
 
 		const client = new WebSocketClient(address);
 
@@ -123,6 +122,7 @@ export class WebSocket implements INodeType {
 							});
 							returnData.push({ json: items[i].json });
 						}
+						resolve(true);
 					} else {
 						const message = self.getNodeParameter('message', 0) as string;
 						client.send(message, (error) => {
@@ -135,23 +135,23 @@ export class WebSocket implements INodeType {
 							}
 						});
 						returnData.push({ json: { message } });
-						// resolve(true);
+						resolve(true);
 					}
 				});
 
-				client.on('message', (data, isBinary) => {
-					const message = isBinary ? data : data.toString(encoding as BufferEncoding);
-					console.log('message', message);
-					if (useInputData) {
-						if (message === JSON.stringify(items[items.length - 1].json)) {
-							resolve(true);
-						}
-					} else {
-						if (message === self.getNodeParameter('message', 0)) {
-							resolve(true);
-						}
-					}
-				});
+				// client.on('message', (data, isBinary) => {
+				// 	const message = isBinary ? data : data.toString(encoding as BufferEncoding);
+				// 	console.log('message', message);
+				// 	if (useInputData) {
+				// 		if (message === JSON.stringify(items[items.length - 1].json)) {
+				// 			resolve(true);
+				// 		}
+				// 	} else {
+				// 		if (message === self.getNodeParameter('message', 0)) {
+				// 			resolve(true);
+				// 		}
+				// 	}
+				// });
 
 				client.on('error', (error) => {
 					if (self.continueOnFail()) {
@@ -164,6 +164,10 @@ export class WebSocket implements INodeType {
 		}
 
 		await manualTriggerFunction();
+
+		while (client.bufferedAmount > 0) {
+			await new Promise((resolve) => setTimeout(resolve, 100));
+		}
 
 		client.terminate();
 
