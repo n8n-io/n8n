@@ -1,16 +1,15 @@
-import {
-	ITriggerFunctions,
-} from 'n8n-core';
+import { ITriggerFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
-	NodeOperationError,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { WebSocket } from 'ws';
+import { ClientBinaryType } from './interface';
 
 export class WebSocketTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -25,8 +24,7 @@ export class WebSocketTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
-		credentials: [
-		],
+		credentials: [],
 		properties: [
 			{
 				displayName: 'Address',
@@ -90,41 +88,32 @@ export class WebSocketTrigger implements INodeType {
 		const address = this.getNodeParameter('address', 0) as string;
 		const outputField = this.getNodeParameter('outputField', 0) as string;
 		const options = this.getNodeParameter('options', 0) as IDataObject;
-		const encoding  = options?.encoding ? options.encoding as string : 'utf8';
+		const encoding = options?.encoding ? (options.encoding as string) : 'utf8';
 
 		const self = this;
 		const client = new WebSocket(address);
 
 		if (options.binaryType) {
-			client.binaryType = options.binaryType as BinaryType;
+			client.binaryType = options.binaryType as ClientBinaryType;
 		}
-
 
 		async function manualTriggerFunction() {
 			await new Promise((resolve, reject) => {
-
-				client.on('open', () =>{
+				client.on('open', () => {
 					console.log('connection open');
 				});
 
 				client.on('message', (data, isBinary) => {
 					let message = isBinary ? data : data.toString(encoding as BufferEncoding);
 					if (options.toJson) {
-						try {
-							message = JSON.parse(message as string);
-						} catch (error) {
-							console.log('Parse JSON failed, not a valid Json');
-						}
+						message = jsonParse(message as string);
 					}
-					console.log('connection message', message);
 
-					self.emit([self.helpers.returnJsonArray({[outputField]: message})]);
+					self.emit([self.helpers.returnJsonArray({ [outputField]: message })]);
 					resolve(true);
 				});
 
 				client.on('error', (error) => {
-					console.log('connection error');
-
 					reject(error);
 				});
 			});
@@ -144,5 +133,3 @@ export class WebSocketTrigger implements INodeType {
 		};
 	}
 }
-
-type BinaryType = 'nodebuffer' | 'arraybuffer' | 'fragments';

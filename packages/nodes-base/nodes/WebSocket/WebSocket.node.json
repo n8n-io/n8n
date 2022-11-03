@@ -1,12 +1,12 @@
 {
-	"node": "n8n-nodes-base.webSocketTrigger",
+	"node": "n8n-nodes-base.webSocket",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
 	"categories": ["Development"],
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.websockettrigger/"
+				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.websocket/"
 			}
 		]
 	},
