@@ -20,7 +20,7 @@ export async function theHiveApiRequest(
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('theHiveApi');
-
+	if ("X-Organisation" in headers && !headers["X-Organisation"]) delete headers["X-Organisation"]
 	let options: OptionsWithUri = {
 		method,
 		headers: headers || {},

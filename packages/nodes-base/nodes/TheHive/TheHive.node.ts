@@ -93,11 +93,11 @@ export class TheHive implements INodeType {
 				name: 'org',
 				type: 'options',
 				noDataExpression: true,
-				required: true,
+				required: false,
 				typeOptions: {
 					loadOptionsMethod: 'loadOrganisations',
 				},
-				default: '',
+				default: "",
 			},
 			// Alert
 			...alertOperations,
@@ -337,7 +337,10 @@ export class TheHive implements INodeType {
 					}
 					return 0;
 				});
-
+				returnData.unshift({
+					name: "Default Org",
+					value: ""
+				})
 
 				return returnData
 			}
