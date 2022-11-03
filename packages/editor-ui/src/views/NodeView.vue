@@ -813,7 +813,7 @@ export default mixins(
 				});
 
 				if (data.usedCredentials) {
-					this.$store.commit('credentials/setForeignCredentials', data.usedCredentials);
+					this.$store.commit('credentials/addCredentials', data.usedCredentials);
 				}
 
 				const tags = (data.tags || []) as ITag[];

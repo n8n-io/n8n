@@ -59,13 +59,10 @@ const module: Module<ICredentialsState, IRootState> = {
 				return accu;
 			}, {});
 		},
-		setForeignCredentials: (state: ICredentialsState, credentials: ICredentialsResponse[]) => {
-			Vue.set(state, 'foreignCredentials', {});
-
+		addCredentials: (state: ICredentialsState, credentials: ICredentialsResponse[]) => {
 			credentials.forEach((cred: ICredentialsResponse) => {
 				if (cred.id) {
-					Vue.set(state.foreignCredentials, cred.id, cred);
-					Vue.set(state.credentials, cred.id, cred);
+					Vue.set(state.credentials, cred.id, { ...cred, ...state.credentials[cred.id] });
 				}
 			});
 		},
@@ -95,11 +92,7 @@ const module: Module<ICredentialsState, IRootState> = {
 				.sort((a, b) => a.name.localeCompare(b.name));
 		},
 		foreignCredentialsById(state: ICredentialsState): ICredentialMap {
-			return state.foreignCredentials || {};
-		},
-		allForeignCredentials(state: ICredentialsState): ICredentialsResponse[] {
-			return Object.values(state.foreignCredentials || {})
-				.sort((a, b) => a.name.localeCompare(b.name));
+			return Object.fromEntries(Object.entries(state.credentials).filter(([_, credential]) => credential.hasOwnProperty('currentUserHasAccess')));
 		},
 		allCredentialsByType(state: ICredentialsState, getters: any): {[type: string]: ICredentialsResponse[]} { // tslint:disable-line:no-any
 			const credentials = getters.allCredentials as ICredentialsResponse[];
