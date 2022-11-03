@@ -1950,14 +1950,29 @@ export default mixins(
 						const sourceNodeName = this.workflowsStore.getNodeById(sourceInfo.nodeId)?.name;
 						const targetNodeName = this.workflowsStore.getNodeById(targetInfo.nodeId)?.name;
 
-						if (sourceNodeName && targetNodeName) {
-							info.connection.__meta = {
-								sourceNodeName,
-								sourceOutputIndex: sourceInfo.index,
-								targetNodeName,
-								targetOutputIndex: targetInfo.index,
-							};
+						if (!sourceNodeName || !targetNodeName) {
+							return;
 						}
+
+						info.connection.__meta = {
+							sourceNodeName,
+							sourceOutputIndex: sourceInfo.index,
+							targetNodeName,
+							targetOutputIndex: targetInfo.index,
+						};
+
+						const targetConnection: [IConnection, IConnection] = [
+								{
+									node: sourceNodeName,
+									type: sourceInfo.type,
+									index: sourceInfo.index,
+								},
+								{
+									node: targetNodeName,
+									type: targetInfo.type,
+									index: targetInfo.index,
+								},
+						];
 
 						CanvasHelpers.resetConnection(info.connection);
 
@@ -2026,6 +2041,7 @@ export default mixins(
 								() => {
 									activeConnection = null;
 									this.__deleteJSPlumbConnection(info.connection);
+									this.historyStore.removeConnection(targetConnection);
 								},
 								() => {
 									setTimeout(() => {
@@ -2042,18 +2058,7 @@ export default mixins(
 						CanvasHelpers.moveBackInputLabelPosition(info.targetEndpoint);
 
 						this.workflowsStore.addConnection({
-							connection: [
-								{
-									node: sourceNodeName,
-									type: sourceInfo.type,
-									index: sourceInfo.index,
-								},
-								{
-									node: targetNodeName,
-									type: targetInfo.type,
-									index: targetInfo.index,
-								},
-							],
+							connection: targetConnection,
 							setStateDirty: true,
 						});
 					} catch (e) {
@@ -2074,7 +2079,7 @@ export default mixins(
 						// @ts-ignore
 						const targetInfo = info.originalTargetEndpoint.getParameters();
 
-						const connectionInfo = [
+						const connectionInfo: [IConnection, IConnection] = [
 							{
 								node: this.workflowsStore.getNodeById(sourceInfo.nodeId)?.name || '',
 								type: sourceInfo.type,
@@ -2085,7 +2090,7 @@ export default mixins(
 								type: targetInfo.type,
 								index: targetInfo.index,
 							},
-						] as [IConnection, IConnection];
+						];
 
 						this.__removeConnection(connectionInfo, false);
 					} catch (e) {
@@ -2418,7 +2423,7 @@ export default mixins(
 							index: targetInfo.index,
 						},
 					];
-					this.__removeConnection(connectionInfo);
+					this.__removeConnection(connectionInfo, removeVisualConnection);
 				}
 			},
 			async duplicateNode(nodeName: string) {

@@ -122,5 +122,16 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 				},
 			});
 		},
+		removeConnection(connection: [IConnection, IConnection]) {
+			this.pushUndoableToUndo({
+				type: 'command',
+				data: {
+					action: COMMANDS.REMOVE_CONNECTION,
+					options: {
+						connection,
+					},
+				},
+			});
+		},
 	},
 });
