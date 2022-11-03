@@ -48,6 +48,7 @@ import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
 } from './CommunityNodes/packageModel';
+import { realpathSync } from 'fs';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -360,7 +361,7 @@ class LoadNodesAndCredentialsClass {
 
 		try {
 			if (expireCache) {
-				delete require.cache[filePath];
+				delete require.cache[realpathSync(filePath)];
 			}
 			tempNode = loadClassInIsolation(filePath, nodeName);
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
@@ -525,7 +526,10 @@ class LoadNodesAndCredentialsClass {
 	 *
 	 * @param {string} packagePath The path to read data from
 	 */
-	async loadDataFromPackage(packagePath: string): Promise<INodeTypeNameVersion[]> {
+	async loadDataFromPackage(
+		packagePath: string,
+		expireCache = false,
+	): Promise<INodeTypeNameVersion[]> {
 		// Get the absolute path of the package
 		const packageFile = await this.readPackageJson(packagePath);
 		if (!packageFile.n8n) {
@@ -541,7 +545,7 @@ class LoadNodesAndCredentialsClass {
 			for (const filePath of nodes) {
 				const tempPath = path.join(packagePath, filePath);
 				const [fileName] = path.parse(filePath).name.split('.');
-				const loadData = this.loadNodeFromFile(packageName, fileName, tempPath);
+				const loadData = this.loadNodeFromFile(packageName, fileName, tempPath, expireCache);
 				if (loadData) {
 					returnData.push(loadData);
 				}

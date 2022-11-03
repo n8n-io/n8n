@@ -438,7 +438,9 @@ export const pushConnection = mixins(
 							this.$store.commit('nodeTypes/removeNodeTypes', nodesToBeRemoved);
 						});
 				} else if (receivedData.type === 'nodeDescriptionUpdated') {
-					location.reload();
+					// location.reload();
+					// this.$store.dispatch('nodeTypes/getNodeTypes');
+					this.$store.dispatch('nodeTypes/getFullNodesProperties', receivedData.data);
 				}
 				return true;
 			},

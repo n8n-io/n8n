@@ -33,7 +33,7 @@ import { exec as callbackExec } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
 import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
 import os from 'os';
-import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
+import path, { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
@@ -139,6 +139,7 @@ import {
 	IExternalHooksClass,
 	IN8nUISettings,
 	IPackageVersions,
+	LoadNodesAndCredentials,
 	NodeTypes,
 	Push,
 	ResponseHelper,
@@ -1765,11 +1766,30 @@ class App {
 			this.app.post(
 				'/dev-node-description-updated',
 				async (req: express.Request, res: express.Response) => {
-					const nodeTypes = NodeTypes();
-					nodeTypes.updateNodeTypeDescription(req.body.type, req.body.description);
-					const pushInstance = Push.getInstance();
-					pushInstance.send('nodeDescriptionUpdated', {});
-					ResponseHelper.sendSuccessResponse(res, {}, true, 200);
+					try {
+						const nodeTypes = NodeTypes();
+						const loadNodes = LoadNodesAndCredentials();
+						const types = await loadNodes.loadDataFromPackage(
+							path.join(loadNodes.nodeModulesPath, req.body.packageName),
+							true,
+						);
+						await nodeTypes.init(loadNodes.nodeTypes);
+						// nodeTypes.updateNodeTypeDescription(req.body.type, req.body.description);
+						const pushInstance = Push.getInstance();
+						pushInstance.send('nodeDescriptionUpdated', types);
+						ResponseHelper.sendSuccessResponse(res, {}, true, 200);
+					} catch (error) {
+						const castError = error as NodeJS.ErrnoException;
+						ResponseHelper.sendErrorResponse(
+							res,
+							new ResponseError(
+								castError.message,
+								castError.errno,
+								500,
+								'Check the package name is correct',
+							),
+						);
+					}
 				},
 			);
 		}
