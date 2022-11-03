@@ -8,9 +8,9 @@ describe('Create user', () => {
 });
 
 describe('Smoke test', () => {
-	beforeEach(() => {
-		cy.signin(username, password);
-	});
+	// beforeEach(() => {
+	// 	cy.signin(username, password);
+	// });
 
 	// describe('Onboarding', () => {
 	// 	it('should fill in the customize form and submit', () => {
