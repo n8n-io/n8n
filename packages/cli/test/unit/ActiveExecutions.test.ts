@@ -1,4 +1,5 @@
-import { ActiveExecutions, IWorkflowExecutionDataProcess, Db } from '../../src';
+import * as Db from '@/Db';
+import { ActiveExecutions } from '@/ActiveExecutions';
 import { mocked } from 'jest-mock';
 import PCancelable from 'p-cancelable';
 import { v4 as uuid } from 'uuid';
@@ -8,11 +9,12 @@ import {
 	IExecuteResponsePromiseData,
 	IRun,
 } from 'n8n-workflow';
+import { IWorkflowExecutionDataProcess } from '@/Interfaces';
 
 const FAKE_EXECUTION_ID = '15';
 const FAKE_SECOND_EXECUTION_ID = '20';
 
-jest.mock('~/Db', () => {
+jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Execution: {
@@ -24,10 +26,10 @@ jest.mock('~/Db', () => {
 });
 
 describe('ActiveExecutions', () => {
-	let activeExecutions: ActiveExecutions.ActiveExecutions;
+	let activeExecutions: ActiveExecutions;
 
 	beforeEach(() => {
-		activeExecutions = new ActiveExecutions.ActiveExecutions();
+		activeExecutions = new ActiveExecutions();
 	});
 
 	afterEach(() => {

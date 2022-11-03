@@ -25,7 +25,8 @@
   },
   "scripts": {
     "dev": "npm run watch",
-    "build": "tsc",
+    "typecheck": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/workflow/**/**.ts --write",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",

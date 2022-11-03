@@ -15,12 +15,12 @@ import { LoggerProxy } from 'n8n-workflow';
 import fs from 'fs';
 import glob from 'fast-glob';
 import { EntityManager, getConnection } from 'typeorm';
-import { getLogger } from '~/Logger';
-import * as Db from '~/Db';
-import { User } from '~/databases/entities/User';
-import { SharedCredentials } from '~/databases/entities/SharedCredentials';
-import { Role } from '~/databases/entities/Role';
-import { CredentialsEntity } from '~/databases/entities/CredentialsEntity';
+import { getLogger } from '@/Logger';
+import * as Db from '@/Db';
+import { User } from '@db/entities/User';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { Role } from '@db/entities/Role';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
 const FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';

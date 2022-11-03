@@ -1,20 +1,18 @@
 import { LoggerProxy } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, ObjectLiteral } from 'typeorm';
-import {
-	ActiveWorkflowRunner,
-	Db,
-	InternalHooksManager,
-	ResponseHelper,
-	whereClause,
-	WorkflowHelpers,
-} from '..';
-import config from '~/config';
-import { SharedWorkflow } from '~/databases/entities/SharedWorkflow';
-import { User } from '~/databases/entities/User';
-import { WorkflowEntity } from '~/databases/entities/WorkflowEntity';
-import { validateEntity } from '~/GenericHelpers';
-import { externalHooks } from '../Server';
-import * as TagHelpers from '~/TagHelpers';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import * as Db from '@/Db';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { whereClause } from '@/CredentialsHelper';
+import config from '@/config';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { User } from '@db/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { validateEntity } from '@/GenericHelpers';
+import { externalHooks } from '@/Server';
+import * as TagHelpers from '@/TagHelpers';
 
 export class WorkflowsService {
 	static async getSharing(

@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '~/config';
-import { logMigrationEnd, logMigrationStart } from '~/databases/utils/migrationHelpers';
+import config from '@/config';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class MakeStoppedAtNullable1607431743769 implements MigrationInterface {
 	name = 'MakeStoppedAtNullable1607431743769';

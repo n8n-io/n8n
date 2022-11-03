@@ -4,9 +4,9 @@ import { Command, flags } from '@oclif/command';
 import { Connection, ConnectionOptions, createConnection } from 'typeorm';
 import { LoggerProxy } from 'n8n-workflow';
 
-import { getLogger } from '~/Logger';
+import { getLogger } from '@/Logger';
 
-import * as Db from '~/Db';
+import * as Db from '@/Db';
 
 export class DbRevertMigrationCommand extends Command {
 	static description = 'Revert last database migration';

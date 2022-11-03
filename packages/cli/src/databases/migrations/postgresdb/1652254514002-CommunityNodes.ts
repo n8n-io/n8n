@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '~/config';
-import { logMigrationEnd, logMigrationStart } from '~/databases/utils/migrationHelpers';
+import config from '@/config';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class CommunityNodes1652254514002 implements MigrationInterface {
 	name = 'CommunityNodes1652254514002';

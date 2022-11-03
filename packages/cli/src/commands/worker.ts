@@ -19,29 +19,26 @@ import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } 
 
 import { FindOneOptions, getConnectionManager } from 'typeorm';
 
-import {
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	InternalHooksManager,
-	LoadNodesAndCredentials,
-	NodeTypes,
-	ResponseHelper,
-	WebhookHelpers,
-	WorkflowExecuteAdditionalData,
-} from '..';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import { NodeTypes } from '@/NodeTypes';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { getLogger } from '@/Logger';
 
-import { getLogger } from '~/Logger';
-
-import config from '~/config';
-import * as Queue from '~/Queue';
+import config from '@/config';
+import * as Queue from '@/Queue';
 import {
 	checkPermissionsForExecution,
 	getWorkflowOwner,
-} from '~/UserManagement/UserManagementHelper';
-import { generateFailedExecutionFromError } from '~/WorkflowHelpers';
+} from '@/UserManagement/UserManagementHelper';
+import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';

@@ -1,8 +1,8 @@
 import { Command } from '@oclif/core';
 import { LoggerProxy } from 'n8n-workflow';
-import { getLogger, Logger } from '~/Logger';
-import { User } from '~/databases/entities/User';
-import * as Db from '~/Db';
+import { getLogger, Logger } from '@/Logger';
+import { User } from '@db/entities/User';
+import * as Db from '@/Db';
 
 export abstract class BaseCommand extends Command {
 	logger: Logger;

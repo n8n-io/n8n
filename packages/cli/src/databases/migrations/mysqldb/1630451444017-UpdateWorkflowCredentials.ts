@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '~/config';
-import { runInBatches } from '~/databases/utils/migrationHelpers';
+import config from '@/config';
+import { runInBatches } from '@db/utils/migrationHelpers';
 
 // replacing the credentials in workflows and execution
 // `nodeType: name` changes to `nodeType: { id, name }`

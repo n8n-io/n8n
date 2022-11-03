@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '~/config';
-import { runInBatches } from '~/databases/utils/migrationHelpers';
+import config from '@/config';
+import { runInBatches } from '@db/utils/migrationHelpers';
 import { v4 as uuid } from 'uuid';
 
 // add node ids in workflow objects

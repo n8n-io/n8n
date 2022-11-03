@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../../../src/databases/entities/User';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '@db/entities/User';
 import type { CredentialPayload } from './types';
 
 /**

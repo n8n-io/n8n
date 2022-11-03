@@ -7,7 +7,6 @@ module.exports = {
 		'jest.config.js',
 		// TODO: Remove these
 		'src/databases/migrations/**',
-		'src/databases/ormconfig.ts',
 	],
 	rules: {
 		// TODO: Remove this

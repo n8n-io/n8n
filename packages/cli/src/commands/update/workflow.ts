@@ -5,9 +5,9 @@ import { Command, flags } from '@oclif/command';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
-import * as Db from '~/Db';
+import * as Db from '@/Db';
 
-import { getLogger } from '~/Logger';
+import { getLogger } from '@/Logger';
 
 export class UpdateWorkflowCommand extends Command {
 	static description = 'Update workflows';

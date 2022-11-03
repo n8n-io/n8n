@@ -7,8 +7,8 @@ import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
 import fs from 'fs';
 import path from 'path';
-import { getLogger } from '~/Logger';
-import * as Db from '~/Db';
+import { getLogger } from '@/Logger';
+import * as Db from '@/Db';
 
 export class ExportWorkflowsCommand extends Command {
 	static description = 'Export workflows';

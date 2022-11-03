@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '~/config';
+import config from '@/config';
 
 export class LowerCaseUserEmail1648740597343 implements MigrationInterface {
 	name = 'LowerCaseUserEmail1648740597343';

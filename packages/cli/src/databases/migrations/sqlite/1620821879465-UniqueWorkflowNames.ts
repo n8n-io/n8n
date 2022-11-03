@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '~/config';
-import { logMigrationEnd, logMigrationStart } from '~/databases/utils/migrationHelpers';
+import config from '@/config';
+import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class UniqueWorkflowNames1620821879465 implements MigrationInterface {
 	name = 'UniqueWorkflowNames1620821879465';

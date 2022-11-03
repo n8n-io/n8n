@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '~/config';
+import config from '@/config';
 
 export class AddwaitTill1626176912946 implements MigrationInterface {
 	name = 'AddwaitTill1626176912946';

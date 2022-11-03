@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-import config from '~/config';
+import config from '@/config';
 
 export class IncreaseTypeVarcharLimit1646834195327 implements MigrationInterface {
 	name = 'IncreaseTypeVarcharLimit1646834195327';

@@ -1,12 +1,17 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"rootDir": "src",
-		"outDir": "dist",
+		"rootDir": ".",
 		"types": ["node", "jest"],
+		"composite": true,
+		"noEmit": true,
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["src/*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["src/**/*.ts"],
-	"exclude": ["test/**"]
+	"include": ["src/**/*.ts", "test/**/*.ts"]
 }

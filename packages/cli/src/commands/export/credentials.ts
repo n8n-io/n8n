@@ -10,9 +10,9 @@ import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
 import fs from 'fs';
 import path from 'path';
-import { getLogger } from '~/Logger';
-import * as Db from '~/Db';
-import type { ICredentialsDecryptedDb } from '~/Interfaces';
+import { getLogger } from '@/Logger';
+import * as Db from '@/Db';
+import type { ICredentialsDecryptedDb } from '@/Interfaces';
 
 export class ExportCredentialsCommand extends Command {
 	static description = 'Export credentials';

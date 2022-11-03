@@ -12,15 +12,6 @@ const SPEC_THEME_FILENAME = 'swaggerTheme.css';
 const userManagementEnabled = process.env.N8N_USER_MANAGEMENT_DISABLED !== 'true';
 const publicApiEnabled = process.env.N8N_PUBLIC_API_DISABLED !== 'true';
 
-shell.rm('-rf', path.resolve(ROOT_DIR, 'dist'));
-
-const tscCompilation = shell.exec('tsc', { silent: true });
-if (tscCompilation.code !== 0) {
-	shell.echo('Typescript Compilation failed:');
-	shell.echo(tscCompilation.stdout);
-	shell.exit(1);
-}
-
 if (userManagementEnabled) {
 	copyUserManagementEmailTemplates();
 }
@@ -54,11 +45,11 @@ function bundleOpenApiSpecs(rootDir = ROOT_DIR, specFileName = SPEC_FILENAME) {
 	shell
 		.find(publicApiDir)
 		.reduce((acc, cur) => {
-			return cur.endsWith(specFileName) ? [...acc, path.relative('.', cur)] : acc;
+			return cur.endsWith(specFileName) ? [...acc, path.relative('./src', cur)] : acc;
 		}, [])
 		.forEach((specPath) => {
 			const distSpecPath = path.resolve(rootDir, 'dist', specPath);
-			const command = `swagger-cli bundle ${specPath} --type yaml --outfile ${distSpecPath}`;
+			const command = `npm run swagger -- bundle src/${specPath} --type yaml --outfile ${distSpecPath}`;
 			shell.exec(command, { silent: true });
 		});
 }
