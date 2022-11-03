@@ -2,7 +2,7 @@ import {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRequestOptionsFromParameters,
+	DeclarativeRestApiSettings,
 	IRunExecutionData,
 	RoutingNode,
 	Workflow,
@@ -16,6 +16,7 @@ import {
 	IN8nRequestOperations,
 	INodeCredentialDescription,
 	IExecuteData,
+	INodeTypeDescription,
 } from '../src';
 
 import * as Helpers from './Helpers';
@@ -46,7 +47,7 @@ describe('RoutingNode', () => {
 				nodeParameters: INodeParameters;
 				nodeTypeProperties: INodeProperties;
 			};
-			output: IRequestOptionsFromParameters | undefined;
+			output: DeclarativeRestApiSettings.ResultOptions | undefined;
 		}> = [
 			{
 				description: 'single parameter, only send defined, fixed value',
@@ -72,6 +73,7 @@ describe('RoutingNode', () => {
 						body: {
 							toEmail: 'fixedValue',
 						},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -104,6 +106,7 @@ describe('RoutingNode', () => {
 						body: {
 							toEmail: 'TEST@TEST.COM',
 						},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -146,6 +149,7 @@ describe('RoutingNode', () => {
 						body: {
 							toEmail: 'fixedValue',
 						},
+						headers: {},
 					},
 					preSend: [],
 					postReceive: [],
@@ -164,7 +168,7 @@ describe('RoutingNode', () => {
 				},
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					nodeParameters: {
 						multipleFields: {
@@ -527,6 +531,7 @@ describe('RoutingNode', () => {
 								},
 							],
 						},
+						headers: {},
 					},
 					preSend: [preSendFunction1, preSendFunction1],
 					postReceive: [
@@ -609,6 +614,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -627,10 +633,8 @@ describe('RoutingNode', () => {
 		};
 
 		for (const testData of tests) {
-			test(testData.description, () => {
+			test(testData.description, async () => {
 				node.parameters = testData.input.nodeParameters;
-
-				// @ts-ignore
 				nodeType.description.properties = [testData.input.nodeTypeProperties];
 
 				const workflow = new Workflow({
@@ -666,7 +670,7 @@ describe('RoutingNode', () => {
 					mode,
 				);
 
-				const result = routingNode.getRequestOptionsFromParameters(
+				const result = await routingNode.getRequestOptionsFromParameters(
 					executeSingleFunctions,
 					testData.input.nodeTypeProperties,
 					itemIndex,
@@ -732,6 +736,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/test-url',
+									headers: {},
 									qs: {},
 									body: {
 										toEmail: 'fixedValue',
@@ -780,6 +785,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/test-url',
+									headers: {},
 									qs: {},
 									body: {
 										toEmail: 'fixedValue',
@@ -834,6 +840,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/overwritten',
+									headers: {},
 									qs: {},
 									body: {
 										toEmail: 'TEST@TEST.COM',
@@ -888,6 +895,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									url: '/custom-overwritten',
+									headers: {},
 									qs: {},
 									body: {
 										theProperty: 'custom-overwritten',
@@ -944,6 +952,7 @@ describe('RoutingNode', () => {
 								statusCode: 200,
 								requestOptions: {
 									qs: {},
+									headers: {},
 									body: {
 										toEmail: 'fixedValue',
 										limit: 10,
@@ -957,7 +966,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					node: {
 						parameters: {
@@ -1462,6 +1471,7 @@ describe('RoutingNode', () => {
 										headers: {},
 										statusCode: 200,
 										requestOptions: {
+											headers: {},
 											qs: {},
 											body: {
 												jsonData: {
@@ -1562,7 +1572,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'single parameter, mutliple postReceive: rootProperty, setKeyValue, sort',
+				description: 'single parameter, multiple postReceive: rootProperty, setKeyValue, sort',
 				input: {
 					nodeType: {
 						requestDefaults: {
@@ -1649,6 +1659,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1679,8 +1690,7 @@ describe('RoutingNode', () => {
 					connections: {},
 				};
 
-				// @ts-ignore
-				nodeType.description = { ...testData.input.nodeType };
+				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
 
 				const workflow = new Workflow({
 					nodes: workflowData.nodes,
@@ -1704,8 +1714,7 @@ describe('RoutingNode', () => {
 					source: null,
 				} as IExecuteData;
 
-				// @ts-ignore
-				const nodeExecuteFunctions: INodeExecuteFunctions = {
+				const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
 					getExecuteFunctions: () => {
 						return Helpers.getExecuteFunctions(
 							workflow,
@@ -1741,10 +1750,198 @@ describe('RoutingNode', () => {
 					runIndex,
 					nodeType,
 					executeData,
-					nodeExecuteFunctions,
+					nodeExecuteFunctions as INodeExecuteFunctions,
 				);
 
 				expect(result).toEqual(testData.output);
+			});
+		}
+	});
+
+	describe('itemIndex', () => {
+		const tests: Array<{
+			description: string;
+			input: {
+				nodeType: Partial<INodeTypeDescription>;
+				node: {
+					parameters: INodeParameters;
+				};
+			};
+			output: INodeExecutionData[][] | undefined;
+		}> = [
+			{
+				description: 'single parameter, only send defined, fixed value, using requestDefaults',
+				input: {
+					nodeType: {
+						requestDefaults: {
+							baseURL: 'http://127.0.0.1:5678',
+							url: '/test-url',
+						},
+						properties: [
+							{
+								displayName: 'Email',
+								name: 'email',
+								type: 'string',
+								routing: {
+									send: {
+										property: 'toEmail',
+										type: 'body',
+										value: 'fixedValue',
+									},
+								},
+								default: '',
+							},
+						],
+					},
+					node: {
+						parameters: {},
+					},
+				},
+				output: [
+					[
+						{
+							json: {
+								headers: {},
+								statusCode: 200,
+								requestOptions: {
+									url: '/test-url',
+									qs: {},
+									body: {
+										toEmail: 'fixedValue',
+									},
+									baseURL: 'http://127.0.0.1:5678',
+									returnFullResponse: true,
+								},
+							},
+						},
+					],
+				],
+			},
+		];
+
+		const nodeTypes = Helpers.NodeTypes();
+		const baseNode: INode = {
+			parameters: {},
+			name: 'test',
+			type: 'test.set',
+			typeVersion: 1,
+			id: 'uuid-1234',
+			position: [0, 0],
+		};
+
+		const mode = 'internal';
+		const runIndex = 0;
+		const itemIndex = 0;
+		const connectionInputData: INodeExecutionData[] = [];
+		const runExecutionData: IRunExecutionData = { resultData: { runData: {} } };
+		const additionalData = Helpers.WorkflowExecuteAdditionalData();
+		const nodeType = nodeTypes.getByNameAndVersion(baseNode.type);
+
+		const inputData: ITaskDataConnections = {
+			main: [
+				[
+					{
+						json: {},
+					},
+					{
+						json: {},
+					},
+					{
+						json: {},
+					},
+				],
+			],
+		};
+
+		for (const testData of tests) {
+			test(testData.description, async () => {
+				const node: INode = { ...baseNode, ...testData.input.node };
+
+				const workflowData = {
+					nodes: [node],
+					connections: {},
+				};
+
+				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
+
+				const workflow = new Workflow({
+					nodes: workflowData.nodes,
+					connections: workflowData.connections,
+					active: false,
+					nodeTypes,
+				});
+
+				const routingNode = new RoutingNode(
+					workflow,
+					node,
+					connectionInputData,
+					runExecutionData ?? null,
+					additionalData,
+					mode,
+				);
+
+				const executeData = {
+					data: {},
+					node,
+					source: null,
+				} as IExecuteData;
+
+				let currentItemIndex = 0;
+				for (let iteration = 0; iteration < inputData.main[0]!.length; iteration++) {
+					const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
+						getExecuteFunctions: () => {
+							return Helpers.getExecuteFunctions(
+								workflow,
+								runExecutionData,
+								runIndex,
+								connectionInputData,
+								{},
+								node,
+								itemIndex + iteration,
+								additionalData,
+								executeData,
+								mode,
+							);
+						},
+						getExecuteSingleFunctions: () => {
+							return Helpers.getExecuteSingleFunctions(
+								workflow,
+								runExecutionData,
+								runIndex,
+								connectionInputData,
+								{},
+								node,
+								itemIndex + iteration,
+								additionalData,
+								executeData,
+								mode,
+							);
+						},
+					};
+
+					if (!nodeExecuteFunctions.getExecuteSingleFunctions) {
+						fail('Expected nodeExecuteFunctions to contain getExecuteSingleFunctions');
+					}
+
+					const routingNodeExecutionContext = nodeExecuteFunctions.getExecuteSingleFunctions(
+						routingNode.workflow,
+						routingNode.runExecutionData,
+						runIndex,
+						routingNode.connectionInputData,
+						inputData,
+						routingNode.node,
+						iteration,
+						routingNode.additionalData,
+						executeData,
+						routingNode.mode,
+					);
+
+					currentItemIndex = routingNodeExecutionContext.getItemIndex();
+				}
+
+				const expectedItemIndex = inputData.main[0]!.length - 1;
+
+				expect(currentItemIndex).toEqual(expectedItemIndex);
 			});
 		}
 	});

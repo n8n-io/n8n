@@ -8,9 +8,7 @@ export const orderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
+				resource: ['order'],
 			},
 		},
 		options: [
@@ -18,26 +16,31 @@ export const orderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a order',
+				action: 'Create an order',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a order',
+				action: 'Delete an order',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a order',
+				action: 'Get an order',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all orders',
+				description: 'Get many orders',
+				action: 'Get many orders',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a order',
+				action: 'Update an order',
 			},
 		],
 		default: 'create',
@@ -45,10 +48,9 @@ export const orderOperations: INodeProperties[] = [
 ];
 
 export const orderFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                order:create                                */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                order:create                                */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
@@ -57,12 +59,8 @@ export const orderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['order'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -114,7 +112,8 @@ export const orderFields: INodeProperties[] = [
 				name: 'setPaid',
 				type: 'boolean',
 				default: false,
-				description: 'Define if the order is paid. It will set the status to processing and reduce stock items.',
+				description:
+					'Whether the order is paid. It will set the status to processing and reduce stock items.',
 			},
 			{
 				displayName: 'Status',
@@ -177,12 +176,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['order'],
+				operation: ['create'],
 			},
 		},
 		description: 'Billing address',
@@ -244,6 +239,7 @@ export const orderFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -267,12 +263,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['order'],
+				operation: ['create'],
 			},
 		},
 		description: 'Coupons line data',
@@ -336,12 +328,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['order'],
+				operation: ['create'],
 			},
 		},
 		description: 'Fee line data',
@@ -436,12 +424,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['order'],
+				operation: ['create'],
 			},
 		},
 		description: 'Line item data',
@@ -546,12 +530,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['order'],
+				operation: ['create'],
 			},
 		},
 		description: 'Meta data',
@@ -589,12 +569,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['order'],
+				operation: ['create'],
 			},
 		},
 		description: 'Shipping address',
@@ -667,12 +643,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['order'],
+				operation: ['create'],
 			},
 		},
 		description: 'Shipping line data',
@@ -739,21 +711,17 @@ export const orderFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 order:update                             */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 order:update                             */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Order ID',
 		name: 'orderId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -766,12 +734,8 @@ export const orderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -879,12 +843,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		description: 'Billing address',
@@ -946,6 +906,7 @@ export const orderFields: INodeProperties[] = [
 						displayName: 'Email',
 						name: 'email',
 						type: 'string',
+						placeholder: 'name@email.com',
 						default: '',
 					},
 					{
@@ -969,12 +930,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		description: 'Coupons line data',
@@ -1038,12 +995,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		description: 'Fee line data',
@@ -1138,12 +1091,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		description: 'Line item data',
@@ -1248,12 +1197,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		description: 'Meta data',
@@ -1291,12 +1236,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		description: 'Shipping address',
@@ -1369,12 +1310,8 @@ export const orderFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['order'],
+				operation: ['update'],
 			},
 		},
 		description: 'Shipping line data',
@@ -1441,40 +1378,32 @@ export const orderFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   order:get                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   order:get                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Order ID',
 		name: 'orderId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['order'],
+				operation: ['get'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   order:getAll                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   order:getAll                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['order'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -1486,15 +1415,9 @@ export const orderFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['order'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -1512,12 +1435,8 @@ export const orderFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['order'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -1660,21 +1579,17 @@ export const orderFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                   order:delete                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                   order:delete                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Order ID',
 		name: 'orderId',
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'order',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['order'],
+				operation: ['delete'],
 			},
 		},
 		default: '',

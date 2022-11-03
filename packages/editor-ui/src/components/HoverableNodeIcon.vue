@@ -7,7 +7,7 @@
 		@mouseleave="showTooltip = false"
 	>
 		<div :class="$style.tooltip">
-			<n8n-tooltip placement="top" :manual="true" :value="showTooltip">
+			<n8n-tooltip placement="top" manual :value="showTooltip">
 				<div slot="content" v-text="nodeType.displayName"></div>
 				<span />
 			</n8n-tooltip>
@@ -92,7 +92,7 @@ export default Vue.extend({
 				'line-height': this.size + 'px',
 				'border-radius': this.circle ? '50%' : '2px',
 				...(this.disabled && {
-					color: '#ccc',
+					color: 'var(--color-text-light)',
 					'-webkit-filter': 'contrast(40%) brightness(1.5) grayscale(100%)',
 					filter: 'contrast(40%) brightness(1.5) grayscale(100%)',
 				}),
@@ -118,8 +118,7 @@ export default Vue.extend({
 			const restUrl = this.$store.getters.getRestUrl;
 
 			if (nodeType.icon) {
-				let type, path;
-				[type, path] = nodeType.icon.split(':');
+				const [type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,
 					path,

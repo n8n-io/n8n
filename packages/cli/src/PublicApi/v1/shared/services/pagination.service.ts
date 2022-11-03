@@ -1,3 +1,4 @@
+import { jsonParse } from 'n8n-workflow';
 import {
 	CursorPagination,
 	OffsetPagination,
@@ -6,13 +7,10 @@ import {
 } from '../../../types';
 
 export const decodeCursor = (cursor: string): PaginationOffsetDecoded | PaginationCursorDecoded => {
-	return JSON.parse(Buffer.from(cursor, 'base64').toString()) as
-		| PaginationCursorDecoded
-		| PaginationOffsetDecoded;
+	return jsonParse(Buffer.from(cursor, 'base64').toString());
 };
 
 const encodeOffSetPagination = (pagination: OffsetPagination): string | null => {
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	if (pagination.numberOfTotalRecords > pagination.offset + pagination.limit) {
 		return Buffer.from(
 			JSON.stringify({

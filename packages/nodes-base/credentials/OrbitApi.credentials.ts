@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class OrbitApi implements ICredentialType {
 	name = 'orbitApi';
@@ -12,6 +9,7 @@ export class OrbitApi implements ICredentialType {
 			displayName: 'API Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

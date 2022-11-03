@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryKeyData,
@@ -11,31 +9,21 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	boxApiRequest,
-	boxApiRequestAllItems,
-} from './GenericFunctions';
+import { boxApiRequest, boxApiRequestAllItems } from './GenericFunctions';
 
-import {
-	fileFields,
-	fileOperations,
-} from './FileDescription';
+import { fileFields, fileOperations } from './FileDescription';
 
-import {
-	folderFields,
-	folderOperations,
-} from './FolderDescription';
+import { folderFields, folderOperations } from './FolderDescription';
 
 import moment from 'moment-timezone';
 
-import {
-	noCase,
-} from 'change-case';
+import { noCase } from 'change-case';
 
 export class Box implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Box',
 		name: 'box',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:box.png',
 		group: ['input'],
 		version: 1,
@@ -79,7 +67,7 @@ export class Box implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
 		let responseData;
@@ -109,28 +97,42 @@ export class Box implements INodeType {
 						if (additionalFields.version) {
 							body.version = additionalFields.version as string;
 						}
-						responseData = await boxApiRequest.call(this, 'POST', `/files/${fileId}/copy`, body, qs);
-
-						returnData.push(responseData as IDataObject);
+						responseData = await boxApiRequest.call(
+							this,
+							'POST',
+							`/files/${fileId}/copy`,
+							body,
+							qs,
+						);
 					}
 					// https://developer.box.com/reference/delete-files-id
 					if (operation === 'delete') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						responseData = await boxApiRequest.call(this, 'DELETE', `/files/${fileId}`);
 						responseData = { success: true };
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/get-files-id-content
 					if (operation === 'download') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const dataPropertyNameDownload = this.getNodeParameter('binaryPropertyName', i) as string;
+						const dataPropertyNameDownload = this.getNodeParameter(
+							'binaryPropertyName',
+							i,
+						) as string;
 						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`);
 
 						const fileName = responseData.name;
 
 						let mimeType: string | undefined;
 
-						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}/content`, {}, {}, undefined, { encoding: null, resolveWithFullResponse: true });
+						responseData = await boxApiRequest.call(
+							this,
+							'GET',
+							`/files/${fileId}/content`,
+							{},
+							{},
+							undefined,
+							{ encoding: null, resolveWithFullResponse: true },
+						);
 
 						const newItem: INodeExecutionData = {
 							json: items[i].json,
@@ -145,14 +147,18 @@ export class Box implements INodeType {
 							// Create a shallow copy of the binary data so that the old
 							// data references which do not get changed still stay behind
 							// but the incoming data does not get changed.
-							Object.assign(newItem.binary, items[i].binary);
+							Object.assign(newItem.binary!, items[i].binary);
 						}
 
 						items[i] = newItem;
 
 						const data = Buffer.from(responseData.body);
 
-						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(data as unknown as Buffer, fileName, mimeType);
+						items[i].binary![dataPropertyNameDownload] = await this.helpers.prepareBinaryData(
+							data as unknown as Buffer,
+							fileName,
+							mimeType,
+						);
 					}
 					// https://developer.box.com/reference/get-files-id
 					if (operation === 'get') {
@@ -162,7 +168,6 @@ export class Box implements INodeType {
 							qs.fields = additionalFields.fields as string;
 						}
 						responseData = await boxApiRequest.call(this, 'GET', `/files/${fileId}`, {}, qs);
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
@@ -179,29 +184,41 @@ export class Box implements INodeType {
 						}
 
 						if (additionalFields.createdRangeUi) {
-							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject).createdRangeValuesUi as IDataObject;
+							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
+								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								qs.created_at_range = `${moment.tz(createdRangeValues.from, timezone).format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
+								qs.created_at_range = `${moment
+									.tz(createdRangeValues.from, timezone)
+									.format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
 							}
 							delete qs.createdRangeUi;
 						}
 
 						if (additionalFields.updatedRangeUi) {
-							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject).updatedRangeValuesUi as IDataObject;
+							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
+								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment.tz(updateRangeValues.from, timezone).format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
+								qs.updated_at_range = `${moment
+									.tz(updateRangeValues.from, timezone)
+									.format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
 							}
 							delete qs.updatedRangeUi;
 						}
 
 						if (returnAll) {
-							responseData = await boxApiRequestAllItems.call(this, 'entries', 'GET', `/search`, {}, qs);
+							responseData = await boxApiRequestAllItems.call(
+								this,
+								'entries',
+								'GET',
+								`/search`,
+								{},
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
 					}
 					// https://developer.box.com/reference/post-collaborations/
 					if (operation === 'share') {
@@ -210,13 +227,13 @@ export class Box implements INodeType {
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						// tslint:disable-next-line: no-any
-						const body: { accessible_by: IDataObject, [key: string]: any } = {
+						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
 							item: {
 								id: fileId,
 								type: 'file',
 							},
-							role: (role === 'coOwner') ? 'co-owner' : noCase(role),
+							role: role === 'coOwner' ? 'co-owner' : noCase(role),
 							...options,
 						};
 
@@ -246,7 +263,6 @@ export class Box implements INodeType {
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/post-files-content
 					if (operation === 'upload') {
@@ -267,15 +283,24 @@ export class Box implements INodeType {
 							const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
 
 							if (items[i].binary === undefined) {
-								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
+								throw new NodeOperationError(this.getNode(), 'No binary data exists on item!', {
+									itemIndex: i,
+								});
 							}
 							//@ts-ignore
 							if (items[i].binary[binaryPropertyName] === undefined) {
-								throw new NodeOperationError(this.getNode(), `No binary data property "${binaryPropertyName}" does not exists on item!`);
+								throw new NodeOperationError(
+									this.getNode(),
+									`No binary data property "${binaryPropertyName}" does not exists on item!`,
+									{ itemIndex: i },
+								);
 							}
 
 							const binaryData = (items[i].binary as IBinaryKeyData)[binaryPropertyName];
-							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+							const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(
+								i,
+								binaryPropertyName,
+							);
 
 							const body: IDataObject = {};
 
@@ -291,15 +316,23 @@ export class Box implements INodeType {
 								},
 							};
 
-							responseData = await boxApiRequest.call(this, 'POST', '', {}, {}, 'https://upload.box.com/api/2.0/files/content', { formData: body });
-
-							returnData.push.apply(returnData, responseData.entries as IDataObject[]);
-
+							responseData = await boxApiRequest.call(
+								this,
+								'POST',
+								'',
+								{},
+								{},
+								'https://upload.box.com/api/2.0/files/content',
+								{ formData: body },
+							);
+							responseData = responseData.entries;
 						} else {
 							const content = this.getNodeParameter('fileContent', i) as string;
 
 							if (fileName === '') {
-								throw new NodeOperationError(this.getNode(), 'File name must be set!');
+								throw new NodeOperationError(this.getNode(), 'File name must be set!', {
+									itemIndex: i,
+								});
 							}
 
 							attributes['name'] = fileName;
@@ -315,9 +348,16 @@ export class Box implements INodeType {
 									contentType: 'text/plain',
 								},
 							};
-							responseData = await boxApiRequest.call(this, 'POST', '', {}, {}, 'https://upload.box.com/api/2.0/files/content', { formData: body });
-
-							returnData.push.apply(returnData, responseData.entries as IDataObject[]);
+							responseData = await boxApiRequest.call(
+								this,
+								'POST',
+								'',
+								{},
+								{},
+								'https://upload.box.com/api/2.0/files/content',
+								{ formData: body },
+							);
+							responseData = responseData.entries;
 						}
 					}
 				}
@@ -348,8 +388,6 @@ export class Box implements INodeType {
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', '/folders', body, qs);
-
-						returnData.push(responseData);
 					}
 					// https://developer.box.com/reference/delete-folders-id
 					if (operation === 'delete') {
@@ -359,13 +397,11 @@ export class Box implements INodeType {
 
 						responseData = await boxApiRequest.call(this, 'DELETE', `/folders/${folderId}`, qs);
 						responseData = { success: true };
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/get-folders-id/
 					if (operation === 'get') {
 						const folderId = this.getNodeParameter('folderId', i) as string;
 						responseData = await boxApiRequest.call(this, 'GET', `/folders/${folderId}`, qs);
-						returnData.push(responseData as IDataObject);
 					}
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
@@ -382,29 +418,41 @@ export class Box implements INodeType {
 						}
 
 						if (additionalFields.createdRangeUi) {
-							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject).createdRangeValuesUi as IDataObject;
+							const createdRangeValues = (additionalFields.createdRangeUi as IDataObject)
+								.createdRangeValuesUi as IDataObject;
 							if (createdRangeValues) {
-								qs.created_at_range = `${moment.tz(createdRangeValues.from, timezone).format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
+								qs.created_at_range = `${moment
+									.tz(createdRangeValues.from, timezone)
+									.format()},${moment.tz(createdRangeValues.to, timezone).format()}`;
 							}
 							delete qs.createdRangeUi;
 						}
 
 						if (additionalFields.updatedRangeUi) {
-							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject).updatedRangeValuesUi as IDataObject;
+							const updateRangeValues = (additionalFields.updatedRangeUi as IDataObject)
+								.updatedRangeValuesUi as IDataObject;
 							if (updateRangeValues) {
-								qs.updated_at_range = `${moment.tz(updateRangeValues.from, timezone).format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
+								qs.updated_at_range = `${moment
+									.tz(updateRangeValues.from, timezone)
+									.format()},${moment.tz(updateRangeValues.to, timezone).format()}`;
 							}
 							delete qs.updatedRangeUi;
 						}
 
 						if (returnAll) {
-							responseData = await boxApiRequestAllItems.call(this, 'entries', 'GET', `/search`, {}, qs);
+							responseData = await boxApiRequestAllItems.call(
+								this,
+								'entries',
+								'GET',
+								`/search`,
+								{},
+								qs,
+							);
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}
-						returnData.push.apply(returnData, responseData as IDataObject[]);
 					}
 					// https://developer.box.com/reference/post-collaborations/
 					if (operation === 'share') {
@@ -413,13 +461,13 @@ export class Box implements INodeType {
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						// tslint:disable-next-line: no-any
-						const body: { accessible_by: IDataObject, [key: string]: any } = {
+						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
 							item: {
 								id: folderId,
 								type: 'folder',
 							},
-							role: (role === 'coOwner') ? 'co-owner' : noCase(role),
+							role: role === 'coOwner' ? 'co-owner' : noCase(role),
 							...options,
 						};
 
@@ -449,7 +497,6 @@ export class Box implements INodeType {
 						}
 
 						responseData = await boxApiRequest.call(this, 'POST', `/collaborations`, body, qs);
-						returnData.push(responseData as IDataObject);
 					}
 					//https://developer.box.com/guides/folders/single/move/
 					if (operation === 'update') {
@@ -477,22 +524,31 @@ export class Box implements INodeType {
 						}
 
 						responseData = await boxApiRequest.call(this, 'PUT', `/folders/${folderId}`, body, qs);
-						returnData.push(responseData as IDataObject);
 					}
 				}
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{ itemData: { item: i } },
+				);
+				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;
 			}
 		}
+
 		if (resource === 'file' && operation === 'download') {
 			// For file downloads the files get attached to the existing items
 			return this.prepareOutputData(items);
 		} else {
-			return [this.helpers.returnJsonArray(returnData)];
+			return this.prepareOutputData(returnData);
 		}
 	}
 }

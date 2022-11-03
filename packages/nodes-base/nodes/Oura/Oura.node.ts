@@ -1,26 +1,12 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	ouraApiRequest,
-} from './GenericFunctions';
+import { ouraApiRequest } from './GenericFunctions';
 
-import {
-	profileOperations,
-} from './ProfileDescription';
+import { profileOperations } from './ProfileDescription';
 
-import {
-	summaryFields,
-	summaryOperations,
-} from './SummaryDescription';
+import { summaryFields, summaryOperations } from './SummaryDescription';
 
 import moment from 'moment';
 
@@ -79,9 +65,7 @@ export class Oura implements INodeType {
 		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < length; i++) {
-
 			if (resource === 'profile') {
-
 				// *********************************************************************
 				//                             profile
 				// *********************************************************************
@@ -89,17 +73,13 @@ export class Oura implements INodeType {
 				// https://cloud.ouraring.com/docs/personal-info
 
 				if (operation === 'get') {
-
 					// ----------------------------------
 					//         profile: get
 					// ----------------------------------
 
 					responseData = await ouraApiRequest.call(this, 'GET', '/userinfo');
-
 				}
-
 			} else if (resource === 'summary') {
-
 				// *********************************************************************
 				//                             summary
 				// *********************************************************************
@@ -108,7 +88,10 @@ export class Oura implements INodeType {
 
 				const qs: IDataObject = {};
 
-				const { start, end } = this.getNodeParameter('filters', i) as { start: string; end: string; };
+				const { start, end } = this.getNodeParameter('filters', i) as {
+					start: string;
+					end: string;
+				};
 
 				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
 
@@ -121,7 +104,6 @@ export class Oura implements INodeType {
 				}
 
 				if (operation === 'getActivity') {
-
 					// ----------------------------------
 					//       profile: getActivity
 					// ----------------------------------
@@ -133,9 +115,7 @@ export class Oura implements INodeType {
 						const limit = this.getNodeParameter('limit', 0) as number;
 						responseData = responseData.splice(0, limit);
 					}
-
 				} else if (operation === 'getReadiness') {
-
 					// ----------------------------------
 					//       profile: getReadiness
 					// ----------------------------------
@@ -147,9 +127,7 @@ export class Oura implements INodeType {
 						const limit = this.getNodeParameter('limit', 0) as number;
 						responseData = responseData.splice(0, limit);
 					}
-
 				} else if (operation === 'getSleep') {
-
 					// ----------------------------------
 					//         profile: getSleep
 					// ----------------------------------
@@ -161,15 +139,12 @@ export class Oura implements INodeType {
 						const limit = this.getNodeParameter('limit', 0) as number;
 						responseData = responseData.splice(0, limit);
 					}
-
 				}
-
 			}
 
 			Array.isArray(responseData)
 				? returnData.push(...responseData)
 				: returnData.push(responseData);
-
 		}
 
 		return [this.helpers.returnJsonArray(returnData)];

@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class JenkinsApi implements ICredentialType {
 	name = 'jenkinsApi';
@@ -18,6 +15,7 @@ export class JenkinsApi implements ICredentialType {
 			displayName: 'Personal API Token',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

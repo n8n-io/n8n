@@ -38,8 +38,8 @@ export default Vue.extend({
 			default: 'warning',
 		},
 		content: {
-			required: true,
 			type: String,
+			default: '',
 		},
 		fullContent: {
 			type: String,
@@ -58,7 +58,7 @@ export default Vue.extend({
 		classes(): string[] {
 			return [
 				'notice',
-				this.$style['notice'],
+				this.$style.notice,
 				this.$style[this.theme],
 			];
 		},
@@ -74,24 +74,30 @@ export default Vue.extend({
 			return sanitizeHtml(
 				text, {
 					allowedAttributes: { a: ['data-key', 'href', 'target'] },
-				}
+				},
 			);
 		},
-		onClick(e) {
-			if (e.target.localName !== 'a') return;
+		onClick(event: MouseEvent) {
+			if (!(event.target instanceof HTMLElement)) return;
 
-			if (e.target.dataset.key === 'show-less') {
-				e.stopPropagation();
-				e.preventDefault();
-				this.showFullContent = false;
-			} else if (this.canTruncate && e.target.dataset.key === 'toggle-expand') {
-				e.stopPropagation();
-				e.preventDefault();
-				this.showFullContent = !this.showFullContent;
+			if (event.target.localName !== 'a') return;
+
+			if (event.target.dataset && event.target.dataset.key) {
+				event.stopPropagation();
+				event.preventDefault();
+
+				if (event.target.dataset.key === 'show-less') {
+					this.showFullContent = false;
+				} else if (this.canTruncate && event.target.dataset.key === 'toggle-expand') {
+					this.showFullContent = !this.showFullContent;
+				} else {
+					this.$emit('action', event.target.dataset.key);
+				}
 			}
 		},
 	},
 });
+
 </script>
 
 <style lang="scss" module>
@@ -99,7 +105,7 @@ export default Vue.extend({
 	font-size: var(--font-size-2xs);
 	display: flex;
 	color: var(--custom-font-black);
-	margin: var(--spacing-s) 0;
+	margin: var(--notice-margin, var(--spacing-s) 0);
 	padding: var(--spacing-2xs);
 	background-color: var(--background-color);
 	border-width: 1px 1px 1px 7px;

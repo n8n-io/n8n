@@ -8,13 +8,16 @@ import {
 	IDataObject,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
+	IPinData,
 	IRun,
 	IRunData,
 	IRunExecutionData,
 	ITaskData,
 	ITelemetrySettings,
+	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	Workflow,
+	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -26,14 +29,17 @@ import { Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
-import { Request } from 'express';
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { TagEntity } from './databases/entities/TagEntity';
-import { Role } from './databases/entities/Role';
-import { User } from './databases/entities/User';
-import { SharedCredentials } from './databases/entities/SharedCredentials';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
-import { Settings } from './databases/entities/Settings';
+
+import type { Request } from 'express';
+import type { InstalledNodes } from './databases/entities/InstalledNodes';
+import type { InstalledPackages } from './databases/entities/InstalledPackages';
+import type { Role } from './databases/entities/Role';
+import type { Settings } from './databases/entities/Settings';
+import type { SharedCredentials } from './databases/entities/SharedCredentials';
+import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import type { TagEntity } from './databases/entities/TagEntity';
+import type { User } from './databases/entities/User';
+import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
 
 export interface IActivationError {
 	time: number;
@@ -42,18 +48,11 @@ export interface IActivationError {
 	};
 }
 
-export interface IBullJobData {
-	executionId: string;
-	loadStaticData: boolean;
-}
-
-export interface IBullJobResponse {
-	success: boolean;
-}
-
-export interface IBullWebhookResponse {
-	executionId: string;
-	response: IExecuteResponsePromiseData;
+export interface IQueuedWorkflowActivations {
+	activationMode: WorkflowActivateMode;
+	lastTimeout: number;
+	timeout: NodeJS.Timeout;
+	workflowData: IWorkflowDb;
 }
 
 export interface ICustomRequest extends Request {
@@ -82,6 +81,8 @@ export interface IDatabaseCollections {
 	SharedCredentials: Repository<SharedCredentials>;
 	SharedWorkflow: Repository<SharedWorkflow>;
 	Settings: Repository<Settings>;
+	InstalledPackages: Repository<InstalledPackages>;
+	InstalledNodes: Repository<InstalledNodes>;
 }
 
 export interface IWebhookDb {
@@ -138,7 +139,7 @@ export interface IWorkflowBase extends IWorkflowBaseWorkflow {
 // Almost identical to editor-ui.Interfaces.ts
 export interface IWorkflowDb extends IWorkflowBase {
 	id: number | string;
-	tags: ITagDb[];
+	tags?: ITagDb[];
 }
 
 export interface IWorkflowToImport extends IWorkflowBase {
@@ -161,6 +162,7 @@ export interface ICredentialsBase {
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: number | string;
 	name: string;
+	shared?: SharedCredentials[];
 }
 
 export interface ICredentialsResponse extends ICredentialsDb {
@@ -177,8 +179,6 @@ export interface ICredentialsDecryptedResponse extends ICredentialsDecryptedDb {
 
 export type DatabaseType = 'mariadb' | 'postgresdb' | 'mysqldb' | 'sqlite';
 export type SaveExecutionDataType = 'all' | 'none';
-
-export type ExecutionDataFieldFormat = 'empty' | 'flattened' | 'json';
 
 export interface IExecutionBase {
 	id?: number | string;
@@ -212,7 +212,7 @@ export interface IExecutionResponse extends IExecutionBase {
 	workflowData: IWorkflowBase;
 }
 
-// Flatted data to save memory when saving in database or transfering
+// Flatted data to save memory when saving in database or transferring
 // via REST API
 export interface IExecutionFlatted extends IExecutionBase {
 	data: string;
@@ -223,7 +223,7 @@ export interface IExecutionFlattedDb extends IExecutionBase {
 	id: number | string;
 	data: string;
 	waitTill?: Date | null;
-	workflowData: IWorkflowBase;
+	workflowData: Omit<IWorkflowBase, 'pinData'>;
 }
 
 export interface IExecutionFlattedResponse extends IExecutionFlatted {
@@ -240,7 +240,7 @@ export interface IExecutionResponseApi {
 	finished: boolean;
 	retryOf?: number | string;
 	retrySuccessId?: number | string;
-	data?: string; // Just that we can remove it
+	data?: object;
 	waitTill?: Date | null;
 	workflowData: IWorkflowBase;
 }
@@ -462,6 +462,19 @@ export interface IVersionNotificationSettings {
 	infoUrl: string;
 }
 
+export interface IN8nNodePackageJson {
+	name: string;
+	version: string;
+	n8n?: {
+		credentials?: string[];
+		nodes?: string[];
+	};
+	author?: {
+		name?: string;
+		email?: string;
+	};
+}
+
 export interface IN8nUISettings {
 	endpointWebhook: string;
 	endpointWebhookTest: string;
@@ -470,6 +483,7 @@ export interface IN8nUISettings {
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
+	workflowCallerPolicyDefaultOption: 'any' | 'none' | 'workflowsFromAList';
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;
@@ -494,6 +508,22 @@ export interface IN8nUISettings {
 	templates: {
 		enabled: boolean;
 		host: string;
+	};
+	onboardingCallPromptEnabled: boolean;
+	missingPackages?: boolean;
+	executionMode: 'regular' | 'queue';
+	communityNodesEnabled: boolean;
+	deployment: {
+		type: string;
+	};
+	isNpmAvailable: boolean;
+	allowedModules: {
+		builtIn?: string;
+		external?: string;
+	};
+	enterprise: {
+		sharing: boolean;
+		workflowSharing: boolean;
 	};
 }
 
@@ -533,6 +563,8 @@ export type IPushData =
 	| PushDataExecuteAfter
 	| PushDataExecuteBefore
 	| PushDataConsoleMessage
+	| PushDataReloadNodeType
+	| PushDataRemoveNodeType
 	| PushDataTestWebhook;
 
 type PushDataExecutionFinished = {
@@ -558,6 +590,16 @@ type PushDataExecuteBefore = {
 type PushDataConsoleMessage = {
 	data: IPushDataConsoleMessage;
 	type: 'sendConsoleMessage';
+};
+
+type PushDataReloadNodeType = {
+	data: IPushDataReloadNodeType;
+	type: 'reloadNodeType';
+};
+
+type PushDataRemoveNodeType = {
+	data: IPushDataRemoveNodeType;
+	type: 'removeNodeType';
 };
 
 type PushDataTestWebhook = {
@@ -589,6 +631,16 @@ export interface IPushDataNodeExecuteAfter {
 export interface IPushDataNodeExecuteBefore {
 	executionId: string;
 	nodeName: string;
+}
+
+export interface IPushDataReloadNodeType {
+	name: string;
+	version: number;
+}
+
+export interface IPushDataRemoveNodeType {
+	name: string;
+	version: number;
 }
 
 export interface IPushDataTestWebhook {
@@ -647,6 +699,7 @@ export interface IWorkflowExecutionDataProcess {
 	executionMode: WorkflowExecuteMode;
 	executionData?: IRunExecutionData;
 	runData?: IRunData;
+	pinData?: IPinData;
 	retryOf?: number | string;
 	sessionId?: string;
 	startNodes?: string[];
@@ -669,3 +722,41 @@ export interface IWorkflowExecuteProcess {
 }
 
 export type WhereClause = Record<string, { id: string }>;
+
+// ----------------------------------
+//          community nodes
+// ----------------------------------
+
+export namespace CommunityPackages {
+	export type ParsedPackageName = {
+		packageName: string;
+		rawString: string;
+		scope?: string;
+		version?: string;
+	};
+
+	export type AvailableUpdates = {
+		[packageName: string]: {
+			current: string;
+			wanted: string;
+			latest: string;
+			location: string;
+		};
+	};
+
+	export type PackageStatusCheck = {
+		status: 'OK' | 'Banned';
+		reason?: string;
+	};
+}
+
+// ----------------------------------
+//               telemetry
+// ----------------------------------
+
+export interface IExecutionTrackProperties extends ITelemetryTrackProperties {
+	workflow_id: string;
+	success: boolean;
+	error_node_type?: string;
+	is_manual: boolean;
+}

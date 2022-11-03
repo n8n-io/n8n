@@ -1,5 +1,5 @@
 <template>
-	<div class="sticky-wrapper" :style="stickyPosition">
+	<div class="sticky-wrapper" :style="stickyPosition" :id="nodeId" ref="sticky">
 		<div
 			:class="{'sticky-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}"
 			:style="stickySize"
@@ -18,7 +18,7 @@
 					:height="node.parameters.height"
 					:width="node.parameters.width"
 					:scale="nodeViewScale"
-					:id="nodeIndex"
+					:id="node.id"
 					:readOnly="isReadOnly"
 					:defaultText="defaultText"
 					:editMode="isActive && !isReadOnly"
@@ -81,7 +81,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters.nodeType(this.data.type, this.data.typeVersion);
+			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
@@ -142,10 +142,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
-				this.$store.commit('setActiveNode', this.node.name);
+				this.$store.commit('ndv/setActiveNodeName', this.node.name);
 			}
 			else if (this.isActive && !edit) {
-				this.$store.commit('setActiveNode', null);
+				this.$store.commit('ndv/setActiveNodeName', null);
 			}
 		},
 		onMarkdownClick ( link:HTMLAnchorElement, event: Event ) {
@@ -165,9 +165,9 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			if (!this.isSelected && this.node) {
 				this.$emit('nodeSelected', this.node.name, false, true);
 			}
-			const nodeIndex = this.$store.getters.getNodeIndex(this.data.name);
-			const nodeIdName = `node-${nodeIndex}`;
-			this.instance.destroyDraggable(nodeIdName); // todo
+			if (this.node) {
+				this.instance.destroyDraggable(this.node.id); // todo avoid destroying if possible
+			}
 		},
 		onResize({height, width, dX, dY}:  { width: number, height: number, dX: number, dY: number }) {
 			if (!this.node) {
@@ -268,7 +268,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				}
 
 				&:hover {
-					color: $--color-primary;
+					color: $color-primary;
 				}
 			}
 		}

@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const opportunityOperations: INodeProperties[] = [
 	{
@@ -11,9 +9,7 @@ export const opportunityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
+				resource: ['opportunity'],
 			},
 		},
 		options: [
@@ -21,26 +17,31 @@ export const opportunityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new opportunity',
+				action: 'Create an opportunity',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an opportunity',
+				action: 'Delete an opportunity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an opportunity',
+				action: 'Get an opportunity',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all opportunities',
+				description: 'Get many opportunities',
+				action: 'Get many opportunities',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an opportunity',
+				action: 'Update an opportunity',
 			},
 		],
 	},
@@ -58,12 +59,8 @@ export const opportunityDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'opportunity',
-				],
+				operation: ['create'],
+				resource: ['opportunity'],
 			},
 		},
 	},
@@ -76,12 +73,8 @@ export const opportunityDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'opportunity',
-				],
+				operation: ['create'],
+				resource: ['opportunity'],
 			},
 		},
 		options: [
@@ -159,13 +152,8 @@ export const opportunityDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-					'delete',
-				],
-				resource: [
-					'opportunity',
-				],
+				operation: ['get', 'delete'],
+				resource: ['opportunity'],
 			},
 		},
 	},
@@ -179,12 +167,8 @@ export const opportunityDescription: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -198,15 +182,9 @@ export const opportunityDescription: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				resource: [
-					'opportunity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['opportunity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -223,20 +201,18 @@ export const opportunityDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'get',
-				],
-				resource: [
-					'opportunity',
-				],
+				operation: ['getAll', 'get'],
+				resource: ['opportunity'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Fields To Include',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Fields to Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
@@ -255,12 +231,8 @@ export const opportunityDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'opportunity',
-				],
+				operation: ['update'],
+				resource: ['opportunity'],
 			},
 		},
 	},
@@ -272,12 +244,8 @@ export const opportunityDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'opportunity',
-				],
+				operation: ['update'],
+				resource: ['opportunity'],
 			},
 		},
 		options: [

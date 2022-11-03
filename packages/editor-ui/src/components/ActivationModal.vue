@@ -37,8 +37,9 @@
 import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
-import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG } from '../constants';
+import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG, VIEWS } from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from './helpers';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 export default Vue.extend({
 	name: 'ActivationModal',
@@ -52,11 +53,23 @@ export default Vue.extend({
 		return {
 			WORKFLOW_ACTIVE_MODAL_KEY,
 			checked: false,
+			modalBus: new Vue(),
 		};
 	},
 	methods: {
 		async showExecutionsList () {
-			this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+			const activeExecution = this.$store.getters['workflows/getActiveWorkflowExecution'];
+			const currentWorkflow = this.$store.getters.workflowId;
+
+			if (activeExecution) {
+				this.$router.push({
+					name: VIEWS.EXECUTION_PREVIEW,
+					params: { name: currentWorkflow, executionId: activeExecution.id },
+				}).catch(()=>{});;
+			} else {
+				this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } }).catch(() => {});
+			}
+			this.$store.commit('ui/closeModal', WORKFLOW_ACTIVE_MODAL_KEY);
 		},
 		async showSettings() {
 			this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
@@ -79,12 +92,12 @@ export default Vue.extend({
 
 			const trigger = foundTriggers[0];
 
-			const triggerNodeType = this.$store.getters.nodeType(trigger.type, trigger.typeVersion);
+			const triggerNodeType = this.$store.getters['nodeTypes/getNodeType'](trigger.type, trigger.typeVersion) as INodeTypeDescription;
 			if (triggerNodeType.activationMessage) {
 				return triggerNodeType.activationMessage;
 			}
 
-			const serviceName = getTriggerNodeServiceName(triggerNodeType.displayName);
+			const serviceName = getTriggerNodeServiceName(triggerNodeType);
 			if (trigger.webhookId) {
 				return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
 					interpolate: {

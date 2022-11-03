@@ -39,6 +39,7 @@ import {
 import config from '../config';
 import { User } from '../src/databases/entities/User';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
+import { findCliWorkflowStart } from '../src/utils';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -98,7 +99,7 @@ export class ExecuteBatch extends Command {
 		}),
 		shallow: flags.boolean({
 			description:
-				'Compares only if attributes output from node are the same, with no regards to neste JSON objects.',
+				'Compares only if attributes output from node are the same, with no regards to nested JSON objects.',
 		}),
 		skipList: flags.string({
 			description: 'File containing a comma separated list of workflow IDs to skip.',
@@ -152,7 +153,7 @@ export class ExecuteBatch extends Command {
 			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 		}
 		// We may receive true but when called from `process.on`
-		// we get the signal (SIGNIT, etc.)
+		// we get the signal (SIGINT, etc.)
 		if (skipExit !== true) {
 			process.exit(0);
 		}
@@ -613,16 +614,6 @@ export class ExecuteBatch extends Command {
 			coveredNodes: {},
 		};
 
-		const requiredNodeTypes = ['n8n-nodes-base.start'];
-		let startNode: INode | undefined;
-		// eslint-disable-next-line no-restricted-syntax
-		for (const node of workflowData.nodes) {
-			if (requiredNodeTypes.includes(node.type)) {
-				startNode = node;
-				break;
-			}
-		}
-
 		// We have a cool feature here.
 		// On each node, on the Settings tab in the node editor you can change
 		// the `Notes` field to add special cases for comparison and snapshots.
@@ -659,14 +650,6 @@ export class ExecuteBatch extends Command {
 		});
 
 		return new Promise(async (resolve) => {
-			if (startNode === undefined) {
-				// If the workflow does not contain a start-node we can not know what
-				// should be executed and with which data to start.
-				executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
-				executionResult.executionStatus = 'warning';
-				resolve(executionResult);
-			}
-
 			let gotCancel = false;
 
 			// Timeouts execution after 5 minutes.
@@ -678,9 +661,11 @@ export class ExecuteBatch extends Command {
 			}, ExecuteBatch.executionTimeout);
 
 			try {
+				const startingNode = findCliWorkflowStart(workflowData.nodes);
+
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
-					startNodes: [startNode!.name],
+					startNodes: [startingNode.name],
 					workflowData,
 					userId: ExecuteBatch.instanceOwner.id,
 				};
@@ -864,7 +849,7 @@ export class ExecuteBatch extends Command {
 							}
 						}
 						// Save snapshots only after comparing - this is to make sure we're updating
-						// After comparing to existing verion.
+						// After comparing to existing version.
 						if (ExecuteBatch.snapshot !== undefined) {
 							const fileName = `${
 								ExecuteBatch.snapshot.endsWith(sep)

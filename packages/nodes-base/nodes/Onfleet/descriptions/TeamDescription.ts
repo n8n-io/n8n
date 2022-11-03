@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const teamOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const teamOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
+				resource: ['team'],
 			},
 		},
 		options: [
@@ -20,36 +16,43 @@ export const teamOperations: INodeProperties[] = [
 				name: 'Auto-Dispatch',
 				value: 'autoDispatch',
 				description: 'Automatically dispatch tasks assigned to a team to on-duty drivers',
+				action: 'Auto-dispatch a team',
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new Onfleet team',
+				action: 'Create a team',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an Onfleet team',
+				action: 'Delete a team',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a specific Onfleet team',
+				action: 'Get a team',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all Onfleet teams',
+				description: 'Get many Onfleet teams',
+				action: 'Get many teams',
 			},
 			{
 				name: 'Get Time Estimates',
 				value: 'getTimeEstimates',
 				description: 'Get estimated times for upcoming tasks for a team, returns a selected driver',
+				action: 'Get time estimates for a team',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an Onfleet team',
+				action: 'Update a team',
 			},
 		],
 		default: 'getAll',
@@ -65,25 +68,27 @@ const nameField = {
 } as INodeProperties;
 
 const workersField = {
-	displayName: 'Workers Names/IDs',
+	displayName: 'Worker Names or IDs',
 	name: 'workers',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getWorkers',
 	},
 	default: [],
-	description: 'A list of workers',
+	description:
+		'A list of workers. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const managersField = {
-	displayName: 'Administrators Names/IDs',
+	displayName: 'Administrator Names or IDs',
 	name: 'managers',
 	type: 'multiOptions',
 	typeOptions: {
 		loadOptionsMethod: 'getAdmins',
 	},
 	default: [],
-	description: 'A list of managing administrators',
+	description:
+		'A list of managing administrators. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const hubField = {
@@ -94,7 +99,8 @@ const hubField = {
 		loadOptionsMethod: 'getHubs',
 	},
 	default: '',
-	description: 'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+	description:
+		'The team\'s hub. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 } as INodeProperties;
 
 const enableSelfAssignmentField = {
@@ -102,7 +108,8 @@ const enableSelfAssignmentField = {
 	name: 'enableSelfAssignment',
 	type: 'boolean',
 	default: false,
-	description: 'Whether or not to allow drivers to self-assign tasks that are in the Team\'s unassigned container',
+	description:
+		"Whether or not to allow drivers to self-assign tasks that are in the Team's unassigned container",
 } as INodeProperties;
 
 const maxTasksPerRouteField = {
@@ -125,7 +132,8 @@ const serviceTimeField = {
 	typeOptions: {
 		minValue: 0,
 	},
-	description: 'The default service time to apply in Minutes to the tasks when no task service time exists',
+	description:
+		'The default service time to apply in Minutes to the tasks when no task service time exists',
 } as INodeProperties;
 
 const routeEndField = {
@@ -214,7 +222,8 @@ const pickupTimeField = {
 	name: 'pickupTime',
 	type: 'dateTime',
 	default: '',
-	description: 'If the request includes pickupLocation, pickupTime must be present if the time is fewer than 3 hours in the future',
+	description:
+		'If the request includes pickupLocation, pickupTime must be present if the time is fewer than 3 hours in the future',
 } as INodeProperties;
 
 const restrictedVehicleTypesField = {
@@ -251,7 +260,8 @@ const serviceTimeEstimateField = {
 	typeOptions: {
 		minValue: 0,
 	},
-	description: 'The expected time a worker will take at the pickupLocation, dropoffLocation, or both (as applicable) Unit: seconds',
+	description:
+		'The expected time a worker will take at the pickupLocation, dropoffLocation, or both (as applicable) Unit: seconds',
 } as INodeProperties;
 
 export const teamFields: INodeProperties[] = [
@@ -261,16 +271,8 @@ export const teamFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'get',
-					'update',
-					'delete',
-					'getTimeEstimates',
-					'autoDispatch',
-				],
+				resource: ['team'],
+				operation: ['get', 'update', 'delete', 'getTimeEstimates', 'autoDispatch'],
 			},
 		},
 		default: '',
@@ -281,12 +283,8 @@ export const teamFields: INodeProperties[] = [
 		...nameField,
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['team'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -295,12 +293,8 @@ export const teamFields: INodeProperties[] = [
 		...workersField,
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['team'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -309,12 +303,8 @@ export const teamFields: INodeProperties[] = [
 		...managersField,
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['team'],
+				operation: ['create'],
 			},
 		},
 		required: true,
@@ -327,18 +317,11 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['team'],
+				operation: ['create'],
 			},
 		},
-		options: [
-			hubField,
-			enableSelfAssignmentField,
-		],
+		options: [hubField, enableSelfAssignmentField],
 	},
 	{
 		displayName: 'Return All',
@@ -346,12 +329,8 @@ export const teamFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['team'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -363,15 +342,9 @@ export const teamFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['team'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -389,21 +362,11 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['team'],
+				operation: ['update'],
 			},
 		},
-		options: [
-			managersField,
-			hubField,
-			nameField,
-			enableSelfAssignmentField,
-			workersField,
-		],
+		options: [managersField, hubField, nameField, enableSelfAssignmentField, workersField],
 	},
 	{
 		displayName: 'Additional Fields',
@@ -413,12 +376,8 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'autoDispatch',
-				],
+				resource: ['team'],
+				operation: ['autoDispatch'],
 			},
 		},
 		options: [
@@ -443,9 +402,7 @@ export const teamFields: INodeProperties[] = [
 								...hubField,
 								displayOptions: {
 									show: {
-										routeEnd: [
-											'hub',
-										],
+										routeEnd: ['hub'],
 									},
 								},
 								required: false,
@@ -525,12 +482,8 @@ export const teamFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'team',
-				],
-				operation: [
-					'getTimeEstimates',
-				],
+				resource: ['team'],
+				operation: ['getTimeEstimates'],
 			},
 		},
 		options: [

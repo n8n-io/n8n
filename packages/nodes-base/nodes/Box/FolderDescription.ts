@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const folderOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const folderOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'folder',
-				],
+				resource: ['folder'],
 			},
 		},
 		options: [
@@ -20,31 +16,37 @@ export const folderOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a folder',
+				action: 'Create a folder',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a folder',
+				action: 'Delete a folder',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a folder',
+				action: 'Get a folder',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search files',
+				action: 'Search a folder',
 			},
 			{
 				name: 'Share',
 				value: 'share',
 				description: 'Share a folder',
+				action: 'Share a folder',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update folder',
+				action: 'Update a folder',
 			},
 		],
 		default: 'create',
@@ -52,7 +54,6 @@ export const folderOperations: INodeProperties[] = [
 ];
 
 export const folderFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 folder:create                              */
 	/* -------------------------------------------------------------------------- */
@@ -63,16 +64,12 @@ export const folderFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['create'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
-		description: 'Folder\'s name',
+		description: "Folder's name",
 	},
 	{
 		displayName: 'Parent ID',
@@ -80,16 +77,13 @@ export const folderFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['create'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
-		description: 'ID of the folder you want to create the new folder in. if not defined it will be created on the root folder.',
+		description:
+			'ID of the folder you want to create the new folder in. if not defined it will be created on the root folder.',
 	},
 	{
 		displayName: 'Options',
@@ -97,12 +91,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['create'],
+				resource: ['folder'],
 			},
 		},
 		default: {},
@@ -116,7 +106,8 @@ export const folderFields: INodeProperties[] = [
 					{
 						name: 'Collaborators',
 						value: 'collaborators',
-						description: 'Only emails from registered email addresses for collaborators will be accepted',
+						description:
+							'Only emails from registered email addresses for collaborators will be accepted',
 					},
 					{
 						name: 'Open',
@@ -132,7 +123,8 @@ export const folderFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
+				description:
+					'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
 			},
 		],
 	},
@@ -146,12 +138,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['get'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -166,12 +154,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['delete'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -182,16 +166,13 @@ export const folderFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['delete'],
+				resource: ['folder'],
 			},
 		},
 		default: false,
-		description: 'Delete a folder that is not empty by recursively deleting the folder and all of its content',
+		description:
+			'Whether to delete a folder that is not empty by recursively deleting the folder and all of its content',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -203,16 +184,13 @@ export const folderFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['search'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
-		description: 'The string to search for. This query is matched against item names, descriptions, text content of files, and various other fields of the different item types.',
+		description:
+			'The string to search for. This query is matched against item names, descriptions, text content of files, and various other fields of the different item types.',
 	},
 	{
 		displayName: 'Return All',
@@ -220,12 +198,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['search'],
+				resource: ['folder'],
 			},
 		},
 		default: false,
@@ -237,15 +211,9 @@ export const folderFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'folder',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['search'],
+				resource: ['folder'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -262,12 +230,8 @@ export const folderFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'search',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['search'],
+				resource: ['folder'],
 			},
 		},
 		default: {},
@@ -277,7 +241,8 @@ export const folderFields: INodeProperties[] = [
 				name: 'contet_types',
 				type: 'string',
 				default: '',
-				description: 'Limits search results to items with the given content types. Content types are defined as a comma-separated lists of Box recognized content types.',
+				description:
+					'Limits search results to items with the given content types. Content types are defined as a comma-separated lists of Box recognized content types.',
 			},
 			{
 				displayName: 'Created At Range',
@@ -324,14 +289,16 @@ export const folderFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
+				description:
+					'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
+				description:
+					'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
 			},
 			{
 				displayName: 'File Extensions',
@@ -346,7 +313,8 @@ export const folderFields: INodeProperties[] = [
 				name: 'ancestor_folder_ids',
 				type: 'string',
 				default: '',
-				description: 'Limits search results to items within the given list of folders. Folders are defined as a comma-separated lists of folder IDs.',
+				description:
+					'Limits search results to items within the given list of folders. Folders are defined as a comma-separated lists of folder IDs.',
 			},
 			{
 				displayName: 'Scope',
@@ -371,7 +339,8 @@ export const folderFields: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: '1000000,5000000',
-				description: 'Limits search results to items within a given file size range. File size ranges are defined as comma-separated byte sizes.',
+				description:
+					'Limits search results to items within a given file size range. File size ranges are defined as comma-separated byte sizes.',
 			},
 			{
 				displayName: 'Sort',
@@ -388,7 +357,8 @@ export const folderFields: INodeProperties[] = [
 					},
 				],
 				default: 'relevance',
-				description: 'Returns the results ordered in descending order by date at which the item was last modified',
+				description:
+					'Returns the results ordered in descending order by date at which the item was last modified',
 			},
 			{
 				displayName: 'Trash Content',
@@ -442,7 +412,8 @@ export const folderFields: INodeProperties[] = [
 				name: 'owner_user_ids',
 				type: 'string',
 				default: '',
-				description: 'Limits search results to items owned by the given list of owners. Owners are defined as a comma-separated list of user IDs.',
+				description:
+					'Limits search results to items owned by the given list of owners. Owners are defined as a comma-separated list of user IDs.',
 			},
 		],
 	},
@@ -456,12 +427,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -483,12 +450,8 @@ export const folderFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: 'user',
@@ -500,15 +463,9 @@ export const folderFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
-				accessibleBy: [
-					'user',
-				],
+				operation: ['share'],
+				resource: ['folder'],
+				accessibleBy: ['user'],
 			},
 		},
 		default: true,
@@ -518,24 +475,17 @@ export const folderFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
-				accessibleBy: [
-					'user',
-				],
-				useEmail: [
-					true,
-				],
+				operation: ['share'],
+				resource: ['folder'],
+				accessibleBy: ['user'],
+				useEmail: [true],
 			},
 		},
 		default: '',
-		description: 'The user\'s email address to share the folder with',
+		description: "The user's email address to share the folder with",
 	},
 	{
 		displayName: 'User ID',
@@ -543,22 +493,14 @@ export const folderFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
-				accessibleBy: [
-					'user',
-				],
-				useEmail: [
-					false,
-				],
+				operation: ['share'],
+				resource: ['folder'],
+				accessibleBy: ['user'],
+				useEmail: [false],
 			},
 		},
 		default: '',
-		description: 'The user\'s ID to share the folder with',
+		description: "The user's ID to share the folder with",
 	},
 	{
 		displayName: 'Group ID',
@@ -566,19 +508,13 @@ export const folderFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
-				accessibleBy: [
-					'group',
-				],
+				operation: ['share'],
+				resource: ['folder'],
+				accessibleBy: ['group'],
 			},
 		},
 		default: '',
-		description: 'The group\'s ID to share the folder with',
+		description: "The group's ID to share the folder with",
 	},
 	{
 		displayName: 'Role',
@@ -623,12 +559,8 @@ export const folderFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: 'editor',
@@ -641,12 +573,8 @@ export const folderFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				operation: [
-					'share',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['share'],
+				resource: ['folder'],
 			},
 		},
 		default: {},
@@ -656,21 +584,24 @@ export const folderFields: INodeProperties[] = [
 				name: 'can_view_path',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.',
+				description:
+					'Whether the invited users can see the entire parent path to the associated folder. The user will not gain privileges in any parent folder and therefore cannot see content the user is not collaborated on.',
 			},
 			{
 				displayName: 'Expires At',
 				name: 'expires_at',
 				type: 'dateTime',
 				default: '',
-				description: 'Set the expiration date for the collaboration. At this date, the collaboration will be automatically removed from the item.',
+				description:
+					'Set the expiration date for the collaboration. At this date, the collaboration will be automatically removed from the item.',
 			},
 			{
 				displayName: 'Fields',
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
+				description:
+					'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
 			},
 			{
 				displayName: 'Notify',
@@ -692,12 +623,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['update'],
+				resource: ['folder'],
 			},
 		},
 		default: '',
@@ -708,12 +635,8 @@ export const folderFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'folder',
-				],
+				operation: ['update'],
+				resource: ['folder'],
 			},
 		},
 		default: {},
@@ -724,14 +647,16 @@ export const folderFields: INodeProperties[] = [
 				name: 'can_non_owners_invite',
 				type: 'boolean',
 				default: false,
-				description: 'Specifies if users who are not the owner of the folder can invite new collaborators to the folder',
+				description:
+					'Whether users who are not the owner of the folder can invite new collaborators to the folder',
 			},
 			{
 				displayName: 'Can Non-Owners View Colaborators',
 				name: 'can_non_owners_view_collaborators',
 				type: 'boolean',
 				default: false,
-				description: 'Restricts collaborators who are not the owner of this folder from viewing other collaborations on this folder',
+				description:
+					'Whether to restrict collaborators who are not the owner of this folder from viewing other collaborations on this folder',
 			},
 			{
 				displayName: 'Description',
@@ -745,14 +670,16 @@ export const folderFields: INodeProperties[] = [
 				name: 'fields',
 				type: 'string',
 				default: '',
-				description: 'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
+				description:
+					'A comma-separated list of attributes to include in the response. This can be used to request fields that are not normally returned in a standard response.',
 			},
 			{
 				displayName: 'Is Collaboration Restricted To Enterprise',
 				name: 'is_collaboration_restricted_to_enterprise',
 				type: 'boolean',
 				default: false,
-				description: 'Specifies if new invites to this folder are restricted to users within the enterprise. This does not affect existing collaborations.',
+				description:
+					'Whether new invites to this folder are restricted to users within the enterprise. This does not affect existing collaborations.',
 			},
 			{
 				displayName: 'Name',
@@ -766,7 +693,8 @@ export const folderFields: INodeProperties[] = [
 				name: 'parentId',
 				type: 'string',
 				default: '',
-				description: 'The parent folder for this folder. Use this to move the folder or to restore it out of the trash.',
+				description:
+					'The parent folder for this folder. Use this to move the folder or to restore it out of the trash.',
 			},
 			{
 				displayName: 'Shared Link',
@@ -806,15 +734,15 @@ export const folderFields: INodeProperties[] = [
 						displayName: 'Password',
 						name: 'password',
 						type: 'string',
+						typeOptions: { password: true },
 						displayOptions: {
 							show: {
-								access: [
-									'open',
-								],
+								access: ['open'],
 							},
 						},
 						default: '',
-						description: 'The password required to access the shared link. Set the password to null to remove it.',
+						description:
+							'The password required to access the shared link. Set the password to null to remove it.',
 					},
 					{
 						displayName: 'Permissions',
@@ -828,7 +756,7 @@ export const folderFields: INodeProperties[] = [
 								name: 'can_download',
 								type: 'boolean',
 								default: false,
-								description: 'If the shared link allows for downloading of files',
+								description: 'Whether the shared link allows for downloading of files',
 							},
 							{
 								displayName: 'Unshared At',
@@ -842,7 +770,8 @@ export const folderFields: INodeProperties[] = [
 								name: 'vanity_name',
 								type: 'string',
 								default: '',
-								description: 'Defines a custom vanity name to use in the shared link URL, for example https://app.box.com/v/my-shared-link',
+								description:
+									'Defines a custom vanity name to use in the shared link URL, for example https://app.box.com/v/my-shared-link',
 							},
 						],
 					},
@@ -851,7 +780,8 @@ export const folderFields: INodeProperties[] = [
 						name: 'tags',
 						type: 'string',
 						default: '',
-						description: 'The tags for this item. These tags are shown in the Box web app and mobile apps next to an item.',
+						description:
+							'The tags for this item. These tags are shown in the Box web app and mobile apps next to an item.',
 					},
 				],
 			},

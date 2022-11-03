@@ -1,8 +1,8 @@
 <template>
 	<div>
 		<n8n-input-label :label="label">
-			<div :class="$style.copyText" @click="copy">
-				<span>{{ value }}</span>
+			<div :class="{[$style.copyText]: true, [$style[size]]: true, [$style.collapsed]: collapse}" @click="copy">
+				<span ref="copyInputValue">{{ value }}</span>
 				<div :class="$style.copyButton"><span>{{ copyButtonText }}</span></div>
 			</div>
 		</n8n-input-label>
@@ -41,6 +41,14 @@ export default mixins(copyPaste, showMessage).extend({
 		toastMessage: {
 			type: String,
 		},
+		collapse: {
+			type: Boolean,
+			default: false,
+		},
+		size: {
+			type: String,
+			default: 'large',
+		},
 	},
 	methods: {
 		copy(): void {
@@ -58,12 +66,9 @@ export default mixins(copyPaste, showMessage).extend({
 </script>
 
 <style lang="scss" module>
-
 .copyText {
 	span {
 		font-family: Monaco, Consolas;
-		line-height: 1.5;
-		font-size: var(--font-size-s);
 		color: var(--color-text-base);
 		overflow-wrap: break-word;
 	}
@@ -80,6 +85,25 @@ export default mixins(copyPaste, showMessage).extend({
 		--display-copy-button: flex;
 		width: 100%;
 	}
+}
+
+.large {
+	span {
+		font-size: var(--font-size-s);
+		line-height: 1.5;
+	}
+}
+
+.medium {
+	span {
+		font-size: var(--font-size-2xs);
+		line-height: 1;
+	}
+}
+
+.collapsed {
+	white-space: nowrap;
+  overflow: hidden;
 }
 
 .copyButton {

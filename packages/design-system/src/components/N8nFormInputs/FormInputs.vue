@@ -14,6 +14,7 @@
 					<n8n-form-input
 						v-else
 						v-bind="input.properties"
+						:name="input.name"
 						:value="values[input.name]"
 						:data-test-id="input.name"
 						:showValidationWarnings="showValidationWarnings"
@@ -30,7 +31,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import N8nFormInput from '../N8nFormInput';
-import { IFormInputs } from '../../types';
+import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
 
 export default Vue.extend({
@@ -61,22 +62,26 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		(this.inputs as IFormInputs).forEach((input: IFormInput) => {
+		(this.inputs as IFormInput[]).forEach((input) => {
 			if (input.hasOwnProperty('initialValue')) {
 				Vue.set(this.values, input.name, input.initialValue);
 			}
 		});
 
 		if (this.eventBus) {
-			this.eventBus.$on('submit', this.onSubmit);
+			this.eventBus.$on('submit', this.onSubmit); // eslint-disable-line @typescript-eslint/unbound-method
 		}
 	},
 	computed: {
 		filteredInputs(): IFormInput[] {
-			return this.inputs.filter((input: IFormInput) => typeof input.shouldDisplay === 'function'? input.shouldDisplay(this.values): true);
+			return (this.inputs as IFormInput[]).filter(
+				(input) => typeof input.shouldDisplay === 'function'
+					? input.shouldDisplay(this.values)
+					: true,
+			);
 		},
 		isReadyToSubmit(): boolean {
-			for (let key in this.validity) {
+			for (const key in this.validity) {
 				if (!this.validity[key]) {
 					return false;
 				}
@@ -89,9 +94,9 @@ export default Vue.extend({
 		onInput(name: string, value: any) {
 			this.values = {
 				...this.values,
-				[name]: value,
+				[name]: value, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 			};
-			this.$emit('input', {name, value});
+			this.$emit('input', {name, value}); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		},
 		onValidate(name: string, valid: boolean) {
 			Vue.set(this.validity, name, valid);
@@ -99,7 +104,7 @@ export default Vue.extend({
 		onSubmit() {
 			this.showValidationWarnings = true;
 			if (this.isReadyToSubmit) {
-				const toSubmit = this.filteredInputs.reduce((accu, input: IFormInput) => {
+				const toSubmit = (this.filteredInputs ).reduce<{ [key: string]: unknown }>((accu, input) => {
 					if (this.values[input.name]) {
 						accu[input.name] = this.values[input.name];
 					}

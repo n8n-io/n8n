@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const hookOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const hookOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
+				resource: ['hook'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const hookOperations: INodeProperties[] = [
 				name: 'Get',
 				value: 'get',
 				description: 'Get a single hook definition',
+				action: 'Get a hook',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'List all hooks on a form',
+				description: 'List many hooks on a form',
+				action: 'Get Many hooks',
 			},
 			{
 				name: 'Logs',
 				value: 'getLogs',
 				description: 'Get hook logs',
+				action: 'Get Logs for a hook',
 			},
 			{
 				name: 'Retry All',
 				value: 'retryAll',
 				description: 'Retry all failed attempts for a given hook',
+				action: 'Retry All hooks',
 			},
 			{
 				name: 'Retry One',
 				value: 'retryOne',
 				description: 'Retry a specific hook',
+				action: 'Retry One hook',
 			},
 		],
 		default: 'getAll',
@@ -47,7 +48,6 @@ export const hookOperations: INodeProperties[] = [
 ];
 
 export const hookFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                hook:get                                    */
 	/* -------------------------------------------------------------------------- */
@@ -62,18 +62,12 @@ export const hookFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'get',
-					'retryOne',
-					'retryAll',
-					'getLogs',
-				],
+				resource: ['hook'],
+				operation: ['get', 'retryOne', 'retryAll', 'getLogs'],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Hook ID',
@@ -82,15 +76,8 @@ export const hookFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'get',
-					'retryOne',
-					'retryAll',
-					'getLogs',
-				],
+				resource: ['hook'],
+				operation: ['get', 'retryOne', 'retryAll', 'getLogs'],
 			},
 		},
 		default: '',
@@ -110,15 +97,12 @@ export const hookFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['hook'],
+				operation: ['getAll'],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Hook Log ID',
@@ -127,12 +111,8 @@ export const hookFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'retryOne',
-				],
+				resource: ['hook'],
+				operation: ['retryOne'],
 			},
 		},
 		default: '',
@@ -146,13 +126,8 @@ export const hookFields: INodeProperties[] = [
 		default: false,
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'getAll',
-					'getLogs',
-				],
+				resource: ['hook'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -166,19 +141,72 @@ export const hookFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'hook',
-				],
-				operation: [
-					'getAll',
-					'getLogs',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['hook'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		default: 1000,
 		description: 'Max number of results to return',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                hook:getLogs                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Log Status',
+		name: 'status',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['hook'],
+				operation: ['getLogs'],
+			},
+		},
+		default: '',
+		description: 'Only retrieve logs with a specific status',
+		options: [
+			{
+				name: 'All',
+				value: '',
+			},
+			{
+				name: 'Failed',
+				value: '0',
+			},
+			{
+				name: 'Pending',
+				value: '1',
+			},
+			{
+				name: 'Success',
+				value: '2',
+			},
+		],
+	},
+	{
+		displayName: 'Start Date',
+		name: 'startDate',
+		type: 'dateTime',
+		displayOptions: {
+			show: {
+				resource: ['hook'],
+				operation: ['getLogs'],
+			},
+		},
+		default: '',
+		description: 'Minimum date for the hook log to retrieve',
+	},
+	{
+		displayName: 'End Date',
+		name: 'endDate',
+		type: 'dateTime',
+		displayOptions: {
+			show: {
+				resource: ['hook'],
+				operation: ['getLogs'],
+			},
+		},
+		default: '',
+		description: 'Maximum date for the hook log to retrieve',
 	},
 ];

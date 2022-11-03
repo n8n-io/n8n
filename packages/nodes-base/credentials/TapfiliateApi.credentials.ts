@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class TapfiliateApi implements ICredentialType {
 	name = 'tapfiliateApi';
@@ -13,6 +10,7 @@ export class TapfiliateApi implements ICredentialType {
 			name: 'apiKey',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

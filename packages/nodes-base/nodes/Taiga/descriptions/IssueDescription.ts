@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const issueOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const issueOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
+				resource: ['issue'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const issueOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create an issue',
+				action: 'Create an issue',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an issue',
+				action: 'Delete an issue',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an issue',
+				action: 'Get an issue',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all issues',
+				description: 'Get many issues',
+				action: 'Get many issues',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an issue',
+				action: 'Update an issue',
 			},
 		],
 		default: 'create',
@@ -53,7 +54,8 @@ export const issueFields: INodeProperties[] = [
 	{
 		displayName: 'Project Name or ID',
 		name: 'projectId',
-		description: 'ID of the project to which the issue belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'ID of the project to which the issue belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
@@ -62,12 +64,8 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -79,12 +77,8 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -96,12 +90,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['issue'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -111,13 +101,12 @@ export const issueFields: INodeProperties[] = [
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user to whom the issue is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the user to whom the issue is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Blocked Note',
@@ -144,22 +133,21 @@ export const issueFields: INodeProperties[] = [
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getMilestones',
 				},
 				default: '',
-				description: 'ID of the milestone of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the milestone of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
@@ -168,10 +156,10 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Severity Name or ID',
 				name: 'severity',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getSeverities',
 				},
 				default: '',
@@ -181,22 +169,21 @@ export const issueFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getIssueStatuses',
 				},
 				default: '',
-				description: 'ID of the status of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the status of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
@@ -205,10 +192,10 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTypes',
 				},
 				default: '',
@@ -228,12 +215,8 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['issue'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -250,12 +233,8 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['issue'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -266,7 +245,8 @@ export const issueFields: INodeProperties[] = [
 	{
 		displayName: 'Project Name or ID',
 		name: 'projectId',
-		description: 'ID of the project to which the issue belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'ID of the project to which the issue belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
@@ -275,12 +255,8 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -292,12 +268,8 @@ export const issueFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -312,15 +284,9 @@ export const issueFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -331,12 +297,8 @@ export const issueFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['issue'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -344,12 +306,11 @@ export const issueFields: INodeProperties[] = [
 			{
 				displayName: 'Asignee Name or ID',
 				name: 'assigned_to',
-				description: 'ID of the user to assign the issue to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the user to assign the issue to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
@@ -402,12 +363,11 @@ export const issueFields: INodeProperties[] = [
 			{
 				displayName: 'Owner Name or ID',
 				name: 'owner',
-				description: 'ID of the owner of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the owner of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
@@ -416,10 +376,10 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
@@ -428,10 +388,10 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Role Name or ID',
 				name: 'role',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getRoles',
 				},
 				default: '',
@@ -440,10 +400,10 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Severity Name or ID',
 				name: 'severity',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getSeverities',
 				},
 				default: '',
@@ -451,24 +411,23 @@ export const issueFields: INodeProperties[] = [
 			{
 				displayName: 'Status Name or ID',
 				name: 'status',
-				description: 'ID of the status of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the status of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getIssueStatuses',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
@@ -477,10 +436,10 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTypes',
 				},
 				default: '',
@@ -499,15 +458,12 @@ export const issueFields: INodeProperties[] = [
 			loadOptionsMethod: 'getProjects',
 		},
 		default: '',
-		description: 'ID of the project to set the issue to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'ID of the project to set the issue to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -520,12 +476,8 @@ export const issueFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -537,12 +489,8 @@ export const issueFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'issue',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['issue'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -551,13 +499,12 @@ export const issueFields: INodeProperties[] = [
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user whom the issue is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the user whom the issue is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Blocked Note',
@@ -584,22 +531,21 @@ export const issueFields: INodeProperties[] = [
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getMilestones',
 				},
 				default: '',
-				description: 'ID of the milestone of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the milestone of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Priority Name or ID',
 				name: 'priority',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getPriorities',
 				},
 				default: '',
@@ -608,10 +554,10 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Severity Name or ID',
 				name: 'severity',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getSeverities',
 				},
 				default: '',
@@ -621,13 +567,12 @@ export const issueFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getIssueStatuses',
 				},
 				default: '',
-				description: 'ID of the status of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the status of the issue. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Subject',
@@ -636,13 +581,13 @@ export const issueFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
@@ -651,10 +596,10 @@ export const issueFields: INodeProperties[] = [
 				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTypes',
 				},
 				default: '',

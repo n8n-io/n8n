@@ -14,6 +14,7 @@ import {
 	IExecuteResponsePromiseData,
 	IExecuteSingleFunctions,
 	IExecuteWorkflowInfo,
+	IHttpRequestHelper,
 	IHttpRequestOptions,
 	IN8nHttpFullResponse,
 	IN8nHttpResponse,
@@ -24,7 +25,7 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowBase,
@@ -111,6 +112,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return requestParams;
 	}
 
+	async preAuthentication(
+		helpers: IHttpRequestHelper,
+		credentials: ICredentialDataDecryptedObject,
+		typeName: string,
+		node: INode,
+		credentialsExpired: boolean,
+	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
+		return { updatedCredentials: false, data: {} };
+	}
+
 	getParentTypes(name: string): string[] {
 		return [];
 	}
@@ -152,7 +163,7 @@ export function getNodeParameter(
 ): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | object {
 	const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
 	if (nodeType === undefined) {
-		throw new Error(`Node type "${node.type}" is not known so can not return paramter value!`);
+		throw new Error(`Node type "${node.type}" is not known so can not return parameter value!`);
 	}
 
 	const value = get(node.parameters, parameterName, fallbackValue);
@@ -206,7 +217,7 @@ export function getExecuteFunctions(
 				workflowInfo: IExecuteWorkflowInfo,
 				inputData?: INodeExecutionData[],
 			): Promise<any> {
-				return additionalData.executeWorkflow(workflowInfo, additionalData, inputData);
+				return additionalData.executeWorkflow(workflowInfo, additionalData, { inputData });
 			},
 			getContext(type: string): IContextObject {
 				return NodeHelpers.getContext(runExecutionData, type, node);
@@ -318,7 +329,7 @@ export function getExecuteFunctions(
 					}
 				} catch (error) {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-					console.error(`There was a problem sending messsage to UI: ${error.message}`);
+					console.error(`There was a problem sending message to UI: ${error.message}`);
 				}
 			},
 			async sendResponse(response: IExecuteResponsePromiseData): Promise<void> {
@@ -426,6 +437,9 @@ export function getExecuteSingleFunctions(
 				}
 
 				return allItems[itemIndex];
+			},
+			getItemIndex: () => {
+				return itemIndex;
 			},
 			getMode: (): WorkflowExecuteMode => {
 				return mode;
@@ -666,7 +680,7 @@ class NodeTypesClass implements INodeTypes {
 		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
 	}
 
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
+	getByName(nodeType: string): INodeType | IVersionedNodeType | undefined {
 		return this.getByNameAndVersion(nodeType);
 	}
 

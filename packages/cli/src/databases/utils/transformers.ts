@@ -1,5 +1,6 @@
-// eslint-disable-next-line import/no-cycle
-import { IPersonalizationSurveyAnswers } from '../../Interfaces';
+import { jsonParse } from 'n8n-workflow';
+import { ValueTransformer } from 'typeorm';
+import config from '../../../config';
 
 export const idStringifier = {
 	from: (value: number): string | number => (typeof value === 'number' ? value.toString() : value),
@@ -12,14 +13,21 @@ export const lowerCaser = {
 };
 
 /**
- * Ensure a consistent return type for personalization answers in `User`.
- * Answers currently stored as `TEXT` on Postgres.
+ * Unmarshal JSON as JS object.
  */
-export const answersFormatter = {
-	to: (answers: IPersonalizationSurveyAnswers): IPersonalizationSurveyAnswers => answers,
-	from: (answers: IPersonalizationSurveyAnswers | string): IPersonalizationSurveyAnswers => {
-		return typeof answers === 'string'
-			? (JSON.parse(answers) as IPersonalizationSurveyAnswers)
-			: answers;
-	},
+export const objectRetriever: ValueTransformer = {
+	to: (value: object): object => value,
+	from: (value: string | object): object => (typeof value === 'string' ? jsonParse(value) : value),
 };
+
+/**
+ * Transformer for sqlite JSON columns to mimic JSON-as-object behavior
+ * from Postgres and MySQL.
+ */
+const jsonColumn: ValueTransformer = {
+	to: (value: object): string | object =>
+		config.getEnv('database.type') === 'sqlite' ? JSON.stringify(value) : value,
+	from: (value: string | object): object => (typeof value === 'string' ? jsonParse(value) : value),
+};
+
+export const sqlite = { jsonColumn };

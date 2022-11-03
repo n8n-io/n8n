@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactListOperations: INodeProperties[] = [
 	{
@@ -13,17 +11,17 @@ export const contactListOperations: INodeProperties[] = [
 			{
 				name: 'Add',
 				value: 'add',
+				action: 'Add a contact list',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many contact lists',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
+				resource: ['contactList'],
 			},
 		},
 	},
@@ -42,15 +40,12 @@ export const contactListFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the contact list to add the contact to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'The ID of the contact list to add the contact to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['contactList'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -63,12 +58,8 @@ export const contactListFields: INodeProperties[] = [
 		description: 'The email of the contact to add to the contact list',
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['contactList'],
+				operation: ['add'],
 			},
 		},
 	},
@@ -80,12 +71,8 @@ export const contactListFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'add',
-				],
+				resource: ['contactList'],
+				operation: ['add'],
 			},
 		},
 		options: [
@@ -185,12 +172,8 @@ export const contactListFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contactList'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -206,15 +189,9 @@ export const contactListFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'contactList',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contactList'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

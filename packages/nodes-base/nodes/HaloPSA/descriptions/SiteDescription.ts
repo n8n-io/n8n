@@ -16,26 +16,31 @@ export const siteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a site',
+				action: 'Create a site',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a site',
+				action: 'Delete a site',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a site',
+				action: 'Get a site',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all sites',
+				description: 'Get many sites',
+				action: 'Get many sites',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a site',
+				action: 'Update a site',
 			},
 		],
 		default: 'create',
@@ -91,6 +96,8 @@ export const siteFields: INodeProperties[] = [
 		displayName: 'Client Name or ID',
 		name: 'clientId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		required: true,
 		typeOptions: {

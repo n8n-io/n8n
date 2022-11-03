@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class OuraApi implements ICredentialType {
 	name = 'ouraApi';
@@ -12,6 +9,7 @@ export class OuraApi implements ICredentialType {
 			displayName: 'Personal Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

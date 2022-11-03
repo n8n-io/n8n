@@ -1,61 +1,38 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
+import crypto from 'crypto';
 import { Length } from 'class-validator';
 
-import { IConnections, IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
+import type {
+	IBinaryKeyData,
+	IConnections,
+	IDataObject,
+	INode,
+	IPairedItemData,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 
 import {
-	BeforeUpdate,
+	AfterLoad,
+	AfterUpdate,
+	AfterInsert,
 	Column,
-	ColumnOptions,
-	CreateDateColumn,
 	Entity,
 	Index,
 	JoinTable,
 	ManyToMany,
 	OneToMany,
 	PrimaryGeneratedColumn,
-	UpdateDateColumn,
 } from 'typeorm';
 
 import * as config from '../../../config';
-import { DatabaseType, IWorkflowDb } from '../..';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
-
-function resolveDataType(dataType: string) {
-	const dbType = config.getEnv('database.type');
-
-	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
-		sqlite: {
-			json: 'simple-json',
-		},
-		postgresdb: {
-			datetime: 'timestamptz',
-		},
-		mysqldb: {},
-		mariadb: {},
-	};
-
-	return typeMap[dbType][dataType] ?? dataType;
-}
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-function getTimestampSyntax() {
-	const dbType = config.getEnv('database.type');
-
-	const map: { [key in DatabaseType]: string } = {
-		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
-		postgresdb: 'CURRENT_TIMESTAMP(3)',
-		mysqldb: 'CURRENT_TIMESTAMP(3)',
-		mariadb: 'CURRENT_TIMESTAMP(3)',
-	};
-
-	return map[dbType];
-}
+import { objectRetriever, sqlite } from '../utils/transformers';
+import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import type { IWorkflowDb } from '../../Interfaces';
+import { alphabetizeKeys } from '../../utils';
 
 @Entity()
-export class WorkflowEntity implements IWorkflowDb {
+export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
@@ -70,31 +47,22 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column()
 	active: boolean;
 
-	@Column(resolveDataType('json'))
+	@Column(jsonColumnType)
 	nodes: INode[];
 
-	@Column(resolveDataType('json'))
+	@Column(jsonColumnType)
 	connections: IConnections;
 
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
-	createdAt: Date;
-
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
-	})
-	updatedAt: Date;
-
 	@Column({
-		type: resolveDataType('json') as ColumnOptions['type'],
+		type: jsonColumnType,
 		nullable: true,
 	})
 	settings?: IWorkflowSettings;
 
 	@Column({
-		type: resolveDataType('json') as ColumnOptions['type'],
+		type: jsonColumnType,
 		nullable: true,
+		transformer: objectRetriever,
 	})
 	staticData?: IDataObject;
 
@@ -110,13 +78,51 @@ export class WorkflowEntity implements IWorkflowDb {
 			referencedColumnName: 'id',
 		},
 	})
-	tags: TagEntity[];
+	tags?: TagEntity[];
 
 	@OneToMany(() => SharedWorkflow, (sharedWorkflow) => sharedWorkflow.workflow)
 	shared: SharedWorkflow[];
 
-	@BeforeUpdate()
-	setUpdateDate() {
-		this.updatedAt = new Date();
+	@Column({
+		type: config.getEnv('database.type') === 'sqlite' ? 'text' : 'json',
+		nullable: true,
+		transformer: sqlite.jsonColumn,
+	})
+	pinData: ISimplifiedPinData;
+
+	/**
+	 * Hash of editable workflow state.
+	 */
+	hash: string;
+
+	@AfterLoad()
+	@AfterUpdate()
+	@AfterInsert()
+	setHash(): void {
+		const { name, active, nodes, connections, settings, staticData, pinData } = this;
+
+		const state = JSON.stringify({
+			name,
+			active,
+			nodes: nodes ? nodes.map(alphabetizeKeys) : [],
+			connections,
+			settings,
+			staticData,
+			pinData,
+		});
+
+		this.hash = crypto.createHash('md5').update(state).digest('hex');
 	}
+}
+
+/**
+ * Simplified to prevent excessively deep type instantiation error from
+ * `INodeExecutionData` in `IPinData` in a TypeORM entity field.
+ */
+export interface ISimplifiedPinData {
+	[nodeName: string]: Array<{
+		json: IDataObject;
+		binary?: IBinaryKeyData;
+		pairedItem?: IPairedItemData | IPairedItemData[] | number;
+	}>;
 }

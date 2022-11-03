@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const userStoryOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const userStoryOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
+				resource: ['userStory'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const userStoryOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a user story',
+				action: 'Create a user story',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a user story',
+				action: 'Delete a user story',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a user story',
+				action: 'Get a user story',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all user stories',
+				description: 'Get many user stories',
+				action: 'Get many user stories',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a user story',
+				action: 'Update a user story',
 			},
 		],
 		default: 'create',
@@ -53,7 +54,8 @@ export const userStoryFields: INodeProperties[] = [
 	{
 		displayName: 'Project Name or ID',
 		name: 'projectId',
-		description: 'ID of the project to which the user story belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'ID of the project to which the user story belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
@@ -62,12 +64,8 @@ export const userStoryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['userStory'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -79,12 +77,8 @@ export const userStoryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['userStory'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -96,12 +90,8 @@ export const userStoryFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['userStory'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -110,13 +100,12 @@ export const userStoryFields: INodeProperties[] = [
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user to whom the user story is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the user to whom the user story is assigned. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Backlog Order',
@@ -133,7 +122,8 @@ export const userStoryFields: INodeProperties[] = [
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the user story is blocked. Requires "Is Blocked" toggle to be enabled.',
+				description:
+					'Reason why the user story is blocked. Requires "Is Blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -163,13 +153,12 @@ export const userStoryFields: INodeProperties[] = [
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getMilestones',
 				},
 				default: '',
-				description: 'ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Sprint Order',
@@ -186,22 +175,21 @@ export const userStoryFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUserStoryStatuses',
 				},
 				default: '',
-				description: 'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
@@ -210,10 +198,10 @@ export const userStoryFields: INodeProperties[] = [
 				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTypes',
 				},
 				default: '',
@@ -233,12 +221,8 @@ export const userStoryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['userStory'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -255,12 +239,8 @@ export const userStoryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['userStory'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -271,7 +251,8 @@ export const userStoryFields: INodeProperties[] = [
 	{
 		displayName: 'Project Name or ID',
 		name: 'projectId',
-		description: 'ID of the project to which the user story belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'ID of the project to which the user story belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		type: 'options',
 		typeOptions: {
 			loadOptionsMethod: 'getProjects',
@@ -280,12 +261,8 @@ export const userStoryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['userStory'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -297,12 +274,8 @@ export const userStoryFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['userStory'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -317,15 +290,9 @@ export const userStoryFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['userStory'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -336,12 +303,8 @@ export const userStoryFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['userStory'],
+				operation: ['getAll'],
 			},
 		},
 		default: {},
@@ -349,12 +312,11 @@ export const userStoryFields: INodeProperties[] = [
 			{
 				displayName: 'Asignee Name or ID',
 				name: 'assigned_to',
-				description: 'ID of the user whom the user story is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the user whom the user story is assigned to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
@@ -362,12 +324,11 @@ export const userStoryFields: INodeProperties[] = [
 			{
 				displayName: 'Epic Name or ID',
 				name: 'epic',
-				description: 'ID of the epic to which the user story belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the epic to which the user story belongs. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getEpics',
 				},
 				default: '',
@@ -391,22 +352,21 @@ export const userStoryFields: INodeProperties[] = [
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getMilestones',
 				},
 				default: '',
-				description: 'ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Role Name or ID',
 				name: 'role',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getRoles',
 				},
 				default: '',
@@ -414,24 +374,23 @@ export const userStoryFields: INodeProperties[] = [
 			{
 				displayName: 'Status Name or ID',
 				name: 'status',
-				description: 'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUserStoryStatuses',
 				},
 				default: '',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
@@ -450,15 +409,12 @@ export const userStoryFields: INodeProperties[] = [
 			loadOptionsMethod: 'getProjects',
 		},
 		default: '',
-		description: 'ID of the project to set the user story to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'ID of the project to set the user story to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['userStory'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -471,12 +427,8 @@ export const userStoryFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['userStory'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -488,12 +440,8 @@ export const userStoryFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'userStory',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['userStory'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -502,13 +450,12 @@ export const userStoryFields: INodeProperties[] = [
 				name: 'assigned_to',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'ID of the user to assign the the user story to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the user to assign the the user story to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Backlog Order',
@@ -525,7 +472,8 @@ export const userStoryFields: INodeProperties[] = [
 				name: 'blocked_note',
 				type: 'string',
 				default: '',
-				description: 'Reason why the user story is blocked. Requires "Is Blocked" toggle to be enabled.',
+				description:
+					'Reason why the user story is blocked. Requires "Is Blocked" toggle to be enabled.',
 			},
 			{
 				displayName: 'Description',
@@ -555,13 +503,12 @@ export const userStoryFields: INodeProperties[] = [
 				name: 'milestone',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getMilestones',
 				},
 				default: '',
-				description: 'ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the milestone of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Subject',
@@ -584,22 +531,21 @@ export const userStoryFields: INodeProperties[] = [
 				name: 'status',
 				type: 'options',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getUserStoryStatuses',
 				},
 				default: '',
-				description: 'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'ID of the status of the user story. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
-				displayName: 'Tags',
+				displayName: 'Tag Names or IDs',
 				name: 'tags',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTags',
 				},
 				default: [],
@@ -608,10 +554,10 @@ export const userStoryFields: INodeProperties[] = [
 				displayName: 'Type Name or ID',
 				name: 'type',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
-					loadOptionsDependsOn: [
-						'projectId',
-					],
+					loadOptionsDependsOn: ['projectId'],
 					loadOptionsMethod: 'getTypes',
 				},
 				default: '',

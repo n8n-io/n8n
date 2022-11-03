@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	ICredentialsDecrypted,
@@ -15,10 +13,7 @@ import {
 	NodeApiError,
 } from 'n8n-workflow';
 
-import {
-	jenkinsApiRequest,
-	tolerateTrailingSlash
-} from './GenericFunctions';
+import { jenkinsApiRequest, tolerateTrailingSlash } from './GenericFunctions';
 
 export type JenkinsApiCredentials = {
 	username: string;
@@ -37,7 +32,6 @@ export class Jenkins implements INodeType {
 		description: 'Consume Jenkins API',
 		defaults: {
 			name: 'Jenkins',
-			color: '#04AA51',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -80,9 +74,7 @@ export class Jenkins implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'job',
-						],
+						resource: ['job'],
 					},
 				},
 				options: [
@@ -90,21 +82,25 @@ export class Jenkins implements INodeType {
 						name: 'Copy',
 						value: 'copy',
 						description: 'Copy a specific job',
+						action: 'Copy a job',
 					},
 					{
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new job',
+						action: 'Create a job',
 					},
 					{
 						name: 'Trigger',
 						value: 'trigger',
 						description: 'Trigger a specific job',
+						action: 'Trigger a job',
 					},
 					{
 						name: 'Trigger with Parameters',
 						value: 'triggerParams',
 						description: 'Trigger a specific job',
+						action: 'Trigger a job with parameters',
 					},
 				],
 				default: 'trigger',
@@ -112,17 +108,14 @@ export class Jenkins implements INodeType {
 				noDataExpression: true,
 			},
 			{
-				displayName: 'Make sure the job is setup to support triggering with parameters. <a href="https://wiki.jenkins.io/display/JENKINS/Parameterized+Build" target="_blank">More info</a>',
+				displayName:
+					'Make sure the job is setup to support triggering with parameters. <a href="https://wiki.jenkins.io/display/JENKINS/Parameterized+Build" target="_blank">More info</a>',
 				name: 'triggerParamsNotice',
 				type: 'notice',
 				displayOptions: {
 					show: {
-						resource: [
-							'job',
-						],
-						operation: [
-							'triggerParams',
-						],
+						resource: ['job'],
+						operation: ['triggerParams'],
 					},
 				},
 				default: '',
@@ -136,19 +129,14 @@ export class Jenkins implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'job',
-						],
-						operation: [
-							'trigger',
-							'triggerParams',
-							'copy',
-						],
+						resource: ['job'],
+						operation: ['trigger', 'triggerParams', 'copy'],
 					},
 				},
 				required: true,
 				default: '',
-				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 
 			// --------------------------------------------------------------------------------------------------------
@@ -161,12 +149,8 @@ export class Jenkins implements INodeType {
 				placeholder: 'Add Parameter',
 				displayOptions: {
 					show: {
-						resource: [
-							'job',
-						],
-						operation: [
-							'triggerParams',
-						],
+						resource: ['job'],
+						operation: ['triggerParams'],
 					},
 				},
 				required: true,
@@ -183,11 +167,11 @@ export class Jenkins implements INodeType {
 								displayName: 'Name or ID',
 								name: 'name',
 								type: 'options',
+								description:
+									'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 								typeOptions: {
 									loadOptionsMethod: 'getJobParameters',
-									loadOptionsDependsOn: [
-										'job',
-									],
+									loadOptionsDependsOn: ['job'],
 								},
 								default: '',
 							},
@@ -212,13 +196,8 @@ export class Jenkins implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'job',
-						],
-						operation: [
-							'copy',
-							'create',
-						],
+						resource: ['job'],
+						operation: ['copy', 'create'],
 					},
 				},
 				required: true,
@@ -234,12 +213,8 @@ export class Jenkins implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'job',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['job'],
+						operation: ['create'],
 					},
 				},
 				required: true,
@@ -247,18 +222,15 @@ export class Jenkins implements INodeType {
 				description: 'XML of Jenkins config',
 			},
 			{
-				displayName: 'To get the XML of an existing job, add ‘config.xml’ to the end of the job URL',
+				displayName:
+					'To get the XML of an existing job, add ‘config.xml’ to the end of the job URL',
 				name: 'createNotice',
 				type: 'notice',
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'job',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['job'],
+						operation: ['create'],
 					},
 				},
 			},
@@ -272,9 +244,7 @@ export class Jenkins implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'instance',
-						],
+						resource: ['instance'],
 					},
 				},
 				options: [
@@ -282,31 +252,39 @@ export class Jenkins implements INodeType {
 						name: 'Cancel Quiet Down',
 						value: 'cancelQuietDown',
 						description: 'Cancel quiet down state',
+						action: 'Cancel Quiet Down an instance',
 					},
 					{
 						name: 'Quiet Down',
 						value: 'quietDown',
-						description: 'Put Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
+						description:
+							'Put Jenkins in quiet mode, no builds can be started, Jenkins is ready for shutdown',
+						action: 'Quiet Down an instance',
 					},
 					{
 						name: 'Restart',
 						value: 'restart',
 						description: 'Restart Jenkins immediately on environments where it is possible',
+						action: 'Restart an instance',
 					},
 					{
 						name: 'Safely Restart',
 						value: 'safeRestart',
-						description: 'Restart Jenkins once no jobs are running on environments where it is possible',
+						description:
+							'Restart Jenkins once no jobs are running on environments where it is possible',
+						action: 'Safely Restart an instance',
 					},
 					{
 						name: 'Safely Shutdown',
 						value: 'safeExit',
 						description: 'Shutdown once no jobs are running',
+						action: 'Safely Shutdown an instance',
 					},
 					{
 						name: 'Shutdown',
 						value: 'exit',
 						description: 'Shutdown Jenkins immediately',
+						action: 'Shutdown an instance',
 					},
 				],
 				default: 'safeRestart',
@@ -319,27 +297,22 @@ export class Jenkins implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'instance',
-						],
-						operation: [
-							'quietDown',
-						],
+						resource: ['instance'],
+						operation: ['quietDown'],
 					},
 				},
 				default: '',
 				description: 'Freeform reason for quiet down mode',
 			},
 			{
-				displayName: 'Instance operation can shutdown Jenkins instance and make it unresponsive. Some commands may not be available depending on instance implementation.',
+				displayName:
+					'Instance operation can shutdown Jenkins instance and make it unresponsive. Some commands may not be available depending on instance implementation.',
 				name: 'instanceNotice',
 				type: 'notice',
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'instance',
-						],
+						resource: ['instance'],
 					},
 				},
 			},
@@ -353,16 +326,15 @@ export class Jenkins implements INodeType {
 				type: 'options',
 				displayOptions: {
 					show: {
-						resource: [
-							'build',
-						],
+						resource: ['build'],
 					},
 				},
 				options: [
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
 						description: 'List Builds',
+						action: 'Get many builds',
 					},
 				],
 				default: 'getAll',
@@ -377,17 +349,14 @@ export class Jenkins implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'build',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['build'],
+						operation: ['getAll'],
 					},
 				},
 				required: true,
 				default: '',
-				description: 'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Name of the job. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Return All',
@@ -396,12 +365,8 @@ export class Jenkins implements INodeType {
 				default: false,
 				displayOptions: {
 					show: {
-						resource: [
-							'build',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['build'],
+						operation: ['getAll'],
 					},
 				},
 				description: 'Whether to return all results or only up to a given limit',
@@ -416,15 +381,9 @@ export class Jenkins implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'build',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['build'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 				description: 'Max number of results to return',
@@ -481,8 +440,12 @@ export class Jenkins implements INodeType {
 					});
 				}
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
 					return 0;
 				});
 
@@ -504,8 +467,12 @@ export class Jenkins implements INodeType {
 					}
 				}
 				returnData.sort((a, b) => {
-					if (a.name < b.name) { return -1; }
-					if (a.name > b.name) { return 1; }
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
 					return 0;
 				});
 
@@ -542,7 +509,12 @@ export class Jenkins implements INodeType {
 							}, {});
 						}
 						const endpoint = `/job/${job}/buildWithParameters`;
-						await jenkinsApiRequest.call(this, 'POST', endpoint, {}, {},
+						await jenkinsApiRequest.call(
+							this,
+							'POST',
+							endpoint,
+							{},
+							{},
 							{
 								form: body,
 								headers: {
@@ -565,8 +537,7 @@ export class Jenkins implements INodeType {
 						try {
 							await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams);
 							responseData = { success: true };
-						}
-						catch (error) {
+						} catch (error) {
 							if (error.httpCode === '302') {
 								responseData = { success: true };
 							} else {
@@ -586,7 +557,10 @@ export class Jenkins implements INodeType {
 						const body = this.getNodeParameter('xml', i) as string;
 
 						const endpoint = `/createItem`;
-						await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams, body, { headers, json: false });
+						await jenkinsApiRequest.call(this, 'POST', endpoint, queryParams, body, {
+							headers,
+							json: false,
+						});
 						responseData = { success: true };
 					}
 				}

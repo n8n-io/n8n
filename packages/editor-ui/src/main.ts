@@ -1,6 +1,5 @@
 // The Vue build version to load with the `import` command
 // (runtime-only or standalone) has been set in webpack.base.conf with an alias.
-import './public_path';
 import Vue from 'vue';
 
 import './plugins';
@@ -8,6 +7,8 @@ import 'prismjs';
 import 'prismjs/themes/prism.css';
 import 'vue-prism-editor/dist/VuePrismEditor.css';
 import 'vue-json-pretty/lib/styles.css';
+
+import 'n8n-design-system/css/index.scss';
 import './n8n-theme.scss';
 
 import "@fontsource/open-sans/latin-400.css";
@@ -19,7 +20,7 @@ import router from './router';
 
 import { runExternalHook } from './components/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
-import { I18nPlugin } from './plugins/i18n';
+import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
 import { store } from './store';
 
@@ -32,12 +33,13 @@ Vue.use(TelemetryPlugin);
 Vue.use((vue) => I18nPlugin(vue, store));
 
 new Vue({
+	i18n: i18nInstance,
 	router,
 	store,
 	render: h => h(App),
 }).$mount('#app');
 
-if (process.env.NODE_ENV !== 'production') {
+if (import.meta.env.NODE_ENV !== 'production') {
 	// Make sure that we get all error messages properly displayed
 	// as long as we are not in production mode
 	window.onerror = (message, source, lineno, colno, error) => {

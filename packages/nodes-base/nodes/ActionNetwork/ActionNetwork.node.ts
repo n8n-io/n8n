@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -138,7 +136,6 @@ export class ActionNetwork implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'attendance') {
-
 					// **********************************************************************
 					//                               attendance
 					// **********************************************************************
@@ -146,7 +143,6 @@ export class ActionNetwork implements INodeType {
 					// https://actionnetwork.org/docs/v2/attendances
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//            attendance: create
 						// ----------------------------------------
@@ -158,9 +154,7 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/events/${eventId}/attendances`;
 						response = await actionNetworkApiRequest.call(this, 'POST', endpoint, body);
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//             attendance: get
 						// ----------------------------------------
@@ -170,9 +164,7 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/events/${eventId}/attendances/${attendanceId}`;
 						response = await actionNetworkApiRequest.call(this, 'GET', endpoint);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//            attendance: getAll
 						// ----------------------------------------
@@ -181,11 +173,8 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/events/${eventId}/attendances`;
 						response = await handleListing.call(this, 'GET', endpoint);
-
 					}
-
 				} else if (resource === 'event') {
-
 					// **********************************************************************
 					//                                 event
 					// **********************************************************************
@@ -193,7 +182,6 @@ export class ActionNetwork implements INodeType {
 					// https://actionnetwork.org/docs/v2/events
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//              event: create
 						// ----------------------------------------
@@ -210,9 +198,7 @@ export class ActionNetwork implements INodeType {
 						}
 
 						response = await actionNetworkApiRequest.call(this, 'POST', '/events', body);
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//                event: get
 						// ----------------------------------------
@@ -220,19 +206,14 @@ export class ActionNetwork implements INodeType {
 						const eventId = this.getNodeParameter('eventId', i);
 
 						response = await actionNetworkApiRequest.call(this, 'GET', `/events/${eventId}`);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//              event: getAll
 						// ----------------------------------------
 
 						response = await handleListing.call(this, 'GET', '/events');
-
 					}
-
 				} else if (resource === 'person') {
-
 					// **********************************************************************
 					//                                 person
 					// **********************************************************************
@@ -240,7 +221,6 @@ export class ActionNetwork implements INodeType {
 					// https://actionnetwork.org/docs/v2/people
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//              person: create
 						// ----------------------------------------
@@ -255,32 +235,30 @@ export class ActionNetwork implements INodeType {
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
-						if (Object.keys(additionalFields).length) {
+						if (Object.keys(additionalFields).length && body.person) {
 							Object.assign(body.person, adjustPersonPayload(additionalFields));
 						}
 
 						response = await actionNetworkApiRequest.call(this, 'POST', '/people', body);
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//               person: get
 						// ----------------------------------------
 
 						const personId = this.getNodeParameter('personId', i);
 
-						response = await actionNetworkApiRequest.call(this, 'GET', `/people/${personId}`) as PersonResponse;
-
+						response = (await actionNetworkApiRequest.call(
+							this,
+							'GET',
+							`/people/${personId}`,
+						)) as PersonResponse;
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//              person: getAll
 						// ----------------------------------------
 
-						response = await handleListing.call(this, 'GET', '/people') as PersonResponse[];
-
+						response = (await handleListing.call(this, 'GET', '/people')) as PersonResponse[];
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//              person: update
 						// ----------------------------------------
@@ -295,15 +273,13 @@ export class ActionNetwork implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Please enter at least one field to update for the ${resource}.`,
+								{ itemIndex: i },
 							);
 						}
 
 						response = await actionNetworkApiRequest.call(this, 'PUT', `/people/${personId}`, body);
-
 					}
-
 				} else if (resource === 'petition') {
-
 					// **********************************************************************
 					//                                petition
 					// **********************************************************************
@@ -311,7 +287,6 @@ export class ActionNetwork implements INodeType {
 					// https://actionnetwork.org/docs/v2/petitions
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//             petition: create
 						// ----------------------------------------
@@ -328,9 +303,7 @@ export class ActionNetwork implements INodeType {
 						}
 
 						response = await actionNetworkApiRequest.call(this, 'POST', '/petitions', body);
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//              petition: get
 						// ----------------------------------------
@@ -339,17 +312,13 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/petitions/${petitionId}`;
 						response = await actionNetworkApiRequest.call(this, 'GET', endpoint);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//             petition: getAll
 						// ----------------------------------------
 
 						response = await handleListing.call(this, 'GET', '/petitions');
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//             petition: update
 						// ----------------------------------------
@@ -364,15 +333,18 @@ export class ActionNetwork implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Please enter at least one field to update for the ${resource}.`,
+								{ itemIndex: i },
 							);
 						}
 
-						response = await actionNetworkApiRequest.call(this, 'PUT', `/petitions/${petitionId}`, body);
-
+						response = await actionNetworkApiRequest.call(
+							this,
+							'PUT',
+							`/petitions/${petitionId}`,
+							body,
+						);
 					}
-
 				} else if (resource === 'signature') {
-
 					// **********************************************************************
 					//                               signature
 					// **********************************************************************
@@ -380,7 +352,6 @@ export class ActionNetwork implements INodeType {
 					// https://actionnetwork.org/docs/v2/signatures
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//            signature: create
 						// ----------------------------------------
@@ -398,9 +369,7 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/petitions/${petitionId}/signatures`;
 						response = await actionNetworkApiRequest.call(this, 'POST', endpoint, body);
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//              signature: get
 						// ----------------------------------------
@@ -410,9 +379,7 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/petitions/${petitionId}/signatures/${signatureId}`;
 						response = await actionNetworkApiRequest.call(this, 'GET', endpoint);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//            signature: getAll
 						// ----------------------------------------
@@ -421,9 +388,7 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/petitions/${petitionId}/signatures`;
 						response = await handleListing.call(this, 'GET', endpoint);
-
 					} else if (operation === 'update') {
-
 						// ----------------------------------------
 						//            signature: update
 						// ----------------------------------------
@@ -439,16 +404,14 @@ export class ActionNetwork implements INodeType {
 							throw new NodeOperationError(
 								this.getNode(),
 								`Please enter at least one field to update for the ${resource}.`,
+								{ itemIndex: i },
 							);
 						}
 
 						const endpoint = `/petitions/${petitionId}/signatures/${signatureId}`;
 						response = await actionNetworkApiRequest.call(this, 'PUT', endpoint, body);
-
 					}
-
 				} else if (resource === 'tag') {
-
 					// **********************************************************************
 					//                                  tag
 					// **********************************************************************
@@ -456,7 +419,6 @@ export class ActionNetwork implements INodeType {
 					// https://actionnetwork.org/docs/v2/tags
 
 					if (operation === 'create') {
-
 						// ----------------------------------------
 						//               tag: create
 						// ----------------------------------------
@@ -466,9 +428,7 @@ export class ActionNetwork implements INodeType {
 						} as IDataObject;
 
 						response = await actionNetworkApiRequest.call(this, 'POST', '/tags', body);
-
 					} else if (operation === 'get') {
-
 						// ----------------------------------------
 						//                 tag: get
 						// ----------------------------------------
@@ -476,19 +436,14 @@ export class ActionNetwork implements INodeType {
 						const tagId = this.getNodeParameter('tagId', i);
 
 						response = await actionNetworkApiRequest.call(this, 'GET', `/tags/${tagId}`);
-
 					} else if (operation === 'getAll') {
-
 						// ----------------------------------------
 						//               tag: getAll
 						// ----------------------------------------
 
 						response = await handleListing.call(this, 'GET', '/tags');
-
 					}
-
 				} else if (resource === 'personTag') {
-
 					// **********************************************************************
 					//                                personTag
 					// **********************************************************************
@@ -496,7 +451,6 @@ export class ActionNetwork implements INodeType {
 					// https://actionnetwork.org/docs/v2/taggings
 
 					if (operation === 'add') {
-
 						// ----------------------------------------
 						//             personTag: add
 						// ----------------------------------------
@@ -508,9 +462,7 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/tags/${tagId}/taggings`;
 						response = await actionNetworkApiRequest.call(this, 'POST', endpoint, body);
-
 					} else if (operation === 'remove') {
-
 						// ----------------------------------------
 						//             personTag: remove
 						// ----------------------------------------
@@ -520,23 +472,19 @@ export class ActionNetwork implements INodeType {
 
 						const endpoint = `/tags/${tagId}/taggings/${taggingId}`;
 						response = await actionNetworkApiRequest.call(this, 'DELETE', endpoint);
-
 					}
-
 				}
 
 				const simplify = this.getNodeParameter('simple', i, false) as boolean;
 
 				if (simplify) {
-					response = operation === 'getAll'
-						? response.map((i: Response) => simplifyResponse(i, resource))
-						: simplifyResponse(response, resource);
+					response =
+						operation === 'getAll'
+							? response.map((i: Response) => simplifyResponse(i, resource))
+							: simplifyResponse(response, resource);
 				}
 
-				Array.isArray(response)
-					? returnData.push(...response)
-					: returnData.push(response);
-
+				Array.isArray(response) ? returnData.push(...response) : returnData.push(response);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

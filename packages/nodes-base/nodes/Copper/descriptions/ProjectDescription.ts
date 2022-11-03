@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const projectOperations: INodeProperties[] = [
 	{
@@ -10,31 +8,34 @@ export const projectOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
+				resource: ['project'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a project',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
+				action: 'Delete a project',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a project',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many projects',
 			},
 			{
 				name: 'Update',
 				value: 'update',
+				action: 'Update a project',
 			},
 		],
 		default: 'create',
@@ -54,12 +55,8 @@ export const projectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['project'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -71,12 +68,8 @@ export const projectFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['project'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -125,12 +118,8 @@ export const projectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['project'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -147,12 +136,8 @@ export const projectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['project'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -168,12 +153,8 @@ export const projectFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['project'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -189,15 +170,9 @@ export const projectFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['project'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -209,12 +184,8 @@ export const projectFields: INodeProperties[] = [
 		placeholder: 'Add Filter',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['project'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -240,12 +211,8 @@ export const projectFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['project'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -257,12 +224,8 @@ export const projectFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'project',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['project'],
+				operation: ['update'],
 			},
 		},
 		options: [

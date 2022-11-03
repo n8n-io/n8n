@@ -1,6 +1,9 @@
-import { IExecuteFunctions } from 'n8n-core';
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -9,7 +12,8 @@ import {
 // @ts-ignore
 import mysql2 from 'mysql2/promise';
 
-import { copyInputItems } from './GenericFunctions';
+import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
+import { IExecuteFunctions } from 'n8n-core';
 
 export class MySql implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,6 +32,7 @@ export class MySql implements INodeType {
 			{
 				name: 'mySql',
 				required: true,
+				testedBy: 'mysqlConnectionTest',
 			},
 		],
 		properties: [
@@ -41,16 +46,19 @@ export class MySql implements INodeType {
 						name: 'Execute Query',
 						value: 'executeQuery',
 						description: 'Execute an SQL query',
+						action: 'Execute a SQL query',
 					},
 					{
 						name: 'Insert',
 						value: 'insert',
 						description: 'Insert rows in database',
+						action: 'Insert rows in database',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update rows in database',
+						action: 'Update rows in database',
 					},
 				],
 				default: 'insert',
@@ -68,18 +76,14 @@ export class MySql implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: [
-							'executeQuery',
-						],
+						operation: ['executeQuery'],
 					},
 				},
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'SELECT id, name FROM product WHERE id < 40',
 				required: true,
 				description: 'The SQL query to execute',
 			},
-
 
 			// ----------------------------------
 			//         insert
@@ -87,16 +91,33 @@ export class MySql implements INodeType {
 			{
 				displayName: 'Table',
 				name: 'table',
-				type: 'string',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Table...',
+						typeOptions: {
+							searchListMethod: 'searchTables',
+							searchFilterRequired: false,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'table_name',
+					},
+				],
 				displayOptions: {
 					show: {
-						operation: [
-							'insert',
-						],
+						operation: ['insert'],
 					},
 				},
-				default: '',
-				required: true,
 				description: 'Name of the table in which to insert data to',
 			},
 			{
@@ -105,15 +126,13 @@ export class MySql implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'insert',
-						],
+						operation: ['insert'],
 					},
 				},
 				default: '',
-				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
 				placeholder: 'id,name,description',
-				description: 'Comma-separated list of the properties which should used as columns for the new rows',
+				description:
+					'Comma-separated list of the properties which should used as columns for the new rows',
 			},
 			{
 				displayName: 'Options',
@@ -121,9 +140,7 @@ export class MySql implements INodeType {
 				type: 'collection',
 				displayOptions: {
 					show: {
-						operation: [
-							'insert',
-						],
+						operation: ['insert'],
 					},
 				},
 				default: {},
@@ -135,7 +152,8 @@ export class MySql implements INodeType {
 						name: 'ignore',
 						type: 'boolean',
 						default: true,
-						description: 'Ignore any ignorable errors that occur while executing the INSERT statement',
+						description:
+							'Whether to ignore any ignorable errors that occur while executing the INSERT statement',
 					},
 					{
 						displayName: 'Priority',
@@ -145,20 +163,22 @@ export class MySql implements INodeType {
 							{
 								name: 'Low Prioirity',
 								value: 'LOW_PRIORITY',
-								description: 'Delays execution of the INSERT until no other clients are reading from the table',
+								description:
+									'Delays execution of the INSERT until no other clients are reading from the table',
 							},
 							{
 								name: 'High Priority',
 								value: 'HIGH_PRIORITY',
-								description: 'Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used.',
+								description:
+									'Overrides the effect of the --low-priority-updates option if the server was started with that option. It also causes concurrent inserts not to be used.',
 							},
 						],
 						default: 'LOW_PRIORITY',
-						description: 'Ignore any ignorable errors that occur while executing the INSERT statement',
+						description:
+							'Ignore any ignorable errors that occur while executing the INSERT statement',
 					},
 				],
 			},
-
 
 			// ----------------------------------
 			//         update
@@ -166,16 +186,33 @@ export class MySql implements INodeType {
 			{
 				displayName: 'Table',
 				name: 'table',
-				type: 'string',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Table...',
+						typeOptions: {
+							searchListMethod: 'searchTables',
+							searchFilterRequired: false,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'table_name',
+					},
+				],
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
+						operation: ['update'],
 					},
 				},
-				default: '',
-				required: true,
 				description: 'Name of the table in which to update data in',
 			},
 			{
@@ -184,15 +221,14 @@ export class MySql implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
+						operation: ['update'],
 					},
 				},
 				default: 'id',
 				required: true,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description: 'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+				description:
+					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
 			},
 			{
 				displayName: 'Columns',
@@ -200,50 +236,50 @@ export class MySql implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'update',
-						],
+						operation: ['update'],
 					},
 				},
 				default: '',
 				placeholder: 'name,description',
-				description: 'Comma-separated list of the properties which should used as columns for rows to update',
+				description:
+					'Comma-separated list of the properties which should used as columns for rows to update',
 			},
-
 		],
 	};
 
+	methods = {
+		credentialTest: {
+			async mysqlConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const connection = await createConnection(credentials);
+					connection.end();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
+		listSearch: {
+			searchTables,
+		},
+	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mySql');
-
-		// Destructuring SSL configuration
-		const {
-			ssl,
-			caCertificate,
-			clientCertificate,
-			clientPrivateKey,
-			...baseCredentials
-		} = credentials;
-
-		if (ssl) {
-			baseCredentials.ssl = {};
-
-			if (caCertificate) {
-				baseCredentials.ssl.ca = caCertificate;
-			}
-
-			// client certificates might not be required
-			if (clientCertificate || clientPrivateKey) {
-				baseCredentials.ssl.cert = clientCertificate;
-				baseCredentials.ssl.key = clientPrivateKey;
-			}
-		}
-
-		const connection = await mysql2.createConnection(baseCredentials);
+		const connection = await createConnection(credentials);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let returnItems = [];
+		let returnItems: INodeExecutionData[] = [];
 
 		if (operation === 'executeQuery') {
 			// ----------------------------------
@@ -257,19 +293,18 @@ export class MySql implements INodeType {
 					return connection.query(rawQuery);
 				});
 
-				const queryResult = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result) => {
-					const [rows, fields] = result;
+				returnItems = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result, index) => {
+					const [rows] = result;
 
-					if (Array.isArray(rows)) {
-						return collection.concat(rows);
-					}
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
+						{ itemData: { item: index } },
+					);
 
-					collection.push(rows);
+					collection.push(...executionData);
 
 					return collection;
-				}, []);
-
-				returnItems = this.helpers.returnJsonArray(queryResult as unknown as IDataObject[]);
+				}, [] as INodeExecutionData[]);
 
 			} catch (error) {
 				if (this.continueOnFail()) {
@@ -285,17 +320,23 @@ export class MySql implements INodeType {
 			// ----------------------------------
 
 			try {
-				const table = this.getNodeParameter('table', 0) as string;
+				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
-				const columns = columnString.split(',').map(column => column.trim());
+				const columns = columnString.split(',').map((column) => column.trim());
 				const insertItems = copyInputItems(items, columns);
-				const insertPlaceholder = `(${columns.map(column => '?').join(',')})`;
+				const insertPlaceholder = `(${columns.map((column) => '?').join(',')})`;
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
 
-				const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''} INTO ${table}(${columnString}) VALUES ${items.map(item => insertPlaceholder).join(',')};`;
-				const queryItems = insertItems.reduce((collection, item) => collection.concat(Object.values(item as any)), []); // tslint:disable-line:no-any
+				const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''
+					} INTO ${table}(${columnString}) VALUES ${items
+						.map((item) => insertPlaceholder)
+						.join(',')};`;
+				const queryItems = insertItems.reduce(
+					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
+					[],
+				);
 
 				const queryResult = await connection.query(insertSQL, queryItems);
 
@@ -308,28 +349,32 @@ export class MySql implements INodeType {
 					throw error;
 				}
 			}
-
 		} else if (operation === 'update') {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
 
 			try {
-				const table = this.getNodeParameter('table', 0) as string;
+				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
-				const columns = columnString.split(',').map(column => column.trim());
+				const columns = columnString.split(',').map((column) => column.trim());
 
 				if (!columns.includes(updateKey)) {
 					columns.unshift(updateKey);
 				}
 
 				const updateItems = copyInputItems(items, columns);
-				const updateSQL = `UPDATE ${table} SET ${columns.map(column => `${column} = ?`).join(',')} WHERE ${updateKey} = ?;`;
-				const queryQueue = updateItems.map((item) => connection.query(updateSQL, Object.values(item).concat(item[updateKey])));
+				const updateSQL = `UPDATE ${table} SET ${columns
+					.map((column) => `${column} = ?`)
+					.join(',')} WHERE ${updateKey} = ?;`;
+				const queryQueue = updateItems.map((item) =>
+					connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
+				);
 				const queryResult = await Promise.all(queryQueue);
-				returnItems = this.helpers.returnJsonArray(queryResult.map(result => result[0]) as unknown as IDataObject[]);
-
+				returnItems = this.helpers.returnJsonArray(
+					queryResult.map((result) => result[0]) as unknown as IDataObject[],
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
@@ -340,10 +385,15 @@ export class MySql implements INodeType {
 			}
 		} else {
 			if (this.continueOnFail()) {
-				returnItems = this.helpers.returnJsonArray({ error: `The operation "${operation}" is not supported!` });
+				returnItems = this.helpers.returnJsonArray({
+					error: `The operation "${operation}" is not supported!`,
+				});
 			} else {
 				await connection.end();
-				throw new NodeOperationError(this.getNode(), `The operation "${operation}" is not supported!`);
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+				);
 			}
 		}
 

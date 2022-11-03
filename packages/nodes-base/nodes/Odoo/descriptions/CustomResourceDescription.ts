@@ -1,21 +1,19 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const customResourceOperations: INodeProperties[] = [
 	{
 		displayName: 'Custom Resource Name or ID',
 		name: 'customResource',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		default: '',
 		typeOptions: {
 			loadOptionsMethod: 'getModels',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'custom',
-				],
+				resource: ['custom'],
 			},
 		},
 	},
@@ -27,9 +25,7 @@ export const customResourceOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'custom',
-				],
+				resource: ['custom'],
 			},
 		},
 		options: [
@@ -37,26 +33,31 @@ export const customResourceOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new item',
+				action: 'Create an item',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete an item',
+				action: 'Delete an item',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an item',
+				action: 'Get an item',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all items',
+				description: 'Get many items',
+				action: 'Get many items',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an item',
+				action: 'Update an item',
 			},
 		],
 	},
@@ -78,12 +79,8 @@ export const customResourceDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'custom',
-				],
+				operation: ['create'],
+				resource: ['custom'],
 			},
 		},
 		options: [
@@ -95,6 +92,8 @@ export const customResourceDescription: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',
@@ -122,13 +121,8 @@ export const customResourceDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-					'delete',
-				],
-				resource: [
-					'custom',
-				],
+				operation: ['get', 'delete'],
+				resource: ['custom'],
 			},
 		},
 	},
@@ -141,12 +135,8 @@ export const customResourceDescription: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'custom',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['custom'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -160,15 +150,9 @@ export const customResourceDescription: INodeProperties[] = [
 		default: 50,
 		displayOptions: {
 			show: {
-				resource: [
-					'custom',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['custom'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -185,26 +169,22 @@ export const customResourceDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-					'get',
-				],
-				resource: [
-					'custom',
-				],
+				operation: ['getAll', 'get'],
+				resource: ['custom'],
 			},
 		},
 		options: [
 			{
-				displayName: 'Fields To Include',
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-multi-options
+				displayName: 'Fields to Include',
 				name: 'fieldsList',
 				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				default: [],
 				typeOptions: {
 					loadOptionsMethod: 'getModelFields',
-					loadOptionsDependsOn: [
-						'customResource',
-					],
+					loadOptionsDependsOn: ['customResource'],
 				},
 			},
 		],
@@ -222,12 +202,8 @@ export const customResourceDescription: INodeProperties[] = [
 		placeholder: 'Add condition',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'custom',
-				],
+				operation: ['getAll'],
+				resource: ['custom'],
 			},
 		},
 		options: [
@@ -239,11 +215,11 @@ export const customResourceDescription: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						default: '',
 						typeOptions: {
-							loadOptionsDependsOn: [
-								'customResource',
-							],
+							loadOptionsDependsOn: ['customResource'],
 							loadOptionsMethod: 'getModelFields',
 						},
 					},
@@ -318,12 +294,8 @@ export const customResourceDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'custom',
-				],
+				operation: ['update'],
+				resource: ['custom'],
 			},
 		},
 	},
@@ -340,12 +312,8 @@ export const customResourceDescription: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'custom',
-				],
+				operation: ['update'],
+				resource: ['custom'],
 			},
 		},
 		options: [
@@ -357,6 +325,8 @@ export const customResourceDescription: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldName',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						default: '',
 						typeOptions: {
 							loadOptionsMethod: 'getModelFields',

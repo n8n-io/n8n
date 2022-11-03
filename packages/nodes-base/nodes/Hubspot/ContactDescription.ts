@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -10,41 +8,46 @@ export const contactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new contact, or update the current one if it already exists (upsert)',
+				description:
+					'Create a new contact, or update the current one if it already exists (upsert)',
+				action: 'Create or update a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts',
+				description: 'Get many contacts',
+				action: 'Get many contacts',
 			},
 			{
 				name: 'Get Recently Created/Updated',
 				value: 'getRecentlyCreatedUpdated',
 				description: 'Get recently created/updated contacts',
+				action: 'Get recently created/updated contacts',
 			},
 			{
 				name: 'Search',
 				value: 'search',
 				description: 'Search contacts',
+				action: 'Search contacts',
 			},
 		],
 		default: 'upsert',
@@ -52,7 +55,6 @@ export const contactOperations: INodeProperties[] = [
 ];
 
 export const contactFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                contact:upsert                              */
 	/* -------------------------------------------------------------------------- */
@@ -60,15 +62,12 @@ export const contactFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['contact'],
+				operation: ['upsert'],
 			},
 		},
 		default: '',
@@ -79,16 +78,14 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['contact'],
+				operation: ['upsert'],
 			},
 		},
 		default: true,
-		description: 'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
+		// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+		description:
+			'By default the response only includes the ID. If this option gets activated, it will resolve the data automatically.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -98,12 +95,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'upsert',
-				],
+				resource: ['contact'],
+				operation: ['upsert'],
 			},
 		},
 		options: [
@@ -124,7 +117,8 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCompanies',
 				},
 				default: '',
-				description: 'Companies associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Companies associated with the ticket. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'City',
@@ -160,6 +154,8 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Contact Owner Name or ID',
 				name: 'contactOwner',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getOwners',
 				},
@@ -193,7 +189,8 @@ export const contactFields: INodeProperties[] = [
 									loadOptionsMethod: 'getContactCustomProperties',
 								},
 								default: '',
-								description: 'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'Name of the property. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Value',
@@ -235,14 +232,15 @@ export const contactFields: INodeProperties[] = [
 				name: 'fieldOfStudy',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s field of study. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
+				description:
+					"A contact's field of study. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
 				displayName: 'First Name',
 				name: 'firstName',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s first name',
+				description: "A contact's first name",
 			},
 			{
 				displayName: 'Gender',
@@ -261,7 +259,8 @@ export const contactFields: INodeProperties[] = [
 				name: 'graduationDate',
 				type: 'dateTime',
 				default: '',
-				description: 'A contact\'s graduation date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
+				description:
+					"A contact's graduation date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
 				displayName: 'Industry',
@@ -275,21 +274,22 @@ export const contactFields: INodeProperties[] = [
 				name: 'jobFunction',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s job function. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
+				description:
+					"A contact's job function. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
 				displayName: 'Job Title',
 				name: 'jobTitle',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s job title',
+				description: "A contact's job title",
 			},
 			{
 				displayName: 'Last Name',
 				name: 'lastName',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s last name',
+				description: "A contact's last name",
 			},
 			{
 				displayName: 'Lead Status Name or ID',
@@ -299,7 +299,8 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactLeadStatuses',
 				},
 				default: '',
-				description: 'The contact\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The contact\'s sales, prospecting or outreach status. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Legal Basic For Processing Contact Data Name or ID',
@@ -309,7 +310,8 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactLealBasics',
 				},
 				default: '',
-				description: 'Legal basis for processing contact\'s data; \'Not applicable\' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					"Legal basis for processing contact's data; 'Not applicable' will exempt the contact from GDPR protections. Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>.",
 			},
 			{
 				displayName: 'Lifecycle Stage Name or ID',
@@ -319,14 +321,16 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactLifeCycleStages',
 				},
 				default: '',
-				description: 'The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The qualification of contacts to sales readiness. It can be set through imports, forms, workflows, and manually on a per contact basis. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Marital Status',
 				name: 'maritalStatus',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s marital status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
+				description:
+					"A contact's marital status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
 				displayName: 'Membership Note',
@@ -336,7 +340,7 @@ export const contactFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'The notes relating to the contact\'s content membership',
+				description: "The notes relating to the contact's content membership",
 			},
 			{
 				displayName: 'Message',
@@ -346,14 +350,15 @@ export const contactFields: INodeProperties[] = [
 					alwaysOpenEditWindow: true,
 				},
 				default: '',
-				description: 'A default property to be used for any message or comments a contact may want to leave on a form',
+				description:
+					'A default property to be used for any message or comments a contact may want to leave on a form',
 			},
 			{
 				displayName: 'Mobile Phone Number',
 				name: 'mobilePhoneNumber',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s mobile phone number',
+				description: "A contact's mobile phone number",
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
@@ -364,7 +369,8 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactNumberOfEmployees',
 				},
 				default: '',
-				description: 'The number of company employees. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The number of company employees. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Original Source Name or ID',
@@ -374,17 +380,18 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactOriginalSources',
 				},
 				default: '',
-				description: 'The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The first known source through which a contact found your website. Source is automatically set by HubSpot, but may be updated manually. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Phone Number',
 				name: 'phoneNumber',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s primary phone number',
+				description: "A contact's primary phone number",
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
@@ -392,20 +399,19 @@ export const contactFields: INodeProperties[] = [
 				},
 				displayOptions: {
 					show: {
-						'/resolveData': [
-							true,
-						],
+						'/resolveData': [true],
 					},
 				},
 				default: [],
-				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description:
+					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Postal Code',
 				name: 'postalCode',
 				type: 'string',
 				default: '',
-				description: 'The contact\'s zip code. This might be set via import, form, or integration.',
+				description: "The contact's zip code. This might be set via import, form, or integration.",
 			},
 			{
 				displayName: 'Preffered Language Name or ID',
@@ -415,14 +421,16 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactPrefferedLanguages',
 				},
 				default: '',
-				description: 'Set your contact\'s preferred language for communications. This property can be changed from an import, form, or integration. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'Set your contact\'s preferred language for communications. This property can be changed from an import, form, or integration. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Relationship Status',
 				name: 'relationshipStatus',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
+				description:
+					"A contact's relationship status. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
 				displayName: 'Salutation',
@@ -436,28 +444,32 @@ export const contactFields: INodeProperties[] = [
 				name: 'school',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
+				description:
+					"A contact's school. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
 				displayName: 'Seniority',
 				name: 'seniority',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
+				description:
+					"A contact's seniority. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
 				displayName: 'Start Date',
 				name: 'startDate',
 				type: 'dateTime',
 				default: '',
-				description: 'A contact\'s start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
+				description:
+					"A contact's start date. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 			{
 				displayName: 'State/Region',
 				name: 'stateRegion',
 				type: 'string',
 				default: '',
-				description: 'The contact\'s state of residence. This might be set via import, form, or integration.',
+				description:
+					"The contact's state of residence. This might be set via import, form, or integration.",
 			},
 			{
 				displayName: 'Status Name or ID',
@@ -467,35 +479,38 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getContactStatuses',
 				},
 				default: '',
-				description: 'The status of the contact\'s content membership. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The status of the contact\'s content membership. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Street Address',
 				name: 'streetAddress',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s street address, including apartment or unit #',
+				description: "A contact's street address, including apartment or unit #",
 			},
 			{
 				displayName: 'Twitter Username',
 				name: 'twitterUsername',
 				type: 'string',
 				default: '',
-				description: 'The contact\'s Twitter handle. This is set by HubSpot using the contact\'s email address.',
+				description:
+					"The contact's Twitter handle. This is set by HubSpot using the contact's email address.",
 			},
 			{
 				displayName: 'Website URL',
 				name: 'websiteUrl',
 				type: 'string',
 				default: '',
-				description: 'The contact\'s company website',
+				description: "The contact's company website",
 			},
 			{
 				displayName: 'Work Email',
 				name: 'workEmail',
 				type: 'string',
 				default: '',
-				description: 'A contact\'s work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool',
+				description:
+					"A contact's work email. This property is required for the Facebook Ads Integration. This property will be automatically synced via the Lead Ads tool",
 			},
 		],
 	},
@@ -510,12 +525,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -529,12 +540,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 		options: [
@@ -571,14 +578,15 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description:
+					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Property Mode',
@@ -595,7 +603,8 @@ export const contactFields: INodeProperties[] = [
 					},
 				],
 				default: 'valueAndHistory',
-				description: 'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+				description:
+					'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
 			},
 		],
 	},
@@ -609,12 +618,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -626,15 +631,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -652,12 +651,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['contact'],
+				operation: ['getAll'],
 			},
 		},
 		options: [
@@ -694,14 +689,15 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description:
+					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Property Mode',
@@ -718,7 +714,8 @@ export const contactFields: INodeProperties[] = [
 					},
 				],
 				default: 'valueAndHistory',
-				description: 'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+				description:
+					'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
 			},
 		],
 	},
@@ -733,12 +730,8 @@ export const contactFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 		default: '',
@@ -754,12 +747,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getRecentlyCreatedUpdated',
-				],
+				resource: ['contact'],
+				operation: ['getRecentlyCreatedUpdated'],
 			},
 		},
 		default: false,
@@ -771,15 +760,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getRecentlyCreatedUpdated',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['getRecentlyCreatedUpdated'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -797,12 +780,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'getRecentlyCreatedUpdated',
-				],
+				resource: ['contact'],
+				operation: ['getRecentlyCreatedUpdated'],
 			},
 		},
 		options: [
@@ -839,14 +818,15 @@ export const contactFields: INodeProperties[] = [
 				description: 'Whether current list memberships should be fetched for the contact',
 			},
 			{
-				displayName: 'Properties',
+				displayName: 'Property Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
 				default: [],
-				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				description:
+					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Property Mode',
@@ -863,7 +843,8 @@ export const contactFields: INodeProperties[] = [
 					},
 				],
 				default: 'valueAndHistory',
-				description: 'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+				description:
+					'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
 			},
 		],
 	},
@@ -877,12 +858,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['contact'],
+				operation: ['search'],
 			},
 		},
 		default: false,
@@ -894,15 +871,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'search',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['contact'],
+				operation: ['search'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -923,12 +894,8 @@ export const contactFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['contact'],
+				operation: ['search'],
 			},
 		},
 		options: [
@@ -954,6 +921,8 @@ export const contactFields: INodeProperties[] = [
 										displayName: 'Property Name or ID',
 										name: 'propertyName',
 										type: 'options',
+										description:
+											'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 										typeOptions: {
 											loadOptionsMethod: 'getContactProperties',
 										},
@@ -1008,10 +977,7 @@ export const contactFields: INodeProperties[] = [
 										name: 'value',
 										displayOptions: {
 											hide: {
-												operator: [
-													'HAS_PROPERTY',
-													'NOT_HAS_PROPERTY',
-												],
+												operator: ['HAS_PROPERTY', 'NOT_HAS_PROPERTY'],
 											},
 										},
 										type: 'string',
@@ -1020,12 +986,14 @@ export const contactFields: INodeProperties[] = [
 								],
 							},
 						],
-						description: 'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
+						description:
+							'Use filters to limit the results to only CRM objects with matching property values. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>.',
 					},
 				],
 			},
 		],
-		description: 'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
+		description:
+			'When multiple filters are provided within a filterGroup, they will be combined using a logical AND operator. When multiple filterGroups are provided, they will be combined using a logical OR operator. The system supports a maximum of three filterGroups with up to three filters each. More info <a href="https://developers.hubspot.com/docs/api/crm/search">here</a>',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -1035,12 +1003,8 @@ export const contactFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'search',
-				],
+				resource: ['contact'],
+				operation: ['search'],
 			},
 		},
 		options: [
@@ -1059,21 +1023,19 @@ export const contactFields: INodeProperties[] = [
 					},
 				],
 				default: 'DESCENDING',
-				description: 'Defines the direction in which search results are ordered. Default value is DESC.',
+				description:
+					'Defines the direction in which search results are ordered. Default value is DESC.',
 			},
 			{
-				displayName: 'Fields',
+				displayName: 'Field Names or IDs',
 				name: 'properties',
 				type: 'multiOptions',
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},
-				default: [
-					'firstname',
-					'lastname',
-					'email',
-				],
-				description: '<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>',
+				default: ['firstname', 'lastname', 'email'],
+				description:
+					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Query',
@@ -1087,6 +1049,8 @@ export const contactFields: INodeProperties[] = [
 				displayName: 'Sort By',
 				name: 'sortBy',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getContactProperties',
 				},

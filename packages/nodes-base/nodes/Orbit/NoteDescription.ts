@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const noteOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const noteOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
+				resource: ['note'],
 			},
 		},
 		options: [
@@ -20,16 +16,19 @@ export const noteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a note',
+				action: 'Create a note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all notes for a member',
+				description: 'Get many notes for a member',
+				action: 'Get many notes',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a note',
+				action: 'Update a note',
 			},
 		],
 		default: 'create',
@@ -37,7 +36,6 @@ export const noteOperations: INodeProperties[] = [
 ];
 
 export const noteFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                note:create                                 */
 	/* -------------------------------------------------------------------------- */
@@ -45,6 +43,8 @@ export const noteFields: INodeProperties[] = [
 		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -52,12 +52,8 @@ export const noteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -69,12 +65,8 @@ export const noteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -86,12 +78,8 @@ export const noteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['note'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -103,6 +91,8 @@ export const noteFields: INodeProperties[] = [
 		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -110,12 +100,8 @@ export const noteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['note'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -127,12 +113,8 @@ export const noteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['note'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -142,12 +124,8 @@ export const noteFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'note',
-				],
+				operation: ['getAll'],
+				resource: ['note'],
 			},
 		},
 		default: false,
@@ -159,15 +137,9 @@ export const noteFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'note',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['note'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -183,12 +155,8 @@ export const noteFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'note',
-				],
+				operation: ['getAll'],
+				resource: ['note'],
 			},
 		},
 		default: false,
@@ -201,6 +169,8 @@ export const noteFields: INodeProperties[] = [
 		displayName: 'Workspace Name or ID',
 		name: 'workspaceId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkspaces',
 		},
@@ -208,12 +178,8 @@ export const noteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -225,12 +191,8 @@ export const noteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -242,12 +204,8 @@ export const noteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -259,12 +217,8 @@ export const noteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'note',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['note'],
+				operation: ['update'],
 			},
 		},
 	},

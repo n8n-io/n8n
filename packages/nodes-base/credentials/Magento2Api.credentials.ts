@@ -1,5 +1,5 @@
 import {
-	IAuthenticateBearer,
+	IAuthenticateGeneric,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -20,6 +20,7 @@ export class Magento2Api implements ICredentialType {
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
@@ -30,8 +31,12 @@ export class Magento2Api implements ICredentialType {
 		},
 	};
 
-	authenticate = {
-		type: 'bearer',
-		properties: {},
-	} as IAuthenticateBearer;
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.accessToken}}',
+			},
+		},
+	};
 }

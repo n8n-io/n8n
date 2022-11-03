@@ -1,4 +1,5 @@
-import { getCredentialTypes,
+import {
+	getCredentialTypes,
 	getCredentialsNewName,
 	getAllCredentials,
 	deleteCredential,
@@ -8,6 +9,7 @@ import { getCredentialTypes,
 	oAuth2CredentialAuthorize,
 	oAuth1CredentialAuthorize,
 	testCredential,
+	getForeignCredentials,
 } from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -17,7 +19,7 @@ import {
 	ICredentialsState,
 	ICredentialTypeMap,
 	IRootState,
-} from '../Interface';
+} from '@/Interface';
 import {
 	ICredentialType,
 	ICredentialsDecrypted,
@@ -26,6 +28,9 @@ import {
 	INodeProperties,
 } from 'n8n-workflow';
 import { getAppNameFromCredType } from '@/components/helpers';
+import {i18n} from "@/plugins/i18n";
+import {credentialsEEModule} from "@/modules/credentials.ee";
+import {EnterpriseEditionFeature} from "@/constants";
 
 const DEFAULT_CREDENTIAL_NAME = 'Unnamed credential';
 const DEFAULT_CREDENTIAL_POSTFIX = 'account';
@@ -36,6 +41,7 @@ const module: Module<ICredentialsState, IRootState> = {
 	state: {
 		credentialTypes: {},
 		credentials: {},
+		...credentialsEEModule.state,
 	},
 	mutations: {
 		setCredentialTypes: (state: ICredentialsState, credentialTypes: ICredentialType[]) => {
@@ -54,9 +60,18 @@ const module: Module<ICredentialsState, IRootState> = {
 				return accu;
 			}, {});
 		},
+		setForeignCredentials: (state: ICredentialsState, credentials: ICredentialsResponse[]) => {
+			state.foreignCredentials = credentials.reduce((accu: ICredentialMap, cred: ICredentialsResponse) => {
+				if (cred.id) {
+					accu[cred.id] = cred;
+				}
+
+				return accu;
+			}, {});
+		},
 		upsertCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			if (credential.id) {
-				Vue.set(state.credentials, credential.id, credential);
+				Vue.set(state.credentials, credential.id, { ...state.credentials[credential.id], ...credential });
 			}
 		},
 		deleteCredential(state: ICredentialsState, id: string) {
@@ -65,14 +80,22 @@ const module: Module<ICredentialsState, IRootState> = {
 		enableOAuthCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			// enable oauth event to track change between modals
 		},
+		...credentialsEEModule.mutations,
 	},
 	getters: {
+		credentialTypesById(state: ICredentialsState): Record<ICredentialType['name'], ICredentialType> {
+			return state.credentialTypes;
+		},
 		allCredentialTypes(state: ICredentialsState): ICredentialType[] {
 			return Object.values(state.credentialTypes)
 				.sort((a, b) => a.displayName.localeCompare(b.displayName));
 		},
 		allCredentials(state: ICredentialsState): ICredentialsResponse[] {
 			return Object.values(state.credentials)
+				.sort((a, b) => a.name.localeCompare(b.name));
+		},
+		allForeignCredentials(state: ICredentialsState): ICredentialsResponse[] {
+			return Object.values(state.foreignCredentials || {})
 				.sort((a, b) => a.name.localeCompare(b.name));
 		},
 		allCredentialsByType(state: ICredentialsState, getters: any): {[type: string]: ICredentialsResponse[]} { // tslint:disable-line:no-any
@@ -99,14 +122,14 @@ const module: Module<ICredentialsState, IRootState> = {
 		},
 		getCredentialsByType: (state: ICredentialsState, getters: any) => { // tslint:disable-line:no-any
 			return (credentialType: string): ICredentialsResponse[] => {
-				return getters.allCredentialsByType[credentialType] || [];
+				return (getters.allCredentialsByType[credentialType] || []);
 			};
 		},
 		getNodesWithAccess (state: ICredentialsState, getters: any, rootState: IRootState, rootGetters: any) { // tslint:disable-line:no-any
 			return (credentialTypeName: string) => {
-				const nodeTypes: INodeTypeDescription[] = rootGetters.allNodeTypes;
+				const allLatestNodeTypes: INodeTypeDescription[] = rootGetters['nodeTypes/allLatestNodeTypes'];
 
-				return nodeTypes.filter((nodeType: INodeTypeDescription) => {
+				return allLatestNodeTypes.filter((nodeType: INodeTypeDescription) => {
 					if (!nodeType.credentials) {
 						return false;
 					}
@@ -150,10 +173,18 @@ const module: Module<ICredentialsState, IRootState> = {
 				return [scopeDefault];
 			};
 		},
+		getCredentialOwnerName: (state: ICredentialsState, getters: any) =>  // tslint:disable-line:no-any
+			(credentialId: string): string => {
+				const credential = getters.getCredentialById(credentialId);
+				return credential && credential.ownedBy && credential.ownedBy.firstName
+					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} (${credential.ownedBy.email})`
+					: i18n.baseText('credentialEdit.credentialSharing.info.sharee.fallback');
+			},
+		...credentialsEEModule.getters,
 	},
 	actions: {
-		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>) => {
-			if (context.getters.allCredentialTypes.length > 0) {
+		fetchCredentialTypes: async (context: ActionContext<ICredentialsState, IRootState>, forceFetch: boolean) => {
+			if (context.getters.allCredentialTypes.length > 0 && forceFetch !== true) {
 				return;
 			}
 			const credentialTypes = await getCredentialTypes(context.rootGetters.getRestApiContext);
@@ -165,19 +196,63 @@ const module: Module<ICredentialsState, IRootState> = {
 
 			return credentials;
 		},
+		fetchForeignCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
+			const credentials = await getForeignCredentials(context.rootGetters.getRestApiContext);
+			context.commit('setForeignCredentials', credentials);
+
+			return credentials;
+		},
 		getCredentialData: async (context: ActionContext<ICredentialsState, IRootState>, { id }: {id: string}) => {
 			return await getCredentialData(context.rootGetters.getRestApiContext, id);
 		},
 		createNewCredential: async (context: ActionContext<ICredentialsState, IRootState>, data: ICredentialsDecrypted) => {
 			const credential = await createNewCredential(context.rootGetters.getRestApiContext, data);
-			context.commit('upsertCredential', credential);
+
+			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+				context.commit('upsertCredential', credential);
+
+				if (data.ownedBy) {
+					context.commit('setCredentialOwnedBy', {
+						credentialId: credential.id,
+						ownedBy: data.ownedBy,
+					});
+
+					if (data.sharedWith && data.ownedBy.id === context.rootGetters['users/currentUserId']) {
+						await context.dispatch('setCredentialSharedWith', {
+							credentialId: credential.id,
+							sharedWith: data.sharedWith,
+						});
+					}
+				}
+			} else {
+				context.commit('upsertCredential', credential);
+			}
 
 			return credential;
 		},
 		updateCredential: async (context: ActionContext<ICredentialsState, IRootState>, params: {data: ICredentialsDecrypted, id: string}) => {
 			const { id, data } = params;
 			const credential = await updateCredential(context.rootGetters.getRestApiContext, id, data);
-			context.commit('upsertCredential', credential);
+
+			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+				context.commit('upsertCredential', credential);
+
+				if (data.ownedBy) {
+					context.commit('setCredentialOwnedBy', {
+						credentialId: credential.id,
+						ownedBy: data.ownedBy,
+					});
+
+					if (data.sharedWith && data.ownedBy.id === context.rootGetters['users/currentUserId']) {
+						await context.dispatch('setCredentialSharedWith', {
+							credentialId: credential.id,
+							sharedWith: data.sharedWith,
+						});
+					}
+				}
+			} else {
+				context.commit('upsertCredential', credential);
+			}
 
 			return credential;
 		},
@@ -212,6 +287,7 @@ const module: Module<ICredentialsState, IRootState> = {
 				return DEFAULT_CREDENTIAL_NAME;
 			}
 		},
+		...credentialsEEModule.actions,
 	},
 };
 

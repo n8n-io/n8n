@@ -11,7 +11,7 @@
 </template>
 
 <script lang="ts">
-
+/* eslint-disable prefer-spread */
 import {
 	PLACEHOLDER_FILLED_AT_EXECUTION_TIME, STICKY_NODE_TYPE,
 } from '@/constants';
@@ -20,6 +20,8 @@ import {
 	GenericValue,
 	IContextObject,
 	IDataObject,
+	INodeExecutionData,
+	IPinData,
 	IRunData,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -73,7 +75,7 @@ export default mixins(
 				return this.getFilterResults(this.variableFilter.toLowerCase(), 0);
 			},
 			workflow (): Workflow {
-				return this.getWorkflow();
+				return this.getCurrentWorkflow();
 			},
 		},
 		methods: {
@@ -248,19 +250,18 @@ export default mixins(
 			},
 
 			/**
-			 * Returns the data the a node does output
+			 * Get the node's output using runData
 			 *
-			 * @param {IRunData} runData The data of the run to get the data of
 			 * @param {string} nodeName The name of the node to get the data of
+			 * @param {IRunData} runData The data of the run to get the data of
 			 * @param {string} filterText Filter text for parameters
 			 * @param {number} [itemIndex=0] The index of the item
 			 * @param {number} [runIndex=0] The index of the run
 			 * @param {string} [inputName='main'] The name of the input
 			 * @param {number} [outputIndex=0] The index of the output
-			 * @returns
-			 * @memberof Workflow
-			 */
-			getNodeOutputData (runData: IRunData, nodeName: string, filterText: string, itemIndex = 0, runIndex = 0, inputName = 'main', outputIndex = 0, useShort = false): IVariableSelectorOption[] | null {
+			 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
+			 			 			 */
+			getNodeRunDataOutput(nodeName: string, runData: IRunData, filterText: string, itemIndex = 0, runIndex = 0, inputName = 'main', outputIndex = 0, useShort = false): IVariableSelectorOption[] | null {
 				if (!runData.hasOwnProperty(nodeName)) {
 					// No data found for node
 					return null;
@@ -297,6 +298,32 @@ export default mixins(
 
 				const outputData = runData[nodeName][runIndex].data![inputName][outputIndex]![itemIndex];
 
+				return this.getNodeOutput(nodeName, outputData, filterText, useShort);
+			},
+
+			/**
+			 * Get the node's output using pinData
+			 *
+			 * @param {string} nodeName The name of the node to get the data of
+			 * @param {IPinData[string]} pinData The node's pin data
+			 * @param {string} filterText Filter text for parameters
+			 * @param {boolean} [useShort=false] Use short notation $json vs. $node[NodeName].json
+			 */
+			getNodePinDataOutput(nodeName: string, pinData: IPinData[string], filterText: string, useShort = false): IVariableSelectorOption[] | null {
+				const outputData = pinData.map((data) => ({ json: data } as INodeExecutionData))[0];
+
+				return this.getNodeOutput(nodeName, outputData, filterText, useShort);
+			},
+
+			/**
+			 * Returns the node's output data
+			 *
+			 * @param {string} nodeName The name of the node to get the data of
+			 * @param {INodeExecutionData} outputData The data of the run to get the data of
+			 * @param {string} filterText Filter text for parameters
+			 * @param {boolean} [useShort=false] Use short notation
+			 */
+			getNodeOutput (nodeName: string, outputData: INodeExecutionData, filterText: string, useShort = false): IVariableSelectorOption[] | null {
 				const returnData: IVariableSelectorOption[] = [];
 
 				// Get json data
@@ -379,7 +406,7 @@ export default mixins(
 				const runIndex = 0;
 				const returnData: IVariableSelectorOption[] = [];
 
-				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
 
 				if (activeNode === null) {
 					return returnData;
@@ -393,6 +420,13 @@ export default mixins(
 				}
 
 				const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
+					$execution: {
+						id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+						mode: 'test',
+						resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+					},
+
+					// deprecated
 					$executionId: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
@@ -425,9 +459,7 @@ export default mixins(
 			 * @param {string} path The path to the node to pretend to key
 			 * @param {string} [skipParameter] Parameter to skip
 			 * @param {string} [filterText] Filter text for parameters
-			 * @returns
-			 * @memberof Workflow
-			 */
+			 			 			 */
 			getNodeParameters (nodeName: string, path: string, skipParameter?: string, filterText?: string): IVariableSelectorOption[] | null {
 				const node = this.workflow.getNode(nodeName);
 				if (node === null) {
@@ -454,7 +486,7 @@ export default mixins(
 			getFilterResults (filterText: string, itemIndex: number): IVariableSelectorOption[] {
 				const inputName = 'main';
 
-				const activeNode: INodeUi | null = this.$store.getters.activeNode;
+				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
 
 				if (activeNode === null) {
 					return [];
@@ -477,7 +509,7 @@ export default mixins(
 				const currentNodeData: IVariableSelectorOption[] = [];
 
 				let tempOptions: IVariableSelectorOption[];
-				if (executionData !== null) {
+				if (executionData !== null && executionData.data !== undefined) {
 					const runExecutionData: IRunExecutionData = executionData.data;
 
 					tempOptions = this.getNodeContext(this.workflow, runExecutionData, parentNode, activeNode.name, filterText) as IVariableSelectorOption[];
@@ -491,7 +523,7 @@ export default mixins(
 					}
 				}
 
-				let tempOutputData;
+				let tempOutputData: IVariableSelectorOption[] | null | undefined;
 
 				if (parentNode.length) {
 					// If the node has an input node add the input data
@@ -502,7 +534,50 @@ export default mixins(
 					const nodeConnection = this.workflow.getNodeConnectionIndexes(activeNode.name, parentNode[0], 'main');
 					const outputIndex = nodeConnection === undefined ? 0: nodeConnection.sourceIndex;
 
-					tempOutputData = this.getNodeOutputData(runData, parentNode[0], filterText, itemIndex, 0, 'main', outputIndex, true) as IVariableSelectorOption[];
+					tempOutputData = this.getNodeRunDataOutput(parentNode[0], runData, filterText, itemIndex, 0, 'main', outputIndex, true) as IVariableSelectorOption[];
+
+					const pinDataOptions: IVariableSelectorOption[] = [
+						{
+							name: 'JSON',
+							options: [],
+						},
+					];
+					parentNode.forEach((parentNodeName) => {
+						const pinData = this.$store.getters['pinDataByNodeName'](parentNodeName);
+
+						if (pinData) {
+							const output = this.getNodePinDataOutput(parentNodeName, pinData, filterText, true);
+
+							pinDataOptions[0].options = pinDataOptions[0].options!.concat(
+								output && output[0].options ? output[0].options : [],
+							);
+						}
+					});
+
+					if (pinDataOptions[0].options!.length > 0) {
+						if (tempOutputData) {
+							const jsonTempOutputData = tempOutputData.find((tempData) => tempData.name === 'JSON');
+
+							if (jsonTempOutputData) {
+								if (!jsonTempOutputData.options) {
+									jsonTempOutputData.options = [];
+								}
+
+								(pinDataOptions[0].options || []).forEach((pinDataOption) => {
+									const existingOptionIndex = jsonTempOutputData.options!.findIndex((option) => option.name === pinDataOption.name);
+									if (existingOptionIndex !== -1) {
+										jsonTempOutputData.options![existingOptionIndex] = pinDataOption;
+									} else {
+										jsonTempOutputData.options!.push(pinDataOption);
+									}
+								});
+							} else {
+								tempOutputData.push(pinDataOptions[0]);
+							}
+						} else {
+							tempOutputData = pinDataOptions;
+						}
+					}
 
 					if (tempOutputData) {
 						if (JSON.stringify(tempOutputData).length < 102400) {
@@ -585,7 +660,7 @@ export default mixins(
 						} as IVariableSelectorOption,
 					];
 
-					if (executionData !== null) {
+					if (executionData !== null && executionData.data !== undefined) {
 						const runExecutionData: IRunExecutionData = executionData.data;
 
 						parentNode = this.workflow.getParentNodes(nodeName, inputName, 1);
@@ -602,7 +677,11 @@ export default mixins(
 
 					if (upstreamNodes.includes(nodeName)) {
 						// If the node is an upstream node add also the output data which can be referenced
-						tempOutputData = this.getNodeOutputData(runData, nodeName, filterText, itemIndex);
+						const pinData = this.$store.getters['pinDataByNodeName'](nodeName);
+						tempOutputData = pinData
+							? this.getNodePinDataOutput(nodeName, pinData, filterText)
+							: this.getNodeRunDataOutput(nodeName, runData, filterText, itemIndex);
+
 						if (tempOutputData) {
 							nodeOptions.push(
 								{

@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,10 +10,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	awsApiRequestSOAP,
-	awsApiRequestSOAPAllItems,
-} from './GenericFunctions';
+import { awsApiRequestSOAP, awsApiRequestSOAPAllItems } from './GenericFunctions';
 
 function setParameter(params: string[], base: string, values: string[]) {
 	for (let i = 0; i < values.length; i++) {
@@ -72,9 +67,7 @@ export class AwsSes implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
+						resource: ['customVerificationEmail'],
 					},
 				},
 				options: [
@@ -82,31 +75,38 @@ export class AwsSes implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a new custom verification email template',
+						action: 'Create a custom verification email',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete an existing custom verification email template',
+						action: 'Delete a custom verification email',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get the custom email verification template',
+						action: 'Get a custom verification email',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all the existing custom verification email templates for your account',
+						description:
+							'Get many of the existing custom verification email templates for your account',
+						action: 'Get many custom verifications',
 					},
 					{
 						name: 'Send',
 						value: 'send',
 						description: 'Add an email address to the list of identities',
+						action: 'Send a custom verification email',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update an existing custom verification email template',
+						action: 'Update a custom verification email',
 					},
 				],
 				default: 'create',
@@ -118,12 +118,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['create'],
 					},
 				},
 				required: true,
@@ -136,12 +132,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['create'],
 					},
 				},
 				default: '',
@@ -156,15 +148,12 @@ export class AwsSes implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['create'],
 					},
 				},
-				description: 'The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML',
+				description:
+					'The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML',
 				default: '',
 			},
 			{
@@ -173,12 +162,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['create'],
 					},
 				},
 				default: '',
@@ -191,16 +176,13 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['create'],
 					},
 				},
 				required: true,
-				description: 'The URL that the recipient of the verification email is sent to if his or her address is successfully verified',
+				description:
+					'The URL that the recipient of the verification email is sent to if his or her address is successfully verified',
 				default: '',
 			},
 			{
@@ -209,16 +191,13 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['create'],
 					},
 				},
 				required: true,
-				description: 'The URL that the recipient of the verification email is sent to if his or her address is not successfully verified',
+				description:
+					'The URL that the recipient of the verification email is sent to if his or her address is not successfully verified',
 				default: '',
 			},
 
@@ -226,14 +205,11 @@ export class AwsSes implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -246,17 +222,14 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['send'],
 					},
 				},
 				default: '',
 				required: true,
-				description: 'The name of the custom verification email template to use when sending the verification email',
+				description:
+					'The name of the custom verification email template to use when sending the verification email',
 			},
 			{
 				displayName: 'Additional Fields',
@@ -266,12 +239,8 @@ export class AwsSes implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['send'],
 					},
 				},
 				options: [
@@ -291,14 +260,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'update',
-							'delete',
-							'get',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['update', 'delete', 'get'],
 					},
 				},
 				default: '',
@@ -312,12 +275,8 @@ export class AwsSes implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['update'],
 					},
 				},
 				options: [
@@ -325,7 +284,8 @@ export class AwsSes implements INodeType {
 						displayName: 'Failure Redirection URL',
 						name: 'failureRedirectionURL',
 						type: 'string',
-						description: 'The URL that the recipient of the verification email is sent to if his or her address is not successfully verified',
+						description:
+							'The URL that the recipient of the verification email is sent to if his or her address is not successfully verified',
 						default: '',
 					},
 					{
@@ -339,7 +299,8 @@ export class AwsSes implements INodeType {
 						displayName: 'Success Redirection URL',
 						name: 'successRedirectionURL',
 						type: 'string',
-						description: 'The URL that the recipient of the verification email is sent to if his or her address is successfully verified',
+						description:
+							'The URL that the recipient of the verification email is sent to if his or her address is successfully verified',
 						default: '',
 					},
 					{
@@ -349,7 +310,8 @@ export class AwsSes implements INodeType {
 						typeOptions: {
 							alwaysOpenEditWindow: true,
 						},
-						description: 'The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML',
+						description:
+							'The content of the custom verification email. The total size of the email must be less than 10 MB. The message body may contain HTML',
 						default: '',
 					},
 					{
@@ -367,12 +329,8 @@ export class AwsSes implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -389,15 +347,9 @@ export class AwsSes implements INodeType {
 				default: 20,
 				displayOptions: {
 					show: {
-						resource: [
-							'customVerificationEmail',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['customVerificationEmail'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 			},
@@ -408,19 +360,19 @@ export class AwsSes implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
+						resource: ['email'],
 					},
 				},
 				options: [
 					{
 						name: 'Send',
 						value: 'send',
+						action: 'Send an email',
 					},
 					{
 						name: 'Send Template',
 						value: 'sendTemplate',
+						action: 'Send an email based on a template',
 					},
 				],
 				default: 'send',
@@ -431,16 +383,12 @@ export class AwsSes implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['email'],
+						operation: ['send'],
 					},
 				},
 				default: false,
-				description: 'If body is HTML or simple text',
+				description: 'Whether body is HTML or simple text',
 			},
 			{
 				displayName: 'Subject',
@@ -448,12 +396,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['email'],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -468,12 +412,8 @@ export class AwsSes implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['email'],
+						operation: ['send'],
 					},
 				},
 				default: '',
@@ -486,12 +426,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['email'],
+						operation: ['send'],
 					},
 				},
 				required: true,
@@ -510,12 +446,8 @@ export class AwsSes implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'send',
-						],
+						resource: ['email'],
+						operation: ['send'],
 					},
 				},
 				placeholder: 'info@example.com',
@@ -530,16 +462,13 @@ export class AwsSes implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'sendTemplate',
-						],
+						resource: ['email'],
+						operation: ['sendTemplate'],
 					},
 				},
 				default: '',
-				description: 'The ARN of the template to use when sending this email. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The ARN of the template to use when sending this email. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'From Email',
@@ -547,12 +476,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'sendTemplate',
-						],
+						resource: ['email'],
+						operation: ['sendTemplate'],
 					},
 				},
 				required: true,
@@ -571,12 +496,8 @@ export class AwsSes implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'sendTemplate',
-						],
+						resource: ['email'],
+						operation: ['sendTemplate'],
 					},
 				},
 				placeholder: 'info@example.com',
@@ -592,12 +513,8 @@ export class AwsSes implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'sendTemplate',
-						],
+						resource: ['email'],
+						operation: ['sendTemplate'],
 					},
 				},
 				default: {},
@@ -630,13 +547,8 @@ export class AwsSes implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'send',
-							'sendTemplate',
-						],
+						resource: ['email'],
+						operation: ['send', 'sendTemplate'],
 					},
 				},
 				options: [
@@ -685,7 +597,8 @@ export class AwsSes implements INodeType {
 						displayName: 'Return Path',
 						name: 'returnPath',
 						type: 'string',
-						description: 'Email address that bounces and complaints will be forwarded to when feedback forwarding is enabled',
+						description:
+							'Email address that bounces and complaints will be forwarded to when feedback forwarding is enabled',
 						default: '',
 					},
 					{
@@ -711,9 +624,7 @@ export class AwsSes implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'template',
-						],
+						resource: ['template'],
 					},
 				},
 				options: [
@@ -721,26 +632,31 @@ export class AwsSes implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a template',
+						action: 'Create a template',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a template',
+						action: 'Delete a template',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a template',
+						action: 'Get a template',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all templates',
+						description: 'Get many templates',
+						action: 'Get many templates',
 					},
 					{
 						name: 'Update',
 						value: 'update',
 						description: 'Update a template',
+						action: 'Update a template',
 					},
 				],
 				default: 'create',
@@ -751,15 +667,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'template',
-						],
-						operation: [
-							'update',
-							'create',
-							'get',
-							'delete',
-						],
+						resource: ['template'],
+						operation: ['update', 'create', 'get', 'delete'],
 					},
 				},
 				required: true,
@@ -772,12 +681,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'template',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['template'],
+						operation: ['create'],
 					},
 				},
 				description: 'The subject line of the email',
@@ -789,12 +694,8 @@ export class AwsSes implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						resource: [
-							'template',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['template'],
+						operation: ['create'],
 					},
 				},
 				description: 'The HTML body of the email',
@@ -808,12 +709,8 @@ export class AwsSes implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'template',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['template'],
+						operation: ['create'],
 					},
 				},
 				options: [
@@ -821,7 +718,8 @@ export class AwsSes implements INodeType {
 						displayName: 'Text Part',
 						name: 'textPart',
 						type: 'string',
-						description: 'The email body that will be visible to recipients whose email clients do not display HTML',
+						description:
+							'The email body that will be visible to recipients whose email clients do not display HTML',
 						default: '',
 					},
 				],
@@ -834,12 +732,8 @@ export class AwsSes implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'template',
-						],
-						operation: [
-							'update',
-						],
+						resource: ['template'],
+						operation: ['update'],
 					},
 				},
 				options: [
@@ -847,7 +741,8 @@ export class AwsSes implements INodeType {
 						displayName: 'Text Part',
 						name: 'textPart',
 						type: 'string',
-						description: 'The email body that will be visible to recipients whose email clients do not display HTML',
+						description:
+							'The email body that will be visible to recipients whose email clients do not display HTML',
 						default: '',
 					},
 					{
@@ -872,12 +767,8 @@ export class AwsSes implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'template',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['template'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -894,15 +785,9 @@ export class AwsSes implements INodeType {
 				default: 20,
 				displayOptions: {
 					show: {
-						resource: [
-							'template',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['template'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 			},
@@ -916,7 +801,13 @@ export class AwsSes implements INodeType {
 			async getTemplates(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 
-				const templates = await awsApiRequestSOAPAllItems.call(this, 'ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member', 'email', 'POST', '/?Action=ListTemplates');
+				const templates = await awsApiRequestSOAPAllItems.call(
+					this,
+					'ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member',
+					'email',
+					'POST',
+					'/?Action=ListTemplates',
+				);
 
 				for (const template of templates) {
 					const templateName = template.Name;
@@ -943,14 +834,18 @@ export class AwsSes implements INodeType {
 		for (let i = 0; i < items.length; i++) {
 			try {
 				if (resource === 'customVerificationEmail') {
-
 					if (operation === 'create') {
-
-						const failureRedirectionURL = this.getNodeParameter('failureRedirectionURL', i) as string;
+						const failureRedirectionURL = this.getNodeParameter(
+							'failureRedirectionURL',
+							i,
+						) as string;
 
 						const email = this.getNodeParameter('fromEmailAddress', i) as string;
 
-						const successRedirectionURL = this.getNodeParameter('successRedirectionURL', i) as string;
+						const successRedirectionURL = this.getNodeParameter(
+							'successRedirectionURL',
+							i,
+						) as string;
 
 						const templateContent = this.getNodeParameter('templateContent', i) as string;
 
@@ -968,13 +863,18 @@ export class AwsSes implements INodeType {
 							`TemplateSubject=${templateSubject}`,
 						];
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '', params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'',
+							params.join('&'),
+						);
 
 						responseData = responseData.CreateCustomVerificationEmailTemplateResponse;
 					}
 
 					if (operation === 'delete') {
-
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
 						const params = [
@@ -982,42 +882,61 @@ export class AwsSes implements INodeType {
 							`TemplateName=${templateName}`,
 						];
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '', params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'',
+							params.join('&'),
+						);
 
 						responseData = responseData.DeleteCustomVerificationEmailTemplateResponse;
 					}
 
 					if (operation === 'get') {
-
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
-						const params = [
-							`TemplateName=${templateName}`,
-						];
+						const params = [`TemplateName=${templateName}`];
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=GetCustomVerificationEmailTemplate&' + params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'/?Action=GetCustomVerificationEmailTemplate&' + params.join('&'),
+						);
 
 						responseData = responseData.GetCustomVerificationEmailTemplateResponse;
 					}
 
 					if (operation === 'getAll') {
-
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						if (returnAll === true) {
-							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListCustomVerificationEmailTemplatesResponse.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates.member', 'email', 'POST', '/?Action=ListCustomVerificationEmailTemplates');
-
+							responseData = await awsApiRequestSOAPAllItems.call(
+								this,
+								'ListCustomVerificationEmailTemplatesResponse.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates.member',
+								'email',
+								'POST',
+								'/?Action=ListCustomVerificationEmailTemplates',
+							);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
 
-							responseData = await awsApiRequestSOAP.call(this, 'email', 'GET', `/?Action=ListCustomVerificationEmailTemplates&MaxResults=${limit}`);
+							responseData = await awsApiRequestSOAP.call(
+								this,
+								'email',
+								'GET',
+								`/?Action=ListCustomVerificationEmailTemplates&MaxResults=${limit}`,
+							);
 
-							responseData = responseData.ListCustomVerificationEmailTemplatesResponse.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates.member;
+							responseData =
+								responseData.ListCustomVerificationEmailTemplatesResponse
+									.ListCustomVerificationEmailTemplatesResult.CustomVerificationEmailTemplates
+									.member;
 						}
 					}
 
 					if (operation === 'send') {
-
 						const email = this.getNodeParameter('email', i) as string[];
 
 						const templateName = this.getNodeParameter('templateName', i) as string;
@@ -1034,13 +953,18 @@ export class AwsSes implements INodeType {
 							params.push(`ConfigurationSetName=${additionalFields.configurationSetName}`);
 						}
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '', params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'',
+							params.join('&'),
+						);
 
 						responseData = responseData.SendCustomVerificationEmailResponse;
 					}
 
 					if (operation === 'update') {
-
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
@@ -1070,16 +994,20 @@ export class AwsSes implements INodeType {
 							params.push(`TemplateSubject=${updateFields.templateSubject}`);
 						}
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '', params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'',
+							params.join('&'),
+						);
 
 						responseData = responseData.UpdateCustomVerificationEmailTemplateResponse;
 					}
 				}
 
 				if (resource === 'email') {
-
 					if (operation === 'send') {
-
 						const toAddresses = this.getNodeParameter('toAddresses', i) as string[];
 
 						const message = this.getNodeParameter('body', i) as string;
@@ -1093,7 +1021,7 @@ export class AwsSes implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const params = [
-							`Message.Subject.Data=${subject}`,
+							`Message.Subject.Data=${encodeURIComponent(subject)}`,
 							`Source=${fromEmail}`,
 						];
 
@@ -1107,7 +1035,11 @@ export class AwsSes implements INodeType {
 						if (toAddresses.length) {
 							setParameter(params, 'Destination.ToAddresses.member', toAddresses);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!');
+							throw new NodeOperationError(
+								this.getNode(),
+								'At least one "To Address" has to be added!',
+								{ itemIndex: i },
+							);
 						}
 
 						if (additionalFields.configurationSetName) {
@@ -1127,21 +1059,37 @@ export class AwsSes implements INodeType {
 						}
 
 						if (additionalFields.replyToAddresses) {
-							setParameter(params, 'ReplyToAddresses.member', additionalFields.replyToAddresses as string[]);
+							setParameter(
+								params,
+								'ReplyToAddresses.member',
+								additionalFields.replyToAddresses as string[],
+							);
 						}
 
 						if (additionalFields.bccAddresses) {
-							setParameter(params, 'Destination.BccAddresses.member', additionalFields.bccAddresses as string[]);
+							setParameter(
+								params,
+								'Destination.BccAddresses.member',
+								additionalFields.bccAddresses as string[],
+							);
 						}
 
 						if (additionalFields.ccAddresses) {
-							setParameter(params, 'Destination.CcAddresses.member', additionalFields.ccAddresses as string[]);
+							setParameter(
+								params,
+								'Destination.CcAddresses.member',
+								additionalFields.ccAddresses as string[],
+							);
 						}
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=SendEmail&' + params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'/?Action=SendEmail&' + params.join('&'),
+						);
 					}
 
 					if (operation === 'sendTemplate') {
-
 						const toAddresses = this.getNodeParameter('toAddresses', i) as string[];
 
 						const template = this.getNodeParameter('templateName', i) as string;
@@ -1152,15 +1100,16 @@ export class AwsSes implements INodeType {
 
 						const templateDataUi = this.getNodeParameter('templateDataUi', i) as IDataObject;
 
-						const params = [
-							`Template=${template}`,
-							`Source=${fromEmail}`,
-						];
+						const params = [`Template=${template}`, `Source=${fromEmail}`];
 
 						if (toAddresses.length) {
 							setParameter(params, 'Destination.ToAddresses.member', toAddresses);
 						} else {
-							throw new NodeOperationError(this.getNode(), 'At least one "To Address" has to be added!');
+							throw new NodeOperationError(
+								this.getNode(),
+								'At least one "To Address" has to be added!',
+								{ itemIndex: i },
+							);
 						}
 
 						if (additionalFields.configurationSetName) {
@@ -1180,19 +1129,32 @@ export class AwsSes implements INodeType {
 						}
 
 						if (additionalFields.replyToAddresses) {
-							setParameter(params, 'ReplyToAddresses.member', additionalFields.replyToAddresses as string[]);
+							setParameter(
+								params,
+								'ReplyToAddresses.member',
+								additionalFields.replyToAddresses as string[],
+							);
 						}
 
 						if (additionalFields.bccAddresses) {
-							setParameter(params, 'Destination.BccAddresses.member', additionalFields.bccAddresses as string[]);
+							setParameter(
+								params,
+								'Destination.BccAddresses.member',
+								additionalFields.bccAddresses as string[],
+							);
 						}
 
 						if (additionalFields.ccAddresses) {
-							setParameter(params, 'Destination.CcAddresses.member', additionalFields.ccAddresses as string[]);
+							setParameter(
+								params,
+								'Destination.CcAddresses.member',
+								additionalFields.ccAddresses as string[],
+							);
 						}
 
 						if (templateDataUi) {
-							const templateDataValues = (templateDataUi as IDataObject).templateDataValues as IDataObject[];
+							const templateDataValues = (templateDataUi as IDataObject)
+								.templateDataValues as IDataObject[];
 							const templateData: IDataObject = {};
 							if (templateDataValues !== undefined) {
 								for (const templateDataValue of templateDataValues) {
@@ -1203,16 +1165,19 @@ export class AwsSes implements INodeType {
 							}
 						}
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=SendTemplatedEmail&' + params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'/?Action=SendTemplatedEmail&' + params.join('&'),
+						);
 
 						responseData = responseData.SendTemplatedEmailResponse;
 					}
 				}
 
 				if (resource === 'template') {
-
 					if (operation === 'create') {
-
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
 						const subjectPart = this.getNodeParameter('subjectPart', i) as string;
@@ -1231,62 +1196,78 @@ export class AwsSes implements INodeType {
 							params.push(`Template.TextPart=${additionalFields.textPart}`);
 						}
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=CreateTemplate&' + params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'/?Action=CreateTemplate&' + params.join('&'),
+						);
 
 						responseData = responseData.CreateTemplateResponse;
 					}
 
 					if (operation === 'delete') {
-
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
-						const params = [
-							`TemplateName=${templateName}`,
-						];
+						const params = [`TemplateName=${templateName}`];
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=DeleteTemplate&' + params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'/?Action=DeleteTemplate&' + params.join('&'),
+						);
 
 						responseData = responseData.DeleteTemplateResponse;
 					}
 
 					if (operation === 'get') {
-
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
-						const params = [
-							`TemplateName=${templateName}`,
-						];
+						const params = [`TemplateName=${templateName}`];
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=GetTemplate&' + params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'/?Action=GetTemplate&' + params.join('&'),
+						);
 
 						responseData = responseData.GetTemplateResponse;
 					}
 
 					if (operation === 'getAll') {
-
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						if (returnAll === true) {
-							responseData = await awsApiRequestSOAPAllItems.call(this, 'ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member', 'email', 'POST', '/?Action=ListTemplates');
-
+							responseData = await awsApiRequestSOAPAllItems.call(
+								this,
+								'ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member',
+								'email',
+								'POST',
+								'/?Action=ListTemplates',
+							);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
 
-							responseData = await awsApiRequestSOAP.call(this, 'email', 'GET', `/?Action=ListTemplates&MaxItems=${limit}`);
+							responseData = await awsApiRequestSOAP.call(
+								this,
+								'email',
+								'GET',
+								`/?Action=ListTemplates&MaxItems=${limit}`,
+							);
 
-							responseData = responseData.ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member;
+							responseData =
+								responseData.ListTemplatesResponse.ListTemplatesResult.TemplatesMetadata.member;
 						}
 					}
 
 					if (operation === 'update') {
-
 						const templateName = this.getNodeParameter('templateName', i) as string;
 
 						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 
-						const params = [
-							`Template.TemplateName=${templateName}`,
-						];
+						const params = [`Template.TemplateName=${templateName}`];
 
 						if (updateFields.textPart) {
 							params.push(`Template.TextPart=${updateFields.textPart}`);
@@ -1300,7 +1281,12 @@ export class AwsSes implements INodeType {
 							params.push(`Template.HtmlPart=${updateFields.htmlPart}`);
 						}
 
-						responseData = await awsApiRequestSOAP.call(this, 'email', 'POST', '/?Action=UpdateTemplate&' + params.join('&'));
+						responseData = await awsApiRequestSOAP.call(
+							this,
+							'email',
+							'POST',
+							'/?Action=UpdateTemplate&' + params.join('&'),
+						);
 
 						responseData = responseData.UpdateTemplateResponse;
 					}

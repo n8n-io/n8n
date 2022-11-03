@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactOperations: INodeProperties[] = [
 	{
@@ -10,31 +8,34 @@ export const contactOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
+				resource: ['contact'],
 			},
 		},
 		options: [
 			{
 				name: 'Create or Update',
 				value: 'upsert',
-				description: 'Create a new contact, or update the current one if it already exists (upsert)',
+				description:
+					'Create a new contact, or update the current one if it already exists (upsert)',
+				action: 'Create or Update a contact',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a contact',
+				action: 'Delete a contact',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a contact',
+				action: 'Get a contact',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all contacts',
+				description: 'Get many contacts',
+				action: 'Get many contacts',
 			},
 		],
 		default: 'upsert',
@@ -42,7 +43,6 @@ export const contactOperations: INodeProperties[] = [
 ];
 
 export const contactFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 contact:upsert                             */
 	/* -------------------------------------------------------------------------- */
@@ -51,14 +51,11 @@ export const contactFields: INodeProperties[] = [
 		name: 'email',
 		required: true,
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				operation: [
-					'upsert',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['upsert'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -70,12 +67,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'upsert',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['upsert'],
+				resource: ['contact'],
 			},
 		},
 		default: {},
@@ -109,7 +102,8 @@ export const contactFields: INodeProperties[] = [
 								typeOptions: {
 									loadOptionsMethod: 'getCustomFields',
 								},
-								description: 'User-specified key of user-defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'User-specified key of user-defined data. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 								default: '',
 							},
 							{
@@ -167,7 +161,8 @@ export const contactFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLists',
 				},
 				default: '',
-				description: 'List to which this contact will be added on creation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'List to which this contact will be added on creation. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Mailing Country',
@@ -210,14 +205,17 @@ export const contactFields: INodeProperties[] = [
 				name: 'newEmail',
 				type: 'string',
 				default: '',
-				description: 'If provided, will change the email address of the contact identified by the Email field',
+				description:
+					'If provided, will change the email address of the contact identified by the Email field',
 			},
 			{
 				displayName: 'Notify',
 				name: 'notify',
 				type: 'boolean',
 				default: true,
-				description: 'By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'By default Autopilot notifies registered REST hook endpoints for contact_added/contact_updated events when a new contact is added or an existing contact is updated via API. Disable to skip notifications.',
 			},
 			{
 				displayName: 'Number of Employees',
@@ -288,12 +286,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['delete'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -310,12 +304,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['get'],
+				resource: ['contact'],
 			},
 		},
 		default: '',
@@ -331,12 +321,8 @@ export const contactFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
 			},
 		},
 		default: false,
@@ -348,15 +334,9 @@ export const contactFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contact',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['contact'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

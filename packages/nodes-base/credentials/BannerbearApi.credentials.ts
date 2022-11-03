@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class BannerbearApi implements ICredentialType {
 	name = 'bannerbearApi';
@@ -12,6 +9,7 @@ export class BannerbearApi implements ICredentialType {
 			displayName: 'Project API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

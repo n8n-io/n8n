@@ -6,6 +6,10 @@ export default {
 	title: 'Atoms/RadioButtons',
 	component: N8nRadioButtons,
 	argTypes: {
+		size: {
+			type: 'select',
+			options: ['small', 'medium'],
+		},
 	},
 	parameters: {
 		backgrounds: { default: '--color-background-xlight' },

@@ -1,11 +1,12 @@
 import { IMembershipDto } from './CommonDtos';
 
 enum UserStatusEnum {
-	ACTIVE, PENDING_EMAIL_VERIFICATION, DELETED,
+	ACTIVE,
+	PENDING_EMAIL_VERIFICATION,
+	DELETED,
 }
 
-interface IUserSettingsDto {
-}
+interface IUserSettingsDto {}
 
 export interface IUserDto {
 	activeWorkspace: string;

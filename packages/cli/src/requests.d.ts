@@ -6,15 +6,16 @@ import {
 	ICredentialNodeAccess,
 	INode,
 	INodeCredentialTestRequest,
+	IPinData,
 	IRunData,
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import { User } from './databases/entities/User';
-import { Role } from './databases/entities/Role';
 import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
-import type { PublicUser } from './UserManagement/Interfaces';
+import type { Role } from './databases/entities/Role';
+import type { User } from './databases/entities/User';
 import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
+import type { PublicUser } from './UserManagement/Interfaces';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -47,6 +48,7 @@ export declare namespace WorkflowRequest {
 		settings: IWorkflowSettings;
 		active: boolean;
 		tags: string[];
+		hash: string;
 	}>;
 
 	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
@@ -55,7 +57,7 @@ export declare namespace WorkflowRequest {
 
 	type Delete = Get;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody, { forceSave?: string }>;
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
@@ -71,10 +73,13 @@ export declare namespace WorkflowRequest {
 		{
 			workflowData: IWorkflowDb;
 			runData: IRunData;
+			pinData: IPinData;
 			startNodes?: string[];
 			destinationNode?: string;
 		}
 	>;
+
+	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
@@ -82,7 +87,7 @@ export declare namespace WorkflowRequest {
 // ----------------------------------
 
 export declare namespace CredentialRequest {
-	type RequestBody = Partial<{
+	type CredentialProperties = Partial<{
 		id: string; // delete if sent
 		name: string;
 		type: string;
@@ -90,7 +95,7 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 	}>;
 
-	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
+	type Create = AuthenticatedRequest<{}, {}, CredentialProperties>;
 
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, Record<string, string>>;
 
@@ -98,11 +103,13 @@ export declare namespace CredentialRequest {
 
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, CredentialProperties>;
 
 	type NewName = WorkflowRequest.NewName;
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
+
+	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------
@@ -284,9 +291,50 @@ export type NodeParameterOptionsRequest = AuthenticatedRequest<
 >;
 
 // ----------------------------------
-//      /tags
+//        /node-list-search
+// ----------------------------------
+
+export type NodeListSearchRequest = AuthenticatedRequest<
+	{},
+	{},
+	{},
+	{
+		nodeTypeAndVersion: string;
+		methodName: string;
+		path: string;
+		currentNodeParameters: string;
+		credentials: string;
+		filter?: string;
+		paginationToken?: string;
+	}
+>;
+
+// ----------------------------------
+//             /tags
 // ----------------------------------
 
 export declare namespace TagsRequest {
 	type Delete = AuthenticatedRequest<{ id: string }>;
+}
+
+// ----------------------------------
+//             /nodes
+// ----------------------------------
+
+export declare namespace NodeRequest {
+	type GetAll = AuthenticatedRequest;
+
+	type Post = AuthenticatedRequest<{}, {}, { name?: string }>;
+
+	type Delete = AuthenticatedRequest<{}, {}, {}, { name: string }>;
+
+	type Update = Post;
+}
+
+// ----------------------------------
+//           /curl-to-json
+// ----------------------------------
+
+export declare namespace CurlHelper {
+	type ToJson = AuthenticatedRequest<{}, {}, { curlCommand?: string }>;
 }

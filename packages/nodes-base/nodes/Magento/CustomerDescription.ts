@@ -1,11 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	getCustomerOptionalFields,
-	getSearchFilters,
-} from './GenericFunctions';
+import { getCustomerOptionalFields, getSearchFilters } from './GenericFunctions';
 
 export const customerOperations: INodeProperties[] = [
 	{
@@ -15,9 +10,7 @@ export const customerOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
+				resource: ['customer'],
 			},
 		},
 		options: [
@@ -25,26 +18,31 @@ export const customerOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new customer',
+				action: 'Create a customer',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a customer',
+				action: 'Delete a customer',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a customer',
+				action: 'Get a customer',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all customers',
+				description: 'Get many customers',
+				action: 'Get many customers',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a customer',
+				action: 'Update a customer',
 			},
 		],
 		default: 'create',
@@ -52,7 +50,6 @@ export const customerOperations: INodeProperties[] = [
 ];
 
 export const customerFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                   customer:create                          */
 	/* -------------------------------------------------------------------------- */
@@ -60,16 +57,13 @@ export const customerFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 		description: 'Email address of the user to create',
@@ -82,12 +76,8 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 		description: 'First name of the user to create',
@@ -100,12 +90,8 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
 		description: 'Last name of the user to create',
@@ -118,17 +104,11 @@ export const customerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['customer'],
+				operation: ['create'],
 			},
 		},
-		options: [
-			...getCustomerOptionalFields(),
-		],
+		options: [...getCustomerOptionalFields()],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -141,12 +121,8 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 		description: 'ID of the customer to update',
@@ -155,15 +131,12 @@ export const customerFields: INodeProperties[] = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -174,12 +147,8 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -190,12 +159,8 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -203,14 +168,12 @@ export const customerFields: INodeProperties[] = [
 		displayName: 'Website Name or ID',
 		name: 'website_id',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
 		typeOptions: {
@@ -226,17 +189,11 @@ export const customerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['customer'],
+				operation: ['update'],
 			},
 		},
-		options: [
-			...getCustomerOptionalFields(),
-		],
+		options: [...getCustomerOptionalFields()],
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -250,13 +207,8 @@ export const customerFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'delete',
-					'get',
-				],
+				resource: ['customer'],
+				operation: ['delete', 'get'],
 			},
 		},
 	},
@@ -270,12 +222,8 @@ export const customerFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -287,15 +235,9 @@ export const customerFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'customer',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['customer'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -305,9 +247,5 @@ export const customerFields: INodeProperties[] = [
 		default: 5,
 		description: 'Max number of results to return',
 	},
-	...getSearchFilters(
-		'customer',
-		'getSystemAttributes',
-		'getSystemAttributes',
-	),
+	...getSearchFilters('customer', 'getSystemAttributes', 'getSystemAttributes'),
 ];

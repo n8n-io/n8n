@@ -1,6 +1,4 @@
-import {
-	FileProperties,
-} from '../../Interfaces';
+import { FileProperties } from '../../Interfaces';
 
 export const fileDelDescription: FileProperties = [
 	{
@@ -10,12 +8,8 @@ export const fileDelDescription: FileProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'file',
-				],
+				operation: ['delete'],
+				resource: ['file'],
 			},
 		},
 		default: '',

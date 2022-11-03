@@ -12,14 +12,22 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
+
+			<import-parameter
+					v-else-if="parameter.type === 'curlImport' && nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion >= 3"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChanged"
+			/>
 
 			<n8n-notice
 				v-else-if="parameter.type === 'notice'"
 				class="parameter-item"
 				:content="$locale.nodeText().inputLabelDisplayName(parameter, path)"
+				@action="onNoticeAction"
 			/>
 
 			<div
@@ -39,25 +47,26 @@
 					:tooltipText="$locale.nodeText().inputLabelDescription(parameter, path)"
 					size="small"
 					:underline="true"
-					:labelHoverableOnly="true"
-				>
-					<collection-parameter
-						v-if="parameter.type === 'collection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-					<fixed-collection-parameter
-						v-else-if="parameter.type === 'fixedCollection'"
-						:parameter="parameter"
-						:values="getParameterValue(nodeValues, parameter.name, path)"
-						:nodeValues="nodeValues"
-						:path="getPath(parameter.name)"
-						@valueChanged="valueChanged"
-					/>
-				</n8n-input-label>
+					color="text-dark"
+				/>
+				<collection-parameter
+					v-if="parameter.type === 'collection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChanged"
+				/>
+				<fixed-collection-parameter
+					v-else-if="parameter.type === 'fixedCollection'"
+					:parameter="parameter"
+					:values="getParameterValue(nodeValues, parameter.name, path)"
+					:nodeValues="nodeValues"
+					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
+					@valueChanged="valueChanged"
+				/>
 			</div>
 
 			<div v-else-if="displayNodeParameter(parameter)" class="parameter-item">
@@ -80,15 +89,21 @@
 				/>
 			</div>
 		</div>
+		<div
+			:class="{indent}"
+			v-if="filteredParameters.length === 0"
+		>
+			<slot/>
+		</div>
 	</div>
 </template>
 
 <script lang="ts">
 
 import {
+	deepCopy,
 	INodeParameters,
 	INodeProperties,
-	INodeType,
 	INodeTypeDescription,
 	NodeParameterValue,
 } from 'n8n-workflow';
@@ -96,16 +111,16 @@ import {
 import { INodeUi, IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import ImportParameter from '@/components/ImportParameter.vue';
 
 import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import {Component} from "vue";
 
 export default mixins(
-	genericHelpers,
 	workflowHelpers,
 )
 	.extend({
@@ -113,6 +128,9 @@ export default mixins(
 		components: {
 			MultipleParameter,
 			ParameterInputFull,
+			FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
+			CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
+			ImportParameter,
 		},
 		props: [
 			'nodeValues', // INodeParameters
@@ -120,8 +138,21 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
+			'isReadOnly',
 		],
 		computed: {
+			nodeTypeVersion(): number | null {
+				if (this.node) {
+					return this.node.typeVersion;
+				}
+				return null;
+			},
+			nodeTypeName (): string {
+				if (this.node) {
+					return this.node.type;
+				}
+				return '';
+			},
 			filteredParameters (): INodeProperties[] {
 				return this.parameters.filter((parameter: INodeProperties) => this.displayNodeParameter(parameter));
 			},
@@ -129,7 +160,7 @@ export default mixins(
 				return this.filteredParameters.map(parameter => parameter.name);
 			},
 			node (): INodeUi {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			indexToShowSlotAt (): number {
 				let index = 0;
@@ -148,7 +179,7 @@ export default mixins(
 		methods: {
 			getCredentialsDependencies() {
 				const dependencies = new Set();
-				const nodeType = this.$store.getters.nodeType(this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+				const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
 
 				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
 				if(nodeType && nodeType.credentials) {
@@ -261,7 +292,7 @@ export default mixins(
 
 				if (parameterGotResolved === true) {
 					if (this.path) {
-						rawValues = JSON.parse(JSON.stringify(this.nodeValues));
+						rawValues = deepCopy(this.nodeValues);
 						set(rawValues, this.path, nodeValues);
 						return this.displayParameter(rawValues, parameter, this.path, this.node);
 					} else {
@@ -273,6 +304,11 @@ export default mixins(
 			},
 			valueChanged (parameterData: IUpdateInformation): void {
 				this.$emit('valueChanged', parameterData);
+			},
+			onNoticeAction(action: string) {
+				if (action === 'activate') {
+					this.$emit('activate');
+				}
 			},
 		},
 		watch: {
@@ -287,19 +323,13 @@ export default mixins(
 					if (!newValue.includes(parameter)) {
 						const parameterData = {
 							name: `${this.path}.${parameter}`,
-							node: this.$store.getters.activeNode.name,
+							node: this.$store.getters['ndv/activeNode'].name,
 							value: undefined,
 						};
 						this.$emit('valueChanged', parameterData);
 					}
 				}
 			},
-		},
-		beforeCreate: function () { // tslint:disable-line
-		// Because we have a circular dependency on CollectionParameter import it here
-		// to not break Vue.
-		this.$options!.components!.FixedCollectionParameter = require('./FixedCollectionParameter.vue').default;
-		this.$options!.components!.CollectionParameter = require('./CollectionParameter.vue').default;
 		},
 	});
 </script>
@@ -351,8 +381,8 @@ export default mixins(
 	}
 
 	.parameter-notice {
-		background-color: #fff5d3;
-		color: $--custom-font-black;
+		background-color: var(--color-warning-tint-2);
+		color: $custom-font-black;
 		margin: 0.3em 0;
 		padding: 0.7em;
 

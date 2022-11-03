@@ -1,13 +1,15 @@
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions
-} from 'n8n-core';
-import { IDataObject } from 'n8n-workflow';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
+import { IDataObject, jsonParse } from 'n8n-workflow';
 import { ICollection } from './CollectionInterface';
 import { cockpitApiRequest } from './GenericFunctions';
 
-export async function createCollectionEntry(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, data: IDataObject, id?: string): Promise<any> { // tslint:disable-line:no-any
+export async function createCollectionEntry(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	resourceName: string,
+	data: IDataObject,
+	id?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const body: ICollection = {
 		data,
 	};
@@ -22,12 +24,16 @@ export async function createCollectionEntry(this: IExecuteFunctions | IExecuteSi
 	return cockpitApiRequest.call(this, 'post', `/collections/save/${resourceName}`, body);
 }
 
-
-export async function getAllCollectionEntries(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, resourceName: string, options: IDataObject): Promise<any> { // tslint:disable-line:no-any
+export async function getAllCollectionEntries(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	resourceName: string,
+	options: IDataObject,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const body: ICollection = {};
 
 	if (options.fields) {
-		const fields = (options.fields as string).split(',').map(field => field.trim() );
+		const fields = (options.fields as string).split(',').map((field) => field.trim());
 
 		const bodyFields = {
 			_id: false,
@@ -40,7 +46,9 @@ export async function getAllCollectionEntries(this: IExecuteFunctions | IExecute
 	}
 
 	if (options.filter) {
-		body.filter = JSON.parse(options.filter.toString());
+		body.filter = jsonParse(options.filter.toString(), {
+			errorMessage: "'Filter' option is not valid JSON",
+		});
 	}
 
 	if (options.limit) {
@@ -52,7 +60,9 @@ export async function getAllCollectionEntries(this: IExecuteFunctions | IExecute
 	}
 
 	if (options.sort) {
-		body.sort = JSON.parse(options.sort.toString());
+		body.sort = jsonParse(options.sort.toString(), {
+			errorMessage: "'Sort' option is not valid JSON",
+		});
 	}
 
 	if (options.populate) {
@@ -71,7 +81,8 @@ export async function getAllCollectionEntries(this: IExecuteFunctions | IExecute
 	return cockpitApiRequest.call(this, 'post', `/collections/get/${resourceName}`, body);
 }
 
-
-export async function getAllCollectionNames(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions): Promise<string[]> {
+export async function getAllCollectionNames(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+): Promise<string[]> {
 	return cockpitApiRequest.call(this, 'GET', `/collections/listCollections`, {});
 }

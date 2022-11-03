@@ -1,18 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	awsApiRequestREST,
-	awsApiRequestRESTAllItems,
-} from './GenericFunctions';
+import { awsApiRequestREST, awsApiRequestRESTAllItems } from './GenericFunctions';
 
 export class AwsTranscribe implements INodeType {
 	description: INodeTypeDescription = {
@@ -58,21 +48,25 @@ export class AwsTranscribe implements INodeType {
 						name: 'Create',
 						value: 'create',
 						description: 'Create a transcription job',
+						action: 'Create a transcription job',
 					},
 					{
 						name: 'Delete',
 						value: 'delete',
 						description: 'Delete a transcription job',
+						action: 'Delete a transcription job',
 					},
 					{
 						name: 'Get',
 						value: 'get',
 						description: 'Get a transcription job',
+						action: 'Get a transcription job',
 					},
 					{
-						name: 'Get All',
+						name: 'Get Many',
 						value: 'getAll',
-						description: 'Get all transcription jobs',
+						description: 'Get many transcription jobs',
+						action: 'Get many transcription jobs',
 					},
 				],
 				default: 'create',
@@ -84,14 +78,8 @@ export class AwsTranscribe implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'transcriptionJob',
-						],
-						operation: [
-							'create',
-							'get',
-							'delete',
-						],
+						resource: ['transcriptionJob'],
+						operation: ['create', 'get', 'delete'],
 					},
 				},
 				description: 'The name of the job',
@@ -103,12 +91,8 @@ export class AwsTranscribe implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						resource: [
-							'transcriptionJob',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['transcriptionJob'],
+						operation: ['create'],
 					},
 				},
 				description: 'The S3 object location of the input media file',
@@ -119,16 +103,13 @@ export class AwsTranscribe implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'transcriptionJob',
-						],
-						operation: [
-							'create',
-						],
+						resource: ['transcriptionJob'],
+						operation: ['create'],
 					},
 				},
 				default: false,
-				description: 'Set this field to true to enable automatic language identification',
+				description:
+					'Whether to set this field to true to enable automatic language identification',
 			},
 			{
 				displayName: 'Language',
@@ -166,15 +147,9 @@ export class AwsTranscribe implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						resource: [
-							'transcriptionJob',
-						],
-						operation: [
-							'create',
-						],
-						detectLanguage: [
-							false,
-						],
+						resource: ['transcriptionJob'],
+						operation: ['create'],
+						detectLanguage: [false],
 					},
 				},
 				default: 'en-US',
@@ -190,9 +165,7 @@ export class AwsTranscribe implements INodeType {
 				placeholder: 'Add Option',
 				displayOptions: {
 					show: {
-						operation: [
-							'create',
-						],
+						operation: ['create'],
 					},
 				},
 				default: {},
@@ -202,7 +175,9 @@ export class AwsTranscribe implements INodeType {
 						name: 'channelIdentification',
 						type: 'boolean',
 						default: false,
-						description: 'Instructs Amazon Transcribe to process each audiochannel separately and then merge the transcription output of each channel into a single transcription. You can\'t set both Max Speaker Labels and Channel Identification in the same request. If you set both, your request returns a BadRequestException.',
+						// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+						description:
+							"Instructs Amazon Transcribe to process each audiochannel separately and then merge the transcription output of each channel into a single transcription. You can't set both Max Speaker Labels and Channel Identification in the same request. If you set both, your request returns a BadRequestException.",
 					},
 					{
 						displayName: 'Max Alternatives',
@@ -224,7 +199,8 @@ export class AwsTranscribe implements INodeType {
 							minValue: 2,
 							maxValue: 10,
 						},
-						description: 'The maximum number of speakers to identify in the input audio. If there are more speakers in the audio than this number, multiple speakers are identified as a single speaker.',
+						description:
+							'The maximum number of speakers to identify in the input audio. If there are more speakers in the audio than this number, multiple speakers are identified as a single speaker.',
 					},
 					{
 						displayName: 'Vocabulary Name',
@@ -238,7 +214,8 @@ export class AwsTranscribe implements INodeType {
 						name: 'vocabularyFilterName',
 						type: 'string',
 						default: '',
-						description: 'The name of the vocabulary filter to use when transcribing the audio. The filter that you specify must have the same language code as the transcription job.',
+						description:
+							'The name of the vocabulary filter to use when transcribing the audio. The filter that you specify must have the same language code as the transcription job.',
 					},
 					{
 						displayName: 'Vocabulary Filter Method',
@@ -257,10 +234,10 @@ export class AwsTranscribe implements INodeType {
 								name: 'Tag',
 								value: 'tag',
 							},
-
 						],
 						default: 'remove',
-						description: '<p>Set to mask to remove filtered text from the transcript and replace it with three asterisks ("***") as placeholder text.</p><p>Set to remove to remove filtered text from the transcript without using placeholder text. Set to tag to mark the word in the transcription output that matches the vocabulary filter. When you set the filter method to tag, the words matching your vocabulary filter are not masked or removed.</p>',
+						description:
+							'<p>Set to mask to remove filtered text from the transcript and replace it with three asterisks ("***") as placeholder text.</p><p>Set to remove to remove filtered text from the transcript without using placeholder text. Set to tag to mark the word in the transcription output that matches the vocabulary filter. When you set the filter method to tag, the words matching your vocabulary filter are not masked or removed.</p>',
 					},
 				],
 			},
@@ -271,15 +248,13 @@ export class AwsTranscribe implements INodeType {
 				default: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'transcriptionJob',
-						],
-						operation: [
-							'get',
-						],
+						resource: ['transcriptionJob'],
+						operation: ['get'],
 					},
 				},
-				description: 'By default, the response only contains metadata about the transcript. Enable this option to retrieve the transcript instead.',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					'By default, the response only contains metadata about the transcript. Enable this option to retrieve the transcript instead.',
 			},
 			{
 				displayName: 'Simplify',
@@ -287,19 +262,14 @@ export class AwsTranscribe implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'transcriptionJob',
-						],
-						operation: [
-							'get',
-						],
-						returnTranscript: [
-							true,
-						],
+						resource: ['transcriptionJob'],
+						operation: ['get'],
+						returnTranscript: [true],
 					},
 				},
 				default: true,
-				description: 'Whether to return a simplified version of the response instead of the raw data',
+				description:
+					'Whether to return a simplified version of the response instead of the raw data',
 			},
 			{
 				displayName: 'Return All',
@@ -307,12 +277,8 @@ export class AwsTranscribe implements INodeType {
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						resource: [
-							'transcriptionJob',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['transcriptionJob'],
+						operation: ['getAll'],
 					},
 				},
 				default: false,
@@ -328,15 +294,9 @@ export class AwsTranscribe implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						resource: [
-							'transcriptionJob',
-						],
-						operation: [
-							'getAll',
-						],
-						returnAll: [
-							false,
-						],
+						resource: ['transcriptionJob'],
+						operation: ['getAll'],
+						returnAll: [false],
 					},
 				},
 				description: 'Max number of results to return',
@@ -349,12 +309,8 @@ export class AwsTranscribe implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						resource: [
-							'transcriptionJob',
-						],
-						operation: [
-							'getAll',
-						],
+						resource: ['transcriptionJob'],
+						operation: ['getAll'],
 					},
 				},
 				options: [
@@ -426,44 +382,55 @@ export class AwsTranscribe implements INodeType {
 							body.LanguageCode = this.getNodeParameter('languageCode', i) as string;
 						}
 
-						if (options.channelIdentification) {
-							Object.assign(body.Settings, { ChannelIdentification: options.channelIdentification });
-						}
+						if (body.Settings) {
+							if (options.channelIdentification) {
+								Object.assign(body.Settings, {
+									ChannelIdentification: options.channelIdentification,
+								});
+							}
 
-						if (options.maxAlternatives) {
-							Object.assign(body.Settings, {
-								ShowAlternatives: true,
-								MaxAlternatives: options.maxAlternatives,
-							});
-						}
+							if (options.maxAlternatives) {
+								Object.assign(body.Settings, {
+									ShowAlternatives: true,
+									MaxAlternatives: options.maxAlternatives,
+								});
+							}
 
-						if (options.maxSpeakerLabels) {
-							Object.assign(body.Settings, {
-								ShowSpeakerLabels: true,
-								MaxSpeakerLabels: options.maxSpeakerLabels,
-							});
-						}
+							if (options.maxSpeakerLabels) {
+								Object.assign(body.Settings, {
+									ShowSpeakerLabels: true,
+									MaxSpeakerLabels: options.maxSpeakerLabels,
+								});
+							}
 
-						if (options.vocabularyName) {
-							Object.assign(body.Settings, {
-								VocabularyName: options.vocabularyName,
-							});
-						}
+							if (options.vocabularyName) {
+								Object.assign(body.Settings, {
+									VocabularyName: options.vocabularyName,
+								});
+							}
 
-						if (options.vocabularyFilterName) {
-							Object.assign(body.Settings, {
-								VocabularyFilterName: options.vocabularyFilterName,
-							});
-						}
+							if (options.vocabularyFilterName) {
+								Object.assign(body.Settings, {
+									VocabularyFilterName: options.vocabularyFilterName,
+								});
+							}
 
-						if (options.vocabularyFilterMethod) {
-							Object.assign(body.Settings, {
-								VocabularyFilterMethod: options.vocabularyFilterMethod,
-							});
+							if (options.vocabularyFilterMethod) {
+								Object.assign(body.Settings, {
+									VocabularyFilterMethod: options.vocabularyFilterMethod,
+								});
+							}
 						}
 
 						const action = 'Transcribe.StartTranscriptionJob';
-						responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = await awsApiRequestREST.call(
+							this,
+							'transcribe',
+							'POST',
+							'',
+							JSON.stringify(body),
+							{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+						);
 						responseData = responseData.TranscriptionJob;
 					}
 					//https://docs.aws.amazon.com/transcribe/latest/dg/API_DeleteTranscriptionJob.html
@@ -475,7 +442,14 @@ export class AwsTranscribe implements INodeType {
 						};
 
 						const action = 'Transcribe.DeleteTranscriptionJob';
-						responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = await awsApiRequestREST.call(
+							this,
+							'transcribe',
+							'POST',
+							'',
+							JSON.stringify(body),
+							{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+						);
 						responseData = { success: true };
 					}
 					//https://docs.aws.amazon.com/transcribe/latest/dg/API_GetTranscriptionJob.html
@@ -488,14 +462,29 @@ export class AwsTranscribe implements INodeType {
 						};
 
 						const action = 'Transcribe.GetTranscriptionJob';
-						responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+						responseData = await awsApiRequestREST.call(
+							this,
+							'transcribe',
+							'POST',
+							'',
+							JSON.stringify(body),
+							{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+						);
 						responseData = responseData.TranscriptionJob;
 
 						if (resolve === true && responseData.TranscriptionJobStatus === 'COMPLETED') {
-							responseData = await this.helpers.request({ method: 'GET', uri: responseData.Transcript.TranscriptFileUri, json: true });
+							responseData = await this.helpers.request({
+								method: 'GET',
+								uri: responseData.Transcript.TranscriptFileUri,
+								json: true,
+							});
 							const simple = this.getNodeParameter('simple', 0) as boolean;
 							if (simple === true) {
-								responseData = { transcript: responseData.results.transcripts.map((data: IDataObject) => data.transcript).join(' ') };
+								responseData = {
+									transcript: responseData.results.transcripts
+										.map((data: IDataObject) => data.transcript)
+										.join(' '),
+								};
 							}
 						}
 					}
@@ -515,12 +504,26 @@ export class AwsTranscribe implements INodeType {
 						}
 
 						if (returnAll === true) {
-							responseData = await awsApiRequestRESTAllItems.call(this, 'TranscriptionJobSummaries', 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
-
+							responseData = await awsApiRequestRESTAllItems.call(
+								this,
+								'TranscriptionJobSummaries',
+								'transcribe',
+								'POST',
+								'',
+								JSON.stringify(body),
+								{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+							);
 						} else {
 							const limit = this.getNodeParameter('limit', i) as number;
 							body['MaxResults'] = limit;
-							responseData = await awsApiRequestREST.call(this, 'transcribe', 'POST', '', JSON.stringify(body), { 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' });
+							responseData = await awsApiRequestREST.call(
+								this,
+								'transcribe',
+								'POST',
+								'',
+								JSON.stringify(body),
+								{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
+							);
 							responseData = responseData.TranscriptionJobSummaries;
 						}
 					}
@@ -531,7 +534,6 @@ export class AwsTranscribe implements INodeType {
 				} else {
 					returnData.push(responseData as IDataObject);
 				}
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });

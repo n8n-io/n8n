@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const groupDescription: INodeProperties[] = [
 	// ----------------------------------
@@ -13,9 +11,7 @@ export const groupDescription: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
+				resource: ['group'],
 			},
 		},
 		options: [
@@ -23,26 +19,31 @@ export const groupDescription: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a group',
+				action: 'Create a group',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a group',
+				action: 'Delete a group',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Retrieve a group',
+				action: 'Get a group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all groups',
+				description: 'Get many groups',
+				action: 'Get many groups',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a group',
+				action: 'Update a group',
 			},
 		],
 		default: 'create',
@@ -59,12 +60,8 @@ export const groupDescription: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['create'],
+				resource: ['group'],
 			},
 		},
 	},
@@ -72,17 +69,14 @@ export const groupDescription: INodeProperties[] = [
 		displayName: 'Group ID',
 		name: 'id',
 		type: 'string',
-		description: 'Group to update. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'Group to update. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['group'],
+				operation: ['update'],
 			},
 		},
 	},
@@ -90,17 +84,14 @@ export const groupDescription: INodeProperties[] = [
 		displayName: 'Group ID',
 		name: 'id',
 		type: 'string',
-		description: 'Group to delete. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'Group to delete. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['group'],
+				operation: ['delete'],
 			},
 		},
 	},
@@ -108,17 +99,14 @@ export const groupDescription: INodeProperties[] = [
 		displayName: 'Group ID',
 		name: 'id',
 		type: 'string',
-		description: 'Group to retrieve. Specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+		description:
+			'Group to retrieve. Specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['group'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -129,12 +117,8 @@ export const groupDescription: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['group'],
+				operation: ['create'],
 			},
 		},
 		default: {},
@@ -168,7 +152,8 @@ export const groupDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadGroupCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -198,12 +183,8 @@ export const groupDescription: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'group',
-				],
+				operation: ['update'],
+				resource: ['group'],
 			},
 		},
 		default: {},
@@ -237,7 +218,8 @@ export const groupDescription: INodeProperties[] = [
 									loadOptionsMethod: 'loadGroupCustomFields',
 								},
 								default: '',
-								description: 'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+								description:
+									'Name of the custom field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 							},
 							{
 								displayName: 'Field Value',
@@ -275,12 +257,8 @@ export const groupDescription: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['group'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -295,15 +273,9 @@ export const groupDescription: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'group',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['group'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

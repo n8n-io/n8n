@@ -19,6 +19,7 @@ import {
 	INode,
 	INodeConnections,
 	INodeExecutionData,
+	IPinData,
 	IRun,
 	IRunData,
 	IRunExecutionData,
@@ -59,6 +60,7 @@ export class WorkflowExecute {
 			startData: {},
 			resultData: {
 				runData: {},
+				pinData: {},
 			},
 			executionData: {
 				contextData: {},
@@ -75,14 +77,17 @@ export class WorkflowExecute {
 	 * @param {Workflow} workflow The workflow to execute
 	 * @param {INode[]} [startNodes] Node to start execution from
 	 * @param {string} [destinationNode] Node to stop execution at
-	 * @returns {(Promise<string>)}
-	 * @memberof WorkflowExecute
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
 	//            active executions anymore
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
-	run(workflow: Workflow, startNode?: INode, destinationNode?: string): PCancelable<IRun> {
+	run(
+		workflow: Workflow,
+		startNode?: INode,
+		destinationNode?: string,
+		pinData?: IPinData,
+	): PCancelable<IRun> {
 		// Get the nodes to start workflow execution from
 		startNode = startNode || workflow.getStartNode(destinationNode);
 
@@ -121,6 +126,7 @@ export class WorkflowExecute {
 			},
 			resultData: {
 				runData: {},
+				pinData,
 			},
 			executionData: {
 				contextData: {},
@@ -137,11 +143,8 @@ export class WorkflowExecute {
 	 * Executes the given workflow but only
 	 *
 	 * @param {Workflow} workflow The workflow to execute
-	 * @param {IRunData} runData
 	 * @param {string[]} startNodes Nodes to start execution from
 	 * @param {string} destinationNode Node to stop execution at
-	 * @returns {(Promise<string>)}
-	 * @memberof WorkflowExecute
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
@@ -152,7 +155,7 @@ export class WorkflowExecute {
 		runData: IRunData,
 		startNodes: string[],
 		destinationNode: string,
-		// @ts-ignore
+		pinData?: IPinData,
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
@@ -183,10 +186,20 @@ export class WorkflowExecute {
 				for (const connections of incomingNodeConnections.main) {
 					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
 						connection = connections[inputIndex];
-						incomingData.push(
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-							runData[connection.node][runIndex].data![connection.type][connection.index]!,
-						);
+
+						const node = workflow.getNode(connection.node);
+
+						if (node?.disabled) continue;
+
+						if (node && pinData && pinData[node.name]) {
+							incomingData.push(pinData[node.name]);
+						} else {
+							incomingData.push(
+								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+								runData[connection.node][runIndex].data![connection.type][connection.index]!,
+							);
+						}
+
 						incomingSourceData.main.push({
 							previousNode: connection.node,
 						});
@@ -248,7 +261,10 @@ export class WorkflowExecute {
 		// Only run the parent nodes and no others
 		let runNodeFilter: string[] | undefined;
 		// eslint-disable-next-line prefer-const
-		runNodeFilter = workflow.getParentNodes(destinationNode);
+		runNodeFilter = workflow
+			.getParentNodes(destinationNode)
+			.filter((parentNodeName) => !workflow.getNode(parentNodeName)?.disabled);
+
 		runNodeFilter.push(destinationNode);
 
 		this.runExecutionData = {
@@ -258,6 +274,7 @@ export class WorkflowExecute {
 			},
 			resultData: {
 				runData,
+				pinData,
 			},
 			executionData: {
 				contextData: {},
@@ -273,10 +290,6 @@ export class WorkflowExecute {
 	/**
 	 * Executes the hook with the given name
 	 *
-	 * @param {string} hookName
-	 * @param {any[]} parameters
-	 * @returns {Promise<IRun>}
-	 * @memberof WorkflowExecute
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async executeHook(hookName: string, parameters: any[]): Promise<void> {
@@ -663,9 +676,6 @@ export class WorkflowExecute {
 	/**
 	 * Runs the given execution data.
 	 *
-	 * @param {Workflow} workflow
-	 * @returns {Promise<string>}
-	 * @memberof WorkflowExecute
 	 */
 	// IMPORTANT: Do not add "async" to this function, it will then convert the
 	//            PCancelable to a regular Promise and does so not allow canceling
@@ -683,7 +693,13 @@ export class WorkflowExecute {
 			destinationNode = this.runExecutionData.startData.destinationNode;
 		}
 
-		const workflowIssues = workflow.checkReadyForExecution({ startNode, destinationNode });
+		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
+
+		const workflowIssues = workflow.checkReadyForExecution({
+			startNode,
+			destinationNode,
+			pinDataNodeNames,
+		});
 		if (workflowIssues !== null) {
 			throw new Error(
 				'The workflow has issues and can for that reason not be executed. Please fix them first.',
@@ -766,7 +782,6 @@ export class WorkflowExecute {
 						gotCancel = true;
 					}
 
-					// @ts-ignore
 					if (gotCancel) {
 						return Promise.resolve();
 					}
@@ -894,7 +909,6 @@ export class WorkflowExecute {
 					}
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
-						// @ts-ignore
 						if (gotCancel) {
 							return Promise.resolve();
 						}
@@ -914,24 +928,32 @@ export class WorkflowExecute {
 								}
 							}
 
-							Logger.debug(`Running node "${executionNode.name}" started`, {
-								node: executionNode.name,
-								workflowId: workflow.id,
-							});
-							const runNodeData = await workflow.runNode(
-								executionData,
-								this.runExecutionData,
-								runIndex,
-								this.additionalData,
-								NodeExecuteFunctions,
-								this.mode,
-							);
-							nodeSuccessData = runNodeData.data;
+							const { pinData } = this.runExecutionData.resultData;
 
-							if (runNodeData.closeFunction) {
-								// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
-								// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-								closeFunction = runNodeData.closeFunction();
+							if (pinData && !executionNode.disabled && pinData[executionNode.name] !== undefined) {
+								const nodePinData = pinData[executionNode.name];
+
+								nodeSuccessData = [nodePinData]; // always zeroth runIndex
+							} else {
+								Logger.debug(`Running node "${executionNode.name}" started`, {
+									node: executionNode.name,
+									workflowId: workflow.id,
+								});
+								const runNodeData = await workflow.runNode(
+									executionData,
+									this.runExecutionData,
+									runIndex,
+									this.additionalData,
+									NodeExecuteFunctions,
+									this.mode,
+								);
+								nodeSuccessData = runNodeData.data;
+
+								if (runNodeData.closeFunction) {
+									// Explanation why we do this can be found in n8n-workflow/Workflow.ts -> runNode
+									// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+									closeFunction = runNodeData.closeFunction();
+								}
 							}
 
 							Logger.debug(`Running node "${executionNode.name}" finished successfully`, {
@@ -939,26 +961,40 @@ export class WorkflowExecute {
 								workflowId: workflow.id,
 							});
 
-							// Check if the output data contains pairedItem data
-							checkOutputData: for (const outputData of nodeSuccessData as INodeExecutionData[][]) {
-								if (outputData === null) {
-									continue;
-								}
-								for (const item of outputData) {
-									if (!item.pairedItem) {
-										// The pairedItem is missing so check if it can get automatically fixed
-										if (
-											executionData.data.main.length !== 1 ||
-											executionData.data.main[0]?.length !== 1
-										) {
-											// Automatically fixing is only possible if there is only one
-											// input and one input item
-											break checkOutputData;
+							if (nodeSuccessData) {
+								// Check if the output data contains pairedItem data
+								checkOutputData: for (const outputData of nodeSuccessData) {
+									if (outputData === null) {
+										continue;
+									}
+									for (const [index, item] of outputData.entries()) {
+										if (!item.pairedItem) {
+											// The pairedItem data is missing, so check if it can get automatically fixed
+											if (
+												executionData.data.main.length === 1 &&
+												executionData.data.main[0]?.length === 1
+											) {
+												// The node has one input and one incoming item, so we know
+												// that all items must originate from that single
+												item.pairedItem = {
+													item: 0,
+												};
+											} else if (
+												nodeSuccessData.length === 1 &&
+												executionData.data.main.length === 1 &&
+												executionData.data.main[0]?.length === nodeSuccessData[0].length
+											) {
+												// The node has one input and one output. The number of items on both is
+												// identical so we can make the reasonable assumption that each of the input
+												// items is the origin of the corresponding output items
+												item.pairedItem = {
+													item: index,
+												};
+											} else {
+												// In all other cases autofixing is not possible
+												break checkOutputData;
+											}
 										}
-
-										item.pairedItem = {
-											item: 0,
-										};
 									}
 								}
 							}
@@ -1011,10 +1047,11 @@ export class WorkflowExecute {
 					if (!this.runExecutionData.resultData.runData.hasOwnProperty(executionNode.name)) {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
+
 					taskData = {
 						startTime,
 						executionTime: new Date().getTime() - startTime,
-						source: executionData.source === null ? [] : executionData.source.main,
+						source: !executionData.source ? [] : executionData.source.main,
 					};
 
 					if (executionError !== undefined) {

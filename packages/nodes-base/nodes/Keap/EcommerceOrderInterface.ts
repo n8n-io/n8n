@@ -1,5 +1,3 @@
-
-
 export interface IItem {
 	description?: string;
 	price?: number;
@@ -8,18 +6,18 @@ export interface IItem {
 }
 
 export interface IShippingAddress {
-		company?: string;
-		country_code?: string;
-		first_name?: string;
-		last_name?: string;
-		line1?: string;
-		line2?: string;
-		locality?: string;
-		middle_name?: string;
-		postal_code?: string;
-		region?: string;
-		zip_code?: string;
-		zip_four?: string;
+	company?: string;
+	country_code?: string;
+	first_name?: string;
+	last_name?: string;
+	line1?: string;
+	line2?: string;
+	locality?: string;
+	middle_name?: string;
+	postal_code?: string;
+	region?: string;
+	zip_code?: string;
+	zip_four?: string;
 }
 
 export interface IEcommerceOrder {

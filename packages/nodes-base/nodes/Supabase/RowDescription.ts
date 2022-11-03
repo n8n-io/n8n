@@ -1,11 +1,6 @@
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	INodeProperties,
-} from 'n8n-workflow';
-
-import {
-	getFilters,
-} from './GenericFunctions';
+import { getFilters } from './GenericFunctions';
 
 export const rowOperations: INodeProperties[] = [
 	{
@@ -15,9 +10,7 @@ export const rowOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'row',
-				],
+				resource: ['row'],
 			},
 		},
 		options: [
@@ -25,26 +18,31 @@ export const rowOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new row',
+				action: 'Create a row',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a row',
+				action: 'Delete a row',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a row',
+				action: 'Get a row',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all rows',
+				description: 'Get many rows',
+				action: 'Get many rows',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a row',
+				action: 'Update a row',
 			},
 		],
 		default: 'create',
@@ -52,7 +50,6 @@ export const rowOperations: INodeProperties[] = [
 ];
 
 export const rowFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                row:create                                  */
 	/* -------------------------------------------------------------------------- */
@@ -60,45 +57,36 @@ export const rowFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'tableId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
 		},
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'row',
-				],
-				operation: [
-					'create',
-					'delete',
-					'get',
-					'getAll',
-					'update',
-				],
+				resource: ['row'],
+				operation: ['create', 'delete', 'get', 'getAll', 'update'],
 			},
 		},
 		default: '',
 	},
-	...getFilters(
-		['row'],
-		['update'],
-		{
-			includeNoneOption: false,
-			filterTypeDisplayName: 'Select Type',
-			filterStringDisplayName: 'Select Condition (String)',
-			filterFixedCollectionDisplayName: 'Select Conditions',
-			mustMatchOptions: [
-				{
-					name: 'Any Select Condition',
-					value: 'anyFilter',
-				},
-				{
-					name: 'All Select Conditions',
-					value: 'allFilters',
-				},
-			],
-		}),
+	...getFilters(['row'], ['update'], {
+		includeNoneOption: false,
+		filterTypeDisplayName: 'Select Type',
+		filterStringDisplayName: 'Select Condition (String)',
+		filterFixedCollectionDisplayName: 'Select Conditions',
+		mustMatchOptions: [
+			{
+				name: 'Any Select Condition',
+				value: 'anyFilter',
+			},
+			{
+				name: 'All Select Conditions',
+				value: 'allFilters',
+			},
+		],
+	}),
 	{
 		displayName: 'Data to Send',
 		name: 'dataToSend',
@@ -117,13 +105,8 @@ export const rowFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'row',
-				],
-				operation: [
-					'create',
-					'update',
-				],
+				resource: ['row'],
+				operation: ['create', 'update'],
 			},
 		},
 		default: 'defineBelow',
@@ -134,20 +117,14 @@ export const rowFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				resource: [
-					'row',
-				],
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'autoMapInputData',
-				],
+				resource: ['row'],
+				operation: ['create', 'update'],
+				dataToSend: ['autoMapInputData'],
 			},
 		},
 		default: '',
-		description: 'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
+		description:
+			'List of input properties to avoid sending, separated by commas. Leave empty to send all properties.',
 		placeholder: 'Enter properties...',
 	},
 	{
@@ -161,16 +138,9 @@ export const rowFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'row',
-				],
-				operation: [
-					'create',
-					'update',
-				],
-				dataToSend: [
-					'defineBelow',
-				],
+				resource: ['row'],
+				operation: ['create', 'update'],
+				dataToSend: ['defineBelow'],
 			},
 		},
 		default: {},
@@ -183,10 +153,10 @@ export const rowFields: INodeProperties[] = [
 						displayName: 'Field Name or ID',
 						name: 'fieldId',
 						type: 'options',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 						typeOptions: {
-							loadOptionsDependsOn: [
-								'tableId',
-							],
+							loadOptionsDependsOn: ['tableId'],
 							loadOptionsMethod: 'getTableColumns',
 						},
 						default: '',
@@ -204,24 +174,22 @@ export const rowFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                row:delete                                  */
 	/* -------------------------------------------------------------------------- */
-	...getFilters(
-		['row'],
-		['delete'],
-		{
-			includeNoneOption: false,
-			filterTypeDisplayName: 'Select Type',
-			filterStringDisplayName: 'Select Condition (String)',
-			filterFixedCollectionDisplayName: 'Select Conditions',
-			mustMatchOptions: [
-				{
-					name: 'Any Select Condition',
-					value: 'anyFilter',
-				},
-				{
-					name: 'All Select Conditions',
-					value: 'allFilters',
-				},
-		]}),
+	...getFilters(['row'], ['delete'], {
+		includeNoneOption: false,
+		filterTypeDisplayName: 'Select Type',
+		filterStringDisplayName: 'Select Condition (String)',
+		filterFixedCollectionDisplayName: 'Select Conditions',
+		mustMatchOptions: [
+			{
+				name: 'Any Select Condition',
+				value: 'anyFilter',
+			},
+			{
+				name: 'All Select Conditions',
+				value: 'allFilters',
+			},
+		],
+	}),
 	/* -------------------------------------------------------------------------- */
 	/*                                row:get                                     */
 	/* -------------------------------------------------------------------------- */
@@ -234,12 +202,8 @@ export const rowFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'row',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['row'],
+				operation: ['get'],
 			},
 		},
 		default: {},
@@ -254,13 +218,12 @@ export const rowFields: INodeProperties[] = [
 						name: 'keyName',
 						type: 'options',
 						typeOptions: {
-							loadOptionsDependsOn: [
-								'tableId',
-							],
+							loadOptionsDependsOn: ['tableId'],
 							loadOptionsMethod: 'getTableColumns',
 						},
 						default: '',
-						description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>',
+						description:
+							'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 					},
 					{
 						displayName: 'Value',
@@ -282,12 +245,8 @@ export const rowFields: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'row',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['row'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -299,15 +258,9 @@ export const rowFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'row',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['row'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

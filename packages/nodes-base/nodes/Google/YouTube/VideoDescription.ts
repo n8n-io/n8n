@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const videoOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const videoOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'video',
-				],
+				resource: ['video'],
 			},
 		},
 		options: [
@@ -20,31 +16,37 @@ export const videoOperations: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a video',
+				action: 'Delete a video',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a video',
+				action: 'Get a video',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all videos',
+				description: 'Retrieve many videos',
+				action: 'Get many videos',
 			},
 			{
 				name: 'Rate',
 				value: 'rate',
 				description: 'Rate a video',
+				action: 'Rate a video',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a video',
+				action: 'Update a video',
 			},
 			{
 				name: 'Upload',
 				value: 'upload',
 				description: 'Upload a video',
+				action: 'Upload a video',
 			},
 		],
 		default: 'getAll',
@@ -62,12 +64,8 @@ export const videoFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['upload'],
+				resource: ['video'],
 			},
 		},
 		default: '',
@@ -77,17 +75,15 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCountriesCodes',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['upload'],
+				resource: ['video'],
 			},
 		},
 		default: '',
@@ -96,20 +92,16 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getVideoCategories',
-			loadOptionsDependsOn: [
-				'regionCode',
-			],
+			loadOptionsDependsOn: ['regionCode'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['upload'],
+				resource: ['video'],
 			},
 		},
 		default: '',
@@ -121,12 +113,8 @@ export const videoFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['upload'],
+				resource: ['video'],
 			},
 		},
 		default: 'data',
@@ -139,12 +127,8 @@ export const videoFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'upload',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['upload'],
+				resource: ['video'],
 			},
 		},
 		options: [
@@ -156,21 +140,22 @@ export const videoFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The playlist\'s description',
+				description: "The playlist's description",
 			},
 			{
 				displayName: 'Embeddable',
 				name: 'embeddable',
 				type: 'boolean',
 				default: false,
-				description: 'This value indicates whether the video can be embedded on another website',
+				description: 'Whether the video can be embedded on another website',
 			},
 			{
 				displayName: 'License',
@@ -187,14 +172,15 @@ export const videoFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The video\'s license',
+				description: "The video's license",
 			},
 			{
 				displayName: 'Notify Subscribers',
 				name: 'notifySubscribers',
 				type: 'boolean',
 				default: false,
-				description: 'The notifySubscribers parameter indicates whether YouTube should send a notification about the new video to users who subscribe to the video\'s channel',
+				description:
+					"Whether YouTube should send a notification about the new video to users who subscribe to the video's channel",
 			},
 			{
 				displayName: 'Privacy Status',
@@ -215,21 +201,23 @@ export const videoFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The playlist\'s privacy status',
+				description: "The playlist's privacy status",
 			},
 			{
 				displayName: 'Public Stats Viewable',
 				name: 'publicStatsViewable',
 				type: 'boolean',
 				default: true,
-				description: 'This value indicates whether the extended video statistics on the video\'s watch page are publicly viewable',
+				description:
+					"Whether the extended video statistics on the video's watch page are publicly viewable",
 			},
 			{
 				displayName: 'Publish At',
 				name: 'publishAt',
 				type: 'dateTime',
 				default: '',
-				description: 'If you set a value for this property, you must also set the status.privacyStatus property to private',
+				description:
+					'If you set a value for this property, you must also set the status.privacyStatus property to private',
 			},
 			{
 				displayName: 'Recording Date',
@@ -243,14 +231,16 @@ export const videoFields: INodeProperties[] = [
 				name: 'selfDeclaredMadeForKids',
 				type: 'boolean',
 				default: false,
-				description: 'This value indicates whether the video is designated as child-directed, and it contains the current "made for kids" status of the video',
+				description:
+					'Whether the video is designated as child-directed, and it contains the current "made for kids" status of the video',
 			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
+				description:
+					'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
 			},
 		],
 	},
@@ -264,12 +254,8 @@ export const videoFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['delete'],
+				resource: ['video'],
 			},
 		},
 		description: 'ID of the video',
@@ -283,12 +269,8 @@ export const videoFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['delete'],
+				resource: ['video'],
 			},
 		},
 		options: [
@@ -297,7 +279,8 @@ export const videoFields: INodeProperties[] = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 		],
 	},
@@ -311,12 +294,8 @@ export const videoFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['get'],
+				resource: ['video'],
 			},
 		},
 		default: '',
@@ -374,15 +353,12 @@ export const videoFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['get'],
+				resource: ['video'],
 			},
 		},
-		description: 'The fields parameter specifies a comma-separated list of one or more video resource properties that the API response will include',
+		description:
+			'The fields parameter specifies a comma-separated list of one or more video resource properties that the API response will include',
 		default: ['*'],
 	},
 	{
@@ -393,12 +369,8 @@ export const videoFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['get'],
+				resource: ['video'],
 			},
 		},
 		options: [
@@ -407,7 +379,8 @@ export const videoFields: INodeProperties[] = [
 				name: 'onBehalfOfContentOwner',
 				type: 'string',
 				default: '',
-				description: 'The onBehalfOfContentOwner parameter indicates that the request\'s authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value',
+				description:
+					"The onBehalfOfContentOwner parameter indicates that the request's authorization credentials identify a YouTube CMS user who is acting on behalf of the content owner specified in the parameter value",
 			},
 		],
 	},
@@ -420,12 +393,8 @@ export const videoFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['getAll'],
+				resource: ['video'],
 			},
 		},
 		default: false,
@@ -437,15 +406,9 @@ export const videoFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'video',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['video'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -463,12 +426,8 @@ export const videoFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['getAll'],
+				resource: ['video'],
 			},
 		},
 		options: [
@@ -477,28 +436,32 @@ export const videoFields: INodeProperties[] = [
 				name: 'channelId',
 				type: 'string',
 				default: '',
-				description: 'The channelId parameter indicates that the API response should only contain resources created by the channel',
+				description:
+					'The channelId parameter indicates that the API response should only contain resources created by the channel',
 			},
 			{
 				displayName: 'For Developer',
 				name: 'forDeveloper',
 				type: 'boolean',
 				default: false,
-				description: 'The forDeveloper parameter restricts the search to only retrieve videos uploaded via the developer\'s application or website',
+				description:
+					"Whether to restrict the search to only retrieve videos uploaded via the developer's application or website",
 			},
 			{
 				displayName: 'Published After',
 				name: 'publishedAfter',
 				type: 'dateTime',
 				default: '',
-				description: 'The publishedAfter parameter indicates that the API response should only contain resources created at or after the specified time',
+				description:
+					'The publishedAfter parameter indicates that the API response should only contain resources created at or after the specified time',
 			},
 			{
 				displayName: 'Published Before',
 				name: 'publishedBefore',
 				type: 'dateTime',
 				default: '',
-				description: 'The publishedBefore parameter indicates that the API response should only contain resources created before or at the specified time',
+				description:
+					'The publishedBefore parameter indicates that the API response should only contain resources created before or at the specified time',
 			},
 			{
 				displayName: 'Query',
@@ -516,28 +479,32 @@ export const videoFields: INodeProperties[] = [
 					loadOptionsMethod: 'getCountriesCodes',
 				},
 				default: '',
-				description: 'The regionCode parameter instructs the API to select a video chart available in the specified region. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The regionCode parameter instructs the API to select a video chart available in the specified region. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Related To Video ID',
 				name: 'relatedToVideoId',
 				type: 'string',
 				default: '',
-				description: 'The relatedToVideoId parameter retrieves a list of videos that are related to the video that the parameter value identifies',
+				description:
+					'The relatedToVideoId parameter retrieves a list of videos that are related to the video that the parameter value identifies',
 			},
 			{
 				displayName: 'Video Category ID',
 				name: 'videoCategoryId',
 				type: 'string',
 				default: '',
-				description: 'The videoCategoryId parameter identifies the video category for which the chart should be retrieved',
+				description:
+					'The videoCategoryId parameter identifies the video category for which the chart should be retrieved',
 			},
 			{
 				displayName: 'Video Syndicated',
 				name: 'videoSyndicated',
 				type: 'boolean',
 				default: false,
-				description: 'The videoSyndicated parameter lets you to restrict a search to only videos that can be played outside youtube.com',
+				description:
+					'Whether to restrict a search to only videos that can be played outside youtube.com',
 			},
 			{
 				displayName: 'Video Type',
@@ -558,7 +525,8 @@ export const videoFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The videoType parameter lets you restrict a search to a particular type of videos',
+				description:
+					'The videoType parameter lets you restrict a search to a particular type of videos',
 			},
 		],
 	},
@@ -570,12 +538,8 @@ export const videoFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['getAll'],
+				resource: ['video'],
 			},
 		},
 		options: [
@@ -603,7 +567,8 @@ export const videoFields: INodeProperties[] = [
 					{
 						name: 'Moderate',
 						value: 'moderate',
-						description: 'YouTube will filter some content from search results and, at the least, will filter content that is restricted in your locale',
+						description:
+							'YouTube will filter some content from search results and, at the least, will filter content that is restricted in your locale',
 					},
 					{
 						name: 'None',
@@ -613,7 +578,8 @@ export const videoFields: INodeProperties[] = [
 					{
 						name: 'Strict',
 						value: 'strict',
-						description: 'YouTube will try to exclude all restricted content from the search result set',
+						description:
+							'YouTube will try to exclude all restricted content from the search result set',
 					},
 				],
 				default: '',
@@ -630,12 +596,8 @@ export const videoFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'rate',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['rate'],
+				resource: ['video'],
 			},
 		},
 		default: '',
@@ -646,12 +608,8 @@ export const videoFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				operation: [
-					'rate',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['rate'],
+				resource: ['video'],
 			},
 		},
 		options: [
@@ -668,7 +626,8 @@ export const videoFields: INodeProperties[] = [
 			{
 				name: 'None',
 				value: 'none',
-				description: 'Removes any rating that the authenticated user had previously set for the video',
+				description:
+					'Removes any rating that the authenticated user had previously set for the video',
 			},
 		],
 		default: '',
@@ -683,12 +642,8 @@ export const videoFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['update'],
+				resource: ['video'],
 			},
 		},
 		default: '',
@@ -700,12 +655,8 @@ export const videoFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['update'],
+				resource: ['video'],
 			},
 		},
 		default: '',
@@ -715,17 +666,15 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Region Code',
 		name: 'regionCode',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCountriesCodes',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['update'],
+				resource: ['video'],
 			},
 		},
 		default: '',
@@ -734,20 +683,16 @@ export const videoFields: INodeProperties[] = [
 		displayName: 'Category Name or ID',
 		name: 'categoryId',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getVideoCategories',
-			loadOptionsDependsOn: [
-				'regionCode',
-			],
+			loadOptionsDependsOn: ['regionCode'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['update'],
+				resource: ['video'],
 			},
 		},
 		default: '',
@@ -760,12 +705,8 @@ export const videoFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'video',
-				],
+				operation: ['update'],
+				resource: ['video'],
 			},
 		},
 		options: [
@@ -777,21 +718,22 @@ export const videoFields: INodeProperties[] = [
 					loadOptionsMethod: 'getLanguages',
 				},
 				default: '',
-				description: 'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/nodes/expressions.html#expressions">expression</a>.',
+				description:
+					'The language of the text in the playlist resource\'s title and description properties. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Description',
 				name: 'description',
 				type: 'string',
 				default: '',
-				description: 'The playlist\'s description',
+				description: "The playlist's description",
 			},
 			{
 				displayName: 'Embeddable',
 				name: 'embeddable',
 				type: 'boolean',
 				default: false,
-				description: 'This value indicates whether the video can be embedded on another website',
+				description: 'Whether the video can be embedded on another website',
 			},
 			{
 				displayName: 'License',
@@ -808,14 +750,15 @@ export const videoFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The video\'s license',
+				description: "The video's license",
 			},
 			{
 				displayName: 'Notify Subscribers',
 				name: 'notifySubscribers',
 				type: 'boolean',
 				default: false,
-				description: 'The notifySubscribers parameter indicates whether YouTube should send a notification about the new video to users who subscribe to the video\'s channel',
+				description:
+					"Whether YouTube should send a notification about the new video to users who subscribe to the video's channel",
 			},
 			{
 				displayName: 'Privacy Status',
@@ -836,21 +779,23 @@ export const videoFields: INodeProperties[] = [
 					},
 				],
 				default: '',
-				description: 'The playlist\'s privacy status',
+				description: "The playlist's privacy status",
 			},
 			{
 				displayName: 'Public Stats Viewable',
 				name: 'publicStatsViewable',
 				type: 'boolean',
 				default: true,
-				description: 'This value indicates whether the extended video statistics on the video\'s watch page are publicly viewable',
+				description:
+					"Whether the extended video statistics on the video's watch page are publicly viewable",
 			},
 			{
 				displayName: 'Publish At',
 				name: 'publishAt',
 				type: 'dateTime',
 				default: '',
-				description: 'If you set a value for this property, you must also set the status.privacyStatus property to private',
+				description:
+					'If you set a value for this property, you must also set the status.privacyStatus property to private',
 			},
 			{
 				displayName: 'Recording Date',
@@ -864,14 +809,16 @@ export const videoFields: INodeProperties[] = [
 				name: 'selfDeclaredMadeForKids',
 				type: 'boolean',
 				default: false,
-				description: 'This value indicates whether the video is designated as child-directed, and it contains the current "made for kids" status of the video',
+				description:
+					'Whether the video is designated as child-directed, and it contains the current "made for kids" status of the video',
 			},
 			{
 				displayName: 'Tags',
 				name: 'tags',
 				type: 'string',
 				default: '',
-				description: 'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
+				description:
+					'Keyword tags associated with the playlist. Mulplie can be defined separated by comma.',
 			},
 		],
 	},

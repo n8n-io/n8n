@@ -1,24 +1,17 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
 
-import {
-	apiRequest,
-} from '../../../transport';
+import { apiRequest } from '../../../transport';
 
 import moment from 'moment';
 
-import {
-	capitalCase,
-} from 'change-case';
+import { capitalCase } from 'change-case';
 
-export async function update(this: IExecuteFunctions, index: number): Promise<INodeExecutionData[]> {
+export async function update(
+	this: IExecuteFunctions,
+	index: number,
+): Promise<INodeExecutionData[]> {
 	let body: IDataObject = {};
 	const requestMethod = 'POST';
 
@@ -35,8 +28,12 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	const synced = this.getNodeParameter('synced', index) as boolean;
 
 	if (synced) {
-		Object.assign(body, { address: this.getNodeParameter('address.value', index, {}) as IDataObject });
-		Object.assign(body, { payRate: this.getNodeParameter('payRate.value', index, {}) as IDataObject });
+		Object.assign(body, {
+			address: this.getNodeParameter('address.value', index, {}) as IDataObject,
+		});
+		Object.assign(body, {
+			payRate: this.getNodeParameter('payRate.value', index, {}) as IDataObject,
+		});
 		body.firstName = this.getNodeParameter('firstName', index) as string;
 		body.lastName = this.getNodeParameter('lastName', index) as string;
 		body.department = this.getNodeParameter('department', index) as string;
@@ -54,13 +51,16 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 		body.preferredName = this.getNodeParameter('preferredName', index) as string;
 		body.ssn = this.getNodeParameter('ssn', index) as string;
 	} else {
-
 		if (!Object.keys(updateFields).length) {
 			throw new NodeOperationError(this.getNode(), 'At least one fields must be updated');
 		}
 
-		Object.assign(body, { address: this.getNodeParameter('updateFields.address.value', index, {}) as IDataObject });
-		Object.assign(body, { payRate: this.getNodeParameter('updateFields.payRate.value', index, {}) as IDataObject });
+		Object.assign(body, {
+			address: this.getNodeParameter('updateFields.address.value', index, {}) as IDataObject,
+		});
+		Object.assign(body, {
+			payRate: this.getNodeParameter('updateFields.payRate.value', index, {}) as IDataObject,
+		});
 		delete updateFields.address;
 		delete updateFields.payRate;
 	}
@@ -104,4 +104,3 @@ export async function update(this: IExecuteFunctions, index: number): Promise<IN
 	//return
 	return this.helpers.returnJsonArray({ success: true });
 }
-

@@ -1,11 +1,13 @@
-import express = require('express');
-import { FindManyOptions, In } from 'typeorm';
+import express from 'express';
+
+import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
+
 import { ActiveWorkflowRunner, Db } from '../../../..';
 import config = require('../../../../../config');
 import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
 import { InternalHooksManager } from '../../../../InternalHooksManager';
 import { externalHooks } from '../../../../Server';
-import { replaceInvalidCredentials } from '../../../../WorkflowHelpers';
+import { addNodeIds, replaceInvalidCredentials } from '../../../../WorkflowHelpers';
 import { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
@@ -30,25 +32,26 @@ export = {
 	createWorkflow: [
 		authorize(['owner', 'member']),
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
-			let workflow = req.body;
+			const workflow = req.body;
 
 			workflow.active = false;
 
-			// if the workflow does not have a start node, add it.
 			if (!hasStartNode(workflow)) {
 				workflow.nodes.push(getStartNode());
 			}
 
-			const role = await getWorkflowOwnerRole();
-
 			await replaceInvalidCredentials(workflow);
 
-			workflow = await createWorkflow(workflow, req.user, role);
+			addNodeIds(workflow);
 
-			await externalHooks.run('workflow.afterCreate', [workflow]);
-			void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, workflow, true);
+			const role = await getWorkflowOwnerRole();
 
-			return res.json(workflow);
+			const createdWorkflow = await createWorkflow(workflow, req.user, role);
+
+			await externalHooks.run('workflow.afterCreate', [createdWorkflow]);
+			void InternalHooksManager.getInstance().onWorkflowCreated(req.user.id, createdWorkflow, true);
+
+			return res.json(createdWorkflow);
 		},
 	],
 	deleteWorkflow: [
@@ -61,16 +64,12 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json({
-					message: 'Not Found',
-				});
+				return res.status(404).json({ message: 'Not Found' });
 			}
-
-			const workflowRunner = ActiveWorkflowRunner.getInstance();
 
 			if (sharedWorkflow.workflow.active) {
 				// deactivate before deleting
-				await workflowRunner.remove(id.toString());
+				await ActiveWorkflowRunner.getInstance().remove(id.toString());
 			}
 
 			await Db.collections.Workflow.delete(id);
@@ -91,17 +90,13 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json({
-					message: 'Not Found',
-				});
+				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const telemetryData = {
+			void InternalHooksManager.getInstance().onUserRetrievedWorkflow({
 				user_id: req.user.id,
 				public_api: true,
-			};
-
-			void InternalHooksManager.getInstance().onUserRetrievedWorkflow(telemetryData);
+			});
 
 			return res.json(sharedWorkflow.workflow);
 		},
@@ -115,7 +110,7 @@ export = {
 			let workflows: WorkflowEntity[];
 			let count: number;
 
-			const query: FindManyOptions<WorkflowEntity> = {
+			const query: FindManyOptions<WorkflowEntity> & { where: ObjectLiteral } = {
 				skip: offset,
 				take: limit,
 				where: {
@@ -158,12 +153,10 @@ export = {
 				count = await getWorkflowsCount(query);
 			}
 
-			const telemetryData = {
+			void InternalHooksManager.getInstance().onUserRetrievedAllWorkflows({
 				user_id: req.user.id,
 				public_api: true,
-			};
-
-			void InternalHooksManager.getInstance().onUserRetrievedAllWorkflows(telemetryData);
+			});
 
 			return res.json({
 				data: workflows,
@@ -187,19 +180,15 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json({
-					message: 'Not Found',
-				});
+				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			// if the workflow does not have a start node, add it.
-			// else there is nothing you can do in IU
 			if (!hasStartNode(updateData)) {
 				updateData.nodes.push(getStartNode());
 			}
 
-			// check credentials for old format
 			await replaceInvalidCredentials(updateData);
+			addNodeIds(updateData);
 
 			const workflowRunner = ActiveWorkflowRunner.getInstance();
 
@@ -209,16 +198,21 @@ export = {
 				await workflowRunner.remove(id.toString());
 			}
 
-			await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			try {
+				await updateWorkflow(sharedWorkflow.workflowId, updateData);
+			} catch (error) {
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+			}
 
 			if (sharedWorkflow.workflow.active) {
 				try {
 					await workflowRunner.add(sharedWorkflow.workflowId.toString(), 'update');
 				} catch (error) {
-					// todo
-					// remove the type assertion
-					const errorObject = error as unknown as { message: string };
-					return res.status(400).json({ error: errorObject.message });
+					if (error instanceof Error) {
+						return res.status(400).json({ message: error.message });
+					}
 				}
 			}
 
@@ -240,21 +234,19 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json({
-					message: 'Not Found',
-				});
+				return res.status(404).json({ message: 'Not Found' });
 			}
-
-			const workflowRunner = ActiveWorkflowRunner.getInstance();
 
 			if (!sharedWorkflow.workflow.active) {
 				try {
-					await workflowRunner.add(sharedWorkflow.workflowId.toString(), 'activate');
+					await ActiveWorkflowRunner.getInstance().add(
+						sharedWorkflow.workflowId.toString(),
+						'activate',
+					);
 				} catch (error) {
-					// todo
-					// remove the type assertion
-					const errorObject = error as unknown as { message: string };
-					return res.status(400).json({ error: errorObject.message });
+					if (error instanceof Error) {
+						return res.status(400).json({ message: error.message });
+					}
 				}
 
 				// change the status to active in the DB
@@ -265,7 +257,7 @@ export = {
 				return res.json(sharedWorkflow.workflow);
 			}
 
-			// nothing to do as the wokflow is already active
+			// nothing to do as the workflow is already active
 			return res.json(sharedWorkflow.workflow);
 		},
 	],
@@ -279,9 +271,7 @@ export = {
 			if (!sharedWorkflow) {
 				// user trying to access a workflow he does not own
 				// or workflow does not exist
-				return res.status(404).json({
-					message: 'Not Found',
-				});
+				return res.status(404).json({ message: 'Not Found' });
 			}
 
 			const workflowRunner = ActiveWorkflowRunner.getInstance();
@@ -296,7 +286,7 @@ export = {
 				return res.json(sharedWorkflow.workflow);
 			}
 
-			// nothing to do as the wokflow is already inactive
+			// nothing to do as the workflow is already inactive
 			return res.json(sharedWorkflow.workflow);
 		},
 	],

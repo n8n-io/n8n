@@ -1,22 +1,23 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string,
-	endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function googleApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	let options: OptionsWithUri = {
 		headers: {
-			'Accept': 'application/json',
+			Accept: 'application/json',
 			'Content-Type': 'application/json',
 		},
 		method,
@@ -36,14 +37,22 @@ export async function googleApiRequest(this: IExecuteFunctions | IExecuteSingleF
 		}
 		//@ts-ignore
 		return await this.helpers.requestOAuth2.call(this, 'googleAnalyticsOAuth2', options);
-
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}, uri?: string): Promise<any> { // tslint:disable-line:no-any
-
+export async function googleApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	uri?: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -57,8 +66,7 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (
-		(responseData['nextPageToken'] !== undefined &&
-			responseData['nextPageToken'] !== '') ||
+		(responseData['nextPageToken'] !== undefined && responseData['nextPageToken'] !== '') ||
 		(responseData[propertyName] &&
 			responseData[propertyName][0].nextPageToken &&
 			responseData[propertyName][0].nextPageToken !== undefined)
@@ -67,9 +75,13 @@ export async function googleApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 	return returnData;
 }
 
-export function simplify(responseData: any | [any]) { // tslint:disable-line:no-any
+// tslint:disable-next-line:no-any
+export function simplify(responseData: any | [any]) {
 	const response = [];
-	for (const { columnHeader: { dimensions }, data: { rows } } of responseData) {
+	for (const {
+		columnHeader: { dimensions },
+		data: { rows },
+	} of responseData) {
 		if (rows === undefined) {
 			// Do not error if there is no data
 			continue;
@@ -90,13 +102,16 @@ export function simplify(responseData: any | [any]) { // tslint:disable-line:no-
 	return response;
 }
 
-export function merge(responseData: [any]) { // tslint:disable-line:no-any
-	const response: { columnHeader: IDataObject, data: { rows: [] } } = {
+// tslint:disable-next-line:no-any
+export function merge(responseData: [any]) {
+	const response: { columnHeader: IDataObject; data: { rows: [] } } = {
 		columnHeader: responseData[0].columnHeader,
 		data: responseData[0].data,
 	};
 	const allRows = [];
-	for (const { data: { rows } } of responseData) {
+	for (const {
+		data: { rows },
+	} of responseData) {
 		allRows.push(...rows);
 	}
 	response.data.rows = allRows as [];

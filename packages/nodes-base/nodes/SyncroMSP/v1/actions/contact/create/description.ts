@@ -1,10 +1,6 @@
-import {
-	ContactProperties,
-} from '../../Interfaces';
+import { ContactProperties } from '../../Interfaces';
 
-import {
-	addressFixedCollection
-} from '../../../methods/sharedFields';
+import { addressFixedCollection } from '../../../methods/sharedFields';
 
 export const contactCreateDescription: ContactProperties = [
 	{
@@ -14,12 +10,8 @@ export const contactCreateDescription: ContactProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -28,14 +20,11 @@ export const contactCreateDescription: ContactProperties = [
 		displayName: 'Email',
 		name: 'email',
 		type: 'string',
+		placeholder: 'name@email.com',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -47,12 +36,8 @@ export const contactCreateDescription: ContactProperties = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['contact'],
+				operation: ['create'],
 			},
 		},
 		default: {},

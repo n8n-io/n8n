@@ -96,21 +96,26 @@ export default mixins(workflowHelpers).extend({
 	methods: {
 		scrollToTop() {
 			setTimeout(() => {
-				window.scrollTo({
-					top: 0,
-					behavior: 'smooth',
-				});
+				const contentArea = document.getElementById('content');
+				if (contentArea) {
+					contentArea.scrollTo({
+						top: 0,
+						behavior: 'smooth',
+					});
+				}
 			}, 50);
 		},
 		onOpenTemplate({event, id}: {event: MouseEvent, id: string}) {
 			this.navigateTo(event, VIEWS.TEMPLATE, id);
 		},
 		onUseWorkflow({event, id}: {event: MouseEvent, id: string}) {
-			this.$telemetry.track('User inserted workflow template', {
+			const telemetryPayload = {
 				template_id: id,
 				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
 				source: 'collection',
-			});
+			};
+			this.$externalHooks().run('templatesCollectionView.onUseWorkflow', telemetryPayload);
+			this.$telemetry.track('User inserted workflow template', telemetryPayload);
 
 			this.navigateTo(event, VIEWS.TEMPLATE_IMPORT, id);
 		},
@@ -157,7 +162,7 @@ export default mixins(workflowHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		display: block;
 	}
 }
@@ -179,7 +184,7 @@ export default mixins(workflowHelpers).extend({
 	margin-bottom: var(--spacing-l);
 	width: 100%;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		padding-right: 0;
 	}
 }
