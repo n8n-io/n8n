@@ -1828,6 +1828,7 @@ export default mixins(
 				this.historyStore.addConnection(connectionData);
 			},
 			async addNode(nodeTypeName: string, options: AddNodeOptions = {}) {
+				this.historyStore.startRecordingUndo(BULK_COMMANDS.RECONNECT_NODES);
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -1858,6 +1859,9 @@ export default mixins(
 					// Connect active node to the newly created one
 					this.connectTwoNodes(lastSelectedNode.name, outputIndex, newNodeData.name, 0);
 				}
+				setTimeout(() => {
+					this.historyStore.stopRecordingUndo();
+				}, 0);
 			},
 			initNodeView() {
 				this.instance.importDefaults({
@@ -2623,6 +2627,8 @@ export default mixins(
 					return;
 				}
 
+				this.historyStore.startRecordingUndo(BULK_COMMANDS.RECONNECT_NODES);
+
 				// "requiredNodeTypes" are also defined in cli/commands/run.ts
 				const requiredNodeTypes: string[] = [];
 
@@ -2713,6 +2719,10 @@ export default mixins(
 					if (trackHistory) {
 						this.historyStore.removeNode(node);
 					}
+					const recordingTimeout = waitForNewConnection ? 100 : 0;
+					setTimeout(() => {
+						this.historyStore.stopRecordingUndo();
+					}, recordingTimeout);
 				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged(parameterData: IUpdateInformation) {
@@ -2860,7 +2870,6 @@ export default mixins(
 				if (!nodes || !nodes.length) {
 					return;
 				}
-
 				// Before proceeding we must check if all nodes contain the `properties` attribute.
 				// Nodes are loaded without this information so we must make sure that all nodes
 				// being added have this information.

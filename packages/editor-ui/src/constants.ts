@@ -434,6 +434,7 @@ export enum COMMANDS {
 
 export enum BULK_COMMANDS {
 	IMPORT_WORKFLOW = 'importWorkflow',
+	RECONNECT_NODES = 'reconnectNodes',
 }
 
 export const UNDOABLE_NODE_PROPERTIES = new Set([
