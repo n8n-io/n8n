@@ -1,5 +1,5 @@
 import { eventEmitter } from 'n8n-core';
-import { IRun, IWorkflowBase } from 'n8n-workflow';
+import { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { Db, InternalHooksManager } from '..';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
 import { getWorkflowOwner } from '../UserManagement/UserManagementHelper';
@@ -55,7 +55,8 @@ eventEmitter.on(
 	},
 );
 
-eventEmitter.on(eventEmitter.types.nodeFetchedData, async (workflowId: string) => {
+eventEmitter.on(eventEmitter.types.nodeFetchedData, async (workflowId: string, node: INode) => {
+	console.log(node);
 	// Get the workflow id
 	let id: number;
 	try {

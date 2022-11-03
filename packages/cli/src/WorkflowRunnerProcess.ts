@@ -16,6 +16,7 @@ import {
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
 	ILogger,
+	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeData,
@@ -434,8 +435,8 @@ export class WorkflowRunnerProcess {
 				},
 			],
 			nodeFetchedData: [
-				async (workflowId: string) => {
-					await this.sendHookToParentProcess('nodeFetchedData', [workflowId]);
+				async (workflowId: string, node: INode) => {
+					await this.sendHookToParentProcess('nodeFetchedData', [workflowId, node]);
 				},
 			],
 		};

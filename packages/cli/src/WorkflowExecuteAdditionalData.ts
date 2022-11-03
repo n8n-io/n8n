@@ -652,8 +652,8 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 			},
 		],
 		nodeFetchedData: [
-			async (workflowId: string) => {
-				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId);
+			async (workflowId: string, node: INode) => {
+				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId, node);
 			},
 		],
 	};
@@ -756,8 +756,8 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 			},
 		],
 		nodeFetchedData: [
-			async (workflowId: string) => {
-				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId);
+			async (workflowId: string, node: INode) => {
+				eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflowId, node);
 			},
 		],
 	};

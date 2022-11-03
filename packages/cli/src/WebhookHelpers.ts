@@ -239,7 +239,8 @@ export async function executeWebhook(
 				NodeExecuteFunctions,
 				executionMode,
 			);
-			eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflow.id);
+			console.log('webhook fetched data', workflowStartNode);
+			eventEmitter.emit(eventEmitter.types.nodeFetchedData, workflow.id, workflowStartNode);
 		} catch (err) {
 			// Send error response to webhook caller
 			const errorMessage = 'Workflow Webhook Error: Workflow could not be started!';
