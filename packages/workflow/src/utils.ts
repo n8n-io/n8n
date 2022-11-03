@@ -1,3 +1,5 @@
+import { IDataObject } from '.';
+
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
 type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
@@ -57,4 +59,33 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 
 		throw error;
 	}
+};
+
+type CurlParsed = {
+	url: string;
+	method: string;
+	headers: IDataObject;
+	body: IDataObject;
+	qs: IDataObject;
+};
+
+export const curlParse = (curlString: string): CurlParsed => {
+	return {
+		method: 'POST',
+		url: 'http://example.com',
+		headers: {
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			'Content-Type': 'application/json',
+			// eslint-disable-next-line @typescript-eslint/naming-convention
+			'User-Agent': 'n8n',
+		},
+		body: {
+			test: true,
+			id: 1,
+			name: 'Test',
+		},
+		qs: {
+			test: true,
+		},
+	};
 };
