@@ -20,18 +20,25 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 
 			return undefined;
 		},
-		pushUndoableToUndo(command: Command): void {
+		pushUndoableToUndo(undoable: Undoable): void {
 			if (this.currentBulkAction) {
-				this.currentBulkAction.data.commands.push(command);
+				this.currentBulkAction.data.commands.push(undoable);
 				return;
 			}
-			this.undoStack.push(command);
+			this.undoStack.push(undoable);
 			this.checkUndoStackLimit();
+			this.clearRedoStack();
 		},
 		checkUndoStackLimit() {
 			if (this.undoStack.length > STACK_LIMIT) {
 				this.undoStack.shift();
 			}
+		},
+		clearUndoStack() {
+			this.undoStack = [];
+		},
+		clearRedoStack() {
+			this.redoStack = [];
 		},
 		popUndoableToRedo(): Undoable | undefined {
 			if (this.redoStack.length > 0) {

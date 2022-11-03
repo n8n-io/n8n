@@ -1,9 +1,27 @@
 import { COMMANDS } from '@/constants';
-import { Undoable } from '@/Interface';
+import { Command, Undoable } from '@/Interface';
 import { useHistoryStore } from '@/stores/history';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
+
+function getReversedCommand(command: Command): Undoable | undefined {
+	if (command.data.action === COMMANDS.POSITION_CHANGE) {
+		return {
+			type: 'command',
+			data: {
+				action: COMMANDS.POSITION_CHANGE,
+				options: {
+					nodeName: command.data.options.nodeName,
+					oldPosition: command.data.options.newPosition,
+					newPosition: command.data.options.oldPosition,
+				},
+			},
+		};
+	}
+
+	return undefined;
+}
 
 export const historyHelper = Vue.extend({
 	computed: {
@@ -15,31 +33,58 @@ export const historyHelper = Vue.extend({
 	mounted() {
 		document.addEventListener('keydown', this.handleKeyDown);
 	},
+	destroyed() {
+		document.removeEventListener('keydown', this.handleKeyDown);
+	},
 	methods: {
 		handleKeyDown(event: KeyboardEvent) {
 			if (event.metaKey && event.key === 'z') {
 				event.preventDefault();
-				const command = this.historyStore.popUndoableToUndo();
-				if (command) {
-					// this.historyStore.pushUndoableToRedo(command);
-					this.undo(command);
+				if (event.shiftKey) {
+					this.redo();
+				} else {
+					this.undo();
 				}
 			}
-			// else if (event.ctrlKey && event.key === 'y') {
-			// 	console.log('REDO');
-
-			// }
 		},
-		async undo(command: Undoable) {
-			// todo
+		executeCommand(command: Command) {
+			if (command.data.action === COMMANDS.POSITION_CHANGE) {
+				this.$root.$emit('nodeMove', { nodeName: command.data.options.nodeName, position: command.data.options.oldPosition });
+			}
+		},
+		async undo() {
+			const command = this.historyStore.popUndoableToUndo();
+			if (!command) {
+				return;
+			}
+			if (command.type === 'bulk') {
+				// todo
+				return;
+			}
 			if (command.type === 'command') {
-				if (command.data.action === COMMANDS.POSITION_CHANGE) {
-					this.$root.$emit('nodeMove', { nodeName: command.data.options.nodeName, position: command.data.options.oldPosition });
+				this.executeCommand(command);
+				const reverse = getReversedCommand(command);
+				if (reverse) {
+					this.historyStore.pushUndoableToRedo(reverse);
 				}
 			}
 		},
 		async redo() {
-			// todo
+			const command = this.historyStore.popUndoableToRedo();
+			if (!command) {
+				return;
+			}
+			if (command.type === 'bulk') {
+				// todo
+				return;
+			}
+			if (command.type === 'command') {
+				this.executeCommand(command);
+				const reverse = getReversedCommand(command);
+				if (reverse) {
+					this.historyStore.pushUndoableToUndo(reverse);
+				}
+			}
 		},
 	},
 });

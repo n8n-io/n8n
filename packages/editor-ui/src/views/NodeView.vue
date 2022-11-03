@@ -241,7 +241,6 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { historyHelper } from '@/components/mixins/history';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -263,7 +262,6 @@ export default mixins(
 	newVersions,
 	globalLinkActions,
 	debounceHelper,
-	historyHelper,
 )
 	.extend({
 		name: 'NodeView',

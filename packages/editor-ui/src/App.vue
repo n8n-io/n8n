@@ -46,12 +46,14 @@ import { useUsersStore } from './stores/users';
 import { useRootStore } from './stores/n8nRootStore';
 import { useTemplatesStore } from './stores/templates';
 import { useNodeTypesStore } from './stores/nodeTypes';
+import { historyHelper } from '@/components/mixins/history';
 
 export default mixins(
 	showMessage,
 	userHelpers,
 	restApi,
 	globalLinkActions,
+	historyHelper,
 ).extend({
 	name: 'App',
 	components: {

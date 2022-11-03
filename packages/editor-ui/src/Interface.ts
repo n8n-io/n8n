@@ -1165,7 +1165,7 @@ export interface BulkCommands {
 	type: 'bulk';
 	data: {
 		name: BULK_COMMANDS.PASTE_WORKFLOW;
-		commands: Command[];
+		commands: Undoable[];
 	}
 }
 
