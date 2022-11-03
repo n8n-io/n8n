@@ -433,7 +433,7 @@ export enum COMMANDS {
 }
 
 export enum BULK_COMMANDS {
-	PASTE_WORKFLOW = 'pasteWorkflow',
+	IMPORT_WORKFLOW = 'importWorkflow',
 }
 
 export const UNDOABLE_NODE_PROPERTIES = new Set([

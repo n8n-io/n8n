@@ -6,7 +6,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
 
-function getReversedCommand(command: Command): Undoable | undefined {
+function getReversedCommand(command: Command): Command | undefined {
 	if (command.data.action === COMMANDS.POSITION_CHANGE) {
 		return {
 			type: 'command',
@@ -91,7 +91,7 @@ export const historyHelper = Vue.extend({
 				}
 			}
 		},
-		executeCommand(command: Command) {
+		revertCommand(command: Command) {
 			if (command.data.action === COMMANDS.POSITION_CHANGE) {
 				this.$root.$emit('nodeMove', { nodeName: command.data.options.nodeName, position: command.data.options.oldPosition });
 			}
@@ -114,11 +114,26 @@ export const historyHelper = Vue.extend({
 				return;
 			}
 			if (command.type === 'bulk') {
-				// todo
+				const commands = command.data.commands;
+				const reverseCommands = [];
+				for (let i = commands.length - 1; i >= 0; i--) {
+					this.revertCommand(commands[i]);
+					const reverse = getReversedCommand(commands[i]);
+					if (reverse) {
+						reverseCommands.push(reverse);
+					}
+				}
+				this.historyStore.pushUndoableToRedo({
+					type: 'bulk',
+					data: {
+						name: command.data.name,
+						commands: reverseCommands,
+					},
+				});
 				return;
 			}
 			if (command.type === 'command') {
-				this.executeCommand(command);
+				this.revertCommand(command);
 				const reverse = getReversedCommand(command);
 				if (reverse) {
 					this.historyStore.pushUndoableToRedo(reverse);
@@ -132,14 +147,29 @@ export const historyHelper = Vue.extend({
 				return;
 			}
 			if (command.type === 'bulk') {
-				// todo
+				const commands = command.data.commands;
+				const reverseCommands = [];
+				for (let i = commands.length - 1; i >= 0; i--) {
+					this.revertCommand(commands[i]);
+					const reverse = getReversedCommand(commands[i]);
+					if (reverse) {
+						reverseCommands.push(reverse);
+					}
+				}
+				this.historyStore.pushBulkCommandToUndo({
+					type: 'bulk',
+					data: {
+						name: command.data.name,
+						commands: reverseCommands,
+					},
+				});
 				return;
 			}
 			if (command.type === 'command') {
-				this.executeCommand(command);
+				this.revertCommand(command);
 				const reverse = getReversedCommand(command);
 				if (reverse) {
-					this.historyStore.pushUndoableToUndo(reverse, false);
+					this.historyStore.pushCommandToUndo(reverse, false);
 				}
 				this.uiStore.stateIsDirty = true;
 			}

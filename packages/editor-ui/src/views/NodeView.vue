@@ -158,6 +158,7 @@ import {
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VIEWS,
+	BULK_COMMANDS,
 	WEBHOOK_NODE_TYPE,
 	TRIGGER_NODE_FILTER,
 } from '@/constants';
@@ -1449,6 +1450,7 @@ export default mixins(
 				}
 
 				try {
+					this.historyStore.startRecordingUndo(BULK_COMMANDS.IMPORT_WORKFLOW);
 					const nodeIdMap: { [prev: string]: string } = {};
 					if (workflowData.nodes) {
 						// set all new ids when pasting/importing workflows
@@ -1542,6 +1544,8 @@ export default mixins(
 						error,
 						this.$locale.baseText('nodeView.showError.importWorkflowData.title'),
 					);
+				} finally {
+					this.historyStore.stopRecordingUndo();
 				}
 			},
 			onDragOver(event: DragEvent) {
@@ -1788,7 +1792,6 @@ export default mixins(
 				setTimeout(() => {
 					this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
 				});
-				this.historyStore.addNode(newNodeData);
 				return newNodeData;
 			},
 			getConnection(sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number): IConnection | undefined {
@@ -2910,6 +2913,7 @@ export default mixins(
 					}
 
 					this.workflowsStore.addNode(node);
+					this.historyStore.addNode(node);
 				});
 
 				// Wait for the node to be rendered

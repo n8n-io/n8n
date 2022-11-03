@@ -1185,8 +1185,8 @@ export interface Command extends CommandBase {
 export interface BulkCommands {
 	type: 'bulk';
 	data: {
-		name: BULK_COMMANDS.PASTE_WORKFLOW;
-		commands: Undoable[];
+		name: BULK_COMMANDS.IMPORT_WORKFLOW;
+		commands: Command[];
 	}
 }
 

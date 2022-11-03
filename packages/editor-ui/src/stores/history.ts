@@ -21,7 +21,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 
 			return undefined;
 		},
-		pushUndoableToUndo(undoable: Undoable, clearRedo = true): void {
+		pushCommandToUndo(undoable: Command, clearRedo = true): void {
 			if (this.currentBulkAction) {
 				this.currentBulkAction.data.commands.push(undoable);
 				return;
@@ -32,9 +32,21 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 				this.clearRedoStack();
 			}
 		},
+		pushBulkCommandToUndo(undoable: BulkCommands, clearRedo = true): void {
+			this.undoStack.push(undoable);
+			this.checkUndoStackLimit();
+			if (clearRedo) {
+				this.clearRedoStack();
+			}
+		},
 		checkUndoStackLimit() {
 			if (this.undoStack.length > STACK_LIMIT) {
 				this.undoStack.shift();
+			}
+		},
+		checkRedoStackLimit() {
+			if (this.redoStack.length > STACK_LIMIT) {
+				this.redoStack.shift();
 			}
 		},
 		clearUndoStack() {
@@ -56,9 +68,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		},
 		pushUndoableToRedo(undoable: Undoable): void {
 			this.redoStack.push(undoable);
-			if (this.redoStack.length > STACK_LIMIT) {
-				this.redoStack.shift();
-			}
+			this.checkRedoStackLimit();
 		},
 		startRecordingUndo(name: BulkCommands["data"]["name"]) {
 			this.currentBulkAction = {
@@ -73,11 +83,12 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			if (this.currentBulkAction) {
 				this.undoStack.push(this.currentBulkAction);
 				this.checkUndoStackLimit();
+				this.clearRedoStack();
 				this.currentBulkAction = null;
 			}
 		},
 		updateNodePosition(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition) {
-			this.pushUndoableToUndo({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.POSITION_CHANGE,
@@ -90,7 +101,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			});
 		},
 		addConnection(connection: [IConnection, IConnection]) {
-			this.pushUndoableToUndo({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.ADD_CONNECTION,
@@ -101,7 +112,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			});
 		},
 		addNode(node: INodeUi): void {
-			this.pushUndoableToUndo({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.ADD_NODE,
@@ -112,7 +123,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			});
 		},
 		removeNode(node: INodeUi): void {
-			this.pushUndoableToUndo({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.REMOVE_NODE,
@@ -123,7 +134,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			});
 		},
 		removeConnection(connection: [IConnection, IConnection]) {
-			this.pushUndoableToUndo({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.REMOVE_CONNECTION,
