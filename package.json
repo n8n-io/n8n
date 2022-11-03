@@ -20,11 +20,11 @@
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
-    "test:e2e:db:clean": "rm -r ~/.n8n/cypress",
+    "test:e2e:db:clean": "rimraf ~/.n8n/cypress.sqlite ~/.n8n/cypress.sqlite.bak",
     "test:e2e:dashboard": "cypress open",
-    "test:e2e:run": "cypress run",
-    "test:e2e": "cross-env DB_FILE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:run",
-    "test:e2e:dev": "cross-env DB_FILE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:dashboard"
+    "test:e2e:headless": "cypress run --headless",
+    "test:e2e": "npm run test:e2e:db:clean && cross-env DB_FILE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:headless",
+    "test:e2e:dev": "npm run test:e2e:db:clean && cross-env DB_FILE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:dashboard"
   },
   "devDependencies": {
     "@ngneat/falso": "^6.1.0",

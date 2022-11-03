@@ -120,7 +120,7 @@ export async function init(
 			case 'sqlite':
 				connectionOptions = {
 					type: 'sqlite',
-					database: path.join(n8nFolder, 'database.sqlite'),
+					database: path.join(n8nFolder, process.env.DB_FILE ?? 'database.sqlite'),
 					entityPrefix,
 					migrations: sqliteMigrations,
 					migrationsRun: false, // migrations for sqlite will be ran manually for now; see below

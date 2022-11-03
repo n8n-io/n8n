@@ -5,15 +5,13 @@ import { entities } from './entities';
 const MIGRATIONS_DIR = path.resolve('src', 'databases', 'migrations');
 const ENTITIES_DIR = path.resolve('src', 'databases', 'entities');
 
-console.log('-----------come on ', process.env.DB_FILE)
-
 export default [
 	{
 		name: 'sqlite',
 		type: 'sqlite',
 		logging: true,
 		entities: Object.values(entities),
-		database: path.resolve(UserSettings.getUserN8nFolderPath(), process.env.DB_FILE || 'database.sqlite'),
+		database: path.resolve(UserSettings.getUserN8nFolderPath(), process.env.DB_FILE ?? 'database.sqlite'),
 		migrations: [path.resolve(MIGRATIONS_DIR, 'sqlite', 'index.ts')],
 		cli: {
 			entitiesDir: ENTITIES_DIR,

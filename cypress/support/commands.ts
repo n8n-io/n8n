@@ -24,7 +24,9 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
-import { SigninPage, SignupPage } from "../pages";
+import { WorkflowsPage, SigninPage, SignupPage } from "../pages";
+import { N8N_AUTH_COOKIE } from "../constants";
+
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args)
@@ -32,6 +34,7 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 
 Cypress.Commands.add('signin', (email, password) => {
 	const signinPage = new SigninPage();
+	const workflowsPage = new WorkflowsPage();
 
 	cy.session([email, password], () => {
 		cy.visit(signinPage.url);
@@ -43,10 +46,10 @@ Cypress.Commands.add('signin', (email, password) => {
 		});
 
 		// we should be redirected to /workflows
-		cy.url().should('include', '/workflows');
+		cy.url().should('include', workflowsPage.url);
 
 		// our auth cookie should be present
-		cy.getCookie('n8n-auth').should('exist');
+		cy.getCookie(N8N_AUTH_COOKIE).should('exist');
 	});
 });
 

@@ -1,4 +1,4 @@
-import { IE2ETestPage, IE2ETestPageElement } from "../Interfaces";
+import { IE2ETestPage, IE2ETestPageElement } from "../types";
 
 
 export class BasePage implements IE2ETestPage {
