@@ -500,7 +500,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			// Remove all source connections
 			if (this.workflow.connections.hasOwnProperty(node.name)) {
 				delete this.workflow.connections[node.name];
-				console.log(this.workflow.connections);
 			}
 
 			// Remove all destination connections
