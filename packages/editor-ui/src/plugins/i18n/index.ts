@@ -78,9 +78,9 @@ export class I18nClass {
 	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value.
 	 */
 	private dynamicRender(
-		{ key, fallback }: { key: string; fallback: string; },
+		{ key, fallback }: { key: string; fallback?: string; },
 	) {
-		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback;
+		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback ?? '';
 	}
 
 	/**
@@ -128,7 +128,7 @@ export class I18nClass {
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.hint`,
-					fallback: hint ?? '',
+					fallback: hint,
 				});
 			},
 
@@ -140,7 +140,7 @@ export class I18nClass {
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.description`,
-					fallback: description ?? '',
+					fallback: description,
 				});
 			},
 
@@ -166,7 +166,7 @@ export class I18nClass {
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.options.${optionName}.description`,
-					fallback: description ?? '',
+					fallback: description,
 				});
 			},
 
@@ -178,7 +178,7 @@ export class I18nClass {
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
-					fallback: placeholder ?? '',
+					fallback: placeholder,
 				});
 			},
 		};
@@ -221,7 +221,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.description`,
-					fallback: parameter.description ?? '',
+					fallback: parameter.description,
 				});
 			},
 
@@ -236,7 +236,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.hint`,
-					fallback: parameter.hint ?? '',
+					fallback: parameter.hint,
 				});
 			},
 
@@ -259,7 +259,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.placeholder`,
-					fallback: parameter.placeholder ?? '',
+					fallback: parameter.placeholder,
 				});
 			},
 
@@ -303,7 +303,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.options.${optionName}.description`,
-					fallback: description ?? '',
+					fallback: description,
 				});
 			},
 
@@ -339,7 +339,7 @@ export class I18nClass {
 			) {
 				return context.dynamicRender({
 					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
-					fallback: typeOptions!.multipleValueButtonText!,
+					fallback: typeOptions?.multipleValueButtonText,
 				});
 			},
 
