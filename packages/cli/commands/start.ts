@@ -27,6 +27,7 @@ import {
 	InternalHooksManager,
 	LoadNodesAndCredentials,
 	NodeTypes,
+	Push,
 	Server,
 	TestWebhooks,
 	WaitTracker,
@@ -34,6 +35,9 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
+
+import { watch } from 'chokidar';
+import path from 'path';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -206,6 +210,42 @@ export class Start extends Command {
 				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 				const credentialTypes = CredentialTypes();
 				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+
+				if (process.env.NODE_ENV !== 'production') {
+					watch(path.join(loadNodesAndCredentials.nodeModulesPath, 'n8n-nodes-base', 'dist')).on(
+						'change',
+						async (p) => {
+							if (!p.endsWith('.js')) {
+								return;
+							}
+							const [basePath, nameVersion] =
+								Object.entries(loadNodesAndCredentials.pathToNodeType).find((i) =>
+									p.startsWith(i[0]),
+								) ?? [];
+							if (!basePath || !nameVersion) {
+								return;
+							}
+							const nt = NodeTypes();
+							const loadNodes = LoadNodesAndCredentials();
+							Object.keys(require.cache).forEach((i) => {
+								if (i.startsWith(basePath)) {
+									delete require.cache[i];
+								}
+							});
+							const [name] = path.parse(nameVersion.filePath).name.split('.');
+							const info = loadNodes.loadNodeFromFile(
+								'n8n-nodes-base',
+								name,
+								nameVersion.filePath,
+								true,
+							);
+							await nt.init(loadNodes.nodeTypes);
+
+							const pushInstance = Push.getInstance();
+							pushInstance.send('nodeDescriptionUpdated', [info]);
+						},
+					);
+				}
 
 				// Load the credentials overwrites if any exist
 				const credentialsOverwrites = CredentialsOverwrites();

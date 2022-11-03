@@ -63,6 +63,8 @@ function toJSON() {
 class LoadNodesAndCredentialsClass {
 	nodeTypes: INodeTypeData = {};
 
+	pathToNodeType: Record<string, INodeTypeNameVersion & { filePath: string }> = {};
+
 	credentialTypes: ICredentialTypeData = {};
 
 	excludeNodes: string | undefined = undefined;
@@ -424,6 +426,12 @@ class LoadNodesAndCredentialsClass {
 		this.nodeTypes[fullNodeName] = {
 			type: tempNode,
 			sourcePath: filePath,
+		};
+
+		this.pathToNodeType[path.dirname(filePath)] = {
+			name: fullNodeName,
+			version: nodeVersion,
+			filePath,
 		};
 
 		// eslint-disable-next-line consistent-return

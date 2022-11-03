@@ -112,6 +112,7 @@
     "bull": "^3.19.0",
     "callsites": "^3.1.0",
     "change-case": "^4.1.1",
+    "chokidar": "^3.5.3",
     "class-validator": "^0.13.1",
     "client-oauth2": "^4.2.5",
     "compression": "^1.7.4",
