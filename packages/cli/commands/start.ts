@@ -163,11 +163,11 @@ export class Start extends Command {
 				// eslint-disable-next-line @typescript-eslint/naming-convention
 				const SecretManager = new AwsSecretManager();
 				try {
-					console.log(await SecretManager.create('456', 'ddadadasdasd'));
-					console.log(await SecretManager.get('456'));
-					console.log(await SecretManager.update('456', 'updated'));
-					console.log(await SecretManager.get('456'));
-					console.log(await SecretManager.delete('456'));
+					const { ARN } = await SecretManager.create('apiKey6', 'ddadadasdasd');
+					console.log(await SecretManager.get(ARN));
+					console.log(await SecretManager.update(ARN, 'updated'));
+					console.log(await SecretManager.get(ARN));
+					console.log(await SecretManager.delete(ARN));
 				} catch (error) {
 					console.log(error.response.data);
 				}

@@ -21,24 +21,26 @@ interface SecretManagerBase {
 	get(id: string): Promise<unknown>;
 }
 
-interface CreateSecretResponse {
+type CreateSecretResponse = {
 	Name: string;
 	ARN: string;
-}
+};
 
-interface GetSecretResponse {
+type GetSecretResponse = {
 	ARN: string;
 	CreatedDate: number;
 	Name: string;
 	SecretString: string;
 	VersionId: string;
-}
+};
 
-interface DeleteSecretResponse {
+type DeleteSecretResponse = {
 	ARN: string;
 	DeletionDate: number;
 	Name: string;
-}
+};
+
+type UpdateSecretResponse = DeleteSecretResponse;
 
 export class AwsSecretManager implements SecretManagerBase {
 	displayName: 'AWS Secret Manager';
@@ -65,7 +67,7 @@ export class AwsSecretManager implements SecretManagerBase {
 		client.interceptors.request.use(interceptor);
 	}
 
-	async create(id: string, value: string): Promise<CreateSecretResponse> {
+	async create(name: string, value: string): Promise<CreateSecretResponse> {
 		const response = (await client({
 			method: 'POST',
 			url: `https://${SECRET_MANAGER_SERVICE}.${REGION}.amazonaws.com/`,
@@ -74,16 +76,16 @@ export class AwsSecretManager implements SecretManagerBase {
 				'Content-Type': 'application/x-amz-json-1.1',
 			},
 			data: {
-				Name: id,
-				Secret: value,
+				Name: name,
+				SecretString: value,
 				ClientRequestToken: uuid(),
 			},
 		})) as AxiosResponse<CreateSecretResponse>;
 		return response.data;
 	}
 
-	async get(id: string): Promise<AxiosResponse<GetSecretResponse>> {
-		return client({
+	async get(id: string): Promise<GetSecretResponse> {
+		const response = (await client({
 			method: 'POST',
 			url: `https://${SECRET_MANAGER_SERVICE}.${REGION}.amazonaws.com/`,
 			headers: {
@@ -93,11 +95,12 @@ export class AwsSecretManager implements SecretManagerBase {
 			data: {
 				SecretId: id,
 			},
-		});
+		})) as AxiosResponse<GetSecretResponse>;
+		return response.data;
 	}
 
-	async delete(id: string): Promise<AxiosResponse<DeleteSecretResponse>> {
-		return client({
+	async delete(id: string): Promise<DeleteSecretResponse> {
+		const response = (await client({
 			method: 'POST',
 			url: `https://${SECRET_MANAGER_SERVICE}.${REGION}.amazonaws.com/`,
 			headers: {
@@ -107,11 +110,12 @@ export class AwsSecretManager implements SecretManagerBase {
 			data: {
 				SecretId: id,
 			},
-		});
+		})) as AxiosResponse<DeleteSecretResponse>;
+		return response.data;
 	}
 
-	async update(id: string, value: string): Promise<AxiosResponse<DeleteSecretResponse>> {
-		return client({
+	async update(id: string, value: string): Promise<UpdateSecretResponse> {
+		const response = (await client({
 			method: 'POST',
 			url: `https://${SECRET_MANAGER_SERVICE}.${REGION}.amazonaws.com/`,
 			headers: {
@@ -121,7 +125,9 @@ export class AwsSecretManager implements SecretManagerBase {
 			data: {
 				SecretId: id,
 				SecretString: value,
+				ClientRequestToken: uuid(),
 			},
-		});
+		})) as AxiosResponse<UpdateSecretResponse>;
+		return response.data;
 	}
 }
