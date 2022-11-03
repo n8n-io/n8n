@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const vendorAdditionalFieldsOptions: INodeProperties[] = [
 	{
@@ -114,7 +112,8 @@ export const vendorAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Vendor 1099',
 		name: 'Vendor1099',
-		description: 'Whether the vendor is an independent contractor, given a 1099-MISC form at the end of the year',
+		description:
+			'Whether the vendor is an independent contractor, given a 1099-MISC form at the end of the year',
 		type: 'boolean',
 		default: false,
 	},

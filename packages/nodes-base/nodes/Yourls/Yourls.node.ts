@@ -1,27 +1,16 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	yourlsApiRequest,
-} from './GenericFunctions';
+import { yourlsApiRequest } from './GenericFunctions';
 
-import {
-	urlFields,
-	urlOperations,
-} from './UrlDescription';
+import { urlFields, urlOperations } from './UrlDescription';
 
 export class Yourls implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Yourls',
 		name: 'yourls',
+		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:yourls.png',
 		group: ['input'],
 		version: 1,

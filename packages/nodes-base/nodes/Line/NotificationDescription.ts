@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const notificationOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const notificationOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'notification',
-				],
+				resource: ['notification'],
 			},
 		},
 		options: [
@@ -20,6 +16,7 @@ export const notificationOperations: INodeProperties[] = [
 				name: 'Send',
 				value: 'send',
 				description: 'Sends notifications to users or groups',
+				action: 'Send a notification',
 			},
 		],
 		default: 'send',
@@ -27,7 +24,6 @@ export const notificationOperations: INodeProperties[] = [
 ];
 
 export const notificationFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 notification:send                          */
 	/* -------------------------------------------------------------------------- */
@@ -38,12 +34,8 @@ export const notificationFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'send',
-				],
-				resource: [
-					'notification',
-				],
+				operation: ['send'],
+				resource: ['notification'],
 			},
 		},
 		default: '',
@@ -56,12 +48,8 @@ export const notificationFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'send',
-				],
-				resource: [
-					'notification',
-				],
+				operation: ['send'],
+				resource: ['notification'],
 			},
 		},
 		options: [
@@ -77,7 +65,7 @@ export const notificationFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'imageValue',
-						displayName: 'image',
+						displayName: 'Image',
 						values: [
 							{
 								displayName: 'Binary Data',
@@ -92,9 +80,7 @@ export const notificationFields: INodeProperties[] = [
 								default: '',
 								displayOptions: {
 									show: {
-										binaryData: [
-											false,
-										],
+										binaryData: [false],
 									},
 								},
 								description: 'HTTP/HTTPS URL. Maximum size of 2048×2048px JPEG.',
@@ -105,9 +91,7 @@ export const notificationFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										binaryData: [
-											false,
-										],
+										binaryData: [false],
 									},
 								},
 								default: '',
@@ -119,9 +103,7 @@ export const notificationFields: INodeProperties[] = [
 								type: 'string',
 								displayOptions: {
 									show: {
-										binaryData: [
-											true,
-										],
+										binaryData: [true],
 									},
 								},
 								default: 'data',
@@ -136,7 +118,9 @@ export const notificationFields: INodeProperties[] = [
 				name: 'notificationDisabled',
 				type: 'boolean',
 				default: false,
-				description: '<p>true: The user doesn\'t receive a push notification when the message is sent.</p><p>false: The user receives a push notification when the message is sent</p>',
+				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				description:
+					"<p>true: The user doesn't receive a push notification when the message is sent.</p><p>false: The user receives a push notification when the message is sent</p>",
 			},
 			{
 				displayName: 'Sticker',

@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -10,12 +8,24 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IHookFunctions | IWebhookFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function stravaApiRequest(
+	this:
+		| IExecuteFunctions
+		| IExecuteSingleFunctions
+		| ILoadOptionsFunctions
+		| IHookFunctions
+		| IWebhookFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
 		form: body,
@@ -42,18 +52,26 @@ export async function stravaApiRequest(this: IExecuteFunctions | IExecuteSingleF
 			}
 			//@ts-ignore
 			return this.helpers?.request(options);
-
 		} else {
 			//@ts-ignore
-			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options, { includeCredentialsOnRefreshOnBody: true });
+			return await this.helpers.requestOAuth2.call(this, 'stravaOAuth2Api', options, {
+				includeCredentialsOnRefreshOnBody: true,
+			});
 		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 }
 
-export async function stravaApiRequestAllItems(this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function stravaApiRequestAllItems(
+	this: IHookFunctions | ILoadOptionsFunctions | IExecuteFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -66,9 +84,7 @@ export async function stravaApiRequestAllItems(this: IHookFunctions | ILoadOptio
 		responseData = await stravaApiRequest.call(this, method, resource, body, query);
 		query.page++;
 		returnData.push.apply(returnData, responseData);
-	} while (
-		responseData.length !== 0
-	);
+	} while (responseData.length !== 0);
 
 	return returnData;
 }

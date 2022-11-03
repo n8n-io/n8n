@@ -1,8 +1,9 @@
 <template>
-	<div>
+	<div class="n8n-markdown">
 		<div
 			v-if="!loading"
 			ref="editor"
+			class="ph-no-capture"
 			:class="$style[theme]" v-html="htmlContent"
 			@click="onClick"
 		/>
@@ -24,11 +25,15 @@
 <script lang="ts">
 import N8nLoading from '../N8nLoading';
 import Markdown from 'markdown-it';
-const markdownLink = require('markdown-it-link-attributes');
-const markdownEmoji = require('markdown-it-emoji');
-const markdownTasklists = require('markdown-it-task-lists');
 
-import xss from 'xss';
+// @ts-ignore
+import markdownLink from 'markdown-it-link-attributes';
+// @ts-ignore
+import markdownEmoji from 'markdown-it-emoji';
+// @ts-ignore
+import markdownTasklists from 'markdown-it-task-lists';
+
+import xss, { friendlyAttrValue } from 'xss';
 import { escapeMarkdown } from '../../utils/markdown';
 
 const DEFAULT_OPTIONS_MARKDOWN = {
@@ -55,7 +60,9 @@ interface IImage {
 	url: string;
 }
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	components: {
 		N8nLoading,
 	},
@@ -129,7 +136,7 @@ export default {
 					if (tag === 'img' && name === 'src') {
 						if (value.match(fileIdRegex)) {
 							const id = value.split('fileId:')[1];
-							return `src=${xss.friendlyAttrValue(imageUrls[id])}` || '';
+							return `src=${friendlyAttrValue(imageUrls[id])}` || '';
 						}
 						// Only allow http requests to supported image files from the `static` directory
 						const isImageFile = value.split('#')[0].match(/\.(jpeg|jpg|gif|png|webp)$/) !== null;
@@ -140,8 +147,8 @@ export default {
 					}
 					// Return nothing, means keep the default handling measure
 				},
-				onTag: function (tag, html, options) {
-					if (tag === 'img' && html.includes(`alt="workflow-screenshot"`)) {
+				onTag (tag, code, options) {
+					if (tag === 'img' && code.includes(`alt="workflow-screenshot"`)) {
 						return '';
 					}
 					// return nothing, keep tag
@@ -153,29 +160,30 @@ export default {
 	},
 	data() {
 		return {
-			md: new Markdown(this.options.markdown)
-				.use(markdownLink, this.options.linkAttributes)
+			md: new Markdown(this.options.markdown) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
+				.use(markdownLink, this.options.linkAttributes) // eslint-disable-line @typescript-eslint/no-unsafe-member-access
 				.use(markdownEmoji)
-				.use(markdownTasklists, this.options.tasklists),
+				.use(markdownTasklists, this.options.tasklists), // eslint-disable-line @typescript-eslint/no-unsafe-member-access
 		};
 	},
 	methods: {
-		onClick(event) {
+		onClick(event: MouseEvent) {
 			let clickedLink = null;
 
 			if(event.target instanceof HTMLAnchorElement) {
 				clickedLink = event.target;
 			}
-			if(event.target.matches('a *')) {
+
+			if(event.target instanceof HTMLElement && event.target.matches('a *')) {
 				const parentLink = event.target.closest('a');
 				if(parentLink) {
 					clickedLink = parentLink;
 				}
 			}
 			this.$emit('markdown-click', clickedLink, event);
-		}
-	}
-};
+		},
+	},
+});
 </script>
 
 <style lang="scss" module>

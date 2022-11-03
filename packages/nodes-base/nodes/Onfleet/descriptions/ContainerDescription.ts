@@ -1,6 +1,4 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const containerOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const containerOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'container',
-				],
+				resource: ['container'],
 			},
 		},
 		options: [
@@ -20,16 +16,19 @@ export const containerOperations: INodeProperties[] = [
 				name: 'Add Tasks',
 				value: 'addTask',
 				description: 'Add task at index (or append)',
+				action: 'Add tasks',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get container information',
+				action: 'Get a container',
 			},
 			{
 				name: 'Update Tasks',
 				value: 'updateTask',
-				description: 'Fully replace a container\'s tasks',
+				description: "Fully replace a container's tasks",
+				action: 'Update tasks',
 			},
 		],
 		default: 'get',
@@ -103,7 +102,7 @@ const tasksField = {
 		multipleValueButtonText: 'Add Task',
 	},
 	default: [],
-	description: 'Task\'s ID that are going to be used',
+	description: "Task's ID that are going to be used",
 } as INodeProperties;
 
 const considerDependenciesField = {
@@ -111,7 +110,8 @@ const considerDependenciesField = {
 	name: 'considerDependencies',
 	type: 'boolean',
 	default: false,
-	description: 'Whether to include the target task\'s dependency family (parent and child tasks) in the resulting assignment operation',
+	description:
+		"Whether to include the target task's dependency family (parent and child tasks) in the resulting assignment operation",
 } as INodeProperties;
 
 export const containerFields: INodeProperties[] = [
@@ -119,13 +119,8 @@ export const containerFields: INodeProperties[] = [
 		...containerTypeField,
 		displayOptions: {
 			show: {
-				resource: [
-					'container',
-				],
-				operation: [
-					'get',
-					'addTask',
-				],
+				resource: ['container'],
+				operation: ['get', 'addTask'],
 			},
 		},
 		required: true,
@@ -134,14 +129,8 @@ export const containerFields: INodeProperties[] = [
 		...containerIdField,
 		displayOptions: {
 			show: {
-				resource: [
-					'container',
-				],
-				operation: [
-					'get',
-					'addTask',
-					'updateTask',
-				],
+				resource: ['container'],
+				operation: ['get', 'addTask', 'updateTask'],
 			},
 		},
 		required: true,
@@ -150,12 +139,8 @@ export const containerFields: INodeProperties[] = [
 		...insertTypeField,
 		displayOptions: {
 			show: {
-				resource: [
-					'container',
-				],
-				operation: [
-					'addTask',
-				],
+				resource: ['container'],
+				operation: ['addTask'],
 			},
 		},
 		required: true,
@@ -164,15 +149,9 @@ export const containerFields: INodeProperties[] = [
 		...indexField,
 		displayOptions: {
 			show: {
-				resource: [
-					'container',
-				],
-				operation: [
-					'addTask',
-				],
-				type: [
-					1,
-				],
+				resource: ['container'],
+				operation: ['addTask'],
+				type: [1],
 			},
 		},
 		required: true,
@@ -181,13 +160,8 @@ export const containerFields: INodeProperties[] = [
 		...tasksField,
 		displayOptions: {
 			show: {
-				resource: [
-					'container',
-				],
-				operation: [
-					'addTask',
-					'updateTask',
-				],
+				resource: ['container'],
+				operation: ['addTask', 'updateTask'],
 			},
 		},
 		required: true,
@@ -200,13 +174,8 @@ export const containerFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'container',
-				],
-				operation: [
-					'addTask',
-					'updateTask',
-				],
+				resource: ['container'],
+				operation: ['addTask', 'updateTask'],
 			},
 		},
 		options: [

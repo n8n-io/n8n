@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class CopperApi implements ICredentialType {
 	name = 'copperApi';
@@ -13,6 +10,7 @@ export class CopperApi implements ICredentialType {
 			name: 'apiKey',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -20,6 +18,7 @@ export class CopperApi implements ICredentialType {
 			name: 'email',
 			required: true,
 			type: 'string',
+			placeholder: 'name@email.com',
 			default: '',
 		},
 	];

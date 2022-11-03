@@ -2249,7 +2249,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2360,7 +2360,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all. Order reversed',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -2471,7 +2471,7 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'One property which is dependeny on two identically named properties of which only one gets displayed with different options. No value set at all.',
+					'One property which is dependency on two identically named properties of which only one gets displayed with different options. No value set at all.',
 				input: {
 					nodePropertiesArray: [
 						{
@@ -3010,9 +3010,15 @@ describe('Workflow', () => {
 			},
 			{
 				description:
-					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has a collection value added but nothing to the fixedCollection',
+					'complex type "collection" which contains a "fixedCollection" with "multipleValues: false" that has all values set to the default values (by having it as an empty object) in combination with another value',
 				input: {
 					nodePropertiesArray: [
+						{
+							name: 'mode',
+							displayName: 'mode',
+							type: 'string',
+							default: 'mode1',
+						},
 						{
 							displayName: 'Options',
 							name: 'options',
@@ -3065,33 +3071,54 @@ describe('Workflow', () => {
 						},
 					],
 					nodeValues: {
+						mode: 'changed',
 						options: {
-							sort: {},
+							sort: {
+								value: {},
+							},
 						},
 					},
 				},
 				output: {
 					noneDisplayedFalse: {
 						defaultsFalse: {
+							mode: 'changed',
 							options: {
-								sort: {},
+								sort: {
+									value: {},
+								},
 							},
 						},
 						defaultsTrue: {
+							mode: 'changed',
 							options: {
-								sort: {},
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
 							},
 						},
 					},
 					noneDisplayedTrue: {
 						defaultsFalse: {
+							mode: 'changed',
 							options: {
-								sort: {},
+								sort: {
+									value: {},
+								},
 							},
 						},
 						defaultsTrue: {
+							mode: 'changed',
 							options: {
-								sort: {},
+								sort: {
+									value: {
+										descending: true,
+										ordering: 'date',
+									},
+								},
 							},
 						},
 					},

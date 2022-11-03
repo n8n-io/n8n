@@ -1,0 +1,6 @@
+name: includeData
+in: query
+description: Whether or not to include the execution's detailed data.
+required: false
+schema:
+  type: boolean

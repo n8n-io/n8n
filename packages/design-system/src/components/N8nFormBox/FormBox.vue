@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="$style.container"
+		:class="['n8n-form-box', $style.container]"
 	>
 		<div
 			v-if="title"
@@ -112,8 +112,8 @@ export default Vue.extend({
 		onButtonClick() {
 			this.formBus.$emit('submit');
 		},
-		onSecondaryButtonClick(e) {
-			this.$emit('secondaryClick', e);
+		onSecondaryButtonClick(event: Event) {
+			this.$emit('secondaryClick', event);
 		},
 	},
 });

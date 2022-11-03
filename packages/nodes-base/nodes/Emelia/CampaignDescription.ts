@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const campaignOperations: INodeProperties[] = [
 	{
@@ -13,37 +11,42 @@ export const campaignOperations: INodeProperties[] = [
 			{
 				name: 'Add Contact',
 				value: 'addContact',
+				action: 'Add a contact to a campaign',
 			},
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create a campaign',
 			},
 			{
 				name: 'Duplicate',
 				value: 'duplicate',
+				action: 'Duplicate a campaign',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get a campaign',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many campaigns',
 			},
 			{
 				name: 'Pause',
 				value: 'pause',
+				action: 'Pause a campaign',
 			},
 			{
 				name: 'Start',
 				value: 'start',
+				action: 'Start a campaign',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
+				resource: ['campaign'],
 			},
 		},
 	},
@@ -54,7 +57,7 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: addContact
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		typeOptions: {
@@ -62,15 +65,12 @@ export const campaignFields: INodeProperties[] = [
 		},
 		default: [],
 		required: true,
-		description: 'The ID of the campaign to add the contact to',
+		description:
+			'The ID of the campaign to add the contact to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'addContact',
-				],
+				resource: ['campaign'],
+				operation: ['addContact'],
 			},
 		},
 	},
@@ -83,12 +83,8 @@ export const campaignFields: INodeProperties[] = [
 		description: 'The email of the contact to add to the campaign',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'addContact',
-				],
+				resource: ['campaign'],
+				operation: ['addContact'],
 			},
 		},
 	},
@@ -100,12 +96,8 @@ export const campaignFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'addContact',
-				],
+				resource: ['campaign'],
+				operation: ['addContact'],
 			},
 		},
 		options: [
@@ -206,12 +198,8 @@ export const campaignFields: INodeProperties[] = [
 		description: 'The name of the campaign to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['campaign'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -228,12 +216,8 @@ export const campaignFields: INodeProperties[] = [
 		description: 'The ID of the campaign to retrieve',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['campaign'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -249,12 +233,8 @@ export const campaignFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['campaign'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -270,15 +250,9 @@ export const campaignFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['campaign'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},
@@ -295,12 +269,8 @@ export const campaignFields: INodeProperties[] = [
 		description: 'The ID of the campaign to pause. The campaign must be in RUNNING mode.',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'pause',
-				],
+				resource: ['campaign'],
+				operation: ['pause'],
 			},
 		},
 	},
@@ -317,12 +287,8 @@ export const campaignFields: INodeProperties[] = [
 		description: 'The ID of the campaign to start. Email provider and contacts must be set.',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'start',
-				],
+				resource: ['campaign'],
+				operation: ['start'],
 			},
 		},
 	},
@@ -331,23 +297,20 @@ export const campaignFields: INodeProperties[] = [
 	//       campaign: duplicate
 	// ----------------------------------
 	{
-		displayName: 'Campaign ID',
+		displayName: 'Campaign Name or ID',
 		name: 'campaignId',
 		type: 'options',
 		default: '',
 		required: true,
-		description: 'The ID of the campaign to duplicate',
+		description:
+			'The ID of the campaign to duplicate. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		typeOptions: {
 			loadOptionsMethod: 'getCampaigns',
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'duplicate',
-				],
+				resource: ['campaign'],
+				operation: ['duplicate'],
 			},
 		},
 	},
@@ -360,12 +323,8 @@ export const campaignFields: INodeProperties[] = [
 		description: 'The name of the new campaign to create',
 		displayOptions: {
 			show: {
-				resource: [
-					'campaign',
-				],
-				operation: [
-					'duplicate',
-				],
+				resource: ['campaign'],
+				operation: ['duplicate'],
 			},
 		},
 	},
@@ -377,12 +336,8 @@ export const campaignFields: INodeProperties[] = [
 		placeholder: 'Add Field',
 		displayOptions: {
 			show: {
-				operation: [
-					'duplicate',
-				],
-				resource: [
-					'campaign',
-				],
+				operation: ['duplicate'],
+				resource: ['campaign'],
 			},
 		},
 		options: [
@@ -405,7 +360,8 @@ export const campaignFields: INodeProperties[] = [
 				name: 'copyMails',
 				type: 'boolean',
 				default: true,
-				description: 'Whether to copy all the steps of the email sequence from the original campaign',
+				description:
+					'Whether to copy all the steps of the email sequence from the original campaign',
 			},
 			{
 				displayName: 'Copy Global Settings',

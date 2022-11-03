@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const mediaOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const mediaOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
+				resource: ['media'],
 			},
 		},
 		options: [
@@ -20,6 +16,7 @@ export const mediaOperations: INodeProperties[] = [
 				name: 'Upload',
 				value: 'upload',
 				description: 'Send media to a chat room',
+				action: 'Upload media to a chatroom',
 			},
 		],
 		default: 'upload',
@@ -27,12 +24,11 @@ export const mediaOperations: INodeProperties[] = [
 ];
 
 export const mediaFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                               media:upload                                 */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Room ID',
+		displayName: 'Room Name or ID',
 		name: 'roomId',
 		type: 'options',
 		typeOptions: {
@@ -41,15 +37,12 @@ export const mediaFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['media'],
+				operation: ['upload'],
 			},
 		},
-		description: 'Room ID to post',
+		description:
+			'Room ID to post. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		required: true,
 	},
 	{
@@ -60,28 +53,20 @@ export const mediaFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['media'],
+				operation: ['upload'],
 			},
 		},
 	},
 	{
-		displayName: 'Media type',
+		displayName: 'Media Type',
 		name: 'mediaType',
 		type: 'options',
 		default: 'image',
 		displayOptions: {
 			show: {
-				resource: [
-					'media',
-				],
-				operation: [
-					'upload',
-				],
+				resource: ['media'],
+				operation: ['upload'],
 			},
 		},
 		options: [

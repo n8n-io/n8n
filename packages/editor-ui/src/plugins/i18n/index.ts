@@ -15,12 +15,15 @@ import {
 } from 'n8n-design-system';
 
 import englishBaseText from './locales/en.json';
+import { INodeProperties } from "n8n-workflow";
 
 Vue.use(VueI18n);
 locale.use('en');
 
+export let i18n: I18nClass;
+
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
-	const i18n = new I18nClass(store);
+	i18n = new I18nClass(store);
 
 	Object.defineProperty(vue, '$locale', {
 		get() { return i18n; },
@@ -122,11 +125,11 @@ export class I18nClass {
 			 * Hint for a top-level param.
 			 */
 			hint(
-				{ name: parameterName, hint }: { name: string; hint: string; },
+				{ name: parameterName, hint }: { name: string; hint?: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.hint`,
-					fallback: hint,
+					fallback: hint || '',
 				});
 			},
 
@@ -172,11 +175,11 @@ export class I18nClass {
 			 * Placeholder for a `string` param.
 			 */
 			placeholder(
-				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
+				{ name: parameterName, placeholder }: { name: string; placeholder?: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
-					fallback: placeholder,
+					fallback: placeholder || '',
 				});
 			},
 		};
@@ -187,7 +190,7 @@ export class I18nClass {
 	 * except for `eventTriggerDescription`.
 	 */
 	nodeText () {
-		const activeNode = this.$store.getters.activeNode;
+		const activeNode = this.$store.getters['ndv/activeNode'];
 		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : ''; // unused in eventTriggerDescription
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
@@ -245,7 +248,7 @@ export class I18nClass {
 			 * - For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
 			placeholder(
-				parameter: { name: string; placeholder: string; type: string },
+				parameter: { name: string; placeholder?: string; type: string },
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -257,7 +260,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.placeholder`,
-					fallback: parameter.placeholder,
+					fallback: parameter.placeholder || '',
 				});
 			},
 
@@ -333,12 +336,11 @@ export class I18nClass {
 			 * `fixedCollection` param having `multipleValues: true`.
 			 */
 			multipleValueButtonText(
-				{ name: parameterName, typeOptions: { multipleValueButtonText } }:
-				{ name: string; typeOptions: { multipleValueButtonText: string; } },
+				{ name: parameterName, typeOptions}: INodeProperties,
 			) {
 				return context.dynamicRender({
 					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
-					fallback: multipleValueButtonText,
+					fallback: typeOptions!.multipleValueButtonText!,
 				});
 			},
 
@@ -355,7 +357,7 @@ export class I18nClass {
 	}
 }
 
-const i18nInstance = new VueI18n({
+export const i18nInstance = new VueI18n({
 	locale: 'en',
 	fallbackLocale: 'en',
 	messages: { en: englishBaseText },
@@ -388,7 +390,7 @@ export async function loadLanguage(language?: string) {
 		return Promise.resolve(setLanguage(language));
 	}
 
-	const { numberFormats, ...rest } = require(`./locales/${language}.json`);
+	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;
 
 	i18nInstance.setLocaleMessage(language, rest);
 

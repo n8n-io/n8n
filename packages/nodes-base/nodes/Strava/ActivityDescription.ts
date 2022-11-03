@@ -1,7 +1,4 @@
-
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const activityOperations: INodeProperties[] = [
 	{
@@ -11,9 +8,7 @@ export const activityOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
+				resource: ['activity'],
 			},
 		},
 		options: [
@@ -21,46 +16,55 @@ export const activityOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new activity',
+				action: 'Create an activity',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get an activity',
-			},
-			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Get all activities',
+				action: 'Get an activity',
 			},
 			{
 				name: 'Get Comments',
 				value: 'getComments',
 				description: 'Get all activity comments',
+				action: 'Get all activity comments',
 			},
 			{
 				name: 'Get Kudos',
 				value: 'getKudos',
 				description: 'Get all activity kudos',
+				action: 'Get all activity kudos',
 			},
 			{
 				name: 'Get Laps',
 				value: 'getLaps',
 				description: 'Get all activity laps',
+				action: 'Get all activity laps',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many activities',
+				action: 'Get many activities',
 			},
 			{
 				name: 'Get Streams',
 				value: 'getStreams',
 				description: 'Get activity streams',
+				action: 'Get all activity streams',
 			},
 			{
 				name: 'Get Zones',
 				value: 'getZones',
 				description: 'Get all activity zones',
+				action: 'Get all activity zones',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update an activity',
+				action: 'Update an activity',
 			},
 		],
 		default: 'create',
@@ -68,7 +72,6 @@ export const activityOperations: INodeProperties[] = [
 ];
 
 export const activityFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                activity:create                           */
 	/* -------------------------------------------------------------------------- */
@@ -79,12 +82,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -97,12 +96,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -116,12 +111,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		description: 'ISO 8601 formatted date time',
@@ -133,12 +124,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		typeOptions: {
@@ -155,12 +142,8 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['activity'],
+				operation: ['create'],
 			},
 		},
 		options: [
@@ -169,7 +152,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'commute',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as commute',
+				description: 'Whether to mark as commute',
 			},
 			{
 				displayName: 'Description',
@@ -193,7 +176,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'trainer',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as a trainer activity',
+				description: 'Whether to mark as a trainer activity',
 			},
 		],
 	},
@@ -208,12 +191,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -227,12 +206,8 @@ export const activityFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['activity'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -241,7 +216,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'commute',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as commute',
+				description: 'Whether to mark as commute',
 			},
 			{
 				displayName: 'Description',
@@ -255,7 +230,8 @@ export const activityFields: INodeProperties[] = [
 				name: 'gear_id',
 				type: 'string',
 				default: '',
-				description: 'Identifier for the gear associated with the activity. ‘none’ clears gear from activity.',
+				description:
+					'Identifier for the gear associated with the activity. ‘none’ clears gear from activity.',
 			},
 			{
 				displayName: 'Name',
@@ -276,7 +252,7 @@ export const activityFields: INodeProperties[] = [
 				name: 'trainer',
 				type: 'boolean',
 				default: false,
-				description: 'Set to true to mark as a trainer activity',
+				description: 'Whether to mark as a trainer activity',
 			},
 		],
 	},
@@ -291,12 +267,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['activity'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -313,16 +285,8 @@ export const activityFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getComments',
-					'getLaps',
-					'getKudos',
-					'getZones',
-					'getStreams',
-				],
+				resource: ['activity'],
+				operation: ['getComments', 'getLaps', 'getKudos', 'getZones', 'getStreams'],
 			},
 		},
 		default: '',
@@ -334,15 +298,8 @@ export const activityFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getComments',
-					'getLaps',
-					'getKudos',
-					'getZones',
-				],
+				resource: ['activity'],
+				operation: ['getComments', 'getLaps', 'getKudos', 'getZones'],
 			},
 		},
 		default: false,
@@ -354,18 +311,9 @@ export const activityFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getComments',
-					'getLaps',
-					'getKudos',
-					'getZones',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['activity'],
+				operation: ['getComments', 'getLaps', 'getKudos', 'getZones'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -427,12 +375,8 @@ export const activityFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getStreams',
-				],
+				resource: ['activity'],
+				operation: ['getStreams'],
 			},
 		},
 		required: true,
@@ -448,12 +392,8 @@ export const activityFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
 			},
 		},
 		default: false,
@@ -465,15 +405,9 @@ export const activityFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				resource: [
-					'activity',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['activity'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {

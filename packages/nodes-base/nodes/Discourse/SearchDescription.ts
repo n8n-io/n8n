@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const searchOperations: INodeProperties[] = [
 	{
@@ -12,9 +10,7 @@ export const searchOperations: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
+				resource: ['search'],
 			},
 		},
 		options: [
@@ -22,6 +18,7 @@ export const searchOperations: INodeProperties[] = [
 				name: 'Query',
 				value: 'query',
 				description: 'Search for something',
+				action: 'Perform a query',
 			},
 		],
 		default: 'query',
@@ -39,12 +36,8 @@ export const searchFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'query',
-				],
+				resource: ['search'],
+				operation: ['query'],
 			},
 		},
 		default: '',
@@ -56,12 +49,8 @@ export const searchFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				resource: [
-					'search',
-				],
-				operation: [
-					'query',
-				],
+				resource: ['search'],
+				operation: ['query'],
 			},
 		},
 		default: true,

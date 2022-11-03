@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const contactNoteOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const contactNoteOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contactNote',
-				],
+				resource: ['contactNote'],
 			},
 		},
 		options: [
@@ -20,26 +16,31 @@ export const contactNoteOperations: INodeProperties[] = [
 				name: 'Create',
 				value: 'create',
 				description: 'Create a note',
+				action: 'Create a contact note',
 			},
 			{
 				name: 'Delete',
 				value: 'delete',
 				description: 'Delete a note',
+				action: 'Delete a contact note',
 			},
 			{
 				name: 'Get',
 				value: 'get',
 				description: 'Get a notes',
+				action: 'Get a contact note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all notes',
+				description: 'Retrieve many notes',
+				action: 'Get many contact notes',
 			},
 			{
 				name: 'Update',
 				value: 'update',
 				description: 'Update a note',
+				action: 'Update a contact note',
 			},
 		],
 		default: 'create',
@@ -47,12 +48,11 @@ export const contactNoteOperations: INodeProperties[] = [
 ];
 
 export const contactNoteFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 contactNote:create                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contactNote:create                         */
+	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
+		displayName: 'User Name or ID',
 		name: 'userId',
 		type: 'options',
 		typeOptions: {
@@ -60,16 +60,13 @@ export const contactNoteFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contactNote',
-				],
+				operation: ['create'],
+				resource: ['contactNote'],
 			},
 		},
 		default: '',
-		description: 'The infusionsoft user to create the note on behalf of',
+		description:
+			'The infusionsoft user to create the note on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Contact ID',
@@ -77,12 +74,8 @@ export const contactNoteFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contactNote',
-				],
+				operation: ['create'],
+				resource: ['contactNote'],
 			},
 		},
 		default: '',
@@ -95,12 +88,8 @@ export const contactNoteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'contactNote',
-				],
+				operation: ['create'],
+				resource: ['contactNote'],
 			},
 		},
 		options: [
@@ -153,9 +142,9 @@ export const contactNoteFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contactNote:delete                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contactNote:delete                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Note ID',
 		name: 'noteId',
@@ -163,19 +152,15 @@ export const contactNoteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'contactNote',
-				],
+				operation: ['delete'],
+				resource: ['contactNote'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contactNote:get                            */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contactNote:get                            */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Note ID',
 		name: 'noteId',
@@ -183,31 +168,23 @@ export const contactNoteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'get',
-				],
-				resource: [
-					'contactNote',
-				],
+				operation: ['get'],
+				resource: ['contactNote'],
 			},
 		},
 		default: '',
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contactNote:getAll                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contactNote:getAll                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contactNote',
-				],
+				operation: ['getAll'],
+				resource: ['contactNote'],
 			},
 		},
 		default: false,
@@ -219,15 +196,9 @@ export const contactNoteFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contactNote',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getAll'],
+				resource: ['contactNote'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -245,12 +216,8 @@ export const contactNoteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getAll',
-				],
-				resource: [
-					'contactNote',
-				],
+				operation: ['getAll'],
+				resource: ['contactNote'],
 			},
 		},
 		options: [
@@ -264,9 +231,11 @@ export const contactNoteFields: INodeProperties[] = [
 				default: 0,
 			},
 			{
-				displayName: 'User ID',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
@@ -274,9 +243,9 @@ export const contactNoteFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 contactNote:update                         */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 contactNote:update                         */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Note ID',
 		name: 'noteId',
@@ -284,12 +253,8 @@ export const contactNoteFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contactNote',
-				],
+				operation: ['update'],
+				resource: ['contactNote'],
 			},
 		},
 		default: '',
@@ -302,12 +267,8 @@ export const contactNoteFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'update',
-				],
-				resource: [
-					'contactNote',
-				],
+				operation: ['update'],
+				resource: ['contactNote'],
 			},
 		},
 		options: [
@@ -368,14 +329,15 @@ export const contactNoteFields: INodeProperties[] = [
 				default: '',
 			},
 			{
-				displayName: 'User ID',
+				displayName: 'User Name or ID',
 				name: 'userId',
 				type: 'options',
 				typeOptions: {
 					loadOptionsMethod: 'getUsers',
 				},
 				default: '',
-				description: 'The infusionsoft user to create the note on behalf of',
+				description:
+					'The infusionsoft user to create the note on behalf of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

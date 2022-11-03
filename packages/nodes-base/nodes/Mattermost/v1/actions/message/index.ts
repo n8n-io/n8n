@@ -4,11 +4,7 @@ import * as postEphemeral from './postEphemeral';
 
 import { INodeProperties } from 'n8n-workflow';
 
-export {
-	del as delete,
-	post,
-	postEphemeral,
-};
+export { del as delete, post, postEphemeral };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -18,9 +14,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'message',
-				],
+				resource: ['message'],
 			},
 		},
 		options: [
@@ -28,16 +22,19 @@ export const descriptions: INodeProperties[] = [
 				name: 'Delete',
 				value: 'delete',
 				description: 'Soft delete a post, by marking the post as deleted in the database',
+				action: 'Delete a message',
 			},
 			{
 				name: 'Post',
 				value: 'post',
 				description: 'Post a message into a channel',
+				action: 'Post a message',
 			},
 			{
 				name: 'Post Ephemeral',
 				value: 'postEphemeral',
 				description: 'Post an ephemeral message into a channel',
+				action: 'Post an ephemeral message',
 			},
 		],
 		default: 'post',

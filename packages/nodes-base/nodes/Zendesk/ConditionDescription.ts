@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
- } from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const conditionFields: INodeProperties[] = [
 	{
@@ -22,12 +20,22 @@ export const conditionFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				'resource': [
-					'ticket',
-				],
+				resource: ['ticket'],
 			},
 		},
 		options: [
+			{
+				name: 'Assignee',
+				value: 'assignee',
+			},
+			{
+				name: 'Group',
+				value: 'group',
+			},
+			{
+				name: 'Priority',
+				value: 'priority',
+			},
 			{
 				name: 'Status',
 				value: 'status',
@@ -35,18 +43,6 @@ export const conditionFields: INodeProperties[] = [
 			{
 				name: 'Type',
 				value: 'type',
-			},
-			{
-				name: 'Priority',
-				value: 'priority',
-			},
-			{
-				name: 'Group',
-				value: 'group',
-			},
-			{
-				name: 'Assignee',
-				value: 'assignee',
 			},
 		],
 		default: 'status',
@@ -57,6 +53,22 @@ export const conditionFields: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		options: [
+			{
+				name: 'Changed',
+				value: 'changed',
+			},
+			{
+				name: 'Changed From',
+				value: 'value_previous',
+			},
+			{
+				name: 'Changed To',
+				value: 'value',
+			},
+			{
+				name: 'Greater Than',
+				value: 'greater_than',
+			},
 			{
 				name: 'Is',
 				value: 'is',
@@ -70,39 +82,21 @@ export const conditionFields: INodeProperties[] = [
 				value: 'less_than',
 			},
 			{
-				name: 'Greater Than',
-				value: 'greater_than',
-			},
-			{
-				name: 'Changed',
-				value: 'changed',
-			},
-			{
-				name: 'Changed To',
-				value: 'value',
-			},
-			{
-				name: 'Changed From',
-				value: 'value_previous',
-			},
-			{
 				name: 'Not Changed',
 				value: 'not_changed',
+			},
+			{
+				name: 'Not Changed From',
+				value: 'not_value_previous',
 			},
 			{
 				name: 'Not Changed To',
 				value: 'not_value',
 			},
-					{
-				name: 'Not Changed From',
-				value: 'not_value_previous',
-			},
 		],
 		displayOptions: {
 			hide: {
-				field: [
-					'assignee',
-				],
+				field: ['assignee'],
 			},
 		},
 		default: 'is',
@@ -114,6 +108,18 @@ export const conditionFields: INodeProperties[] = [
 		type: 'options',
 		options: [
 			{
+				name: 'Changed',
+				value: 'changed',
+			},
+			{
+				name: 'Changed From',
+				value: 'value_previous',
+			},
+			{
+				name: 'Changed To',
+				value: 'value',
+			},
+			{
 				name: 'Is',
 				value: 'is',
 			},
@@ -122,35 +128,21 @@ export const conditionFields: INodeProperties[] = [
 				value: 'is_not',
 			},
 			{
-				name: 'Changed',
-				value: 'changed',
-			},
-			{
-				name: 'Changed To',
-				value: 'value',
-			},
-			{
-				name: 'Changed From',
-				value: 'value_previous',
-			},
-			{
 				name: 'Not Changed',
 				value: 'not_changed',
+			},
+			{
+				name: 'Not Changed From',
+				value: 'not_value_previous',
 			},
 			{
 				name: 'Not Changed To',
 				value: 'not_value',
 			},
-					{
-				name: 'Not Changed From',
-				value: 'not_value_previous',
-			},
 		],
 		displayOptions: {
 			show: {
-				field: [
-					'assignee',
-				],
+				field: ['assignee'],
 			},
 		},
 		default: 'is',
@@ -161,31 +153,25 @@ export const conditionFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				field: [
-					'status',
-				],
+				field: ['status'],
 			},
 			hide: {
-				operation:[
-					'changed',
-					'not_changed',
-				],
-				field: [
-					'assignee',
-					'group',
-					'priority',
-					'type',
-				],
+				operation: ['changed', 'not_changed'],
+				field: ['assignee', 'group', 'priority', 'type'],
 			},
 		},
 		options: [
 			{
-				name: 'Open',
-				value: 'open',
+				name: 'Closed',
+				value: 'closed',
 			},
 			{
 				name: 'New',
 				value: 'new',
+			},
+			{
+				name: 'Open',
+				value: 'open',
 			},
 			{
 				name: 'Pending',
@@ -194,10 +180,6 @@ export const conditionFields: INodeProperties[] = [
 			{
 				name: 'Solved',
 				value: 'solved',
-			},
-			{
-				name: 'Closed',
-				value: 'closed',
 			},
 		],
 		default: 'open',
@@ -208,21 +190,11 @@ export const conditionFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				field: [
-					'type',
-				],
+				field: ['type'],
 			},
 			hide: {
-				operation:[
-					'changed',
-					'not_changed',
-				],
-				field: [
-					'assignee',
-					'group',
-					'priority',
-					'status',
-				],
+				operation: ['changed', 'not_changed'],
+				field: ['assignee', 'group', 'priority', 'status'],
 			},
 		},
 		options: [
@@ -251,21 +223,11 @@ export const conditionFields: INodeProperties[] = [
 		type: 'options',
 		displayOptions: {
 			show: {
-				field: [
-					'priority',
-				],
+				field: ['priority'],
 			},
 			hide: {
-				operation:[
-					'changed',
-					'not_changed',
-				],
-				field: [
-					'assignee',
-					'group',
-					'type',
-					'status',
-				],
+				operation: ['changed', 'not_changed'],
+				field: ['assignee', 'group', 'type', 'status'],
 			},
 		},
 		options: [
@@ -289,49 +251,41 @@ export const conditionFields: INodeProperties[] = [
 		default: 'low',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Value',
 		name: 'value',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getGroups',
 		},
 		displayOptions: {
 			show: {
-				field: [
-					'group',
-				],
+				field: ['group'],
 			},
 			hide: {
-				field: [
-					'assignee',
-					'priority',
-					'type',
-					'status',
-				],
+				field: ['assignee', 'priority', 'type', 'status'],
 			},
 		},
 		default: '',
 	},
 	{
+		// eslint-disable-next-line n8n-nodes-base/node-param-display-name-wrong-for-dynamic-options
 		displayName: 'Value',
 		name: 'value',
 		type: 'options',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getUsers',
 		},
 		displayOptions: {
 			show: {
-				field: [
-					'assignee',
-				],
+				field: ['assignee'],
 			},
 			hide: {
-				field: [
-					'group',
-					'priority',
-					'type',
-					'status',
-				],
+				field: ['group', 'priority', 'type', 'status'],
 			},
 		},
 		default: '',

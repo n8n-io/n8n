@@ -1,11 +1,6 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	buildBinTestURL,
-	buildRequestURL
-} from './GenericFunctions';
+import { buildBinTestURL, buildRequestURL } from './GenericFunctions';
 
 // Operations for the `Request` resource
 export const requestOperations: INodeProperties[] = [
@@ -13,11 +8,10 @@ export const requestOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'request',
-				],
+				resource: ['request'],
 			},
 		},
 		options: [
@@ -37,6 +31,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get a request',
 			},
 			{
 				name: 'Remove First',
@@ -54,6 +49,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Remove First a request',
 			},
 			{
 				name: 'Send',
@@ -80,6 +76,7 @@ export const requestOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Send a request',
 			},
 		],
 		default: 'get',
@@ -89,65 +86,51 @@ export const requestOperations: INodeProperties[] = [
 // Properties of the `Request` resource
 export const requestFields: INodeProperties[] = [
 	{
-		name: 'binId',
 		displayName: 'Bin ID',
+		name: 'binId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'request',
-				],
-				operation: [
-					'get',
-					'removeFirst',
-					'send',
-				],
+				resource: ['request'],
+				operation: ['get', 'removeFirst', 'send'],
 			},
 		},
 		description: 'Unique identifier for each bin',
 	},
 	{
-		name: 'binContent',
 		displayName: 'Bin Content',
+		name: 'binContent',
 		type: 'string',
 		default: '',
 		typeOptions: {
-		 rows: 5,
+			rows: 5,
 		},
 		displayOptions: {
-		 show: {
-			 resource: [
-				 'request',
-			 ],
-			 operation: [
-				 'send',
-			 ],
-		 },
+			show: {
+				resource: ['request'],
+				operation: ['send'],
+			},
 		},
 		// Content is sent in the body of POST requests
 		routing: {
-		 send: {
-			 property: 'content',
-			 type: 'body',
-		 },
+			send: {
+				property: 'content',
+				type: 'body',
+			},
 		},
-	 },
+	},
 	{
-		name: 'requestId',
 		displayName: 'Request ID',
+		name: 'requestId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'request',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['request'],
+				operation: ['get'],
 			},
 		},
 		description: 'Unique identifier for each request',

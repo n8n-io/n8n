@@ -1,17 +1,8 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	mailCheckApiRequest,
-} from './GenericFunctions';
+import { mailCheckApiRequest } from './GenericFunctions';
 
 export class Mailcheck implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,15 +45,14 @@ export class Mailcheck implements INodeType {
 				noDataExpression: true,
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
+						resource: ['email'],
 					},
 				},
 				options: [
 					{
 						name: 'Check',
 						value: 'check',
+						action: 'Check an email',
 					},
 				],
 				default: 'check',
@@ -71,14 +61,11 @@ export class Mailcheck implements INodeType {
 				displayName: 'Email',
 				name: 'email',
 				type: 'string',
+				placeholder: 'name@email.com',
 				displayOptions: {
 					show: {
-						resource: [
-							'email',
-						],
-						operation: [
-							'check',
-						],
+						resource: ['email'],
+						operation: ['check'],
 					},
 				},
 				default: '',
@@ -100,7 +87,9 @@ export class Mailcheck implements INodeType {
 				if (resource === 'email') {
 					if (operation === 'check') {
 						const email = this.getNodeParameter('email', i) as string;
-						responseData = await mailCheckApiRequest.call(this, 'POST', '/singleEmail:check', { email });
+						responseData = await mailCheckApiRequest.call(this, 'POST', '/singleEmail:check', {
+							email,
+						});
 					}
 				}
 			} catch (error) {

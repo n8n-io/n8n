@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,11 +7,19 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function tapfiliateApiRequest(this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, qs: IDataObject = {}, uri?: string | undefined, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function tapfiliateApiRequest(
+	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string | undefined,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('tapfiliateApi');
 
 	const options: OptionsWithUri = {
@@ -41,8 +47,15 @@ export async function tapfiliateApiRequest(this: IHookFunctions | IExecuteFuncti
 	}
 }
 
-export async function tapfiliateApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function tapfiliateApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -50,13 +63,12 @@ export async function tapfiliateApiRequestAllItems(this: IExecuteFunctions | ILo
 	query.page = 1;
 
 	do {
-		responseData = await tapfiliateApiRequest.call(this, method, endpoint, body, query, '', { resolveWithFullResponse: true });
+		responseData = await tapfiliateApiRequest.call(this, method, endpoint, body, query, '', {
+			resolveWithFullResponse: true,
+		});
 		returnData.push.apply(returnData, responseData.body);
 		query.page++;
-
-	} while (
-		responseData.headers.link.includes('next')
-	);
+	} while (responseData.headers.link.includes('next'));
 
 	return returnData;
 }

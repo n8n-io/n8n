@@ -13,6 +13,7 @@
 				:bold="false"
 				:set="issues = getIssues(credentialTypeDescription.name)"
 				size="small"
+				color="text-dark"
 			>
 				<div v-if="isReadOnly">
 					<n8n-input
@@ -27,7 +28,7 @@
 				>
 					<n8n-select :value="getSelectedId(credentialTypeDescription.name)" @change="(value) => onCredentialSelected(credentialTypeDescription.name, value)" :placeholder="$locale.baseText('nodeCredentials.selectCredential')" size="small">
 						<n8n-option
-							v-for="(item) in credentialOptions[credentialTypeDescription.name]"
+							v-for="(item) in getCredentialOptions(credentialTypeDescription.name)"
 							:key="item.id"
 							:label="item.name"
 							:value="item.id">
@@ -42,7 +43,7 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="`${$locale.baseText('nodeCredentials.issues')}:<br />&nbsp;&nbsp;- ` + issues.join('<br />&nbsp;&nbsp;- ')"></div>
+							<titled-list slot="content" :title="`${$locale.baseText('nodeCredentials.issues')}:`" :items="issues" />
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
@@ -74,9 +75,12 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 
+import TitledList from '@/components/TitledList.vue';
+
 import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
+import {getCredentialPermissions} from "@/permissions";
 
 export default mixins(
 	genericHelpers,
@@ -89,6 +93,9 @@ export default mixins(
 		'node', // INodeUi
 		'overrideCredType', // cred type
 	],
+	components: {
+		TitledList,
+	},
 	data () {
 		return {
 			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
@@ -96,8 +103,9 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapGetters('users', ['currentUser']),
 		...mapGetters('credentials', {
-			credentialOptions: 'allCredentialsByType',
+			allCredentialsByType: 'allCredentialsByType',
 			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
 		credentialTypesNode (): string[] {
@@ -117,7 +125,7 @@ export default mixins(
 
 			if (credType) return [credType];
 
-			const activeNodeType = this.$store.getters.nodeType(node.type, node.typeVersion) as INodeTypeDescription | null;
+			const activeNodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}
@@ -139,7 +147,15 @@ export default mixins(
 			return this.node.credentials || {};
 		},
 	},
+
 	methods: {
+		getCredentialOptions(type: string): ICredentialsResponse[] {
+			return (this.allCredentialsByType as Record<string, ICredentialsResponse[]>)[type].filter((credential) => {
+				const permissions = getCredentialPermissions(this.currentUser, credential, this.$store);
+
+				return permissions.use;
+			});
+		},
 		getSelectedId(type: string) {
 			if (this.isCredentialExisting(type)) {
 				return this.selected[type].id;
@@ -216,6 +232,7 @@ export default mixins(
 					node_type: this.node.type,
 					...(this.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
 					workflow_id: this.$store.getters.workflowId,
+					credential_id: credentialId,
 				},
 			);
 
@@ -292,14 +309,14 @@ export default mixins(
 				return false;
 			}
 			const { id } = this.node.credentials[credentialType];
-			const options = this.credentialOptions[credentialType];
+			const options = this.getCredentialOptions(credentialType);
 
 			return !!options.find((option: ICredentialsResponse) => option.id === id);
 		},
 
 		editCredential(credentialType: string): void {
 			const { id } = this.node.credentials[credentialType];
-			this.$store.dispatch('ui/openExisitngCredential', { id });
+			this.$store.dispatch('ui/openExistingCredential', { id });
 
 			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
 
@@ -315,6 +332,10 @@ export default mixins(
 <style lang="scss" module>
 .container {
 	margin-top: var(--spacing-xs);
+
+	& > div:not(:first-child) {
+		margin-top: var(--spacing-xs);
+	}
 }
 
 .warning {

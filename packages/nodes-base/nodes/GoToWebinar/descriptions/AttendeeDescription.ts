@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const attendeeOperations: INodeProperties[] = [
 	{
@@ -13,21 +11,22 @@ export const attendeeOperations: INodeProperties[] = [
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an attendee',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many attendees',
 			},
 			{
 				name: 'Get Details',
 				value: 'getDetails',
+				action: 'Get details of an attendee',
 			},
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'attendee',
-				],
+				resource: ['attendee'],
 			},
 		},
 	},
@@ -38,7 +37,7 @@ export const attendeeFields: INodeProperties[] = [
 	//     attendee: shared fields
 	// ----------------------------------
 	{
-		displayName: 'Webinar Key',
+		displayName: 'Webinar Key Name or ID',
 		name: 'webinarKey',
 		type: 'options',
 		typeOptions: {
@@ -46,33 +45,29 @@ export const attendeeFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
-		description: 'Key of the webinar that the attendee attended',
+		description:
+			'Key of the webinar that the attendee attended. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'attendee',
-				],
+				resource: ['attendee'],
 			},
 		},
 	},
 	{
-		displayName: 'Session Key',
+		displayName: 'Session Key Name or ID',
 		name: 'sessionKey',
 		type: 'options',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWebinarSessions',
-			loadOptionsDependsOn: [
-				'webinarKey',
-			],
+			loadOptionsDependsOn: ['webinarKey'],
 		},
 		default: '',
-		description: 'Key of the session that the attendee attended',
+		description:
+			'Key of the session that the attendee attended. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 		displayOptions: {
 			show: {
-				resource: [
-					'attendee',
-				],
+				resource: ['attendee'],
 			},
 		},
 	},
@@ -89,12 +84,8 @@ export const attendeeFields: INodeProperties[] = [
 		description: 'Registrant key of the attendee at the webinar session',
 		displayOptions: {
 			show: {
-				resource: [
-					'attendee',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['attendee'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -111,12 +102,8 @@ export const attendeeFields: INodeProperties[] = [
 		description: 'Registrant key of the attendee at the webinar session',
 		displayOptions: {
 			show: {
-				resource: [
-					'attendee',
-				],
-				operation: [
-					'getDetails',
-				],
+				resource: ['attendee'],
+				operation: ['getDetails'],
 			},
 		},
 	},
@@ -146,12 +133,8 @@ export const attendeeFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-				resource: [
-					'attendee',
-				],
-				operation: [
-					'getDetails',
-				],
+				resource: ['attendee'],
+				operation: ['getDetails'],
 			},
 		},
 	},
@@ -167,12 +150,8 @@ export const attendeeFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'attendee',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['attendee'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -188,15 +167,9 @@ export const attendeeFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'attendee',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['attendee'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

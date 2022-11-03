@@ -28,10 +28,14 @@ export class NextCloudApi implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.auth = {
 			username: credentials.user as string,
 			password: credentials.password as string,
@@ -40,9 +44,9 @@ export class NextCloudApi implements ICredentialType {
 	}
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.webDavUrl.replace(\'/remote.php/webdav\', \'\')}}',
+			baseURL: "={{$credentials.webDavUrl.replace('/remote.php/webdav', '')}}",
 			url: '/ocs/v1.php/cloud/capabilities',
-			headers: {'OCS-APIRequest': true},
+			headers: { 'OCS-APIRequest': true },
 		},
 	};
 }

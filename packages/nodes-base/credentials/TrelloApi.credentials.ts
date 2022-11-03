@@ -15,6 +15,7 @@ export class TrelloApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			required: true,
 			default: '',
 		},
@@ -33,11 +34,14 @@ export class TrelloApi implements ICredentialType {
 		},
 	];
 
-	async authenticate(credentials: ICredentialDataDecryptedObject, requestOptions: IHttpRequestOptions): Promise<IHttpRequestOptions> {
+	async authenticate(
+		credentials: ICredentialDataDecryptedObject,
+		requestOptions: IHttpRequestOptions,
+	): Promise<IHttpRequestOptions> {
 		requestOptions.qs = {
 			...requestOptions.qs,
-			'key': credentials.apiKey,
-			'token': credentials.apiToken,
+			key: credentials.apiKey,
+			token: credentials.apiToken,
 		};
 		return requestOptions;
 	}

@@ -1,6 +1,4 @@
-import {
-	ContactProperties,
-} from '../../Interfaces';
+import { ContactProperties } from '../../Interfaces';
 
 export const contactDeleteDescription: ContactProperties = [
 	{
@@ -10,12 +8,8 @@ export const contactDeleteDescription: ContactProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'delete',
-				],
+				resource: ['contact'],
+				operation: ['delete'],
 			},
 		},
 		default: '',

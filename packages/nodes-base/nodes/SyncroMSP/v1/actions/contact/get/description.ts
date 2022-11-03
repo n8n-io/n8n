@@ -1,6 +1,4 @@
-import {
-	ContactProperties,
-} from '../../Interfaces';
+import { ContactProperties } from '../../Interfaces';
 
 export const contactGetDescription: ContactProperties = [
 	{
@@ -10,12 +8,8 @@ export const contactGetDescription: ContactProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'contact',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['contact'],
+				operation: ['get'],
 			},
 		},
 		default: '',

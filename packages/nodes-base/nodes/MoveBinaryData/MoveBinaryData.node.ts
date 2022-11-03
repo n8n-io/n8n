@@ -1,21 +1,17 @@
-import {
-	get,
-	set,
-	unset,
-} from 'lodash';
+import { get, set, unset } from 'lodash';
 
-import {
-	BINARY_ENCODING,
-} from 'n8n-core';
+import { BINARY_ENCODING } from 'n8n-core';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	jsonParse,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -26,8 +22,9 @@ iconv.encodingExists('utf8');
 const bomAware: string[] = [];
 const encodeDecodeOptions: INodePropertyOptions[] = [];
 const encodings = (iconv as any).encodings; // tslint:disable-line:no-any
-Object.keys(encodings).forEach(encoding => {
-	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) { // only encodings without direct alias or internals
+Object.keys(encodings).forEach((encoding) => {
+	if (!(encoding.startsWith('_') || typeof encodings[encoding] === 'string')) {
+		// only encodings without direct alias or internals
 		if (encodings[encoding].bomAware) {
 			bomAware.push(encoding);
 		}
@@ -36,8 +33,12 @@ Object.keys(encodings).forEach(encoding => {
 });
 
 encodeDecodeOptions.sort((a, b) => {
-	if (a.name < b.name) { return -1; }
-	if (a.name > b.name) { return 1; }
+	if (a.name < b.name) {
+		return -1;
+	}
+	if (a.name > b.name) {
+		return 1;
+	}
 	return 0;
 });
 
@@ -77,23 +78,21 @@ export class MoveBinaryData implements INodeType {
 				description: 'From and to where data should be moved',
 			},
 
-
 			// ----------------------------------
 			//         binaryToJson
 			// ----------------------------------
 			{
-				displayName: 'Set all Data',
+				displayName: 'Set All Data',
 				name: 'setAllData',
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						mode: [
-							'binaryToJson',
-						],
+						mode: ['binaryToJson'],
 					},
 				},
 				default: true,
-				description: 'If all JSON data should be replaced with the data retrieved from binary key. Else the data will be written to a single key.',
+				description:
+					'Whether all JSON data should be replaced with the data retrieved from binary key. Else the data will be written to a single key.',
 			},
 			{
 				displayName: 'Source Key',
@@ -101,15 +100,14 @@ export class MoveBinaryData implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'binaryToJson',
-						],
+						mode: ['binaryToJson'],
 					},
 				},
 				default: 'data',
 				required: true,
 				placeholder: 'data',
-				description: 'The name of the binary key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
+				description:
+					'The name of the binary key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 			},
 			{
 				displayName: 'Destination Key',
@@ -117,36 +115,32 @@ export class MoveBinaryData implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'binaryToJson',
-						],
-						setAllData: [
-							false,
-						],
+						mode: ['binaryToJson'],
+						setAllData: [false],
 					},
 				},
 				default: 'data',
 				required: true,
 				placeholder: '',
-				description: 'The name the JSON key to copy data to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
+				description:
+					'The name the JSON key to copy data to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
 			},
 
 			// ----------------------------------
 			//         jsonToBinary
 			// ----------------------------------
 			{
-				displayName: 'Convert all Data',
+				displayName: 'Convert All Data',
 				name: 'convertAllData',
 				type: 'boolean',
 				displayOptions: {
 					show: {
-						mode: [
-							'jsonToBinary',
-						],
+						mode: ['jsonToBinary'],
 					},
 				},
 				default: true,
-				description: 'If all JSON data should be converted to binary. Else only the data of one key will be converted.',
+				description:
+					'Whether all JSON data should be converted to binary. Else only the data of one key will be converted.',
 			},
 			{
 				displayName: 'Source Key',
@@ -154,18 +148,15 @@ export class MoveBinaryData implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						convertAllData: [
-							false,
-						],
-						mode: [
-							'jsonToBinary',
-						],
+						convertAllData: [false],
+						mode: ['jsonToBinary'],
 					},
 				},
 				default: 'data',
 				required: true,
 				placeholder: 'data',
-				description: 'The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
+				description:
+					'The name of the JSON key to get data from. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 			},
 			{
 				displayName: 'Destination Key',
@@ -173,15 +164,14 @@ export class MoveBinaryData implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						mode: [
-							'jsonToBinary',
-						],
+						mode: ['jsonToBinary'],
 					},
 				},
 				default: 'data',
 				required: true,
 				placeholder: 'data',
-				description: 'The name the binary key to copy data to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
+				description:
+					'The name the binary key to copy data to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
 			},
 
 			{
@@ -197,21 +187,15 @@ export class MoveBinaryData implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							hide: {
-								'useRawData': [
-									true,
-								],
+								useRawData: [true],
 							},
 							show: {
-								'/mode': [
-									'jsonToBinary',
-								],
-								'/convertAllData': [
-									false,
-								],
+								'/mode': ['jsonToBinary'],
+								'/convertAllData': [false],
 							},
 						},
 						default: false,
-						description: 'Keeps the binary data as base64 string',
+						description: 'Whether to keep the binary data as base64 string',
 					},
 					{
 						displayName: 'Encoding',
@@ -220,10 +204,7 @@ export class MoveBinaryData implements INodeType {
 						options: encodeDecodeOptions,
 						displayOptions: {
 							show: {
-								'/mode': [
-									'binaryToJson',
-									'jsonToBinary',
-								],
+								'/mode': ['binaryToJson', 'jsonToBinary'],
 							},
 						},
 						default: 'utf8',
@@ -234,9 +215,7 @@ export class MoveBinaryData implements INodeType {
 						name: 'stripBOM',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'binaryToJson',
-								],
+								'/mode': ['binaryToJson'],
 								encoding: bomAware,
 							},
 						},
@@ -248,9 +227,7 @@ export class MoveBinaryData implements INodeType {
 						name: 'addBOM',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'jsonToBinary',
-								],
+								'/mode': ['jsonToBinary'],
 								encoding: bomAware,
 							},
 						},
@@ -263,9 +240,7 @@ export class MoveBinaryData implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'jsonToBinary',
-								],
+								'/mode': ['jsonToBinary'],
 							},
 						},
 						default: '',
@@ -278,28 +253,22 @@ export class MoveBinaryData implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							hide: {
-								'keepAsBase64': [
-									true,
-								],
+								keepAsBase64: [true],
 							},
 							show: {
-								'/mode': [
-									'binaryToJson',
-								],
-								'/setAllData': [
-									false,
-								],
+								'/mode': ['binaryToJson'],
+								'/setAllData': [false],
 							},
 						},
 						default: false,
-						description: 'Run JSON parse on the data to get proper object data',
+						description: 'Whether to run JSON parse on the data to get proper object data',
 					},
 					{
 						displayName: 'Keep Source',
 						name: 'keepSource',
 						type: 'boolean',
 						default: false,
-						description: 'If the source key should be kept. By default it will be deleted.',
+						description: 'Whether the source key should be kept. By default it will be deleted.',
 					},
 					{
 						displayName: 'Keep As Base64',
@@ -307,21 +276,15 @@ export class MoveBinaryData implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							hide: {
-								'jsonParse': [
-									true,
-								],
+								jsonParse: [true],
 							},
 							show: {
-								'/mode': [
-									'binaryToJson',
-								],
-								'/setAllData': [
-									false,
-								],
+								'/mode': ['binaryToJson'],
+								'/setAllData': [false],
 							},
 						},
 						default: false,
-						description: 'Keeps the binary data as base64 string',
+						description: 'Whether to keep the binary data as base64 string',
 					},
 					{
 						displayName: 'Mime Type',
@@ -329,9 +292,7 @@ export class MoveBinaryData implements INodeType {
 						type: 'string',
 						displayOptions: {
 							show: {
-								'/mode': [
-									'jsonToBinary',
-								],
+								'/mode': ['jsonToBinary'],
 							},
 						},
 						default: 'application/json',
@@ -344,18 +305,14 @@ export class MoveBinaryData implements INodeType {
 						type: 'boolean',
 						displayOptions: {
 							hide: {
-								'dataIsBase64': [
-									true,
-								],
+								dataIsBase64: [true],
 							},
 							show: {
-								'/mode': [
-									'jsonToBinary',
-								],
+								'/mode': ['jsonToBinary'],
 							},
 						},
 						default: false,
-						description: 'Use data as is and do not JSON.stringify it',
+						description: 'Whether to use data as is and do not JSON.stringify it',
 					},
 				],
 			},
@@ -363,7 +320,6 @@ export class MoveBinaryData implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 
 		const mode = this.getNodeParameter('mode', 0) as string;
@@ -380,6 +336,9 @@ export class MoveBinaryData implements INodeType {
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
 				json: {},
+				pairedItem: {
+					item: itemIndex,
+				},
 			};
 
 			if (mode === 'binaryToJson') {
@@ -401,20 +360,24 @@ export class MoveBinaryData implements INodeType {
 
 				if (setAllData === true) {
 					// Set the full data
-					convertedValue = iconv.decode(buffer, encoding, { stripBOM: options.stripBOM as boolean });
-					newItem.json = JSON.parse(convertedValue);
+					convertedValue = iconv.decode(buffer, encoding, {
+						stripBOM: options.stripBOM as boolean,
+					});
+					newItem.json = jsonParse(convertedValue);
 				} else {
 					// Does get added to existing data so copy it first
-					newItem.json = JSON.parse(JSON.stringify(item.json));
+					newItem.json = deepCopy(item.json);
 
 					if (options.keepAsBase64 !== true) {
-						convertedValue = iconv.decode(buffer, encoding, { stripBOM: options.stripBOM as boolean });
+						convertedValue = iconv.decode(buffer, encoding, {
+							stripBOM: options.stripBOM as boolean,
+						});
 					} else {
 						convertedValue = Buffer.from(buffer).toString(BINARY_ENCODING);
 					}
 
 					if (options.jsonParse) {
-						convertedValue = JSON.parse(convertedValue);
+						convertedValue = jsonParse(convertedValue);
 					}
 
 					const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
@@ -426,10 +389,9 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = item.binary;
 				} else {
 					// Binary data will change so copy it
-					newItem.binary = JSON.parse(JSON.stringify(item.binary));
+					newItem.binary = deepCopy(item.binary);
 					unset(newItem.binary, sourceKey);
 				}
-
 			} else if (mode === 'jsonToBinary') {
 				const convertAllData = this.getNodeParameter('convertAllData', itemIndex) as boolean;
 				const destinationKey = this.getNodeParameter('destinationKey', itemIndex) as string;
@@ -448,7 +410,7 @@ export class MoveBinaryData implements INodeType {
 
 				if (item.binary !== undefined) {
 					// Item already has binary data so copy it
-					newItem.binary = JSON.parse(JSON.stringify(item.binary));
+					newItem.binary = deepCopy(item.binary);
 				} else {
 					// Item does not have binary data yet so initialize empty
 					newItem.binary = {};
@@ -459,7 +421,9 @@ export class MoveBinaryData implements INodeType {
 						value = JSON.stringify(value);
 					}
 
-					value = iconv.encode(value as string, encoding, { addBOM: options.addBOM as boolean }).toString(BINARY_ENCODING);
+					value = iconv
+						.encode(value as string, encoding, { addBOM: options.addBOM as boolean })
+						.toString(BINARY_ENCODING);
 				}
 
 				const convertedValue: IBinaryData = {
@@ -485,14 +449,16 @@ export class MoveBinaryData implements INodeType {
 					} else {
 						// Data should not be kept and only one key has to get removed. So copy all
 						// data and then remove the not needed one
-						newItem.json = JSON.parse(JSON.stringify(item.json));
+						newItem.json = deepCopy(item.json);
 						const sourceKey = this.getNodeParameter('sourceKey', itemIndex) as string;
 
 						unset(newItem.json, sourceKey);
 					}
 				}
 			} else {
-				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`);
+				throw new NodeOperationError(this.getNode(), `The operation "${mode}" is not known!`, {
+					itemIndex,
+				});
 			}
 
 			returnData.push(newItem);

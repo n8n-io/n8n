@@ -1,5 +1,6 @@
 import { randomBytes } from 'crypto';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../../../src/databases/entities/User';
+import type { CredentialPayload } from './types';
 
 /**
  * Create a random alphanumeric string of random length between two limits, both inclusive.
@@ -10,6 +11,10 @@ export function randomString(min: number, max: number) {
 	return randomBytes(randomInteger / 2).toString('hex');
 }
 
+export function randomApiKey() {
+	return `n8n_api_${randomBytes(20).toString('hex')}`;
+}
+
 const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array.length)];
 
 const randomDigit = () => Math.floor(Math.random() * 10);
@@ -17,7 +22,9 @@ const randomDigit = () => Math.floor(Math.random() * 10);
 const randomUppercaseLetter = () => chooseRandomly('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
 
 export const randomValidPassword = () =>
-	randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH - 2) + randomUppercaseLetter() + randomDigit();
+	randomString(MIN_PASSWORD_LENGTH, MAX_PASSWORD_LENGTH - 2) +
+	randomUppercaseLetter() +
+	randomDigit();
 
 export const randomInvalidPassword = () =>
 	chooseRandomly([
@@ -39,3 +46,10 @@ const POPULAR_TOP_LEVEL_DOMAINS = ['com', 'org', 'net', 'io', 'edu'];
 const randomTopLevelDomain = () => chooseRandomly(POPULAR_TOP_LEVEL_DOMAINS);
 
 export const randomName = () => randomString(4, 8);
+
+export const randomCredentialPayload = (): CredentialPayload => ({
+	name: randomName(),
+	type: randomName(),
+	nodesAccess: [{ nodeType: randomName() }],
+	data: { accessToken: randomString(6, 16) },
+});

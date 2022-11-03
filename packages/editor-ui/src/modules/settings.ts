@@ -6,12 +6,14 @@ import {
 	IN8nValueSurveyData,
 	IRootState,
 	ISettingsState,
+	WorkflowCallerPolicyDefaultOption,
 } from '../Interface';
 import { getPromptsData, submitValueSurvey, submitContactInfo, getSettings } from '../api/settings';
 import Vue from 'vue';
-import { CONTACT_PROMPT_MODAL_KEY, VALUE_SURVEY_MODAL_KEY } from '@/constants';
+import {CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, VALUE_SURVEY_MODAL_KEY} from '@/constants';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { testHealthEndpoint } from '@/api/templates';
+import {createApiKey, deleteApiKey, getApiKey } from "@/api/api-keys";
 
 const module: Module<ISettingsState, IRootState> = {
 	namespaced: true,
@@ -24,19 +26,43 @@ const module: Module<ISettingsState, IRootState> = {
 			smtpSetup: false,
 		},
 		templatesEndpointHealthy: false,
+		api: {
+			enabled: false,
+			latestVersion: 0,
+			path: '/',
+		},
+		onboardingCallPromptEnabled: false,
 	},
 	getters: {
+		isEnterpriseFeatureEnabled: (state: ISettingsState) => (feature: EnterpriseEditionFeature): boolean => {
+			return state.settings.enterprise[feature];
+		},
 		versionCli(state: ISettingsState) {
 			return state.settings.versionCli;
 		},
 		isUserManagementEnabled(state: ISettingsState): boolean {
 			return state.userManagement.enabled;
 		},
+		isPublicApiEnabled(state: ISettingsState): boolean {
+			return state.api.enabled;
+		},
+		publicApiLatestVersion(state: ISettingsState): number {
+			return state.api.latestVersion;
+		},
+		publicApiPath(state: ISettingsState): string {
+			return state.api.path;
+		},
 		showSetupPage(state: ISettingsState) {
 			return state.userManagement.showSetupOnFirstLoad;
 		},
 		getPromptsData(state: ISettingsState) {
 			return state.promptsData;
+		},
+		isDesktopDeployment(state: ISettingsState) {
+			return state.settings.deployment?.type.startsWith('desktop_');
+		},
+		isCloudDeployment(state: ISettingsState) {
+			return state.settings.deployment && state.settings.deployment.type === 'cloud';
 		},
 		isSmtpSetup(state: ISettingsState) {
 			return state.userManagement.smtpSetup;
@@ -68,6 +94,27 @@ const module: Module<ISettingsState, IRootState> = {
 		templatesHost: (state): string  => {
 			return state.settings.templates.host;
 		},
+		isOnboardingCallPromptFeatureEnabled: (state): boolean => {
+			return state.onboardingCallPromptEnabled;
+		},
+		isCommunityNodesFeatureEnabled: (state): boolean => {
+			return state.settings.communityNodesEnabled;
+		},
+		isNpmAvailable: (state): boolean => {
+			return state.settings.isNpmAvailable;
+		},
+		allowedModules: (state): { builtIn?: string[]; external?: string[] } => {
+			return state.settings.allowedModules;
+		},
+		isQueueModeEnabled: (state): boolean => {
+			return state.settings.executionMode === 'queue';
+		},
+		workflowCallerPolicyDefaultOption: (state): WorkflowCallerPolicyDefaultOption => {
+			return state.settings.workflowCallerPolicyDefaultOption;
+		},
+		isWorkflowSharingEnabled: (state): boolean => {
+			return state.settings.isWorkflowSharingEnabled;
+		},
 	},
 	mutations: {
 		setSettings(state: ISettingsState, settings: IN8nUISettings) {
@@ -75,6 +122,10 @@ const module: Module<ISettingsState, IRootState> = {
 			state.userManagement.enabled = settings.userManagement.enabled;
 			state.userManagement.showSetupOnFirstLoad = !!settings.userManagement.showSetupOnFirstLoad;
 			state.userManagement.smtpSetup = settings.userManagement.smtpSetup;
+			state.api.enabled = settings.publicApi.enabled;
+			state.api.latestVersion = settings.publicApi.latestVersion;
+			state.api.path = settings.publicApi.path;
+			state.onboardingCallPromptEnabled = settings.onboardingCallPromptEnabled;
 		},
 		stopShowingSetupPage(state: ISettingsState) {
 			Vue.set(state.userManagement, 'showSetupOnFirstLoad', false);
@@ -85,6 +136,21 @@ const module: Module<ISettingsState, IRootState> = {
 		setTemplatesEndpointHealthy(state: ISettingsState) {
 			state.templatesEndpointHealthy = true;
 		},
+		setCommunityNodesFeatureEnabled(state: ISettingsState, isEnabled: boolean) {
+			state.settings.communityNodesEnabled = isEnabled;
+		},
+		setIsWorkflowSharingEnabled(state: ISettingsState, enabled: boolean) {
+			state.settings.isWorkflowSharingEnabled = enabled;
+		},
+		setWorkflowCallerPolicyDefaultOption(state: ISettingsState, defaultOption: WorkflowCallerPolicyDefaultOption) {
+			state.settings.workflowCallerPolicyDefaultOption = defaultOption;
+		},
+		setAllowedModules(state, allowedModules: { builtIn?: string, external?: string }) {
+			state.settings.allowedModules = {
+				...(allowedModules.builtIn && { builtIn: allowedModules.builtIn.split(',') }),
+				...(allowedModules.external && { external: allowedModules.external.split(',') }),
+			};
+		},
 	},
 	actions: {
 		async getSettings(context: ActionContext<ISettingsState, IRootState>) {
@@ -93,6 +159,7 @@ const module: Module<ISettingsState, IRootState> = {
 
 			// todo refactor to this store
 			context.commit('setUrlBaseWebhook', settings.urlBaseWebhook, {root: true});
+			context.commit('setUrlBaseEditor', settings.urlBaseEditor, {root: true});
 			context.commit('setEndpointWebhook', settings.endpointWebhook, {root: true});
 			context.commit('setEndpointWebhookTest', settings.endpointWebhookTest, {root: true});
 			context.commit('setSaveDataErrorExecution', settings.saveDataErrorExecution, {root: true});
@@ -106,7 +173,12 @@ const module: Module<ISettingsState, IRootState> = {
 			context.commit('setOauthCallbackUrls', settings.oauthCallbackUrls, {root: true});
 			context.commit('setN8nMetadata', settings.n8nMetadata || {}, {root: true});
 			context.commit('setDefaultLocale', settings.defaultLocale, {root: true});
+			context.commit('setIsNpmAvailable', settings.isNpmAvailable, {root: true});
 			context.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
+			context.commit('setCommunityNodesFeatureEnabled', settings.communityNodesEnabled === true);
+			context.commit('settings/setAllowedModules', settings.allowedModules, {root: true});
+			context.commit('settings/setWorkflowCallerPolicyDefaultOption', settings.workflowCallerPolicyDefaultOption, {root: true});
+			context.commit('settings/setIsWorkflowSharingEnabled', settings.enterprise.workflowSharing, {root: true});
 		},
 		async fetchPromptsData(context: ActionContext<ISettingsState, IRootState>) {
 			if (!context.getters.isTelemetryEnabled) {
@@ -139,6 +211,7 @@ const module: Module<ISettingsState, IRootState> = {
 				return e;
 			}
 		},
+
 		async submitValueSurvey(context: ActionContext<ISettingsState, IRootState>, params: IN8nValueSurveyData) {
 			try {
 				const instanceId = context.state.settings.instanceId;
@@ -152,6 +225,17 @@ const module: Module<ISettingsState, IRootState> = {
 			const timeout = new Promise((_, reject) => setTimeout(() => reject(), 2000));
 			await Promise.race([testHealthEndpoint(context.getters.templatesHost), timeout]);
 			context.commit('setTemplatesEndpointHealthy', true);
+		},
+		async getApiKey(context: ActionContext<ISettingsState, IRootState>) {
+			const { apiKey } = await getApiKey(context.rootGetters['getRestApiContext']);
+			return apiKey;
+		},
+		async createApiKey(context: ActionContext<ISettingsState, IRootState>) {
+			const { apiKey } = await createApiKey(context.rootGetters['getRestApiContext']);
+			return apiKey;
+		},
+		async deleteApiKey(context: ActionContext<ISettingsState, IRootState>) {
+			await deleteApiKey(context.rootGetters['getRestApiContext']);
 		},
 	},
 };

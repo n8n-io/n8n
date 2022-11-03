@@ -13,6 +13,7 @@ import {
 	EntityTarget,
 	getRepository,
 	LoggerOptions,
+	ObjectLiteral,
 	Repository,
 } from 'typeorm';
 import { TlsOptions } from 'tls';
@@ -25,9 +26,9 @@ import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { entities } from './databases/entities';
 
-import { postgresMigrations } from './databases/postgresdb/migrations';
-import { mysqlMigrations } from './databases/mysqldb/migrations';
-import { sqliteMigrations } from './databases/sqlite/migrations';
+import { postgresMigrations } from './databases/migrations/postgresdb';
+import { mysqlMigrations } from './databases/migrations/mysqldb';
+import { sqliteMigrations } from './databases/migrations/sqlite';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
@@ -38,13 +39,17 @@ export async function transaction<T>(fn: (entityManager: EntityManager) => Promi
 	return connection.transaction(fn);
 }
 
-export function linkRepository<Entity>(entityClass: EntityTarget<Entity>): Repository<Entity> {
+export function linkRepository<Entity extends ObjectLiteral>(
+	entityClass: EntityTarget<Entity>,
+): Repository<Entity> {
 	return getRepository(entityClass, connection.name);
 }
 
 export async function init(
 	testConnectionOptions?: ConnectionOptions,
 ): Promise<IDatabaseCollections> {
+	if (isInitialized) return collections;
+
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
 	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
@@ -181,9 +186,12 @@ export async function init(
 		}
 	}
 
+	// @ts-ignore
 	collections.Credentials = linkRepository(entities.CredentialsEntity);
+	// @ts-ignore
 	collections.Execution = linkRepository(entities.ExecutionEntity);
 	collections.Workflow = linkRepository(entities.WorkflowEntity);
+	// @ts-ignore
 	collections.Webhook = linkRepository(entities.WebhookEntity);
 	collections.Tag = linkRepository(entities.TagEntity);
 
@@ -192,6 +200,8 @@ export async function init(
 	collections.SharedCredentials = linkRepository(entities.SharedCredentials);
 	collections.SharedWorkflow = linkRepository(entities.SharedWorkflow);
 	collections.Settings = linkRepository(entities.Settings);
+	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
+	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
 
 	isInitialized = true;
 

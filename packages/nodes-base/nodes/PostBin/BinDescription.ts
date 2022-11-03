@@ -1,12 +1,6 @@
-import {
-	INodeProperties
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	buildBinAPIURL,
-	transformBinReponse,
-} from './GenericFunctions';
-
+import { buildBinAPIURL, transformBinReponse } from './GenericFunctions';
 
 // Operations for the `Bin` resource:
 export const binOperations: INodeProperties[] = [
@@ -14,12 +8,11 @@ export const binOperations: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		type: 'options',
+		noDataExpression: true,
 		displayOptions: {
-				show: {
-						resource: [
-							'bin',
-						],
-				},
+			show: {
+				resource: ['bin'],
+			},
 		},
 		options: [
 			{
@@ -32,11 +25,10 @@ export const binOperations: INodeProperties[] = [
 						url: '/developers/postbin/api/bin',
 					},
 					output: {
-						postReceive: [
-							transformBinReponse,
-						],
+						postReceive: [transformBinReponse],
 					},
 				},
+				action: 'Create a bin',
 			},
 			{
 				name: 'Get',
@@ -47,9 +39,7 @@ export const binOperations: INodeProperties[] = [
 						method: 'GET',
 					},
 					output: {
-						postReceive: [
-							transformBinReponse,
-						],
+						postReceive: [transformBinReponse],
 					},
 					send: {
 						preSend: [
@@ -58,6 +48,7 @@ export const binOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Get a bin',
 			},
 			{
 				name: 'Delete',
@@ -74,6 +65,7 @@ export const binOperations: INodeProperties[] = [
 						],
 					},
 				},
+				action: 'Delete a bin',
 			},
 		],
 		default: 'create',
@@ -83,20 +75,15 @@ export const binOperations: INodeProperties[] = [
 // Properties of the `Bin` resource
 export const binFields: INodeProperties[] = [
 	{
-		name: 'binId',
 		displayName: 'Bin ID',
+		name: 'binId',
 		type: 'string',
 		default: '',
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'bin',
-				],
-				operation: [
-					'get',
-					'delete',
-				],
+				resource: ['bin'],
+				operation: ['get', 'delete'],
 			},
 		},
 		description: 'Unique identifier for each bin',

@@ -1,7 +1,4 @@
-import {
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ProfitWellApi implements ICredentialType {
 	name = 'profitWellApi';
@@ -12,6 +9,7 @@ export class ProfitWellApi implements ICredentialType {
 			displayName: 'API Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'Your Private Token',
 		},

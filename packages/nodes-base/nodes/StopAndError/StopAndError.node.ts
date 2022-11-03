@@ -1,11 +1,10 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	jsonParse,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -59,9 +58,7 @@ export class StopAndError implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						errorType: [
-							'errorMessage',
-						],
+						errorType: ['errorMessage'],
 					},
 				},
 			},
@@ -78,9 +75,7 @@ export class StopAndError implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						errorType: [
-							'errorObject',
-						],
+						errorType: ['errorObject'],
 					},
 				},
 			},
@@ -97,7 +92,8 @@ export class StopAndError implements INodeType {
 			toThrow = this.getNodeParameter('errorMessage', 0) as string;
 		} else {
 			const json = this.getNodeParameter('errorObject', 0) as string;
-			const errorObject = JSON.parse(json);
+			// tslint:disable-next-line:no-any
+			const errorObject = jsonParse<any>(json);
 
 			toThrow = {
 				name: 'User-thrown error',

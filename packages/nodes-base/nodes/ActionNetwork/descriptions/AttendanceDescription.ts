@@ -1,10 +1,6 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-import {
-	makeSimpleField,
-} from './SharedFields';
+import { makeSimpleField } from './SharedFields';
 
 export const attendanceOperations: INodeProperties[] = [
 	{
@@ -14,23 +10,24 @@ export const attendanceOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attendance',
-				],
+				resource: ['attendance'],
 			},
 		},
 		options: [
 			{
 				name: 'Create',
 				value: 'create',
+				action: 'Create an attendance',
 			},
 			{
 				name: 'Get',
 				value: 'get',
+				action: 'Get an attendance',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
+				action: 'Get many attendances',
 			},
 		],
 		default: 'create',
@@ -50,12 +47,8 @@ export const attendanceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attendance'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -68,12 +61,8 @@ export const attendanceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['attendance'],
+				operation: ['create'],
 			},
 		},
 	},
@@ -91,12 +80,8 @@ export const attendanceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['attendance'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -109,12 +94,8 @@ export const attendanceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['attendance'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -132,12 +113,8 @@ export const attendanceFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['attendance'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -149,12 +126,8 @@ export const attendanceFields: INodeProperties[] = [
 		description: 'Whether to return all results or only up to a given limit',
 		displayOptions: {
 			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'getAll',
-				],
+				resource: ['attendance'],
+				operation: ['getAll'],
 			},
 		},
 	},
@@ -169,15 +142,9 @@ export const attendanceFields: INodeProperties[] = [
 		},
 		displayOptions: {
 			show: {
-				resource: [
-					'attendance',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					false,
-				],
+				resource: ['attendance'],
+				operation: ['getAll'],
+				returnAll: [false],
 			},
 		},
 	},

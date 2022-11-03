@@ -1,8 +1,9 @@
 import {
+	IAuthenticateGeneric,
+	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
 } from 'n8n-workflow';
-
 
 export class CortexApi implements ICredentialType {
 	name = 'cortexApi';
@@ -24,4 +25,20 @@ export class CortexApi implements ICredentialType {
 			placeholder: 'https://localhost:9001',
 		},
 	];
+
+	authenticate: IAuthenticateGeneric = {
+		type: 'generic',
+		properties: {
+			headers: {
+				Authorization: '=Bearer {{$credentials.cortexApiKey}}',
+			},
+		},
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.host}}',
+			url: '/api/analyzer',
+		},
+	};
 }
