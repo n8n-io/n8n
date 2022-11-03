@@ -77,7 +77,9 @@ export class I18nClass {
 	/**
 	 * Render a string of dynamic text, i.e. a string with a constructed path to the localized value.
 	 */
-	private dynamicRender(key: string, fallback = ''): string {
+	private dynamicRender(
+		{ key, fallback }: { key: string; fallback: string; },
+	) {
 		return this.i18n.te(key) ? this.i18n.t(key).toString() : fallback;
 	}
 
@@ -85,8 +87,8 @@ export class I18nClass {
 	 * Render a string of header text (a node's name and description),
 	 * used variously in the nodes panel, under the node icon, etc.
 	 */
-	headerText(key: string, fallback = '') {
-		return this.dynamicRender(key, fallback);
+	headerText(arg: { key: string; fallback: string; }) {
+		return this.dynamicRender(arg);
 	}
 
 	/**
@@ -106,10 +108,16 @@ export class I18nClass {
 				{ name: parameterName, displayName }: INodeProperties,
 			) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
-					return context.dynamicRender(`_reusableDynamicText.oauth2.${parameterName}`, displayName);
+					return context.dynamicRender({
+						key: `_reusableDynamicText.oauth2.${parameterName}`,
+						fallback: displayName,
+					});
 				}
 
-				return context.dynamicRender(`${credentialPrefix}.${parameterName}.displayName`, displayName);
+				return context.dynamicRender({
+					key: `${credentialPrefix}.${parameterName}.displayName`,
+					fallback: displayName,
+				});
 			},
 
 			/**
@@ -118,7 +126,10 @@ export class I18nClass {
 			hint(
 				{ name: parameterName, hint }: INodeProperties,
 			) {
-				return context.dynamicRender(`${credentialPrefix}.${parameterName}.hint`, hint);
+				return context.dynamicRender({
+					key: `${credentialPrefix}.${parameterName}.hint`,
+					fallback: hint ?? '',
+				});
 			},
 
 			/**
@@ -127,7 +138,10 @@ export class I18nClass {
 			inputLabelDescription(
 				{ name: parameterName, description }: INodeProperties,
 			) {
-				return context.dynamicRender(`${credentialPrefix}.${parameterName}.description`, description);
+				return context.dynamicRender({
+					key: `${credentialPrefix}.${parameterName}.description`,
+					fallback: description ?? '',
+				});
 			},
 
 			/**
@@ -137,7 +151,10 @@ export class I18nClass {
 				{ name: parameterName }: INodeProperties,
 				{ value: optionName, name: displayName }: INodePropertyOptions,
 			) {
-				return context.dynamicRender(`${credentialPrefix}.${parameterName}.options.${optionName}.displayName`, displayName);
+				return context.dynamicRender({
+					key: `${credentialPrefix}.${parameterName}.options.${optionName}.displayName`,
+					fallback: displayName,
+				});
 			},
 
 			/**
@@ -147,7 +164,10 @@ export class I18nClass {
 				{ name: parameterName }: INodeProperties,
 				{ value: optionName, description }: INodePropertyOptions,
 			) {
-				return context.dynamicRender(`${credentialPrefix}.${parameterName}.options.${optionName}.description`, description);
+				return context.dynamicRender({
+					key: `${credentialPrefix}.${parameterName}.options.${optionName}.description`,
+					fallback: description ?? '',
+				});
 			},
 
 			/**
@@ -156,7 +176,10 @@ export class I18nClass {
 			placeholder(
 				{ name: parameterName, placeholder }: INodeProperties,
 			) {
-				return context.dynamicRender(`${credentialPrefix}.${parameterName}.placeholder`, placeholder);
+				return context.dynamicRender({
+					key: `${credentialPrefix}.${parameterName}.placeholder`,
+					fallback: placeholder ?? '',
+				});
 			},
 		};
 	}
@@ -180,7 +203,11 @@ export class I18nClass {
 				path: string,
 			) {
 				const middleKey = deriveMiddleKey(path, parameter);
-				return context.dynamicRender(`${initialKey}.${middleKey}.displayName`, parameter.displayName);
+
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.displayName`,
+					fallback: parameter.displayName,
+				});
 			},
 
 			/**
@@ -191,7 +218,11 @@ export class I18nClass {
 				path: string,
 			) {
 				const middleKey = deriveMiddleKey(path, parameter);
-				return context.dynamicRender(`${initialKey}.${middleKey}.description`, parameter.description);
+
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.description`,
+					fallback: parameter.description ?? '',
+				});
 			},
 
 			/**
@@ -202,7 +233,11 @@ export class I18nClass {
 				path: string,
 			) {
 				const middleKey = deriveMiddleKey(path, parameter);
-				return context.dynamicRender(`${initialKey}.${middleKey}.hint`, parameter.hint);
+
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.hint`,
+					fallback: parameter.hint ?? '',
+				});
 			},
 
 			/**
@@ -222,7 +257,10 @@ export class I18nClass {
 					middleKey = insertOptionsAndValues(pathSegments).join('.');
 				}
 
-				return context.dynamicRender(`${initialKey}.${middleKey}.placeholder`, parameter.placeholder);
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.placeholder`,
+					fallback: parameter.placeholder ?? '',
+				});
 			},
 
 			/**
@@ -241,7 +279,10 @@ export class I18nClass {
 					middleKey = insertOptionsAndValues(pathSegments).join('.');
 				}
 
-				return context.dynamicRender(`${initialKey}.${middleKey}.options.${optionName}.displayName`, displayName);
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.options.${optionName}.displayName`,
+					fallback: displayName,
+				});
 			},
 
 			/**
@@ -260,7 +301,10 @@ export class I18nClass {
 					middleKey = insertOptionsAndValues(pathSegments).join('.');
 				}
 
-				return context.dynamicRender(`${initialKey}.${middleKey}.options.${optionName}.description`, description);
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.options.${optionName}.description`,
+					fallback: description ?? '',
+				});
 			},
 
 			/**
@@ -280,7 +324,10 @@ export class I18nClass {
 					middleKey = insertOptionsAndValues(pathSegments).join('.');
 				}
 
-				return context.dynamicRender(`${initialKey}.${middleKey}.options.${optionName}.displayName`, displayName);
+				return context.dynamicRender({
+					key: `${initialKey}.${middleKey}.options.${optionName}.displayName`,
+					fallback: displayName,
+				});
 			},
 
 			/**
@@ -290,14 +337,20 @@ export class I18nClass {
 			multipleValueButtonText(
 				{ name: parameterName, typeOptions}: INodeProperties,
 			) {
-				return context.dynamicRender(`${initialKey}.${parameterName}.multipleValueButtonText`, typeOptions?.multipleValueButtonText);
+				return context.dynamicRender({
+					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
+					fallback: typeOptions!.multipleValueButtonText!,
+				});
 			},
 
 			eventTriggerDescription(
 				nodeType: string,
 				eventTriggerDescription: string,
 			) {
-				return context.dynamicRender(`n8n-nodes-base.nodes.${nodeType}.nodeView.eventTriggerDescription`, eventTriggerDescription);
+				return context.dynamicRender({
+					key: `n8n-nodes-base.nodes.${nodeType}.nodeView.eventTriggerDescription`,
+					fallback: eventTriggerDescription,
+				});
 			},
 		};
 	}

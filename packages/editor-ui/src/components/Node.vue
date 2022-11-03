@@ -252,7 +252,10 @@ export default mixins(
 		},
 		nodeTitle (): string {
 			if (this.data.name === 'Start') {
-				return this.$locale.headerText(`headers.start.displayName`, 'Start');
+				return this.$locale.headerText({
+					key: `headers.start.displayName`,
+					fallback: 'Start',
+				});
 			}
 
 			return this.data.name;

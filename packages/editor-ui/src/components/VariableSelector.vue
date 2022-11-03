@@ -696,7 +696,10 @@ export default mixins(
 
 					allNodesData.push(
 						{
-							name: this.$locale.headerText(`headers.${shortNodeType}.displayName`, nodeName),
+							name: this.$locale.headerText({
+								key: `headers.${shortNodeType}.displayName`,
+								fallback: nodeName,
+							}),
 							options: this.sortOptions(nodeOptions),
 						},
 					);

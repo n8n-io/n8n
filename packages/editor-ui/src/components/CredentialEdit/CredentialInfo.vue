@@ -14,12 +14,15 @@
 				>
 					<el-checkbox
 						v-if="credentialPermissions.updateNodeAccess"
-						:label="$locale.headerText(`headers.${shortNodeType(node)}.displayName`, node.displayName)"
+						:label="$locale.headerText({
+							key: `headers.${shortNodeType(node)}.displayName`,
+							fallback: node.displayName,
+						})"
 						:value="!!nodeAccess[node.name]"
 						@change="(val) => onNodeAccessChange(node.name, val)"
 					/>
 					<n8n-text v-else>
-						{{ $locale.headerText(`headers.${shortNodeType(node)}.displayName`, node.displayName)}}
+						{{ $locale.headerText({ key: `headers.${shortNodeType(node)}.displayName`, fallback: node.displayName })}}
 					</n8n-text>
 				</div>
 			</el-col>
