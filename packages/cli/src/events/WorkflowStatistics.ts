@@ -1,7 +1,8 @@
 import { eventEmitter } from 'n8n-core';
 import { IRun, IWorkflowBase } from 'n8n-workflow';
-import { Db } from '..';
+import { Db, InternalHooksManager } from '..';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
+import { getWorkflowOwner } from '../UserManagement/UserManagementHelper';
 
 eventEmitter.on(
 	eventEmitter.types.workflowExecutionCompleted,
@@ -32,7 +33,18 @@ eventEmitter.on(
 		try {
 			await Db.collections.WorkflowStatistics.insert({ count: 1, name, workflowId });
 
-			// TODO - Add first production run code here
+			// If we're here we can check if we're sending the first production success metric
+			if (name !== StatisticsNames.productionSuccess) return;
+
+			// Get the owner of the workflow so we can send the metric
+			const owner = await getWorkflowOwner(workflowId);
+			const metrics = {
+				user_id: owner.id,
+				workflow_id: workflowId,
+			};
+
+			// Send the metrics
+			await InternalHooksManager.getInstance().onFirstProductionWorkflowSuccess(metrics);
 		} catch (error) {
 			// Do we just assume it's a conflict error? If there is any other sort of error in the DB it should trigger here too
 			await Db.collections.WorkflowStatistics.update(

@@ -478,4 +478,14 @@ export class InternalHooksClass implements IInternalHooksClass {
 	}): Promise<void> {
 		return this.telemetry.track('cnr package deleted', updateData);
 	}
+
+	/**
+	 * Execution Statistics
+	 */
+	async onFirstProductionWorkflowSuccess(data: {
+		user_id: string;
+		workflow_id: string | number;
+	}): Promise<void> {
+		return this.telemetry.track('Workflow first prod success', data, { withPostHog: true });
+	}
 }
