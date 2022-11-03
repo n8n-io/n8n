@@ -34,6 +34,7 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
+import { AwsSecretManager } from '../src/SecretManagerHelper';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -159,6 +160,18 @@ export class Start extends Command {
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
 			try {
+				// eslint-disable-next-line @typescript-eslint/naming-convention
+				const SecretManager = new AwsSecretManager();
+				try {
+					console.log(await SecretManager.create('456', 'ddadadasdasd'));
+					console.log(await SecretManager.get('456'));
+					console.log(await SecretManager.update('456', 'updated'));
+					console.log(await SecretManager.get('456'));
+					console.log(await SecretManager.delete('456'));
+				} catch (error) {
+					console.log(error.response.data);
+				}
+
 				const logger = getLogger();
 				LoggerProxy.init(logger);
 				logger.info('Initializing n8n process');
