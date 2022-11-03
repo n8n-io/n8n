@@ -238,7 +238,7 @@ const { subtractedCategories, search } = toRefs(state);
 .headerContent {
 	display: flex;
 	align-items: center;
-	font-weight: var(-font-weight-bold);
+	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-m);
 	line-height: var(--font-line-height-loose);
 
