@@ -9,7 +9,6 @@ import {
 	oAuth2CredentialAuthorize,
 	oAuth1CredentialAuthorize,
 	testCredential,
-	getForeignCredentials,
 } from '@/api/credentials';
 import Vue from 'vue';
 import { ActionContext, Module } from 'vuex';
@@ -61,13 +60,14 @@ const module: Module<ICredentialsState, IRootState> = {
 			}, {});
 		},
 		setForeignCredentials: (state: ICredentialsState, credentials: ICredentialsResponse[]) => {
-			state.foreignCredentials = credentials.reduce((accu: ICredentialMap, cred: ICredentialsResponse) => {
-				if (cred.id) {
-					accu[cred.id] = cred;
-				}
+			Vue.set(state, 'foreignCredentials', {});
 
-				return accu;
-			}, {});
+			credentials.forEach((cred: ICredentialsResponse) => {
+				if (cred.id) {
+					Vue.set(state.foreignCredentials, cred.id, cred);
+					Vue.set(state.credentials, cred.id, cred);
+				}
+			});
 		},
 		upsertCredential(state: ICredentialsState, credential: ICredentialsResponse) {
 			if (credential.id) {
@@ -93,6 +93,9 @@ const module: Module<ICredentialsState, IRootState> = {
 		allCredentials(state: ICredentialsState): ICredentialsResponse[] {
 			return Object.values(state.credentials)
 				.sort((a, b) => a.name.localeCompare(b.name));
+		},
+		foreignCredentialsById(state: ICredentialsState): ICredentialMap {
+			return state.foreignCredentials || {};
 		},
 		allForeignCredentials(state: ICredentialsState): ICredentialsResponse[] {
 			return Object.values(state.foreignCredentials || {})
@@ -193,12 +196,6 @@ const module: Module<ICredentialsState, IRootState> = {
 		fetchAllCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
 			const credentials = await getAllCredentials(context.rootGetters.getRestApiContext);
 			context.commit('setCredentials', credentials);
-
-			return credentials;
-		},
-		fetchForeignCredentials: async (context: ActionContext<ICredentialsState, IRootState>): Promise<ICredentialsResponse[]> => {
-			const credentials = await getForeignCredentials(context.rootGetters.getRestApiContext);
-			context.commit('setForeignCredentials', credentials);
 
 			return credentials;
 		},

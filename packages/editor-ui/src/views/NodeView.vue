@@ -230,6 +230,7 @@ import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
 import { getNodeViewTab } from '@/components/helpers';
 import { Route } from 'vue-router';
+import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -625,7 +626,7 @@ export default mixins(
 				return uniqueName;
 			},
 			async onSaveKeyboardShortcut() {
-				const saved = await this.saveCurrentWorkflow();
+				const saved = await this.saveCurrentWorkflow({}, false);
 				if (saved) this.$store.dispatch('settings/fetchPromptsData');
 			},
 			showTriggerCreator(source: string) {
@@ -795,6 +796,25 @@ export default mixins(
 				this.$store.commit('setWorkflowSettings', data.settings || {});
 				this.$store.commit('setWorkflowPinData', data.pinData || {});
 				this.$store.commit('setWorkflowHash', data.hash);
+				this.$store.commit('addWorkflow', {
+					id: data.id,
+					name: data.name,
+					ownedBy: data.ownedBy,
+					sharedWith: data.sharedWith,
+					tags: data.tags || [],
+				});
+				this.$store.commit('setWorkflowOwnedBy', {
+					workflowId: data.id,
+					ownedBy: data.ownedBy,
+				});
+				this.$store.commit('setWorkflowSharedWith', {
+					workflowId: data.id,
+					sharedWith: data.sharedWith,
+				});
+
+				if (data.usedCredentials) {
+					this.$store.commit('credentials/setForeignCredentials', data.usedCredentials);
+				}
 
 				const tags = (data.tags || []) as ITag[];
 				this.$store.commit('tags/upsertTags', tags);
@@ -3147,7 +3167,6 @@ export default mixins(
 			},
 			async loadCredentials(): Promise<void> {
 				await this.$store.dispatch('credentials/fetchAllCredentials');
-				await this.$store.dispatch('credentials/fetchForeignCredentials');
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes: INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
@@ -3264,6 +3283,10 @@ export default mixins(
 			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
 				this.addNode(nodeTypeName, { position });
 			},
+			async saveCurrentWorkflowExternal(callback: () => void) {
+				await this.saveCurrentWorkflow();
+				callback?.();
+			},
 		},
 		async mounted() {
 			this.$titleReset();
@@ -3352,8 +3375,10 @@ export default mixins(
 					}, promptTimeout);
 				}
 			}
+
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
+			nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
 		},
 		activated() {
 			const openSideMenu = this.$store.getters['ui/getAddFirstStepOnLoad'];
@@ -3370,6 +3395,7 @@ export default mixins(
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
+			nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
 		},
 		deactivated () {
 			document.removeEventListener('keydown', this.keyDown);
@@ -3381,6 +3407,7 @@ export default mixins(
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
+			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
 		},
 		destroyed() {
 			this.resetWorkspace();
@@ -3392,6 +3419,7 @@ export default mixins(
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
+			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
 		},
 	});
 </script>

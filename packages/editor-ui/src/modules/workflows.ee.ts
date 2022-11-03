@@ -12,9 +12,11 @@ export const workflowsEEModule: Module<IRootState, IRootState> = {
 	mutations: {
 		setWorkflowOwnedBy(state: IRootState, payload: { workflowId: string, ownedBy: Partial<IUser> }) {
 			Vue.set(state.workflowsById[payload.workflowId], 'ownedBy', payload.ownedBy);
+			Vue.set(state.workflow, 'ownedBy', payload.ownedBy);
 		},
 		setWorkflowSharedWith(state: IRootState, payload: { workflowId: string, sharedWith: Array<Partial<IUser>> }) {
 			Vue.set(state.workflowsById[payload.workflowId], 'sharedWith', payload.sharedWith);
+			Vue.set(state.workflow, 'sharedWith', payload.sharedWith);
 		},
 		addWorkflowSharee(state: IRootState, payload: { workflowId: string, sharee: Partial<IUser> }) {
 			Vue.set(
@@ -34,7 +36,7 @@ export const workflowsEEModule: Module<IRootState, IRootState> = {
 	},
 	actions: {
 		setWorkflowSharedWith: async (context: ActionContext<IRootState, IRootState>, payload: { sharedWith: IUser[]; workflowId: string; }) => {
-			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.WorkflowSharing)) {
 				await setWorkflowSharedWith(
 					context.rootGetters.getRestApiContext,
 					payload.workflowId,
@@ -43,11 +45,10 @@ export const workflowsEEModule: Module<IRootState, IRootState> = {
 					},
 				);
 
-				context.commit('setWorkflowSharedWith', {
-					workflowId: payload.workflowId,
-					sharedWith: payload.sharedWith,
-				});
+				context.commit('setWorkflowSharedWith', payload);
 			}
 		},
 	},
 };
+
+export default workflowsEEModule;

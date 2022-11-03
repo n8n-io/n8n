@@ -8,7 +8,7 @@
 	>
 		<template slot="content">
 			<div :class="$style.container">
-				<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]">
+				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
 						size="large"
@@ -58,9 +58,9 @@
 		</template>
 
 		<template slot="footer">
-			<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" :class="$style.actionButtons">
+			<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]" :class="$style.actionButtons">
 				<n8n-text
-					v-show="dirty"
+					v-show="isDirty"
 					color="text-light"
 					size="small"
 					class="mr-xs"
@@ -68,9 +68,10 @@
 					{{ $locale.baseText('workflows.shareModal.changesHint') }}
 				</n8n-text>
 				<n8n-button
-					v-show="dirty"
+					v-show="workflowPermissions.updateSharing"
 					@click="onSave"
 					:loading="loading"
+					:disabled="!isDirty"
 					size="medium"
 				>
 					{{ $locale.baseText('workflows.shareModal.save') }}
@@ -94,11 +95,17 @@
 <script lang="ts">
 import Vue from 'vue';
 import Modal from './Modal.vue';
-import {EnterpriseEditionFeature, FAKE_DOOR_FEATURES, WORKFLOW_SHARE_MODAL_KEY} from '../constants';
+import {
+	EnterpriseEditionFeature,
+	FAKE_DOOR_FEATURES,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WORKFLOW_SHARE_MODAL_KEY
+} from '../constants';
 import {IFakeDoor, IUser, IWorkflowDb} from "@/Interface";
 import { getWorkflowPermissions, IPermissions } from "@/permissions";
 import mixins from "vue-typed-mixins";
 import {showMessage} from "@/components/mixins/showMessage";
+import {nodeViewEventBus} from "@/event-bus/node-view-event-bus";
 
 export default mixins(
 	showMessage,
@@ -110,7 +117,6 @@ export default mixins(
 	data() {
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
-			dirty: false,
 			loading: false,
 			modalBus: new Vue(),
 			sharedWith: [...(this.$store.getters.workflow.sharedWith || [])],
@@ -147,16 +153,38 @@ export default mixins(
 			return getWorkflowPermissions(this.currentUser, this.workflow, this.$store);
 		},
 		isSharingAvailable(): boolean {
-			return this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing) === true;
+			return this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.WorkflowSharing) === true;
 		},
 		fakeDoor(): IFakeDoor {
 			return this.$store.getters['ui/getFakeDoorById'](FAKE_DOOR_FEATURES.WORKFLOWS_SHARING);
+		},
+		isDirty(): boolean {
+			const previousSharedWith = this.workflow.sharedWith || [];
+
+			return this.sharedWith.length !== previousSharedWith.length ||
+				this.sharedWith.some(
+					(sharee) => !previousSharedWith.find((previousSharee) => sharee.id === previousSharee.id),
+				);
 		},
 	},
 	methods: {
 		async onSave() {
 			this.loading = true;
-			await this.$store.dispatch('setWorkflowSharedWith', { workflowId: this.workflow.id, sharedWith: this.sharedWith });
+
+			const saveWorkflowPromise = () => {
+				return new Promise((resolve) => {
+					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+						nodeViewEventBus.$emit('saveWorkflow', () => {
+							resolve(this.$store.getters.workflowId);
+						});
+					} else {
+						resolve(this.$store.getters.workflowId);
+					}
+				});
+			};
+
+			const workflowId = await saveWorkflowPromise();
+			await this.$store.dispatch('setWorkflowSharedWith', { workflowId, sharedWith: this.sharedWith });
 			this.loading = false;
 
 			this.modalBus.$emit('close');
@@ -166,7 +194,6 @@ export default mixins(
 			const sharee = { id, firstName, lastName, email };
 
 			this.sharedWith = this.sharedWith.concat(sharee);
-			this.dirty = true;
 		},
 		async onRemoveSharee(userId: string) {
 			const user = this.$store.getters['users/getUserById'](userId);
@@ -189,7 +216,6 @@ export default mixins(
 				this.sharedWith = this.sharedWith.filter((sharee: IUser) => {
 					return sharee.id !== user.id;
 				});
-				this.dirty = true;
 			}
 		},
 		onRoleAction(user: IUser, action: string) {

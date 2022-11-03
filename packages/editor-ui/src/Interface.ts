@@ -35,6 +35,7 @@ import {
 	INodeListSearchItems,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
+import {ICredentialsDb} from "n8n";
 
 export * from 'n8n-design-system/src/types';
 
@@ -318,6 +319,7 @@ export interface IWorkflowDb {
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
 	hash?: string;
+	usedCredentials?: Array<Partial<ICredentialsDb>>;
 }
 
 // Identical to cli.Interfaces.ts
@@ -956,7 +958,7 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
-	foreignCredentials?: ICredentialMap;
+	foreignCredentials: ICredentialMap;
 }
 
 export interface ITagsState {

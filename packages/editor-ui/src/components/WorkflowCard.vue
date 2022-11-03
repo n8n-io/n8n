@@ -24,9 +24,9 @@
 			</div>
 			<template #append>
 				<div :class="$style.cardActions">
-					<enterprise-edition :features="[EnterpriseEditionFeature.Sharing]" v-show="false">
+					<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 						<n8n-badge
-							v-if="credentialPermissions.isOwner"
+							v-if="workflowPermissions.isOwner"
 							class="mr-xs"
 							theme="tertiary"
 							bold
@@ -109,7 +109,7 @@ export default mixins(
 		areTagsEnabled(): boolean {
 			return this.$store.getters['settings/areTagsEnabled'];
 		},
-		credentialPermissions(): IPermissions {
+		workflowPermissions(): IPermissions {
 			return getWorkflowPermissions(this.currentUser, this.data, this.$store);
 		},
 		actions(): Array<{ label: string; value: string; }> {
@@ -122,7 +122,7 @@ export default mixins(
 					label: this.$locale.baseText('workflows.item.duplicate'),
 					value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
 				},
-			].concat(this.credentialPermissions.delete ? [{
+			].concat(this.workflowPermissions.delete ? [{
 				label: this.$locale.baseText('workflows.item.delete'),
 				value: WORKFLOW_LIST_ITEM_ACTIONS.DELETE,
 			}]: []);

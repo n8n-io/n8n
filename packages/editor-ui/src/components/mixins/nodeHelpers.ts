@@ -234,16 +234,6 @@ export const nodeHelpers = mixins(
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
-				const foreignCredentials = this.$store.getters['credentials/allForeignCredentials'];
-
-				// TODO: Check if any of the node credentials is found in foreign credentials
-				if(foreignCredentials?.some(() => true)){
-					return {
-						credentials: {
-							foreign: [],
-						},
-					};
-				}
 
 				const {
 					authentication,

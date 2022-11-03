@@ -46,6 +46,7 @@ import users from './modules/users';
 import workflows from './modules/workflows';
 import versions from './modules/versions';
 import templates from './modules/templates';
+import workflowsEEModule from "./modules/workflows.ee";
 import {stringSizeInBytes} from "@/components/helpers";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
 import communityNodes from './modules/communityNodes';
@@ -53,7 +54,6 @@ import nodeCreator from './modules/nodeCreator';
 import { isJsonKeyObject } from './utils';
 import {getActiveWorkflows, getWorkflows} from "@/api/workflows";
 import { getPairedItemsMapping } from './pairedItemUtils';
-import {workflowsEEModule} from "@/modules/workflows.ee";
 
 Vue.use(Vuex);
 
@@ -1062,13 +1062,13 @@ export const store = new Vuex.Store({
 		},
 	},
 	actions: {
-		fetchAllWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<IWorkflowDb[]> => {
+		fetchAllWorkflows: async (context: ActionContext<IRootState, IRootState>): Promise<IWorkflowDb[]> => {
 			const workflows = await getWorkflows(context.rootGetters.getRestApiContext);
 			context.commit('setWorkflows', workflows);
 
 			return workflows;
 		},
-		fetchActiveWorkflows: async (context: ActionContext<IWorkflowsState, IRootState>): Promise<string[]> => {
+		fetchActiveWorkflows: async (context: ActionContext<IRootState, IRootState>): Promise<string[]> => {
 			const activeWorkflows = await getActiveWorkflows(context.rootGetters.getRestApiContext);
 			context.commit('setActiveWorkflows', activeWorkflows);
 

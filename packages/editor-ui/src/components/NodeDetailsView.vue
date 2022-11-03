@@ -135,6 +135,7 @@ import TriggerPanel from './TriggerPanel.vue';
 import { mapGetters } from 'vuex';
 import {
 	BASE_NODE_SURVEY_URL,
+	EnterpriseEditionFeature,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
@@ -178,7 +179,6 @@ export default mixins(
 			pinDataDiscoveryTooltipVisible: false,
 			avgInputRowHeight: 0,
 			avgOutputRowHeight: 0,
-			hasForeignCredential: false,
 		};
 	},
 	mounted() {
@@ -351,6 +351,21 @@ export default mixins(
 		blockUi(): boolean {
 			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
 		},
+		hasForeignCredential(): boolean {
+			const credentials = (this.activeNode || {}).credentials;
+			const foreignCredentials = this.$store.getters['credentials/foreignCredentialsById'];
+
+			let hasForeignCredential = false;
+			if (credentials && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.WorkflowSharing)) {
+				Object.values(credentials).forEach((credential) => {
+					if (credential.id && !foreignCredentials[credential.id]?.currentUserHasAccess) {
+						hasForeignCredential = true;
+					}
+				});
+			}
+
+			return hasForeignCredential;
+		},
 	},
 	watch: {
 		activeNode(node: INodeUi | null) {
@@ -369,8 +384,6 @@ export default mixins(
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
-
-				this.checkForeignCredentials();
 
 				setTimeout(() => {
 					if (this.activeNode) {
@@ -614,12 +627,6 @@ export default mixins(
 				selection_value: index,
 				input_node_type: this.inputNode ? this.inputNode.type : '',
 			});
-		},
-		checkForeignCredentials() {
-			if(this.activeNode){
-				const issues = this.getNodeCredentialIssues(this.activeNode);
-				this.hasForeignCredential = !!issues?.credentials?.foreign;
-			}
 		},
 		onStopExecution(){
 			this.$emit('stopExecution');
