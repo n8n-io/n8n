@@ -4,7 +4,8 @@ import { useHistoryStore } from '@/stores/history';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 
 function getReversedCommand(command: Command): Command | undefined {
 	if (command.data.action === COMMANDS.POSITION_CHANGE) {
@@ -66,7 +67,7 @@ function getReversedCommand(command: Command): Command | undefined {
 	return undefined;
 }
 
-export const historyHelper = Vue.extend({
+export const historyHelper = mixins(deviceSupportHelpers).extend({
 	computed: {
 		...mapStores(
 			useUIStore,
@@ -82,7 +83,7 @@ export const historyHelper = Vue.extend({
 	},
 	methods: {
 		handleKeyDown(event: KeyboardEvent) {
-			if (event.metaKey && event.key === 'z') {
+			if (this.isCtrlKeyPressed(event) && event.key === 'z') {
 				event.preventDefault();
 				if (event.shiftKey) {
 					this.redo();
