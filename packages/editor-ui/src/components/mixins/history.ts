@@ -82,7 +82,7 @@ export const historyHelper = Vue.extend({
 				this.executeCommand(command);
 				const reverse = getReversedCommand(command);
 				if (reverse) {
-					this.historyStore.pushUndoableToUndo(reverse);
+					this.historyStore.pushUndoableToUndo(reverse, false);
 				}
 			}
 		},

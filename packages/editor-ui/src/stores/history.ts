@@ -20,14 +20,16 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 
 			return undefined;
 		},
-		pushUndoableToUndo(undoable: Undoable): void {
+		pushUndoableToUndo(undoable: Undoable, clearRedo = true): void {
 			if (this.currentBulkAction) {
 				this.currentBulkAction.data.commands.push(undoable);
 				return;
 			}
 			this.undoStack.push(undoable);
 			this.checkUndoStackLimit();
-			this.clearRedoStack();
+			if (clearRedo) {
+				this.clearRedoStack();
+			}
 		},
 		checkUndoStackLimit() {
 			if (this.undoStack.length > STACK_LIMIT) {
