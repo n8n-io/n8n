@@ -555,10 +555,7 @@ export default mixins(
 				this.updateNodesExecutionIssues();
 			},
 			translateName(type: string, originalName: string) {
-				return this.$locale.headerText({
-					key: `headers.${this.$locale.shortNodeType(type)}.displayName`,
-					fallback: originalName,
-				});
+				return this.$locale.headerText(`headers.${this.$locale.shortNodeType(type)}.displayName`, originalName);
 			},
 			getUniqueNodeName({
 				originalName,

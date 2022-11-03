@@ -9,11 +9,7 @@
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name">
-					{{ $locale.headerText({
-							key: `headers.${shortNodeType}.displayName`,
-							fallback: nodeType.displayName,
-						})
-					}}
+					{{ $locale.headerText(`headers.${shortNodeType}.displayName`, nodeType.displayName) }}
 				</span>
 				<span v-if="isTrigger" :class="$style['trigger-icon']">
 					<trigger-icon />
@@ -30,11 +26,7 @@
 				</n8n-tooltip>
 			</div>
 			<div :class="$style.description">
-				{{ $locale.headerText({
-						key: `headers.${shortNodeType}.description`,
-						fallback: nodeType.description,
-					})
-				}}
+				{{ $locale.headerText(`headers.${shortNodeType}.description`, nodeType.description) }}
 			</div>
 
 			<div :class="$style['draggable-data-transfer']" ref="draggableDataTransfer" />

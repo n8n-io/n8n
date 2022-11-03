@@ -171,11 +171,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		nodeTypeName(): string {
 			if (this.nodeType) {
 				const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
-
-				return this.$locale.headerText({
-					key: `headers.${shortNodeType}.displayName`,
-					fallback: this.nodeType.name,
-				});
+				return this.$locale.headerText(`headers.${shortNodeType}.displayName`, this.nodeType.name);
 			}
 
 			return '';
@@ -183,11 +179,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		nodeTypeDescription(): string {
 			if (this.nodeType && this.nodeType.description) {
 				const shortNodeType = this.$locale.shortNodeType(this.nodeType.name);
-
-				return this.$locale.headerText({
-					key: `headers.${shortNodeType}.description`,
-					fallback: this.nodeType.description,
-				});
+				return this.$locale.headerText(`headers.${shortNodeType}.description`, this.nodeType.description);
 			} else {
 				return this.$locale.baseText('nodeSettings.noDescriptionFound');
 			}
