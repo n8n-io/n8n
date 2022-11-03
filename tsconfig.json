@@ -5,6 +5,7 @@
 		"moduleResolution": "node",
 		"target": "es2019",
 		"lib": ["es2019", "es2020", "es2022.error"],
+		"types": ["cypress", "node"],
 		"removeComments": true,
 		"useUnknownInCatchVariables": true,
 		"forceConsistentCasingInFileNames": true,

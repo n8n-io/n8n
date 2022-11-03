@@ -24,6 +24,8 @@
 // -- This will overwrite an existing command --
 // Cypress.Commands.overwrite('visit', (originalFn, url, options) => { ... })
 
+import {SignupPage} from "../pages/signup";
+
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args)
 })
@@ -47,14 +49,15 @@ Cypress.Commands.add('signin', (email, password) => {
 	});
 });
 
-Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
-	cy.visit('/setup');
-	cy.getByTestId('setup-form').within(() => {
-		cy.getByTestId('email').type(email);
-		cy.getByTestId('firstName').type(firstName);
-		cy.getByTestId('lastName').type(lastName);
-		cy.getByTestId('password').type(password);
+const signupPage = new SignupPage();
 
-		cy.get('button').click();
+Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
+	cy.visit(signupPage.url);
+	signupPage.get('form').within(() => {
+		signupPage.get('email').type(email);
+		signupPage.get('firstName').type(firstName);
+		signupPage.get('lastName').type(lastName);
+		signupPage.get('password').type(password);
+		signupPage.get('button').click();
 	});
 })

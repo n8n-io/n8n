@@ -20,11 +20,11 @@
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
-    "test:e2e:db:clean": "rm ~/.n8n/database.sqlite",
+    "test:e2e:db:clean": "rm -r ~/.n8n/cypress",
     "test:e2e:dashboard": "cypress open",
     "test:e2e:run": "cypress run",
-    "test:e2e": "cross-env DB_TABLE_PREFIX=cypress N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:run",
-    "test:e2e:dev": "cross-env DB_TABLE_PREFIX=cypress N8N_DIAGNOSTICS_ENABLED=false npm run test:e2e:db:clean && npm run start"
+    "test:e2e": "cross-env N8N_USER_FOLDER=~/.n8n/cypress N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:run",
+    "test:e2e:dev": "cross-env N8N_USER_FOLDER=~/.n8n/cypress N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:dashboard"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
