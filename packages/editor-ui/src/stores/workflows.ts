@@ -590,8 +590,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return;
 			}
 			this.workflow.nodes.push(nodeData);
-			const historyStore = useHistoryStore();
-			historyStore.addNode(nodeData);
 		},
 
 		removeNode(node: INodeUi): void {
@@ -610,7 +608,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				}
 			}
 			const historyStore = useHistoryStore();
-			historyStore.removeNode(node);
 		},
 
 		removeAllNodes(data: { setStateDirty: boolean, removePinData: boolean }): void {

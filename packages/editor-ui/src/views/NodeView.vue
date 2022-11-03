@@ -39,7 +39,7 @@
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
-						@removeNode="removeNode"
+						@removeNode="(name) => removeNode(name, true)"
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
@@ -60,7 +60,7 @@
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
-						@removeNode="removeNode"
+						@removeNode="(name) => removeNode(name, true)"
 						:key="`${nodeData.id}_sticky`"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
@@ -1107,7 +1107,7 @@ export default mixins(
 					return node.name;
 				});
 				nodesToDelete.forEach((nodeName: string) => {
-					this.removeNode(nodeName);
+					this.removeNode(nodeName, true);
 				});
 			},
 
@@ -1788,7 +1788,7 @@ export default mixins(
 				setTimeout(() => {
 					this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
 				});
-
+				this.historyStore.addNode(newNodeData);
 				return newNodeData;
 			},
 			getConnection(sourceNodeName: string, sourceNodeOutputIndex: number, targetNodeName: string, targetNodeOuputIndex: number): IConnection | undefined {
@@ -2610,7 +2610,7 @@ export default mixins(
 					});
 				});
 			},
-			removeNode(nodeName: string) {
+			removeNode(nodeName: string, trackHistory = false) {
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -2707,6 +2707,9 @@ export default mixins(
 
 					// Remove node from selected index if found in it
 					this.uiStore.removeNodeFromSelection(node);
+					if (trackHistory) {
+						this.historyStore.removeNode(node);
+					}
 				}, 0); // allow other events to finish like drag stop
 			},
 			valueChanged(parameterData: IUpdateInformation) {
@@ -3312,12 +3315,10 @@ export default mixins(
 				this.__removeConnection(connection, true);
 			},
 			onAddNodeEvent({node}: {node: INodeUi}): void {
-				console.log('ADD NODE');
-				console.log(node);
+				this.addNode(node.type, { position: node.position });
 			},
 			onRemoveNode({node}: {node: INodeUi}): void {
-				console.log('REMOVE NODE');
-				console.log(node);
+				this.removeNode(node.name);
 			},
 		},
 		async mounted() {

@@ -102,10 +102,10 @@ export const historyHelper = Vue.extend({
 				this.$root.$emit('addConnection', command.data.options);
 			}
 			else if (command.data.action === COMMANDS.ADD_NODE) {
-				this.$root.$emit('addNode', command.data.options.node);
+				this.$root.$emit('removeNode', command.data.options);
 			}
 			else if (command.data.action === COMMANDS.REMOVE_NODE) {
-				this.$root.$emit('removeNode', command.data.options.node);
+				this.$root.$emit('addNode', command.data.options);
 			}
 		},
 		async undo() {
