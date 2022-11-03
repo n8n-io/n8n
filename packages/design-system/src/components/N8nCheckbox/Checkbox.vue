@@ -1,7 +1,7 @@
 <template>
 	<el-checkbox
 		v-bind="$props"
-		:class="$style.n8nCheckbox"
+		:class="['n8n-checkbox', $style.n8nCheckbox]"
 		:disabled="disabled"
 		:indeterminate="indeterminate"
 		:value="value"
@@ -24,7 +24,7 @@ import N8nInputLabel from '../N8nInputLabel';
 export default Vue.extend({
 	name: 'n8n-checkbox',
 	components: {
-		ElCheckbox,
+		ElCheckbox, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		N8nInputLabel,
 	},
 	props: {
@@ -56,10 +56,10 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		onChange(e) {
-			this.$emit("input", e);
+		onChange(event: Event) {
+			this.$emit("input", event);
 		},
-	}
+	},
 });
 </script>
 

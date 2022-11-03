@@ -151,7 +151,7 @@ export const schema = {
 				// Allows to set default values for credentials which
 				// get automatically prefilled and the user does not get
 				// displayed and can not change.
-				// Format: { CREDENTIAL_NAME: { PARAMTER: VALUE }}
+				// Format: { CREDENTIAL_NAME: { PARAMETER: VALUE }}
 				doc: 'Overwrites for credentials',
 				format: '*',
 				default: '{}',
@@ -184,6 +184,12 @@ export const schema = {
 			format: 'Boolean',
 			default: false,
 			env: 'N8N_ONBOARDING_FLOW_DISABLED',
+		},
+		callerPolicyDefaultOption: {
+			doc: 'Default option for which workflows may call the current workflow',
+			format: ['any', 'none', 'workflowsFromAList'] as const,
+			default: 'any',
+			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
 	},
 
@@ -248,7 +254,7 @@ export const schema = {
 			env: 'EXECUTIONS_DATA_SAVE_ON_SUCCESS',
 		},
 		saveExecutionProgress: {
-			doc: 'Wether or not to save progress for each node executed',
+			doc: 'Whether or not to save progress for each node executed',
 			format: 'Boolean',
 			default: false,
 			env: 'EXECUTIONS_DATA_SAVE_ON_PROGRESS',
@@ -351,13 +357,19 @@ export const schema = {
 				default: 60,
 				env: 'QUEUE_RECOVERY_INTERVAL',
 			},
+			gracefulShutdownTimeout: {
+				doc: 'How long should n8n wait for running executions before exiting worker process',
+				format: Number,
+				default: 30,
+				env: 'QUEUE_WORKER_TIMEOUT',
+			},
 		},
 	},
 
 	generic: {
 		// The timezone to use. Is important for nodes like "Cron" which start the
 		// workflow automatically at a specified time. This setting can also be
-		// overwritten on a per worfklow basis in the workflow settings in the
+		// overwritten on a per workflow basis in the workflow settings in the
 		// editor.
 		timezone: {
 			doc: 'The timezone to use',
@@ -601,7 +613,7 @@ export const schema = {
 		format: Boolean,
 		default: false,
 		env: 'N8N_WORKFLOW_TAGS_DISABLED',
-		doc: 'Disable worfklow tags.',
+		doc: 'Disable workflow tags.',
 	},
 
 	userManagement: {
@@ -679,6 +691,13 @@ export const schema = {
 				},
 			},
 		},
+	},
+
+	externalFrontendHooksUrls: {
+		doc: 'URLs to external frontend hooks files, ; separated',
+		format: String,
+		default: 'https://public.n8n.cloud/posthog-hooks.js',
+		env: 'EXTERNAL_FRONTEND_HOOKS_URLS',
 	},
 
 	externalHookFiles: {
@@ -862,6 +881,21 @@ export const schema = {
 		},
 	},
 
+	enterprise: {
+		features: {
+			sharing: {
+				format: Boolean,
+				default: false,
+			},
+		},
+		// This is a temporary flag (acting as feature toggle)
+		// Will be removed when feature goes live
+		workflowSharingEnabled: {
+			format: Boolean,
+			default: false,
+		},
+	},
+
 	hiringBanner: {
 		enabled: {
 			doc: 'Whether hiring banner in browser console is enabled.',
@@ -888,6 +922,26 @@ export const schema = {
 			env: 'N8N_DIAGNOSTICS_ENABLED',
 		},
 		config: {
+			posthog: {
+				apiKey: {
+					doc: 'API key for PostHog',
+					format: String,
+					default: 'phc_4URIAm1uYfJO7j8kWSe0J8lc8IqnstRLS7Jx8NcakHo',
+					env: 'N8N_DIAGNOSTICS_POSTHOG_API_KEY',
+				},
+				apiHost: {
+					doc: 'API host for PostHog',
+					format: String,
+					default: 'https://app.posthog.com',
+					env: 'N8N_DIAGNOSTICS_POSTHOG_API_HOST',
+				},
+				disableSessionRecording: {
+					doc: 'Disable posthog session recording',
+					format: Boolean,
+					default: true,
+					env: 'N8N_DIAGNOSTICS_POSTHOG_DISABLE_RECORDING',
+				},
+			},
 			frontend: {
 				doc: 'Diagnostics config for frontend.',
 				format: String,
@@ -912,7 +966,7 @@ export const schema = {
 
 	onboardingCallPrompt: {
 		enabled: {
-			doc: 'Whether onboarding call propmpt feature is available',
+			doc: 'Whether onboarding call prompt feature is available',
 			format: Boolean,
 			default: true,
 			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',

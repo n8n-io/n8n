@@ -1,37 +1,31 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 /**
  * Make an API request to SIGNL4
  *
  * @param {IHookFunctions | IExecuteFunctions} this
- * @param {string} method
- * @param {string} contentType
- * @param {string} body
- * @param {object} query
- * @param {string} teamSecret
- * @param {object} options
- * @returns {Promise<any>}
  *
  */
 
-export async function SIGNL4ApiRequest(this: IExecuteFunctions, method: string, body: string, query: IDataObject = {}, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function SIGNL4ApiRequest(
+	this: IExecuteFunctions,
+	method: string,
+	body: string,
+	query: IDataObject = {},
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('signl4Api');
 
 	const teamSecret = credentials?.teamSecret as string;
 
 	let options: OptionsWithUri = {
 		headers: {
-			'Accept': '*/*',
+			Accept: '*/*',
 		},
 		method,
 		body,

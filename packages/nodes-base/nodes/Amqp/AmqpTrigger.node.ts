@@ -1,20 +1,15 @@
-import {
-	ContainerOptions,
-	create_container,
-	EventContext,
-	Message,
-	ReceiverOptions,
-} from 'rhea';
+import { ContainerOptions, create_container, EventContext, Message, ReceiverOptions } from 'rhea';
 
 import { ITriggerFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IDataObject,
 	INodeType,
 	INodeTypeDescription,
 	ITriggerResponse,
+	jsonParse,
 	NodeOperationError,
 } from 'n8n-workflow';
-
 
 export class AmqpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -30,10 +25,12 @@ export class AmqpTrigger implements INodeType {
 		},
 		inputs: [],
 		outputs: ['main'],
-		credentials: [{
-			name: 'amqp',
-			required: true,
-		}],
+		credentials: [
+			{
+				name: 'amqp',
+				required: true,
+			},
+		],
 		properties: [
 			// Node properties which the user gets displayed and
 			// can change on the node.
@@ -80,7 +77,8 @@ export class AmqpTrigger implements INodeType {
 						name: 'jsonConvertByteArrayToString',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
+						description:
+							'Whether to convert JSON Body content (["body"]["content"]) from Byte Array to string. Needed for Azure Service Bus.',
 					},
 					{
 						displayName: 'JSON Parse Body',
@@ -129,19 +127,17 @@ export class AmqpTrigger implements INodeType {
 		],
 	};
 
-
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-
 		const credentials = await this.getCredentials('amqp');
 
 		const sink = this.getNodeParameter('sink', '') as string;
 		const clientname = this.getNodeParameter('clientname', '') as string;
 		const subscription = this.getNodeParameter('subscription', '') as string;
 		const options = this.getNodeParameter('options', {}) as IDataObject;
-		const pullMessagesNumber = options.pullMessagesNumber as number || 100;
+		const pullMessagesNumber = (options.pullMessagesNumber as number) || 100;
 		const containerId = options.containerId as string;
-		const containerReconnect = options.reconnect as boolean || true;
-		const containerReconnectLimit = options.reconnectLimit as number || 50;
+		const containerReconnect = (options.reconnect as boolean) || true;
+		const containerReconnectLimit = (options.reconnectLimit as number) || 50;
 
 		if (sink === '') {
 			throw new NodeOperationError(this.getNode(), 'Queue or Topic required!');
@@ -163,7 +159,6 @@ export class AmqpTrigger implements INodeType {
 		});
 
 		container.on('message', (context: EventContext) => {
-
 			// No message in the context
 			if (!context.message) {
 				return;
@@ -179,36 +174,35 @@ export class AmqpTrigger implements INodeType {
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+				const cont = deepCopy(data.body.content);
+				data.body = String.fromCharCode.apply(null, cont.data);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				const cont = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null, JSON.parse(cont).data);
+				const cont = deepCopy(data.body.content);
+				data.body = String.fromCharCode.apply(null, cont.data);
 			}
 
 			if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 				// The buffer is not ready... Stringify and parse back to load it.
-				const content = JSON.stringify(data.body.content);
-				data.body = String.fromCharCode.apply(null, JSON.parse(content).data);
+				const content = deepCopy(data.body.content);
+				data.body = String.fromCharCode.apply(null, content.data);
 			}
 
 			if (options.jsonParseBody === true) {
-				data.body = JSON.parse(data.body);
+				data.body = jsonParse(data.body);
 			}
 			if (options.onlyBody === true) {
 				data = data.body;
 			}
-
 
 			self.emit([self.helpers.returnJsonArray([data as any])]); // tslint:disable-line:no-any
 
 			if (!context.receiver?.has_credit()) {
 				setTimeout(() => {
 					context.receiver?.add_credit(pullMessagesNumber);
-				}, options.sleepTime as number || 10);
+				}, (options.sleepTime as number) || 10);
 			}
 		});
 
@@ -233,13 +227,12 @@ export class AmqpTrigger implements INodeType {
 			name: subscription ? subscription : undefined,
 			source: {
 				address: sink,
-				durable: (durable ? 2 : undefined),
-				expiry_policy: (durable ? 'never' : undefined),
+				durable: durable ? 2 : undefined,
+				expiry_policy: durable ? 'never' : undefined,
 			},
-			credit_window: 0,	// prefetch 1
+			credit_window: 0, // prefetch 1
 		};
 		connection.open_receiver(clientOptions);
-
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
@@ -257,7 +250,11 @@ export class AmqpTrigger implements INodeType {
 		async function manualTriggerFunction() {
 			await new Promise((resolve, reject) => {
 				const timeoutHandler = setTimeout(() => {
-					reject(new Error('Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.'));
+					reject(
+						new Error(
+							'Aborted, no message received within 30secs. This 30sec timeout is only set for "manually triggered execution". Active Workflows will listen indefinitely.',
+						),
+					);
 				}, 30000);
 				container.on('message', (context: EventContext) => {
 					// Check if the only property present in the message is body
@@ -279,6 +276,5 @@ export class AmqpTrigger implements INodeType {
 			closeFunction,
 			manualTriggerFunction,
 		};
-
 	}
 }

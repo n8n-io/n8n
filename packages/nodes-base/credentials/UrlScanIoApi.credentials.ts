@@ -14,6 +14,7 @@ export class UrlScanIoApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			required: true,
 		},
@@ -25,7 +26,7 @@ export class UrlScanIoApi implements ICredentialType {
 				'API-KEY': '={{$credentials.apiKey}}',
 			},
 		},
-	} as IAuthenticateGeneric;
+	};
 
 	test: ICredentialTestRequest = {
 		request: {

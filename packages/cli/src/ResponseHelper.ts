@@ -19,7 +19,6 @@ import {
 /**
  * Special Error which allows to return also an error code and http status code
  *
- * @export
  * @class ResponseError
  * @extends {Error}
  */
@@ -35,11 +34,12 @@ export class ResponseError extends Error {
 
 	/**
 	 * Creates an instance of ResponseError.
+	 * Must be used inside a block with `ResponseHelper.send()`.
+	 *
 	 * @param {string} message The error message
 	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
 	 * @param {number} [httpStatusCode] The HTTP status code the response should have
 	 * @param {string} [hint] The error hint to provide a context (webhook related)
-	 * @memberof ResponseError
 	 */
 	constructor(message: string, errorCode?: number, httpStatusCode?: number, hint?: string) {
 		super(message);
@@ -141,14 +141,14 @@ const isUniqueConstraintError = (error: Error) =>
  * all the responses have the same format
  *
  *
- * @export
  * @param {(req: Request, res: Response) => Promise<any>} processFunction The actual function to process the request
- * @returns
  */
 
-export function send(processFunction: (req: Request, res: Response) => Promise<any>, raw = false) {
-	// eslint-disable-next-line consistent-return
-	return async (req: Request, res: Response) => {
+export function send<T, R extends Request, S extends Response>(
+	processFunction: (req: R, res: S) => Promise<T>,
+	raw = false,
+) {
+	return async (req: R, res: S) => {
 		try {
 			const data = await processFunction(req, res);
 
@@ -169,9 +169,7 @@ export function send(processFunction: (req: Request, res: Response) => Promise<a
  * As it contains a lot of references which normally would be saved as duplicate data
  * with regular JSON.stringify it gets flattened which keeps the references in place.
  *
- * @export
  * @param {IExecutionDb} fullExecutionData The data to flatten
- * @returns {IExecutionFlatted}
  */
 export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutionFlatted {
 	// Flatten the data
@@ -206,9 +204,7 @@ export function flattenExecutionData(fullExecutionData: IExecutionDb): IExecutio
 /**
  * Unflattens the Execution data.
  *
- * @export
  * @param {IExecutionFlattedDb} fullExecutionData The data to unflatten
- * @returns {IExecutionResponse}
  */
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): IExecutionResponse {
 	const returnData: IExecutionResponse = {
@@ -225,3 +221,13 @@ export function unflattenExecutionData(fullExecutionData: IExecutionFlattedDb): 
 
 	return returnData;
 }
+
+export const flattenObject = (obj: { [x: string]: any }, prefix = '') =>
+	Object.keys(obj).reduce((acc, k) => {
+		const pre = prefix.length ? prefix + '.' : '';
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		if (typeof obj[k] === 'object') Object.assign(acc, flattenObject(obj[k], pre + k));
+		//@ts-ignore
+		else acc[pre + k] = obj[k];
+		return acc;
+	}, {});

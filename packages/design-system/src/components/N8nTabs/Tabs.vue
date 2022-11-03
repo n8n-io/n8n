@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="['n8n-tabs', $style.container]">
 		<div :class="$style.back" v-if="scrollPosition > 0" @click="scrollLeft">
 			<n8n-icon icon="chevron-left" size="small" />
 		</div>
@@ -51,12 +51,14 @@ export default Vue.extend({
 		N8nIcon,
 	},
 	mounted() {
-		const container = this.$refs.tabs;
+		const container = this.$refs.tabs as HTMLDivElement | undefined;
 		if (container) {
-			container.addEventListener('scroll', (e) => {
+			container.addEventListener('scroll', (event: Event) => {
 				const width = container.clientWidth;
 				const scrollWidth = container.scrollWidth;
-				this.scrollPosition = e.srcElement.scrollLeft;
+				// @ts-ignore
+				this.scrollPosition = event.srcElement.scrollLeft; // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+
 				this.canScrollRight = scrollWidth - width > this.scrollPosition;
 			});
 
@@ -73,13 +75,15 @@ export default Vue.extend({
 		}
 	},
 	destroyed() {
-		this.resizeObserver.disconnect();
+		if (this.resizeObserver) {
+			this.resizeObserver.disconnect();
+		}
 	},
 	data() {
 		return {
 			scrollPosition: 0,
 			canScrollRight: false,
-			resizeObserver: null,
+			resizeObserver: null as ResizeObserver | null,
 		};
 	},
 	props: {
@@ -102,13 +106,16 @@ export default Vue.extend({
 			this.scroll(50);
 		},
 		scroll(left: number) {
-			const container = this.$refs.tabs;
+			const container = this.$refs.tabs as (HTMLDivElement & { scrollBy: ScrollByFunction }) | undefined;
 			if (container) {
 				container.scrollBy({ left, top: 0, behavior: 'smooth' });
 			}
 		},
 	},
 });
+
+type ScrollByFunction = (arg: { left: number, top: number, behavior: 'smooth' | 'instant' | 'auto' }) => void;
+
 </script>
 
 

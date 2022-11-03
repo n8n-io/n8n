@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const addConfigFields: INodeProperties[] = [
 	{
@@ -9,9 +7,7 @@ export const addConfigFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'addConfig',
-				],
+				operation: ['addConfig'],
 			},
 		},
 		default: '',
@@ -25,9 +21,7 @@ export const addConfigFields: INodeProperties[] = [
 		type: 'string',
 		displayOptions: {
 			show: {
-				operation: [
-					'addConfig',
-				],
+				operation: ['addConfig'],
 			},
 		},
 		default: '',
@@ -41,9 +35,7 @@ export const addConfigFields: INodeProperties[] = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'addConfig',
-				],
+				operation: ['addConfig'],
 			},
 		},
 		placeholder: 'Add Option',

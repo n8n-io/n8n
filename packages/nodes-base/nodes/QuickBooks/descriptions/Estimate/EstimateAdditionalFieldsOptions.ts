@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const estimateAdditionalFieldsOptions: INodeProperties[] = [
 	{
@@ -89,7 +87,8 @@ export const estimateAdditionalFieldsOptions: INodeProperties[] = [
 							loadOptionsMethod: 'getCustomFields',
 						},
 						default: '',
-						description: 'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+						description:
+							'ID of the field to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Field Value',
@@ -105,7 +104,8 @@ export const estimateAdditionalFieldsOptions: INodeProperties[] = [
 	{
 		displayName: 'Customer Memo',
 		name: 'CustomerMemo',
-		description: 'User-entered message to the customer. This message is visible to end user on their transactions.',
+		description:
+			'User-entered message to the customer. This message is visible to end user on their transactions.',
 		type: 'string',
 		default: '',
 	},

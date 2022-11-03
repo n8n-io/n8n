@@ -8,9 +8,7 @@ export const tableOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
+				resource: ['table'],
 			},
 		},
 		options: [
@@ -44,26 +42,22 @@ export const tableOperations: INodeProperties[] = [
 ];
 
 export const tableFields: INodeProperties[] = [
-
-/* -------------------------------------------------------------------------- */
-/*                                 table:addRow                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 table:addRow                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'addRow',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['addRow'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -72,22 +66,17 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: [
-				'workbook',
-			],
+			loadOptionsDependsOn: ['workbook'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'addRow',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['addRow'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -96,22 +85,17 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: [
-				'worksheet',
-			],
+			loadOptionsDependsOn: ['worksheet'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'addRow',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['addRow'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -124,12 +108,8 @@ export const tableFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'addRow',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['addRow'],
+				resource: ['table'],
 			},
 		},
 		options: [
@@ -141,29 +121,27 @@ export const tableFields: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 				},
-				description: 'Specifies the relative position of the new row. If not defined, the addition happens at the end. Any rows below the inserted row are shifted downwards. Zero-indexed',
+				description:
+					'Specifies the relative position of the new row. If not defined, the addition happens at the end. Any rows below the inserted row are shifted downwards. Zero-indexed',
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 table:getRows                              */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 table:getRows                              */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getRows',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getRows'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -172,22 +150,17 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: [
-				'workbook',
-			],
+			loadOptionsDependsOn: ['workbook'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getRows',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getRows'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -196,22 +169,17 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: [
-				'worksheet',
-			],
+			loadOptionsDependsOn: ['worksheet'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getRows',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getRows'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -222,12 +190,8 @@ export const tableFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getRows',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getRows'],
+				resource: ['table'],
 			},
 		},
 		default: false,
@@ -239,15 +203,9 @@ export const tableFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getRows',
-				],
-				resource: [
-					'table',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getRows'],
+				resource: ['table'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -263,16 +221,13 @@ export const tableFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getRows',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getRows'],
+				resource: ['table'],
 			},
 		},
 		default: false,
-		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
+		description:
+			'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',
@@ -281,15 +236,9 @@ export const tableFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				operation: [
-					'getRows',
-				],
-				resource: [
-					'table',
-				],
-				rawData: [
-					true,
-				],
+				operation: ['getRows'],
+				resource: ['table'],
+				rawData: [true],
 			},
 		},
 		description: 'The name of the property into which to write the RAW data',
@@ -302,15 +251,9 @@ export const tableFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getRows',
-				],
-				resource: [
-					'table',
-				],
-				rawData: [
-					true,
-				],
+				operation: ['getRows'],
+				resource: ['table'],
+				rawData: [true],
 			},
 		},
 		options: [
@@ -323,25 +266,22 @@ export const tableFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 table:getColumns                           */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 table:getColumns                           */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getColumns',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getColumns'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -350,22 +290,17 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: [
-				'workbook',
-			],
+			loadOptionsDependsOn: ['workbook'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getColumns',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getColumns'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -374,22 +309,17 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: [
-				'worksheet',
-			],
+			loadOptionsDependsOn: ['worksheet'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'getColumns',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getColumns'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -400,12 +330,8 @@ export const tableFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getColumns',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getColumns'],
+				resource: ['table'],
 			},
 		},
 		default: false,
@@ -417,15 +343,9 @@ export const tableFields: INodeProperties[] = [
 		type: 'number',
 		displayOptions: {
 			show: {
-				operation: [
-					'getColumns',
-				],
-				resource: [
-					'table',
-				],
-				returnAll: [
-					false,
-				],
+				operation: ['getColumns'],
+				resource: ['table'],
+				returnAll: [false],
 			},
 		},
 		typeOptions: {
@@ -441,16 +361,13 @@ export const tableFields: INodeProperties[] = [
 		type: 'boolean',
 		displayOptions: {
 			show: {
-				operation: [
-					'getColumns',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['getColumns'],
+				resource: ['table'],
 			},
 		},
 		default: false,
-		description: 'Whether the data should be returned RAW instead of parsed into keys according to their header',
+		description:
+			'Whether the data should be returned RAW instead of parsed into keys according to their header',
 	},
 	{
 		displayName: 'Data Property',
@@ -459,15 +376,9 @@ export const tableFields: INodeProperties[] = [
 		default: 'data',
 		displayOptions: {
 			show: {
-				operation: [
-					'getColumns',
-				],
-				resource: [
-					'table',
-				],
-				rawData: [
-					true,
-				],
+				operation: ['getColumns'],
+				resource: ['table'],
+				rawData: [true],
 			},
 		},
 		description: 'The name of the property into which to write the RAW data',
@@ -480,15 +391,9 @@ export const tableFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'getColumns',
-				],
-				resource: [
-					'table',
-				],
-				rawData: [
-					true,
-				],
+				operation: ['getColumns'],
+				resource: ['table'],
+				rawData: [true],
 			},
 		},
 		options: [
@@ -501,26 +406,23 @@ export const tableFields: INodeProperties[] = [
 			},
 		],
 	},
-/* -------------------------------------------------------------------------- */
-/*                                 table:lookup                               */
-/* -------------------------------------------------------------------------- */
+	/* -------------------------------------------------------------------------- */
+	/*                                 table:lookup                               */
+	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Workbook Name or ID',
 		name: 'workbook',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getWorkbooks',
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'lookup',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['lookup'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -529,22 +431,17 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Worksheet Name or ID',
 		name: 'worksheet',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getworksheets',
-			loadOptionsDependsOn: [
-				'workbook',
-			],
+			loadOptionsDependsOn: ['workbook'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'lookup',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['lookup'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -553,22 +450,17 @@ export const tableFields: INodeProperties[] = [
 		displayName: 'Table Name or ID',
 		name: 'table',
 		type: 'options',
-		description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		required: true,
 		typeOptions: {
 			loadOptionsMethod: 'getTables',
-			loadOptionsDependsOn: [
-				'worksheet',
-			],
+			loadOptionsDependsOn: ['worksheet'],
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'lookup',
-				],
-				resource: [
-					'table',
-				],
+				operation: ['lookup'],
+				resource: ['table'],
 			},
 		},
 		default: '',
@@ -582,12 +474,8 @@ export const tableFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'lookup',
-				],
+				resource: ['table'],
+				operation: ['lookup'],
 			},
 		},
 		description: 'The name of the column in which to look for value',
@@ -601,12 +489,8 @@ export const tableFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'lookup',
-				],
+				resource: ['table'],
+				operation: ['lookup'],
 			},
 		},
 		description: 'The value to look for in column',
@@ -619,12 +503,8 @@ export const tableFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'table',
-				],
-				operation: [
-					'lookup',
-				],
+				resource: ['table'],
+				operation: ['lookup'],
 			},
 		},
 		options: [
@@ -634,7 +514,8 @@ export const tableFields: INodeProperties[] = [
 				type: 'boolean',
 				default: false,
 				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
-				description: 'By default only the first result gets returned. If options gets set all found matches get returned.',
+				description:
+					'By default only the first result gets returned. If options gets set all found matches get returned.',
 			},
 		],
 	},

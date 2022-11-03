@@ -5,7 +5,7 @@
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
-			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" @valueChanged="valueChanged" />
+			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" :isReadOnly="isReadOnly" @valueChanged="valueChanged" />
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
@@ -38,19 +38,19 @@ import {
 } from '@/Interface';
 
 import {
+	deepCopy,
 	INodeProperties,
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import {Component} from "vue";
 
 export default mixins(
-	genericHelpers,
 	nodeHelpers,
 )
 	.extend({
@@ -61,7 +61,11 @@ export default mixins(
 			'parameter', // INodeProperties
 			'path', // string
 			'values', // NodeParameters
+			'isReadOnly', // boolean
 		],
+		components: {
+			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+		},
 		data () {
 			return {
 				selectedOption: undefined,
@@ -90,7 +94,7 @@ export default mixins(
 				});
 			},
 			node (): INodeUi {
-				return this.$store.getters.activeNode;
+				return this.$store.getters['ndv/activeNode'];
 			},
 			// Returns all the options which did not get added already
 			parameterOptions (): Array<INodePropertyOptions | INodeProperties> {
@@ -157,7 +161,7 @@ export default mixins(
 					} else {
 						// Everything else saves them directly as an array.
 						newValue = get(this.nodeValues, `${this.path}.${optionName}`, []);
-						newValue.push(JSON.parse(JSON.stringify(option.default)));
+						newValue.push(deepCopy(option.default));
 					}
 
 					parameterData = {
@@ -168,7 +172,7 @@ export default mixins(
 					// Add a new option
 					parameterData = {
 						name,
-						value: JSON.parse(JSON.stringify(option.default)),
+						value: deepCopy(option.default),
 					};
 				}
 
@@ -178,11 +182,6 @@ export default mixins(
 			valueChanged (parameterData: IUpdateInformation) {
 				this.$emit('valueChanged', parameterData);
 			},
-		},
-		beforeCreate: function () { // tslint:disable-line
-			// Because we have a circular dependency on ParameterInputList import it here
-			// to not break Vue.
-			this.$options!.components!.ParameterInputList = require('./ParameterInputList.vue').default;
 		},
 	});
 </script>

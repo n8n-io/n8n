@@ -4,10 +4,10 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	jsonParse,
 	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
-
 
 import { DiscordAttachment, DiscordWebhook } from './Interfaces';
 export class Discord implements INodeType {
@@ -23,7 +23,7 @@ export class Discord implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		properties:[
+		properties: [
 			{
 				displayName: 'Webhook URL',
 				name: 'webhookUri',
@@ -120,7 +120,7 @@ export class Discord implements INodeType {
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const returnData: IDataObject[] = [];
+		const returnData: INodeExecutionData[] = [];
 
 		const webhookUri = this.getNodeParameter('webhookUri', 0, '') as string;
 
@@ -136,21 +136,27 @@ export class Discord implements INodeType {
 			const options = this.getNodeParameter('options', i) as IDataObject;
 
 			if (!body.content && !options.embeds) {
-				throw new NodeOperationError(this.getNode(), 'Either content or embeds must be set.', { itemIndex: i });
+				throw new NodeOperationError(this.getNode(), 'Either content or embeds must be set.', {
+					itemIndex: i,
+				});
 			}
 			if (options.embeds) {
 				try {
 					//@ts-expect-error
 					body.embeds = JSON.parse(options.embeds);
 					if (!Array.isArray(body.embeds)) {
-						throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.', { itemIndex: i });
+						throw new NodeOperationError(this.getNode(), 'Embeds must be an array of embeds.', {
+							itemIndex: i,
+						});
 					}
 				} catch (e) {
-					throw new NodeOperationError(this.getNode(), 'Embeds must be valid JSON.', { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), 'Embeds must be valid JSON.', {
+						itemIndex: i,
+					});
 				}
 			}
 			if (options.username) {
-					body.username = options.username as string;
+				body.username = options.username as string;
 			}
 
 			if (options.components) {
@@ -158,13 +164,15 @@ export class Discord implements INodeType {
 					//@ts-expect-error
 					body.components = JSON.parse(options.components);
 				} catch (e) {
-					throw new NodeOperationError(this.getNode(), 'Components must be valid JSON.', { itemIndex: i });
+					throw new NodeOperationError(this.getNode(), 'Components must be valid JSON.', {
+						itemIndex: i,
+					});
 				}
 			}
 
 			if (options.allowed_mentions) {
-					//@ts-expect-error
-					body.allowed_mentions = JSON.parse(options.allowed_mentions);
+				//@ts-expect-error
+				body.allowed_mentions = jsonParse(options.allowed_mentions);
 			}
 
 			if (options.avatarUrl) {
@@ -181,12 +189,12 @@ export class Discord implements INodeType {
 
 			if (options.payloadJson) {
 				//@ts-expect-error
-				body.payload_json = JSON.parse(options.payloadJson);
+				body.payload_json = jsonParse(options.payloadJson);
 			}
 
 			if (options.attachments) {
 				//@ts-expect-error
-				body.attachments = JSON.parse(options.attachments as DiscordAttachment[]);
+				body.attachments = jsonParse(options.attachments as DiscordAttachment[]);
 			}
 
 			//* Not used props, delete them from the payload as Discord won't need them :^
@@ -202,7 +210,7 @@ export class Discord implements INodeType {
 
 			let requestOptions;
 
-			if(!body.payload_json){
+			if (!body.payload_json) {
 				requestOptions = {
 					resolveWithFullResponse: true,
 					method: 'POST',
@@ -213,7 +221,7 @@ export class Discord implements INodeType {
 					},
 					json: true,
 				};
-			}else {
+			} else {
 				requestOptions = {
 					resolveWithFullResponse: true,
 					method: 'POST',
@@ -236,9 +244,7 @@ export class Discord implements INodeType {
 					// remaining requests 0
 					// https://discord.com/developers/docs/topics/rate-limits
 					if (!+remainingRatelimit) {
-						await new Promise<void>((resolve) =>
-							setTimeout(resolve, resetAfter || 1000),
-						);
+						await new Promise<void>((resolve) => setTimeout(resolve, resetAfter || 1000));
 					}
 
 					break;
@@ -249,9 +255,7 @@ export class Discord implements INodeType {
 					if (error.statusCode === 429) {
 						const retryAfter = error.response?.headers['retry-after'] || 1000;
 
-						await new Promise<void>((resolve) =>
-							setTimeout(resolve, +retryAfter),
-						);
+						await new Promise<void>((resolve) => setTimeout(resolve, +retryAfter));
 
 						continue;
 					}
@@ -261,15 +265,18 @@ export class Discord implements INodeType {
 			} while (--maxTries);
 
 			if (maxTries <= 0) {
-				throw new NodeApiError(
-					this.getNode(),
-					{ error: 'Could not send Webhook message. Max amount of rate-limit retries reached.' },
-				);
+				throw new NodeApiError(this.getNode(), {
+					error: 'Could not send Webhook message. Max amount of rate-limit retries reached.',
+				});
 			}
 
-			returnData.push({ success: true });
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray({ success: true }),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		}
 
-		return [this.helpers.returnJsonArray(returnData)];
+		return this.prepareOutputData(returnData);
 	}
 }

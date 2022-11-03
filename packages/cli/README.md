@@ -1,6 +1,6 @@
-# n8n - Workflow Automation Tool
+![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
+# n8n - Workflow Automation Tool
 
 n8n is a free and open [fair-code](http://faircode.io) distributed node-based Workflow Automation Tool. You can self-host n8n, easily extend it, and even use it with internal tools.
 
@@ -113,7 +113,7 @@ You can find additional information and example workflows on the [n8n.io](https:
 
 ## Create Custom Nodes
 
-You can create custom nodes for n8n. Follow the instructions mentioned in the documentation to create your node: [Creating nodes](https://docs.n8n.io/nodes/creating-nodes/create-node.html)
+You can create custom nodes for n8n. Follow the instructions mentioned in the documentation to create your node: [Creating nodes](https://docs.n8n.io/integrations/creating-nodes/build/)
 
 ## Contributing
 
@@ -151,4 +151,4 @@ You can also find breaking changes here: [Breaking Changes](./BREAKING-CHANGES.m
 
 n8n is [fair-code](http://faircode.io) distributed under the [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md).
 
-Additional information on the license can be found in the [FAQ](https://docs.n8n.io/reference/faq.html#license)
+Additional information about the license can be found in the [docs](https://docs.n8n.io/reference/license/).

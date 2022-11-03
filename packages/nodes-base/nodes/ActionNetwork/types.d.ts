@@ -1,12 +1,18 @@
 import { languageOptions } from './descriptions/SharedFields';
 
-export type Resource = 'attendance' | 'event' | 'person' | 'personTag' | 'petition' | 'signature' | 'tag';
+export type Resource =
+	| 'attendance'
+	| 'event'
+	| 'person'
+	| 'personTag'
+	| 'petition'
+	| 'signature'
+	| 'tag';
 
 export type Operation = 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'add' | 'remove';
 
 // @ts-ignore
-export type LanguageCodes = typeof languageOptions[number]['value']
-
+export type LanguageCodes = typeof languageOptions[number]['value'];
 
 // ----------------------------------------
 //              UI fields
@@ -19,25 +25,25 @@ export type AllFieldsUi = {
 	languages_spoken: LanguageCodes;
 	target: string;
 	location: LocationUi;
-}
+};
 
 export type EmailAddressUi = {
-	email_addresses_fields: EmailAddressField,
-}
+	email_addresses_fields: EmailAddressField;
+};
 
 export type EmailAddressField = {
 	primary: boolean;
 	address: string;
 	status: EmailStatus;
-}
+};
 
 type BaseStatus = 'subscribed' | 'unsubscribed' | 'bouncing' | 'previous bounce';
 
 type EmailStatus = BaseStatus | 'spam complaint' | 'previous spam complaint';
 
 type PhoneNumberUi = {
-	phone_numbers_fields: PhoneNumberField[],
-}
+	phone_numbers_fields: PhoneNumberField[];
+};
 
 export type PhoneNumberField = {
 	primary: boolean;
@@ -46,12 +52,12 @@ export type PhoneNumberField = {
 };
 
 type PostalAddressesUi = {
-	postal_addresses_fields: PostalAddressField[],
-}
+	postal_addresses_fields: PostalAddressField[];
+};
 
 type LocationUi = {
-	postal_addresses_fields: PostalAddressField,
-}
+	postal_addresses_fields: PostalAddressField;
+};
 
 export type PostalAddressField = {
 	primary: boolean;
@@ -61,16 +67,15 @@ export type PostalAddressField = {
 	postal_code: string;
 	country: string;
 	language: LanguageCodes;
-	location: { location_fields: LatitudeLongitude }
-}
+	location: { location_fields: LatitudeLongitude };
+};
 
 type LatitudeLongitude = {
 	latitude: string;
 	longitude: string;
-}
+};
 
 export type FieldWithPrimaryField = EmailAddressField | PhoneNumberField | PostalAddressField;
-
 
 // ----------------------------------------
 //                 responses
@@ -89,7 +94,6 @@ export type PersonResponse = Response & {
 };
 
 export type PetitionResponse = Response & { _embedded: { 'osdi:creator': PersonResponse } };
-
 
 // ----------------------------------------
 //                 utils

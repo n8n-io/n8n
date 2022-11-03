@@ -21,7 +21,7 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.expression') }}
 						</div>
-						<div class="expression-editor">
+						<div class="expression-editor ph-no-capture">
 							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
 						</div>
 					</div>
@@ -30,7 +30,9 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.result') }}
 						</div>
-						<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
+						<div class="ph-no-capture">
+							<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
+						</div>
 					</div>
 
 				</el-col>
@@ -51,10 +53,12 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { hasExpressionMapping } from './helpers';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
 	genericHelpers,
+	debounceHelper,
 ).extend({
 	name: 'ExpressionEdit',
 	props: [
@@ -116,11 +120,11 @@ export default mixins(
 				node_name: string;
 			} = {
 				event_version: '2',
-				node_type_dest: this.$store.getters.activeNode.type,
+				node_type_dest: this.$store.getters['ndv/activeNode'].type,
 				parameter_name_dest: this.parameter.displayName,
 				is_immediate_input: false,
 				variable_expression: eventData.variable,
-				node_name: this.$store.getters.activeNode.name,
+				node_name: this.$store.getters['ndv/activeNode'].name,
 			};
 
 			if (eventData.variable) {
@@ -140,7 +144,7 @@ export default mixins(
 					const sourceNodeName = splitVar[0].split('"')[1];
 					trackProperties.node_type_source = this.$store.getters.getNodeByName(sourceNodeName).type;
 					const nodeConnections: Array<Array<{ node: string }>> = this.$store.getters.outgoingConnectionsByNodeName(sourceNodeName).main;
-					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.$store.getters.activeNode.name)) ? true : false;
+					trackProperties.is_immediate_input = (nodeConnections && nodeConnections[0] && !!nodeConnections[0].find(({ node }) => node === this.$store.getters['ndv/activeNode'].name)) ? true : false;
 
 					if (splitVar[1].startsWith('parameter')) {
 						trackProperties.parameter_name_source = splitVar[1].split('"')[1];
@@ -167,14 +171,16 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
-				this.$telemetry.track('User closed Expression Editor', {
+				const telemetryPayload = {
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
 					workflow_id: this.$store.getters.workflowId,
 					source: this.eventSource,
-					session_id: this.$store.getters['ui/ndvSessionId'],
+					session_id: this.$store.getters['ndv/ndvSessionId'],
 					has_parameter: this.value.includes('$parameter'),
 					has_mapping: hasExpressionMapping(this.value),
-				});
+				};
+				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
+				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},
@@ -223,7 +229,7 @@ export default mixins(
 
 	background-color: var(--color-background-base);
 	color: var(--color-text-dark);
-	border-bottom: 1px solid $--color-primary;
+	border-bottom: 1px solid $color-primary;
 	margin-bottom: 1em;
 
 	.headline {
@@ -238,7 +244,7 @@ export default mixins(
 		text-align: center;
 		line-height: 1.5;
 		padding-top: 1.5em;
-		color: $--color-primary;
+		color: $color-primary;
 	}
 }
 

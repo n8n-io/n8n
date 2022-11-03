@@ -6,6 +6,9 @@ import ForgotMyPasswordView from './views/ForgotMyPasswordView.vue';
 import MainHeader from '@/components/MainHeader/MainHeader.vue';
 import MainSidebar from '@/components/MainSidebar.vue';
 import NodeView from '@/views/NodeView.vue';
+import ExecutionsView from '@/components/ExecutionsView/ExecutionsView.vue';
+import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
+import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
@@ -19,6 +22,8 @@ import Router, { Route } from 'vue-router';
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
 import TemplatesWorkflowView from '@/views/TemplatesWorkflowView.vue';
 import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
+import CredentialsView from '@/views/CredentialsView.vue';
+import WorkflowsView from '@/views/WorkflowsView.vue';
 import { Store } from 'vuex';
 import { IPermissions, IRootState } from './Interface';
 import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
@@ -38,6 +43,7 @@ interface IRouteConfig extends RouteConfigSingleView {
 			disabled?: true;
 			getProperties: (route: Route, store: Store<IRootState>) => object;
 		};
+		scrollOffset?: number;
 	};
 }
 
@@ -52,15 +58,23 @@ function getTemplatesRedirect(store: Store<IRootState>) {
 
 const router = new Router({
 	mode: 'history',
-	// @ts-ignore
-	base: window.BASE_PATH === '/%BASE_PATH%/' ? '/' : window.BASE_PATH,
+	base: import.meta.env.DEV ? '/' : window.BASE_PATH ?? '/',
+	scrollBehavior(to, from, savedPosition) {
+		// saved position == null means the page is NOT visited from history (back button)
+		if (savedPosition === null && to.name === VIEWS.TEMPLATES && to.meta) {
+			// for templates view, reset scroll position in this case
+			to.meta.setScrollPosition(0);
+		}
+	},
 	routes: [
 		{
 			path: '/',
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect(store: Store<IRootState>) {
-					return { name: VIEWS.NEW_WORKFLOW };
+					const startOnNewWorkflowRouteFlag = window.posthog?.isFeatureEnabled?.('start-at-wf-empty-state');
+
+					return { name: startOnNewWorkflowRouteFlag ? VIEWS.NEW_WORKFLOW : VIEWS.WORKFLOWS };
 				},
 				permissions: {
 					allow: {
@@ -146,12 +160,17 @@ const router = new Router({
 			meta: {
 				templatesEnabled: true,
 				getRedirect: getTemplatesRedirect,
+				// Templates view remembers it's scroll position on back
+				scrollOffset: 0,
 				telemetry: {
 					getProperties(route: Route, store: Store<IRootState>) {
 						return {
 							wf_template_repo_session_id: store.getters['templates/currentSessionId'],
 						};
 					},
+				},
+				setScrollPosition(pos: number) {
+					this.scrollOffset = pos;
 				},
 				permissions: {
 					allow: {
@@ -161,7 +180,41 @@ const router = new Router({
 			},
 		},
 		{
+			path: '/credentials',
+			name: VIEWS.CREDENTIALS,
+			components: {
+				default: CredentialsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
 			path: '/workflow',
+			redirect: '/workflow/new',
+		},
+		{
+			path: '/workflows',
+			name: VIEWS.WORKFLOWS,
+			components: {
+				default: WorkflowsView,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+		},
+		{
+			path: '/workflow/new',
 			name: VIEWS.NEW_WORKFLOW,
 			components: {
 				default: NodeView,
@@ -193,6 +246,55 @@ const router = new Router({
 					},
 				},
 			},
+		},
+		{
+			path: '/workflow/:name/executions',
+			name: VIEWS.EXECUTIONS,
+			components: {
+				default: ExecutionsView,
+				header: MainHeader,
+				sidebar: MainSidebar,
+			},
+			meta: {
+				keepWorkflowAlive: true,
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedIn],
+					},
+				},
+			},
+			children: [
+				{
+					path: '',
+					name: VIEWS.EXECUTION_HOME,
+					components: {
+						executionPreview: ExecutionsLandingPage,
+					},
+					meta: {
+						keepWorkflowAlive: true,
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+				{
+					path: ':executionId',
+					name: VIEWS.EXECUTION_PREVIEW,
+					components: {
+						executionPreview: ExecutionPreview,
+					},
+					meta: {
+						keepWorkflowAlive: true,
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+			],
 		},
 		{
 			path: '/workflows/demo',

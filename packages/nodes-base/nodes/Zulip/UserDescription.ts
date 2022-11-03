@@ -8,9 +8,7 @@ export const userOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
+				resource: ['user'],
 			},
 		},
 		options: [
@@ -33,10 +31,10 @@ export const userOperations: INodeProperties[] = [
 				action: 'Get a user',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all users',
-				action: 'Get all users',
+				description: 'Get many users',
+				action: 'Get many users',
 			},
 			{
 				name: 'Update',
@@ -61,12 +59,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -79,12 +73,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -94,15 +84,12 @@ export const userFields: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -115,12 +102,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'create',
-				],
+				resource: ['user'],
+				operation: ['create'],
 			},
 		},
 		default: '',
@@ -137,12 +120,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['user'],
+				operation: ['get'],
 			},
 		},
 		default: '',
@@ -156,12 +135,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'get', 'getAll',
-				],
+				resource: ['user'],
+				operation: ['get', 'getAll'],
 			},
 		},
 		options: [
@@ -170,14 +145,16 @@ export const userFields: INodeProperties[] = [
 				name: 'clientGravatar',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the client supports computing gravatars URLs. If enabled, avatar_url will be included in the response only if there is a Zulip avatar, and will be null for users who are using gravatar as their avatar.',
+				description:
+					'Whether the client supports computing gravatars URLs. If enabled, avatar_url will be included in the response only if there is a Zulip avatar, and will be null for users who are using gravatar as their avatar.',
 			},
 			{
 				displayName: 'Custom Profile Fields',
 				name: 'includeCustomProfileFields',
 				type: 'boolean',
 				default: false,
-				description: 'Whether the client wants custom profile field data to be included in the response',
+				description:
+					'Whether the client wants custom profile field data to be included in the response',
 			},
 		],
 	},
@@ -192,12 +169,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		default: '',
@@ -211,12 +184,8 @@ export const userFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'update',
-				],
+				resource: ['user'],
+				operation: ['update'],
 			},
 		},
 		options: [
@@ -246,7 +215,8 @@ export const userFields: INodeProperties[] = [
 				name: 'profileData',
 				type: 'fixedCollection',
 				default: {},
-				description: 'A dictionary containing the to be updated custom profile field data for the user',
+				description:
+					'A dictionary containing the to be updated custom profile field data for the user',
 				typeOptions: {
 					multipleValues: true,
 				},
@@ -316,12 +286,8 @@ export const userFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'user',
-				],
-				operation: [
-					'deactivate',
-				],
+				resource: ['user'],
+				operation: ['deactivate'],
 			},
 		},
 		default: '',

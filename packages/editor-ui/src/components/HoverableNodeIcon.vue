@@ -118,8 +118,7 @@ export default Vue.extend({
 			const restUrl = this.$store.getters.getRestUrl;
 
 			if (nodeType.icon) {
-				let type, path;
-				[type, path] = nodeType.icon.split(':');
+				const [type, path] = nodeType.icon.split(':');
 				const returnData: NodeIconData = {
 					type,
 					path,

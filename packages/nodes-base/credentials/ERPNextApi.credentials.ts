@@ -14,6 +14,7 @@ export class ERPNextApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -83,7 +84,8 @@ export class ERPNextApi implements ICredentialType {
 	};
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.environment === "cloudHosted" ? "https://" + $credentials.subdomain + ".erpnext.com" : $credentials.domain}}',
+			baseURL:
+				'={{$credentials.environment === "cloudHosted" ? "https://" + $credentials.subdomain + ".erpnext.com" : $credentials.domain}}',
 			url: '/api/resource/Doctype',
 			skipSslCertificateValidation: '={{ $credentials.allowUnauthorizedCerts }}',
 		},

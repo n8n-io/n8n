@@ -1,6 +1,4 @@
-import {
-	ChannelProperties,
-} from '../../Interfaces';
+import { ChannelProperties } from '../../Interfaces';
 
 export const channelDeleteDescription: ChannelProperties = [
 	{
@@ -15,14 +13,11 @@ export const channelDeleteDescription: ChannelProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'delete',
-				],
-				resource: [
-					'channel',
-				],
+				operation: ['delete'],
+				resource: ['channel'],
 			},
 		},
-		description: 'The ID of the channel to soft delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the channel to soft delete. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 ];

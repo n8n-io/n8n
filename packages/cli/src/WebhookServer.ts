@@ -47,7 +47,7 @@ export function registerProductionWebhooks() {
 	this.app.all(
 		`/${this.endpointWebhook}/*`,
 		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook/" to get the registred part of the url
+			// Cut away the "/webhook/" to get the registered part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 				this.endpointWebhook.length + 2,
 			);
@@ -112,14 +112,14 @@ export function registerProductionWebhooks() {
 	this.app.all(
 		`/${this.endpointWebhookWaiting}/*`,
 		async (req: express.Request, res: express.Response) => {
-			// Cut away the "/webhook-waiting/" to get the registred part of the url
+			// Cut away the "/webhook-waiting/" to get the registered part of the url
 			const requestUrl = (req as ICustomRequest).parsedUrl!.pathname!.slice(
 				this.endpointWebhookWaiting.length + 2,
 			);
 
 			const method = req.method.toUpperCase() as WebhookHttpMethod;
 
-			// TOOD: Add support for OPTIONS in the future
+			// TODO: Add support for OPTIONS in the future
 			// if (method === 'OPTIONS') {
 			// }
 
@@ -193,6 +193,7 @@ class App {
 
 	constructor() {
 		this.app = express();
+		this.app.disable('x-powered-by');
 
 		this.endpointWebhook = config.getEnv('endpoints.webhook');
 		this.endpointWebhookWaiting = config.getEnv('endpoints.webhookWaiting');
@@ -221,8 +222,6 @@ class App {
 	/**
 	 * Returns the current epoch time
 	 *
-	 * @returns {number}
-	 * @memberof App
 	 */
 	getCurrentDate(): Date {
 		return new Date();
@@ -237,7 +236,6 @@ class App {
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
-			// @ts-ignore
 			req.rawBody = Buffer.from('', 'base64');
 			next();
 		});
@@ -247,7 +245,6 @@ class App {
 			bodyParser.json({
 				limit: '16mb',
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -270,7 +267,6 @@ class App {
 			bodyParser.text({
 				limit: '16mb',
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -281,7 +277,6 @@ class App {
 			bodyParser.urlencoded({
 				extended: false,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -370,6 +365,6 @@ export async function start(): Promise<void> {
 		console.log(`n8n ready on ${ADDRESS}, port ${PORT}`);
 		console.log(`Version: ${versions.cli}`);
 
-		await app.externalHooks.run('n8n.ready', [app]);
+		await app.externalHooks.run('n8n.ready', [app, config]);
 	});
 }

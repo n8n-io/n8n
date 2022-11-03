@@ -1,17 +1,13 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import {
-	get,
-	set,
-	unset,
-} from 'lodash';
-import { options } from 'rhea';
+import { get, set, unset } from 'lodash';
 
 interface IRenameKey {
 	currentKey: string;
@@ -55,7 +51,8 @@ export class RenameKeys implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'currentKey',
-								description: 'The current name of the key. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
+								description:
+									'The current name of the key. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.currentKey".',
 							},
 							{
 								displayName: 'New Key Name',
@@ -63,7 +60,8 @@ export class RenameKeys implements INodeType {
 								type: 'string',
 								default: '',
 								placeholder: 'newKey',
-								description: 'The name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
+								description:
+									'The name the key should be renamed to. It is also possible to define deep keys by using dot-notation like for example: "level1.level2.newKey".',
 							},
 						],
 					},
@@ -93,7 +91,8 @@ export class RenameKeys implements INodeType {
 								name: 'replacements',
 								values: [
 									{
-										displayName: 'Be aware that by using regular expression previously renamed keys can be affected',
+										displayName:
+											'Be aware that by using regular expression previously renamed keys can be affected',
 										name: 'regExNotice',
 										type: 'notice',
 										default: '',
@@ -113,7 +112,8 @@ export class RenameKeys implements INodeType {
 										type: 'string',
 										default: '',
 										placeholder: 'replacedName',
-										description: 'The name the key/s should be renamed to. It\'s possible to use regex captures e.g. $1, $2, ...',
+										description:
+											"The name the key/s should be renamed to. It's possible to use regex captures e.g. $1, $2, ...",
 									},
 									{
 										displayName: 'Options',
@@ -148,9 +148,7 @@ export class RenameKeys implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-
 		const items = this.getInputData();
 
 		const returnData: INodeExecutionData[] = [];
@@ -162,13 +160,17 @@ export class RenameKeys implements INodeType {
 
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			renameKeys = this.getNodeParameter('keys.key', itemIndex, []) as IRenameKey[];
-			const regexReplacements = this.getNodeParameter('additionalOptions.regexReplacement.replacements', itemIndex, []) as IDataObject[];
+			const regexReplacements = this.getNodeParameter(
+				'additionalOptions.regexReplacement.replacements',
+				itemIndex,
+				[],
+			) as IDataObject[];
 
 			item = items[itemIndex];
 
 			// Copy the whole JSON data as data on any level can be renamed
 			newItem = {
-				json: JSON.parse(JSON.stringify(item.json)),
+				json: deepCopy(item.json),
 				pairedItem: {
 					item: itemIndex,
 				},
@@ -181,7 +183,11 @@ export class RenameKeys implements INodeType {
 			}
 
 			renameKeys.forEach((renameKey) => {
-				if (renameKey.currentKey === '' || renameKey.newKey === '' || renameKey.currentKey === renameKey.newKey) {
+				if (
+					renameKey.currentKey === '' ||
+					renameKey.newKey === '' ||
+					renameKey.currentKey === renameKey.newKey
+				) {
 					// Ignore all which do not have all the values set or if the new key is equal to the current key
 					return;
 				}
@@ -194,11 +200,11 @@ export class RenameKeys implements INodeType {
 				unset(newItem.json, renameKey.currentKey as string);
 			});
 
-			regexReplacements.forEach(replacement => {
+			regexReplacements.forEach((replacement) => {
 				const { searchRegex, replaceRegex, options } = replacement;
-				const {depth, caseInsensitive} = options as IDataObject;
+				const { depth, caseInsensitive } = options as IDataObject;
 
-				const flags = (caseInsensitive as boolean) ?  'i' : undefined;
+				const flags = (caseInsensitive as boolean) ? 'i' : undefined;
 
 				const regex = new RegExp(searchRegex as string, flags);
 

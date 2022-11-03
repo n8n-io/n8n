@@ -1,18 +1,9 @@
 /* eslint-disable n8n-nodes-base/node-filename-against-convention */
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	promisify,
-} from 'util';
+import { promisify } from 'util';
 
 import moment from 'moment-timezone';
 
@@ -62,7 +53,8 @@ export class ICalendar implements INodeType {
 				type: 'dateTime',
 				default: '',
 				required: true,
-				description: 'Date and time at which the event begins. (For all-day events, the time will be ignored.).',
+				description:
+					'Date and time at which the event begins. (For all-day events, the time will be ignored.).',
 			},
 			{
 				displayName: 'End',
@@ -70,7 +62,8 @@ export class ICalendar implements INodeType {
 				type: 'dateTime',
 				default: '',
 				required: true,
-				description: 'Date and time at which the event ends. (For all-day events, the time will be ignored.).',
+				description:
+					'Date and time at which the event ends. (For all-day events, the time will be ignored.).',
 			},
 			{
 				displayName: 'All Day',
@@ -95,9 +88,7 @@ export class ICalendar implements INodeType {
 				default: {},
 				displayOptions: {
 					show: {
-						operation: [
-							'createEventFile',
-						],
+						operation: ['createEventFile'],
 					},
 				},
 				options: [
@@ -163,7 +154,8 @@ export class ICalendar implements INodeType {
 						name: 'calName',
 						type: 'string',
 						default: '',
-						description: 'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook (<a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d">spec</a>).',
+						description:
+							'Specifies the calendar (not event) name. Used by Apple iCal and Microsoft Outlook (<a href="https://docs.microsoft.com/en-us/openspecs/exchange_server_protocols/ms-oxcical/1da58449-b97e-46bd-b018-a1ce576f3e6d">spec</a>).',
 					},
 					{
 						displayName: 'Description',
@@ -220,7 +212,8 @@ export class ICalendar implements INodeType {
 						name: 'recurrenceRule',
 						type: 'string',
 						default: '',
-						description: 'A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html">Rule generator</a>).',
+						description:
+							'A rule to define the repeat pattern of the event (RRULE). (<a href="https://icalendar.org/rrule-tool.html">Rule generator</a>).',
 					},
 					{
 						displayName: 'Organizer',
@@ -260,7 +253,8 @@ export class ICalendar implements INodeType {
 						name: 'sequence',
 						type: 'number',
 						default: 0,
-						description: 'When sending an update for an event (with the same uid), defines the revision sequence number',
+						description:
+							'When sending an update for an event (with the same uid), defines the revision sequence number',
 					},
 					{
 						displayName: 'Status',
@@ -287,7 +281,8 @@ export class ICalendar implements INodeType {
 						name: 'uid',
 						type: 'string',
 						default: '',
-						description: 'Universally unique ID for the event (will be auto-generated if not specified here). Should be globally unique.',
+						description:
+							'Universally unique ID for the event (will be auto-generated if not specified here). Should be globally unique.',
 					},
 					{
 						displayName: 'URL',
@@ -312,14 +307,18 @@ export class ICalendar implements INodeType {
 				const allDay = this.getNodeParameter('allDay', i) as boolean;
 				const start = this.getNodeParameter('start', i) as string;
 				let end = this.getNodeParameter('end', i) as string;
-				end = (allDay) ? moment(end).utc().add(1, 'day').format() as string : end;
+				end = allDay ? (moment(end).utc().add(1, 'day').format() as string) : end;
 				const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
 				const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 				let fileName = 'event.ics';
 
-				const eventStart = moment(start).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
+				const eventStart = moment(start)
+					.toArray()
+					.splice(0, allDay ? 3 : 6) as ics.DateArray;
 				eventStart[1]++;
-				const eventEnd = moment(end).toArray().splice(0, (allDay) ? 3 : 6) as ics.DateArray;
+				const eventEnd = moment(end)
+					.toArray()
+					.splice(0, allDay ? 3 : 6) as ics.DateArray;
 				eventEnd[1]++;
 
 				if (additionalFields.fileName) {
@@ -335,34 +334,35 @@ export class ICalendar implements INodeType {
 				};
 
 				if (additionalFields.geolocationUi) {
-					data.geo = (additionalFields.geolocationUi as IDataObject).geolocationValues as ics.GeoCoordinates;
+					data.geo = (additionalFields.geolocationUi as IDataObject)
+						.geolocationValues as ics.GeoCoordinates;
 					delete additionalFields.geolocationUi;
 				}
 
 				if (additionalFields.organizerUi) {
-					data.organizer = (additionalFields.organizerUi as IDataObject).organizerValues as ics.Person;
+					data.organizer = (additionalFields.organizerUi as IDataObject)
+						.organizerValues as ics.Person;
 					delete additionalFields.organizerUi;
 				}
 
 				if (additionalFields.attendeesUi) {
-					data.attendees = (additionalFields.attendeesUi as IDataObject).attendeeValues as ics.Attendee[];
+					data.attendees = (additionalFields.attendeesUi as IDataObject)
+						.attendeeValues as ics.Attendee[];
 					delete additionalFields.attendeesUi;
 				}
 
 				Object.assign(data, additionalFields);
-				const buffer = Buffer.from(await createEvent(data) as string);
+				const buffer = Buffer.from((await createEvent(data)) as string);
 				const binaryData = await this.helpers.prepareBinaryData(buffer, fileName, 'text/calendar');
-				returnData.push(
-					{
-						json: {},
-						binary: {
-							[binaryPropertyName]: binaryData,
-						},
-						pairedItem: {
-							item: i,
-						},
+				returnData.push({
+					json: {},
+					binary: {
+						[binaryPropertyName]: binaryData,
 					},
-				);
+					pairedItem: {
+						item: i,
+					},
+				});
 			}
 		}
 		return [returnData];

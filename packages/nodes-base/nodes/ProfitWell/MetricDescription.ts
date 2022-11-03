@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const metricOperations: INodeProperties[] = [
 	{
@@ -10,16 +8,15 @@ export const metricOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
+				resource: ['metric'],
 			},
 		},
 		options: [
 			{
 				name: 'Get',
 				value: 'get',
-				description: 'Retrieve financial metric broken down by day for either the current month or the last',
+				description:
+					'Retrieve financial metric broken down by day for either the current month or the last',
 				action: 'Get a metric',
 			},
 		],
@@ -28,7 +25,6 @@ export const metricOperations: INodeProperties[] = [
 ];
 
 export const metricFields: INodeProperties[] = [
-
 	/* -------------------------------------------------------------------------- */
 	/*                                metric:get                                  */
 	/* -------------------------------------------------------------------------- */
@@ -41,7 +37,8 @@ export const metricFields: INodeProperties[] = [
 			{
 				name: 'Daily',
 				value: 'daily',
-				description: 'Retrieve financial metric broken down by day for either the current month or the last',
+				description:
+					'Retrieve financial metric broken down by day for either the current month or the last',
 			},
 			{
 				name: 'Monthly',
@@ -53,12 +50,8 @@ export const metricFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['metric'],
+				operation: ['get'],
 			},
 		},
 	},
@@ -71,15 +64,9 @@ export const metricFields: INodeProperties[] = [
 		required: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
-				operation: [
-					'get',
-				],
-				type: [
-					'daily',
-				],
+				resource: ['metric'],
+				operation: ['get'],
+				type: ['daily'],
 			},
 		},
 		description: 'Can only be the current or previous month. Format should be YYYY-MM.',
@@ -91,12 +78,8 @@ export const metricFields: INodeProperties[] = [
 		default: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['metric'],
+				operation: ['get'],
 			},
 		},
 		description: 'Whether to return a simplified version of the response instead of the raw data',
@@ -108,12 +91,8 @@ export const metricFields: INodeProperties[] = [
 		placeholder: 'Add Option',
 		displayOptions: {
 			show: {
-				resource: [
-					'metric',
-				],
-				operation: [
-					'get',
-				],
+				resource: ['metric'],
+				operation: ['get'],
 			},
 		},
 		default: {},
@@ -126,7 +105,8 @@ export const metricFields: INodeProperties[] = [
 					loadOptionsMethod: 'getPlanIds',
 				},
 				default: '',
-				description: 'Only return the metric for this Plan ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Only return the metric for this Plan ID. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Metrics',
@@ -134,9 +114,7 @@ export const metricFields: INodeProperties[] = [
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						'/type': [
-							'daily',
-						],
+						'/type': ['daily'],
 					},
 				},
 				options: [
@@ -158,12 +136,14 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Cumulative Net New MRR',
 						value: 'cumulative_net_new_mrr',
-						description: 'New + Upgrades - Downgrades - Churn MRR, cumulative for the month up through the given day',
+						description:
+							'New + Upgrades - Downgrades - Churn MRR, cumulative for the month up through the given day',
 					},
 					{
 						name: 'Cumulative New Trialing Customers',
 						value: 'cumulative_new_trialing_customers',
-						description: 'Number of new trialing customers, cumulative for the month up through the given day',
+						description:
+							'Number of new trialing customers, cumulative for the month up through the given day',
 					},
 					{
 						name: 'Downgraded Customers',
@@ -178,7 +158,8 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Future Churn MRR',
 						value: 'future_churn_mrr',
-						description: 'MRR that will be lost when users who are currently cancelled actually churn',
+						description:
+							'MRR that will be lost when users who are currently cancelled actually churn',
 					},
 					{
 						name: 'New Customers',
@@ -203,7 +184,7 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Recurring Revenue',
 						value: 'recurring_revenue',
-						description: 'Your company\'s MRR',
+						description: "Your company's MRR",
 					},
 					{
 						name: 'Upgraded Customers',
@@ -217,7 +198,8 @@ export const metricFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Comma-separated list of metric trends to return (the default is to return all metric)',
+				description:
+					'Comma-separated list of metric trends to return (the default is to return all metric)',
 			},
 			{
 				displayName: 'Metrics',
@@ -225,9 +207,7 @@ export const metricFields: INodeProperties[] = [
 				type: 'multiOptions',
 				displayOptions: {
 					show: {
-						'/type': [
-							'monthly',
-						],
+						'/type': ['monthly'],
 					},
 				},
 				options: [
@@ -269,7 +249,8 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Churned Recurring Revenue Cancellations',
 						value: 'churned_recurring_revenue_cancellations',
-						description: 'Revenue lost to customers who churned by cancelling their subscription(s)',
+						description:
+							'Revenue lost to customers who churned by cancelling their subscription(s)',
 					},
 					{
 						name: 'Churned Recurring Revenue Delinquent',
@@ -294,12 +275,14 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Customer Churn Cancellations Rate',
 						value: 'customers_churn_cancellations_rate',
-						description: 'Percentage of paying customers who churned by cancelling their subscription(s)',
+						description:
+							'Percentage of paying customers who churned by cancelling their subscription(s)',
 					},
 					{
 						name: 'Customer Churn Delinquent Rate',
 						value: 'customers_churn_delinquent_rate',
-						description: 'Percentage of paying customers who churned because they failed to pay you',
+						description:
+							'Percentage of paying customers who churned because they failed to pay you',
 					},
 					{
 						name: 'Customer Churn Rate',
@@ -339,7 +322,7 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Existing Recurring Revenue',
 						value: 'existing_recurring_revenue',
-						description: 'Your company\'s MRR at the start of the given month',
+						description: "Your company's MRR at the start of the given month",
 					},
 					{
 						name: 'Existing Trialing Customers',
@@ -349,7 +332,7 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Growth_Rate',
 						value: 'growth_rate',
-						description: 'Rate at which your company\'s MRR has grown over the previous month',
+						description: "Rate at which your company's MRR has grown over the previous month",
 					},
 					{
 						name: 'Lifetime Value',
@@ -394,17 +377,17 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Recurring Revenue',
 						value: 'recurring_revenue',
-						description: 'Your company\'s MRR',
+						description: "Your company's MRR",
 					},
 					{
 						name: 'Revenue Churn Cancellations Rate',
 						value: 'revenue_churn_cancellations_rate',
-						description: 'Voluntary churn revenue as a percent of the month\'s starting revenue',
+						description: "Voluntary churn revenue as a percent of the month's starting revenue",
 					},
 					{
 						name: 'Revenue Churn Delinquent_ Rate',
 						value: 'revenue_churn_delinquent_rate',
-						description: 'Delinquent churn revenue as a percent of the month\'s starting revenue',
+						description: "Delinquent churn revenue as a percent of the month's starting revenue",
 					},
 					{
 						name: 'Revenue Churn Rate',
@@ -414,7 +397,8 @@ export const metricFields: INodeProperties[] = [
 					{
 						name: 'Revenue Retention Rate',
 						value: 'revenue_retention_rate',
-						description: 'Percent of revenue coming from existing customers that was retained by the end of the month',
+						description:
+							'Percent of revenue coming from existing customers that was retained by the end of the month',
 					},
 					{
 						name: 'Upgrade Rate',
@@ -433,7 +417,8 @@ export const metricFields: INodeProperties[] = [
 					},
 				],
 				default: [],
-				description: 'Comma-separated list of metric trends to return (the default is to return all metric)',
+				description:
+					'Comma-separated list of metric trends to return (the default is to return all metric)',
 			},
 		],
 	},

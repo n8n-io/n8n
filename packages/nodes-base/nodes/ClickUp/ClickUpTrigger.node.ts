@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -12,13 +9,9 @@ import {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 
-import {
-	clickupApiRequest,
-} from './GenericFunctions';
+import { clickupApiRequest } from './GenericFunctions';
 
-import {
-	createHmac,
-} from 'crypto';
+import { createHmac } from 'crypto';
 
 export class ClickUpTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -39,9 +32,7 @@ export class ClickUpTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -50,9 +41,7 @@ export class ClickUpTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -86,7 +75,8 @@ export class ClickUpTrigger implements INodeType {
 				displayName: 'Team Name or ID',
 				name: 'team',
 				type: 'options',
-				description: 'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				description:
+					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 				typeOptions: {
 					loadOptionsMethod: 'getTeams',
 				},
@@ -339,15 +329,15 @@ export class ClickUpTrigger implements INodeType {
 		const webhookData = this.getWorkflowStaticData('node');
 		const headerData = this.getHeaderData() as IDataObject;
 		const req = this.getRequestObject();
-		const computedSignature = createHmac('sha256', webhookData.secret as string).update(JSON.stringify(req.body)).digest('hex');
+		const computedSignature = createHmac('sha256', webhookData.secret as string)
+			.update(JSON.stringify(req.body))
+			.digest('hex');
 		if (headerData['x-signature'] !== computedSignature) {
 			// Signature is not valid so ignore call
 			return {};
 		}
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body)],
 		};
 	}
 }

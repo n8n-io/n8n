@@ -7,7 +7,7 @@
 						template.name
 					}}</n8n-heading>
 					<n8n-text v-if="template && template.name" color="text-base" size="small">
-						{{ $locale.baseText('templates.workflow') }}
+						{{ $locale.baseText('generic.workflow') }}
 					</n8n-text>
 					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
 				</div>
@@ -89,11 +89,14 @@ export default mixins(workflowHelpers).extend({
 	},
 	methods: {
 		openWorkflow(id: string, e: PointerEvent) {
-			this.$telemetry.track('User inserted workflow template', {
+			const telemetryPayload = {
 				source: 'workflow',
 				template_id: id,
 				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
-			});
+			};
+
+			this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
+			this.$telemetry.track('User inserted workflow template', telemetryPayload);
 
 			if (e.metaKey || e.ctrlKey) {
 				const route = this.$router.resolve({ name: VIEWS.TEMPLATE_IMPORT, params: { id } });
@@ -107,9 +110,13 @@ export default mixins(workflowHelpers).extend({
 			this.showPreview = false;
 		},
 		scrollToTop() {
-			window.scrollTo({
-				top: 0,
-			});
+			const contentArea = document.getElementById('content');
+
+			if (contentArea) {
+				contentArea.scrollTo({
+					top: 0,
+				});
+			}
 		},
 	},
 	watch: {
@@ -161,6 +168,10 @@ export default mixins(workflowHelpers).extend({
 
 .image {
 	width: 100%;
+	height: 500px;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	overflow: hidden;
 
 	img {
 		width: 100%;
@@ -172,7 +183,7 @@ export default mixins(workflowHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		display: block;
 	}
 }
@@ -182,7 +193,7 @@ export default mixins(workflowHelpers).extend({
 	padding-right: var(--spacing-2xl);
 	margin-bottom: var(--spacing-l);
 
-	@media (max-width: $--breakpoint-xs) {
+	@media (max-width: $breakpoint-xs) {
 		width: 100%;
 	}
 }

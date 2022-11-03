@@ -1,6 +1,4 @@
-import {
-	ITriggerFunctions,
-} from 'n8n-core';
+import { ITriggerFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -38,7 +36,8 @@ export class RedisTrigger implements INodeType {
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported.',
+				description:
+					'Channels to subscribe to, multiple channels be defined with comma. Wildcard character(*) is supported.',
 			},
 			{
 				displayName: 'Options',
@@ -67,7 +66,6 @@ export class RedisTrigger implements INodeType {
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
-
 		const credentials = await this.getCredentials('redis');
 
 		const redisOptions: redis.ClientOpts = {
@@ -102,16 +100,16 @@ export class RedisTrigger implements INodeType {
 						if (options.jsonParseBody) {
 							try {
 								message = JSON.parse(message);
-							} catch (error) { }
+							} catch (error) {}
 						}
 
 						if (options.onlyMessage) {
-							self.emit([self.helpers.returnJsonArray({message})]);
+							self.emit([self.helpers.returnJsonArray({ message })]);
 							resolve(true);
 							return;
 						}
 
-						self.emit([self.helpers.returnJsonArray({channel, message})]);
+						self.emit([self.helpers.returnJsonArray({ channel, message })]);
 						resolve(true);
 					});
 				});

@@ -1,12 +1,18 @@
 <template>
 	<div :class="$style.container">
-		<div :class="{
-				[this.$style.label]: !!this.label,
-				[this.$style.underline]: this.underline,
-				[this.$style[this.size]]: true,
-			}">
+		<label
+			v-if="label || $slots.options"
+			:for="inputName"
+			:class="{
+				[$style.inputLabel]: true,
+				[$style.heading]: !!label,
+				[$style.underline]: underline,
+				[$style[size]]: true,
+				[$style.overflow]: !!$slots.options,
+			}"
+		>
 			<div :class="$style.title" v-if="label">
-				<n8n-text :bold="bold" :size="size" :compact="!underline">
+				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options" :color="color">
 					{{ label }}
 					<n8n-text color="primary" :bold="bold" :size="size" v-if="required">*</n8n-text>
 				</n8n-text>
@@ -14,15 +20,15 @@
 			<span :class="[$style.infoIcon, showTooltip ? $style.visible: $style.hidden]" v-if="tooltipText && label">
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
-					<div slot="content" v-html="addTargetBlank(tooltipText)"></div>
+					<div slot="content" v-html="addTargetBlank(tooltipText)" />
 				</n8n-tooltip>
 			</span>
-			<div v-if="$slots.options && label" :class="{[$style.overlay]: true, [$style.visible]: showOptions}"><div></div></div>
+			<div v-if="$slots.options && label" :class="{[$style.overlay]: true, [$style.visible]: showOptions}" />
 			<div v-if="$slots.options" :class="{[$style.options]: true, [$style.visible]: showOptions}">
-				<slot name="options"></slot>
+				<slot name="options"/>
 			</div>
-		</div>
-		<slot></slot>
+		</label>
+		<slot />
 	</div>
 </template>
 
@@ -33,7 +39,9 @@ import N8nIcon from '../N8nIcon';
 
 import { addTargetBlank } from '../utils/helpers';
 
-export default {
+import Vue from 'vue';
+
+export default Vue.extend({
 	name: 'n8n-input-label',
 	components: {
 		N8nText,
@@ -41,10 +49,16 @@ export default {
 		N8nTooltip,
 	},
 	props: {
+		color: {
+			type: String,
+		},
 		label: {
 			type: String,
 		},
 		tooltipText: {
+			type: String,
+		},
+		inputName: {
 			type: String,
 		},
 		required: {
@@ -73,7 +87,7 @@ export default {
 	methods: {
 		addTargetBlank,
 	},
-};
+});
 </script>
 
 <style lang="scss" module>
@@ -81,7 +95,9 @@ export default {
 	display: flex;
 	flex-direction: column;
 }
-
+.inputLabel {
+	display: block;
+}
 .container:hover,.inputLabel:hover {
 	.infoIcon {
 		opacity: 1;
@@ -153,8 +169,11 @@ export default {
 	opacity: 1;
 }
 
-.label {
+.heading {
 	display: flex;
+}
+
+.overflow {
 	overflow-x: hidden;
 	overflow-y: clip;
 }

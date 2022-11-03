@@ -1,17 +1,8 @@
-import {
-	INodeType,
-	INodeTypeDescription
-} from 'n8n-workflow';
+import { INodeType, INodeTypeDescription } from 'n8n-workflow';
 
-import {
-	binFields,
-	binOperations,
-} from './BinDescription';
+import { binFields, binOperations } from './BinDescription';
 
-import {
-	requestFields,
-	requestOperations,
-} from './RequestDescription';
+import { requestFields, requestOperations } from './RequestDescription';
 
 export class PostBin implements INodeType {
 	description: INodeTypeDescription = {
@@ -24,7 +15,6 @@ export class PostBin implements INodeType {
 		description: 'Consume PostBin API',
 		defaults: {
 			name: 'PostBin',
-			color: '#4dc0b5',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

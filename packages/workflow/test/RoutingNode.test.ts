@@ -16,6 +16,7 @@ import {
 	IN8nRequestOperations,
 	INodeCredentialDescription,
 	IExecuteData,
+	INodeTypeDescription,
 } from '../src';
 
 import * as Helpers from './Helpers';
@@ -167,7 +168,7 @@ describe('RoutingNode', () => {
 				},
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					nodeParameters: {
 						multipleFields: {
@@ -613,6 +614,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -631,10 +633,8 @@ describe('RoutingNode', () => {
 		};
 
 		for (const testData of tests) {
-			test(testData.description, () => {
+			test(testData.description, async () => {
 				node.parameters = testData.input.nodeParameters;
-
-				// @ts-ignore
 				nodeType.description.properties = [testData.input.nodeTypeProperties];
 
 				const workflow = new Workflow({
@@ -670,7 +670,7 @@ describe('RoutingNode', () => {
 					mode,
 				);
 
-				const result = routingNode.getRequestOptionsFromParameters(
+				const result = await routingNode.getRequestOptionsFromParameters(
 					executeSingleFunctions,
 					testData.input.nodeTypeProperties,
 					itemIndex,
@@ -966,7 +966,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'mutliple parameters, complex example with everything',
+				description: 'multiple parameters, complex example with everything',
 				input: {
 					node: {
 						parameters: {
@@ -1572,7 +1572,7 @@ describe('RoutingNode', () => {
 				],
 			},
 			{
-				description: 'single parameter, mutliple postReceive: rootProperty, setKeyValue, sort',
+				description: 'single parameter, multiple postReceive: rootProperty, setKeyValue, sort',
 				input: {
 					nodeType: {
 						requestDefaults: {
@@ -1659,6 +1659,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1689,8 +1690,7 @@ describe('RoutingNode', () => {
 					connections: {},
 				};
 
-				// @ts-ignore
-				nodeType.description = { ...testData.input.nodeType };
+				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
 
 				const workflow = new Workflow({
 					nodes: workflowData.nodes,
@@ -1714,8 +1714,7 @@ describe('RoutingNode', () => {
 					source: null,
 				} as IExecuteData;
 
-				// @ts-ignore
-				const nodeExecuteFunctions: INodeExecuteFunctions = {
+				const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
 					getExecuteFunctions: () => {
 						return Helpers.getExecuteFunctions(
 							workflow,
@@ -1751,7 +1750,7 @@ describe('RoutingNode', () => {
 					runIndex,
 					nodeType,
 					executeData,
-					nodeExecuteFunctions,
+					nodeExecuteFunctions as INodeExecuteFunctions,
 				);
 
 				expect(result).toEqual(testData.output);
@@ -1763,12 +1762,7 @@ describe('RoutingNode', () => {
 		const tests: Array<{
 			description: string;
 			input: {
-				nodeType: {
-					properties?: INodeProperties[];
-					credentials?: INodeCredentialDescription[];
-					requestDefaults?: IHttpRequestOptions;
-					requestOperations?: IN8nRequestOperations;
-				};
+				nodeType: Partial<INodeTypeDescription>;
 				node: {
 					parameters: INodeParameters;
 				};
@@ -1831,6 +1825,7 @@ describe('RoutingNode', () => {
 			name: 'test',
 			type: 'test.set',
 			typeVersion: 1,
+			id: 'uuid-1234',
 			position: [0, 0],
 		};
 
@@ -1867,8 +1862,7 @@ describe('RoutingNode', () => {
 					connections: {},
 				};
 
-				// @ts-ignore
-				nodeType.description = { ...testData.input.nodeType };
+				nodeType.description = { ...testData.input.nodeType } as INodeTypeDescription;
 
 				const workflow = new Workflow({
 					nodes: workflowData.nodes,
@@ -1894,8 +1888,7 @@ describe('RoutingNode', () => {
 
 				let currentItemIndex = 0;
 				for (let iteration = 0; iteration < inputData.main[0]!.length; iteration++) {
-					// @ts-ignore
-					const nodeExecuteFunctions: INodeExecuteFunctions = {
+					const nodeExecuteFunctions: Partial<INodeExecuteFunctions> = {
 						getExecuteFunctions: () => {
 							return Helpers.getExecuteFunctions(
 								workflow,
@@ -1925,6 +1918,10 @@ describe('RoutingNode', () => {
 							);
 						},
 					};
+
+					if (!nodeExecuteFunctions.getExecuteSingleFunctions) {
+						fail('Expected nodeExecuteFunctions to contain getExecuteSingleFunctions');
+					}
 
 					const routingNodeExecutionContext = nodeExecuteFunctions.getExecuteSingleFunctions(
 						routingNode.workflow,

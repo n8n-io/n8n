@@ -1,6 +1,4 @@
-import {
-	IDataObject,
-} from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export interface IReminder {
 	useDefault?: boolean;
@@ -9,10 +7,10 @@ export interface IReminder {
 
 export interface IConferenceData {
 	createRequest?: {
-		requestId: string,
+		requestId: string;
 		conferenceSolution: {
-			type: string,
-		}
+			type: string;
+		};
 	};
 }
 

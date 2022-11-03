@@ -1,10 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import {
-	IDataObject,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	addConfigFields,
@@ -16,16 +11,9 @@ import {
 	tagFields,
 } from './descriptions';
 
-import simpleGit, {
-	LogOptions,
-	SimpleGit,
-	SimpleGitOptions,
-} from 'simple-git';
+import simpleGit, { LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
 
-import {
-	access,
-	mkdir,
-} from 'fs/promises';
+import { access, mkdir } from 'fs/promises';
 
 import { URL } from 'url';
 
@@ -48,9 +36,7 @@ export class Git implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'gitPassword',
-						],
+						authentication: ['gitPassword'],
 					},
 				},
 			},
@@ -72,10 +58,7 @@ export class Git implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						operation: [
-							'clone',
-							'push',
-						],
+						operation: ['clone', 'push'],
 					},
 				},
 				default: 'none',
@@ -175,9 +158,7 @@ export class Git implements INodeType {
 				type: 'string',
 				displayOptions: {
 					hide: {
-						operation: [
-							'clone',
-						],
+						operation: ['clone'],
 					},
 				},
 				default: '',
@@ -191,9 +172,7 @@ export class Git implements INodeType {
 				type: 'string',
 				displayOptions: {
 					show: {
-						operation: [
-							'clone',
-						],
+						operation: ['clone'],
 					},
 				},
 				default: '',
@@ -213,10 +192,8 @@ export class Git implements INodeType {
 		],
 	};
 
-
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
-
 
 		const prepareRepository = async (repositoryPath: string): Promise<string> => {
 			const authentication = this.getNodeParameter('authentication', 0) as string;
@@ -280,7 +257,6 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
-
 				} else if (operation === 'addConfig') {
 					// ----------------------------------
 					//         addConfig
@@ -303,7 +279,6 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
-
 				} else if (operation === 'clone') {
 					// ----------------------------------
 					//         clone
@@ -322,7 +297,6 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
-
 				} else if (operation === 'commit') {
 					// ----------------------------------
 					//         commit
@@ -345,7 +319,6 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
-
 				} else if (operation === 'fetch') {
 					// ----------------------------------
 					//         fetch
@@ -360,7 +333,6 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
-
 				} else if (operation === 'log') {
 					// ----------------------------------
 					//         log
@@ -378,14 +350,15 @@ export class Git implements INodeType {
 
 					const log = await git.log(logOptions);
 
-					// @ts-ignore
-					returnItems.push(...this.helpers.returnJsonArray(log.all).map(item => {
-						return {
-							...item,
-							pairedItem: { item: itemIndex },
-						};
-					}));
-
+					returnItems.push(
+						// @ts-ignore
+						...this.helpers.returnJsonArray(log.all).map((item) => {
+							return {
+								...item,
+								pairedItem: { item: itemIndex },
+							};
+						}),
+					);
 				} else if (operation === 'pull') {
 					// ----------------------------------
 					//         pull
@@ -400,7 +373,6 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
-
 				} else if (operation === 'push') {
 					// ----------------------------------
 					//         push
@@ -438,7 +410,6 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
-
 				} else if (operation === 'pushTags') {
 					// ----------------------------------
 					//         pushTags
@@ -453,7 +424,6 @@ export class Git implements INodeType {
 							item: itemIndex,
 						},
 					});
-
 				} else if (operation === 'listConfig') {
 					// ----------------------------------
 					//         listConfig
@@ -470,13 +440,14 @@ export class Git implements INodeType {
 					}
 
 					// @ts-ignore
-					returnItems.push(...this.helpers.returnJsonArray(data).map(item => {
-						return {
-							...item,
-							pairedItem: { item: itemIndex },
-						};
-					}));
-
+					returnItems.push(
+						...this.helpers.returnJsonArray(data).map((item) => {
+							return {
+								...item,
+								pairedItem: { item: itemIndex },
+							};
+						}),
+					);
 				} else if (operation === 'status') {
 					// ----------------------------------
 					//         status
@@ -484,14 +455,15 @@ export class Git implements INodeType {
 
 					const status = await git.status();
 
-					// @ts-ignore
-					returnItems.push(...this.helpers.returnJsonArray([status]).map(item => {
-						return {
-							...item,
-							pairedItem: { item: itemIndex },
-						};
-					}));
-
+					returnItems.push(
+						// @ts-ignore
+						...this.helpers.returnJsonArray([status]).map((item) => {
+							return {
+								...item,
+								pairedItem: { item: itemIndex },
+							};
+						}),
+					);
 				} else if (operation === 'tag') {
 					// ----------------------------------
 					//         tag
@@ -509,9 +481,7 @@ export class Git implements INodeType {
 						},
 					});
 				}
-
 			} catch (error) {
-
 				if (this.continueOnFail()) {
 					returnItems.push({
 						json: {

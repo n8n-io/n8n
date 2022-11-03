@@ -12,12 +12,10 @@ import {
 	formatSubmission,
 	koBoToolboxApiRequest,
 	loadForms,
-	parseStringList
+	parseStringList,
 } from './GenericFunctions';
 
-import {
-	options,
-} from './Options';
+import { options } from './Options';
 
 export class KoBoToolboxTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -29,7 +27,6 @@ export class KoBoToolboxTrigger implements INodeType {
 		description: 'Process KoBoToolbox submissions',
 		defaults: {
 			name: 'KoBoToolbox Trigger',
-			color: '#64C0FF',
 		},
 		inputs: [],
 		outputs: ['main'],
@@ -57,7 +54,8 @@ export class KoBoToolboxTrigger implements INodeType {
 				},
 				required: true,
 				default: '',
-				description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 			{
 				displayName: 'Trigger On',
@@ -146,6 +144,7 @@ export class KoBoToolboxTrigger implements INodeType {
 		const req = this.getRequestObject();
 		const formatOptions = this.getNodeParameter('formatOptions') as IDataObject;
 
+		// prettier-ignore
 		const responseData = formatOptions.reformat
 			? formatSubmission(req.body, parseStringList(formatOptions.selectMask as string), parseStringList(formatOptions.numberMask as string))
 			: req.body;
@@ -153,16 +152,11 @@ export class KoBoToolboxTrigger implements INodeType {
 		if (formatOptions.download) {
 			// Download related attachments
 			return {
-				workflowData: [
-					[await downloadAttachments.call(this, responseData, formatOptions)],
-				],
+				workflowData: [[await downloadAttachments.call(this, responseData, formatOptions)]],
 			};
-		}
-		else {
+		} else {
 			return {
-				workflowData: [
-					this.helpers.returnJsonArray([responseData]),
-				],
+				workflowData: [this.helpers.returnJsonArray([responseData])],
 			};
 		}
 	}

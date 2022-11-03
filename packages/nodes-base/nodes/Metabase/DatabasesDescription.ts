@@ -25,9 +25,9 @@ export const databasesOperations: INodeProperties[] = [
 				action: 'Add a databases',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all the databases',
+				description: 'Get many databases',
 				routing: {
 					request: {
 						method: 'GET',
@@ -44,7 +44,7 @@ export const databasesOperations: INodeProperties[] = [
 						],
 					},
 				},
-				action: 'Get all databases',
+				action: 'Get many databases',
 			},
 			{
 				name: 'Get Fields',
@@ -211,6 +211,7 @@ export const databasesFields: INodeProperties[] = [
 		displayName: 'Password',
 		name: 'password',
 		type: 'string',
+		typeOptions: { password: true },
 		required: true,
 		placeholder: 'password',
 		displayOptions: {

@@ -1,10 +1,8 @@
-import {
-	INodeProperties,
-	INodePropertyCollection,
-	INodePropertyOptions,
-} from 'n8n-workflow';
+import { INodeProperties, INodePropertyCollection, INodePropertyOptions } from 'n8n-workflow';
 
-export const rabbitDefaultOptions: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection> = [
+export const rabbitDefaultOptions: Array<
+	INodePropertyOptions | INodeProperties | INodePropertyCollection
+> = [
 	{
 		displayName: 'Arguments',
 		name: 'arguments',

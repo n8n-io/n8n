@@ -1,6 +1,4 @@
-import {
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
 export const directMessageOperations: INodeProperties[] = [
 	{
@@ -10,9 +8,7 @@ export const directMessageOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'directMessage',
-				],
+				resource: ['directMessage'],
 			},
 		},
 		options: [
@@ -39,12 +35,8 @@ export const directMessageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'directMessage',
-				],
+				operation: ['create'],
+				resource: ['directMessage'],
 			},
 		},
 		description: 'The ID of the user who should receive the direct message',
@@ -60,15 +52,12 @@ export const directMessageFields: INodeProperties[] = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'directMessage',
-				],
+				operation: ['create'],
+				resource: ['directMessage'],
 			},
 		},
-		description: 'The text of your Direct Message. URL encode as necessary. Max length of 10,000 characters.',
+		description:
+			'The text of your Direct Message. URL encode as necessary. Max length of 10,000 characters.',
 	},
 	{
 		displayName: 'Additional Fields',
@@ -78,12 +67,8 @@ export const directMessageFields: INodeProperties[] = [
 		default: {},
 		displayOptions: {
 			show: {
-				operation: [
-					'create',
-				],
-				resource: [
-					'directMessage',
-				],
+				operation: ['create'],
+				resource: ['directMessage'],
 			},
 		},
 		options: [
@@ -92,7 +77,8 @@ export const directMessageFields: INodeProperties[] = [
 				name: 'attachment',
 				type: 'string',
 				default: 'data',
-				description: 'Name of the binary property which contain data that should be added to the direct message as attachment',
+				description:
+					'Name of the binary property which contain data that should be added to the direct message as attachment',
 			},
 		],
 	},

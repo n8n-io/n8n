@@ -1,7 +1,4 @@
-import {
-	IHookFunctions,
-	IWebhookFunctions,
-} from 'n8n-core';
+import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
@@ -13,10 +10,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	asanaApiRequest,
-	getWorkspaces,
-} from './GenericFunctions';
+import { asanaApiRequest, getWorkspaces } from './GenericFunctions';
 
 // import {
 // 	createHmac,
@@ -41,9 +35,7 @@ export class AsanaTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'accessToken',
-						],
+						authentication: ['accessToken'],
 					},
 				},
 			},
@@ -52,9 +44,7 @@ export class AsanaTrigger implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: [
-							'oAuth2',
-						],
+						authentication: ['oAuth2'],
 					},
 				},
 			},
@@ -101,7 +91,8 @@ export class AsanaTrigger implements INodeType {
 				},
 				options: [],
 				default: '',
-				description: 'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				description:
+					'The workspace ID the resource is registered under. This is only required if you want to allow overriding existing webhooks. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	};
@@ -153,7 +144,10 @@ export class AsanaTrigger implements INodeType {
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
 
 				if (webhookUrl.includes('%20')) {
-					throw new NodeOperationError(this.getNode(), 'The name of the Asana Trigger Node is not allowed to contain any spaces!');
+					throw new NodeOperationError(
+						this.getNode(),
+						'The name of the Asana Trigger Node is not allowed to contain any spaces!',
+					);
 				}
 
 				const resource = this.getNodeParameter('resource') as string;
@@ -225,8 +219,11 @@ export class AsanaTrigger implements INodeType {
 
 		// Is regular webhook call
 		// Check if it contains any events
-		if (bodyData.events === undefined || !Array.isArray(bodyData.events) ||
-			bodyData.events.length === 0) {
+		if (
+			bodyData.events === undefined ||
+			!Array.isArray(bodyData.events) ||
+			bodyData.events.length === 0
+		) {
 			// Does not contain any event data so nothing to process so no reason to
 			// start the workflow
 			return {};
@@ -245,9 +242,7 @@ export class AsanaTrigger implements INodeType {
 		// }
 
 		return {
-			workflowData: [
-				this.helpers.returnJsonArray(req.body.events),
-			],
+			workflowData: [this.helpers.returnJsonArray(req.body.events)],
 		};
 	}
 }

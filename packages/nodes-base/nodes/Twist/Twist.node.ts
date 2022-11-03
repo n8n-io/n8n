@@ -1,6 +1,4 @@
-import {
-	IExecuteFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryData,
@@ -14,28 +12,17 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	twistApiRequest,
-} from './GenericFunctions';
+import { twistApiRequest } from './GenericFunctions';
 
-import {
-	channelFields,
-	channelOperations,
-} from './ChannelDescription';
+import { channelFields, channelOperations } from './ChannelDescription';
 
 import {
 	messageConversationFields,
 	messageConversationOperations,
 } from './MessageConversationDescription';
 
-import {
-	threadFields,
-	threadOperations
-} from './ThreadDescription';
-import {
-	commentFields,
-	commentOperations
-} from './CommentDescription';
+import { threadFields, threadOperations } from './ThreadDescription';
+import { commentFields, commentOperations } from './CommentDescription';
 import { v4 as uuid } from 'uuid';
 import moment from 'moment';
 
@@ -268,35 +255,40 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-
 								const item = items[i].binary as IBinaryKeyData;
 
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										`No binary data property "${binaryProperty}" does not exists on item!`,
+										{ itemIndex: i },
+									);
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
-								attachments.push(await twistApiRequest.call(
-									this,
-									'POST',
-									'/attachments/upload',
-									{},
-									{},
-									{
-										formData: {
-											file_name: {
-												value: dataBuffer,
-												options: {
-													filename: binaryData.fileName,
+								attachments.push(
+									await twistApiRequest.call(
+										this,
+										'POST',
+										'/attachments/upload',
+										{},
+										{},
+										{
+											formData: {
+												file_name: {
+													value: dataBuffer,
+													options: {
+														filename: binaryData.fileName,
+													},
 												},
+												attachment_id: uuid(),
 											},
-											attachment_id: uuid(),
 										},
-									},
-								));
+									),
+								);
 							}
 
 							body.attachments = attachments;
@@ -345,7 +337,7 @@ export class Twist implements INodeType {
 
 						responseData = await twistApiRequest.call(this, 'GET', '/comments/get', {}, qs);
 						if (qs.as_ids) {
-							responseData = (responseData as number[]).map(id => ({ ID: id }));
+							responseData = (responseData as number[]).map((id) => ({ ID: id }));
 						}
 					}
 					//https://developer.twist.com/v3/#update-comment
@@ -372,35 +364,40 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-
 								const item = items[i].binary as IBinaryKeyData;
 
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										`No binary data property "${binaryProperty}" does not exists on item!`,
+										{ itemIndex: i },
+									);
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
-								attachments.push(await twistApiRequest.call(
-									this,
-									'POST',
-									'/attachments/upload',
-									{},
-									{},
-									{
-										formData: {
-											file_name: {
-												value: dataBuffer,
-												options: {
-													filename: binaryData.fileName,
+								attachments.push(
+									await twistApiRequest.call(
+										this,
+										'POST',
+										'/attachments/upload',
+										{},
+										{},
+										{
+											formData: {
+												file_name: {
+													value: dataBuffer,
+													options: {
+														filename: binaryData.fileName,
+													},
 												},
+												attachment_id: uuid(),
 											},
-											attachment_id: uuid(),
 										},
-									},
-								));
+									),
+								);
 							}
 
 							body.attachments = attachments;
@@ -446,35 +443,40 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-
 								const item = items[i].binary as IBinaryKeyData;
 
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										`No binary data property "${binaryProperty}" does not exists on item!`,
+										{ itemIndex: i },
+									);
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
-								attachments.push(await twistApiRequest.call(
-									this,
-									'POST',
-									'/attachments/upload',
-									{},
-									{},
-									{
-										formData: {
-											file_name: {
-												value: dataBuffer,
-												options: {
-													filename: binaryData.fileName,
+								attachments.push(
+									await twistApiRequest.call(
+										this,
+										'POST',
+										'/attachments/upload',
+										{},
+										{},
+										{
+											formData: {
+												file_name: {
+													value: dataBuffer,
+													options: {
+														filename: binaryData.fileName,
+													},
 												},
+												attachment_id: uuid(),
 											},
-											attachment_id: uuid(),
 										},
-									},
-								));
+									),
+								);
 							}
 
 							body.attachments = attachments;
@@ -496,13 +498,24 @@ export class Twist implements INodeType {
 						// 	body.content = `${directGroupMentions.join(' ')} ${body.content}`;
 						// }
 
-						responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/add', body);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							'/conversation_messages/add',
+							body,
+						);
 					}
 					//https://developer.twist.com/v3/#get-message
 					if (operation === 'get') {
 						qs.id = this.getNodeParameter('id', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/getone', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'GET',
+							'/conversation_messages/getone',
+							{},
+							qs,
+						);
 					}
 					//https://developer.twist.com/v3/#get-all-messages
 					if (operation === 'getAll') {
@@ -511,13 +524,25 @@ export class Twist implements INodeType {
 						qs.conversation_id = conversationId;
 						Object.assign(qs, additionalFields);
 
-						responseData = await twistApiRequest.call(this, 'GET', '/conversation_messages/get', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'GET',
+							'/conversation_messages/get',
+							{},
+							qs,
+						);
 					}
 					//https://developer.twist.com/v3/#remove-message-from-conversation
 					if (operation === 'delete') {
 						qs.id = this.getNodeParameter('id', i) as string;
 
-						responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/remove', {}, qs);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							'/conversation_messages/remove',
+							{},
+							qs,
+						);
 					}
 					//https://developer.twist.com/v3/#update-message-in-conversation
 					if (operation === 'update') {
@@ -543,35 +568,40 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-
 								const item = items[i].binary as IBinaryKeyData;
 
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										`No binary data property "${binaryProperty}" does not exists on item!`,
+										{ itemIndex: i },
+									);
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
-								attachments.push(await twistApiRequest.call(
-									this,
-									'POST',
-									'/attachments/upload',
-									{},
-									{},
-									{
-										formData: {
-											file_name: {
-												value: dataBuffer,
-												options: {
-													filename: binaryData.fileName,
+								attachments.push(
+									await twistApiRequest.call(
+										this,
+										'POST',
+										'/attachments/upload',
+										{},
+										{},
+										{
+											formData: {
+												file_name: {
+													value: dataBuffer,
+													options: {
+														filename: binaryData.fileName,
+													},
 												},
+												attachment_id: uuid(),
 											},
-											attachment_id: uuid(),
 										},
-									},
-								));
+									),
+								);
 							}
 
 							body.attachments = attachments;
@@ -585,7 +615,12 @@ export class Twist implements INodeType {
 							body.content = `${directMentions.join(' ')} ${body.content}`;
 						}
 
-						responseData = await twistApiRequest.call(this, 'POST', '/conversation_messages/update', body);
+						responseData = await twistApiRequest.call(
+							this,
+							'POST',
+							'/conversation_messages/update',
+							body,
+						);
 					}
 				}
 				if (resource === 'thread') {
@@ -617,35 +652,40 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-
 								const item = items[i].binary as IBinaryKeyData;
 
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										`No binary data property "${binaryProperty}" does not exists on item!`,
+										{ itemIndex: i },
+									);
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
-								attachments.push(await twistApiRequest.call(
-									this,
-									'POST',
-									'/attachments/upload',
-									{},
-									{},
-									{
-										formData: {
-											file_name: {
-												value: dataBuffer,
-												options: {
-													filename: binaryData.fileName,
+								attachments.push(
+									await twistApiRequest.call(
+										this,
+										'POST',
+										'/attachments/upload',
+										{},
+										{},
+										{
+											formData: {
+												file_name: {
+													value: dataBuffer,
+													options: {
+														filename: binaryData.fileName,
+													},
 												},
+												attachment_id: uuid(),
 											},
-											attachment_id: uuid(),
 										},
-									},
-								));
+									),
+								);
 							}
 
 							body.attachments = attachments;
@@ -693,7 +733,7 @@ export class Twist implements INodeType {
 
 						responseData = await twistApiRequest.call(this, 'GET', '/threads/get', {}, qs);
 						if (qs.as_ids) {
-							responseData = (responseData as number[]).map(id => ({ ID: id }));
+							responseData = (responseData as number[]).map((id) => ({ ID: id }));
 						}
 					}
 					//https://developer.twist.com/v3/#update-thread
@@ -720,35 +760,40 @@ export class Twist implements INodeType {
 							const attachments: IDataObject[] = [];
 
 							for (const binaryProperty of binaryProperties) {
-
 								const item = items[i].binary as IBinaryKeyData;
 
 								const binaryData = item[binaryProperty] as IBinaryData;
 
 								if (binaryData === undefined) {
-									throw new NodeOperationError(this.getNode(), `No binary data property "${binaryProperty}" does not exists on item!`, { itemIndex: i });
+									throw new NodeOperationError(
+										this.getNode(),
+										`No binary data property "${binaryProperty}" does not exists on item!`,
+										{ itemIndex: i },
+									);
 								}
 
 								const dataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryProperty);
 
-								attachments.push(await twistApiRequest.call(
-									this,
-									'POST',
-									'/attachments/upload',
-									{},
-									{},
-									{
-										formData: {
-											file_name: {
-												value: dataBuffer,
-												options: {
-													filename: binaryData.fileName,
+								attachments.push(
+									await twistApiRequest.call(
+										this,
+										'POST',
+										'/attachments/upload',
+										{},
+										{},
+										{
+											formData: {
+												file_name: {
+													value: dataBuffer,
+													options: {
+														filename: binaryData.fileName,
+													},
 												},
+												attachment_id: uuid(),
 											},
-											attachment_id: uuid(),
 										},
-									},
-								));
+									),
+								);
 							}
 
 							body.attachments = attachments;

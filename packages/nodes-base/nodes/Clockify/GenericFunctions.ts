@@ -1,18 +1,20 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	ILoadOptionsFunctions,
-	IPollFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, ILoadOptionsFunctions, IPollFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function clockifyApiRequest(this: ILoadOptionsFunctions | IPollFunctions | IExecuteFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, option: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
+export async function clockifyApiRequest(
+	this: ILoadOptionsFunctions | IPollFunctions | IExecuteFunctions,
+	method: string,
+	resource: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string,
+	option: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const BASE_URL = 'https://api.clockify.me/api/v1';
 
 	const options: OptionsWithUri = {
@@ -34,8 +36,15 @@ export async function clockifyApiRequest(this: ILoadOptionsFunctions | IPollFunc
 	}
 }
 
-export async function clockifyApiRequestAllItems(this: IExecuteFunctions | IPollFunctions | ILoadOptionsFunctions, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function clockifyApiRequestAllItems(
+	this: IExecuteFunctions | IPollFunctions | ILoadOptionsFunctions,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -49,16 +58,12 @@ export async function clockifyApiRequestAllItems(this: IExecuteFunctions | IPoll
 
 		returnData.push.apply(returnData, responseData);
 
-		if (query.limit && (returnData.length >= query.limit)) {
-
+		if (query.limit && returnData.length >= query.limit) {
 			return returnData;
 		}
 
 		query.page++;
-
-	} while (
-		responseData.length !== 0
-	);
+	} while (responseData.length !== 0);
 
 	return returnData;
 }

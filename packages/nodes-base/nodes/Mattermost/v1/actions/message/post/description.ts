@@ -1,6 +1,4 @@
-import {
-	MessageProperties,
-} from '../../Interfaces';
+import { MessageProperties } from '../../Interfaces';
 
 export const messagePostDescription: MessageProperties = [
 	{
@@ -15,15 +13,12 @@ export const messagePostDescription: MessageProperties = [
 		required: true,
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post'],
+				resource: ['message'],
 			},
 		},
-		description: 'The ID of the channel to post to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description:
+			'The ID of the channel to post to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	{
 		displayName: 'Message',
@@ -35,12 +30,8 @@ export const messagePostDescription: MessageProperties = [
 		default: '',
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post'],
+				resource: ['message'],
 			},
 		},
 		description: 'The text to send',
@@ -55,12 +46,8 @@ export const messagePostDescription: MessageProperties = [
 		},
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post'],
+				resource: ['message'],
 			},
 		},
 		default: {},
@@ -71,7 +58,8 @@ export const messagePostDescription: MessageProperties = [
 				displayName: 'Actions',
 				name: 'actions',
 				placeholder: 'Add Actions',
-				description: 'Actions to add to message. More information can be found <a href="https://docs.mattermost.com/developer/interactive-messages.html" target="_blank">here</a>.',
+				description:
+					'Actions to add to message. More information can be found <a href="https://docs.mattermost.com/developer/interactive-messages.html" target="_blank">here</a>.',
 				type: 'fixedCollection',
 				typeOptions: {
 					multipleValues: true,
@@ -105,9 +93,7 @@ export const messagePostDescription: MessageProperties = [
 								type: 'options',
 								displayOptions: {
 									show: {
-										type: [
-											'select',
-										],
+										type: ['select'],
 									},
 								},
 								options: [
@@ -123,7 +109,6 @@ export const messagePostDescription: MessageProperties = [
 										name: 'Users',
 										value: 'users',
 									},
-
 								],
 								default: 'custom',
 								description: 'The type of the action',
@@ -139,12 +124,8 @@ export const messagePostDescription: MessageProperties = [
 								},
 								displayOptions: {
 									show: {
-										data_source: [
-											'custom',
-										],
-										type: [
-											'select',
-										],
+										data_source: ['custom'],
+										type: ['select'],
 									},
 								},
 								default: {},
@@ -416,12 +397,8 @@ export const messagePostDescription: MessageProperties = [
 		type: 'collection',
 		displayOptions: {
 			show: {
-				operation: [
-					'post',
-				],
-				resource: [
-					'message',
-				],
+				operation: ['post'],
+				resource: ['message'],
 			},
 		},
 		default: {},

@@ -1,25 +1,26 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function gotifyApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions, method: string, path: string, body: any = {}, qs: IDataObject = {}, uri?: string | undefined, option = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function gotifyApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
+	method: string,
+	path: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	qs: IDataObject = {},
+	uri?: string | undefined,
+	option = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const credentials = await this.getCredentials('gotifyApi');
 
 	const options: OptionsWithUri = {
 		method,
 		headers: {
-			'X-Gotify-Key': (method === 'POST') ? credentials.appApiToken : credentials.clientApiToken,
+			'X-Gotify-Key': method === 'POST' ? credentials.appApiToken : credentials.clientApiToken,
 			accept: 'application/json',
 		},
 		body,
@@ -39,8 +40,16 @@ export async function gotifyApiRequest(this: IExecuteFunctions | IExecuteSingleF
 	}
 }
 
-export async function gotifyApiRequestAllItems(this: IExecuteFunctions | ILoadOptionsFunctions, propertyName: string, method: string, endpoint: string, body: any = {}, query: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function gotifyApiRequestAllItems(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	propertyName: string,
+	method: string,
+	endpoint: string,
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	query: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const returnData: IDataObject[] = [];
 
 	let responseData;
@@ -52,9 +61,7 @@ export async function gotifyApiRequestAllItems(this: IExecuteFunctions | ILoadOp
 			uri = responseData.paging.next;
 		}
 		returnData.push.apply(returnData, responseData[propertyName]);
-	} while (
-		responseData.paging.next
-	);
+	} while (responseData.paging.next);
 
 	return returnData;
 }

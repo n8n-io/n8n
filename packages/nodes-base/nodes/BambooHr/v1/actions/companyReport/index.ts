@@ -1,12 +1,8 @@
 import * as get from './get';
 
-import { 
-	INodeProperties,
-} from 'n8n-workflow';
+import { INodeProperties } from 'n8n-workflow';
 
-export {
-	get,
-};
+export { get };
 
 export const descriptions: INodeProperties[] = [
 	{
@@ -16,9 +12,7 @@ export const descriptions: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: {
 			show: {
-				resource: [
-					'companyReport',
-				],
+				resource: ['companyReport'],
 			},
 		},
 		options: [
