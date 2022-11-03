@@ -423,3 +423,12 @@ export enum STORES {
 	NODE_TYPES = 'nodeTypes',
 	HISTORY = 'history',
 }
+
+export enum COMMANDS {
+	RENAME_NODE = 'renameNode',
+	MOVE_NODE = 'moveNode',
+}
+
+export enum BULK_COMMANDS {
+	PASTE_WORKFLOW = 'pasteWorkflow',
+}

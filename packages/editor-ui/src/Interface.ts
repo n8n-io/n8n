@@ -35,7 +35,7 @@ import {
 	INodeCredentials,
 	INodeListSearchItems,
 } from 'n8n-workflow';
-import { FAKE_DOOR_FEATURES } from './constants';
+import { BULK_COMMANDS, COMMANDS, FAKE_DOOR_FEATURES } from './constants';
 
 export * from 'n8n-design-system/src/types';
 
@@ -1139,7 +1139,51 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
+export interface MoveNodeCommand {
+	action: COMMANDS.MOVE_NODE,
+	options: {
+		nodeId: string;
+		newPosition: XYPosition;
+		oldPosition: XYPosition;
+	}
+}
+
+export interface RenameNodeCommand {
+	action: COMMANDS.RENAME_NODE,
+	options: {
+		nodeId: string;
+		newName: string;
+		oldName: string;
+	}
+}
+
+export interface CommandBase {
+	type: string;
+	data: {
+		action: string;
+		options: IDataObject;
+	}
+}
+
+export interface Command extends CommandBase {
+	type: 'command';
+	data: RenameNodeCommand | MoveNodeCommand;
+}
+
+export interface BulkCommands {
+	type: 'bulk';
+	data: {
+		name: BULK_COMMANDS.PASTE_WORKFLOW;
+		commands: Command[];
+	}
+}
+
+export type Undoable = Command | BulkCommands;
+
 export interface HistoryState {
+	redoStack: Undoable[];
+	undoStack: Undoable[];
+	currentBulkAction: BulkCommands | null;
 }
 
 export interface INodeTypesState {
