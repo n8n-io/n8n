@@ -426,6 +426,7 @@ export enum STORES {
 
 export enum COMMANDS {
 	POSITION_CHANGE = 'nodePositionChange',
+	ADD_CONNECTION = 'addConnection',
 }
 
 export enum BULK_COMMANDS {

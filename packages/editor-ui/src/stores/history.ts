@@ -1,5 +1,6 @@
 import { COMMANDS, STORES } from "@/constants";
 import { BulkCommands, Command, HistoryState, Undoable, XYPosition } from "@/Interface";
+import { IConnection } from "n8n-workflow";
 import { defineStore } from "pinia";
 
 const STACK_LIMIT = 100;
@@ -80,6 +81,17 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 						nodeName,
 						oldPosition,
 						newPosition,
+					},
+				},
+			});
+		},
+		addConnection(connection: [IConnection, IConnection]) {
+			this.pushUndoableToUndo({
+				type: 'command',
+				data: {
+					action: COMMANDS.ADD_CONNECTION,
+					options: {
+						connection,
 					},
 				},
 			});

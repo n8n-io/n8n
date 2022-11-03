@@ -53,6 +53,9 @@ export const historyHelper = Vue.extend({
 			if (command.data.action === COMMANDS.POSITION_CHANGE) {
 				this.$root.$emit('nodeMove', { nodeName: command.data.options.nodeName, position: command.data.options.oldPosition });
 			}
+			else if (command.data.action === COMMANDS.ADD_CONNECTION) {
+				this.$root.$emit('addConnection', command.data.options);
+			}
 		},
 		async undo() {
 			const command = this.historyStore.popUndoableToUndo();

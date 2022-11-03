@@ -172,6 +172,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import { titleChange } from '@/components/mixins/titleChange';
 import { newVersions } from '@/components/mixins/newVersions';
 
+import { useHistoryStore } from '@/stores/history';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
@@ -371,6 +372,7 @@ export default mixins(
 				useNodeTypesStore,
 				useNDVStore,
 				useRootStore,
+				useHistoryStore,
 				useSettingsStore,
 				useTemplatesStore,
 				useUIStore,
@@ -1806,7 +1808,7 @@ export default mixins(
 					return;
 				}
 
-				const connectionData = [
+				const connectionData: [IConnection, IConnection] = [
 					{
 						node: sourceNodeName,
 						type: 'main',
@@ -1817,9 +1819,10 @@ export default mixins(
 						type: 'main',
 						index: targetNodeOuputIndex,
 					},
-				] as [IConnection, IConnection];
+				];
 
 				this.__addConnection(connectionData, true);
+				this.historyStore.addConnection(connectionData);
 			},
 			async addNode(nodeTypeName: string, options: AddNodeOptions = {}) {
 				if (!this.editAllowedCheck()) {
@@ -2920,20 +2923,7 @@ export default mixins(
 								outwardConnections.forEach((
 									targetData,
 								) => {
-									connectionData = [
-										{
-											node: sourceNode,
-											type,
-											index: sourceIndex,
-										},
-										{
-											node: targetData.node,
-											type: targetData.type,
-											index: targetData.index,
-										},
-									] as [IConnection, IConnection];
-
-									this.__addConnection(connectionData, true);
+									this.connectTwoNodes(sourceNode, sourceIndex, targetData.node, targetData.index);
 								});
 							}
 						}
@@ -3310,6 +3300,8 @@ export default mixins(
 					}
 				}, 0);
 			},
+			onAddConnection({ connection }) {
+			},
 		},
 		async mounted() {
 			this.$titleReset();
@@ -3414,6 +3406,8 @@ export default mixins(
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 			this.$root.$on('nodeMove', this.onMoveNode);
+			this.$root.$on('addConnection', this.onAddConnection);
+
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},
@@ -3424,6 +3418,7 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.$root.$off('addConnection', this.onAddConnection);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
@@ -3435,6 +3430,7 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.$root.$off('addConnection', this.onAddConnection);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);

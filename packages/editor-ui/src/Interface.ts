@@ -34,6 +34,7 @@ import {
 	ILoadOptions,
 	INodeCredentials,
 	INodeListSearchItems,
+	IConnection,
 } from 'n8n-workflow';
 import { BULK_COMMANDS, COMMANDS, FAKE_DOOR_FEATURES } from './constants';
 
@@ -1138,7 +1139,7 @@ export interface ISettingsState {
 	saveManualExecutions: boolean;
 }
 
-export interface NodePositionChange {
+export interface NodePositionChangeCommand {
 	action: COMMANDS.POSITION_CHANGE,
 	options: {
 		nodeName: string;
@@ -1147,6 +1148,12 @@ export interface NodePositionChange {
 	}
 }
 
+export interface AddConnectionCommand {
+	action: COMMANDS.ADD_CONNECTION,
+	options: {
+		connection: [IConnection, IConnection];
+	}
+}
 
 export interface CommandBase {
 	type: string;
@@ -1158,7 +1165,7 @@ export interface CommandBase {
 
 export interface Command extends CommandBase {
 	type: 'command';
-	data: NodePositionChange;
+	data: NodePositionChangeCommand | AddConnectionCommand;
 }
 
 export interface BulkCommands {
