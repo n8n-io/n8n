@@ -762,12 +762,12 @@ export default mixins(
 					? this.$locale.credText().placeholder(this.parameter)
 					: this.$locale.nodeText().placeholder(this.parameter, this.path);
 			},
-			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
+			getOptionsOptionDisplayName(option: INodePropertyOptions): string {
 				return this.isForCredential
 					? this.$locale.credText().optionsOptionDisplayName(this.parameter, option)
 					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
 			},
-			getOptionsOptionDescription(option: { value: string; description: string }): string {
+			getOptionsOptionDescription(option: INodePropertyOptions): string {
 				return this.isForCredential
 					? this.$locale.credText().optionsOptionDescription(this.parameter, option)
 					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option, this.path);

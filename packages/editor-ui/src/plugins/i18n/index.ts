@@ -105,7 +105,7 @@ export class I18nClass {
 			 * Display name for a top-level param.
 			 */
 			inputLabelDisplayName(
-				{ name: parameterName, displayName }: Pick<INodeProperties, 'name' | 'displayName'>,
+				{ name: parameterName, displayName }: INodeProperties,
 			) {
 				if (['clientId', 'clientSecret'].includes(parameterName)) {
 					return context.dynamicRender({
@@ -124,7 +124,7 @@ export class I18nClass {
 			 * Hint for a top-level param.
 			 */
 			hint(
-				{ name: parameterName, hint }: Pick<INodeProperties, 'name' | 'hint'>,
+				{ name: parameterName, hint }: INodeProperties,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.hint`,
@@ -136,7 +136,7 @@ export class I18nClass {
 			 * Description (tooltip text) for an input label param.
 			 */
 			inputLabelDescription(
-				{ name: parameterName, description }: Pick<INodeProperties, 'name' | 'description'>,
+				{ name: parameterName, description }: INodeProperties,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.description`,
@@ -148,8 +148,8 @@ export class I18nClass {
 			 * Display name for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDisplayName(
-				{ name: parameterName }: Pick<INodeProperties, 'name'>,
-				{ value: optionName, name: displayName }: Pick<INodePropertyOptions, 'value' | 'name'>,
+				{ name: parameterName }: INodeProperties,
+				{ value: optionName, name: displayName }: INodePropertyOptions,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.options.${optionName}.displayName`,
@@ -161,8 +161,8 @@ export class I18nClass {
 			 * Description for an option inside an `options` or `multiOptions` param.
 			 */
 			optionsOptionDescription(
-				{ name: parameterName }: Pick<INodeProperties, 'name'>,
-				{ value: optionName, description }: Pick<INodePropertyOptions, 'value' | 'description'>,
+				{ name: parameterName }: INodeProperties,
+				{ value: optionName, description }: INodePropertyOptions,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.options.${optionName}.description`,
@@ -174,7 +174,7 @@ export class I18nClass {
 			 * Placeholder for a `string` param.
 			 */
 			placeholder(
-				{ name: parameterName, placeholder }: Pick<INodeProperties, 'name' | 'placeholder'>,
+				{ name: parameterName, placeholder }: INodeProperties,
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
@@ -247,7 +247,7 @@ export class I18nClass {
 			 * - For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
 			placeholder(
-				parameter: Pick<INodeProperties, 'name' | 'type' | 'placeholder'>,
+				parameter: INodeProperties,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -268,8 +268,8 @@ export class I18nClass {
 			 * whether top-level or nested.
 			 */
 			optionsOptionDisplayName(
-				parameter: Pick<INodeProperties, 'name'>,
-				{ value: optionName, name: displayName }: Pick<INodePropertyOptions, 'value' | 'name'>,
+				parameter: INodeProperties,
+				{ value: optionName, name: displayName }: INodePropertyOptions,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -290,8 +290,8 @@ export class I18nClass {
 			 * whether top-level or nested.
 			 */
 			optionsOptionDescription(
-				parameter: Pick<INodeProperties, 'name'>,
-				{ value: optionName, description }: Pick<INodePropertyOptions, 'value' | 'description'>,
+				parameter: INodeProperties,
+				{ value: optionName, description }: INodePropertyOptions,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -313,8 +313,8 @@ export class I18nClass {
 			 * be nested in a `collection` or in a `fixedCollection`.
 			 */
 			collectionOptionDisplayName(
-				parameter: Pick<INodeProperties, 'name'>,
-				{ name: optionName, displayName }: Pick<INodePropertyCollection, 'name' | 'displayName'>,
+				parameter: INodeProperties,
+				{ name: optionName, displayName }: INodePropertyCollection,
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -335,7 +335,7 @@ export class I18nClass {
 			 * `fixedCollection` param having `multipleValues: true`.
 			 */
 			multipleValueButtonText(
-				{ name: parameterName, typeOptions}: Pick<INodeProperties, 'name' | 'typeOptions'>,
+				{ name: parameterName, typeOptions}: INodeProperties,
 			) {
 				return context.dynamicRender({
 					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
