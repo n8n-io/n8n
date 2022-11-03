@@ -1185,7 +1185,7 @@ export interface Command extends CommandBase {
 export interface BulkCommands {
 	type: 'bulk';
 	data: {
-		name: BULK_COMMANDS.IMPORT_WORKFLOW;
+		name: BULK_COMMANDS.IMPORT_WORKFLOW | BULK_COMMANDS.RECONNECT_NODES;
 		commands: Command[];
 	}
 }
