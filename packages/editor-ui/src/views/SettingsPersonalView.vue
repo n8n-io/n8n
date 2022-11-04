@@ -46,6 +46,9 @@
 import { showMessage } from '@/components/mixins/showMessage';
 import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
+import { useUIStore } from '@/stores/ui';
+import { useUsersStore } from '@/stores/users';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
@@ -70,7 +73,7 @@ export default mixins(
 		this.formInputs = [
 			{
 				name: 'firstName',
-				initialValue: this.currentUser.firstName,
+				initialValue: this.currentUser?.firstName,
 				properties: {
 					label: this.$locale.baseText('auth.firstName'),
 					maxlength: 32,
@@ -81,7 +84,7 @@ export default mixins(
 			},
 			{
 				name: 'lastName',
-				initialValue: this.currentUser.lastName,
+				initialValue: this.currentUser?.lastName,
 				properties: {
 					label: this.$locale.baseText('auth.lastName'),
 					maxlength: 32,
@@ -92,7 +95,7 @@ export default mixins(
 			},
 			{
 				name: 'email',
-				initialValue: this.currentUser.email,
+				initialValue: this.currentUser?.email,
 				properties: {
 					label: this.$locale.baseText('auth.email'),
 					type: 'email',
@@ -105,8 +108,12 @@ export default mixins(
 		];
 	},
 	computed: {
-		currentUser() {
-			return this.$store.getters['users/currentUser'] as IUser;
+		...mapStores(
+			useUIStore,
+			useUsersStore,
+		),
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
 		},
 	},
 	methods: {
@@ -117,12 +124,12 @@ export default mixins(
 			this.readyToSubmit = ready;
 		},
 		async onSubmit(form: {firstName: string, lastName: string, email: string}) {
-			if (!this.hasAnyChanges) {
+			if (!this.hasAnyChanges || !this.usersStore.currentUserId) {
 				return;
 			}
 			try {
-				await this.$store.dispatch('users/updateUser', {
-					id: this.currentUser.id,
+				await this.usersStore.updateUser({
+					id: this.usersStore.currentUserId,
 					firstName: form.firstName,
 					lastName: form.lastName,
 					email: form.email,
@@ -142,7 +149,7 @@ export default mixins(
 			this.formBus.$emit('submit');
 		},
 		openPasswordModal() {
-			this.$store.dispatch('ui/openModal', CHANGE_PASSWORD_MODAL_KEY);
+			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
 		},
 	},
 });

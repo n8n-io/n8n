@@ -220,10 +220,12 @@ import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import {
+	IN8nUISettings,
 	ITimeoutHMS,
 	IWorkflowDataUpdate,
 	IWorkflowSettings,
 	IWorkflowShortResponse,
+	WorkflowCallerPolicyDefaultOption,
 } from '@/Interface';
 import Modal from './Modal.vue';
 import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
@@ -232,6 +234,10 @@ import mixins from 'vue-typed-mixins';
 
 import { mapGetters } from "vuex";
 import { deepCopy } from "n8n-workflow";
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(
 	externalHooks,
@@ -274,8 +280,8 @@ export default mixins(
 			timezones: [] as Array<{ key: string, value: string }>,
 			workflowSettings: {} as IWorkflowSettings,
 			workflows: [] as IWorkflowShortResponse[],
-			executionTimeout: this.$store.getters.executionTimeout,
-			maxExecutionTimeout: this.$store.getters.maxExecutionTimeout,
+			executionTimeout: 0,
+			maxExecutionTimeout: 0,
 			timeoutHMS: { hours: 0, minutes: 0, seconds: 0 } as ITimeoutHMS,
 			modalBus: new Vue(),
 			WORKFLOW_SETTINGS_MODAL_KEY,
@@ -283,13 +289,25 @@ export default mixins(
 	},
 
 	computed: {
-		...mapGetters(['workflowName', 'workflowId']),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useWorkflowsStore,
+		),
+		workflowName(): string {
+			return this.workflowsStore.workflowName;
+		},
+		workflowId(): string {
+			return this.workflowsStore.workflowId;
+		},
 		isWorkflowSharingEnabled(): boolean {
-			return this.$store.getters['settings/isWorkflowSharingEnabled'];
+			return this.settingsStore.isWorkflowSharingEnabled;
 		},
 	},
-
 	async mounted () {
+		this.executionTimeout = this.rootStore.executionTimeout;
+		this.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
+
 		if (!this.workflowId || this.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 			this.$showMessage({
 				title: 'No workflow active',
@@ -301,11 +319,11 @@ export default mixins(
 			return;
 		}
 
-		this.defaultValues.saveDataErrorExecution = this.$store.getters.saveDataErrorExecution;
-		this.defaultValues.saveDataSuccessExecution = this.$store.getters.saveDataSuccessExecution;
-		this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
-		this.defaultValues.timezone = this.$store.getters.timezone;
-		this.defaultValues.workflowCallerPolicy = this.$store.getters['settings/workflowCallerPolicyDefaultOption'];
+		this.defaultValues.saveDataErrorExecution = this.settingsStore.saveDataErrorExecution;
+		this.defaultValues.saveDataSuccessExecution = this.settingsStore.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
+		this.defaultValues.timezone = this.rootStore.timezone;
+		this.defaultValues.workflowCallerPolicy = this.settingsStore.workflowCallerPolicyDefaultOption;
 
 		this.isLoading = true;
 		const promises = [];
@@ -323,7 +341,7 @@ export default mixins(
 			this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
 		}
 
-		const workflowSettings = deepCopy(this.$store.getters.workflowSettings);
+		const workflowSettings = deepCopy(this.workflowsStore.workflowSettings) as IWorkflowSettings;
 
 		if (workflowSettings.timezone === undefined) {
 			workflowSettings.timezone = 'DEFAULT';
@@ -338,16 +356,16 @@ export default mixins(
 			workflowSettings.saveExecutionProgress = 'DEFAULT';
 		}
 		if (workflowSettings.saveManualExecutions === undefined) {
-			workflowSettings.saveManualExecutions = 'DEFAULT';
+			workflowSettings.saveManualExecutions = this.defaultValues.saveManualExecutions;
 		}
 		if (workflowSettings.callerPolicy === undefined) {
-			workflowSettings.callerPolicy = this.defaultValues.workflowCallerPolicy;
+			workflowSettings.callerPolicy = this.defaultValues.workflowCallerPolicy as WorkflowCallerPolicyDefaultOption;
 		}
 		if (workflowSettings.executionTimeout === undefined) {
-			workflowSettings.executionTimeout = this.$store.getters.executionTimeout;
+			workflowSettings.executionTimeout = this.rootStore.executionTimeout;
 		}
 		if (workflowSettings.maxExecutionTimeout === undefined) {
-			workflowSettings.maxExecutionTimeout = this.$store.getters.maxExecutionTimeout;
+			workflowSettings.maxExecutionTimeout = this.rootStore.maxExecutionTimeout;
 		}
 
 		Vue.set(this, 'workflowSettings', workflowSettings);
@@ -355,7 +373,7 @@ export default mixins(
 		this.isLoading = false;
 
 		this.$externalHooks().run('workflowSettings.dialogVisibleChanged', { dialogVisible: true });
-		this.$telemetry.track('User opened workflow settings', { workflow_id: this.$store.getters.workflowId });
+		this.$telemetry.track('User opened workflow settings', { workflow_id: this.workflowsStore.workflowId });
 	},
 	methods: {
 		onCallerIdsInput(str: string) {
@@ -589,11 +607,11 @@ export default mixins(
 			delete data.settings!.maxExecutionTimeout;
 
 			this.isLoading = true;
-			data.hash = this.$store.getters.workflowHash;
+			data.hash = this.workflowsStore.workflowHash;
 
 			try {
 				const workflow = await this.restApi().updateWorkflow(this.$route.params.name, data);
-				this.$store.commit('setWorkflowHash', workflow.hash);
+				this.workflowsStore.setWorkflowHash(workflow.hash || '');
 			} catch (error) {
 				this.$showError(
 					error,
@@ -611,9 +629,9 @@ export default mixins(
 				}
 			}
 
-			const oldSettings = deepCopy(this.$store.getters.workflowSettings);
+			const oldSettings = deepCopy(this.workflowsStore.workflowSettings);
 
-			this.$store.commit('setWorkflowSettings', localWorkflowSettings);
+			this.workflowsStore.setWorkflowSettings(localWorkflowSettings);
 
 			this.isLoading = false;
 
@@ -625,7 +643,7 @@ export default mixins(
 			this.closeDialog();
 
 			this.$externalHooks().run('workflowSettings.saveSettings', { oldSettings });
-			this.$telemetry.track('User updated workflow settings', { workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User updated workflow settings', { workflow_id: this.workflowsStore.workflowId });
 		},
 		toggleTimeout() {
 			this.workflowSettings.executionTimeout = this.workflowSettings.executionTimeout === -1 ? 0 : -1;

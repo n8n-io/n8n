@@ -109,6 +109,7 @@ import {
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
 	IFakeDoor,
+	IUser,
 } from '@/Interface';
 
 import {
@@ -123,7 +124,6 @@ import {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	IUser,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -141,10 +141,15 @@ import InlineNameEdit from '../InlineNameEdit.vue';
 import {EnterpriseEditionFeature} from "@/constants";
 import {IDataObject} from "n8n-workflow";
 import FeatureComingSoon from '../FeatureComingSoon.vue';
-import {mapGetters} from "vuex";
 import {getCredentialPermissions, IPermissions} from "@/permissions";
 import { IMenuItem } from 'n8n-design-system';
 import { BaseTextKey } from '@/plugins/i18n';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -236,7 +241,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
 			credentialType: this.credentialTypeName,
 			isEditingCredential: this.mode === 'edit',
-			activeNode: this.$store.getters['ndv/activeNode'],
+			activeNode: this.ndvStore.activeNode,
 		});
 
 		setTimeout(() => {
@@ -253,7 +258,16 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.loading = false;
 	},
 	computed: {
-		...mapGetters('users', ['currentUser']),
+		...mapStores(
+				useNDVStore,
+				useSettingsStore,
+				useUIStore,
+				useUsersStore,
+				useWorkflowsStore,
+			),
+		currentUser(): IUser {
+			return this.usersStore.currentUser || {} as IUser;
+		},
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
 				return null;
@@ -387,7 +401,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			return true;
 		},
 		credentialsFakeDoorFeatures(): IFakeDoor[] {
-			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
+			return this.uiStore.getFakeDoorByLocation('credentialsModal');
 		},
 		credentialPermissions(): IPermissions {
 			if (this.loading) {
@@ -431,7 +445,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return items;
 		},
 		isSharingAvailable(): boolean {
-			return this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing) === true;
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
 	},
 	methods: {
@@ -561,13 +575,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.activeTab = tab;
 			const tabName: string = tab.replaceAll('coming-soon/', '');
 			const credType: string = this.credentialType ? this.credentialType.name : '';
-			const activeNode: INode | null = this.$store.getters['ndv/activeNode'];
+			const activeNode: INode | null = this.ndvStore.activeNode;
 
 			this.$telemetry.track('User viewed credential tab', {
 				credential_type: credType,
 				node_type: activeNode ? activeNode.type : null,
 				tab: tabName,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 				credential_id: this.credentialId,
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
@@ -715,7 +729,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			let sharedWith: IUser[] | undefined;
 			let ownedBy: IUser | undefined;
-			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				sharedWith = this.credentialData.sharedWith as unknown as IUser[];
 				ownedBy = this.credentialData.ownedBy as unknown as IUser;
 			}
@@ -765,7 +779,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				const trackProperties: ITelemetryTrackProperties = {
 					credential_type: credentialDetails.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					credential_id: credential.id,
 					is_complete: !!this.requiredPropertiesFilled,
 					is_new: isNewCredential,
@@ -777,8 +791,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 					trackProperties.is_valid = !!this.testedSuccessfully;
 				}
 
-				if (this.$store.getters['ndv/activeNode']) {
-					trackProperties.node_type = this.$store.getters['ndv/activeNode'].type;
+				if (this.ndvStore.activeNode) {
+					trackProperties.node_type = this.ndvStore.activeNode.type;
 				}
 
 				if (this.authError && this.authError !== '') {
@@ -821,7 +835,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.$telemetry.track('User created credentials', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 
 			return credential;

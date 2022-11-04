@@ -6,6 +6,8 @@ import {
 } from '../Interface';
 import {setCredentialSharedWith} from "@/api/credentials.ee";
 import {EnterpriseEditionFeature} from "@/constants";
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export const credentialsEEModule: Module<ICredentialsState, IRootState> = {
 	mutations: {
@@ -33,9 +35,9 @@ export const credentialsEEModule: Module<ICredentialsState, IRootState> = {
 	},
 	actions: {
 		setCredentialSharedWith: async (context: ActionContext<ICredentialsState, IRootState>, payload: { sharedWith: IUser[]; credentialId: string; }) => {
-			if (context.rootGetters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+			if(useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(
-					context.rootGetters.getRestApiContext,
+					useRootStore().getRestApiContext,
 					payload.credentialId,
 					{
 						shareWithIds: payload.sharedWith.map((sharee) => sharee.id),

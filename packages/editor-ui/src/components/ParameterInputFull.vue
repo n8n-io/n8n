@@ -79,6 +79,8 @@ import { hasOnlyListMode } from '@/components/ResourceLocator/helpers';
 import { INodeParameters, INodeProperties, INodePropertyMode } from 'n8n-workflow';
 import { isResourceLocatorValue } from '@/typeGuards';
 import { BaseTextKey } from "@/plugins/i18n";
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	showMessage,
@@ -135,8 +137,11 @@ export default mixins(
 			];
 		},
 		computed: {
+			...mapStores(
+				useNDVStore,
+			),
 			node (): INodeUi | null {
-				return this.$store.getters['ndv/activeNode'];
+				return this.ndvStore.activeNode;
 			},
 			hint (): string | null {
 				return this.$locale.nodeText().hint(this.parameter, this.path);
@@ -154,10 +159,10 @@ export default mixins(
 				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
 			},
 			isInputDataEmpty (): boolean {
-				return this.$store.getters['ndv/getNDVDataIsEmpty']('input');
+				return this.ndvStore.isDNVDataEmpty('input');
 			},
 			displayMode(): IRunDataDisplayMode {
-				return this.$store.getters['ndv/inputPanelDisplayMode'];
+				return this.ndvStore.inputPanelDisplayMode;
 			},
 			showMappingTooltip (): boolean {
 				return this.focused && this.isInputTypeString && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
@@ -167,13 +172,13 @@ export default mixins(
 			onFocus() {
 				this.focused = true;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ndv/setMappableNDVInputFocus', this.parameter.displayName);
+					this.ndvStore.setMappableNDVInputFocus(this.parameter.displayName);
 				}
 			},
 			onBlur() {
 				this.focused = false;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ndv/setMappableNDVInputFocus', '');
+					this.ndvStore.setMappableNDVInputFocus('');
 				}
 			},
 			onMenuExpanded(expanded: boolean) {
@@ -250,7 +255,7 @@ export default mixins(
 							window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
 						}
 
-						this.$store.commit('ndv/setMappingTelemetry', {
+						this.ndvStore.setMappingTelemetry({
 							dest_node_type: this.node.type,
 							dest_parameter: this.path,
 							dest_parameter_mode: typeof prevValue === 'string' && prevValue.startsWith('=')? 'expression': 'fixed',
