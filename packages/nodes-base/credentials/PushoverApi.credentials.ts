@@ -15,6 +15,7 @@ export class PushoverApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
@@ -22,9 +23,9 @@ export class PushoverApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		if (requestOptions.method === 'GET') {
+		if (requestOptions.method === 'GET' && requestOptions.qs) {
 			Object.assign(requestOptions.qs, { token: credentials.apiKey });
-		} else {
+		} else if (requestOptions.body) {
 			Object.assign(requestOptions.body, { token: credentials.apiKey });
 		}
 		return requestOptions;

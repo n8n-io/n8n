@@ -7,6 +7,7 @@
 			:loading="isSaving"
 			:disabled="disabled"
 			:class="$style.button"
+			:type="type"
 			@click="$emit('click')"
 		/>
 	</span>
@@ -35,6 +36,10 @@ export default Vue.extend({
 		},
 		savedLabel: {
 			type: String,
+		},
+		type: {
+			type: String,
+			default: 'primary',
 		},
 	},
 	computed: {

@@ -26,7 +26,6 @@ export class MicrosoftGraphSecurity implements INodeType {
 		description: 'Consume the Microsoft Graph Security API',
 		defaults: {
 			name: 'Microsoft Graph Security',
-			color: '#0078d4',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

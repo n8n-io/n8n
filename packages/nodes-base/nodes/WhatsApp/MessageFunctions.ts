@@ -52,7 +52,9 @@ export async function setType(this: IExecuteSingleFunctions, requestOptions: IHt
 		actualType = 'template';
 	}
 
-	Object.assign(requestOptions.body, { type: actualType });
+	if (requestOptions.body) {
+		Object.assign(requestOptions.body, { type: actualType });
+	}
 
 	return requestOptions;
 }

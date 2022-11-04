@@ -9,6 +9,7 @@ export class EventbriteApi implements ICredentialType {
 			displayName: 'Private Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

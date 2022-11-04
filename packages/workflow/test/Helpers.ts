@@ -25,7 +25,7 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypes,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IRunExecutionData,
 	ITaskDataConnections,
 	IWorkflowBase,
@@ -119,8 +119,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 		node: INode,
 		credentialsExpired: boolean,
 	): Promise<{ updatedCredentials: boolean; data: ICredentialDataDecryptedObject }> {
-		return { updatedCredentials: false, data: {} }
-	};
+		return { updatedCredentials: false, data: {} };
+	}
 
 	getParentTypes(name: string): string[] {
 		return [];
@@ -680,7 +680,7 @@ class NodeTypesClass implements INodeTypes {
 		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
 	}
 
-	getByName(nodeType: string): INodeType | INodeVersionedType | undefined {
+	getByName(nodeType: string): INodeType | IVersionedNodeType | undefined {
 		return this.getByNameAndVersion(nodeType);
 	}
 

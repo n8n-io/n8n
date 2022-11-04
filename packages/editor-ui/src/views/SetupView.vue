@@ -15,6 +15,10 @@ import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { restApi } from '@/components/mixins/restApi';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
 
 
 export default mixins(
@@ -96,6 +100,13 @@ export default mixins(
 			credentialsCount: 0,
 		};
 	},
+	computed: {
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+		),
+	},
 	methods: {
 		async getAllCredentials() {
 			const credentials = await this.$store.dispatch('credentials/fetchAllCredentials');
@@ -144,13 +155,13 @@ export default mixins(
 					return;
 				}
 
-				const forceRedirectedHere = this.$store.getters['settings/showSetupPage'];
+				const forceRedirectedHere = this.settingsStore.showSetupPage;
 				this.loading = true;
-				await this.$store.dispatch('users/createOwner', values);
+				await this.usersStore.createOwner(values as { firstName: string; lastName: string; email: string; password: string;});
 
 				if (values.agree === true) {
 					try {
-						await this.$store.dispatch('ui/submitContactEmail', { email: values.email, agree: values.agree });
+						await this.uiStore.submitContactEmail(values.email.toString(), values.agree);
 					} catch { }
 				}
 
@@ -179,7 +190,7 @@ export default mixins(
 			}
 		},
 		onSkip() {
-			this.$store.dispatch('users/skipOwnerSetup');
+			this.usersStore.skipOwnerSetup();
 			this.$router.push({
 				name: VIEWS.HOMEPAGE,
 			});

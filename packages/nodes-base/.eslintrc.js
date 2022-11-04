@@ -59,6 +59,7 @@ module.exports = {
 		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/return-await': 'off',
 		'@typescript-eslint/unbound-method': 'off',
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
 
 	overrides: [
@@ -71,6 +72,7 @@ module.exports = {
 				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-class-field-name-uppercase-first-char': 'error',
+				'n8n-nodes-base/cred-class-field-unobscured-sensitive-input': 'error',
 				'n8n-nodes-base/cred-class-name-missing-oauth2-suffix': 'error',
 				'n8n-nodes-base/cred-class-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-filename-against-convention': 'error',
@@ -87,6 +89,7 @@ module.exports = {
 				'n8n-nodes-base/node-class-description-inputs-wrong-regular-node': 'error',
 				'n8n-nodes-base/node-class-description-inputs-wrong-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-missing-subtitle': 'error',
+				'n8n-nodes-base/node-class-description-non-core-color-present': 'error',
 				'n8n-nodes-base/node-class-description-name-unsuffixed-trigger-node': 'error',
 				'n8n-nodes-base/node-class-description-outputs-wrong': 'error',
 				'n8n-nodes-base/node-dirname-against-convention': 'error',
@@ -146,6 +149,7 @@ module.exports = {
 				'n8n-nodes-base/node-param-display-name-wrong-for-update-fields': 'error',
 				'n8n-nodes-base/node-param-min-value-wrong-for-limit': 'error',
 				'n8n-nodes-base/node-param-multi-options-type-unsorted-items': 'error',
+				'n8n-nodes-base/node-param-name-untrimmed': 'error',
 				'n8n-nodes-base/node-param-operation-option-action-wrong-for-get-many': 'error',
 				'n8n-nodes-base/node-param-operation-option-description-wrong-for-get-many': 'error',
 				'n8n-nodes-base/node-param-operation-option-without-action': 'error',

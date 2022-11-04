@@ -131,37 +131,9 @@
 		</div>
 
 		<div
-			:class="[$style['data-container'], copyDropdownOpen ? $style['copy-dropdown-open'] : '']"
+			:class="$style['data-container']"
 			ref="dataContainer"
 		>
-			<div v-if="hasNodeRun && !hasRunError && displayMode === 'json'" v-show="!editMode.enabled" :class="$style['actions-group']">
-				<el-dropdown
-					trigger="click"
-					@command="handleCopyClick"
-					@visible-change="copyDropdownOpen = $event"
-				>
-					<span class="el-dropdown-link">
-						<n8n-icon-button
-							:title="$locale.baseText('runData.copyToClipboard')"
-							icon="copy"
-							type="tertiary"
-							:circle="false"
-						/>
-					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item :command="{command: 'value'}">
-							{{ $locale.baseText('runData.copyValue') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'itemPath'}" divided>
-							{{ $locale.baseText('runData.copyItemPath') }}
-						</el-dropdown-item>
-						<el-dropdown-item :command="{command: 'parameterPath'}">
-							{{ $locale.baseText('runData.copyParameterPath') }}
-						</el-dropdown-item>
-					</el-dropdown-menu>
-				</el-dropdown>
-			</div>
-
 			<div v-if="isExecuting" :class="$style.center">
 				<div :class="$style.spinner"><n8n-spinner type="ring" /></div>
 				<n8n-text>{{ executingMessage }}</n8n-text>
@@ -173,7 +145,7 @@
 						:value="editMode.value"
 						:options="{ scrollBeyondLastLine: false }"
 						type="json"
-						@input="$store.commit('ui/setOutputPanelEditModeValue', $event)"
+						@input="ndvStore.setOutputPanelEditModeValue($event)"
 					/>
 				</div>
 				<div :class="$style['edit-mode-footer']">
@@ -184,6 +156,10 @@
 						</n8n-link>
 					</n8n-info-tip>
 				</div>
+			</div>
+
+			<div v-else-if="paneType === 'output' && hasSubworkflowExecutionError" :class="$style.stretchVertically">
+				<NodeErrorView :error="subworkflowExecutionError" :class="$style.errorDisplay" />
 			</div>
 
 			<div v-else-if="!hasNodeRun" :class="$style.center">
@@ -206,7 +182,7 @@
 						{{ $locale.baseText('nodeErrorView.inputPanel.previousNodeError.text') }}
 					</n8n-link>
 				</n8n-text>
-				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" :class="$style.errorDisplay" />
+				<NodeErrorView v-else :error="workflowRunData[node.name][runIndex].error" :class="$style.dataDisplay" />
 			</div>
 
 			<div v-else-if="hasNodeRun && jsonData && jsonData.length === 0 && branches.length > 1" :class="$style.center">
@@ -239,25 +215,38 @@
 				</n8n-text>
 			</div>
 
-			<div v-else-if="hasNodeRun && displayMode === 'table'" class="ph-no-capture" :class="$style.dataDisplay">
-				<RunDataTable :node="node" :inputData="inputData" :mappingEnabled="mappingEnabled" :distanceFromActive="distanceFromActive" :showMappingHint="showMappingHint" :runIndex="runIndex" :totalRuns="maxRunIndex" @mounted="$emit('tableMounted', $event)" />
-			</div>
+			<run-data-table
+				v-else-if="hasNodeRun && displayMode === 'table'"
+				class="ph-no-capture"
+				:node="node"
+				:inputData="inputData"
+				:mappingEnabled="mappingEnabled"
+				:distanceFromActive="distanceFromActive"
+				:showMappingHint="showMappingHint"
+				:runIndex="runIndex"
+				:pageOffset="currentPageOffset"
+				:totalRuns="maxRunIndex"
+				:hasDefaultHoverState="paneType === 'input'"
+				@mounted="$emit('tableMounted', $event)"
+				@activeRowChanged="onItemHover"
+				@displayModeChange="onDisplayModeChange"
+			/>
 
-			<div v-else-if="hasNodeRun && displayMode === 'json'" class="ph-no-capture" :class="$style.jsonDisplay">
-				<vue-json-pretty
-					:data="jsonData"
-					:deep="10"
-					v-model="selectedOutput.path"
-					:showLine="true"
-					:showLength="true"
-					selectableType="single"
-					path=""
-					:highlightSelectedNode="true"
-					:selectOnClickNode="true"
-					@click="dataItemClicked"
-					class="json-data"
-				/>
-			</div>
+			<run-data-json
+				v-else-if="hasNodeRun && displayMode === 'json'"
+				class="ph-no-capture"
+				:paneType="paneType"
+				:editMode="editMode"
+				:currentOutputIndex="currentOutputIndex"
+				:sessioId="sessionId"
+				:node="node"
+				:inputData="inputData"
+				:mappingEnabled="mappingEnabled"
+				:distanceFromActive="distanceFromActive"
+				:showMappingHint="showMappingHint"
+				:runIndex="runIndex"
+				:totalRuns="maxRunIndex"
+			/>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
 				<n8n-text align="center" tag="div">{{ $locale.baseText('runData.noBinaryDataFound') }}</n8n-text>
@@ -333,13 +322,14 @@
 				</n8n-select>
 			</div>
 		</div>
-
+		<n8n-block-ui :show="blockUI" :class="$style.uiBlocker" />
 	</div>
 </template>
 
 <script lang="ts">
-//@ts-ignore
-import VueJsonPretty from 'vue-json-pretty';
+import { PropType } from "vue";
+import mixins from 'vue-typed-mixins';
+import { saveAs } from 'file-saver';
 import {
 	IBinaryData,
 	IBinaryKeyData,
@@ -354,6 +344,7 @@ import {
 	IBinaryDisplayData,
 	IExecutionResponse,
 	INodeUi,
+	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
 	ITab,
 } from '@/Interface';
@@ -377,18 +368,16 @@ import { externalHooks } from "@/components/mixins/externalHooks";
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { pinData } from '@/components/mixins/pinData';
-
-import mixins from 'vue-typed-mixins';
-
-import { saveAs } from 'file-saver';
 import { CodeEditor } from "@/components/forms";
-import { dataPinningEventBus } from '../event-bus/data-pinning-event-bus';
-import { stringSizeInBytes } from './helpers';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
 import RunDataTable from './RunDataTable.vue';
-import { isJsonKeyObject } from '@/utils';
-
-// A path that does not exist so that nothing is selected by default
-const deselectedPlaceholder = '_!^&*';
+import RunDataJson from '@/components/RunDataJson.vue';
+import { isEmpty } from '@/utils';
+import { useWorkflowsStore } from "@/stores/workflows";
+import { mapStores } from "pinia";
+import { useNDVStore } from "@/stores/ndv";
+import { useNodeTypesStore } from "@/stores/nodeTypes";
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -406,14 +395,15 @@ export default mixins(
 		components: {
 			BinaryDataDisplay,
 			NodeErrorView,
-			VueJsonPretty,
 			WarningTooltip,
 			CodeEditor,
 			RunDataTable,
+			RunDataJson,
 		},
 		props: {
 			nodeUi: {
-			}, // INodeUi | null
+				type: Object as PropType<INodeUi>,
+			},
 			runIndex: {
 				type: Number,
 			},
@@ -442,7 +432,7 @@ export default mixins(
 				type: String,
 			},
 			overrideOutputs: {
-				type: Array,
+				type: Array as PropType<number[]>,
 			},
 			mappingEnabled: {
 				type: Boolean,
@@ -453,16 +443,15 @@ export default mixins(
 			showMappingHint: {
 				type: Boolean,
 			},
+			blockUI: {
+				type: Boolean,
+				default: false,
+			},
 		},
 		data () {
 			return {
 				binaryDataPreviewActive: false,
 				dataSize: 0,
-				deselectedPlaceholder,
-				selectedOutput: {
-					value: '' as object | number | string,
-					path: deselectedPlaceholder,
-				},
 				showData: false,
 				outputIndex: 0,
 				binaryDataDisplayVisible: false,
@@ -473,7 +462,6 @@ export default mixins(
 				currentPage: 1,
 				pageSize: 10,
 				pageSizes: [10, 25, 50, 100],
-				copyDropdownOpen: false,
 				eventBus: dataPinningEventBus,
 
 				pinDataDiscoveryTooltipVisible: false,
@@ -492,6 +480,10 @@ export default mixins(
 					this.showPinDataDiscoveryTooltip(this.jsonData);
 				}
 			}
+			this.ndvStore.setNDVBranchIndex({
+				pane: this.paneType as "input" | "output",
+				branchIndex: this.currentOutputIndex,
+			});
 		},
 		destroyed() {
 			this.hidePinDataDiscoveryTooltip();
@@ -499,8 +491,13 @@ export default mixins(
 			this.eventBus.$off('data-unpinning', this.onDataUnpinning);
 		},
 		computed: {
-			activeNode(): INodeUi {
-				return this.$store.getters.activeNode;
+			...mapStores(
+				useNodeTypesStore,
+				useNDVStore,
+				useWorkflowsStore,
+			),
+			activeNode(): INodeUi | null {
+				return this.ndvStore.activeNode;
 			},
 			dataPinningDocsUrl(): string {
 				return DATA_PINNING_DOCS_URL;
@@ -509,19 +506,19 @@ export default mixins(
 				return DATA_EDITING_DOCS_URL;
 			},
 			displayMode(): IRunDataDisplayMode {
-				return this.$store.getters['ui/getPanelDisplayMode'](this.paneType);
+				return this.ndvStore.getPanelDisplayMode(this.paneType as "input" | "output");
 			},
 			node(): INodeUi | null {
 				return (this.nodeUi as INodeUi | null) || null;
 			},
 			nodeType (): INodeTypeDescription | null {
 				if (this.node) {
-					return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
+					return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 				}
 				return null;
 			},
 			isTriggerNode (): boolean {
-				return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+				return this.nodeTypesStore.isTriggerNode(this.node.type);
 			},
 			canPinData (): boolean {
 				return !this.isPaneTypeInput &&
@@ -544,11 +541,17 @@ export default mixins(
 			hasNodeRun(): boolean {
 				return Boolean(!this.isExecuting && this.node && (this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name) || this.hasPinData));
 			},
+			subworkflowExecutionError(): Error | null {
+				return this.workflowsStore.subWorkflowExecutionError;
+			},
+			hasSubworkflowExecutionError(): boolean {
+				return Boolean(this.subworkflowExecutionError);
+			},
 			hasRunError(): boolean {
 				return Boolean(this.node && this.workflowRunData && this.workflowRunData[this.node.name] && this.workflowRunData[this.node.name][this.runIndex] && this.workflowRunData[this.node.name][this.runIndex].error);
 			},
 			workflowExecution (): IExecutionResponse | null {
-				return this.$store.getters.getWorkflowExecution;
+				return this.workflowsStore.getWorkflowExecution;
 			},
 			workflowRunData (): IRunData | null {
 				if (this.workflowExecution === null) {
@@ -589,6 +592,9 @@ export default mixins(
 				}
 
 				return 0;
+			},
+			currentPageOffset(): number {
+				return this.pageSize * (this.currentPage - 1);
 			},
 			maxRunIndex (): number {
 				if (this.node === null) {
@@ -639,7 +645,7 @@ export default mixins(
 				return inputData;
 			},
 			jsonData (): IDataObject[] {
-				return this.convertToJson(this.inputData);
+				return executionDataToJson(this.inputData);
 			},
 			binaryData (): IBinaryKeyData[] {
 				if (!this.node) {
@@ -684,18 +690,29 @@ export default mixins(
 			editMode(): { enabled: boolean; value: string; } {
 				return this.isPaneTypeInput
 					? { enabled: false, value: '' }
-					: this.$store.getters['ui/outputPanelEditMode'];
+					: this.ndvStore.outputPanelEditMode;
 			},
 			isPaneTypeInput(): boolean {
 				return this.paneType === 'input';
 			},
 		},
 		methods: {
+			onItemHover(itemIndex: number | null) {
+				if (itemIndex === null) {
+					this.$emit('itemHover', null);
+
+					return;
+				}
+				this.$emit('itemHover', {
+					outputIndex: this.currentOutputIndex,
+					itemIndex,
+				});
+			},
 			onClickDataPinningDocsLink() {
 				this.$telemetry.track('User clicked ndv link', {
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
-					node_type: this.activeNode.type,
+					node_type: this.activeNode?.type,
 					pane: 'output',
 					type: 'data-pinning-docs',
 				});
@@ -728,18 +745,18 @@ export default mixins(
 			},
 			enterEditMode({ origin }: EnterEditModeArgs) {
 				const inputData = this.pinData
-					? this.clearJsonKey(this.pinData)
-					: this.convertToJson(this.rawInputData);
+					? clearJsonKey(this.pinData)
+					: executionDataToJson(this.rawInputData);
 
 				const data = inputData.length > 0
 					? inputData
 					: TEST_PIN_DATA;
 
-				this.$store.commit('ui/setOutputPanelEditModeEnabled', true);
-				this.$store.commit('ui/setOutputPanelEditModeValue', JSON.stringify(data, null, 2));
+				this.ndvStore.setOutputPanelEditModeEnabled(true);
+				this.ndvStore.setOutputPanelEditModeValue(JSON.stringify(data, null, 2));
 
 				this.$telemetry.track('User opened ndv edit state', {
-					node_type: this.activeNode.type,
+					node_type: this.activeNode?.type,
 					click_type: origin === 'editIconButton' ? 'button' : 'link',
 					session_id: this.sessionId,
 					run_index: this.runIndex,
@@ -749,8 +766,8 @@ export default mixins(
 				});
 			},
 			onClickCancelEdit() {
-				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('ui/setOutputPanelEditModeValue', '');
+				this.ndvStore.setOutputPanelEditModeEnabled(false);
+				this.ndvStore.setOutputPanelEditModeValue('');
 				this.onExitEditMode({ type: 'cancel' });
 			},
 			onClickSaveEdit() {
@@ -768,23 +785,16 @@ export default mixins(
 					return;
 				}
 
-				this.$store.commit('ui/setOutputPanelEditModeEnabled', false);
-				this.$store.commit('pinData', { node: this.node, data: this.clearJsonKey(value) });
+				this.ndvStore.setOutputPanelEditModeEnabled(false);
+				this.workflowsStore.pinData({ node: this.node, data: clearJsonKey(value) as INodeExecutionData[] });
 
 				this.onDataPinningSuccess({ source: 'save-edit' });
 
 				this.onExitEditMode({ type: 'save' });
 			},
-			clearJsonKey(userInput: string | object) {
-				const parsedUserInput = typeof userInput === 'string' ? JSON.parse(userInput) : userInput;
-
-				if (!Array.isArray(parsedUserInput)) return parsedUserInput;
-
-				return parsedUserInput.map(item => isJsonKeyObject(item) ? item.json : item);
-			},
 			onExitEditMode({ type }: { type: 'save' | 'cancel' }) {
 				this.$telemetry.track('User closed ndv edit state', {
-					node_type: this.activeNode.type,
+					node_type: this.activeNode?.type,
 					session_id: this.sessionId,
 					run_index: this.runIndex,
 					view: this.displayMode,
@@ -795,7 +805,7 @@ export default mixins(
 				{ source }: { source: 'banner-link' | 'pin-icon-click' | 'unpin-and-execute-modal' },
 			) {
 				this.$telemetry.track('User unpinned ndv data', {
-					node_type: this.activeNode.type,
+					node_type: this.activeNode?.type,
 					session_id: this.sessionId,
 					run_index: this.runIndex,
 					source,
@@ -849,20 +859,20 @@ export default mixins(
 
 				if (this.hasPinData) {
 					this.onDataUnpinning({ source });
-					this.$store.commit('unpinData', { node: this.node });
+					this.workflowsStore.unpinData({ node: this.node });
 					return;
 				}
 
-				const data = this.convertToJson(this.rawInputData);
+				const data = executionDataToJson(this.rawInputData) as INodeExecutionData[];
 
 				if (!this.isValidPinDataSize(data)) {
 					this.onDataPinningError({ errorType: 'data-too-large', source: 'pin-icon-click' });
 					return;
 				}
 
-				this.onDataPinningSuccess({ source: 'save-edit' });
+				this.onDataPinningSuccess({ source: 'pin-icon-click' });
 
-				this.$store.commit('pinData', { node: this.node, data });
+				this.workflowsStore.pinData({ node: this.node, data });
 
 				if (this.maxRunIndex > 0) {
 					this.$showToast({
@@ -898,7 +908,7 @@ export default mixins(
 				this.showData = true;
 				this.$telemetry.track('User clicked ndv button', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: this.paneType,
 					type: 'showTooMuchData',
@@ -912,8 +922,8 @@ export default mixins(
 			},
 			onCurrentPageChange() {
 				this.$telemetry.track('User changed ndv page', {
-					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					node_type: this.activeNode?.type,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: this.paneType,
 					page_selected: this.currentPage,
@@ -929,8 +939,8 @@ export default mixins(
 				}
 
 				this.$telemetry.track('User changed ndv page size', {
-					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					node_type: this.activeNode?.type,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: this.paneType,
 					page_selected: this.currentPage,
@@ -940,7 +950,7 @@ export default mixins(
 			},
 			onDisplayModeChange(displayMode: IRunDataDisplayMode) {
 				const previous = this.displayMode;
-				this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: displayMode});
+				this.ndvStore.setPanelDisplayMode({pane: this.paneType as "input" | "output", mode: displayMode});
 
 				const dataContainer = this.$refs.dataContainer;
 				if (dataContainer) {
@@ -958,7 +968,7 @@ export default mixins(
 						previous_view: previous,
 						new_view: displayMode,
 						node_type: this.activeNode.type,
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						session_id: this.sessionId,
 						pane: this.paneType,
 					});
@@ -974,6 +984,10 @@ export default mixins(
 				return option + this.$locale.baseText('ndv.output.of') + (this.maxRunIndex+1) + itemsLabel;
 			},
 			getDataCount(runIndex: number, outputIndex: number) {
+				if (this.pinData) {
+					return this.pinData.length;
+				}
+
 				if (this.node === null) {
 					return 0;
 				}
@@ -1008,33 +1022,19 @@ export default mixins(
 				this.refreshDataSize();
 				this.closeBinaryDataDisplay();
 				if (this.binaryData.length > 0) {
-					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'binary'});
+					this.ndvStore.setPanelDisplayMode({pane: this.paneType as "input" | "output", mode: 'binary'});
 				}
 				else if (this.displayMode === 'binary') {
-					this.$store.commit('ui/setPanelDisplayMode', {pane: this.paneType, mode: 'table'});
+					this.ndvStore.setPanelDisplayMode({pane: this.paneType as "input" | "output", mode: 'table'});
 				}
 			},
 			closeBinaryDataDisplay () {
 				this.binaryDataDisplayVisible = false;
 				this.binaryDataDisplayData = null;
 			},
-			convertToJson (inputData: INodeExecutionData[]): IDataObject[] {
-				const returnData: IDataObject[] = [];
-				inputData.forEach((data) => {
-					if (!data.hasOwnProperty('json')) {
-						return;
-					}
-					returnData.push(data.json);
-				});
-
-				return returnData;
-			},
 			clearExecutionData () {
-				this.$store.commit('setWorkflowExecutionData', null);
+				this.workflowsStore.setWorkflowExecutionData(null);
 				this.updateNodesExecutionIssues();
-			},
-			dataItemClicked (path: string, data: object | number | string) {
-				this.selectedOutput.value = data;
 			},
 			isDownloadable (index: number, key: string): boolean {
 				const binaryDataItem: IBinaryData = this.binaryData[index][key];
@@ -1077,123 +1077,6 @@ export default mixins(
 
 				return nodeType.outputNames[outputIndex];
 			},
-			convertPath (path: string): string {
-				// TODO: That can for sure be done fancier but for now it works
-				const placeholder = '*___~#^#~___*';
-				let inBrackets = path.match(/\[(.*?)\]/g);
-
-				if (inBrackets === null) {
-					inBrackets = [];
-				} else {
-					inBrackets = inBrackets.map(item => item.slice(1, -1)).map(item => {
-						if (item.startsWith('"') && item.endsWith('"')) {
-							return item.slice(1, -1);
-						}
-						return item;
-					});
-				}
-				const withoutBrackets = path.replace(/\[(.*?)\]/g, placeholder);
-				const pathParts = withoutBrackets.split('.');
-				const allParts = [] as string[];
-				pathParts.forEach(part => {
-					let index = part.indexOf(placeholder);
-					while(index !== -1) {
-						if (index === 0) {
-							allParts.push(inBrackets!.shift() as string);
-							part = part.substr(placeholder.length);
-						} else {
-							allParts.push(part.substr(0, index));
-							part = part.substr(index);
-						}
-						index = part.indexOf(placeholder);
-					}
-					if (part !== '') {
-						allParts.push(part);
-					}
-				});
-
-				return '["' + allParts.join('"]["') + '"]';
-			},
-			handleCopyClick (commandData: { command: string }) {
-				const isNotSelected = this.selectedOutput.path === deselectedPlaceholder;
-				const selectedPath = isNotSelected ? '[""]' : this.selectedOutput.path;
-
-				let selectedValue = this.selectedOutput.value;
-				if (isNotSelected) {
-					if (this.hasPinData) {
-						selectedValue = this.clearJsonKey(this.pinData as object);
-					} else {
-						selectedValue = this.convertToJson(this.getNodeInputData(this.node, this.runIndex, this.currentOutputIndex));
-					}
-				}
-
-				const newPath = this.convertPath(selectedPath);
-
-				let value: string;
-				if (commandData.command === 'value') {
-					if (typeof selectedValue === 'object') {
-						value = JSON.stringify(selectedValue, null, 2);
-					} else {
-						value = selectedValue.toString();
-					}
-
-					this.$showToast({
-						title: this.$locale.baseText('runData.copyValue.toast'),
-						message: '',
-						type: 'success',
-						duration: 2000,
-					});
-				} else {
-					let startPath = '';
-					let path = '';
-					if (commandData.command === 'itemPath') {
-						const pathParts = newPath.split(']');
-						const index = pathParts[0].slice(1);
-						path = pathParts.slice(1).join(']');
-						startPath = `$item(${index}).$node["${this.node!.name}"].json`;
-
-						this.$showToast({
-							title: this.$locale.baseText('runData.copyItemPath.toast'),
-							message: '',
-							type: 'success',
-							duration: 2000,
-						});
-					} else if (commandData.command === 'parameterPath') {
-						path = newPath.split(']').slice(1).join(']');
-						startPath = `$node["${this.node!.name}"].json`;
-
-						this.$showToast({
-							title: this.$locale.baseText('runData.copyParameterPath.toast'),
-							message: '',
-							type: 'success',
-							duration: 2000,
-						});
-					}
-					if (!path.startsWith('[') && !path.startsWith('.') && path) {
-						path += '.';
-					}
-					value = `{{ ${startPath + path} }}`;
-				}
-
-				const copyType = {
-					value: 'selection',
-					itemPath: 'item_path',
-					parameterPath: 'parameter_path',
-				}[commandData.command];
-
-				this.$telemetry.track('User copied ndv data', {
-					node_type: this.activeNode.type,
-					session_id: this.sessionId,
-					run_index: this.runIndex,
-					view: this.displayMode,
-					copy_type: copyType,
-					workflow_id: this.$store.getters.workflowId,
-					pane: 'output',
-					in_execution_log: this.isReadOnly,
-				});
-
-				this.copyToClipboard(value);
-			},
 			refreshDataSize () {
 				// Hide by default the data from being displayed
 				this.showData = false;
@@ -1220,21 +1103,30 @@ export default mixins(
 						name: this.node.name,
 						properties: {
 							disabled: !this.node.disabled,
-						},
-					};
+						} as IDataObject,
+					} as INodeUpdatePropertiesInformation;
 
-					this.$store.commit('updateNodeProperties', updateInformation);
+					this.workflowsStore.updateNodeProperties(updateInformation);
 				}
 			},
 			goToErroredNode() {
 				if (this.node) {
-					this.$store.commit('setActiveNode', this.node.name);
+					this.ndvStore.activeNodeName = this.node.name;
 				}
 			},
 		},
 		watch: {
 			node() {
 				this.init();
+			},
+			inputData:{
+				handler(data: INodeExecutionData[]) {
+					if(this.paneType && data){
+						this.ndvStore.setNDVPanelDataIsEmpty({ panel: this.paneType as "input" | "output", isEmpty: data.every(item => isEmpty(item.json)) });
+					}
+				},
+				immediate: true,
+				deep: true,
 			},
 			jsonData (value: IDataObject[]) {
 				this.refreshDataSize();
@@ -1251,6 +1143,12 @@ export default mixins(
 				else if (!newData.length && this.displayMode === 'binary') {
 					this.onDisplayModeChange('table');
 				}
+			},
+			currentOutputIndex(branchIndex: number) {
+				this.ndvStore.setNDVBranchIndex({
+					pane: this.paneType as "input" | "output",
+					branchIndex,
+				});
 			},
 		},
 	});
@@ -1312,8 +1210,7 @@ export default mixins(
 	position: relative;
 	height: 100%;
 
-	&:hover,
-	&.copy-dropdown-open {
+	&:hover{
 		.actions-group {
 			opacity: 1;
 		}
@@ -1324,24 +1221,12 @@ export default mixins(
 	position: absolute;
 	top: 0;
 	left: 0;
-	padding-left: var(--spacing-s);
+	padding: 0 var(--spacing-s) var(--spacing-3xl) var(--spacing-s);
 	right: 0;
 	overflow-y: auto;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
-	padding-bottom: var(--spacing-3xl);
-}
-
-.errorDisplay {
-	composes: dataDisplay;
-	padding-right: var(--spacing-s);
-}
-
-.jsonDisplay {
-	composes: dataDisplay;
-	background-color: var(--color-background-base);
-	padding-top: var(--spacing-s);
 }
 
 .tabs {
@@ -1363,15 +1248,6 @@ export default mixins(
 	> * {
 		margin-right: var(--spacing-4xs);
 	}
-}
-
-.actions-group {
-	position: absolute;
-	z-index: 10;
-	top: 12px;
-	right: var(--spacing-l);
-	opacity: 0;
-	transition: opacity 0.3s ease;
 }
 
 .pagination {
@@ -1522,46 +1398,9 @@ export default mixins(
 	height: 100%;
 }
 
-</style>
-
-<style lang="scss">
-.vjs-tree {
-	color: var(--color-json-default);
+.uiBlocker {
+	border-top-left-radius: 0;
+	border-bottom-left-radius: 0;
 }
 
-.vjs-tree.is-highlight-selected {
-	background-color: var(--color-json-highlight);
-}
-
-.vjs-tree .vjs-value__null {
-	color: var(--color-json-null);
-}
-
-.vjs-tree .vjs-value__boolean {
-	color: var(--color-json-boolean);
-}
-
-.vjs-tree .vjs-value__number {
-	color: var(--color-json-number);
-}
-
-.vjs-tree .vjs-value__string {
-	color: var(--color-json-string);
-}
-
-.vjs-tree .vjs-key {
-	color: var(--color-json-key);
-}
-
-.vjs-tree .vjs-tree__brackets {
-	color: var(--color-json-brackets);
-}
-
-.vjs-tree .vjs-tree__brackets:hover {
-	color: var(--color-json-brackets-hover);
-}
-
-.vjs-tree .vjs-tree__content.has-line {
-	border-left: 1px dotted var(--color-json-line);
-}
 </style>

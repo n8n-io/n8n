@@ -9,7 +9,7 @@ export class GoogleCalendarOAuth2Api implements ICredentialType {
 	name = 'googleCalendarOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google Calendar OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

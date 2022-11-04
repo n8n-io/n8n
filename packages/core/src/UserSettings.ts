@@ -16,6 +16,7 @@ import {
 	USER_SETTINGS_FILE_NAME,
 	USER_SETTINGS_SUBFOLDER,
 } from '.';
+import { deepCopy } from 'n8n-workflow';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { promisify } = require('util');
@@ -74,7 +75,7 @@ export async function prepareUserSettings(): Promise<IUserSettings> {
 
 export async function getEncryptionKey(): Promise<string> {
 	if (process.env[ENCRYPTION_KEY_ENV_OVERWRITE] !== undefined) {
-		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE] as string;
+		return process.env[ENCRYPTION_KEY_ENV_OVERWRITE];
 	}
 
 	const userSettings = await getUserSettings();
@@ -173,7 +174,7 @@ export async function writeUserSettings(
 	}
 
 	await fsWriteFile(settingsPath, JSON.stringify(settingsToWrite, null, '\t'));
-	settingsCache = JSON.parse(JSON.stringify(userSettings));
+	settingsCache = deepCopy(userSettings);
 
 	return userSettings;
 }
@@ -233,7 +234,7 @@ export function getUserSettingsPath(): string {
 export function getUserN8nFolderPath(): string {
 	let userFolder;
 	if (process.env[USER_FOLDER_ENV_OVERWRITE] !== undefined) {
-		userFolder = process.env[USER_FOLDER_ENV_OVERWRITE] as string;
+		userFolder = process.env[USER_FOLDER_ENV_OVERWRITE];
 	} else {
 		userFolder = getUserHome();
 	}

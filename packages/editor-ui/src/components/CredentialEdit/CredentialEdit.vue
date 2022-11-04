@@ -49,34 +49,7 @@
 		<template slot="content">
 			<div :class="$style.container">
 				<div :class="$style.sidebar">
-					<n8n-menu
-						type="secondary"
-						@select="onTabSelect"
-						defaultActive="connection"
-						:light="true"
-					>
-						<n8n-menu-item index="connection">
-							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.connection') }}</span>
-						</n8n-menu-item>
-						<enterprise-edition v-if="credentialType" :features="[EnterpriseEditionFeature.Sharing]">
-							<n8n-menu-item index="sharing">
-								<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.sharing') }}</span>
-							</n8n-menu-item>
-							<template #fallback>
-								<n8n-menu-item
-									v-for="fakeDoor in credentialsFakeDoorFeatures"
-									v-bind:key="fakeDoor.featureName"
-									:index="`coming-soon/${fakeDoor.id}`"
-									:class="$style.tab"
-								>
-									<span slot="title">{{ $locale.baseText(fakeDoor.featureName) }}</span>
-								</n8n-menu-item>
-							</template>
-						</enterprise-edition>
-						<n8n-menu-item v-if="credentialType" index="details">
-							<span slot="title">{{ $locale.baseText('credentialEdit.credentialEdit.details') }}</span>
-						</n8n-menu-item>
-					</n8n-menu>
+					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>
 				</div>
 				<div v-if="activeTab === 'connection'" :class="$style.mainContent" ref="content">
 					<CredentialConfig
@@ -136,6 +109,7 @@ import {
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
 	IFakeDoor,
+	IUser,
 } from '@/Interface';
 
 import {
@@ -150,7 +124,6 @@ import {
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
-	IUser,
 	NodeHelpers,
 } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
@@ -168,8 +141,15 @@ import InlineNameEdit from '../InlineNameEdit.vue';
 import {EnterpriseEditionFeature} from "@/constants";
 import {IDataObject} from "n8n-workflow";
 import FeatureComingSoon from '../FeatureComingSoon.vue';
-import {mapGetters} from "vuex";
 import {getCredentialPermissions, IPermissions} from "@/permissions";
+import { IMenuItem } from 'n8n-design-system';
+import { BaseTextKey } from '@/plugins/i18n';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -261,7 +241,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
 			credentialType: this.credentialTypeName,
 			isEditingCredential: this.mode === 'edit',
-			activeNode: this.$store.getters.activeNode,
+			activeNode: this.ndvStore.activeNode,
 		});
 
 		setTimeout(() => {
@@ -278,7 +258,16 @@ export default mixins(showMessage, nodeHelpers).extend({
 		this.loading = false;
 	},
 	computed: {
-		...mapGetters('users', ['currentUser']),
+		...mapStores(
+				useNDVStore,
+				useSettingsStore,
+				useUIStore,
+				useUsersStore,
+				useWorkflowsStore,
+			),
+		currentUser(): IUser {
+			return this.usersStore.currentUser || {} as IUser;
+		},
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
 				return null;
@@ -412,7 +401,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			return true;
 		},
 		credentialsFakeDoorFeatures(): IFakeDoor[] {
-			return this.$store.getters['ui/getFakeDoorByLocation']('credentialsModal');
+			return this.uiStore.getFakeDoorByLocation('credentialsModal');
 		},
 		credentialPermissions(): IPermissions {
 			if (this.loading) {
@@ -420,6 +409,43 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 
 			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse, this.$store);
+		},
+		sidebarItems(): IMenuItem[] {
+				const items: IMenuItem[] = [
+					{
+						id: 'connection',
+						label: this.$locale.baseText('credentialEdit.credentialEdit.connection'),
+						position: 'top',
+					},
+					{
+						id: 'sharing',
+						label: this.$locale.baseText('credentialEdit.credentialEdit.sharing'),
+						position: 'top',
+						available: this.credentialType !== null && this.isSharingAvailable,
+					},
+				];
+
+				if (this.credentialType !== null && !this.isSharingAvailable) {
+					for (const item of this.credentialsFakeDoorFeatures) {
+						items.push({
+							id: `coming-soon/${item.id}`,
+							label: this.$locale.baseText(item.featureName as BaseTextKey),
+							position: 'top',
+						});
+					}
+				}
+
+				items.push(
+					{
+						id: 'details',
+						label: this.$locale.baseText('credentialEdit.credentialEdit.details'),
+						position: 'top',
+					},
+				);
+				return items;
+		},
+		isSharingAvailable(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing);
 		},
 	},
 	methods: {
@@ -458,7 +484,6 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			return false;
 		},
-
 		displayCredentialParameter(parameter: INodeProperties): boolean {
 			if (parameter.type === 'hidden') {
 				return false;
@@ -550,13 +575,13 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.activeTab = tab;
 			const tabName: string = tab.replaceAll('coming-soon/', '');
 			const credType: string = this.credentialType ? this.credentialType.name : '';
-			const activeNode: INode | null = this.$store.getters.activeNode;
+			const activeNode: INode | null = this.ndvStore.activeNode;
 
 			this.$telemetry.track('User viewed credential tab', {
 				credential_type: credType,
 				node_type: activeNode ? activeNode.type : null,
 				tab: tabName,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 				credential_id: this.credentialId,
 				sharing_enabled: EnterpriseEditionFeature.Sharing,
 			});
@@ -704,7 +729,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			let sharedWith: IUser[] | undefined;
 			let ownedBy: IUser | undefined;
-			if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+			if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				sharedWith = this.credentialData.sharedWith as unknown as IUser[];
 				ownedBy = this.credentialData.ownedBy as unknown as IUser;
 			}
@@ -754,7 +779,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 				const trackProperties: ITelemetryTrackProperties = {
 					credential_type: credentialDetails.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					credential_id: credential.id,
 					is_complete: !!this.requiredPropertiesFilled,
 					is_new: isNewCredential,
@@ -766,8 +791,8 @@ export default mixins(showMessage, nodeHelpers).extend({
 					trackProperties.is_valid = !!this.testedSuccessfully;
 				}
 
-				if (this.$store.getters.activeNode) {
-					trackProperties.node_type = this.$store.getters.activeNode.type;
+				if (this.ndvStore.activeNode) {
+					trackProperties.node_type = this.ndvStore.activeNode.type;
 				}
 
 				if (this.authError && this.authError !== '') {
@@ -810,7 +835,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.$telemetry.track('User created credentials', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 
 			return credential;
@@ -979,6 +1004,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 	min-width: 170px;
 	margin-right: var(--spacing-l);
 	flex-grow: 1;
+
+	ul {
+		padding: 0 !important;
+	}
 }
 
 .header {
