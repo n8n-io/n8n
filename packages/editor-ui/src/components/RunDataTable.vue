@@ -152,14 +152,18 @@
 </template>
 
 <script lang="ts">
-import { INodeUi, IRootState, ITableData, NDVState } from '@/Interface';
+/* eslint-disable prefer-spread */
+import { INodeUi, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/pairedItemUtils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import Draggable from '@/components/Draggable.vue';
-import { shorten } from '@/components/helpers';
-import { externalHooks } from '@/components/mixins/externalHooks';
+import Draggable from './Draggable.vue';
+import { shorten } from './helpers';
+import { externalHooks } from './mixins/externalHooks';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
 
 const MAX_COLUMNS_LIMIT = 40;
 
@@ -217,11 +221,15 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+			useWorkflowsStore,
+		),
 		hoveringItem(): NDVState['hoveringItem'] {
-			return this.$store.getters['ndv/hoveringItem'];
+			return this.ndvStore.hoveringItem;
 		},
-		pairedItemMappings(): IRootState['workflowExecutionPairedItemMappings'] {
-			return this.$store.getters['workflowExecutionPairedItemMappings'];
+		pairedItemMappings(): {[itemId: string]: Set<string>} {
+			return this.workflowsStore.workflowExecutionPairedItemMappings;
 		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
@@ -360,8 +368,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragStart() {
 			this.draggedColumn = true;
-
-			this.$store.commit('ndv/resetMappingTelemetry');
+			this.ndvStore.resetMappingTelemetry();
 		},
 		onCellDragStart(el: HTMLElement) {
 			if (el && el.dataset.value) {
@@ -384,7 +391,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragEnd(column: string, src: string, depth = '0') {
 			setTimeout(() => {
-				const mappingTelemetry = this.$store.getters['ndv/mappingTelemetry'];
+				const mappingTelemetry = this.ndvStore.mappingTelemetry;
 				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: column,

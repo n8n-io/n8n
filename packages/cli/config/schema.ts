@@ -136,6 +136,12 @@ export const schema = {
 			},
 		},
 		sqlite: {
+			database: {
+				doc: 'SQLite Database file name',
+				format: String,
+				default: 'database.sqlite',
+				env: 'DB_SQLITE_DATABASE',
+			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
 				format: Boolean,

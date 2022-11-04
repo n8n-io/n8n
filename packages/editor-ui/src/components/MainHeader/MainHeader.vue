@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<div :class="{'main-header': true, expanded: !sidebarMenuCollapsed}">
+		<div :class="{'main-header': true, expanded: !this.uiStore.sidebarMenuCollapsed}">
 			<div v-show="!hideMenuBar" class="top-menu">
 				<ExecutionDetails v-if="isExecutionPage" />
 				<WorkflowDetails v-else />
@@ -12,7 +12,6 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
 import { pushConnection } from '@/components/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
@@ -21,6 +20,9 @@ import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, STICKY_NODE_TYPE, VIEW
 import { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { Route } from 'vue-router';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	pushConnection,
@@ -36,13 +38,14 @@ export default mixins(
 			return {
 				activeHeaderTab: MAIN_HEADER_TABS.WORKFLOW,
 				workflowToReturnTo: '',
-				dirtyState: this.$store.getters.getStateIsDirty,
+				dirtyState: false,
 			};
 		},
 		computed: {
-			...mapGetters('ui', [
-				'sidebarMenuCollapsed',
-			]),
+			...mapStores(
+				useNDVStore,
+				useUIStore,
+			),
 			tabBarItems(): ITabBarItem[] {
 				return [
 					{ value: MAIN_HEADER_TABS.WORKFLOW, label: this.$locale.baseText('generic.workflow') },
@@ -53,25 +56,26 @@ export default mixins(
 				return this.$route.name === VIEWS.EXECUTION;
 			},
 			activeNode (): INodeUi | null {
-				return this.$store.getters['ndv/activeNode'];
+				return this.ndvStore.activeNode;
 			},
 			hideMenuBar(): boolean {
 				return Boolean(this.activeNode && this.activeNode.type !== STICKY_NODE_TYPE);
 			},
 			workflowName (): string {
-				return this.$store.getters.workflowName;
+				return this.workflowsStore.workflowName;
 			},
 			currentWorkflow (): string {
-				return this.$route.params.name || this.$store.getters.workflowId;
+				return this.$route.params.name || this.workflowsStore.workflowId;
 			},
 			onWorkflowPage(): boolean {
 				return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
 			},
 			activeExecution(): IExecutionsSummary {
-				return this.$store.getters['workflows/getActiveWorkflowExecution'];
+				return this.workflowsStore.activeWorkflowExecution as IExecutionsSummary;
 			},
 		},
 		mounted() {
+			this.dirtyState = this.uiStore.stateIsDirty;
 			this.syncTabsWithRoute(this.$route);
 			// Initialize the push connection
 			this.pushConnect();
@@ -109,13 +113,13 @@ export default mixins(
 						} else {
 							if (this.$route.name !== VIEWS.NEW_WORKFLOW) {
 								this.$router.push({ name: VIEWS.NEW_WORKFLOW });
-								this.$store.commit('setStateDirty', this.dirtyState);
+								this.uiStore.stateIsDirty = this.dirtyState;
 							}
 						}
 						this.activeHeaderTab = MAIN_HEADER_TABS.WORKFLOW;
 						break;
 					case MAIN_HEADER_TABS.EXECUTIONS:
-						this.dirtyState = this.$store.getters.getStateIsDirty;
+						this.dirtyState = this.uiStore.stateIsDirty;
 						this.workflowToReturnTo = this.currentWorkflow;
 						const routeWorkflowId = this.currentWorkflow === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : this.currentWorkflow;
 						if (this.activeExecution) {
