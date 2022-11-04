@@ -23,7 +23,7 @@
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="areTagsEnabled" class="tags">
+		<span v-if="settingsStore.areTagsEnabled" class="tags">
 			<div
 				v-if="isTagsEditEnabled">
 				<TagsDropdown
@@ -105,6 +105,11 @@ import { IWorkflowDataUpdate, IWorkflowToShare } from "@/Interface";
 import { saveAs } from 'file-saver';
 import { titleChange } from "../mixins/titleChange";
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
+import { mapStores } from "pinia";
+import { useUIStore } from "@/stores/ui";
+import { useSettingsStore } from "@/stores/settings";
+import { useWorkflowsStore } from "@/stores/workflows";
+import { useRootStore } from "@/stores/n8nRootStore";
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -138,24 +143,32 @@ export default mixins(workflowHelpers, titleChange).extend({
 		};
 	},
 	computed: {
-		...mapGetters({
-			isWorkflowActive: "isActive",
-			workflowName: "workflowName",
-			isDirty: "getStateIsDirty",
-			currentWorkflowTagIds: "workflowTags",
-		}),
-		...mapGetters('settings', ['areTagsEnabled']),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		isWorkflowActive(): boolean {
+			return this.workflowsStore.isWorkflowActive;
+		},
+		workflowName(): string {
+			return this.workflowsStore.workflowName;
+		},
+		isDirty(): boolean {
+			return this.uiStore.stateIsDirty;
+		},
+		currentWorkflowTagIds(): string[] {
+			return this.workflowsStore.workflowTags;
+		},
 		isNewWorkflow(): boolean {
 			return !this.currentWorkflowId || (this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID || this.currentWorkflowId === 'new');
 		},
 		isWorkflowSaving(): boolean {
-			return this.$store.getters.isActionActive("workflowSaving");
+			return this.uiStore.isActionActive('workflowSaving');
 		},
 		currentWorkflowId(): string {
-			return this.$store.getters.workflowId;
-		},
-		workflowName (): string {
-			return this.$store.getters.workflowName;
+			return this.workflowsStore.workflowId;
 		},
 		onWorkflowPage(): boolean {
 			return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
@@ -209,7 +222,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 				currentId = this.$route.params.name;
 			}
 			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
-			if (saved) this.$store.dispatch('settings/fetchPromptsData');
+			if (saved) await this.settingsStore.fetchPromptsData();
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
@@ -314,12 +327,12 @@ export default mixins(workflowHelpers, titleChange).extend({
 		async onWorkflowMenuSelect(action: string): Promise<void> {
 			switch (action) {
 				case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
-					await this.$store.dispatch('ui/openModalWithData', {
+					this.uiStore.openModalWithData({
 						name: DUPLICATE_MODAL_KEY,
 						data: {
-							id: this.$store.getters.workflowId,
-							name: this.$store.getters.workflowName,
-							tags: this.$store.getters.workflowTags,
+							id: this.workflowsStore.workflowId,
+							name: this.workflowsStore.workflowName,
+							tags: this.workflowsStore.workflowTags,
 						},
 					});
 					break;
@@ -334,7 +347,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 					const exportData: IWorkflowToShare = {
 						...data,
 						meta: {
-							instanceId: this.$store.getters.instanceId,
+							instanceId: this.rootStore.instanceId,
 						},
 						tags: (tags || []).map(tagId => {
 							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
@@ -347,7 +360,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 						type: 'application/json;charset=utf-8',
 					});
 
-					let workflowName = this.$store.getters.workflowName || 'unsaved_workflow';
+					let workflowName = this.workflowName || 'unsaved_workflow';
 					workflowName = workflowName.replace(/[^a-z0-9]/gi, '_');
 
 					this.$telemetry.track('User exported workflow', { workflow_id: workflowData.id });
@@ -376,7 +389,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.SETTINGS: {
-					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.DELETE: {
@@ -404,7 +417,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 						);
 						return;
 					}
-					this.$store.commit('setStateDirty', false);
+					this.uiStore.stateIsDirty = false;
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({

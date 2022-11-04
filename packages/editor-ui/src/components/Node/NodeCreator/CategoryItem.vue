@@ -18,6 +18,8 @@ import camelcase from 'lodash.camelcase';
 import { CategoryName } from '@/plugins/i18n';
 import { INodeCreateElement, ICategoriesWithNodes } from '@/Interface';
 import { NODE_TYPE_COUNT_MAPPER } from '@/constants';
+import { mapStores } from 'pinia';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 
 export default Vue.extend({
@@ -27,20 +29,23 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+		),
 		selectedType(): "Regular" | "Trigger" | "All" {
 			return this.$store.getters['nodeCreator/selectedType'];
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
-			return this.$store.getters['nodeTypes/categoriesWithNodes'];
+			return this.nodeTypesStore.categoriesWithNodes;
 		},
 		categorizedItems(): INodeCreateElement[] {
-			return this.$store.getters['nodeTypes/categorizedItems'];
+			return this.nodeTypesStore.categorizedItems;
 		},
 		categoryName() {
 			return camelcase(this.item.category);
 		},
 		nodesCount(): number {
-			const currentCategory = this.categoriesWithNodes[this.item.category];
+			const currentCategory= (this.categoriesWithNodes as ICategoriesWithNodes)[this.item.category];
 			const subcategories = Object.keys(currentCategory);
 
 			// We need to sum subcategories count for the curent nodeType view

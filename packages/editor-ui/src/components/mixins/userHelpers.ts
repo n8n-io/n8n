@@ -1,5 +1,6 @@
-import { IPermissions } from '@/Interface';
+import { IPermissions, IUser } from '@/Interface';
 import { isAuthorized } from '@/modules/userHelpers';
+import { useUsersStore } from '@/stores/users';
 import Vue from 'vue';
 import { Route } from 'vue-router';
 
@@ -11,13 +12,14 @@ export const userHelpers = Vue.extend({
 			return this.canUserAccessRoute(route);
 		},
 
-		canUserAccessCurrentRoute() {
+		canUserAccessCurrentRoute(): boolean {
 			return this.canUserAccessRoute(this.$route);
 		},
 
 		canUserAccessRoute(route: Route): boolean {
 			const permissions: IPermissions = route.meta && route.meta.permissions;
-			const currentUser = this.$store.getters['users/currentUser'];
+			const usersStore = useUsersStore();
+			const currentUser = usersStore.currentUser;
 
 			if (permissions && isAuthorized(permissions, currentUser)) {
 				return true;

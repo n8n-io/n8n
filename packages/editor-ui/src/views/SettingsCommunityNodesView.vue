@@ -4,13 +4,13 @@
 			<div :class="$style.headingContainer">
 				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
 				<n8n-button
-					v-if="!isQueueModeEnabled && getInstalledPackages.length > 0 && !loading"
+					v-if="!settingsStore.isQueueModeEnabled && communityNodesStore.getInstalledPackages.length > 0 && !loading"
 					:label="$locale.baseText('settings.communityNodes.installModal.installButton.label')"
 					size="large"
 					@click="openInstallModal"
 				/>
 			</div>
-			<div v-if="isQueueModeEnabled" :class="$style.actionBoxContainer">
+			<div v-if="settingsStore.isQueueModeEnabled" :class="$style.actionBoxContainer">
 				<n8n-action-box
 					:heading="$locale.baseText('settings.communityNodes.empty.title')"
 					:description="getEmptyStateDescription"
@@ -29,7 +29,7 @@
 				></community-package-card>
 			</div>
 			<div
-				v-else-if="getInstalledPackages.length === 0"
+				v-else-if="communityNodesStore.getInstalledPackages.length === 0"
 				:class="$style.actionBoxContainer"
 			>
 				<n8n-action-box
@@ -50,7 +50,7 @@
 				v-else
 			>
 				<community-package-card
-					v-for="communityPackage in getInstalledPackages"
+					v-for="communityPackage in communityNodesStore.getInstalledPackages"
 					:key="communityPackage.packageName"
 					:communityPackage="communityPackage"
 				></community-package-card>
@@ -60,17 +60,22 @@
 </template>
 
 <script lang="ts">
-import { mapGetters } from 'vuex';
-import SettingsView from './SettingsView.vue';
-import CommunityPackageCard from '../components/CommunityPackageCard.vue';
-import { showMessage } from '@/components/mixins/showMessage';
-import mixins from 'vue-typed-mixins';
 import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '../constants';
+import { mapGetters } from 'vuex';
+import SettingsView from './SettingsView.vue';
+import CommunityPackageCard from '../components/CommunityPackageCard.vue';
+import { showMessage } from '@/components/mixins/showMessage';
+import mixins from 'vue-typed-mixins';
 import { PublicInstalledPackage } from 'n8n-workflow';
+
+import { useCommunityNodesStore } from '@/stores/communityNodes';
+import { useUIStore } from '@/stores/ui';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
 
 const PACKAGE_COUNT_THRESHOLD = 31;
 
@@ -90,9 +95,9 @@ export default mixins(
 	async mounted() {
 		try {
 			this.$data.loading = true;
-			await this.$store.dispatch('communityNodes/fetchInstalledPackages');
+			await this.communityNodesStore.fetchInstalledPackages();
 
-			const installedPackages: PublicInstalledPackage[] = this.getInstalledPackages;
+			const installedPackages: PublicInstalledPackage[] = this.communityNodesStore.getInstalledPackages;
 			const packagesToUpdate: PublicInstalledPackage[] = installedPackages.filter(p => p.updateAvailable );
 			this.$telemetry.track('user viewed cnr settings page', {
 				num_of_packages_installed: installedPackages.length,
@@ -123,16 +128,19 @@ export default mixins(
 			this.$data.loading = false;
 		}
 		try {
-			await this.$store.dispatch('communityNodes/fetchAvailableCommunityPackageCount');
+			await this.communityNodesStore.fetchAvailableCommunityPackageCount();
 		} finally {
 			this.$data.loading = false;
 		}
 	},
 	computed: {
-		...mapGetters('settings', ['isNpmAvailable', 'isQueueModeEnabled']),
-		...mapGetters('communityNodes', ['getInstalledPackages']),
+		...mapStores(
+			useCommunityNodesStore,
+			useSettingsStore,
+			useUIStore,
+		),
 		getEmptyStateDescription() {
-			const packageCount = this.$store.getters['communityNodes/availablePackageCount'];
+			const packageCount = this.communityNodesStore.availablePackageCount;
 			return  packageCount < PACKAGE_COUNT_THRESHOLD ?
 				this.$locale.baseText('settings.communityNodes.empty.description.no-packages', {
 					interpolate: {
@@ -146,14 +154,11 @@ export default mixins(
 					},
 				});
 		},
-		isDesktopDeployment() {
-			return this.$store.getters['settings/isDesktopDeployment'];
-		},
 		shouldShowInstallButton() {
-			return !this.isDesktopDeployment && this.isNpmAvailable;
+			return !this.settingsStore.isDesktopDeployment && this.settingsStore.isNpmAvailable;
 		},
 		actionBoxConfig() {
-			if (this.isDesktopDeployment) {
+			if (this.settingsStore.isDesktopDeployment) {
 				return {
 					calloutText: this.$locale.baseText('settings.communityNodes.notAvailableOnDesktop'),
 					calloutTheme: 'warning',
@@ -161,7 +166,7 @@ export default mixins(
 				};
 			}
 
-			if (!this.isNpmAvailable) {
+			if (!this.settingsStore.isNpmAvailable) {
 				return {
 					calloutText: this.$locale.baseText(
 						'settings.communityNodes.npmUnavailable.warning',
@@ -172,7 +177,7 @@ export default mixins(
 				};
 			}
 
-			if (this.isQueueModeEnabled) {
+			if (this.settingsStore.isQueueModeEnabled) {
 				return {
 					calloutText: this.$locale.baseText(
 						'settings.communityNodes.queueMode.warning',
@@ -192,10 +197,10 @@ export default mixins(
 	},
 	methods: {
 		openInstallModal(event: MouseEvent) {
-			const telemetryPayload = { is_empty_state: this.getInstalledPackages.length === 0 };
+			const telemetryPayload = { is_empty_state: this.communityNodesStore.getInstalledPackages.length === 0 };
 			this.$telemetry.track('user clicked cnr install button', telemetryPayload);
 			this.$externalHooks().run('settingsCommunityNodesView.openInstallModal', telemetryPayload);
-			this.$store.dispatch('ui/openModal', COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
+			this.uiStore.openModal(COMMUNITY_PACKAGE_INSTALL_MODAL_KEY);
 		},
 	},
 });

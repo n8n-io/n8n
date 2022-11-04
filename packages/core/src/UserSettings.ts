@@ -256,7 +256,7 @@ export function getUserN8nFolderCustomExtensionPath(): string {
  * have been downloaded
  *
  */
-export function getUserN8nFolderDowloadedNodesPath(): string {
+export function getUserN8nFolderDownloadedNodesPath(): string {
 	return path.join(getUserN8nFolderPath(), DOWNLOADED_NODES_SUBDIRECTORY);
 }
 

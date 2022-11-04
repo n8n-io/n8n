@@ -5,6 +5,9 @@ import mixins from 'vue-typed-mixins';
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { getMousePosition, getRelativePosition, HEADER_HEIGHT, INNER_SIDEBAR_WIDTH, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/views/canvasHelpers';
 import { VIEWS } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export const mouseSelect = mixins(
 	deviceSupportHelpers,
@@ -19,6 +22,10 @@ export const mouseSelect = mixins(
 		this.createSelectBox();
 	},
 	computed: {
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		isDemo (): boolean {
 			return this.$route.name === VIEWS.DEMO;
 		},
@@ -49,10 +56,10 @@ export const mouseSelect = mixins(
 		},
 		getMousePositionWithinNodeView (event: MouseEvent | TouchEvent): XYPosition {
 			const [x, y] = getMousePosition(event);
+			const sidebarOffset = this.isDemo ? 0 : this.uiStore.sidebarMenuCollapsed ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
 			const headerOffset = this.isDemo ? 0 : HEADER_HEIGHT;
-			const sidebarOffset = this.isDemo ? 0 : this.$store.getters['ui/sidebarMenuCollapsed'] ? SIDEBAR_WIDTH : SIDEBAR_WIDTH_EXPANDED;
 			// @ts-ignore
-			return getRelativePosition(x - sidebarOffset, y - headerOffset, this.nodeViewScale, this.$store.getters.getNodeViewOffsetPosition);
+			return getRelativePosition(x - sidebarOffset, y - headerOffset, this.nodeViewScale, this.uiStore.nodeViewOffsetPosition);
 		},
 		showSelectBox (event: MouseEvent) {
 			const [x, y] = this.getMousePositionWithinNodeView(event);
@@ -105,7 +112,7 @@ export const mouseSelect = mixins(
 			const selectionBox = this.getSelectionBox(event);
 
 			// Go through all nodes and check if they are selected
-			this.$store.getters.allNodes.forEach((node: INodeUi) => {
+			this.workflowsStore.allNodes.forEach((node: INodeUi) => {
 				// TODO: Currently always uses the top left corner for checking. Should probably use the center instead
 				if (node.position[0] < selectionBox.x || node.position[0] > (selectionBox.x + selectionBox.width)) {
 					return;
@@ -125,7 +132,7 @@ export const mouseSelect = mixins(
 				return;
 			}
 
-			if (this.$store.getters.isActionActive('dragActive')) {
+			if (this.uiStore.isActionActive('dragActive')) {
 				// If a node does currently get dragged we do not activate the selection
 				return;
 			}
@@ -161,7 +168,7 @@ export const mouseSelect = mixins(
 			});
 
 			if (selectedNodes.length === 1) {
-				this.$store.commit('setLastSelectedNode', selectedNodes[0].name);
+				this.uiStore.lastSelectedNode = selectedNodes[0].name;
 			}
 
 			this.hideSelectBox();
@@ -178,21 +185,21 @@ export const mouseSelect = mixins(
 			this.updateSelectBox(e);
 		},
 		nodeDeselected (node: INodeUi) {
-			this.$store.commit('removeNodeFromSelection', node);
+			this.uiStore.removeNodeFromSelection(node);
 			// @ts-ignore
 			this.instance.removeFromDragSelection(node.id);
 		},
 		nodeSelected (node: INodeUi) {
-			this.$store.commit('addSelectedNode', node);
+			this.uiStore.addSelectedNode(node);
 			// @ts-ignore
 			this.instance.addToDragSelection(node.id);
 		},
 		deselectAllNodes () {
 			// @ts-ignore
 			this.instance.clearDragSelection();
-			this.$store.commit('resetSelectedNodes');
-			this.$store.commit('setLastSelectedNode', null);
-			this.$store.commit('setLastSelectedNodeOutputIndex', null);
+			this.uiStore.resetSelectedNodes();
+			this.uiStore.lastSelectedNode = null;
+			this.uiStore.lastSelectedNodeOutputIndex = null;
 			// @ts-ignore
 			this.lastSelectedConnection = null;
 			// @ts-ignore
