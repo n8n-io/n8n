@@ -16,7 +16,6 @@ import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
-import { value } from 'jsonpath';
 import { useUsersStore } from '@/stores/users';
 
 export default mixins(
@@ -76,6 +75,8 @@ export default mixins(
 			FORM_CONFIG,
 			loading: false,
 			inviter: null as null | {firstName: string, lastName: string},
+			inviterId: null as string | null,
+			inviteeId: null as string | null,
 		};
 	},
 	async mounted() {
@@ -85,6 +86,8 @@ export default mixins(
 			if (!inviterId || !inviteeId) {
 				throw new Error(this.$locale.baseText('auth.signup.missingTokenError'));
 			}
+			this.inviterId = inviterId;
+			this.inviteeId = inviteeId;
 
 			const invite = await this.usersStore.validateSignupToken({ inviteeId, inviterId });
 			this.inviter = invite.inviter as {firstName: string, lastName: string};
@@ -111,11 +114,14 @@ export default mixins(
 	},
 	methods: {
 		async onSubmit(values: {[key: string]: string | boolean}) {
+			if (!this.inviterId || !this.inviteeId) {
+				this.$showError(new Error(this.$locale.baseText('auth.changePassword.tokenValidationError')), this.$locale.baseText('auth.signup.setupYourAccountError'));
+				return;
+			}
+
 			try {
 				this.loading = true;
-				const inviterId = (!this.$route.query.inviterId || typeof this.$route.query.inviterId !== 'string') ? null : this.$route.query.inviterId;
-				const inviteeId = (!this.$route.query.inviteeId || typeof this.$route.query.inviteeId !== 'string') ? null : this.$route.query.inviteeId;
-				await this.usersStore.signup({...values, inviterId, inviteeId} as { inviteeId: string; inviterId: string; firstName: string; lastName: string; password: string;});
+				await this.usersStore.signup({...values, inviterId: this.inviterId,  inviteeId: this.inviteeId} as { inviteeId: string; inviterId: string; firstName: string; lastName: string; password: string;});
 
 				if (values.agree === true) {
 					try {

@@ -104,8 +104,8 @@ export default Vue.extend({
 			const triggerNodeType = this.nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion);
 				if (triggerNodeType) {
 					if (triggerNodeType.activationMessage) {
-					return triggerNodeType.activationMessage;
-				}
+						return triggerNodeType.activationMessage;
+					}
 
 				const serviceName = getTriggerNodeServiceName(triggerNodeType);
 				if (trigger.webhookId) {
