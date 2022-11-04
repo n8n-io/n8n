@@ -6,13 +6,13 @@ const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
 
-describe('Other', () => {
+describe('Sign up', () => {
 	it('should sign user up', () => {
 		cy.signup(username, firstName, lastName, password);
 	});
 });
 
-describe('Smoke test', () => {
+describe('Sign in', () => {
 	it('should sign user in', () => {
 		cy.signin(username, password);
 	});

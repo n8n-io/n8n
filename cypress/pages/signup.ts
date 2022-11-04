@@ -1,7 +1,7 @@
 import { BasePage } from "./base";
 
 export class SignupPage extends BasePage {
-	url = '/signup';
+	url = '/setup';
 	elements = {
 		form: () => cy.getByTestId('auth-form'),
 		email: () => cy.getByTestId('email'),
