@@ -1,9 +1,5 @@
 <template>
-	<AuthView
-		:form="FORM_CONFIG"
-		:formLoading="loading"
-		@submit="onSubmit"
-	/>
+	<AuthView :form="FORM_CONFIG" :formLoading="loading" @submit="onSubmit" />
 </template>
 
 <script lang="ts">
@@ -17,23 +13,28 @@ import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 
-export default mixins(
-	showMessage,
-).extend({
+export default mixins(showMessage).extend({
 	name: 'SigninView',
 	components: {
 		AuthView,
 	},
 	data() {
+		return {
+			FORM_CONFIG: {} as IFormBoxConfig,
+			loading: false,
+		};
+	},
+	computed: {
+		...mapStores(useUsersStore, useSettingsStore),
+	},
+	mounted() {
 		let emailLabel = this.$locale.baseText('auth.email');
 		const ldapLoginLabel = this.settingsStore.ldapLoginLabel;
 		const isLdapLoginEnabled = this.settingsStore.isLdapLoginEnabled;
-
 		if (isLdapLoginEnabled && ldapLoginLabel) {
 			emailLabel = ldapLoginLabel;
 		}
-
-		const FORM_CONFIG: IFormBoxConfig = {
+		this.FORM_CONFIG = {
 			title: this.$locale.baseText('auth.signin'),
 			buttonText: this.$locale.baseText('auth.signin'),
 			redirectText: this.$locale.baseText('forgotPassword'),
@@ -66,26 +67,19 @@ export default mixins(
 				},
 			],
 		};
-
-		return {
-			FORM_CONFIG,
-			loading: false,
-		};
-	},
-	computed: {
-		...mapStores(useUsersStore, useSettingsStore),
 	},
 	methods: {
-		async onSubmit(values: {[key: string]: string}) {
+		async onSubmit(values: { [key: string]: string }) {
 			try {
 				this.loading = true;
-				await this.usersStore.loginWithCreds(values as {email: string, password: string});
+				await this.usersStore.loginWithCreds(values as { email: string; password: string });
 				this.clearAllStickyNotifications();
 				this.loading = false;
 
 				if (typeof this.$route.query.redirect === 'string') {
 					const redirect = decodeURIComponent(this.$route.query.redirect);
-					if (redirect.startsWith('/')) { // protect against phishing
+					if (redirect.startsWith('/')) {
+						// protect against phishing
 						this.$router.push(redirect);
 
 						return;
