@@ -32,35 +32,47 @@ Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args)
 })
 
-Cypress.Commands.add('signin', (email, password) => {
-	const signinPage = new SigninPage();
-	const workflowsPage = new WorkflowsPage();
+Cypress.Commands.add(
+	'signin',
+	(email, password) => {
+		const signinPage = new SigninPage();
+		const workflowsPage = new WorkflowsPage();
 
-	cy.session([email, password], () => {
-		cy.visit(signinPage.url);
+		cy.session([email, password], () => {
+			cy.visit(signinPage.url);
 
-		signinPage.get('form').within(() => {
-			signinPage.get('email').type(email);
-			signinPage.get('password').type(password);
-			signinPage.get('submit').click();
+			signinPage.get('form').within(() => {
+				signinPage.get('email').type(email);
+				signinPage.get('password').type(password);
+				signinPage.get('submit').click();
+			});
+
+			// we should be redirected to /workflows
+			cy.url().should('include', workflowsPage.url);
+		},
+		{
+			validate() {
+				cy.getCookie(N8N_AUTH_COOKIE).should('exist');
+			},
 		});
-
-		// we should be redirected to /workflows
-		cy.url().should('include', workflowsPage.url);
-
-		// our auth cookie should be present
-		cy.getCookie(N8N_AUTH_COOKIE).should('exist');
-	});
 });
 
 Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
 	const signupPage = new SignupPage();
+
 	cy.visit(signupPage.url);
+
 	signupPage.get('form').within(() => {
-		signupPage.get('email').type(email);
-		signupPage.get('firstName').type(firstName);
-		signupPage.get('lastName').type(lastName);
-		signupPage.get('password').type(password);
-		signupPage.get('submit').click();
+		cy.url().then((url) => {
+			if (url.endsWith(signupPage.url)) {
+				signupPage.get('email').type(email);
+				signupPage.get('firstName').type(firstName);
+				signupPage.get('lastName').type(lastName);
+				signupPage.get('password').type(password);
+				signupPage.get('submit').click();
+			} else {
+				cy.log('User already signed up');
+			}
+		});
 	});
 })

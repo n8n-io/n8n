@@ -14,6 +14,7 @@ module.exports = defineConfig({
 		video: false,
 		screenshotOnRunFailure: false,
 		experimentalSessionAndOrigin: true,
+		experimentalInteractiveRunEvents: true,
 		setupNodeEvents(on, config) {
 			on('before:run', async () => {
 				await copyFile(n8nCypressDb, n8nCypressDbBackup);

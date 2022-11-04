@@ -1,21 +1,18 @@
-import { randEmail, randPassword, randFirstName, randLastName } from '@ngneat/falso';
+import {DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD} from "../constants";
+import {randFirstName, randLastName} from "@ngneat/falso";
 
-const username = randEmail();
-const password = randPassword();
+const username = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
 
-before(() => {
-	cy.task('db:reset');
-});
-
-describe('Create user', () => {
+describe('Other', () => {
 	it('should sign user up', () => {
 		cy.signup(username, firstName, lastName, password);
 	});
 });
 
-describe('Sign in User', () => {
+describe('Smoke test', () => {
 	it('should sign user in', () => {
 		cy.signin(username, password);
 	});
