@@ -370,6 +370,7 @@ export const pushConnection = mixins(
 					// node that did finish. For that reason copy in here the data
 					// which we already have.
 					if (this.workflowsStore.getWorkflowRunData) {
+						// todo
 						runDataExecuted.data.resultData.runData = this.workflowsStore.getWorkflowRunData;
 					}
 

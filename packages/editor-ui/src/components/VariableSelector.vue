@@ -33,6 +33,7 @@ import VariableSelectorItem from '@/components/VariableSelectorItem.vue';
 import {
 	IExecutionResponse,
 	INodeUi,
+	IRunExecutionDataCached,
 	IVariableItemSelected,
 	IVariableSelectorOption,
 } from '@/Interface';
@@ -409,7 +410,7 @@ export default mixins(
 
 				return returnData;
 			},
-			getNodeContext (workflow: Workflow, runExecutionData: IRunExecutionData | null, parentNode: string[], nodeName: string, filterText: string): IVariableSelectorOption[] | null {
+			getNodeContext (workflow: Workflow, runExecutionData: IRunExecutionDataCached | null, parentNode: string[], nodeName: string, filterText: string): IVariableSelectorOption[] | null {
 				const itemIndex = 0;
 				const inputName = 'main';
 				const runIndex = 0;
@@ -440,6 +441,7 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
+				// todo add support
 				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', this.rootStore.timezone, additionalKeys);
 				const proxy = dataProxy.getDataProxy();
 
@@ -519,7 +521,7 @@ export default mixins(
 
 				let tempOptions: IVariableSelectorOption[];
 				if (executionData !== null && executionData.data !== undefined) {
-					const runExecutionData: IRunExecutionData = executionData.data;
+					const runExecutionData: IRunExecutionDataCached = executionData.data;
 
 					tempOptions = this.getNodeContext(this.workflow, runExecutionData, parentNode, activeNode.name, filterText) as IVariableSelectorOption[];
 					if (tempOptions.length) {

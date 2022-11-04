@@ -6,6 +6,7 @@ import type { CodeNodeEditorMixin } from '../types';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { IRunDataCached } from '@/Interface';
 
 export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 	computed: {
@@ -290,7 +291,7 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 				} catch (_) {}
 			}
 
-			const runData: IRunData | null = this.workflowsStore.getWorkflowRunData;
+			const runData: IRunDataCached | null = this.workflowsStore.getWorkflowRunData;
 
 			const nodeRunData = runData && runData[nodeName];
 
@@ -301,10 +302,10 @@ export const jsonFieldCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 				if (options?.accessor === 'last') {
 					const inputItems = nodeRunData[0].data!.main[0]!;
-					itemIndex = inputItems.length - 1;
+					itemIndex = inputItems.total - 1;
 				}
 
-				return nodeRunData[0].data!.main[0]![itemIndex].json;
+				return this.workflowsStore.getCachedRunItem(nodeName, 0, 0, itemIndex);
 			} catch (_) {
 				return null;
 			}

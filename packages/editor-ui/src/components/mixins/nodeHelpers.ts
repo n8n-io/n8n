@@ -29,6 +29,7 @@ import {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
+	IRunDataCached,
 	IUser,
 } from '@/Interface';
 
@@ -138,7 +139,7 @@ export const nodeHelpers = mixins(
 			// Set the status on all the nodes which produced an error so that it can be
 			// displayed in the node-view
 			hasNodeExecutionIssues (node: INodeUi): boolean {
-				const workflowResultData: IRunData = this.workflowsStore.getWorkflowRunData;
+				const workflowResultData: IRunDataCached | null = this.workflowsStore.getWorkflowRunData;
 
 				if (workflowResultData === null || !workflowResultData.hasOwnProperty(node.name)) {
 					return false;

@@ -927,7 +927,6 @@ export interface WorkflowsState {
 	nodeMetadata: NodeMetadataMap;
 	subWorkflowExecutionError: Error | null;
 	workflow: IWorkflowDb;
-	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionDataCached: IExecutionResponseCached | null;
 	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
 	workflowsById: IWorkflowsMap;

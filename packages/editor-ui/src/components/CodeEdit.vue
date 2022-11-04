@@ -18,7 +18,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { IExecutionResponse, INodeUi } from '@/Interface';
+import { IExecutionResponse, INodeUi, IRunExecutionDataCached } from '@/Interface';
 import {
 	IBinaryKeyData,
 	IDataObject,
@@ -72,7 +72,7 @@ export default mixins(
 
 				const executionData = this.workflowsStore.getWorkflowExecution;
 
-				let runExecutionData: IRunExecutionData;
+				let runExecutionData: IRunExecutionDataCached;
 				if (!executionData || !executionData.data) {
 					runExecutionData = {
 						resultData: {
@@ -100,6 +100,7 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
+				// todo add support
 				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, activeNode!.name, connectionInputData || [], {}, mode, this.rootStore.timezone, additionalProxyKeys);
 				const proxy = dataProxy.getDataProxy();
 

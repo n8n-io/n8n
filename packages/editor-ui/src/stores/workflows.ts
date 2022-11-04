@@ -1,6 +1,7 @@
 import { DEFAULT_NEW_WORKFLOW_NAME, DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID, STORES } from "@/constants";
 import {
 	IExecutionResponse,
+	IExecutionResponseCached,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsSummary,
 	INewWorkflowData,
@@ -8,6 +9,8 @@ import {
 	INodeUpdatePropertiesInformation,
 	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
+	IRunDataCached,
+	ITaskDataCached,
 	IUpdateInformation,
 	IWorkflowDb,
 	IWorkflowsMap,
@@ -25,7 +28,7 @@ import { isJsonKeyObject } from "@/utils";
 import { stringSizeInBytes } from "@/components/helpers";
 import { useNDVStore } from "./ndv";
 import { useNodeTypesStore } from "./nodeTypes";
-import { cacheExecutionsResponse, clearExecutionsCache, getCachedExecutionResponse } from "./workflowExecutionsHelpers";
+import { cacheExecutionsResponse, clearExecutionsCache, getCachedExecutionResponse, getCachedItem } from "./workflowExecutionsHelpers";
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
@@ -47,7 +50,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		currentWorkflowExecutions: [],
 		activeWorkflowExecution: null,
 		finishedExecutionsCount: 0,
-		workflowExecutionData: null,
 		workflowExecutionDataCached: null,
 		workflowExecutionPairedItemMappings: {},
 		workflowsById: {},
@@ -97,14 +99,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		currentWorkflowHasWebhookNode(): boolean {
 			return !!this.workflow.nodes.find((node: INodeUi) => !!node.webhookId);
 		},
-		getWorkflowRunData(): IRunData | null {
-			if (!this.workflowExecutionData || !this.workflowExecutionData.data || !this.workflowExecutionData.data.resultData) {
+		getWorkflowRunData(): IRunDataCached | null {
+			if (!this.workflowExecutionDataCached || !this.workflowExecutionDataCached.data || !this.workflowExecutionDataCached.data.resultData) {
 				return null;
 			}
-			return this.workflowExecutionData.data.resultData.runData;
+			return this.workflowExecutionDataCached.data.resultData.runData;
+		},
+		getCachedRunItem() {
+			return (nodeName: string, run: number, output: number, itemIndex: number): INodeExecutionData | null => {
+				return getCachedItem(nodeName, run, output, itemIndex);
+			};
 		},
 		getWorkflowResultDataByNodeName() {
-			return (nodeName: string): ITaskData[] | null => {
+			return (nodeName: string): ITaskDataCached[] | null => {
 				const workflowRunData = this.getWorkflowRunData;
 
 				if (workflowRunData === null) {
@@ -169,7 +176,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				}, 0);
 		},
 		executedNode(): string | undefined {
-			return this.workflowExecutionData ? this.workflowExecutionData.executedNode : undefined;
+			return this.workflowExecutionDataCached ? this.workflowExecutionDataCached.executedNode : undefined;
 		},
 		getParametersLastUpdate(): ((name: string) => number | undefined) {
 			return (nodeName: string) => this.nodeMetadata[nodeName] && this.nodeMetadata[nodeName].parametersLastUpdatedAt;
@@ -182,8 +189,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		getAllLoadedFinishedExecutions(): IExecutionsSummary[] {
 			return this.currentWorkflowExecutions.filter(ex => ex.finished === true || ex.stoppedAt !== undefined);
 		},
-		getWorkflowExecution(): IExecutionResponse | null {
-			return this.workflowExecutionData;
+		getWorkflowExecution(): IExecutionResponseCached | null {
+			return this.workflowExecutionDataCached;
 		},
 		getTotalFinishedExecutionsCount(): number {
 			return this.finishedExecutionsCount;
@@ -329,12 +336,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		// Node actions
 		setWorkflowExecutionData(workflowResultData: IExecutionResponse | null): void {
 			if (workflowResultData === null) {
-				this.workflowExecutionData = workflowResultData;
 				clearExecutionsCache();
 
 				return;
 			}
-			this.workflowExecutionData = workflowResultData;
 			this.workflowExecutionDataCached = getCachedExecutionResponse(workflowResultData);
 			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(workflowResultData);
 			cacheExecutionsResponse(workflowResultData);
@@ -533,29 +538,31 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		renameNodeSelectedAndExecution(nameData: { old: string, new: string }): void {
-			const uiStore = useUIStore();
-			uiStore.stateIsDirty = true;
-			// If node has any WorkflowResultData rename also that one that the data
-			// does still get displayed also after node got renamed
-			if (this.workflowExecutionData !== null && this.workflowExecutionData.data && this.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
-				this.workflowExecutionData.data.resultData.runData[nameData.new] = this.workflowExecutionData.data.resultData.runData[nameData.old];
-				delete this.workflowExecutionData.data.resultData.runData[nameData.old];
-			}
+			// todo
 
-			// In case the renamed node was last selected set it also there with the new name
-			if (uiStore.lastSelectedNode === nameData.old) {
-				uiStore.lastSelectedNode = nameData.new;
-			}
+			// const uiStore = useUIStore();
+			// uiStore.stateIsDirty = true;
+			// // If node has any WorkflowResultData rename also that one that the data
+			// // does still get displayed also after node got renamed
+			// if (this.workflowExecutionData !== null && this.workflowExecutionData.data && this.workflowExecutionData.data.resultData.runData.hasOwnProperty(nameData.old)) {
+			// 	this.workflowExecutionData.data.resultData.runData[nameData.new] = this.workflowExecutionData.data.resultData.runData[nameData.old];
+			// 	delete this.workflowExecutionData.data.resultData.runData[nameData.old];
+			// }
 
-			Vue.set(this.nodeMetadata, nameData.new, this.nodeMetadata[nameData.old]);
-			Vue.delete(this.nodeMetadata, nameData.old);
+			// // In case the renamed node was last selected set it also there with the new name
+			// if (uiStore.lastSelectedNode === nameData.old) {
+			// 	uiStore.lastSelectedNode = nameData.new;
+			// }
 
-			if (this.workflow.pinData && this.workflow.pinData.hasOwnProperty(nameData.old)) {
-				Vue.set(this.workflow.pinData, nameData.new, this.workflow.pinData[nameData.old]);
-				Vue.delete(this.workflow.pinData, nameData.old);
-			}
+			// Vue.set(this.nodeMetadata, nameData.new, this.nodeMetadata[nameData.old]);
+			// Vue.delete(this.nodeMetadata, nameData.old);
 
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
+			// if (this.workflow.pinData && this.workflow.pinData.hasOwnProperty(nameData.old)) {
+			// 	Vue.set(this.workflow.pinData, nameData.new, this.workflow.pinData[nameData.old]);
+			// 	Vue.delete(this.workflow.pinData, nameData.old);
+			// }
+
+			// this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 
 		resetAllNodesIssues(): boolean {
@@ -682,20 +689,24 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		addNodeExecutionData(pushData: IPushDataNodeExecuteAfter): void {
-			if (this.workflowExecutionData === null || !this.workflowExecutionData.data) {
-				throw new Error('The "workflowExecutionData" is not initialized!');
-			}
-			if (this.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
-				Vue.set(this.workflowExecutionData.data.resultData.runData, pushData.nodeName, []);
-			}
-			this.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
+			// todo
+
+			// if (this.workflowExecutionDataCached === null || !this.workflowExecutionDataCached.data) {
+			// 	throw new Error('The "workflowExecutionData" is not initialized!');
+			// }
+			// if (this.workflowExecutionData.data.resultData.runData[pushData.nodeName] === undefined) {
+			// 	Vue.set(this.workflowExecutionData.data.resultData.runData, pushData.nodeName, []);
+			// }
+			// this.workflowExecutionData.data.resultData.runData[pushData.nodeName].push(pushData.data);
+			// this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
 		},
 		clearNodeExecutionData(nodeName: string): void {
-			if (this.workflowExecutionData === null || !this.workflowExecutionData.data) {
-				return;
-			}
-			Vue.delete(this.workflowExecutionData.data.resultData.runData, nodeName);
+			// todo
+
+			// if (this.workflowExecutionData === null || !this.workflowExecutionData.data) {
+			// 	return;
+			// }
+			// Vue.delete(this.workflowExecutionData.data.resultData.runData, nodeName);
 		},
 
 		pinDataByNodeName(nodeName: string): INodeExecutionData[] | undefined {

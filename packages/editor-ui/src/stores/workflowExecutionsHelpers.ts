@@ -19,6 +19,18 @@ export function cacheExecutionsResponse(response: IExecutionResponse | null): vo
 	cacheRunData(runData);
 }
 
+export function getCachedItem(nodeName: string, run: number, output: number, itemIndex: number): INodeExecutionData | null {
+	const itemId = getPairedItemId(nodeName, run, output, itemIndex);
+	const item = sessionStorage.getItem(itemId);
+	try {
+		if (item) {
+			return JSON.parse(item);
+		}
+	} catch (e) {
+	}
+	return null;
+}
+
 function cacheRunData(runData: IRunData) {
 	Object.keys(runData).forEach((nodeName) => {
 		cacheNodeRun(nodeName, runData[nodeName]);
