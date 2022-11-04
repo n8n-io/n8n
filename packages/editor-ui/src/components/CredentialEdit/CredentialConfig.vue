@@ -107,6 +107,7 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -129,7 +130,7 @@ export default mixins(restApi).extend({
 		credentialData: {
 		},
 		credentialId: {
-			type: [String, Number],
+			type: String,
 			default: '',
 		},
 		showValidationWarning: {
@@ -182,6 +183,7 @@ export default mixins(restApi).extend({
 	},
 	computed: {
 		...mapStores(
+			useCredentialsStore,
 			useNDVStore,
 			useRootStore,
 			useUIStore,
@@ -202,7 +204,7 @@ export default mixins(restApi).extend({
 			return (this.credentialType as ICredentialType).name;
 		},
 		credentialOwnerName(): string {
-			return this.$store.getters['credentials/getCredentialOwnerName'](this.credentialId);
+			return this.credentialsStore.getCredentialOwnerName(this.credentialId);
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;

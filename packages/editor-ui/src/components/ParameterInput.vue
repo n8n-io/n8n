@@ -343,6 +343,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export default mixins(
 	externalHooks,
@@ -477,11 +478,11 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useCredentialsStore,
 				useNodeTypesStore,
 				useNDVStore,
 				useWorkflowsStore,
 			),
-			...mapGetters('credentials', ['allCredentialTypes']),
 			expressionDisplayValue(): string {
 				if (this.activeDrop || this.forceShowExpression) {
 					return '';
@@ -563,14 +564,14 @@ export default mixins(
 					returnValue = this.expressionEvaluated;
 				}
 
-				if (this.parameter.type === 'credentialsSelect') {
-					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
+				if (this.parameter.type === 'credentialsSelect' && typeof this.value === 'string') {
+					const credType = this.credentialsStore.getCredentialTypeByName(this.value);
 					if (credType) {
 						returnValue = credType.displayName;
 					}
 				}
 
-				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
+				if (Array.isArray(returnValue) && this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
 					// Convert the value to rgba that el-color-picker can display it correctly
 					const bigint = parseInt(returnValue.slice(1), 16);
 					const h = [];

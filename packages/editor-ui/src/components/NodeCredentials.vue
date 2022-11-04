@@ -87,6 +87,7 @@ import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export default mixins(
 	genericHelpers,
@@ -110,15 +111,15 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useCredentialsStore,
 			useNodeTypesStore,
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
 		),
-		...mapGetters('credentials', {
-			allCredentialsByType: 'allCredentialsByType',
-			getCredentialTypeByName: 'getCredentialTypeByName',
-		}),
+		allCredentialsByType(): {[type: string]: ICredentialsResponse[]} {
+			return this.credentialsStore.allCredentialsByType;
+		},
 		currentUser (): IUser {
 			return this.usersStore.currentUser || {} as IUser;
 		},
@@ -135,7 +136,7 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			const credType = this.getCredentialTypeByName(this.overrideCredType);
+			const credType = this.credentialsStore.getCredentialTypeByName(this.overrideCredType);
 
 			if (credType) return [credType];
 
@@ -152,7 +153,7 @@ export default mixins(
 			} = {};
 			let credentialType: ICredentialType | null;
 			for (const credentialTypeName of this.credentialTypesNode) {
-				credentialType = this.$store.getters['credentials/getCredentialTypeByName'](credentialTypeName);
+				credentialType = this.credentialsStore.getCredentialTypeByName(credentialTypeName);
 				returnData[credentialTypeName] = credentialType !== null ? credentialType.displayName : credentialTypeName;
 			}
 			return returnData;
@@ -165,7 +166,7 @@ export default mixins(
 	methods: {
 		getCredentialOptions(type: string): ICredentialsResponse[] {
 			return (this.allCredentialsByType as Record<string, ICredentialsResponse[]>)[type].filter((credential) => {
-				const permissions = getCredentialPermissions(this.currentUser, credential, this.$store);
+				const permissions = getCredentialPermissions(this.currentUser, credential);
 
 				return permissions.use;
 			});
@@ -195,15 +196,16 @@ export default mixins(
 		listenForNewCredentials(credentialType: string) {
 			this.stopListeningForNewCredentials();
 
-			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
-				if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
-					this.onCredentialSelected(credentialType, mutation.payload.id);
-				}
-				if (mutation.type === 'credentials/deleteCredential') {
-					this.clearSelectedCredential(credentialType);
-					this.stopListeningForNewCredentials();
-				}
-			});
+			// TODO: FIX THIS:
+			// this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
+			// 	if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
+			// 		this.onCredentialSelected(credentialType, mutation.payload.id);
+			// 	}
+			// 	if (mutation.type === 'credentials/deleteCredential') {
+			// 		this.clearSelectedCredential(credentialType);
+			// 		this.stopListeningForNewCredentials();
+			// 	}
+			// });
 		},
 
 		stopListeningForNewCredentials() {
@@ -232,7 +234,7 @@ export default mixins(
 		},
 
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
-			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
+			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
 				this.uiStore.openNewCredential(credentialType);
 				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.workflowsStore.workflowId });
@@ -250,13 +252,13 @@ export default mixins(
 				},
 			);
 
-			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
+			const selectedCredentials = this.credentialsStore.getCredentialTypeByName(credentialId);
 			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
 
 			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
 
 			// if credentials has been string or neither id matched nor name matched uniquely
-			if (oldCredentials.id === null || (oldCredentials.id && !this.$store.getters['credentials/getCredentialByIdAndType'](oldCredentials.id, credentialType))) {
+			if (oldCredentials.id === null || (oldCredentials.id && !this.credentialsStore.getCredentialByIdAndType(oldCredentials.id, credentialType))) {
 				// update all nodes in the workflow with the same old/invalid credentials
 				this.workflowsStore.replaceInvalidWorkflowCredentials({
 					credentials: selected,

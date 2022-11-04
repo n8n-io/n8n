@@ -114,7 +114,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			};
 		},
 		getCredentialOwnerName() {
-			(credentialId: string): string => {
+			return (credentialId: string): string => {
 				const credential = this.getCredentialById(credentialId);
 				return credential && credential.ownedBy && credential.ownedBy.firstName
 					? `${credential.ownedBy.firstName} ${credential.ownedBy.lastName} (${credential.ownedBy.email})`
@@ -123,7 +123,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 	},
 	actions: {
-		setCredentialTypes(credentialTypes: ICredentialType[]): voic {
+		setCredentialTypes(credentialTypes: ICredentialType[]): void {
 			this.credentialTypes = credentialTypes.reduce((accu: ICredentialTypeMap, cred: ICredentialType) => {
 				accu[cred.name] = cred;
 

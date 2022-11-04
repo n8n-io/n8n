@@ -241,6 +241,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -368,6 +369,7 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useCredentialsStore,
 				useNodeTypesStore,
 				useNDVStore,
 				useRootStore,
@@ -1619,13 +1621,13 @@ export default mixins(
 				};
 
 				const credentialPerType = nodeTypeData.credentials && nodeTypeData.credentials
-					.map(type => this.$store.getters['credentials/getCredentialsByType'](type.name))
+					.map(type => this.credentialsStore.getCredentialsByType(type.name))
 					.flat();
 
 				if (credentialPerType && credentialPerType.length === 1) {
 					const defaultCredential = credentialPerType[0];
 
-					const selectedCredentials = this.$store.getters['credentials/getCredentialById'](defaultCredential.id);
+					const selectedCredentials = this.credentialsStore.getCredentialById(defaultCredential.id);
 					const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
 					const credentials = {
 						[defaultCredential.type]: selected,
@@ -2803,7 +2805,7 @@ export default mixins(
 					return;
 				}
 				Object.entries(node.credentials).forEach(([nodeCredentialType, nodeCredentials]: [string, INodeCredentialsDetails]) => {
-					const credentialOptions = this.$store.getters['credentials/getCredentialsByType'](nodeCredentialType) as ICredentialsResponse[];
+					const credentialOptions = this.credentialsStore.getCredentialsByType(nodeCredentialType);
 
 					// Check if workflows applies old credentials style
 					if (typeof nodeCredentials === 'string') {
@@ -3172,11 +3174,11 @@ export default mixins(
 				await this.nodeTypesStore.getNodeTypes();
 			},
 			async loadCredentialTypes(): Promise<void> {
-				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
+				await this.credentialsStore.fetchCredentialTypes(true);
 			},
 			async loadCredentials(): Promise<void> {
-				await this.$store.dispatch('credentials/fetchAllCredentials');
-				await this.$store.dispatch('credentials/fetchForeignCredentials');
+				await this.credentialsStore.fetchAllCredentials();
+				await this.credentialsStore.fetchForeignCredentials();
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
