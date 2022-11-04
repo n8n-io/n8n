@@ -65,6 +65,8 @@ import { showMessage } from '../mixins/showMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers';
 import { VIEWS } from '../../constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
@@ -77,11 +79,14 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		};
 	},
 	computed: {
+		...mapStores(
+			useUIStore,
+		),
 		executionUIDetails(): IExecutionUIData | null {
 			return this.activeExecution ? this.getExecutionUIDetails(this.activeExecution) : null;
 		},
 		sidebarCollapsed(): boolean {
-			return this.$store.getters['ui/sidebarMenuCollapsed'];
+			return this.uiStore.sidebarMenuCollapsed;
 		},
 	},
 	methods: {

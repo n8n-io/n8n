@@ -64,6 +64,9 @@ import ModalDrawer from './ModalDrawer.vue';
 import mixins from 'vue-typed-mixins';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import Vue from 'vue';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 const DEFAULT_TITLE = `How likely are you to recommend n8n to a friend or colleague?`;
 const GREAT_FEEDBACK_TITLE = `Great to hear! Can we reach out to see how we can make n8n even better for you?`;
@@ -79,12 +82,16 @@ export default mixins(workflowHelpers).extend({
 		isActive(isActive) {
 			if (isActive) {
 				this.$telemetry.track('User shown value survey', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 				});
 			}
 		},
 	},
 	computed: {
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+		),
 		getTitle(): string {
 			if (this.form.value !== '') {
 				if (Number(this.form.value) > 7) {
@@ -115,13 +122,13 @@ export default mixins(workflowHelpers).extend({
 		closeDialog(): void {
 			if (this.form.value === '') {
 				this.$telemetry.track('User responded value survey score', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 					nps: '',
 				});
 			}
 			if (this.form.value !== '' && this.form.email === '') {
 				this.$telemetry.track('User responded value survey email', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 					email: '',
 				});
 			}
@@ -133,31 +140,25 @@ export default mixins(workflowHelpers).extend({
 			this.form.value = value;
 			this.showButtons = false;
 
-			const response: IN8nPromptResponse = await this.$store.dispatch(
-				'settings/submitValueSurvey',
-				{ value: this.form.value },
-			);
+			const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({ value: this.form.value });
 
-			if (response.updated) {
+			if (response && response.updated) {
 				this.$telemetry.track('User responded value survey score', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 					nps: this.form.value,
 				});
 			}
 		},
 		async send() {
 			if (this.isEmailValid) {
-				const response: IN8nPromptResponse = await this.$store.dispatch(
-					'settings/submitValueSurvey',
-					{
-						email: this.form.email,
-						value: this.form.value,
-					},
-				);
+				const response: IN8nPromptResponse | undefined = await this.settingsStore.submitValueSurvey({
+					email: this.form.email,
+					value: this.form.value,
+				});
 
-				if (response.updated) {
+				if (response && response.updated) {
 					this.$telemetry.track('User responded value survey email', {
-						instance_id: this.$store.getters.instanceId,
+						instance_id: this.rootStore.instanceId,
 						email: this.form.email,
 					});
 					this.$showMessage({

@@ -339,6 +339,10 @@ import { mapGetters } from 'vuex';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from './mixins/debounce';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	externalHooks,
@@ -472,6 +476,11 @@ export default mixins(
 			},
 		},
 		computed: {
+			...mapStores(
+				useNodeTypesStore,
+				useNDVStore,
+				useWorkflowsStore,
+			),
 			...mapGetters('credentials', ['allCredentialTypes']),
 			expressionDisplayValue(): string {
 				if (this.activeDrop || this.forceShowExpression) {
@@ -499,7 +508,7 @@ export default mixins(
 				}
 
 				// Get the resolved parameter values of the current node
-				const currentNodeParameters = this.$store.getters['ndv/activeNode'].parameters;
+				const currentNodeParameters = this.ndvStore.activeNode?.parameters;
 				try {
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
@@ -514,7 +523,7 @@ export default mixins(
 				}
 			},
 			node (): INodeUi | null {
-				return this.$store.getters['ndv/activeNode'];
+				return this.ndvStore.activeNode;
 			},
 			displayTitle (): string {
 				const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -742,12 +751,14 @@ export default mixins(
 			},
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
 				// Update the values on the node
-				this.$store.commit('updateNodeProperties', updateInformation);
+				this.workflowsStore.updateNodeProperties(updateInformation);
 
-				const node = this.$store.getters.getNodeByName(updateInformation.name);
+				const node = this.workflowsStore.getNodeByName(updateInformation.name);
 
-				// Update the issues
-				this.updateNodeCredentialIssues(node);
+				if (node) {
+					// Update the issues
+					this.updateNodeCredentialIssues(node);
+				}
 
 				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 			},
@@ -784,12 +795,12 @@ export default mixins(
 				// Get the resolved parameter values of the current node
 
 				try {
-					const currentNodeParameters = (this.$store.getters['ndv/activeNode'] as INodeUi).parameters;
+					const currentNodeParameters = (this.ndvStore.activeNode as INodeUi).parameters;
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
 
-					const options = await this.$store.dispatch('nodeTypes/getNodeParameterOptions',
+					const options = await this.nodeTypesStore.getNodeParameterOptions(
 						{
 							nodeTypeAndVersion: {
 								name: this.node.type,
@@ -827,8 +838,8 @@ export default mixins(
 						parameter_name: this.parameter.displayName,
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
-						workflow_id: this.$store.getters.workflowId,
-						session_id: this.$store.getters['ndv/ndvSessionId'],
+						workflow_id: this.workflowsStore.workflowId,
+						session_id: this.ndvStore.sessionId,
 						source: this.eventSource || 'ndv',
 					});
 				}
@@ -956,11 +967,11 @@ export default mixins(
 
 				if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
 					this.$telemetry.track('User set node operation or mode', {
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						node_type: this.node && this.node.type,
 						resource: this.node && this.node.parameters.resource,
 						is_custom: value === CUSTOM_API_CALL_KEY,
-						session_id: this.$store.getters['ndv/ndvSessionId'],
+						session_id: this.ndvStore.sessionId,
 						parameter: this.parameter.name,
 					});
 				}

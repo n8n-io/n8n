@@ -1,4 +1,5 @@
 import { getNextVersions } from '@/api/versions';
+import { useRootStore } from '@/stores/n8nRootStore';
 import { ActionContext, Module } from 'vuex';
 import {
 	IRootState,
@@ -40,7 +41,7 @@ const module: Module<IVersionsState, IRootState> = {
 			state.currentVersion = versions.find((version) => version.name === currentVersion);
 		},
 		setVersionNotificationSettings(state: IVersionsState, settings: {enabled: true, endpoint: string, infoUrl: string}) {
-			state.versionNotificationSettings = settings;	
+			state.versionNotificationSettings = settings;
 		},
 	},
 	actions: {
@@ -48,8 +49,9 @@ const module: Module<IVersionsState, IRootState> = {
 			try {
 				const { enabled, endpoint } = context.state.versionNotificationSettings;
 				if (enabled && endpoint) {
-					const currentVersion = context.rootState.versionCli;
-					const instanceId = context.rootState.instanceId;
+					const rootStore = useRootStore();
+					const currentVersion = rootStore.versionCli;
+					const instanceId = rootStore.instanceId;
 					const versions = await getNextVersions(endpoint, currentVersion, instanceId);
 					context.commit('setVersions', {versions, currentVersion});
 				}

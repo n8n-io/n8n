@@ -32,7 +32,7 @@
 				/>
 				<n8n-user-select
 					:users="ownedByUsers"
-					:currentUserId="currentUser.id"
+					:currentUserId="usersStore.currentUser.id"
 					:value="value.ownedBy"
 					size="small"
 					@input="setKeyValue('ownedBy', $event)"
@@ -48,7 +48,7 @@
 				/>
 				<n8n-user-select
 					:users="sharedWithUsers"
-					:currentUserId="currentUser.id"
+					:currentUserId="usersStore.currentUser.id"
 					:value="value.sharedWith"
 					size="small"
 					@input="setKeyValue('sharedWith', $event)"
@@ -66,8 +66,9 @@
 <script lang="ts">
 import Vue, { PropType } from 'vue';
 import {EnterpriseEditionFeature} from "@/constants";
-import {IResource} from "@/components/layouts/ResourcesListLayout.vue";
 import {IUser} from "@/Interface";
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users';
 
 export type IResourceFiltersType = Record<string, boolean | string | string[]>;
 
@@ -95,17 +96,12 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
-		allUsers(): IUser[] {
-			return this.$store.getters['users/allUsers'];
-		},
+		...mapStores(useUsersStore),
 		ownedByUsers(): IUser[] {
-			return this.allUsers.map((user) => user.id === this.value.sharedWith ? { ...user, disabled: true } : user);
+			return this.usersStore.allUsers.map((user) => user.id === this.value.sharedWith ? { ...user, disabled: true } : user);
 		},
 		sharedWithUsers(): IUser[] {
-			return this.allUsers.map((user) => user.id === this.value.ownedBy ? { ...user, disabled: true } : user);
+			return this.usersStore.allUsers.map((user) => user.id === this.value.ownedBy ? { ...user, disabled: true } : user);
 		},
 		filtersLength(): number {
 			let length = 0;

@@ -4,10 +4,15 @@ import {
 	IVersion,
 } from '../../Interface';
 import { VERSIONS_MODAL_KEY } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export const newVersions = mixins(
 	showMessage,
 ).extend({
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		async checkForNewVersions() {
 			const enabled = this.$store.getters['versions/areNotificationsEnabled'];
@@ -31,7 +36,7 @@ export const newVersions = mixins(
 					title: 'Critical update available',
 					message,
 					onClick: () => {
-						this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
+						this.uiStore.openModal(VERSIONS_MODAL_KEY);
 					},
 					closeOnClick: true,
 					customClass: 'clickable',

@@ -37,6 +37,11 @@ import { range as _range } from 'lodash';
 import { debounceHelper } from '../mixins/debounce';
 import { getNodeViewTab } from '../helpers';
 import { workflowHelpers } from '../mixins/workflowHelpers';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(restApi, showMessage, executionHelpers, debounceHelper, workflowHelpers).extend({
 	name: 'executions-page',
@@ -51,6 +56,12 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		};
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useSettingsStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
 		hidePreview(): boolean {
 			const nothingToShow = this.executions.length === 0 && this.filterApplied;
 			const activeNotPresent = this.filterApplied && (this.executions as IExecutionsSummary[]).find(ex => ex.id === this.activeExecution.id) === undefined;
@@ -66,13 +77,13 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			return this.filter.status !== '';
 		},
 		workflowDataNotLoaded(): boolean {
-			return this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID && this.$store.getters.workflowName === '';
+			return this.workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID && this.workflowsStore.workflowName === '';
 		},
 		loadedFinishedExecutionsCount(): number {
-			return (this.$store.getters['workflows/getAllLoadedFinishedExecutions'] as IExecutionsSummary[]).length;
+			return this.workflowsStore.getAllLoadedFinishedExecutions.length;
 		},
 		totalFinishedExecutionsCount(): number {
-			return this.$store.getters['workflows/getTotalFinishedExecutionsCount'];
+			return this.workflowsStore.getTotalFinishedExecutionsCount;
 		},
 	},
 	watch:{
@@ -81,9 +92,9 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			this.initView(workflowChanged);
 
 			if (to.params.executionId) {
-				const execution = this.$store.getters['workflows/getExecutionDataById'](to.params.executionId);
+				const execution = this.workflowsStore.getExecutionDataById(to.params.executionId);
 				if (execution) {
-					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
+					this.workflowsStore.activeWorkflowExecution = execution;
 				}
 			}
 		},
@@ -92,7 +103,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		const nextTab = getNodeViewTab(to);
 		// When leaving for a page that's not a workflow view tab, ask to save changes
 		if (!nextTab) {
-			const result = this.$store.getters.getStateIsDirty;
+			const result = this.uiStore.stateIsDirty;
 			if (result) {
 				const confirmModal = await this.confirmModal(
 					this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
@@ -105,11 +116,11 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 
 				if (confirmModal === MODAL_CONFIRMED) {
 					const saved = await this.saveCurrentWorkflow({}, false);
-					if (saved) this.$store.dispatch('settings/fetchPromptsData');
-					this.$store.commit('setStateDirty', false);
+					if (saved) this.settingsStore.fetchPromptsData();
+					this.uiStore.stateIsDirty = false;
 					next();
 				} else if (confirmModal === MODAL_CANCEL) {
-					this.$store.commit('setStateDirty', false);
+					this.uiStore.stateIsDirty = false;
 					next();
 				} else if (confirmModal === MODAL_CLOSE) {
 					next(false);
@@ -122,8 +133,8 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 	},
 	async mounted() {
 		this.loading = true;
-		const workflowUpdated = this.$route.params.name !== this.$store.getters.workflowId;
-		const onNewWorkflow = this.$route.params.name === 'new' && this.$store.getters.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+		const workflowUpdated = this.$route.params.name !== this.workflowsStore.workflowId;
+		const onNewWorkflow = this.$route.params.name === 'new' && this.workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID;
 		const shouldUpdate = workflowUpdated && !onNewWorkflow;
 		await this.initView(shouldUpdate);
 		if (!shouldUpdate) {
@@ -134,11 +145,11 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 	methods: {
 		async initView(loadWorkflow: boolean) : Promise<void> {
 			if (loadWorkflow) {
-				if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
-					await this.$store.dispatch('nodeTypes/getNodeTypes');
+				if (this.nodeTypesStore.allNodeTypes.length === 0) {
+					await this.nodeTypesStore.getNodeTypes();
 				}
 				await this.openWorkflow(this.$route.params.name);
-				this.$store.commit('ui/setNodeViewInitialized', false);
+				this.uiStore.nodeViewInitialized = false;
 				this.setExecutions();
 				if (this.activeExecution) {
 					this.$router.push({
@@ -193,7 +204,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 					currentExecutions.push(newExecution);
 				}
 			}
-			this.$store.commit('workflows/setCurrentWorkflowExecutions', currentExecutions);
+			this.workflowsStore.currentWorkflowExecutions = currentExecutions;
 			this.loadingMore = false;
 		},
 		async onDeleteCurrentExecution(): Promise<void> {
@@ -203,13 +214,13 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				await this.setExecutions();
 				// Select first execution in the list after deleting the current one
 				if (this.executions.length > 0) {
-					this.$store.commit('workflows/setActiveWorkflowExecution', this.executions[0]);
+					this.workflowsStore.activeWorkflowExecution = this.executions[0];
 					this.$router.push({
 						name: VIEWS.EXECUTION_PREVIEW,
 						params: { name: this.currentWorkflow, executionId: this.executions[0].id },
 					}).catch(()=>{});;
 				} else { // If there are no executions left, show empty state and clear active execution from the store
-					this.$store.commit('workflows/setActiveWorkflowExecution', null);
+					this.workflowsStore.activeWorkflowExecution = null;
 					this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
 				}
 			} catch (error) {
@@ -233,7 +244,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		},
 		async setExecutions(): Promise<void> {
 			const workflowExecutions = await this.loadExecutions();
-			this.$store.commit('workflows/setCurrentWorkflowExecutions', workflowExecutions);
+			this.workflowsStore.currentWorkflowExecutions = workflowExecutions;
 			this.setActiveExecution();
 		},
 		async loadAutoRefresh(): Promise<void> {
@@ -284,12 +295,12 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			}
 
 			existingExecutions = existingExecutions.filter(execution => !gaps.includes(parseInt(execution.id, 10)) && lastId >= parseInt(execution.id, 10));
-			this.$store.commit('workflows/setCurrentWorkflowExecutions', existingExecutions);
+			this.workflowsStore.currentWorkflowExecutions = existingExecutions;
 			if (updatedActiveExecution !== null) {
-				this.$store.commit('workflows/setActiveWorkflowExecution', updatedActiveExecution);
+				this.workflowsStore.activeWorkflowExecution = updatedActiveExecution;
 			} else {
 				const activeNotInTheList = existingExecutions.find(ex => ex.id === this.activeExecution.id) === undefined;
-				if (activeNotInTheList) {
+				if (activeNotInTheList && this.executions.length > 0) {
 					this.$router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
 					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
@@ -303,7 +314,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			}
 			try {
 				const executions: IExecutionsSummary[] =
-					await this.$store.dispatch('workflows/loadCurrentWorkflowExecutions', this.filter);
+					await this.workflowsStore.loadCurrentWorkflowExecutions(this.filter);
 				return executions;
 			} catch (error) {
 				this.$showError(
@@ -316,14 +327,14 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		setActiveExecution(): void {
 			const activeExecutionId = this.$route.params.executionId;
 			if (activeExecutionId) {
-				const execution = this.$store.getters['workflows/getExecutionDataById'](activeExecutionId);
+				const execution = this.workflowsStore.getExecutionDataById(activeExecutionId);
 				if (execution) {
-					this.$store.commit('workflows/setActiveWorkflowExecution', execution);
+					this.workflowsStore.activeWorkflowExecution = execution;
 				}
 			}
 			// If there is no execution in the route, select the first one
-			if (this.$store.getters['workflows/getActiveWorkflowExecution'] === null && this.executions.length > 0) {
-				this.$store.commit('workflows/setActiveWorkflowExecution', this.executions[0]);
+			if (this.workflowsStore.activeWorkflowExecution === null && this.executions.length > 0) {
+				this.workflowsStore.activeWorkflowExecution = this.executions[0];
 				this.$router.push({
 					name: VIEWS.EXECUTION_PREVIEW,
 					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
@@ -353,19 +364,20 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				}
 				await this.addNodes(data.nodes, data.connections);
 
-				this.$store.commit('setActive', data.active || false);
-				this.$store.commit('setWorkflowId', workflowId);
-				this.$store.commit('setWorkflowName', { newName: data.name, setStateDirty: false });
-				this.$store.commit('setWorkflowSettings', data.settings || {});
-				this.$store.commit('setWorkflowPinData', data.pinData || {});
+				this.workflowsStore.setActive(data.active || false);
+				this.workflowsStore.setWorkflowId(workflowId);
+				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
+				this.workflowsStore.setWorkflowSettings(data.settings || {});
+				this.workflowsStore.setWorkflowPinData(data.pinData || {});
 				const tags = (data.tags || []) as ITag[];
-				this.$store.commit('tags/upsertTags', tags);
 				const tagIds = tags.map((tag) => tag.id);
-				this.$store.commit('setWorkflowTagIds', tagIds || []);
-				this.$store.commit('setWorkflowHash', data.hash);
+				this.workflowsStore.setWorkflowTagIds(tagIds || []);
+				this.workflowsStore.setWorkflowHash(data.hash);
+
+				this.$store.commit('tags/upsertTags', tags);
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-				this.$store.commit('setStateDirty', false);
+				this.uiStore.stateIsDirty = false;
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections) {
 			if (!nodes || !nodes.length) {
@@ -380,7 +392,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 					node.id = uuid();
 				}
 
-				nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+				nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 
 				// Make sure that some properties always exist
 				if (!node.hasOwnProperty('disabled')) {
@@ -409,7 +421,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 					}
 				}
 
-				this.$store.commit('addNode', node);
+				this.workflowsStore.addNode(node);
 			});
 
 			// Load the connections
@@ -438,7 +450,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 									},
 								] as [IConnection, IConnection];
 
-								this.$store.commit('addConnection', { connection: connectionData, setStateDirty: false });
+								this.workflowsStore.addConnection({ connection: connectionData, setStateDirty: false });
 							});
 						}
 					}
@@ -446,7 +458,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			}
 		},
 		async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
-			const allNodes: INodeTypeDescription[] = this.$store.getters['nodeTypes/allNodeTypes'];
+			const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
 
 			const nodesToBeFetched: INodeTypeNameVersion[] = [];
 			allNodes.forEach(node => {
@@ -463,12 +475,12 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 
 			if (nodesToBeFetched.length > 0) {
 				// Only call API if node information is actually missing
-				await this.$store.dispatch('nodeTypes/getNodesInformation', nodesToBeFetched);
+				await this.nodeTypesStore.getNodesInformation(nodesToBeFetched);
 			}
 		},
 		async loadActiveWorkflows(): Promise<void> {
 			const activeWorkflows = await this.restApi().getActiveWorkflows();
-			this.$store.commit('setActiveWorkflows', activeWorkflows);
+			this.workflowsStore.activeWorkflows = activeWorkflows;
 		},
 		async onRetryExecution(payload: { execution: IExecutionsSummary, command: string }) {
 			const loadWorkflow = payload.command === 'current-workflow';
@@ -482,7 +494,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 			this.loadAutoRefresh();
 
 			this.$telemetry.track('User clicked retry execution button', {
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 				execution_id: payload.execution.id,
 				retry_type: loadWorkflow ? 'current' : 'original',
 			});
