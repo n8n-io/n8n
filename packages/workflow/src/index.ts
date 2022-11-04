@@ -1,4 +1,5 @@
 import * as LoggerProxy from './LoggerProxy';
+export * as ErrorReporterProxy from './ErrorReporterProxy';
 import * as NodeHelpers from './NodeHelpers';
 import * as ObservableObject from './ObservableObject';
 import * as TelemetryHelpers from './TelemetryHelpers';

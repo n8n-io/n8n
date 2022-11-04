@@ -15,6 +15,7 @@
 import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
 
 import {
+	ErrorReporterProxy as ErrorReporter,
 	ExecutionError,
 	IDeferredPromise,
 	IExecuteResponsePromiseData,
@@ -56,6 +57,7 @@ import * as Queue from './Queue';
 import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from './WorkflowHelpers';
+import { initErrorHandling } from './ErrorReporting';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -76,6 +78,8 @@ export class WorkflowRunner {
 		if (executionsMode === 'queue') {
 			this.jobQueue = Queue.getInstance().getBullObjectInstance();
 		}
+
+		initErrorHandling();
 	}
 
 	/**
@@ -98,6 +102,8 @@ export class WorkflowRunner {
 		executionId: string,
 		hooks?: WorkflowHooks,
 	) {
+		ErrorReporter.error(error);
+
 		const fullRunData: IRun = {
 			data: {
 				resultData: {
@@ -169,6 +175,7 @@ export class WorkflowRunner {
 				);
 			})
 			.catch((error) => {
+				ErrorReporter.error(error);
 				console.error('There was a problem running internal hook "onWorkflowPostExecute"', error);
 			});
 
@@ -182,6 +189,7 @@ export class WorkflowRunner {
 					]);
 				})
 				.catch((error) => {
+					ErrorReporter.error(error);
 					console.error('There was a problem running hook "workflow.postExecute"', error);
 				});
 		}
@@ -263,6 +271,7 @@ export class WorkflowRunner {
 			try {
 				await checkPermissionsForExecution(workflow, data.userId);
 			} catch (error) {
+				ErrorReporter.error(error);
 				// Create a failed execution with the data for the node
 				// save it and abort execution
 				const failedExecution = generateFailedExecutionFromError(
@@ -503,6 +512,7 @@ export class WorkflowRunner {
 						clearWatchdogInterval();
 					}
 				} catch (error) {
+					ErrorReporter.error(error);
 					// We use "getWorkflowHooksWorkerExecuter" as "getWorkflowHooksWorkerMain" does not contain the
 					// "workflowExecuteAfter" which we require.
 					const hooks = WorkflowExecuteAdditionalData.getWorkflowHooksWorkerExecuter(
