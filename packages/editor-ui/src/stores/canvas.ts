@@ -49,9 +49,10 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const getNodesWithPlaceholderNode = (): INodeUi[] =>
 		triggerNodes.value.length > 0 ? nodes.value : [getPlaceholderTriggerNodeUI(), ...nodes.value];
 
-	const setZoomLevel = (zoomLevel: number) => {
+	const setZoomLevel = (zoomLevel: number, offset: XYPosition) => {
 		nodeViewScale.value = zoomLevel;
 		jsPlumbInstance.setZoom(zoomLevel);
+		uiStore.nodeViewOffsetPosition = offset;
 	};
 
 	const resetZoom = () => {
@@ -59,9 +60,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
 		});
-
-		setZoomLevel(scale);
-		uiStore.nodeViewOffsetPosition = offset;
+		setZoomLevel(scale, offset);
 	};
 
 	const zoomIn = () => {
@@ -69,9 +68,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
 		});
-
-		setZoomLevel(scale);
-		uiStore.nodeViewOffsetPosition = offset;
+		setZoomLevel(scale, offset);
 	};
 
 	const zoomOut = () => {
@@ -79,9 +76,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
 		});
-
-		setZoomLevel(scale);
-		uiStore.nodeViewOffsetPosition = offset;
+		setZoomLevel(scale, offset);
 	};
 
 	const zoomToFit = () => {
@@ -89,11 +84,8 @@ export const useCanvasStore = defineStore('canvas', () => {
 		if (!nodes.length) { // some unknown workflow executions
 			return;
 		}
-
 		const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !isDemo.value);
-
-		setZoomLevel(zoomLevel);
-		uiStore.nodeViewOffsetPosition = offset;
+		setZoomLevel(zoomLevel, offset);
 	};
 
 	return {
