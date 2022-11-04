@@ -1163,7 +1163,7 @@ export default mixins(
 					const updateInformation: INodeUpdatePropertiesInformation = {
 						name: nodeName,
 						properties: {
-							position: [node.position[0] + margin, node.position[1]] as unknown as IDataObject,
+							position: { position: [node.position[0] + margin, node.position[1]] },
 						},
 					};
 

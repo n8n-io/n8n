@@ -203,7 +203,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					width: isNumber(params.width) ? params.width : this.node.parameters.width,
 				};
 
-				const updateInformation = {
+				const updateInformation: IUpdateInformation = {
 					key: this.node.id,
 					name: this.node.name,
 					value: nodeParameters,

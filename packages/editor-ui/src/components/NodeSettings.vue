@@ -176,7 +176,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 			useUIStore,
 			useWorkflowsStore,
 		),
-		isCurlImportModalOpen() {
+		isCurlImportModalOpen(): boolean {
 			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
 		},
 		nodeTypeName(): string {
@@ -588,16 +588,17 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					}
 				}
 
-				// Update the data in vuex
-				const updateInformation = {
-					name: node.name,
-					value: nodeParameters,
-				} as IUpdateInformation;
+				if (nodeParameters) {
+					const updateInformation: IUpdateInformation = {
+						name: node.name,
+						value: nodeParameters,
+					};
 
-				this.workflowsStore.setNodeParameters(updateInformation);
+					this.workflowsStore.setNodeParameters(updateInformation);
 
-				this.updateNodeParameterIssues(node, nodeType);
-				this.updateNodeCredentialIssues(node);
+					this.updateNodeParameterIssues(node, nodeType);
+					this.updateNodeCredentialIssues(node);
+				}
 			} else if (parameterData.name.startsWith('parameters.')) {
 				// A node parameter changed
 
@@ -691,7 +692,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 					name: node.name,
 					key: parameterData.name,
 					value: newValue,
-				} as IUpdateInformation;
+				};
 
 				this.workflowsStore.setNodeValue(updateInformation);
 			}
