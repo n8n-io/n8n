@@ -101,27 +101,28 @@ export default Vue.extend({
 
 			const trigger = foundTriggers[0];
 
-			const triggerNodeType = this.nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion) as INodeTypeDescription;
-			if (triggerNodeType.activationMessage) {
-				return triggerNodeType.activationMessage;
-			}
+			const triggerNodeType = this.nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion);
+				if (triggerNodeType) {
+					if (triggerNodeType.activationMessage) {
+					return triggerNodeType.activationMessage;
+				}
 
-			const serviceName = getTriggerNodeServiceName(triggerNodeType);
-			if (trigger.webhookId) {
-				return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
-					interpolate: {
-						serviceName,
-					},
-				});
-			} else if (triggerNodeType.polling) {
-				return this.$locale.baseText('activationModal.yourWorkflowWillNowRegularlyCheck', {
-					interpolate: {
-						serviceName,
-					},
-				});
-			} else {
-				return this.$locale.baseText('activationModal.yourTriggerWillNowFire');
+				const serviceName = getTriggerNodeServiceName(triggerNodeType);
+				if (trigger.webhookId) {
+					return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
+						interpolate: {
+							serviceName,
+						},
+					});
+				} else if (triggerNodeType.polling) {
+					return this.$locale.baseText('activationModal.yourWorkflowWillNowRegularlyCheck', {
+						interpolate: {
+							serviceName,
+						},
+					});
+				}
 			}
+			return this.$locale.baseText('activationModal.yourTriggerWillNowFire');
 		},
 	},
 });

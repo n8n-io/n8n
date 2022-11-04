@@ -113,8 +113,8 @@ export default mixins(
 		async onSubmit(values: {[key: string]: string | boolean}) {
 			try {
 				this.loading = true;
-				const inviterId = this.$route.query.inviterId.toString();
-				const inviteeId = this.$route.query.inviteeId.toString();
+				const inviterId = (!this.$route.query.inviterId || typeof this.$route.query.inviterId !== 'string') ? null : this.$route.query.inviterId;
+				const inviteeId = (!this.$route.query.inviteeId || typeof this.$route.query.inviteeId !== 'string') ? null : this.$route.query.inviteeId;
 				await this.usersStore.signup({...values, inviterId, inviteeId} as { inviteeId: string; inviterId: string; firstName: string; lastName: string; password: string;});
 
 				if (values.agree === true) {

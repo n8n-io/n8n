@@ -109,17 +109,22 @@ export default mixins(
 		async onSubmit() {
 			try {
 				this.loading = true;
-				const token = this.$route.query.token.toString();
-				const userId = this.$route.query.userId.toString();
-				await this.usersStore.changePassword({token, userId, password: this.password});
+				const token = (!this.$route.query.token || typeof this.$route.query.token !== 'string') ? null : this.$route.query.token;
+				const userId = (!this.$route.query.userId || typeof this.$route.query.userId !== 'string') ? null : this.$route.query.userId;
 
-				this.$showMessage({
-					type: 'success',
-					title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
-					message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
-				});
+				if (token && userId) {
+					await this.usersStore.changePassword({token, userId, password: this.password});
 
-				await this.$router.push({ name: VIEWS.SIGNIN });
+					this.$showMessage({
+						type: 'success',
+						title: this.$locale.baseText('auth.changePassword.passwordUpdated'),
+						message: this.$locale.baseText('auth.changePassword.passwordUpdatedMessage'),
+					});
+
+					await this.$router.push({ name: VIEWS.SIGNIN });
+				} else {
+					this.$showError(new Error(this.$locale.baseText('auth.validation.missingParameters')), this.$locale.baseText('auth.changePassword.error'));
+				}
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('auth.changePassword.error'));
 			}
