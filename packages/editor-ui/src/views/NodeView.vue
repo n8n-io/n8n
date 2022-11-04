@@ -3383,13 +3383,20 @@ export default mixins(
 	position: absolute;
 	display: flex;
 	justify-content: center;
+	align-items: center;
 	left: 50%;
 	transform: translateX(-50%);
 	bottom: 110px;
 	width: auto;
 
-	> * {
-		margin-inline-end: 0.625rem;
+	@media (max-width: $breakpoint-2xs) {
+		bottom: 150px;
+	}
+
+	button {
+		display: flex;
+		justify-content: center;
+		align-items: center;
 	}
 }
 
