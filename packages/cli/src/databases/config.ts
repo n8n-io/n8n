@@ -12,11 +12,11 @@ import type { DatabaseType } from '../Interfaces';
 import config from '../../config';
 import { getConfigValue } from '../GenericHelpers';
 
-const entitiesDir = path.resolve('src', 'databases', 'entities');
+const entitiesDir = path.resolve(__dirname, 'entities');
 
 const getDBConnectionOptions = (dbType: DatabaseType) => {
 	const entityPrefix = config.getEnv('database.tablePrefix');
-	const migrationsDir = path.resolve('src', 'databases', 'migrations', dbType);
+	const migrationsDir = path.resolve(__dirname, 'migrations', dbType);
 	const configDBType = dbType === 'mariadb' ? 'mysqldb' : dbType;
 	const connectionDetails =
 		configDBType === 'sqlite'
