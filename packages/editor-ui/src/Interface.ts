@@ -169,7 +169,6 @@ export interface INodeUpdatePropertiesInformation {
 export type XYPosition = [number, number];
 
 export interface INodeUi extends INode {
-	[x: string]: unknown;
 	position: XYPosition;
 	color?: string;
 	notes?: string;

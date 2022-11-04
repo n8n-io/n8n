@@ -19,6 +19,11 @@ describe('jsonParse', () => {
 
 describe('deepCopy', () => {
 	it('should deep copy an object', () => {
+		const serializable = {
+			x: 1,
+			y: 2,
+			toJSON: () => 'x:1,y:2',
+		};
 		const object = {
 			deep: {
 				props: {
@@ -26,6 +31,7 @@ describe('deepCopy', () => {
 				},
 				arr: [1, 2, 3],
 			},
+			serializable,
 			arr: [
 				{
 					prop: {
@@ -34,17 +40,18 @@ describe('deepCopy', () => {
 				},
 			],
 			func: () => {},
-			date: new Date(),
+			date: new Date(1667389172201),
 			undef: undefined,
 			nil: null,
 			bool: true,
 			num: 1,
 		};
 		const copy = deepCopy(object);
-		expect(copy).toEqual(object);
 		expect(copy).not.toBe(object);
 		expect(copy.arr).toEqual(object.arr);
 		expect(copy.arr).not.toBe(object.arr);
+		expect(copy.date).toBe('2022-11-02T11:39:32.201Z');
+		expect(copy.serializable).toBe(serializable.toJSON());
 		expect(copy.deep.props).toEqual(object.deep.props);
 		expect(copy.deep.props).not.toBe(object.deep.props);
 	});
@@ -65,7 +72,7 @@ describe('deepCopy', () => {
 				},
 			],
 			func: () => {},
-			date: new Date(),
+			date: new Date(1667389172201),
 			undef: undefined,
 			nil: null,
 			bool: true,
@@ -74,14 +81,16 @@ describe('deepCopy', () => {
 
 		object.circular = object;
 		object.deep.props.circular = object;
-		object.deep.arr.push(object)
+		object.deep.arr.push(object);
 
 		const copy = deepCopy(object);
-		expect(copy).toEqual(object);
 		expect(copy).not.toBe(object);
 		expect(copy.arr).toEqual(object.arr);
 		expect(copy.arr).not.toBe(object.arr);
-		expect(copy.deep.props).toEqual(object.deep.props);
-		expect(copy.deep.props).not.toBe(object.deep.props);
+		expect(copy.date).toBe('2022-11-02T11:39:32.201Z');
+		expect(copy.deep.props.circular).toBe(copy);
+		expect(copy.deep.props.circular).not.toBe(object);
+		expect(copy.deep.arr.slice(-1)[0]).toBe(copy);
+		expect(copy.deep.arr.slice(-1)[0]).not.toBe(object);
 	});
 });
