@@ -827,7 +827,7 @@ export default mixins(
 				}
 				this.canvasStore.zoomToFit();
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
-				this.$store.commit('workflows/setActiveWorkflowExecution', null);
+				this.workflowsStore.activeWorkflowExecution = null;
 				this.stopLoading();
 				return data;
 			},
