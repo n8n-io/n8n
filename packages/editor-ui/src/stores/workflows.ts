@@ -25,6 +25,7 @@ import { isJsonKeyObject } from "@/utils";
 import { stringSizeInBytes } from "@/components/helpers";
 import { useNDVStore } from "./ndv";
 import { useNodeTypesStore } from "./nodeTypes";
+import { cacheExecutionsResponse, clearExecutionsCache, getCachedExecutionResponse } from "./workflowExecutionsHelpers";
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
@@ -47,6 +48,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		activeWorkflowExecution: null,
 		finishedExecutionsCount: 0,
 		workflowExecutionData: null,
+		workflowExecutionDataCached: null,
 		workflowExecutionPairedItemMappings: {},
 		workflowsById: {},
 		subWorkflowExecutionError: null,
@@ -326,8 +328,16 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		// Node actions
 		setWorkflowExecutionData(workflowResultData: IExecutionResponse | null): void {
+			if (workflowResultData === null) {
+				this.workflowExecutionData = workflowResultData;
+				clearExecutionsCache();
+
+				return;
+			}
 			this.workflowExecutionData = workflowResultData;
-			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(this.workflowExecutionData);
+			this.workflowExecutionDataCached = getCachedExecutionResponse(workflowResultData);
+			this.workflowExecutionPairedItemMappings = getPairedItemsMapping(workflowResultData);
+			cacheExecutionsResponse(workflowResultData);
 		},
 
 		setWorkflowSettings(workflowSettings: IWorkflowSettings): void {

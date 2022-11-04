@@ -395,6 +395,32 @@ export interface IExecutionResponse extends IExecutionBase {
 	executedNode?: string;
 }
 
+export interface IExecutionResponseCached extends Omit<IExecutionResponse, 'data'> {
+	data?: IRunExecutionDataCached;
+}
+
+export interface IRunExecutionDataCached extends Omit<IRunExecutionData, 'resultData'> {
+	resultData: IResultDataCached;
+}
+
+export interface IResultDataCached extends Omit<IRunExecutionData["resultData"], 'runData'> {
+	runData: IRunDataCached;
+}
+
+export interface IRunDataCached {
+	[key: string]: ITaskDataCached[];
+}
+
+export interface ITaskDataCached extends Omit<ITaskData, 'data'> {
+	data?: {
+    [key: string]: Array<NodeOutputSummary | null>;
+	};
+}
+
+export interface NodeOutputSummary {
+	total: number;
+}
+
 export interface IExecutionShortResponse {
 	id: string;
 	workflowData: {
@@ -902,6 +928,7 @@ export interface WorkflowsState {
 	subWorkflowExecutionError: Error | null;
 	workflow: IWorkflowDb;
 	workflowExecutionData: IExecutionResponse | null;
+	workflowExecutionDataCached: IExecutionResponseCached | null;
 	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
 	workflowsById: IWorkflowsMap;
 }
