@@ -539,13 +539,10 @@ export class TiDB implements INodeType {
 					} INTO ${table}(${columnString}) VALUES ${items
 						.map((item) => insertPlaceholder)
 						.join(',')};`;
-				console.log(insertItems);
-
 				const queryItems = insertItems.reduce(
 					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
 					[],
 				);
-				console.log(queryItems);
 				const queryResult = await connection.query(insertSQL, queryItems);
 
 				returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
@@ -599,13 +596,11 @@ export class TiDB implements INodeType {
 			const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 			const deleteKey = this.getNodeParameter('deleteKey', 0) as string;
 			const deleteItems = copyInputItems(items, [deleteKey]);
-			console.log(deleteItems);
 			const deleteSQL = `DELETE FROM ${table} WHERE ${deleteKey} =  ?;`;
 			const queryItems = deleteItems.reduce(
 				(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
 				[],
 			);
-			console.log(queryItems);
 			const queryResult = await connection.query(deleteSQL, queryItems);
 			returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
 		} else {
