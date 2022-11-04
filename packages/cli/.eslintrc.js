@@ -13,5 +13,15 @@ module.exports = {
 		// TODO: Remove this
 		'import/order': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		'no-unused-vars': 'off',
+		'@typescript-eslint/no-unused-vars': [
+			'error',
+			{
+				argsIgnorePattern: '^_',
+				destructuredArrayIgnorePattern: '^_',
+				varsIgnorePattern: '^_',
+				ignoreRestSiblings: true,
+			},
+		],
 	},
 };

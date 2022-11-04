@@ -36,7 +36,7 @@ export async function apiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = await this.getCredentials('airtableApi');
+	const _credentials = await this.getCredentials('airtableApi');
 
 	query = query || {};
 

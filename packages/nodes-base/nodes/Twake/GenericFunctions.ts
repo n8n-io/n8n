@@ -1,5 +1,5 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
@@ -16,7 +16,7 @@ export async function twakeApiRequest(
 	uri?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const authenticationMethod = this.getNodeParameter('twakeVersion', 0, 'twakeCloudApi') as string;
+	const _authenticationMethod = this.getNodeParameter('twakeVersion', 0, 'twakeCloudApi') as string;
 
 	const options: OptionsWithUri = {
 		headers: {},

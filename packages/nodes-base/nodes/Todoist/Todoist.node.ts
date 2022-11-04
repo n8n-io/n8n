@@ -1,4 +1,3 @@
-import { response } from 'express';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
@@ -13,6 +12,9 @@ import {
 import { todoistApiRequest } from './GenericFunctions';
 
 import { OperationType, TodoistService } from './Service';
+
+// never used
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface IBodyCreateTask {
 	content?: string;
 	description?: string;

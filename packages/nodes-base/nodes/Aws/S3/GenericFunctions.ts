@@ -9,12 +9,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHttpRequestOptions,
-	JsonObject,
-	NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, IHttpRequestOptions, JsonObject, NodeApiError } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -25,10 +20,10 @@ export async function awsApiRequest(
 	query: IDataObject = {},
 	headers?: object,
 	option: IDataObject = {},
-	region?: string,
+	_region?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = await this.getCredentials('aws');
+	const _credentials = await this.getCredentials('aws');
 	const requestOptions = {
 		qs: {
 			...query,
@@ -175,7 +170,7 @@ export async function awsApiRequestSOAPAllItems(
 	return returnData;
 }
 
-function queryToString(params: IDataObject) {
+function _queryToString(params: IDataObject) {
 	return Object.keys(params)
 		.map((key) => key + '=' + params[key])
 		.join('&');

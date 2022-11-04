@@ -11,14 +11,11 @@ export async function phantombusterApiRequest(
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
-	option = {},
+	_option = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = await this.getCredentials('phantombusterApi');
-
 	const options: OptionsWithUri = {
-		headers: {
-		},
+		headers: {},
 		method,
 		body,
 		qs,
@@ -30,7 +27,7 @@ export async function phantombusterApiRequest(
 			delete options.body;
 		}
 		//@ts-ignore
-		return await this.helpers.requestWithAuthentication.call(this, 'phantombusterApi',options);
+		return await this.helpers.requestWithAuthentication.call(this, 'phantombusterApi', options);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}

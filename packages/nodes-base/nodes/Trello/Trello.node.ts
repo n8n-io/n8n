@@ -36,7 +36,7 @@ interface TrelloBoardType {
 
 // We retrieve the same fields. This is just to make it clear it's not actually
 // getting boards back.
-type TrelloCardType = TrelloBoardType;
+type _TrelloCardType = TrelloBoardType;
 
 export class Trello implements INodeType {
 	description: INodeTypeDescription = {

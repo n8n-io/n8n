@@ -7,6 +7,8 @@ import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } fro
 import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
 
+//never used
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface MessageResponse {
 	chunk: Message[];
 }

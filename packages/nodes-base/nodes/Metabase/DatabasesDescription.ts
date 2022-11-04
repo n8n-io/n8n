@@ -330,6 +330,8 @@ export const databasesFields: INodeProperties[] = [
 	},
 ];
 
+// never used
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type MetabaseDatabaseResult = IN8nHttpFullResponse & {
 	body: Array<{
 		data: Array<{

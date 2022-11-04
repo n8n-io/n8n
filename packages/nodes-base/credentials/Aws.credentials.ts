@@ -1,5 +1,5 @@
 import { Request, sign } from 'aws4';
-import { ICredentialTestRequest, IHttpRequestMethods } from 'n8n-workflow';
+import { ICredentialTestRequest } from 'n8n-workflow';
 import {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -370,7 +370,7 @@ export class Aws implements ICredentialType {
 	};
 }
 
-function queryToString(params: IDataObject) {
+function _queryToString(params: IDataObject) {
 	return Object.keys(params)
 		.map((key) => key + '=' + params[key])
 		.join('&');
