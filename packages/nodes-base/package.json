@@ -298,6 +298,7 @@
       "dist/credentials/TelegramApi.credentials.js",
       "dist/credentials/TheHiveApi.credentials.js",
       "dist/credentials/TiDBApi.credentials.js",
+      "dist/credentials/TiDBCloudApi.credentials.js",
       "dist/credentials/TimescaleDb.credentials.js",
       "dist/credentials/TodoistApi.credentials.js",
       "dist/credentials/TodoistOAuth2Api.credentials.js",

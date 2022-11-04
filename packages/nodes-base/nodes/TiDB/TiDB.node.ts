@@ -12,8 +12,9 @@ import {
 // @ts-ignore
 import mysql2 from 'mysql2/promise';
 
-import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
+import { copyInputItems, createConnection, searchCluster, searchProject, searchTables } from './GenericFunctions';
 import { IExecuteFunctions } from 'n8n-core';
+import {string} from "fast-glob/out/utils";
 
 export class TiDB implements INodeType {
 	description: INodeTypeDescription = {
@@ -33,9 +34,142 @@ export class TiDB implements INodeType {
 				name: 'tiDBApi',
 				required: true,
 				testedBy: 'tidbConnectionTest',
+				displayOptions: {
+					show: {
+						authentication: ['TiDB'],
+					},
+				},
+			},
+			{
+				name: 'tiDBCloudApi',
+				required: true,
+				//testedBy: 'tidbCloudConnectionTest',
+				displayOptions: {
+					show: {
+						authentication: ['TiDBCloud'],
+					},
+				},
 			},
 		],
 		properties: [
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'TiDB',
+						value: 'TiDB',
+					},
+					{
+						name: 'TiDB Cloud',
+						value: 'TiDBCloud',
+					},
+				],
+				default: 'none',
+				description: 'The way to authenticate',
+			},
+			{
+				displayName: 'Project',
+				name: 'project',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'List',
+						name: 'list',
+						type: 'list',
+						placeholder: '',
+						typeOptions: {
+							searchListMethod: 'searchProject',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+				],
+				displayOptions: {
+					show: {
+						authentication: ['TiDBCloud'],
+					},
+				},
+			},
+			{
+				displayName: 'Cluster',
+				name: 'cluster',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'List',
+						name: 'list',
+						type: 'list',
+						placeholder: '',
+						typeOptions: {
+							searchListMethod: 'searchCluster',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+				],
+				displayOptions: {
+					show: {
+						authentication: ['TiDBCloud'],
+					},
+				},
+			},
+			{
+				displayName: 'Database',
+				name: 'database',
+				type: 'string',
+				default: 'test',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['TiDBCloud'],
+					},
+				},
+			},
+			{
+				displayName: 'Password',
+				name: 'password',
+				type: 'string',
+				typeOptions: {
+					password: true,
+				},
+				displayOptions: {
+					show: {
+						authentication: ['TiDBCloud'],
+					},
+				},
+				default: '',
+			},
+			{
+				displayName: 'Add CA Certificate',
+				name: 'addCaCertificate',
+				type: 'boolean',
+				default: false,
+				displayOptions: {
+					show: {
+						authentication: ['TiDBCloud'],
+					},
+				},
+			},
+			{
+				displayName: 'CA Certifdaficate',
+				name: 'caCertificate',
+				typeOptions: {
+					alwaysOpenEditWindow: true,
+				},
+				displayOptions: {
+					show: {
+						addCaCertificate: [true],
+					},
+				},
+				type: 'string',
+				default: '',
+			},
 			{
 				displayName: 'Operation',
 				name: 'operation',
@@ -253,9 +387,9 @@ export class TiDB implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
-				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
-					const connection = await createConnection(this, credentials);
+					// @ts-ignore
+					const connection = await createConnection.call(this);
 					connection.end();
 				} catch (error) {
 					return {
@@ -268,15 +402,25 @@ export class TiDB implements INodeType {
 					message: 'Connection successful!',
 				};
 			},
+			async tidbCloudConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
 		},
 		listSearch: {
+			searchCluster,
+			searchProject,
 			searchTables,
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const credentials = await this.getCredentials('tiDBApi');
-		const connection = await createConnection(this, credentials);
+		const connection = await createConnection.call(this);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 		let returnItems: INodeExecutionData[] = [];
