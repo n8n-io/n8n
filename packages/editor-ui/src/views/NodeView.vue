@@ -213,11 +213,9 @@ import {
 	IUser,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
-import { mapGetters } from 'vuex';
 import { getAccountAge } from '@/modules/userHelpers';
 import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
 import { debounceHelper } from '@/components/mixins/debounce';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
@@ -228,7 +226,7 @@ import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
-import { useCanvasStore } from '@/modules/canvas';
+import { useCanvasStore } from '@/stores/canvas';
 
 interface AddNodeOptions {
 	position?: XYPosition;

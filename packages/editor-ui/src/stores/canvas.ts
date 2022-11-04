@@ -2,7 +2,9 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { jsPlumb } from 'jsplumb';
 import { v4 as uuid } from 'uuid';
-import { useRootStore } from '@/store';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui';
 import { INodeUi, XYPosition } from '@/Interface';
 import * as CanvasHelpers from '@/views/canvasHelpers';
 import { START_NODE_TYPE } from '@/constants';
@@ -10,13 +12,15 @@ import '@/plugins/N8nCustomConnectorType';
 import '@/plugins/PlusEndpointType';
 
 export const useCanvasStore = defineStore('canvas', () => {
-	const rootStore = useRootStore();
+	const workflowStore = useWorkflowsStore();
+	const nodeTypesStore = useNodeTypesStore();
+	const uiStore = useUIStore();
 	const jsPlumbInstance = jsPlumb.getInstance();
 
-	const nodes = computed<INodeUi[]>(() => rootStore.getters.allNodes);
+	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const triggerNodes = computed<INodeUi[]>(
 		() => nodes.value.filter(
-				node => node.type === START_NODE_TYPE || rootStore.getters['nodeTypes/isTriggerNode'](node.type),
+				node => node.type === START_NODE_TYPE || nodeTypesStore.isTriggerNode(node.type),
 			),
 	);
 	const isDemo = ref<boolean>(false);
@@ -53,31 +57,31 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const resetZoom = () => {
 		const {scale, offset} = CanvasHelpers.scaleReset({
 			scale: nodeViewScale.value,
-			offset: rootStore.getters.getNodeViewOffsetPosition,
+			offset: uiStore.nodeViewOffsetPosition,
 		});
 
 		setZoomLevel(scale);
-		rootStore.commit('setNodeViewOffsetPosition', {newOffset: offset});
+		uiStore.nodeViewOffsetPosition = offset;
 	};
 
 	const zoomIn = () => {
-		const {scale, offset: [xOffset, yOffset]} = CanvasHelpers.scaleBigger({
+		const {scale, offset} = CanvasHelpers.scaleBigger({
 			scale: nodeViewScale.value,
-			offset: rootStore.getters.getNodeViewOffsetPosition,
+			offset: uiStore.nodeViewOffsetPosition,
 		});
 
 		setZoomLevel(scale);
-		rootStore.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+		uiStore.nodeViewOffsetPosition = offset;
 	};
 
 	const zoomOut = () => {
-		const {scale, offset: [xOffset, yOffset]} = CanvasHelpers.scaleSmaller({
+		const {scale, offset} = CanvasHelpers.scaleSmaller({
 			scale: nodeViewScale.value,
-			offset: rootStore.getters.getNodeViewOffsetPosition,
+			offset: uiStore.nodeViewOffsetPosition,
 		});
 
 		setZoomLevel(scale);
-		rootStore.commit('setNodeViewOffsetPosition', {newOffset: [xOffset, yOffset]});
+		uiStore.nodeViewOffsetPosition = offset;
 	};
 
 	const zoomToFit = () => {
@@ -89,7 +93,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !isDemo.value);
 
 		setZoomLevel(zoomLevel);
-		rootStore.commit('setNodeViewOffsetPosition', {newOffset: offset});
+		uiStore.nodeViewOffsetPosition = offset;
 	};
 
 	return {
