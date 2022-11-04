@@ -21,7 +21,7 @@ export function isObject(maybe: unknown): maybe is { [key: string]: unknown } {
 }
 
 function isTraversable(maybe: unknown): maybe is IDataObject {
-	return isObject(maybe) && Object.keys(maybe).length > 0;
+	return isObject(maybe) && typeof maybe.toJSON !== 'function' && Object.keys(maybe).length > 0;
 }
 
 export type CodeNodeMode = 'runOnceForAllItems' | 'runOnceForEachItem';

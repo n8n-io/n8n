@@ -813,7 +813,7 @@ export const workflowHelpers = mixins(
 							key: 'webhookId',
 							value: changedNodes[nodeName],
 							name: nodeName,
-						} as IUpdateInformation;
+						};
 						this.workflowsStore.setNodeValue(changes);
 					});
 

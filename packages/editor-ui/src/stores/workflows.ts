@@ -608,7 +608,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 					return;
 				}
 			}
-			const historyStore = useHistoryStore();
 		},
 
 		removeAllNodes(data: { setStateDirty: boolean, removePinData: boolean }): void {
@@ -635,7 +634,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				for (const key of Object.keys(updateInformation.properties)) {
 					const uiStore = useUIStore();
 					uiStore.stateIsDirty = true;
-
 					Vue.set(node, key, updateInformation.properties[key]);
 				}
 			}

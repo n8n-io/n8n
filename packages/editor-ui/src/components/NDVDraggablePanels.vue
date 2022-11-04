@@ -129,25 +129,25 @@ export default mixins(debounceHelper).extend({
 			} {
 			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType as nodePanelType);
 		},
-		supportedResizeDirections() {
+		supportedResizeDirections(): string[] {
 			const supportedDirections = ['right'];
 
 			if(this.isDraggable) supportedDirections.push('left');
 			return supportedDirections;
 		},
-		currentNodePaneType() {
+		currentNodePaneType(): string {
 			if(!this.hasInputSlot) return 'inputless';
 			if(!this.isDraggable) return 'dragless';
 			if(this.nodeType === null) return 'unknown';
 			return get(this, 'nodeType.parameterPane') || 'regular';
 		},
-		hasInputSlot() {
+		hasInputSlot(): boolean {
 			return this.$slots.input !== undefined;
 		},
 		inputPanelMargin(): number {
 			return this.pxToRelativeWidth(SIDE_PANELS_MARGIN);
 		},
-		minWindowWidth() {
+		minWindowWidth(): number {
 			return 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
 		},
 		minimumLeftPosition(): number {
@@ -202,7 +202,7 @@ export default mixins(debounceHelper).extend({
 			const currentRelativeLeftDelta = this.calculatedPositions.outputPanelRelativeLeft - panelMinLeft;
 			return currentRelativeLeftDelta > 0 ? currentRelativeLeftDelta : 0;
 		},
-		hasDoubleWidth() {
+		hasDoubleWidth(): boolean {
 			return get(this, 'nodeType.parameterPane') === 'wide';
 		},
 		fixedPanelWidth(): number {
@@ -251,7 +251,7 @@ export default mixins(debounceHelper).extend({
 			const mainPanelRelativeWidth = relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
 
 			this.ndvStore.setMainPanelDimensions({
-				panelType: this.currentNodePaneType as nodePanelType,
+				panelType: this.currentNodePaneType,
 				dimensions: {
 					relativeWidth: mainPanelRelativeWidth,
 				},
@@ -267,7 +267,7 @@ export default mixins(debounceHelper).extend({
 
 			if(isMinLeft) {
 				this.ndvStore.setMainPanelDimensions({
-					panelType: this.currentNodePaneType as nodePanelType,
+					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: this.minimumLeftPosition,
 						relativeRight: 1 - this.mainPanelDimensions.relativeWidth - this.minimumLeftPosition,

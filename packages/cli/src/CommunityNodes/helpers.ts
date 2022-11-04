@@ -76,7 +76,7 @@ export const executeCommand = async (
 	command: string,
 	options?: { doNotHandleError?: boolean },
 ): Promise<string> => {
-	const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+	const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
 	const execOptions = {
 		cwd: downloadFolder,

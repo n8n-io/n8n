@@ -144,7 +144,7 @@ export default mixins(
 			}
 
 			// if cannot access page and not logged in, ask to sign in
-			const user = this.usersStore.currentUser as IUser | null;
+			const user = this.usersStore.currentUser;
 			if (!user) {
 				const redirect =
 					this.$route.query.redirect ||

@@ -35,6 +35,7 @@ import {
 	INodeCredentials,
 	INodeListSearchItems,
 	IConnection,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { BULK_COMMANDS, COMMANDS, FAKE_DOOR_FEATURES } from './constants';
 
@@ -154,8 +155,8 @@ export type IJsPlumbInstance = Omit<jsPlumbInstance, 'addEndpoint' | 'draggable'
 
 export interface IUpdateInformation {
 	name: string;
-	key: string;
-	value: string | number | { [key: string]: string | number | boolean }; // with null makes problems in NodeSettings.vue
+	key?: string;
+	value: string | number | { [key: string]: string | number | boolean } | NodeParameterValueType | INodeParameters; // with null makes problems in NodeSettings.vue
 	node?: string;
 	oldValue?: string | number;
 }

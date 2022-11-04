@@ -422,7 +422,7 @@ export enum STORES {
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',
 	HISTORY = 'history',
-}
+};
 
 export enum COMMANDS {
 	POSITION_CHANGE = 'nodePositionChange',
@@ -430,7 +430,7 @@ export enum COMMANDS {
 	REMOVE_CONNECTION = 'removeConnection',
 	ADD_NODE = 'addNode',
 	REMOVE_NODE = 'removeNode',
-}
+};
 
 export enum BULK_COMMANDS {
 	IMPORT_WORKFLOW = 'importWorkflow',

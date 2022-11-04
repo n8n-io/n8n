@@ -176,8 +176,12 @@ abstract class NodeError extends ExecutionBaseError {
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	protected isTraversableObject(value: any): value is JsonObject {
 		return (
+			value &&
+			typeof value === 'object' &&
+			!Array.isArray(value) &&
+			typeof value.toJSON !== 'function' &&
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			value && typeof value === 'object' && !Array.isArray(value) && !!Object.keys(value).length
+			!!Object.keys(value).length
 		);
 	}
 
