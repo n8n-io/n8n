@@ -59,6 +59,7 @@ module.exports = {
 		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/return-await': 'off',
 		'@typescript-eslint/unbound-method': 'off',
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
 
 	overrides: [
@@ -71,6 +72,7 @@ module.exports = {
 				'n8n-nodes-base/cred-class-field-name-missing-oauth2': 'error',
 				'n8n-nodes-base/cred-class-field-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-class-field-name-uppercase-first-char': 'error',
+				'n8n-nodes-base/cred-class-field-unobscured-sensitive-input': 'error',
 				'n8n-nodes-base/cred-class-name-missing-oauth2-suffix': 'error',
 				'n8n-nodes-base/cred-class-name-unsuffixed': 'error',
 				'n8n-nodes-base/cred-filename-against-convention': 'error',

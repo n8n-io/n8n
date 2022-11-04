@@ -9,6 +9,7 @@ export class TelegramApi implements ICredentialType {
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description:
 				'Chat with the <a href="https://telegram.me/botfather">bot father</a> to obtain the access token',

@@ -1,30 +1,38 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-export const deepCopy = <T>(source: T): T => {
-	let clone: any;
-	let i: any;
+type Primitives = string | number | boolean | bigint | symbol | null | undefined;
+export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
+	source: T,
+	hash = new WeakMap(),
+	path = '',
+): T => {
 	const hasOwnProp = Object.prototype.hasOwnProperty.bind(source);
-	// Primitives & Null
-	if (typeof source !== 'object' || source === null) {
+	// Primitives & Null & Function
+	if (typeof source !== 'object' || source === null || typeof source === 'function') {
 		return source;
 	}
-	// Date
-	if (source instanceof Date) {
-		return new Date(source.getTime()) as T;
+	// Date and other objects with toJSON method
+	// TODO: remove this when other code parts not expecting objects with `.toJSON` method called and add back checking for Date and cloning it properly
+	if (typeof source.toJSON === 'function') {
+		return source.toJSON() as T;
+	}
+	if (hash.has(source)) {
+		return hash.get(source);
 	}
 	// Array
 	if (Array.isArray(source)) {
-		clone = [];
+		const clone = [];
 		const len = source.length;
-		for (i = 0; i < len; i++) {
-			clone[i] = deepCopy(source[i]);
+		for (let i = 0; i < len; i++) {
+			clone[i] = deepCopy(source[i], hash, path + `[${i}]`);
 		}
-		return clone;
+		return clone as T;
 	}
 	// Object
-	clone = {};
-	for (i in source) {
+	const clone = Object.create(Object.getPrototypeOf({}));
+	hash.set(source, clone);
+	for (const i in source) {
 		if (hasOwnProp(i)) {
-			clone[i] = deepCopy((source as any)[i]);
+			clone[i] = deepCopy((source as any)[i], hash, path + `.${i}`);
 		}
 	}
 	return clone;

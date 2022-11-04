@@ -189,7 +189,6 @@ export class HelpScoutTrigger implements INodeType {
 		}
 
 		const computedSignature = createHmac('sha1', webhookData.secret as string)
-			//@ts-ignore
 			.update(req.rawBody)
 			.digest('base64');
 		if (headerData['x-helpscout-signature'] !== computedSignature) {

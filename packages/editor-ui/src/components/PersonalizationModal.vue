@@ -17,7 +17,7 @@
 	>
 		<template v-slot:content>
 			<div v-if="submitted" :class="$style.submittedContainer">
-				<img :class="$style.demoImage" :src="baseUrl + 'suggestednodes.png'" />
+				<img :class="$style.demoImage" :src="rootStore.baseUrl + 'suggestednodes.png'" />
 				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
 			</div>
 			<div :class="$style.container" v-else>
@@ -50,7 +50,6 @@ import mixins from 'vue-typed-mixins';
 const SURVEY_VERSION = 'v3';
 
 import {
-	CODING_SKILL_KEY,
 	COMPANY_SIZE_100_499,
 	COMPANY_SIZE_1000_OR_MORE,
 	COMPANY_SIZE_20_OR_LESS,
@@ -116,11 +115,15 @@ import {
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import Modal from './Modal.vue';
-import { IFormInputs, IPersonalizationLatestVersion } from '@/Interface';
+import { IFormInputs, IPersonalizationLatestVersion, IPersonalizationSurveyAnswersV3, IUser } from '@/Interface';
 import Vue from 'vue';
-import { mapGetters } from 'vuex';
 import { getAccountAge } from '@/modules/userHelpers';
 import { GenericValue } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(showMessage, workflowHelpers).extend({
 	components: { Modal },
@@ -138,15 +141,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 		};
 	},
 	computed: {
-		...mapGetters({
-			baseUrl: 'getBaseUrl',
-		}),
-		...mapGetters('users', [
-			'currentUser',
-		]),
-		...mapGetters('settings', [
-			'isOnboardingCallPromptFeatureEnabled',
-		]),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+		),
 		survey() {
 			const survey: IFormInputs = [
 				{
@@ -470,12 +470,12 @@ export default mixins(showMessage, workflowHelpers).extend({
 					...values,
 					version: SURVEY_VERSION,
 					personalization_survey_submitted_at: new Date().toISOString(),
-					personalization_survey_n8n_version: this.$store.getters.versionCli,
+					personalization_survey_n8n_version: this.rootStore.versionCli,
 				};
 
 				this.$externalHooks().run('personalizationModal.onSubmit', survey);
 
-				await this.$store.dispatch('users/submitPersonalizationSurvey', survey);
+				await this.usersStore.submitPersonalizationSurvey(survey as IPersonalizationSurveyAnswersV3);
 
 				if (Object.keys(values).length === 0) {
 					this.closeDialog();
@@ -490,8 +490,8 @@ export default mixins(showMessage, workflowHelpers).extend({
 			this.$data.isSaving = false;
 		},
 		async fetchOnboardingPrompt() {
-			if (this.isOnboardingCallPromptFeatureEnabled && getAccountAge(this.currentUser) <= ONBOARDING_PROMPT_TIMEBOX) {
-				const onboardingResponse = await this.$store.dispatch('ui/getNextOnboardingPrompt');
+			if (this.settingsStore.onboardingCallPromptEnabled && getAccountAge(this.usersStore.currentUser || {} as IUser) <= ONBOARDING_PROMPT_TIMEBOX) {
+				const onboardingResponse = await this.uiStore.getNextOnboardingPrompt();
 				const promptTimeout = onboardingResponse.toast_sequence_number === 1 ? FIRST_ONBOARDING_PROMPT_TIMEOUT : 1000;
 
 				if (onboardingResponse.title && onboardingResponse.description) {
@@ -509,7 +509,7 @@ export default mixins(showMessage, workflowHelpers).extend({
 									title: onboardingResponse.title,
 									description: onboardingResponse.description,
 								});
-								this.$store.commit('ui/openModal', ONBOARDING_CALL_SIGNUP_MODAL_KEY, {root: true});
+								this.uiStore.openModal(ONBOARDING_CALL_SIGNUP_MODAL_KEY);
 							},
 						});
 					}, promptTimeout);

@@ -42,6 +42,8 @@ import Vue from 'vue';
 
 import { ITemplatesNode } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 interface NodeIconData {
 	type: string;
@@ -72,6 +74,9 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useRootStore,
+		),
 		fontStyleData(): object {
 			return {
 				'max-width': this.size + 'px',
@@ -115,7 +120,7 @@ export default Vue.extend({
 				return (nodeType as ITemplatesNode).iconData;
 			}
 
-			const restUrl = this.$store.getters.getRestUrl;
+			const restUrl = this.rootStore.getRestUrl;
 
 			if (nodeType.icon) {
 				const [type, path] = nodeType.icon.split(':');

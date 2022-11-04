@@ -237,7 +237,6 @@ function toTableName(sourceName: CollectionName | MappingName) {
 
 	return {
 		Credentials: 'credentials_entity',
-		CredentialUsage: 'credential_usage',
 		Workflow: 'workflow_entity',
 		Execution: 'execution_entity',
 		Tag: 'tag_entity',
@@ -638,18 +637,6 @@ export async function getWorkflowSharing(workflow: WorkflowEntity) {
 	return Db.collections.SharedWorkflow.find({
 		where: {
 			workflow,
-		},
-	});
-}
-
-// ----------------------------------
-//        credential usage
-// ----------------------------------
-
-export async function getCredentialUsageInWorkflow(workflowId: number) {
-	return Db.collections.CredentialUsage.find({
-		where: {
-			workflowId,
 		},
 	});
 }

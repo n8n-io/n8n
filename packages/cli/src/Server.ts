@@ -284,6 +284,7 @@ class App {
 			saveManualExecutions: this.saveManualExecutions,
 			executionTimeout: this.executionTimeout,
 			maxExecutionTimeout: this.maxExecutionTimeout,
+			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
 			timezone: this.timezone,
 			urlBaseWebhook,
 			urlBaseEditor: instanceBaseUrl,
@@ -621,7 +622,6 @@ class App {
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
-			// @ts-ignore
 			req.rawBody = Buffer.from('', 'base64');
 			next();
 		});
@@ -631,7 +631,6 @@ class App {
 			bodyParser.json({
 				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -648,7 +647,6 @@ class App {
 					explicitArray: false, // Only put properties in array if length > 1
 				},
 				verify: (req: express.Request, res: any, buf: any) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -658,7 +656,6 @@ class App {
 			bodyParser.text({
 				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -684,7 +681,6 @@ class App {
 				limit: `${this.payloadSizeMax}mb`,
 				extended: false,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),

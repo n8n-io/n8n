@@ -3,6 +3,8 @@ import mixins from 'vue-typed-mixins';
 import normalizeWheel from 'normalize-wheel';
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { getMousePosition } from '@/views/canvasHelpers';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export const moveNodeWorkflow = mixins(
 	deviceSupportHelpers,
@@ -12,16 +14,18 @@ export const moveNodeWorkflow = mixins(
 			moveLastPosition: [0, 0],
 		};
 	},
-
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		moveWorkflow (e: MouseEvent) {
-			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
+			const offsetPosition = this.uiStore.nodeViewOffsetPosition;
 
 			const [x, y] = getMousePosition(e);
 
 			const nodeViewOffsetPositionX = offsetPosition[0] + (x - this.moveLastPosition[0]);
 			const nodeViewOffsetPositionY = offsetPosition[1] + (y - this.moveLastPosition[1]);
-			this.$store.commit('setNodeViewOffsetPosition', {newOffset: [nodeViewOffsetPositionX, nodeViewOffsetPositionY]});
+			this.uiStore.nodeViewOffsetPosition = [nodeViewOffsetPositionX, nodeViewOffsetPositionY];
 
 			// Update the last position
 			this.moveLastPosition[0] = x;
@@ -34,12 +38,12 @@ export const moveNodeWorkflow = mixins(
 				return;
 			}
 
-			if (this.$store.getters.isActionActive('dragActive')) {
+			if (this.uiStore.isActionActive('dragActive')) {
 				// If a node does currently get dragged we do not activate the selection
 				return;
 			}
 
-			this.$store.commit('setNodeViewMoveInProgress', true);
+			this.uiStore.nodeViewMoveInProgress = true;
 
 			const [x, y] = getMousePosition(e);
 
@@ -50,7 +54,7 @@ export const moveNodeWorkflow = mixins(
 			this.$el.addEventListener('mousemove', this.mouseMoveNodeWorkflow);
 		},
 		mouseUpMoveWorkflow (e: MouseEvent) {
-			if (this.$store.getters.isNodeViewMoveInProgress === false) {
+			if (this.uiStore.nodeViewMoveInProgress === false) {
 				// If it is not active return directly.
 				// Else normal node dragging will not work.
 				return;
@@ -59,7 +63,7 @@ export const moveNodeWorkflow = mixins(
 			// @ts-ignore
 			this.$el.removeEventListener('mousemove', this.mouseMoveNodeWorkflow);
 
-			this.$store.commit('setNodeViewMoveInProgress', false);
+			this.uiStore.nodeViewMoveInProgress = false;
 
 			// Nothing else to do. Simply leave the node view at the current offset
 		},
@@ -69,7 +73,7 @@ export const moveNodeWorkflow = mixins(
 				return;
 			}
 
-			if (this.$store.getters.isActionActive('dragActive')) {
+			if (this.uiStore.isActionActive('dragActive')) {
 				return;
 			}
 
@@ -86,10 +90,10 @@ export const moveNodeWorkflow = mixins(
 		},
 		wheelMoveWorkflow (e: WheelEvent) {
 			const normalized = normalizeWheel(e);
-			const offsetPosition = this.$store.getters.getNodeViewOffsetPosition;
+			const offsetPosition = this.uiStore.nodeViewOffsetPosition;
 			const nodeViewOffsetPositionX = offsetPosition[0] - (e.shiftKey ? normalized.pixelY : normalized.pixelX);
 			const nodeViewOffsetPositionY = offsetPosition[1] - (e.shiftKey ? normalized.pixelX : normalized.pixelY);
-			this.$store.commit('setNodeViewOffsetPosition', {newOffset: [nodeViewOffsetPositionX, nodeViewOffsetPositionY]});
+			this.uiStore.nodeViewOffsetPosition = [nodeViewOffsetPositionX, nodeViewOffsetPositionY];
 		},
 	},
 });

@@ -16,7 +16,7 @@
 					:maxlength="MAX_WORKFLOW_NAME_LENGTH"
 				/>
 				<TagsDropdown
-					v-if="areTagsEnabled"
+					v-if="settingsStore.areTagsEnabled"
 					:createEnabled="true"
 					:currentTagIds="currentTagIds"
 					:eventBus="dropdownBus"
@@ -46,9 +46,10 @@ import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
-import { mapGetters } from "vuex";
 import {restApi} from "@/components/mixins/restApi";
-import {IWorkflowDb} from "@/Interface";
+import { mapStores } from "pinia";
+import { useSettingsStore } from "@/stores/settings";
+import { useWorkflowsStore } from "@/stores/workflows";
 
 export default mixins(showMessage, workflowHelpers, restApi).extend({
 	components: { TagsDropdown, Modal },
@@ -68,11 +69,14 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 		};
 	},
 	async mounted() {
-		this.name = await this.$store.dispatch('workflows/getDuplicateCurrentWorkflowName', this.data.name);
+		this.name = await this.workflowsStore.getDuplicateCurrentWorkflowName(this.data.name);
 		this.$nextTick(() => this.focusOnNameInput());
 	},
 	computed: {
-		...mapGetters('settings', ['areTagsEnabled']),
+		...mapStores(
+			useSettingsStore,
+			useWorkflowsStore,
+		),
 	},
 	watch: {
 		isActive(active) {

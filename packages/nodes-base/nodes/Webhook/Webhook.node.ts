@@ -593,7 +593,6 @@ export class Webhook implements INodeType {
 		if (options.rawBody) {
 			response.binary = {
 				data: {
-					// @ts-ignore
 					data: req.rawBody.toString(BINARY_ENCODING),
 					mimeType,
 				},

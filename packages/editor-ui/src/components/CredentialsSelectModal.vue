@@ -56,6 +56,9 @@ import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(externalHooks).extend({
 	name: 'CredentialsSelectModal',
@@ -85,6 +88,10 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		...mapGetters('credentials', ['allCredentialTypes']),
 	},
 	methods: {
@@ -93,13 +100,13 @@ export default mixins(externalHooks).extend({
 		},
 		openCredentialType () {
 			this.modalBus.$emit('close');
-			this.$store.dispatch('ui/openNewCredential', { type: this.selected });
+			this.uiStore.openNewCredential(this.selected);
 
 			const telemetryPayload = {
 				credential_type: this.selected,
 				source: 'primary_menu',
 				new_credential: true,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			};
 
 			this.$telemetry.track('User opened Credential modal', telemetryPayload);
