@@ -280,6 +280,13 @@ export const nodeDescription: INodeTypeDescription = {
 					default: false,
 					description: 'Whether to use dot notation to access date fields',
 				},
+				{
+					displayName: 'ObjectID Fields',
+					name: 'oidFields',
+					type: 'string',
+					default: '',
+					description: 'Comma separeted list of fields that will be parsed as Mongo ObjectID type',
+				}
 			],
 		},
 	],

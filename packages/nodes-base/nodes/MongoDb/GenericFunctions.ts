@@ -14,6 +14,7 @@ import {
 } from './mongoDb.types';
 
 import { get, set } from 'lodash';
+import { ObjectId } from 'mongodb';
 
 /**
  * Standard way of building the MongoDB connection string, unless overridden with a provided string
@@ -84,6 +85,7 @@ export function prepareItems(
 	updateKey = '',
 	useDotNotation = false,
 	dateFields: string[] = [],
+	oidFields: string[] = [],
 ) {
 	let data = items;
 
@@ -106,8 +108,13 @@ export function prepareItems(
 				fieldData = json[field] !== undefined ? json[field] : null;
 			}
 
-			if (fieldData && dateFields.includes(field)) {
-				fieldData = new Date(fieldData as string);
+			if (fieldData){
+				if(dateFields.includes(field)) {
+					fieldData = new Date(fieldData as string);
+				}
+				if(oidFields.includes(field)) {
+					fieldData = new ObjectId(fieldData as string);
+				}
 			}
 
 			if (useDotNotation) {
