@@ -66,6 +66,8 @@ import { convertPath, executionDataToJson, isString, isStringNumber } from "@/co
 import { INodeUi } from "@/Interface";
 import { shorten } from './helpers';
 import { externalHooks } from "@/components/mixins/externalHooks";
+import { mapStores } from "pinia";
+import { useNDVStore } from "@/stores/ndv";
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -137,6 +139,9 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+		),
 		jsonData(): IDataObject[] {
 			return executionDataToJson(this.inputData as INodeExecutionData[]);
 		},
@@ -165,13 +170,13 @@ export default mixins(externalHooks).extend({
 				this.draggingPath = el.dataset.path;
 			}
 
-			this.$store.commit('ndv/resetMappingTelemetry');
+			this.ndvStore.resetMappingTelemetry();
 		},
 		onDragEnd(el: HTMLElement) {
 			this.draggingPath = null;
 
 			setTimeout(() => {
-				const mappingTelemetry = this.$store.getters['ndv/mappingTelemetry'];
+				const mappingTelemetry = this.ndvStore.mappingTelemetry;
 				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: el.dataset.name || '',

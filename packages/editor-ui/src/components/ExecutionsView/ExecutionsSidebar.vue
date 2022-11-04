@@ -90,6 +90,8 @@ import { IExecutionsSummary } from "@/Interface";
 import { Route } from 'vue-router';
 import Vue from 'vue';
 import { PropType } from 'vue';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default Vue.extend({
 	name: 'executions-sidebar',
@@ -122,6 +124,9 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		...mapStores(
+			useUIStore,
+		),
 		statusFilterApplied(): boolean {
 			return this.filter.status !== '';
 		},
@@ -143,7 +148,7 @@ export default Vue.extend({
     },
 	},
 	mounted() {
-		this.autoRefresh = this.$store.getters['ui/isExecutionSidebarAutoRefreshOn'];
+		this.autoRefresh = this.uiStore.executionSidebarAutoRefresh === true;
 		if (this.autoRefresh) {
 			this.autoRefreshInterval = setInterval(() => this.onRefresh(), 4000);
 		}
@@ -179,7 +184,7 @@ export default Vue.extend({
 			this.$emit('reloadExecutions');
 		},
 		onAutoRefreshToggle(): void {
-			this.$store.commit('ui/setExecutionsSidebarAutoRefresh', this.autoRefresh);
+			this.uiStore.executionSidebarAutoRefresh = this.autoRefresh;
 			if (this.autoRefreshInterval) {
 				// Clear any previously existing intervals (if any - there shouldn't)
 				clearInterval(this.autoRefreshInterval);
