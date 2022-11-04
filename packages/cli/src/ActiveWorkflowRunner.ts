@@ -32,6 +32,7 @@ import {
 	WorkflowActivationError,
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
+	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
 import express from 'express';
@@ -121,6 +122,7 @@ export class ActiveWorkflowRunner {
 					});
 					console.log(`     => Started`);
 				} catch (error) {
+					ErrorReporter.error(error);
 					console.log(
 						`     => ERROR: Workflow could not be activated on first try, keep on trying`,
 					);
@@ -881,6 +883,7 @@ export class ActiveWorkflowRunner {
 			try {
 				await this.add(workflowId, activationMode, workflowData);
 			} catch (error) {
+				ErrorReporter.error(error);
 				let lastTimeout = this.queuedWorkflowActivations[workflowId].lastTimeout;
 				if (lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
 					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
@@ -948,6 +951,7 @@ export class ActiveWorkflowRunner {
 			try {
 				await this.removeWorkflowWebhooks(workflowId);
 			} catch (error) {
+				ErrorReporter.error(error);
 				console.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,

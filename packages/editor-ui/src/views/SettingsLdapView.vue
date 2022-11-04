@@ -119,6 +119,9 @@ import humanizeDuration from 'humanize-duration';
 import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
 import { capitalizeFirstLetter } from '@/utils';
 import InfiniteLoading from 'vue-infinite-loading';
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
 
 type tableRow = {
 	status: string;
@@ -158,8 +161,9 @@ export default mixins(showMessage).extend({
 		await this.getLdapConfig();
 	},
 	computed: {
+		...mapStores(useUsersStore, useSettingsStore),
 		currentUser() {
-			return this.$store.getters['users/currentUser'] as IUser;
+			return this.usersStore.currentUser;
 		},
 	},
 	methods: {
@@ -263,7 +267,7 @@ export default mixins(showMessage).extend({
 			};
 
 			try {
-				this.adConfig = await this.$store.dispatch('settings/updateLdapConfig', newConfiguration);
+				this.adConfig = await this.settingsStore.updateLdapConfig(newConfiguration);
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.updateConfiguration'),
 					message: '',
@@ -281,7 +285,7 @@ export default mixins(showMessage).extend({
 		async onTestConnectionClick() {
 			this.loadingTestConnection = true;
 			try {
-				await this.$store.dispatch('settings/testLdapConnection');
+				await this.settingsStore.testLdapConnection();
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.connectionTest'),
 					message: 'Connection succeeded',
@@ -300,7 +304,7 @@ export default mixins(showMessage).extend({
 		async onDryRunClick() {
 			this.loadingDryRun = true;
 			try {
-				this.adConfig = await this.$store.dispatch('settings/runLdapSync', { type: 'dry' });
+				this.adConfig = await this.settingsStore.runLdapSync({ type: 'dry' });
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: 'Syncronization succeded',
@@ -316,7 +320,7 @@ export default mixins(showMessage).extend({
 		async onLiveRunClick() {
 			this.loadingLiveRun = true;
 			try {
-				this.adConfig = await this.$store.dispatch('settings/runLdapSync', { type: 'live' });
+				this.adConfig = await this.settingsStore.runLdapSync({ type: 'live' });
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: 'Syncronization succeded',
@@ -331,7 +335,7 @@ export default mixins(showMessage).extend({
 		},
 		async getLdapConfig() {
 			try {
-				this.adConfig = await this.$store.dispatch('settings/getLdapConfig');
+				this.adConfig = await this.settingsStore.getLdapConfig();
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
@@ -662,7 +666,7 @@ export default mixins(showMessage).extend({
 		async getLdapSyncronizations(state: any) {
 			try {
 				this.loadingTable = true;
-				const data = (await this.$store.dispatch('settings/getLdapSyncronizations', {
+				const data = (await this.settingsStore.getLdapSyncronizations({
 					page: this.page,
 				})) as ILdapSyncData[];
 

@@ -413,6 +413,18 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	'imaps': 'IMAP',
 };
 
+export enum STORES {
+	COMMUNITY_NODES = 'communityNodes',
+	ROOT = 'root',
+	SETTINGS = 'settings',
+	UI = 'ui',
+	USERS = 'users',
+	WORKFLOWS = 'workflows',
+	NDV = 'ndv',
+	TEMPLATES = 'templates',
+	NODE_TYPES = 'nodeTypes',
+}
+
 export enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',

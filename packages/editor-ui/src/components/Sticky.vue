@@ -50,12 +50,18 @@ import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { getStyleTokenValue, isNumber, isString } from './helpers';
-import { INodeUi, XYPosition } from '@/Interface';
+import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation, XYPosition } from '@/Interface';
 
 import {
+	IDataObject,
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { QUICKSTART_NOTE_NAME } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).extend({
 	name: 'Sticky',
@@ -68,6 +74,12 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
 		defaultText (): string {
 			if (!this.nodeType) {
 				return '';
@@ -78,13 +90,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return content && isString(content.default) ? content.default : '';
 		},
 		isSelected (): boolean {
-			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
+			return this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !== undefined;
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
+			return this.data && this.nodeTypesStore.getNodeType(this.data.type, this.data.typeVersion);
 		},
-		node (): INodeUi | undefined { // same as this.data but reactive..
-			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
+		node (): INodeUi | null { // same as this.data but reactive..
+			return this.workflowsStore.getNodeByName(this.name);
 		},
 		position (): XYPosition {
 			if (this.node) {
@@ -124,7 +136,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 			return !(this.hideActions || this.isReadOnly || this.workflowRunning || this.isResizing);
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 	},
 	data () {
@@ -142,10 +154,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
-				this.$store.commit('ndv/setActiveNodeName', this.node.name);
+				this.ndvStore.activeNodeName = this.node.name;
 			}
 			else if (this.isActive && !edit) {
-				this.$store.commit('ndv/setActiveNodeName', null);
+				this.ndvStore.activeNodeName = null;
 			}
 		},
 		onMarkdownClick ( link:HTMLAnchorElement, event: Event ) {
@@ -191,12 +203,13 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					width: isNumber(params.width) ? params.width : this.node.parameters.width,
 				};
 
-				const updateInformation = {
+				const updateInformation: IUpdateInformation = {
+					key: this.node.id,
 					name: this.node.name,
 					value: nodeParameters,
 				};
 
-				this.$store.commit('setNodeParameters', updateInformation);
+				this.workflowsStore.setNodeParameters(updateInformation);
 			}
 		},
 		setPosition(position: XYPosition) {
@@ -204,14 +217,14 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 				return;
 			}
 
-			const updateInformation = {
+			const updateInformation: INodeUpdatePropertiesInformation = {
 				name: this.node.name,
 				properties: {
-					position,
+					position: { position },
 				},
 			};
 
-			this.$store.commit('updateNodeProperties', updateInformation);
+			this.workflowsStore.updateNodeProperties(updateInformation);
 		},
 		touchStart () {
 			if (this.isTouchDevice === true && this.isMacOs === false && this.isTouchActive === false) {

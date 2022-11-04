@@ -1,5 +1,8 @@
+import * as ErrorReporter from './ErrorReporterProxy';
+
+export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
+
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-type Primitives = string | number | boolean | bigint | symbol | null | undefined;
 export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
 	source: T,
 	hash = new WeakMap(),
@@ -16,6 +19,9 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 		return source.toJSON() as T;
 	}
 	if (hash.has(source)) {
+		ErrorReporter.warn('Circular reference detected', {
+			extra: { source, path },
+		});
 		return hash.get(source);
 	}
 	// Array

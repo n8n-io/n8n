@@ -6,6 +6,8 @@ import {
 } from '../Interface';
 import { createTag, deleteTag, getTags, updateTag } from '../api/tags';
 import Vue from 'vue';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 const module: Module<ITagsState, IRootState> = {
 	namespaced: true,
@@ -71,30 +73,35 @@ const module: Module<ITagsState, IRootState> = {
 			}
 
 			context.commit('setLoading', true);
-			const tags = await getTags(context.rootGetters.getRestApiContext, Boolean(withUsageCount));
+			const rootStore = useRootStore();
+			const tags = await getTags(rootStore.getRestApiContext, Boolean(withUsageCount));
 			context.commit('setAllTags', tags);
 			context.commit('setLoading', false);
 
 			return tags;
 		},
 		create: async (context: ActionContext<ITagsState, IRootState>, name: string): Promise<ITag> => {
-			const tag = await createTag(context.rootGetters.getRestApiContext, { name });
+			const rootStore = useRootStore();
+			const tag = await createTag(rootStore.getRestApiContext, { name });
 			context.commit('upsertTags', [tag]);
 
 			return tag;
 		},
 		rename: async (context: ActionContext<ITagsState, IRootState>, { id, name }: { id: string, name: string }) => {
-			const tag = await updateTag(context.rootGetters.getRestApiContext, id, { name });
+			const rootStore = useRootStore();
+			const tag = await updateTag(rootStore.getRestApiContext, id, { name });
 			context.commit('upsertTags', [tag]);
 
 			return tag;
 		},
 		delete: async (context: ActionContext<ITagsState, IRootState>, id: string) => {
-			const deleted = await deleteTag(context.rootGetters.getRestApiContext, id);
+			const rootStore = useRootStore();
+			const deleted = await deleteTag(rootStore.getRestApiContext, id);
 
 			if (deleted) {
 				context.commit('deleteTag', id);
-				context.commit('removeWorkflowTagId', id, {root: true});
+				const workflowsStore = useWorkflowsStore();
+				workflowsStore.removeWorkflowTagId(id);
 			}
 
 			return deleted;

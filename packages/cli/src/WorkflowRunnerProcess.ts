@@ -9,6 +9,7 @@
 import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
+	ErrorReporterProxy as ErrorReporter,
 	ExecutionError,
 	ICredentialType,
 	ICredentialTypeData,
@@ -52,6 +53,7 @@ import { InternalHooksManager } from './InternalHooksManager';
 import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
 import { loadClassInIsolation } from './CommunityNodes/helpers';
 import { generateFailedExecutionFromError } from './WorkflowHelpers';
+import { initErrorHandling } from './ErrorReporting';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -77,6 +79,10 @@ export class WorkflowRunnerProcess {
 			// Attempt a graceful shutdown, giving executions 30 seconds to finish
 			process.exit(0);
 		}, 30000);
+	}
+
+	constructor() {
+		initErrorHandling();
 	}
 
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
@@ -265,6 +271,7 @@ export class WorkflowRunnerProcess {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				await sendToParentProcess('sendMessageToUI', { source, message });
 			} catch (error) {
+				ErrorReporter.error(error);
 				this.logger.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem sending UI data to parent process: "${error.message}"`,
@@ -402,6 +409,7 @@ export class WorkflowRunnerProcess {
 				parameters,
 			});
 		} catch (error) {
+			ErrorReporter.error(error);
 			this.logger.error(`There was a problem sending hook: "${hook}"`, { parameters, error });
 		}
 	}
