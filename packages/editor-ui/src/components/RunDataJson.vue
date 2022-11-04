@@ -138,7 +138,7 @@ export default mixins(externalHooks).extend({
 	},
 	computed: {
 		jsonData(): IDataObject[] {
-			return executionDataToJson(this.inputData as INodeExecutionData[]);
+			return executionDataToJson(this.inputData);
 		},
 		showHint(): boolean {
 			return (
