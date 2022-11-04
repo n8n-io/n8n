@@ -119,7 +119,7 @@
 									{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 								</el-dropdown-item>
 								<el-dropdown-item :command="{command: 'original', row: scope.row}">
-									{{ $locale.baseText('executionsList.retryWithOriginalworkflow') }}
+									{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
 								</el-dropdown-item>
 							</el-dropdown-menu>
 						</el-dropdown>
