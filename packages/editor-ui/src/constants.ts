@@ -425,4 +425,5 @@ export enum STORES {
 	TAGS = 'tags',
 	VERSIONS = 'versions',
 	NODE_CREATOR = 'nodeCreator',
+	WEBHOOKS = 'webhooks',
 }
