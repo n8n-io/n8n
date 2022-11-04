@@ -59,6 +59,10 @@ import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.
 import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
 import {CREDENTIAL_SELECT_MODAL_KEY} from '@/constants';
 import Vue from "vue";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useUsersStore } from '@/stores/users';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -88,12 +92,11 @@ export default mixins(
 		};
 	},
 	computed: {
-		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
-		allUsers(): IUser[] {
-			return this.$store.getters['users/allUsers'];
-		},
+		...mapStores(
+			useNodeTypesStore,
+			useUIStore,
+			useUsersStore,
+		),
 		allCredentials(): ICredentialsResponse[] {
 			return this.$store.getters['credentials/allCredentials'];
 		},
@@ -106,7 +109,7 @@ export default mixins(
 	},
 	methods: {
 		addCredential() {
-			this.$store.dispatch('ui/openModal', CREDENTIAL_SELECT_MODAL_KEY);
+			this.uiStore.openModal(CREDENTIAL_SELECT_MODAL_KEY);
 
 			this.$telemetry.track('User clicked add cred button', {
 				source: 'Creds list',
@@ -118,13 +121,13 @@ export default mixins(
 				this.$store.dispatch('credentials/fetchCredentialTypes'),
 			];
 
-			if (this.$store.getters['nodeTypes/allNodeTypes'].length === 0) {
-				loadPromises.push(this.$store.dispatch('nodeTypes/getNodeTypes'));
+			if (this.nodeTypesStore.allNodeTypes.length === 0) {
+				loadPromises.push(this.nodeTypesStore.getNodeTypes());
 			}
 
 			await Promise.all(loadPromises);
 
-			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
+			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
 		onFilter(resource: ICredentialsResponse, filters: { type: string[]; search: string; }, matches: boolean): boolean {
 			if (filters.type.length > 0) {

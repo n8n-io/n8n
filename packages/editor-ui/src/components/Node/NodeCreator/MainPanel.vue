@@ -33,6 +33,8 @@ import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY, 
 import CategorizedItems from './CategorizedItems.vue';
 import TypeSelector from './TypeSelector.vue';
 import { INodeCreateElement } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
@@ -55,6 +57,9 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
 		selectedType(): string {
 			return this.$store.getters['nodeCreator/selectedType'];
 		},
@@ -68,7 +73,7 @@ export default mixins(externalHooks).extend({
 			this.$telemetry.trackNodesPanel('nodeCreateList.selectedTypeChanged', {
 				old_filter: oldValue,
 				new_filter: newValue,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
 	},
@@ -80,7 +85,7 @@ export default mixins(externalHooks).extend({
 	destroyed() {
 		this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
 		this.$externalHooks().run('nodeCreateList.destroyed');
-		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.$store.getters.workflowId });
+		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.workflowsStore.workflowId });
 	},
 });
 </script>

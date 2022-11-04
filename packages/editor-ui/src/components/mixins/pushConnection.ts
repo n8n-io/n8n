@@ -1,4 +1,5 @@
 import {
+	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IPushData,
 } from '../../Interface';
@@ -22,6 +23,10 @@ import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { getTriggerNodeServiceName } from '../helpers';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -40,8 +45,13 @@ export const pushConnection = mixins(
 			};
 		},
 		computed: {
+			...mapStores(
+				useNodeTypesStore,
+				useUIStore,
+				useWorkflowsStore,
+			),
 			sessionId (): string {
-				return this.$store.getters.sessionId;
+				return this.rootStore.sessionId;
 			},
 		},
 		methods: {
@@ -63,13 +73,13 @@ export const pushConnection = mixins(
 				// always removed that we do not end up with multiple ones
 				this.pushDisconnect();
 
-				const connectionUrl = `${this.$store.getters.getRestUrl}/push?sessionId=${this.sessionId}`;
+				const connectionUrl = `${this.rootStore.getRestUrl}/push?sessionId=${this.sessionId}`;
 
 				this.eventSource = new EventSource(connectionUrl, { withCredentials: true });
 				this.eventSource.addEventListener('message', this.pushMessageReceived, false);
 
 				this.eventSource.addEventListener('open', () => {
-					this.$store.commit('setPushConnectionActive', true);
+					this.rootStore.pushConnectionActive =  true;
 					if (this.reconnectTimeout !== null) {
 						clearTimeout(this.reconnectTimeout);
 						this.reconnectTimeout = null;
@@ -84,7 +94,7 @@ export const pushConnection = mixins(
 						this.reconnectTimeout = null;
 					}
 
-					this.$store.commit('setPushConnectionActive', false);
+					this.rootStore.pushConnectionActive =  false;
 					this.pushAutomaticReconnect();
 				}, false);
 			},
@@ -97,7 +107,7 @@ export const pushConnection = mixins(
 					this.eventSource.close();
 					this.eventSource = null;
 
-					this.$store.commit('setPushConnectionActive', false);
+					this.rootStore.pushConnectionActive =  false;
 				}
 			},
 
@@ -178,12 +188,12 @@ export const pushConnection = mixins(
 				}
 
 				if (receivedData.type === 'nodeExecuteAfter' || receivedData.type === 'nodeExecuteBefore') {
-					if (this.$store.getters.isActionActive('workflowRunning') === false) {
+					if (!this.uiStore.isActionActive('workflowRunning')) {
 						// No workflow is running so ignore the messages
 						return false;
 					}
 					const pushData = receivedData.data;
-					if (this.$store.getters.activeExecutionId !== pushData.executionId) {
+					if (this.workflowsStore.activeExecutionId !== pushData.executionId) {
 						// The data is not for the currently active execution or
 						// we do not have the execution id yet.
 						if (isRetry !== true) {
@@ -197,14 +207,14 @@ export const pushConnection = mixins(
 					// The workflow finished executing
 					const pushData = receivedData.data;
 
-					this.$store.commit('finishActiveExecution', pushData);
+					this.workflowsStore.finishActiveExecution(pushData);
 
-					if (this.$store.getters.isActionActive('workflowRunning') === false) {
+					if (!this.uiStore.isActionActive('workflowRunning')) {
 						// No workflow is running so ignore the messages
 						return false;
 					}
 
-					if (this.$store.getters.activeExecutionId !== pushData.executionId) {
+					if (this.workflowsStore.activeExecutionId !== pushData.executionId) {
 						// The workflow which did finish execution did either not get started
 						// by this session or we do not have the execution id yet.
 						if (isRetry !== true) {
@@ -227,19 +237,17 @@ export const pushConnection = mixins(
 
 					const workflow = this.getCurrentWorkflow();
 					if (runDataExecuted.waitTill !== undefined) {
-						const {
-							activeExecutionId,
-							workflowSettings,
-							saveManualExecutions,
-						} = this.$store.getters;
+						const activeExecutionId = this.workflowsStore.activeExecutionId;
+						const workflowSettings = this.workflowsStore.workflowSettings;
+						const saveManualExecutions = this.rootStore.saveManualExecutions;
 
 						const isSavingExecutions= workflowSettings.saveManualExecutions === undefined ? saveManualExecutions : workflowSettings.saveManualExecutions;
 
 						let action;
 						if (!isSavingExecutions) {
 							this.$root.$emit('registerGlobalLinkAction', 'open-settings', async () => {
-								if (this.$store.getters.isNewWorkflow) await this.saveAsNewWorkflow();
-								this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+								if (this.workflowsStore.isNewWorkflow) await this.saveAsNewWorkflow();
+								this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 							});
 
 							action = '<a data-action="open-settings">Turn on saving manual executions</a> and run again to see what happened after this node.';
@@ -272,7 +280,7 @@ export const pushConnection = mixins(
 									error_title: error.message,
 									error_type: error.context.type,
 									node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
-									workflow_id: this.$store.getters.workflowId,
+									workflow_id: this.workflowsStore.workflowId,
 								};
 
 								if (error.context.nodeCause && ['no pairing info', 'invalid pairing info'].includes(error.context.type as string)) {
@@ -295,7 +303,7 @@ export const pushConnection = mixins(
 						if (runDataExecuted.data.resultData.error?.name === 'SubworkflowOperationError') {
 							const error = runDataExecuted.data.resultData.error as SubworkflowOperationError;
 
-							this.$store.commit('setSubworkflowExecutionError', error);
+							this.workflowsStore.subWorkflowExecutionError =  error;
 
 							this.$showMessage({
 								title: error.message,
@@ -324,10 +332,10 @@ export const pushConnection = mixins(
 						// Workflow did execute without a problem
 						this.$titleSet(workflow.name as string, 'IDLE');
 
-						const execution = this.$store.getters.getWorkflowExecution;
+						const execution = this.workflowsStore.getWorkflowExecution;
 						if (execution && execution.executedNode) {
-							const node = this.$store.getters.getNodeByName(execution.executedNode);
-							const nodeType = node && this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+							const node = this.workflowsStore.getNodeByName(execution.executedNode);
+							const nodeType = node && this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 							const nodeOutput = execution && execution.executedNode && execution.data && execution.data.resultData && execution.data.resultData.runData && execution.data.resultData.runData[execution.executedNode];
 							if (node && nodeType && !nodeOutput) {
 								this.$showMessage({
@@ -361,11 +369,13 @@ export const pushConnection = mixins(
 					// It does not push the runData as it got already pushed with each
 					// node that did finish. For that reason copy in here the data
 					// which we already have.
-					runDataExecuted.data.resultData.runData = this.$store.getters.getWorkflowRunData;
+					if (this.workflowsStore.getWorkflowRunData) {
+						runDataExecuted.data.resultData.runData = this.workflowsStore.getWorkflowRunData;
+					}
 
-					this.$store.commit('setExecutingNode', null);
-					this.$store.commit('setWorkflowExecutionData', runDataExecuted);
-					this.$store.commit('removeActiveAction', 'workflowRunning');
+					this.workflowsStore.executingNode = null;
+					this.workflowsStore.setWorkflowExecutionData(runDataExecuted as IExecutionResponse);
+					this.uiStore.removeActiveAction('workflowRunning');
 
 					// Set the node execution issues on all the nodes which produced an error so that
 					// it can be displayed in the node-view
@@ -397,36 +407,36 @@ export const pushConnection = mixins(
 						workflowName: pushData.workflowName,
 					};
 
-					this.$store.commit('addActiveExecution', executionData);
+					this.workflowsStore.addActiveExecution(executionData);
 				} else if (receivedData.type === 'nodeExecuteAfter') {
 					// A node finished to execute. Add its data
 					const pushData = receivedData.data;
-					this.$store.commit('addNodeExecutionData', pushData);
+					this.workflowsStore.addNodeExecutionData(pushData);
 				} else if (receivedData.type === 'nodeExecuteBefore') {
 					// A node started to be executed. Set it as executing.
 					const pushData = receivedData.data;
-					this.$store.commit('setExecutingNode', pushData.nodeName);
+					this.workflowsStore.executingNode = pushData.nodeName;
 				} else if (receivedData.type === 'testWebhookDeleted') {
 					// A test-webhook was deleted
 					const pushData = receivedData.data;
 
-					if (pushData.workflowId === this.$store.getters.workflowId) {
-						this.$store.commit('setExecutionWaitingForWebhook', false);
-						this.$store.commit('removeActiveAction', 'workflowRunning');
+					if (pushData.workflowId === this.workflowsStore.workflowId) {
+						this.workflowsStore.executionWaitingForWebhook = false;
+						this.uiStore.removeActiveAction('workflowRunning');
 					}
 				} else if (receivedData.type === 'testWebhookReceived') {
 					// A test-webhook did get called
 					const pushData = receivedData.data;
 
-					if (pushData.workflowId === this.$store.getters.workflowId) {
-						this.$store.commit('setExecutionWaitingForWebhook', false);
-						this.$store.commit('setActiveExecutionId', pushData.executionId);
+					if (pushData.workflowId === this.workflowsStore.workflowId) {
+						this.workflowsStore.executionWaitingForWebhook = false;
+						this.workflowsStore.activeExecutionId = pushData.executionId;
 					}
 
 					this.processWaitingPushMessages();
 				} else if (receivedData.type === 'reloadNodeType') {
-					this.$store.dispatch('nodeTypes/getNodeTypes');
-					this.$store.dispatch('nodeTypes/getFullNodesProperties', [receivedData.data]);
+					this.nodeTypesStore.getNodeTypes();
+					this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
 				} else if (receivedData.type === 'removeNodeType') {
 					const pushData = receivedData.data;
 
@@ -435,7 +445,7 @@ export const pushConnection = mixins(
 					// Force reload of all credential types
 					this.$store.dispatch('credentials/fetchCredentialTypes')
 						.then(() => {
-							this.$store.commit('nodeTypes/removeNodeTypes', nodesToBeRemoved);
+							this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 						});
 				}
 				return true;

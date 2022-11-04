@@ -7,7 +7,10 @@
 </template>
 
 <script lang="ts">
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -17,6 +20,10 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useRootStore,
+		),
 		credentialWithIcon(): ICredentialType | null {
 			return this.credentialTypeName ? this.getCredentialWithIcon(this.credentialTypeName) : null;
 		},
@@ -26,15 +33,14 @@ export default Vue.extend({
 				return null;
 			}
 
-			const restUrl = this.$store.getters.getRestUrl;
+			const restUrl = this.rootStore.getRestUrl;
 
 			return `${restUrl}/credential-icon/${this.credentialWithIcon.name}`;
 		},
 		relevantNode(): INodeTypeDescription | null	 {
 			if (this.credentialWithIcon && this.credentialWithIcon.icon && this.credentialWithIcon.icon.startsWith('node:')) {
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
-
-				return this.$store.getters['nodeTypes/getNodeType'](nodeType);
+				return this.nodeTypesStore.getNodeType(nodeType);
 			}
 
 			const nodesWithAccess = this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
