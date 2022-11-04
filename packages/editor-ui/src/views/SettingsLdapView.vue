@@ -162,7 +162,7 @@ export default mixins(showMessage).extend({
 	},
 	computed: {
 		...mapStores(useUsersStore, useSettingsStore),
-		currentUser() {
+		currentUser(): null | IUser {
 			return this.usersStore.currentUser;
 		},
 	},
