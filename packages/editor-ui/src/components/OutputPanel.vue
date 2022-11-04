@@ -86,6 +86,11 @@ import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
 import { pinData } from "@/components/mixins/pinData";
 import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
@@ -116,17 +121,23 @@ export default mixins(
 		},
 	},
 	computed: {
-		node(): INodeUi {
-			return this.$store.getters['ndv/activeNode'];
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		node(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
 		nodeType (): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
+				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 			return null;
 		},
 		isTriggerNode (): boolean {
-			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
+			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 		isPollingTypeNode (): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
@@ -135,14 +146,14 @@ export default mixins(
 			return !!(this.nodeType && this.nodeType.group.includes('schedule'));
 		},
 		isNodeRunning(): boolean {
-			const executingNode = this.$store.getters.executingNode;
+			const executingNode = this.workflowsStore.executingNode;
 			return this.node && executingNode === this.node.name;
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		workflowExecution(): IExecutionResponse | null {
-			return this.$store.getters.getWorkflowExecution;
+			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunData(): IRunData | null {
 			if (this.workflowExecution === null) {
@@ -155,7 +166,7 @@ export default mixins(
 			return executionData.resultData.runData;
 		},
 		hasNodeRun(): boolean {
-			if (this.$store.getters.subworkflowExecutionError) return true;
+			if (this.workflowsStore.subWorkflowExecutionError) return true;
 
 			return Boolean(
 				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
@@ -199,7 +210,7 @@ export default mixins(
 			if (!this.node) {
 				return false;
 			}
-			const updatedAt = this.$store.getters.getParametersLastUpdated(this.node.name);
+			const updatedAt = this.workflowsStore.getParametersLastUpdate(this.node.name);
 			if (!updatedAt || !this.runTaskData) {
 				return false;
 			}
@@ -207,7 +218,7 @@ export default mixins(
 			return updatedAt > runAt;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
-			return this.$store.getters['ndv/outputPanelEditMode'];
+			return this.ndvStore.outputPanelEditMode;
 		},
 		canPinData(): boolean {
 			return this.isPinDataNodeType && !this.isReadOnly;
@@ -221,7 +232,7 @@ export default mixins(
 				});
 
 				this.$telemetry.track('User clicked ndv link', {
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					node_type: this.node.type,
 					pane: 'output',
@@ -239,7 +250,7 @@ export default mixins(
 			this.$emit('openSettings');
 			this.$telemetry.track('User clicked ndv link', {
 				node_type: this.node.type,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 				session_id: this.sessionId,
 				pane: 'output',
 				type: 'settings',

@@ -19,6 +19,10 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { titleChange } from './titleChange';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export const workflowRun = mixins(
 	externalHooks,
@@ -27,10 +31,17 @@ export const workflowRun = mixins(
 	showMessage,
 	titleChange,
 ).extend({
+	computed: {
+		...mapStores(
+			useRootStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+	},
 	methods: {
 		// Starts to executes a workflow on server.
 		async runWorkflowApi (runData: IStartRunData): Promise<IExecutionPushResponse> {
-			if (this.$store.getters.pushConnectionActive === false) {
+			if (this.rootStore.pushConnectionActive === false) {
 				// Do not start if the connection to server is not active
 				// because then it can not receive the data as it executes.
 				throw new Error(
@@ -38,25 +49,25 @@ export const workflowRun = mixins(
 				);
 			}
 
-			this.$store.commit('setSubworkflowExecutionError', null);
+			this.workflowsStore.subWorkflowExecutionError = null;
 
-			this.$store.commit('addActiveAction', 'workflowRunning');
+			this.uiStore.addActiveAction('workflowRunning');
 
 			let response: IExecutionPushResponse;
 
 			try {
 				response = await this.restApi().runWorkflow(runData);
 			} catch (error) {
-				this.$store.commit('removeActiveAction', 'workflowRunning');
+				this.uiStore.removeActiveAction('workflowRunning');
 				throw error;
 			}
 
 			if (response.executionId !== undefined) {
-				this.$store.commit('setActiveExecutionId', response.executionId);
+				this.workflowsStore.activeExecutionId = response.executionId;
 			}
 
 			if (response.waitingForWebhook === true) {
-				this.$store.commit('setExecutionWaitingForWebhook', true);
+				this.workflowsStore.executionWaitingForWebhook = true;
 			}
 
 			return response;
@@ -64,7 +75,7 @@ export const workflowRun = mixins(
 		async runWorkflow (nodeName?: string, source?: string): Promise<IExecutionPushResponse | undefined> {
 			const workflow = this.getCurrentWorkflow();
 
-			if (this.$store.getters.isActionActive('workflowRunning') === true) {
+			if (this.uiStore.isActionActive('workflowRunning')) {
 				return;
 			}
 
@@ -74,7 +85,7 @@ export const workflowRun = mixins(
 
 			try {
 				// Check first if the workflow has any issues before execute it
-				const issuesExist = this.$store.getters.nodesIssuesExist;
+				const issuesExist = this.workflowsStore.nodesIssuesExist;
 				if (issuesExist === true) {
 					// If issues exist get all of the issues of all nodes
 					const workflowIssues = this.checkReadyForExecution(workflow, nodeName);
@@ -89,7 +100,7 @@ export const workflowRun = mixins(
 						for (const nodeName of Object.keys(workflowIssues)) {
 							nodeIssues = NodeHelpers.nodeIssuesToString(workflowIssues[nodeName]);
 							let issueNodeType = 'UNKNOWN';
-							const issueNode = this.$store.getters.getNodeByName(nodeName);
+							const issueNode = this.workflowsStore.getNodeByName(nodeName);
 
 							if (issueNode) {
 								issueNodeType = issueNode.type;
@@ -138,7 +149,7 @@ export const workflowRun = mixins(
 					directParentNodes = workflow.getParentNodes(nodeName, 'main', 1);
 				}
 
-				const runData = this.$store.getters.getWorkflowRunData;
+				const runData = this.workflowsStore.getWorkflowRunData;
 
 				let newRunData: IRunData | undefined;
 
@@ -181,8 +192,8 @@ export const workflowRun = mixins(
 					startNodes.push(nodeName);
 				}
 
-				const isNewWorkflow = this.$store.getters.isNewWorkflow;
-				const hasWebhookNode = this.$store.getters.currentWorkflowHasWebhookNode;
+				const isNewWorkflow = this.workflowsStore.isNewWorkflow;
+				const hasWebhookNode = this.workflowsStore.currentWorkflowHasWebhookNode;
 				if (isNewWorkflow && hasWebhookNode) {
 					await this.saveCurrentWorkflow();
 				}
@@ -219,7 +230,7 @@ export const workflowRun = mixins(
 						},
 					} as IRunExecutionData,
 					workflowData: {
-						id: this.$store.getters.workflowId,
+						id: this.workflowsStore.workflowId,
 						name: workflowData.name!,
 						active: workflowData.active!,
 						createdAt: 0,
@@ -227,7 +238,7 @@ export const workflowRun = mixins(
 						...workflowData,
 					},
 				};
-				this.$store.commit('setWorkflowExecutionData', executionData);
+				this.workflowsStore.setWorkflowExecutionData(executionData);
 				this.updateNodesExecutionIssues();
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);

@@ -5,6 +5,8 @@
 </template>
 
 <script lang="ts">
+import { useNDVStore } from '@/stores/ndv';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -37,11 +39,14 @@ export default Vue.extend({
 		window.removeEventListener('mouseup', this.onMouseUp);
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+		),
 		isDragging(): boolean {
-			return this.$store.getters['ndv/isDraggableDragging'];
+			return this.ndvStore.isDraggableDragging;
 		},
 		draggableType(): string {
-			return this.$store.getters['ndv/draggableType'];
+			return this.ndvStore.draggableType;
 		},
 		droppable(): boolean {
 			return !this.disabled && this.isDragging && this.draggableType === this.type;
@@ -60,20 +65,20 @@ export default Vue.extend({
 				this.hovering = e.clientX >= dim.left && e.clientX <= dim.right && e.clientY >= dim.top && e.clientY <= dim.bottom;
 
 				if (!this.disabled && this.sticky && this.hovering) {
-					this.$store.commit('ndv/setDraggableStickyPos', [dim.left + this.stickyOffset, dim.top + this.stickyOffset]);
+					this.ndvStore.setDraggableStickyPos([dim.left + this.stickyOffset, dim.top + this.stickyOffset]);
 				}
 			}
 		},
 		onMouseUp(e: MouseEvent) {
 			if (this.activeDrop) {
-				const data = this.$store.getters['ndv/draggableData'];
+				const data = this.ndvStore.draggableData;
 				this.$emit('drop', data);
 			}
 		},
 	},
 	watch: {
 		activeDrop(active) {
-			this.$store.commit('ndv/setDraggableCanDrop', active);
+			this.ndvStore.setDraggableCanDrop(active);
 		},
 	},
 });

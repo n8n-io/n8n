@@ -67,6 +67,7 @@
 	"auth.changePassword.reenterNewPassword": "Re-enter New Password",
 	"auth.changePassword.tokenValidationError": "Issue validating invite token",
 	"auth.defaultPasswordRequirements": "8+ characters, at least 1 number and 1 capital letter",
+	"auth.validation.missingParameters": "Missing token or user id",
 	"auth.email": "Email",
 	"auth.firstName": "First Name",
 	"auth.lastName": "Last Name",

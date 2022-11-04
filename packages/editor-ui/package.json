@@ -57,6 +57,7 @@
     "n8n-design-system": "~0.41.0",
     "n8n-workflow": "~0.123.0",
     "normalize-wheel": "^1.0.1",
+    "pinia": "^2.0.22",
     "prismjs": "^1.17.1",
     "quill": "2.0.0-dev.4",
     "quill-autoformat": "^0.1.1",
