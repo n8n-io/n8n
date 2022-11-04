@@ -19,7 +19,7 @@ export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string })
 		return source.toJSON() as T;
 	}
 	if (hash.has(source)) {
-		ErrorReporter.warn(new Error(`Circular reference detected`), {
+		ErrorReporter.warn('Circular reference detected', {
 			extra: { source, path },
 		});
 		return hash.get(source);

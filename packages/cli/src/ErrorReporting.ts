@@ -34,13 +34,7 @@ export const initErrorHandling = (app?: Application) => {
 	}
 
 	ErrorReporterProxy.init({
-		warn: (warning, options) => {
-			const method = typeof warning === 'string' ? 'captureMessage' : 'captureException';
-			Sentry[method](warning, { level: 'warning', ...options });
-		},
-		error: (error, options) => {
-			Sentry.captureException(error, options);
-		},
+		report: (error, options) => Sentry.captureException(error, options),
 	});
 
 	initialized = true;

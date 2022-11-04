@@ -1,30 +1,35 @@
 import type { Primitives } from './utils';
 
 export interface ReportingOptions {
+	level?: 'warning' | 'error';
 	tags?: Record<string, Primitives>;
 	extra?: Record<string, unknown>;
 }
 
 interface ErrorReporter {
-	error: (error: Error, options?: ReportingOptions) => void;
-	warn: (warning: Error | string, options?: ReportingOptions) => void;
+	report: (error: Error | string, options?: ReportingOptions) => void;
 }
 
 const isProduction = process.env.NODE_ENV === 'production';
 
 const instance: ErrorReporter = {
-	error: (error) => isProduction && console.error('ERROR', error.message, error.stack),
-	warn: (warning) => isProduction && console.warn('WARN', warning),
+	report: (error, options) => isProduction && console.error('ERROR', error, options),
 };
 
 export function init(errorReporter: ErrorReporter) {
-	instance.error = errorReporter.error;
-	instance.warn = errorReporter.warn;
+	instance.report = errorReporter.report;
 }
 
+const wrap = (e: unknown) => {
+	if (e instanceof Error) return e;
+	if (typeof e === 'string') return new Error(e);
+	return;
+};
+
 export const error = (e: unknown, options?: ReportingOptions) => {
-	if (e instanceof Error) instance.error(e, options);
+	const toReport = wrap(e);
+	if (toReport) instance.report(toReport, options);
 };
 
 export const warn = (warning: Error | string, options?: ReportingOptions) =>
-	instance.warn(warning, options);
+	error(warning, { level: 'warning', ...options });
