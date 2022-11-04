@@ -21,7 +21,10 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 	const connectionDetails =
 		configDBType === 'sqlite'
 			? {
-					database: path.resolve(UserSettings.getUserN8nFolderPath(), 'database.sqlite'),
+					database: path.resolve(
+						UserSettings.getUserN8nFolderPath(),
+						config.getEnv('database.sqlite.database'),
+					),
 			  }
 			: {
 					database: config.getEnv(`database.${configDBType}.database`),
