@@ -35,7 +35,6 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 			  };
 	return {
 		name: dbType,
-		logging: true, // change to false
 		entityPrefix,
 		entities: Object.values(entities),
 		migrationsRun: true,
