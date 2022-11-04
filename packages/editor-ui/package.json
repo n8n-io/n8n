@@ -82,6 +82,7 @@
   "devDependencies": {
     "@intlify/vue-i18n-loader": "^1.1.0",
     "@n8n_io/eslint-config": "",
+    "@pinia/testing": "^0.0.14",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/vue": "^5.8.3",
     "@types/dateformat": "^3.0.0",

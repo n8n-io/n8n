@@ -1,15 +1,15 @@
-import Vue from "vue";
+import Vue from 'vue';
+import { PiniaVuePlugin } from 'pinia';
+import { createTestingPinia } from '@pinia/testing';
 import { render, screen } from '@testing-library/vue';
 import RunDataJson from '@/components/RunDataJson.vue';
 
-// TODO: Investigate why this is needed
-// Without having the 3rd party library imported like this, the test fails with:
-// [Vue warn]: Failed to mount component: template or render function not defined.
-Vue.component('vue-json-pretty', require('vue-json-pretty').default);
+Vue.use(PiniaVuePlugin);
 
 describe('RunDataJson.vue', () => {
 	it('renders json values properly', () => {
 		render(RunDataJson, {
+			pinia: createTestingPinia(),
 			props: {
 				mappingEnabled: true,
 				editMode: { enabled: false },
