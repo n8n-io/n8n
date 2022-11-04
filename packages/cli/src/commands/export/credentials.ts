@@ -13,6 +13,7 @@ import path from 'path';
 import { getLogger } from '@/Logger';
 import * as Db from '@/Db';
 import type { ICredentialsDecryptedDb } from '@/Interfaces';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
 export class ExportCredentialsCommand extends Command {
 	static description = 'Export credentials';
@@ -120,18 +121,22 @@ export class ExportCredentialsCommand extends Command {
 				findQuery.id = flags.id;
 			}
 
-			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-			const credentials = await Db.collections.Credentials.find(findQuery);
+			let credentials: CredentialsEntity[];
+			if (flags.id) {
+				credentials = await Db.repositories.Credentials.findByIds([Number(flags.id)]);
+			} else {
+				credentials = await Db.repositories.Credentials.findAll();
+			}
 
 			if (flags.decrypted) {
 				const encryptionKey = await UserSettings.getEncryptionKey();
 
 				for (let i = 0; i < credentials.length; i++) {
 					const { name, type, nodesAccess, data } = credentials[i];
-					const id = credentials[i].id as string;
+					const id = String(credentials[i].id);
 					const credential = new Credentials({ id, name }, type, nodesAccess, data);
 					const plainData = credential.getData(encryptionKey);
-					(credentials[i] as ICredentialsDecryptedDb).data = plainData;
+					(credentials[i] as unknown as ICredentialsDecryptedDb).data = plainData;
 				}
 			}
 

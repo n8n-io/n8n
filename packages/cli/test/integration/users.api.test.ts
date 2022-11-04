@@ -176,7 +176,7 @@ test('DELETE /users/:id should delete the user', async () => {
 
 	// TODO: Include active workflow and check whether webhook has been removed
 
-	const credential = await Db.collections.Credentials.findOne(savedCredential.id);
+	const credential = await Db.repositories.Credentials.findOne(savedCredential.id);
 	expect(credential).toBeUndefined(); // deleted
 });
 

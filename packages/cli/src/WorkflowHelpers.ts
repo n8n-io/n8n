@@ -493,10 +493,10 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					credentialsByName[nodeCredentialType] = {};
 				}
 				if (credentialsByName[nodeCredentialType][name] === undefined) {
-					const credentials = await Db.collections.Credentials.find({
+					const credentials = await Db.repositories.Credentials.findAllByNameAndType(
 						name,
-						type: nodeCredentialType,
-					});
+						nodeCredentialType,
+					);
 					// if credential name-type combination is unique, use it
 					if (credentials?.length === 1) {
 						credentialsByName[nodeCredentialType][name] = {
@@ -529,10 +529,10 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 			// check if credentials for ID-type are not yet cached
 			if (credentialsById[nodeCredentialType][nodeCredentials.id] === undefined) {
 				// check first if ID-type combination exists
-				const credentials = await Db.collections.Credentials.findOne({
-					id: nodeCredentials.id,
-					type: nodeCredentialType,
-				});
+				const credentials = await Db.repositories.Credentials.findOneByType(
+					Number(nodeCredentials.id),
+					nodeCredentialType,
+				);
 				if (credentials) {
 					credentialsById[nodeCredentialType][nodeCredentials.id] = {
 						id: credentials.id.toString(),
@@ -543,10 +543,10 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 					continue;
 				}
 				// no credentials found for ID, check if some exist for name
-				const credsByName = await Db.collections.Credentials.find({
-					name: nodeCredentials.name,
-					type: nodeCredentialType,
-				});
+				const credsByName = await Db.repositories.Credentials.findAllByNameAndType(
+					nodeCredentials.name,
+					nodeCredentialType,
+				);
 				// if credential name-type combination is unique, take it
 				if (credsByName?.length === 1) {
 					// add found credential to cache

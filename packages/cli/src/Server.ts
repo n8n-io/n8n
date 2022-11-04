@@ -1307,7 +1307,7 @@ class App {
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
-					const credential = await getCredentialWithoutUser(credentialId);
+					const credential = await getCredentialWithoutUser(Number(credentialId));
 
 					if (!credential) {
 						LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {

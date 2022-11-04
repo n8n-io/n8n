@@ -163,10 +163,10 @@ export async function generateUniqueName(
 		},
 	};
 
-	const found: Array<WorkflowEntity | ICredentialsDb> =
+	const found: Array<WorkflowEntity | CredentialsEntity> =
 		entityType === 'workflow'
 			? await Db.collections.Workflow.find(findConditions)
-			: await Db.collections.Credentials.find(findConditions);
+			: await Db.repositories.Credentials.findLastMatchingName(requestedName);
 
 	// name is unique
 	if (found.length === 0) {

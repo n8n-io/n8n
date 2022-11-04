@@ -57,10 +57,8 @@ EECredentialsController.get(
 			throw new ResponseHelper.ResponseError(`Credential ID must be a number.`, undefined, 400);
 		}
 
-		let credential = (await EECredentials.get(
-			{ id: credentialId },
-			{ relations: ['shared', 'shared.role', 'shared.user'] },
-		)) as CredentialsEntity & CredentialWithSharings;
+		let credential = (await EECredentials.get({ id: credentialId })) as CredentialsEntity &
+			CredentialWithSharings;
 
 		if (!credential) {
 			throw new ResponseHelper.ResponseError(

@@ -30,6 +30,7 @@ import {
 import { UserRepository } from '@db/repositories/UserRepository';
 import { RoleRepository } from '@db/repositories/RoleRepository';
 import { SettingsRepository } from '@db/repositories/SettingsRepository';
+import { CredentialsRepository } from '@db/repositories/CredentialsRepository';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
@@ -166,8 +167,6 @@ export async function init(
 	}
 
 	// @ts-ignore
-	collections.Credentials = linkRepository(entities.CredentialsEntity);
-	// @ts-ignore
 	collections.Execution = linkRepository(entities.ExecutionEntity);
 	collections.Workflow = linkRepository(entities.WorkflowEntity);
 	// @ts-ignore
@@ -178,6 +177,7 @@ export async function init(
 	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
 
+	collections.Credentials = connection.getCustomRepository(CredentialsRepository);
 	collections.Role = connection.getCustomRepository(RoleRepository);
 	collections.Settings = connection.getCustomRepository(SettingsRepository);
 	collections.User = connection.getCustomRepository(UserRepository);

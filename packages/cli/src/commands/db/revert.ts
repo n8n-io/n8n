@@ -28,7 +28,7 @@ export class DbRevertMigrationCommand extends Command {
 		let connection: Connection | undefined;
 		try {
 			await Db.init();
-			connection = Db.collections.Credentials.manager.connection;
+			connection = Db.repositories.Credentials.connection;
 
 			if (!connection) {
 				throw new Error(`No database connection available.`);

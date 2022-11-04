@@ -119,11 +119,9 @@ export class EEWorkflowsService extends WorkflowsService {
 				credentialIdsUsedByWorkflow.add(credentialId);
 			});
 		});
-		const workflowCredentials = await EECredentials.getMany({
-			where: {
-				id: In(Array.from(credentialIdsUsedByWorkflow)),
-			},
-		});
+		const workflowCredentials = await EECredentials.findByIds(
+			Array.from(credentialIdsUsedByWorkflow),
+		);
 		const userCredentialIds = userCredentials.map((credential) => credential.id.toString());
 		workflowCredentials.forEach((credential) => {
 			const credentialId = credential.id.toString();

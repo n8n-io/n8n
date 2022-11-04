@@ -6,7 +6,7 @@ import {
 	INodeCredentialTestResult,
 	LoggerProxy,
 } from 'n8n-workflow';
-import { FindManyOptions, FindOneOptions, In } from 'typeorm';
+import { FindOneOptions } from 'typeorm';
 
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -16,59 +16,43 @@ import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { SharedCredentials } from '@db/entities/SharedCredentials';
 import { validateEntity } from '@/GenericHelpers';
-import { externalHooks } from '../Server';
+import { externalHooks } from '@/Server';
 
 import type { User } from '@db/entities/User';
 import type { CredentialRequest } from '@/requests';
+import type { CredentialsRelation } from '@db/repositories/CredentialsRepository';
 
 export class CredentialsService {
-	static async get(
-		credential: Partial<ICredentialsDb>,
-		options?: { relations: string[] },
-	): Promise<ICredentialsDb | undefined> {
-		return Db.collections.Credentials.findOne(credential, {
-			relations: options?.relations,
-		});
+	static async get(credentialId: string): Promise<ICredentialsDb | undefined> {
+		return Db.repositories.Credentials.findOne(Number(credentialId), [
+			'shared',
+			'shared.role',
+			'shared.user',
+		]);
 	}
 
-	static async getAll(user: User, options?: { relations: string[] }): Promise<ICredentialsDb[]> {
-		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
-			'id',
-			'name',
-			'type',
-			'nodesAccess',
-			'createdAt',
-			'updatedAt',
-		];
-
+	static async getAll(
+		user: User,
+		options?: { relations: CredentialsRelation[] },
+	): Promise<ICredentialsDb[]> {
 		// if instance owner, return all credentials
-
 		if (user.globalRole.name === 'owner') {
-			return Db.collections.Credentials.find({
-				select: SELECT_FIELDS,
-				relations: options?.relations,
-			});
+			return Db.repositories.Credentials.getAll(options?.relations);
 		}
 
 		// if member, return credentials owned by or shared with member
-
 		const userSharings = await Db.collections.SharedCredentials.find({
-			where: {
-				user,
-			},
+			where: { user },
 		});
 
-		return Db.collections.Credentials.find({
-			select: SELECT_FIELDS,
-			relations: options?.relations,
-			where: {
-				id: In(userSharings.map((x) => x.credentialId)),
-			},
-		});
+		return Db.repositories.Credentials.getAll(
+			options?.relations,
+			userSharings.map((x) => x.credentialId),
+		);
 	}
 
-	static async getMany(filter: FindManyOptions<ICredentialsDb>): Promise<ICredentialsDb[]> {
-		return Db.collections.Credentials.find(filter);
+	static async findByIds(ids: number[]): Promise<ICredentialsDb[]> {
+		return Db.repositories.Credentials.findByIds(ids);
 	}
 
 	/**
@@ -119,7 +103,7 @@ export class CredentialsService {
 		const { id, ...rest } = data;
 
 		// This saves us a merge but requires some type casting. These
-		// types are compatiable for this case.
+		// types are compatible for this case.
 		const newCredentials = Db.collections.Credentials.create(
 			rest as ICredentialsDb,
 		) as CredentialsEntity;
@@ -214,7 +198,7 @@ export class CredentialsService {
 
 		// We sadly get nothing back from "update". Neither if it updated a record
 		// nor the new value. So query now the updated entry.
-		return Db.collections.Credentials.findOne(credentialId);
+		return Db.repositories.Credentials.findOne(Number(credentialId));
 	}
 
 	static async save(

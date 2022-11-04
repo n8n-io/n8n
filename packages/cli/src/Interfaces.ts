@@ -31,12 +31,11 @@ import { Url } from 'url';
 import type { Request } from 'express';
 import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import type { InstalledPackages } from '@db/entities/InstalledPackages';
-import type { Settings } from '@db/entities/Settings';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import type { TagEntity } from '@db/entities/TagEntity';
-import type { IRepositories } from '@db/repositories';
 import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import type { IRepositories } from '@db/repositories';
 
 export interface IActivationError {
 	time: number;
@@ -68,7 +67,6 @@ export interface ICredentialsOverwrite {
 }
 
 export type IDatabaseCollections = IRepositories & {
-	Credentials: Repository<ICredentialsDb>;
 	Execution: Repository<IExecutionFlattedDb>;
 	Workflow: Repository<WorkflowEntity>;
 	Webhook: Repository<IWebhookDb>;

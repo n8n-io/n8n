@@ -255,17 +255,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 			throw new Error(`Credential "${nodeCredential.name}" of type "${type}" has no ID.`);
 		}
 
+		const credentialId = Number(nodeCredential.id);
 		const credential = userId
 			? await Db.collections.SharedCredentials.findOneOrFail({
 					relations: ['credentials'],
-					where: { credentials: { id: nodeCredential.id, type }, user: { id: userId } },
+					where: { credentials: { id: credentialId, type }, user: { id: userId } },
 			  }).then((shared) => shared.credentials)
-			: await Db.collections.Credentials.findOneOrFail({ id: nodeCredential.id, type });
+			: await Db.repositories.Credentials.findOneByTypeOrFail(credentialId, type);
 
 		if (!credential) {
-			throw new Error(
-				`Credential with ID "${nodeCredential.id}" does not exist for type "${type}".`,
-			);
+			throw new Error(`Credential with ID "${credentialId}" does not exist for type "${type}".`);
 		}
 
 		return new Credentials(
@@ -785,10 +784,9 @@ export async function getCredentialForUser(
  * Get a credential without user check
  */
 export async function getCredentialWithoutUser(
-	credentialId: string,
+	credentialId: number,
 ): Promise<ICredentialsDb | undefined> {
-	const credential = await Db.collections.Credentials.findOne(credentialId);
-	return credential;
+	return Db.repositories.Credentials.findOne(credentialId);
 }
 
 export function createCredentialsFromCredentialsEntity(

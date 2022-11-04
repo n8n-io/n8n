@@ -14,10 +14,8 @@ import { externalHooks } from '@/Server';
 import { IDependency, IJsonSchema } from '../../../types';
 import { CredentialRequest } from '@/requests';
 
-export async function getCredentials(
-	credentialId: number | string,
-): Promise<ICredentialsDb | undefined> {
-	return Db.collections.Credentials.findOne(credentialId);
+export async function getCredentials(credentialId: number): Promise<ICredentialsDb | undefined> {
+	return Db.repositories.Credentials.findOne(credentialId);
 }
 
 export async function getSharedCredentials(

@@ -349,7 +349,6 @@ export class Start extends Command {
 				if (dbType === 'sqlite') {
 					const shouldRunVacuum = config.getEnv('database.sqlite.executeVacuumOnStartup');
 					if (shouldRunVacuum) {
-						// eslint-disable-next-line @typescript-eslint/no-floating-promises
 						await Db.collections.Execution.query('VACUUM;');
 					}
 				}
