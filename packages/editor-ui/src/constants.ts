@@ -422,4 +422,7 @@ export enum STORES {
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',
 	CREDENTIALS = 'credentials',
+	TAGS = 'tags',
+	VERSIONS = 'versions',
+	NODE_CREATOR = 'nodeCreator',
 }

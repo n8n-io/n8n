@@ -69,7 +69,6 @@ import {
 	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
-	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';

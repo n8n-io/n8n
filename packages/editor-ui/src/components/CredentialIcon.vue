@@ -69,12 +69,14 @@ export default Vue.extend({
 				return type;
 			}
 
-			// TODO: CHECK THIS:
-			// if (type.extends) {
-			// 	return type.extends.reduce((accu: string | null, type: string) => {
-			// 		return accu || this.getCredentialWithIcon(type);
-			// 	}, null);
-			// }
+			if (type.extends) {
+				let parentCred = null;
+				type.extends.forEach(name => {
+					parentCred = this.getCredentialWithIcon(name);
+					if (parentCred !== null) return;
+				});
+				return parentCred;
+			}
 
 			return null;
 		},

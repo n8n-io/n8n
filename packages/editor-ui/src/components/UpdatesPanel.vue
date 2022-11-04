@@ -60,6 +60,9 @@ import ModalDrawer from './ModalDrawer.vue';
 import TimeAgo from './TimeAgo.vue';
 import VersionCard from './VersionCard.vue';
 import { VERSIONS_MODAL_KEY } from '../constants';
+import { mapStores } from 'pinia';
+import { useVersionsStore } from '@/stores/versions';
+import { IVersion } from '@/Interface';
 
 export default Vue.extend({
 	name: 'UpdatesPanel',
@@ -69,7 +72,18 @@ export default Vue.extend({
 		TimeAgo,
 	},
 	computed: {
-		...mapGetters('versions', ['nextVersions', 'currentVersion', 'infoUrl']),
+		...mapStores(
+			useVersionsStore,
+		),
+		nextVersions(): IVersion[] {
+			return this.versionsStore.nextVersions;
+		},
+		currentVersion(): IVersion | undefined {
+			return this.versionsStore.currentVersion;
+		},
+		infoUrl(): string {
+			return this.versionsStore.infoUrl;
+		},
 	},
 	data() {
 		return {

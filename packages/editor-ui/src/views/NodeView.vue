@@ -223,7 +223,6 @@ import {
 	IUser,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
-import { mapGetters } from 'vuex';
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
@@ -242,6 +241,8 @@ import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
+import { useTagsStore } from '@/stores/tags';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -369,7 +370,9 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useTagsStore,
 				useCredentialsStore,
+				useNodeCreatorStore,
 				useNodeTypesStore,
 				useNDVStore,
 				useRootStore,
@@ -649,10 +652,10 @@ export default mixins(
 			},
 			showTriggerCreator(source: string) {
 				if(this.createNodeActive) return;
-				this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
-				this.$store.commit('nodeCreator/setShowScrim', true);
+				this.nodeCreatorStore.selectedType = TRIGGER_NODE_FILTER;
+				this.nodeCreatorStore.showScrim = true;
 				this.onToggleNodeCreator({ source, createNodeActive: true });
-				this.$nextTick(() => this.$store.commit('nodeCreator/setShowTabs', false));
+				this.nodeCreatorStore.showTabs = false;
 			},
 			async openExecution(executionId: string) {
 				this.startLoading();
@@ -819,7 +822,7 @@ export default mixins(
 				const tags = (data.tags || []) as ITag[];
 				const tagIds = tags.map((tag) => tag.id);
 				this.workflowsStore.setWorkflowTagIds(tagIds || []);
-				this.$store.commit('tags/upsertTags', tags);
+				this.tagsStore.upsertTags(tags);
 
 				await this.addNodes(data.nodes, data.connections);
 
@@ -1506,7 +1509,7 @@ export default mixins(
 
 					const tagsEnabled = this.settingsStore.areTagsEnabled;
 					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
-						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
+						const allTags = await this.tagsStore.fetchAll();
 						const tagNames = new Set(allTags.map((tag) => tag.name));
 
 						const workflowTags = workflowData.tags as ITag[];
@@ -1514,7 +1517,7 @@ export default mixins(
 
 						const creatingTagPromises: Array<Promise<ITag>> = [];
 						for (const tag of notFound) {
-							const creationPromise = this.$store.dispatch('tags/create', tag.name)
+							const creationPromise = this.tagsStore.create(tag.name)
 								.then((tag: ITag) => {
 									allTags.push(tag);
 									return tag;
@@ -3286,7 +3289,9 @@ export default mixins(
 				if (createNodeActive === this.createNodeActive) return;
 
 				// Default to the trigger tab in node creator if there's no trigger node yet
-				if (!this.containsTrigger) this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
+				if (!this.containsTrigger) {
+					this.nodeCreatorStore.selectedType = TRIGGER_NODE_FILTER;
+				}
 
 				this.createNodeActive = createNodeActive;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
