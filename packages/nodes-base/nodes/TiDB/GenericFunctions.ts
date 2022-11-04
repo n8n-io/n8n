@@ -1,19 +1,18 @@
 import {
 	ICredentialDataDecryptedObject, ICredentialTestFunctions,
 	IDataObject,
-	IHttpRequestHelper,
-	IHttpRequestOptions,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodeListSearchResult, NodeApiError,
 } from 'n8n-workflow';
+
 import mysql2 from 'mysql2/promise';
 import {IExecuteFunctions} from "n8n-core";
 import {OptionsWithUri} from 'request';
 
 /**
  * Returns of copy of the items which only contains the json data and
- * of that only the define properties
+ * of that only to define properties
  *
  * @param {INodeExecutionData[]} items The items to copy
  * @param {string[]} properties The properties it should include
@@ -34,18 +33,17 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 	});
 }
 
-// export function tiDBCloudAuth(this: ICredentialTestFunctions | IExecuteFunctions | ILoadOptionsFunctions)  {
-//
-//
-// }
+export async function tiDBCloudApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, uri: string, method: string, keySet?: ICredentialDataDecryptedObject): Promise<IDataObject> {
+	let publicKey;
+	let privateKey;
 
-
-export async function tiDBCloudApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, uri: string, method: string): Promise<IDataObject> {
-	let tiDBCloudAuth;
-	try {
-		tiDBCloudAuth = await this.getCredentials('tiDBCloudApi');
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+	if (keySet) {
+		publicKey = keySet.publicKey;
+		privateKey = keySet.privateKey;
+	} else {
+		const tiDBCloudAuth = await this.getCredentials('tiDBCloudApi');
+		publicKey = tiDBCloudAuth.publicKey;
+		privateKey = tiDBCloudAuth.privateKey;
 	}
 
 	const options: OptionsWithUri = {
@@ -54,8 +52,8 @@ export async function tiDBCloudApiRequest(this: IExecuteFunctions | ILoadOptions
 		uri,
 		json: true,
 		auth: {
-			user: tiDBCloudAuth.publicKey as string,
-			pass: tiDBCloudAuth.privateKey as string,
+			user: publicKey as string,
+			pass: privateKey as string,
 			sendImmediately: false,
 		},
 	};
@@ -63,8 +61,14 @@ export async function tiDBCloudApiRequest(this: IExecuteFunctions | ILoadOptions
 	try {
 		return await this.helpers.request!(options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new Error(`Failed to send request to TiDB Cloud: ${error.message}`);
 	}
+}
+
+export async function tiDBCloudAuth(this: ICredentialTestFunctions, credentialForTest: ICredentialDataDecryptedObject) {
+	const tiDBCloudAuthUrl = 'https://api.tidbcloud.com/api/v1beta/projects';
+	// @ts-ignore
+	return await tiDBCloudApiRequest.call(this, tiDBCloudAuthUrl, 'GET', credentialForTest);
 }
 
 export async function searchProject(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
@@ -96,18 +100,6 @@ export async function searchCluster(this: ILoadOptionsFunctions): Promise<INodeL
 	return {results};
 }
 
-// export async function searchDatabase(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
-// 	const projectId = this.getCurrentNodeParameter('project');
-// 	const getClustersUrl = `https://api.tidbcloud.com/api/v1beta/projects/"${projectId}"/clusters?page=1&page_size=100`;
-// 	const response: IDataObject = await tiDBCloudApiRequest.call(this, getClustersUrl, 'GET');
-// 	const results = (response.items as IDataObject[]).map(r => ({
-// 		name: r.name as string,
-// 		value: r.name as string,
-// 	}));
-//
-// 	return { results };
-// }
-
 async function getConnParaByTiDBCloudApi(this: IExecuteFunctions | ILoadOptionsFunctions): Promise<ICredentialDataDecryptedObject> {
 	let projectId;
 	let clusterId;
@@ -136,14 +128,10 @@ async function getConnParaByTiDBCloudApi(this: IExecuteFunctions | ILoadOptionsF
 		throw new Error("Please set project");
 	}
 
-	console.log(this.getNode());
 	try {
 		password = this.getNodeParameter('password', 0);
-		console.log(password);
 		database = this.getNodeParameter('database', 0);
-		console.log(database);
 		addCaCertificate = this.getNodeParameter('addCaCertificate', 0);
-		console.log(addCaCertificate);
 		if (addCaCertificate === true) {
 			caCertificate = this.getNodeParameter('caCertificate', 0);
 		}
@@ -162,6 +150,7 @@ async function getConnParaByTiDBCloudApi(this: IExecuteFunctions | ILoadOptionsF
 			port: 4000,
 			password: password as string,
 			database: database as string,
+			enableTls: true,
 			addCaCertificate: addCaCertificate as boolean,
 			caCertificate: caCertificate as string,
 		};
@@ -194,20 +183,20 @@ export async function getConnectionParameters(this: IExecuteFunctions | ILoadOpt
 	}
 }
 
-export async function createConnection(this: IExecuteFunctions | ILoadOptionsFunctions): Promise<mysql2.Connection> {
-	const credentials = await getConnectionParameters.call(this) as ICredentialDataDecryptedObject;
+export async function createConnection(this: IExecuteFunctions | ILoadOptionsFunctions, credentialsForTest?: ICredentialDataDecryptedObject): Promise<mysql2.Connection> {
+	const credentials = credentialsForTest
+		? credentialsForTest
+		: await getConnectionParameters.call(this) as ICredentialDataDecryptedObject;
 
-	const {addCaCertificate, caCertificate, ...baseCredentials} = credentials;
+	const {enableTls, addCaCertificate, caCertificate, ...baseCredentials} = credentials;
 
-	baseCredentials.ssl = {};
-
-	if (addCaCertificate) {
-		baseCredentials.ssl.ca = caCertificate;
+	if (enableTls) {
+		baseCredentials.ssl = {};
+		if (addCaCertificate) {
+			baseCredentials.ssl.ca = caCertificate;
+		}
+		baseCredentials.ssl.minVersion = "TLSv1.2";
 	}
-
-	baseCredentials.ssl.minVersion = "TLSv1.2";
-
-	baseCredentials.ssl.rejectUnauthorized = true;
 
 	return mysql2.createConnection(baseCredentials);
 }

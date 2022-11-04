@@ -16,23 +16,9 @@ export class TiDBCloudApi implements ICredentialType {
 			name: 'privateKey',
 			type: 'string',
 			default: '',
+			typeOptions: {
+				password: true,
+			},
 		},
 	];
-	// authenticate: IAuthenticateGeneric = {
-	// 	type: 'generic',
-	// 	properties: {
-	// 		auth: {
-	// 			username: '={{$credentials.publicKey}}',
-	// 			password: '={{$credentials.privateKey}}',
-	// 			sendImmediately: false,
-	// 		},
-	// 	},
-	// };
-	// test: ICredentialTestRequest = {
-	// 	request: {
-	// 		baseURL: 'https://api.tidbcloud.com',
-	// 		url: '/api/v1beta/projects',
-	// 		method: 'GET',
-	// 	},
-	// };
 }

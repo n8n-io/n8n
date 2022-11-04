@@ -47,10 +47,21 @@ export class TiDBApi implements ICredentialType {
 				'The milliseconds before a timeout occurs during the initial connection to the TiDB server',
 		},
 		{
+			displayName: 'Enable TLS',
+			name: 'enableTls',
+			type: 'boolean',
+			default: false,
+		},
+		{
 			displayName: 'Add CA Certificate',
 			name: 'addCaCertificate',
 			type: 'boolean',
 			default: false,
+			displayOptions: {
+				show: {
+					enableTls: [true],
+				},
+			},
 		},
 		{
 			displayName: 'CA Certifdaficate',

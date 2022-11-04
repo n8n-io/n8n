@@ -12,9 +12,8 @@ import {
 // @ts-ignore
 import mysql2 from 'mysql2/promise';
 
-import { copyInputItems, createConnection, searchCluster, searchProject, searchTables } from './GenericFunctions';
+import {copyInputItems, createConnection, searchCluster, searchProject, searchTables, tiDBCloudAuth} from './GenericFunctions';
 import { IExecuteFunctions } from 'n8n-core';
-import {string} from "fast-glob/out/utils";
 
 export class TiDB implements INodeType {
 	description: INodeTypeDescription = {
@@ -43,7 +42,7 @@ export class TiDB implements INodeType {
 			{
 				name: 'tiDBCloudApi',
 				required: true,
-				//testedBy: 'tidbCloudConnectionTest',
+				testedBy: 'tidbCloudConnectionTest',
 				displayOptions: {
 					show: {
 						authentication: ['TiDBCloud'],
@@ -58,11 +57,11 @@ export class TiDB implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'TiDB',
+						name: 'TiDB Auth',
 						value: 'TiDB',
 					},
 					{
-						name: 'TiDB Cloud',
+						name: 'TiDB Cloud API Auth',
 						value: 'TiDBCloud',
 					},
 				],
@@ -193,6 +192,12 @@ export class TiDB implements INodeType {
 						value: 'update',
 						description: 'Update rows in database',
 						action: 'Update rows in database',
+					},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete rows in database',
+						action: 'Delete rows in database',
 					},
 				],
 				default: 'insert',
@@ -360,9 +365,7 @@ export class TiDB implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
-				description:
-					'Name of the property which decides which rows in the database should be updated. Normally that would be "id".',
+				description: 'Name of the property which decides which rows in the database should be updated',
 			},
 			{
 				displayName: 'Columns',
@@ -378,6 +381,55 @@ export class TiDB implements INodeType {
 				description:
 					'Comma-separated list of the properties which should used as columns for rows to update',
 			},
+
+			// ----------------------------------
+			//         delete
+			// ----------------------------------
+			{
+				displayName: 'Table',
+				name: 'table',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Table...',
+						typeOptions: {
+							searchListMethod: 'searchTables',
+							searchFilterRequired: false,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'table_name',
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: ['delete'],
+					},
+				},
+				description: 'Name of the table in which to delete data in',
+			},
+			{
+				displayName: 'Delete Key',
+				name: 'deleteKey',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['delete'],
+					},
+				},
+				default: 'id',
+				required: true,
+				description: 'Name of the propertys which decides which rows in the database should be delete',
+			},
 		],
 	};
 
@@ -388,8 +440,9 @@ export class TiDB implements INodeType {
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
 				try {
+					const credentialsForTest = credential.data as ICredentialDataDecryptedObject;
 					// @ts-ignore
-					const connection = await createConnection.call(this);
+					const connection = await createConnection.call(this, credentialsForTest);
 					connection.end();
 				} catch (error) {
 					return {
@@ -406,6 +459,15 @@ export class TiDB implements INodeType {
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
 			): Promise<INodeCredentialTestResult> {
+				try {
+					const credentialsForTest = credential.data as ICredentialDataDecryptedObject;
+					await tiDBCloudAuth.call(this, credentialsForTest);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
 				return {
 					status: 'OK',
 					message: 'Connection successful!',
@@ -477,11 +539,13 @@ export class TiDB implements INodeType {
 					} INTO ${table}(${columnString}) VALUES ${items
 						.map((item) => insertPlaceholder)
 						.join(',')};`;
+				console.log(insertItems);
+
 				const queryItems = insertItems.reduce(
 					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
 					[],
 				);
-
+				console.log(queryItems);
 				const queryResult = await connection.query(insertSQL, queryItems);
 
 				returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
@@ -527,6 +591,23 @@ export class TiDB implements INodeType {
 					throw error;
 				}
 			}
+		} else if (operation === 'delete'){
+			// ----------------------------------
+			//         delete
+			// ----------------------------------
+
+			const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
+			const deleteKey = this.getNodeParameter('deleteKey', 0) as string;
+			const deleteItems = copyInputItems(items, [deleteKey]);
+			console.log(deleteItems);
+			const deleteSQL = `DELETE FROM ${table} WHERE ${deleteKey} =  ?;`;
+			const queryItems = deleteItems.reduce(
+				(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
+				[],
+			);
+			console.log(queryItems);
+			const queryResult = await connection.query(deleteSQL, queryItems);
+			returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
 		} else {
 			if (this.continueOnFail()) {
 				returnItems = this.helpers.returnJsonArray({
