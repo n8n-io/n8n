@@ -1,4 +1,5 @@
 import type { Primitives } from './utils';
+import * as Logger from './LoggerProxy';
 
 export interface ReportingOptions {
 	level?: 'warning' | 'error';
@@ -13,7 +14,7 @@ interface ErrorReporter {
 const isProduction = process.env.NODE_ENV === 'production';
 
 const instance: ErrorReporter = {
-	report: (error, options) => isProduction && console.error('ERROR', error, options),
+	report: (error, options) => isProduction && Logger.error('ERROR', { error, options }),
 };
 
 export function init(errorReporter: ErrorReporter) {
