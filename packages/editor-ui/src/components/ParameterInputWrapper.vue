@@ -37,6 +37,8 @@ import { INodeProperties, INodePropertyMode, IRunData, isResourceLocatorValue, N
 import { INodeUi, IUiState, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
 import { isValueExpression } from './helpers';
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	showMessage,
@@ -97,11 +99,14 @@ export default mixins(
 			},
 		},
 		computed: {
+			...mapStores(
+				useNDVStore,
+			),
 			isValueExpression () {
 				return isValueExpression(this.parameter, this.value);
 			},
 			activeNode(): INodeUi | null {
-				return this.$store.getters['ndv/activeNode'];
+				return this.ndvStore.activeNode;
 			},
 			selectedRLMode(): INodePropertyMode | undefined {
 				if (typeof this.value !== 'object' ||this.parameter.type !== 'resourceLocator' || !isResourceLocatorValue(this.value)) {
@@ -126,17 +131,17 @@ export default mixins(
 				return this.hint;
 			},
 			targetItem(): TargetItem | null {
-				return this.$store.getters['ndv/hoveringItem'];
+				return this.ndvStore.hoveringItem;
 			},
 			expressionValueComputed (): string | null {
-				const inputNodeName: string | undefined = this.$store.getters['ndv/ndvInputNodeName'];
+				const inputNodeName: string | undefined = this.ndvStore.ndvInputNodeName;
 				const value = isResourceLocatorValue(this.value)? this.value.value: this.value;
 				if (this.activeNode === null || !this.isValueExpression || typeof value !== 'string') {
 					return null;
 				}
 
-				const inputRunIndex: number | undefined = this.$store.getters['ndv/ndvInputRunIndex'];
-				const inputBranchIndex: number | undefined = this.$store.getters['ndv/ndvInputBranchIndex'];
+				const inputRunIndex: number | undefined = this.ndvStore.ndvInputRunIndex;
+				const inputBranchIndex: number | undefined = this.ndvStore.ndvInputBranchIndex;
 
 				let computedValue: NodeParameterValue;
 				try {
@@ -157,7 +162,7 @@ export default mixins(
 			},
 			expressionOutput(): string | null {
 				if (this.isValueExpression && this.expressionValueComputed) {
-					const inputData = this.$store.getters['ndv/ndvInputData'];
+					const inputData = this.ndvStore.ndvInputData;
 					if (!inputData || (inputData && inputData.length <= 1)) {
 						return this.expressionValueComputed;
 					}

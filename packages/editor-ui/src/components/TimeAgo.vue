@@ -9,6 +9,8 @@ import { format, LocaleFunc, register } from 'timeago.js';
 import { convertToHumanReadableDate } from './helpers';
 import Vue from 'vue';
 import { mapGetters } from 'vuex';
+import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default Vue.extend({
 	name: 'TimeAgo',
@@ -48,7 +50,12 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		...mapGetters(['defaultLocale']),
+		...mapStores(
+			useRootStore,
+		),
+		defaultLocale(): string {
+			return this.rootStore.defaultLocale;
+		},
 		format(): string {
 			const text = format(this.date, this.defaultLocale);
 
