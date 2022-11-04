@@ -15,6 +15,7 @@ import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
 
 export default mixins(
 	showMessage,
@@ -25,8 +26,8 @@ export default mixins(
 	},
 	data() {
 		let emailLabel = this.$locale.baseText('auth.email');
-		const ldapLoginLabel = this.$store.getters['settings/getLdapLoginLabel'];
-		const isLdapLoginEnabled = this.$store.getters['settings/isLdapLoginEnabled'];
+		const ldapLoginLabel = this.settingsStore.ldapLoginLabel;
+		const isLdapLoginEnabled = this.settingsStore.isLdapLoginEnabled;
 
 		if (isLdapLoginEnabled && ldapLoginLabel) {
 			emailLabel = ldapLoginLabel;
@@ -72,7 +73,7 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapStores(useUsersStore),
+		...mapStores(useUsersStore, useSettingsStore),
 	},
 	methods: {
 		async onSubmit(values: {[key: string]: string}) {

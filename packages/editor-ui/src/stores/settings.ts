@@ -58,7 +58,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		isLdapLoginEnabled(): boolean {
 			return this.ldap.loginEnabled;
 		},
-		getLdapLoginLabel(): string {
+		ldapLoginLabel(): string {
 			return this.ldap.loginLabel;
 		},
 		showSetupPage() : boolean {
