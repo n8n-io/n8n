@@ -93,7 +93,12 @@ import { getSharedWorkflowIds, whereClause } from '@/WorkflowHelpers';
 
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import {
+	AUTH_COOKIE_NAME,
+	NODES_BASE_DIR,
+	RESPONSE_ERROR_MESSAGES,
+	TEMPLATES_DIR,
+} from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
@@ -954,13 +959,11 @@ class App {
 		);
 
 		// Returns node information based on node names and versions
+		const headersPath = pathJoin(NODES_BASE_DIR, 'dist', 'nodes', 'headers');
 		this.app.get(
 			`/${this.restEndpoint}/node-translation-headers`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<object | void> => {
-					const packagesPath = pathJoin(__dirname, '..', '..', '..');
-					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
-
 					try {
 						await fsAccess(`${headersPath}.js`);
 					} catch (_) {
@@ -1394,7 +1397,7 @@ class App {
 						userId: req.user?.id,
 						credentialId,
 					});
-					res.sendFile(pathResolve(__dirname, '../templates/oauth-callback.html'));
+					res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 				} catch (error) {
 					LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
 						userId: req.user?.id,

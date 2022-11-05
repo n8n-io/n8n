@@ -40,7 +40,7 @@ import { NodeTypes } from '@/NodeTypes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { executeCommand, loadClassInIsolation } from '@/CommunityNodes/helpers';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { CLI_DIR, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
@@ -99,13 +99,13 @@ class LoadNodesAndCredentialsClass {
 		// to load the credentials and nodes
 		const checkPaths = [
 			// In case "n8n" package is in same node_modules folder.
-			path.join(__dirname, '..', '..', 'n8n-workflow'),
+			path.join(CLI_DIR, '..', 'n8n-workflow'),
 			// In case "n8n" package is the root and the packages are
 			// in the "node_modules" folder underneath it.
-			path.join(__dirname, '..', 'node_modules', 'n8n-workflow'),
+			path.join(CLI_DIR, 'node_modules', 'n8n-workflow'),
 			// In case "n8n" package is installed using npm/yarn workspaces
 			// the node_modules folder is in the root of the workspace.
-			path.join(__dirname, '..', '..', '..', 'node_modules', 'n8n-workflow'),
+			path.join(CLI_DIR, '..', '..', 'node_modules', 'n8n-workflow'),
 		];
 		for (const checkPath of checkPaths) {
 			try {

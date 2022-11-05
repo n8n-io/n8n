@@ -19,7 +19,7 @@ import { resolve as pathResolve } from 'path';
 import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import { ICredentialsDb } from '@/Interfaces';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES, TEMPLATES_DIR } from '@/constants';
 import {
 	CredentialsHelper,
 	getCredentialForUser,
@@ -335,7 +335,7 @@ oauth2CredentialController.get(
 				credentialId: state.cid,
 			});
 
-			return res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
+			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 		} catch (error) {
 			// Error response
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument

@@ -34,6 +34,7 @@ import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { TagEntity } from '@db/entities/TagEntity';
 import { User } from '@db/entities/User';
+import { CLI_DIR } from '@/constants';
 
 let versionCache: IPackageVersions | undefined;
 
@@ -70,7 +71,7 @@ export async function getVersions(): Promise<IPackageVersions> {
 		return versionCache;
 	}
 
-	const packageFile = await fsReadFile(pathJoin(__dirname, '../package.json'), 'utf8');
+	const packageFile = await fsReadFile(pathJoin(CLI_DIR, 'package.json'), 'utf8');
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const packageData = jsonParse<IN8nNodePackageJson>(packageFile);
 
