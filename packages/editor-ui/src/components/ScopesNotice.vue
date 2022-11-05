@@ -9,7 +9,6 @@
 import { useCredentialsStore } from '@/stores/credentials';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
-import { mapGetters } from 'vuex';
 
 export default Vue.extend({
 	name: 'ScopesNotice',

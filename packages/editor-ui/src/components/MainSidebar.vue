@@ -70,7 +70,6 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,

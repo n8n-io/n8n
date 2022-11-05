@@ -24,13 +24,12 @@ import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
 import { createPinia, PiniaVuePlugin } from 'pinia';
 
-import { store } from './store';
 import { useWebhooksStore } from './stores/webhooks';
 
 Vue.config.productionTip = false;
 
 Vue.use(TelemetryPlugin);
-Vue.use((vue) => I18nPlugin(vue, store));
+Vue.use((vue) => I18nPlugin(vue));
 Vue.use(PiniaVuePlugin);
 
 const pinia = createPinia();
@@ -38,7 +37,6 @@ const pinia = createPinia();
 new Vue({
 	i18n: i18nInstance,
 	router,
-	store,
 	pinia,
 	render: h => h(App),
 }).$mount('#app');

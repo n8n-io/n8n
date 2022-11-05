@@ -50,7 +50,6 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { mapGetters } from "vuex";
 import mixins from 'vue-typed-mixins';
 
 import Modal from './Modal.vue';

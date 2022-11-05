@@ -226,8 +226,7 @@ import {
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
-import { getAccountAge } from '@/modules/userHelpers';
-import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
+import { getAccountAge } from '@/stores/userHelpers';
 import { debounceHelper } from '@/components/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -243,6 +242,7 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCredentialsStore } from '@/stores/credentials';
 import { useTagsStore } from '@/stores/tags';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 
 interface AddNodeOptions {
 	position?: XYPosition;

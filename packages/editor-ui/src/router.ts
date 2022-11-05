@@ -25,7 +25,7 @@ import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
 import { IPermissions } from './Interface';
-import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
+import { LOGIN_STATUS, ROLE } from './stores/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';

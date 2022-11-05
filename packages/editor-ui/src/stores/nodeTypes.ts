@@ -1,7 +1,7 @@
 import { getNodeParameterOptions, getNodesInformation, getNodeTranslationHeaders, getNodeTypes, getResourceLocatorResults } from "@/api/nodeTypes";
 import { DEFAULT_NODETYPE_VERSION, STORES } from "@/constants";
 import { ICategoriesWithNodes, INodeCreateElement, INodeTypesState, IResourceLocatorReqParams } from "@/Interface";
-import { getCategoriesWithNodes, getCategorizedList } from "@/modules/nodeTypesHelpers";
+import { getCategoriesWithNodes, getCategorizedList } from "@/stores/nodeTypesHelpers";
 import { addHeaders, addNodeTranslation } from "@/plugins/i18n";
 import { omit } from "@/utils";
 import { ILoadOptions, INodeCredentials, INodeListSearchResult, INodeParameters, INodePropertyOptions, INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';

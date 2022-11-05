@@ -65,7 +65,6 @@ import {
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
 } from '../constants';
-import { mapGetters } from 'vuex';
 import SettingsView from './SettingsView.vue';
 import CommunityPackageCard from '../components/CommunityPackageCard.vue';
 import { showMessage } from '@/components/mixins/showMessage';

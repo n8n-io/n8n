@@ -132,7 +132,6 @@ import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
-import { mapGetters } from 'vuex';
 import {
 	BASE_NODE_SURVEY_URL,
 	START_NODE_TYPE,

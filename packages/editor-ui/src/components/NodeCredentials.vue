@@ -77,8 +77,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import TitledList from '@/components/TitledList.vue';
 
-import { mapGetters } from "vuex";
-
 import mixins from 'vue-typed-mixins';
 import {getCredentialPermissions} from "@/permissions";
 import { mapStores } from 'pinia';

@@ -335,7 +335,6 @@ import { isResourceLocatorValue } from '@/typeGuards';
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
-import { mapGetters } from 'vuex';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
 import { debounceHelper } from './mixins/debounce';
