@@ -665,10 +665,10 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				}
 
 				// Update the data in vuex
-				const updateInformation = {
+				const updateInformation: IUpdateInformation = {
 					name: node.name,
 					value: nodeParameters,
-				} as IUpdateInformation;
+				};
 
 				this.workflowsStore.setNodeParameters(updateInformation);
 

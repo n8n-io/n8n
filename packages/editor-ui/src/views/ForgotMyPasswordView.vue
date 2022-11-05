@@ -12,7 +12,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
-import { mapGetters } from 'vuex';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';

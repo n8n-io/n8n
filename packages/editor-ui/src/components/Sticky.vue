@@ -207,7 +207,7 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 					key: this.node.id,
 					name: this.node.name,
 					value: nodeParameters,
-				} as IUpdateInformation;
+				};
 
 				this.workflowsStore.setNodeParameters(updateInformation);
 			}
