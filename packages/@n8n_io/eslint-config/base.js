@@ -13,6 +13,7 @@ const config = (module.exports = {
 		'node_modules/**',
 		'dist/**',
 		'test/**', // TODO: remove this
+		'jest.config.js', // TODO: remove this
 	],
 
 	plugins: [
@@ -136,7 +137,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
 		 */
-		'@typescript-eslint/ban-ts-comment': 'off',
+		'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-types.md

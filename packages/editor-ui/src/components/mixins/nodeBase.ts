@@ -1,16 +1,18 @@
-import { IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
-
+import { PropType } from "vue";
 import mixins from 'vue-typed-mixins';
-
+import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import * as CanvasHelpers from '@/views/canvasHelpers';
-import { Endpoint } from 'jsplumb';
 
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 import { getStyleTokenValue } from '../helpers';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from "@/stores/workflows";
+import { useNodeTypesStore } from "@/stores/nodeTypes";
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -18,15 +20,25 @@ export const nodeBase = mixins(
 	mounted () {
 		// Initialize the node
 		if (this.data !== null) {
-			this.__addNode(this.data);
+			try {
+				this.__addNode(this.data);
+			} catch(error) {
+				// This breaks when new nodes are loaded into store but workflow tab is not currently active
+				// Shouldn't affect anything
+			}
 		}
 	},
 	computed: {
-		data (): INodeUi {
-			return this.$store.getters.getNodeByName(this.name);
+		...mapStores(
+			useNodeTypesStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		data (): INodeUi | null {
+			return this.workflowsStore.getNodeByName(this.name);
 		},
 		nodeId (): string {
-			return this.data.id;
+			return this.data?.id  || '';
 		},
 	},
 	props: {
@@ -34,9 +46,7 @@ export const nodeBase = mixins(
 			type: String,
 		},
 		instance: {
-			// We can't use PropType<jsPlumbInstance> here because the version of jsplumb doesn't
-			// include correct typing for draggable instance(`clearDragSelection`, `destroyDraggable`, etc.)
-			type: Object,
+			type: Object as PropType<IJsPlumbInstance>,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -104,13 +114,15 @@ export const nodeBase = mixins(
 					];
 				}
 
-				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, newEndpointData);
-				endpoint.__meta = {
-					nodeName: node.name,
-					nodeId: this.nodeId,
-					index: i,
-					totalEndpoints: nodeTypeData.inputs.length,
-				};
+				const endpoint = this.instance.addEndpoint(this.nodeId, newEndpointData);
+				if(!Array.isArray(endpoint)) {
+					endpoint.__meta = {
+						nodeName: node.name,
+						nodeId: this.nodeId,
+						index: i,
+						totalEndpoints: nodeTypeData.inputs.length,
+					};
+				}
 
 				// TODO: Activate again if it makes sense. Currently makes problems when removing
 				//       connection on which the input has a name. It does not get hidden because
@@ -159,7 +171,7 @@ export const nodeBase = mixins(
 					},
 					cssClass: 'dot-output-endpoint',
 					dragAllowedWhenFull: false,
-					dragProxy: ['Rectangle', { width: 1, height: 1, strokeWidth: 0 }],
+					dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
 				};
 
 				if (nodeTypeData.outputNames) {
@@ -169,13 +181,15 @@ export const nodeBase = mixins(
 					];
 				}
 
-				const endpoint: Endpoint = this.instance.addEndpoint(this.nodeId, {...newEndpointData});
-				endpoint.__meta = {
-					nodeName: node.name,
-					nodeId: this.nodeId,
-					index: i,
-					totalEndpoints: nodeTypeData.outputs.length,
-				};
+				const endpoint = this.instance.addEndpoint(this.nodeId, {...newEndpointData});
+					if(!Array.isArray(endpoint)) {
+						endpoint.__meta = {
+							nodeName: node.name,
+							nodeId: this.nodeId,
+							index: i,
+							totalEndpoints: nodeTypeData.outputs.length,
+						};
+					}
 
 				if (!this.isReadOnly) {
 					const plusEndpointData: IEndpointOptions = {
@@ -206,16 +220,18 @@ export const nodeBase = mixins(
 						},
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
-						dragProxy: ['Rectangle', { width: 1, height: 1, strokeWidth: 0 }],
+						dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
 					};
 
-					const plusEndpoint: Endpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
-					plusEndpoint.__meta = {
-						nodeName: node.name,
-						nodeId: this.nodeId,
-						index: i,
-						totalEndpoints: nodeTypeData.outputs.length,
-					};
+					const plusEndpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
+					if(!Array.isArray(plusEndpoint)) {
+						plusEndpoint.__meta = {
+							nodeName: node.name,
+							nodeId: this.nodeId,
+							index: i,
+							totalEndpoints: nodeTypeData.outputs.length,
+						};
+					}
 				}
 			});
 		},
@@ -234,7 +250,7 @@ export const nodeBase = mixins(
 					// @ts-ignore
 					this.dragging = true;
 
-					const isSelected = this.$store.getters.isNodeSelected(this.data.name);
+					const isSelected = this.uiStore.isNodeSelected(this.data.name);
 					const nodeName = this.data.name;
 					if (this.data.type === STICKY_NODE_TYPE && !isSelected) {
 						setTimeout(() => {
@@ -247,17 +263,17 @@ export const nodeBase = mixins(
 						// undefined. So check if the currently dragged node is selected and if not clear
 						// the drag-selection.
 						this.instance.clearDragSelection();
-						this.$store.commit('resetSelectedNodes');
+						this.uiStore.resetSelectedNodes();
 					}
 
-					this.$store.commit('addActiveAction', 'dragActive');
+					this.uiStore.addActiveAction('dragActive');
 					return true;
 				},
 				stop: (params: { e: MouseEvent }) => {
 					// @ts-ignore
 					this.dragging = false;
-					if (this.$store.getters.isActionActive('dragActive')) {
-						const moveNodes = this.$store.getters.getSelectedNodes.slice();
+					if (this.uiStore.isActionActive('dragActive')) {
+						const moveNodes = this.uiStore.getSelectedNodes.slice();
 						const selectedNodeNames = moveNodes.map((node: INodeUi) => node.name);
 						if (!selectedNodeNames.includes(this.data.name)) {
 							// If the current node is not in selected add it to the nodes which
@@ -289,7 +305,7 @@ export const nodeBase = mixins(
 								},
 							};
 
-							this.$store.commit('updateNodeProperties', updateInformation);
+							this.workflowsStore.updateNodeProperties(updateInformation);
 						});
 
 						this.$emit('moved', node);
@@ -299,10 +315,10 @@ export const nodeBase = mixins(
 			});
 		},
 		__addNode (node: INodeUi) {
-			let nodeTypeData = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+			let nodeTypeData = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it
-				nodeTypeData = this.$store.getters['nodeTypes/getNodeType'](NO_OP_NODE_TYPE) as INodeTypeDescription;
+				nodeTypeData = this.nodeTypesStore.getNodeType(NO_OP_NODE_TYPE);
 			}
 
 			this.__addInputEndpoints(node, nodeTypeData);
@@ -311,8 +327,8 @@ export const nodeBase = mixins(
 		},
 		touchEnd(e: MouseEvent) {
 			if (this.isTouchDevice) {
-				if (this.$store.getters.isActionActive('dragActive')) {
-					this.$store.commit('removeActiveAction', 'dragActive');
+				if (this.uiStore.isActionActive('dragActive')) {
+					this.uiStore.removeActiveAction('dragActive');
 				}
 			}
 		},
@@ -326,14 +342,14 @@ export const nodeBase = mixins(
 			}
 
 			if (!this.isTouchDevice) {
-				if (this.$store.getters.isActionActive('dragActive')) {
-					this.$store.commit('removeActiveAction', 'dragActive');
+				if (this.uiStore.isActionActive('dragActive')) {
+					this.uiStore.removeActiveAction('dragActive');
 				} else {
 					if (!this.isCtrlKeyPressed(e)) {
 						this.$emit('deselectAllNodes');
 					}
 
-					if (this.$store.getters.isNodeSelected(this.data.name)) {
+					if (this.uiStore.isNodeSelected(this.data.name)) {
 						this.$emit('deselectNode', this.name);
 					} else {
 						this.$emit('nodeSelected', this.name);

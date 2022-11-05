@@ -44,7 +44,11 @@
 			}
 		},
 		reload() {
-			window.location.reload();
+			if (window.top) {
+				window.top.location.reload();
+			} else {
+				window.location.reload();
+			}
 		},
 	},
  });

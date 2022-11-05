@@ -1,7 +1,7 @@
 <template>
 	<n8n-input-label
-		:label="hideLabel? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
-		:tooltipText="hideLabel? '': $locale.nodeText().inputLabelDescription(parameter, path)"
+		:label="hideLabel ? '': $locale.nodeText().inputLabelDisplayName(parameter, path)"
+		:tooltipText="hideLabel ? '': $locale.nodeText().inputLabelDescription(parameter, path)"
 		:showTooltip="focused"
 		:showOptions="menuExpanded || focused || forceShowExpression"
 		:bold="false"
@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 
 import {
 	IN8nButton,
@@ -68,18 +68,19 @@ import {
 	IUpdateInformation,
 } from '@/Interface';
 
-import InputHint from './ParameterInputHint.vue';
-import ParameterOptions from './ParameterOptions.vue';
+import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/components/mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { hasExpressionMapping } from './helpers';
-import ParameterInputWrapper from './ParameterInputWrapper.vue';
-import { hasOnlyListMode } from './ResourceLocator/helpers';
-import { INodePropertyMode } from 'n8n-workflow';
+import { hasExpressionMapping } from '@/components/helpers';
+import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
+import { hasOnlyListMode } from '@/components/ResourceLocator/helpers';
+import { INodeParameters, INodeProperties, INodePropertyMode } from 'n8n-workflow';
 import { isResourceLocatorValue } from '@/typeGuards';
 import { BaseTextKey } from "@/plugins/i18n";
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	showMessage,
@@ -87,7 +88,6 @@ export default mixins(
 	.extend({
 		name: 'parameter-input-full',
 		components: {
-			InputHint,
 			ParameterOptions,
 			DraggableTarget,
 			ParameterInputWrapper,
@@ -100,14 +100,29 @@ export default mixins(
 				dataMappingTooltipButtons: [] as IN8nButton[],
 			};
 		},
-		props: [
-			'displayOptions',
-			'isReadOnly',
-			'parameter',
-			'path',
-			'value',
-			'hideLabel',
-		],
+		props: {
+			displayOptions: {
+				type: Boolean,
+				default: false,
+			},
+			isReadOnly: {
+				type: Boolean,
+				default: false,
+			},
+			hideLabel: {
+				type: Boolean,
+				default: false,
+			},
+			parameter: {
+				type: Object as PropType<INodeProperties>,
+			},
+			path: {
+				type: String,
+			},
+			value: {
+				type: [Number, String, Boolean, Array, Object] as PropType<INodeParameters>,
+			},
+		},
 		created() {
 			const mappingTooltipDismissHandler = this.onMappingTooltipDismissed.bind(this);
 			this.dataMappingTooltipButtons = [
@@ -122,11 +137,17 @@ export default mixins(
 			];
 		},
 		computed: {
+			...mapStores(
+				useNDVStore,
+			),
 			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.ndvStore.activeNode;
 			},
 			hint (): string | null {
 				return this.$locale.nodeText().hint(this.parameter, this.path);
+			},
+			isInputTypeString (): boolean {
+				return this.parameter.type === 'string';
 			},
 			isResourceLocator (): boolean {
 				return  this.parameter.type === 'resourceLocator';
@@ -138,26 +159,26 @@ export default mixins(
 				return this.isResourceLocator ? !hasOnlyListMode(this.parameter): true;
 			},
 			isInputDataEmpty (): boolean {
-				return this.$store.getters['ui/getNDVDataIsEmpty']('input');
+				return this.ndvStore.isDNVDataEmpty('input');
 			},
 			displayMode(): IRunDataDisplayMode {
-				return this.$store.getters['ui/inputPanelDisplayMode'];
+				return this.ndvStore.inputPanelDisplayMode;
 			},
 			showMappingTooltip (): boolean {
-				return this.focused && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
+				return this.focused && this.isInputTypeString && !this.isInputDataEmpty && window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) !== 'true';
 			},
 		},
 		methods: {
 			onFocus() {
 				this.focused = true;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ui/setMappableNDVInputFocus', this.parameter.displayName);
+					this.ndvStore.setMappableNDVInputFocus(this.parameter.displayName);
 				}
 			},
 			onBlur() {
 				this.focused = false;
 				if (!this.parameter.noDataExpression) {
-					this.$store.commit('ui/setMappableNDVInputFocus', '');
+					this.ndvStore.setMappableNDVInputFocus('');
 				}
 			},
 			onMenuExpanded(expanded: boolean) {
@@ -234,7 +255,7 @@ export default mixins(
 							window.localStorage.setItem(LOCAL_STORAGE_MAPPING_FLAG, 'true');
 						}
 
-						this.$store.commit('ui/setMappingTelemetry', {
+						this.ndvStore.setMappingTelemetry({
 							dest_node_type: this.node.type,
 							dest_parameter: this.path,
 							dest_parameter_mode: typeof prevValue === 'string' && prevValue.startsWith('=')? 'expression': 'fixed',

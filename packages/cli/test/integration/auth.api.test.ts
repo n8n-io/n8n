@@ -103,8 +103,9 @@ test('GET /login should return 401 Unauthorized if no cookie', async () => {
 	expect(authToken).toBeUndefined();
 });
 
-test('GET /login should return cookie if UM is disabled', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+test('GET /login should return cookie if UM is disabled and no cookie is already set', async () => {
+	const authlessAgent = utils.createAgent(app);
+	await testDb.createUserShell(globalOwnerRole);
 
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
@@ -113,7 +114,7 @@ test('GET /login should return cookie if UM is disabled', async () => {
 		{ value: JSON.stringify(false) },
 	);
 
-	const response = await authAgent(ownerShell).get('/login');
+	const response = await authlessAgent.get('/login');
 
 	expect(response.statusCode).toBe(200);
 

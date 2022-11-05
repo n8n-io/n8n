@@ -587,7 +587,6 @@ export class CiscoWebexTrigger implements INodeType {
 
 		//@ts-ignore
 		const computedSignature = createHmac('sha1', webhookData.secret)
-			//@ts-ignore
 			.update(req.rawBody)
 			.digest('hex');
 		if (headers['x-spark-signature'] !== computedSignature) {

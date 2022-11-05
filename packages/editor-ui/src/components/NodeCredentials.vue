@@ -63,6 +63,7 @@ import {
 	ICredentialsResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
+	IUser,
 } from '@/Interface';
 import {
 	ICredentialType,
@@ -81,6 +82,11 @@ import { mapGetters } from "vuex";
 
 import mixins from 'vue-typed-mixins';
 import {getCredentialPermissions} from "@/permissions";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	genericHelpers,
@@ -103,11 +109,19 @@ export default mixins(
 		};
 	},
 	computed: {
-		...mapGetters('users', ['currentUser']),
+		...mapStores(
+			useNodeTypesStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+		),
 		...mapGetters('credentials', {
 			allCredentialsByType: 'allCredentialsByType',
 			getCredentialTypeByName: 'getCredentialTypeByName',
 		}),
+		currentUser (): IUser {
+			return this.usersStore.currentUser || {} as IUser;
+		},
 		credentialTypesNode (): string[] {
 			return this.credentialTypesNodeDescription
 				.map((credentialTypeDescription) => credentialTypeDescription.name);
@@ -125,7 +139,7 @@ export default mixins(
 
 			if (credType) return [credType];
 
-			const activeNodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+			const activeNodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			if (activeNodeType && activeNodeType.credentials) {
 				return activeNodeType.credentials;
 			}
@@ -220,8 +234,8 @@ export default mixins(
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
 			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.listenForNewCredentials(credentialType);
-				this.$store.dispatch('ui/openNewCredential', { type: credentialType });
-				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.$store.getters.workflowId });
+				this.uiStore.openNewCredential(credentialType);
+				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.workflowsStore.workflowId });
 				return;
 			}
 
@@ -231,7 +245,7 @@ export default mixins(
 					credential_type: credentialType,
 					node_type: this.node.type,
 					...(this.hasProxyAuth(this.node) ? { is_service_specific: true } : {}),
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					credential_id: credentialId,
 				},
 			);
@@ -244,7 +258,7 @@ export default mixins(
 			// if credentials has been string or neither id matched nor name matched uniquely
 			if (oldCredentials.id === null || (oldCredentials.id && !this.$store.getters['credentials/getCredentialByIdAndType'](oldCredentials.id, credentialType))) {
 				// update all nodes in the workflow with the same old/invalid credentials
-				this.$store.commit('replaceInvalidWorkflowCredentials', {
+				this.workflowsStore.replaceInvalidWorkflowCredentials({
 					credentials: selected,
 					invalid: oldCredentials,
 					type: credentialType,
@@ -316,9 +330,9 @@ export default mixins(
 
 		editCredential(credentialType: string): void {
 			const { id } = this.node.credentials[credentialType];
-			this.$store.dispatch('ui/openExistingCredential', { id });
+			this.uiStore.openExistingCredential(id);
 
-			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.workflowsStore.workflowId });
 
 			this.listenForNewCredentials(credentialType);
 		},

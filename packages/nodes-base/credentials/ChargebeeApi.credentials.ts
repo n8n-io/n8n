@@ -15,6 +15,7 @@ export class ChargebeeApi implements ICredentialType {
 			displayName: 'Api Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];
