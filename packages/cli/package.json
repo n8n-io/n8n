@@ -104,6 +104,8 @@
     "@oclif/core": "^1.9.3",
     "@oclif/errors": "^1.2.2",
     "@rudderstack/rudder-sdk-node": "1.0.6",
+    "@sentry/node": "^7.17.3",
+    "@sentry/integrations": "^7.17.3",
     "axios": "^0.21.1",
     "basic-auth": "^2.0.1",
     "bcryptjs": "^2.4.3",
