@@ -854,9 +854,9 @@ export default mixins(
 				//* Control + scroll zoom
 				if (e.ctrlKey) {
 					if (e.deltaY > 0) {
-						this.zoomOut();
+						this.canvasStore.zoomOut();
 					} else {
-						this.zoomIn();
+						this.canvasStore.zoomIn();
 					}
 
 					e.preventDefault();
