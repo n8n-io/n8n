@@ -90,7 +90,12 @@ import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesW
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
+import { intersection } from '@/utils';
 import { sublimeSearch } from './sortUtils';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(externalHooks, globalLinkActions).extend({
 	name: 'CategorizedItems',
@@ -145,6 +150,11 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		this.unregisterCustomAction('showAllNodeCreatorNodes');
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useRootStore,
+			useWorkflowsStore,
+		),
 		activeSubcategory(): INodeCreateElement | null {
 			return this.activeSubcategoryHistory[this.activeSubcategoryHistory.length - 1] || null;
 		},
@@ -155,10 +165,10 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			return this.$store.getters['nodeCreator/selectedType'];
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
-			return this.$store.getters['nodeTypes/categoriesWithNodes'];
+			return this.nodeTypesStore.categoriesWithNodes;
 		},
 		categorizedItems(): INodeCreateElement[] {
-			return this.$store.getters['nodeTypes/categorizedItems'];
+			return this.nodeTypesStore.categorizedItems;
 		},
 		activeSubcategoryTitle(): string {
 			if(!this.activeSubcategory || !this.activeSubcategory.properties) return '';
@@ -177,11 +187,14 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			return this.nodeFilter.toLowerCase().trim();
 		},
 		defaultLocale (): string {
-			return this.$store.getters.defaultLocale;
+			return this.rootStore.defaultLocale;
 		},
 		filteredNodeTypes(): INodeCreateElement[] {
 			const filter = this.searchFilter;
-			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
+
+			const searchableNodes = this.subcategorizedNodes.length > 0 && this.activeSubcategory?.key !== '*'
+				? this.subcategorizedNodes
+				: this.searchItems;
 
 			let returnItems: INodeCreateElement[] = [];
 			if (this.defaultLocale !== 'en') {
@@ -196,15 +209,19 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			}
 
 
+			const filteredNodeTypes = this.excludedCategories.length === 0
+				? returnItems
+				: this.filterOutNodexFromExcludedCategories(returnItems);
+
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
 					nodeFilter: this.nodeFilter,
-					result: returnItems,
+					result: filteredNodeTypes,
 					selectedType: this.selectedType,
 				});
 			}, 0);
 
-			return returnItems;
+			return filteredNodeTypes;
 		},
 		filteredAllNodeTypes(): INodeCreateElement[] {
 			if(this.filteredNodeTypes.length > 0) return [];
@@ -329,11 +346,21 @@ export default mixins(externalHooks, globalLinkActions).extend({
 				newValue,
 				selectedType: this.selectedType,
 				filteredNodes: this.filteredNodeTypes,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
 	},
 	methods: {
+		filterOutNodexFromExcludedCategories(nodes: INodeCreateElement[]) {
+			return nodes.filter(node => {
+				const excludedCategoriesIntersect = intersection(
+					this.excludedCategories,
+					((node.properties as INodeItemProps)?.nodeType.codex?.categories || []),
+				);
+
+				return excludedCategoriesIntersect.length === 0;
+			});
+		},
 		switchToAllTabAndFilter() {
 			const currentFilter = this.nodeFilter;
 			this.$store.commit('nodeCreator/setShowTabs', true);
@@ -426,7 +453,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 				);
 			} else {
 				this.activeCategory = [...this.activeCategory, category];
-				this.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: this.workflowsStore.workflowId });
 			}
 
 			this.activeIndex = this.categorized.findIndex(
@@ -438,7 +465,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			this.$store.commit('nodeCreator/setShowTabs', false);
 			this.activeSubcategoryIndex = 0;
 			this.activeSubcategoryHistory.push(selected);
-			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.workflowsStore.workflowId });
 		},
 
 		onSubcategoryClose() {

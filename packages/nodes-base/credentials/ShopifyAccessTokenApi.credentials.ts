@@ -23,6 +23,7 @@ export class ShopifyAccessTokenApi implements ICredentialType {
 			name: 'accessToken',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

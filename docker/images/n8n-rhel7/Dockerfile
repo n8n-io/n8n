@@ -4,6 +4,7 @@ ARG N8N_VERSION
 
 RUN if [ -z "$N8N_VERSION" ] ; then echo "The N8N_VERSION argument is missing!" ; exit 1; fi
 
+ENV N8N_VERSION=${N8N_VERSION}
 RUN \
 	yum install -y gcc-c++ make
 

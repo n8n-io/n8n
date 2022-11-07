@@ -32,6 +32,8 @@ import Vue from "vue";
 import { IFormInputs, IInviteResponse } from "@/Interface";
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from "@/constants";
 import { ROLE } from "@/modules/userHelpers";
+import { mapStores } from "pinia";
+import { useUsersStore } from "@/stores/users";
 
 const NAME_EMAIL_FORMAT_REGEX = /^.* <(.*)>$/;
 
@@ -101,6 +103,7 @@ export default mixins(showMessage).extend({
 		];
 	},
 	computed: {
+		...mapStores(useUsersStore),
 		emailsCount(): number {
 			return this.emails.split(',').filter((email: string) => !!email.trim()).length;
 		},
@@ -156,7 +159,7 @@ export default mixins(showMessage).extend({
 					throw new Error(this.$locale.baseText('settings.users.noUsersToInvite'));
 				}
 
-				const invited: IInviteResponse[] = await this.$store.dispatch('users/inviteUsers', emails);
+				const invited: IInviteResponse[] = await this.usersStore.inviteUsers(emails);
 				const invitedEmails = invited.reduce((accu, {user, error}) => {
 					if (error) {
 						accu.error.push(user.email);
