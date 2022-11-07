@@ -216,7 +216,7 @@ import {
 
 import '../plugins/N8nCustomConnectorType';
 import '../plugins/PlusEndpointType';
-import { getAccountAge } from '@/modules/userHelpers';
+import { getAccountAge } from '@/stores/userHelpers';
 import { debounceHelper } from '@/components/mixins/debounce';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
