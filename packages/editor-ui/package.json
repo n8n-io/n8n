@@ -93,7 +93,7 @@
     "@types/lodash.get": "^4.4.6",
     "@types/lodash.set": "^4.3.6",
     "@types/luxon": "^2.0.9",
-    "@types/node": "^18.11.9",
+    "@types/node": "^16.11.22",
     "@types/quill": "^2.0.1",
     "@types/uuid": "^8.3.2",
     "@vitejs/plugin-legacy": "^1.8.2",
