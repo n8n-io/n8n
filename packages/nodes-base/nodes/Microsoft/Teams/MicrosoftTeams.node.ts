@@ -4,6 +4,8 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -81,6 +83,54 @@ export class MicrosoftTeams implements INodeType {
 	};
 
 	methods = {
+		listSearch: {
+			async getChats(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+				const qs: IDataObject = {
+					$expand: 'members',
+				};
+				const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs);
+				for (const chat of value) {
+					if (!chat.topic) {
+						chat.topic = chat.members
+							.filter((member: IDataObject) => member.displayName)
+							.map((member: IDataObject) => member.displayName)
+							.join(', ');
+					}
+					const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
+					const chatId = chat.id;
+					const url = chat.webUrl;
+					returnData.push({
+						name: chatName,
+						value: chatId,
+						url,
+					});
+				}
+
+				const results = returnData
+					.filter(
+						(item) =>
+							!filter ||
+							item.name.toLowerCase().includes(filter.toLowerCase()) ||
+							item.value.toString().toLowerCase().includes(filter.toLowerCase()),
+					)
+					.sort((a, b) => {
+						if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+							return -1;
+						}
+						if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+							return 1;
+						}
+						return 0;
+					});
+
+				return { results };
+			},
+		},
 		loadOptions: {
 			// Get all the team's channels to display them to user so that he can
 			// select them easily
@@ -445,7 +495,7 @@ export class MicrosoftTeams implements INodeType {
 					}
 					// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
 					if (operation === 'getAll') {
-						const chatId = this.getNodeParameter('chatId', i) as string;
+						const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(

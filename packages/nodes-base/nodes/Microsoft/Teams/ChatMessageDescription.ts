@@ -119,22 +119,45 @@ export const chatMessageFields: INodeProperties[] = [
 	/*                                 chatMessage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Chat Name or ID',
+		displayName: 'Chat',
 		name: 'chatId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getChats',
-		},
+		modes: [
+			{
+				displayName: 'Chat',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a chat...',
+				typeOptions: {
+					searchListMethod: 'getChats',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces',
+				// validation: [
+				// 	{
+				// 		type: 'regex',
+				// 		properties: {
+				// 			regex: '[a-zA-Z0-9\\-_]{2,}',
+				// 			errorMessage: 'Not a valid Microsoft Teams Chat ID',
+				// 		},
+				// 	},
+				// ],
+				url: '=https://teams.microsoft.com/l/chat/{{encodeURIComponent($value)}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
 				resource: ['chatMessage'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Return All',
