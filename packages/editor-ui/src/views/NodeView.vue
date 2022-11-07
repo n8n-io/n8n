@@ -3395,6 +3395,11 @@ export default mixins(
 		display: flex;
 		justify-content: center;
 		align-items: center;
+		margin-left: 0.625rem;
+
+		&:first-child {
+			margin: 0;
+		}
 	}
 }
 
