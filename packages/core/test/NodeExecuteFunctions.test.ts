@@ -11,7 +11,6 @@ describe('NodeExecuteFunctions', () => {
 	describe(`test binary data helper methods`, () => {
 		// Reset BinaryDataManager for each run. This is a dirty operation, as individual managers are not cleaned.
 		beforeEach(() => {
-			//@ts-ignore
 			BinaryDataManager.instance = undefined;
 		});
 

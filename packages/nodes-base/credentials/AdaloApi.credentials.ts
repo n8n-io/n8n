@@ -9,6 +9,7 @@ export class AdaloApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description:
 				'The Adalo API is available on paid Adalo plans, find more information <a href="https://help.adalo.com/integrations/the-adalo-api" target="_blank">here</a>',

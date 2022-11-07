@@ -203,6 +203,9 @@ import {
 } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(
 	externalHooks,
@@ -249,7 +252,7 @@ export default mixins(
 		this.handleAutoRefreshToggle();
 
 		this.$externalHooks().run('executionsList.openDialog');
-		this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
+		this.$telemetry.track('User opened Executions log', { workflow_id: this.workflowsStore.workflowId });
 	},
 	beforeDestroy() {
 		if (this.autoRefreshInterval) {
@@ -258,6 +261,10 @@ export default mixins(
 		}
 	},
 	computed: {
+		...mapStores(
+			useUIStore,
+			useWorkflowsStore,
+		),
 		statuses () {
 			return [
 				{
@@ -283,7 +290,7 @@ export default mixins(
 			];
 		},
 		activeExecutions (): IExecutionsCurrentSummaryExtended[] {
-			return this.$store.getters.getActiveExecutions;
+			return this.workflowsStore.activeExecutions;
 		},
 		combinedExecutions (): IExecutionsSummary[] {
 			const returnData: IExecutionsSummary[] = [];
@@ -408,27 +415,28 @@ export default mixins(
 				await this.restApi().deleteExecutions(sendData);
 				let removedCurrentlyLoadedExecution = false;
 				let removedActiveExecution = false;
-				const currentWorkflow: string = this.$store.getters.workflowId;
-				const activeExecution: IExecutionsSummary = this.$store.getters['workflows/getActiveWorkflowExecution'];
+				const currentWorkflow: string = this.workflowsStore.workflowId;
+				const activeExecution: IExecutionsSummary | null = this.workflowsStore.activeWorkflowExecution;
 				// Also update current workflow executions view if needed
 				for (const selectedId of Object.keys(this.selectedItems)) {
-					const execution: IExecutionsSummary = this.$store.getters['workflows/getExecutionDataById'](selectedId);
+					const execution: IExecutionsSummary | undefined = this.workflowsStore.getExecutionDataById(selectedId);
 					if (execution && execution.workflowId === currentWorkflow) {
-						this.$store.commit('workflows/deleteExecution', execution);
+						this.workflowsStore.deleteExecution(execution);
 						removedCurrentlyLoadedExecution = true;
 					}
-					if (execution.id === activeExecution.id) {
+					if ((execution !== undefined && activeExecution !== null) && execution.id === activeExecution.id) {
 						removedActiveExecution = true;
 					}
 				}
 				// Also update route if needed
 				if (removedCurrentlyLoadedExecution) {
-					const currentWorkflowExecutions: IExecutionsSummary[] = this.$store.getters['workflows/currentWorkflowExecutions'];
+					const currentWorkflowExecutions: IExecutionsSummary[] = this.workflowsStore.currentWorkflowExecutions;
 					if (currentWorkflowExecutions.length === 0) {
-						this.$store.commit('workflows/setActiveWorkflowExecution', null);
+						this.workflowsStore.activeWorkflowExecution = null;
+
 						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } });
 					} else if (removedActiveExecution) {
-						this.$store.commit('workflows/setActiveWorkflowExecution', currentWorkflowExecutions[0]);
+						this.workflowsStore.activeWorkflowExecution = currentWorkflowExecutions[0];
 						this.$router.push({
 							name: VIEWS.EXECUTION_PREVIEW,
 							params: { name: currentWorkflow, executionId: currentWorkflowExecutions[0].id },
@@ -468,7 +476,7 @@ export default mixins(
 			this.retryExecution(commandData.row, loadWorkflow);
 
 			this.$telemetry.track('User clicked retry execution button', {
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 				execution_id: commandData.row.id,
 				retry_type: loadWorkflow ? 'current' : 'original',
 			});
@@ -497,7 +505,7 @@ export default mixins(
 				}
 			}
 
-			this.$store.commit('setActiveExecutions', activeExecutions);
+			this.workflowsStore.activeExecutions = activeExecutions;
 		},
 		async loadAutoRefresh () : Promise<void> {
 			const filter = this.workflowFilterPast;
@@ -517,7 +525,7 @@ export default mixins(
 				}
 			}
 
-			this.$store.commit('setActiveExecutions', results[1]);
+			this.workflowsStore.activeExecutions = results[1];
 
 			// execution IDs are typed as string, int conversion is necessary so we can order.
 			const alreadyPresentExecutionIds = this.finishedExecutions.map(exec => parseInt(exec.id, 10));

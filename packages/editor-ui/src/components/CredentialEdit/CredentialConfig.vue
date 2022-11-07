@@ -102,6 +102,11 @@ import { addCredentialTranslation } from '@/plugins/i18n';
 import mixins from 'vue-typed-mixins';
 import { BUILTIN_CREDENTIALS_DOCS_URL, EnterpriseEditionFeature } from '@/constants';
 import { IPermissions } from "@/permissions";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(restApi).extend({
 	name: 'CredentialConfig',
@@ -160,9 +165,9 @@ export default mixins(restApi).extend({
 		};
 	},
 	async beforeMount() {
-		if (this.$store.getters.defaultLocale === 'en') return;
+		if (this.rootStore.defaultLocale === 'en') return;
 
-		this.$store.commit('setActiveCredentialType', this.credentialType.name);
+		this.uiStore.activeCredentialType = this.credentialType.name;
 
 		const key = `n8n-nodes-base.credentials.${this.credentialType.name}`;
 
@@ -172,10 +177,16 @@ export default mixins(restApi).extend({
 
 		addCredentialTranslation(
 			{ [this.credentialType.name]: credTranslation },
-			this.$store.getters.defaultLocale,
+			this.rootStore.defaultLocale,
 		);
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+			useRootStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
 		appName(): string {
 			if (!this.credentialType) {
 				return '';
@@ -195,7 +206,7 @@ export default mixins(restApi).extend({
 		},
 		documentationUrl(): string {
 			const type = this.credentialType as ICredentialType;
-			const activeNode = this.$store.getters['ndv/activeNode'];
+			const activeNode = this.ndvStore.activeNode;
 			const isCommunityNode = activeNode ? isCommunityPackageName(activeNode.type) : false;
 
 			if (!type || !type.documentationUrl) {
@@ -219,7 +230,7 @@ export default mixins(restApi).extend({
 				this.parentTypes.includes('oAuth2Api')
 					? 'oauth2'
 					: 'oauth1';
-			return this.$store.getters.oauthCallbackUrls[oauthType];
+			return this.rootStore.oauthCallbackUrls[oauthType as keyof {}];
 		},
 		showOAuthSuccessBanner(): boolean {
 			return this.isOAuthType && this.requiredPropertiesFilled && this.isOAuthConnected && !this.authError;
@@ -234,7 +245,7 @@ export default mixins(restApi).extend({
 				docs_link: this.documentationUrl,
 				credential_type: this.credentialTypeName,
 				source: 'modal',
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
 	},

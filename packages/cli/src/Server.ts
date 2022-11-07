@@ -70,6 +70,7 @@ import {
 	jsonParse,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
+	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -82,6 +83,7 @@ import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
 import bodyParser from 'body-parser';
+
 import config from '../config';
 import * as Queue from './Queue';
 
@@ -153,6 +155,7 @@ import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
 
 import { toHttpNodeParameters } from './CurlConverterHelper';
+import { initErrorHandling } from './ErrorReporting';
 
 require('body-parser-xml')(bodyParser);
 
@@ -255,6 +258,8 @@ class App {
 
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
+
+		initErrorHandling(this.app);
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -622,7 +627,6 @@ class App {
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
-			// @ts-ignore
 			req.rawBody = Buffer.from('', 'base64');
 			next();
 		});
@@ -632,7 +636,6 @@ class App {
 			bodyParser.json({
 				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -649,7 +652,6 @@ class App {
 					explicitArray: false, // Only put properties in array if length > 1
 				},
 				verify: (req: express.Request, res: any, buf: any) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -659,7 +661,6 @@ class App {
 			bodyParser.text({
 				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -685,7 +686,6 @@ class App {
 				limit: `${this.payloadSizeMax}mb`,
 				extended: false,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -747,6 +747,7 @@ class App {
 				// DB ping
 				await connection.query('SELECT 1');
 			} catch (err) {
+				ErrorReporter.error(err);
 				LoggerProxy.error('No Database connection!', err);
 				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);

@@ -1,3 +1,45 @@
+# [0.201.0](https://github.com/n8n-io/n8n/compare/n8n@0.200.1...n8n@0.201.0) (2022-11-02)
+
+
+### Bug Fixes
+
+* **core:** Fix workflow hasing for MySQL ([#4491](https://github.com/n8n-io/n8n/issues/4491)) ([2b5613e](https://github.com/n8n-io/n8n/commit/2b5613ed68ecc6991ec68ca21807cbc1e976aa22))
+* **core:** Make `deepCopy` backward compatible ([#4505](https://github.com/n8n-io/n8n/issues/4505)) ([b282c7e](https://github.com/n8n-io/n8n/commit/b282c7e5d98c94b13a861167fef8af204267c5bd)), closes [#4508](https://github.com/n8n-io/n8n/issues/4508)
+* displayOptions not getting value of RLC ([#4460](https://github.com/n8n-io/n8n/issues/4460)) ([3a1fa09](https://github.com/n8n-io/n8n/commit/3a1fa09108a115609e2dbbf257603ef5d7fc91d2))
+* **editor:** Disable settings link in executions view for unsaved workflows ([#4493](https://github.com/n8n-io/n8n/issues/4493)) ([dcec5e9](https://github.com/n8n-io/n8n/commit/dcec5e9e8231609a9461acb196ab157ab6fabcd2))
+* **editor:** Fix an issue with not being able to save some of the forms ([#4499](https://github.com/n8n-io/n8n/issues/4499)) ([1e445fc](https://github.com/n8n-io/n8n/commit/1e445fc1a38dd7541ee6fcc4b535180fa3844799))
+* **editor:** Fix interim updates on executions view ([#4497](https://github.com/n8n-io/n8n/issues/4497)) ([cf034c0](https://github.com/n8n-io/n8n/commit/cf034c015fee7bc6eead0e4901bafef3a08fe88b))
+* **editor:** Gix node creator search when there's active subcategory ([#4494](https://github.com/n8n-io/n8n/issues/4494)) ([f244975](https://github.com/n8n-io/n8n/commit/f24497589f9bff176ea8df3196e9aaaaef7dfb51))
+* **editor:** : Limit columns in table view to prevent unresponsive UI when opening NDV ([#4480](https://github.com/n8n-io/n8n/issues/4480)) ([41e6489](https://github.com/n8n-io/n8n/commit/41e6489b75414c7fe55531223aa23f0817401539))
+
+
+### Features
+
+* **core:** Reimplement blocking workflow updates on interim changes ([#4446](https://github.com/n8n-io/n8n/issues/4446)) ([46905fd](https://github.com/n8n-io/n8n/commit/46905fd2cbcdbff7cf8056e010524fc0b74b7d53))
+* **editor:** Block UI in NDV when workflow is listening to events ([#4390](https://github.com/n8n-io/n8n/issues/4390)) ([6c2c621](https://github.com/n8n-io/n8n/commit/6c2c621f1debcef73ca789204a651c3f5f23628e))
+* **Venafi TLS Protect Cloud Node:** Make issuing template depend on application ([#4476](https://github.com/n8n-io/n8n/issues/4476)) ([d1d1288](https://github.com/n8n-io/n8n/commit/d1d1288ba91a6ebe9667f1c026e4575407fb5a70))
+
+
+### Performance Improvements
+
+* **editor:** Improve array intersection utility function ([#4503](https://github.com/n8n-io/n8n/issues/4503)) ([b0df810](https://github.com/n8n-io/n8n/commit/b0df8107458e3f6cbfccfc21a717e4085c4ab3d5))
+
+
+
+## [0.200.1](https://github.com/n8n-io/n8n/compare/n8n@0.200.0...n8n@0.200.1) (2022-10-28)
+
+
+### Bug Fixes
+
+* **API:** Do not reset the auth cookie on every request to `GET /login` ([#4459](https://github.com/n8n-io/n8n/issues/4459)) ([c66929f](https://github.com/n8n-io/n8n/commit/c66929f53d87035160ad099873d73cea3fff4d2a))
+* **AWS SNS Trigger Node:** Add missing jsonParse import ([#4463](https://github.com/n8n-io/n8n/issues/4463)) ([e6ec134](https://github.com/n8n-io/n8n/commit/e6ec134cf37ac21b26d10162b3d49da7dad85a1a))
+* **core:** Updating deepCopy to avoid max callstack with circular deps ([#4468](https://github.com/n8n-io/n8n/issues/4468)) ([ca60b0e](https://github.com/n8n-io/n8n/commit/ca60b0e203d950605506eb7687a10b5c87b4492f))
+* **editor:** Fix for executions view auto-refresh and new workflow saving ([#4462](https://github.com/n8n-io/n8n/issues/4462)) ([dbac795](https://github.com/n8n-io/n8n/commit/dbac7955f94007a8b305400ae28ccf1e5c040261))
+* **editor:** Redirect old path /workflow ([#4469](https://github.com/n8n-io/n8n/issues/4469)) ([7620d93](https://github.com/n8n-io/n8n/commit/7620d93eda525c528823c20e83883ad10020bd76))
+* **editor:** Remove filter that prevented showing running executions  ([#4470](https://github.com/n8n-io/n8n/issues/4470)) ([658e886](https://github.com/n8n-io/n8n/commit/658e886861acb5897e9e87cf4d66cee9b6a6003a))
+
+
+
 # [0.200.0](https://github.com/n8n-io/n8n/compare/n8n@0.199.0...n8n@0.200.0) (2022-10-27)
 
 
@@ -27,7 +69,6 @@
 * **editor:** Add readonly state for nodes ([#4299](https://github.com/n8n-io/n8n/issues/4299)) ([408bd96](https://github.com/n8n-io/n8n/commit/408bd968152ad8bbafda7037f6eb8f5550d04c77))
 * **editor:** Implement executions preview via the new executions tab in node view ([#4311](https://github.com/n8n-io/n8n/issues/4311)) ([d833345](https://github.com/n8n-io/n8n/commit/d833345092baf3c12828a5a7680c9fb8555d2c57))
 * **editor:** Improve nodes panel search ([#4399](https://github.com/n8n-io/n8n/issues/4399)) ([f6733cf](https://github.com/n8n-io/n8n/commit/f6733cff9d88d9b3298f6afc2c59c0dea59c6464))
-* **editor:** Setup dark-mode for the code-editor, with automatic switching ([#4453](https://github.com/n8n-io/n8n/issues/4453)) ([f29f812](https://github.com/n8n-io/n8n/commit/f29f812b28a7e5f8d08c7a968a6cccd1d5891daa))
 * **HTTP Request Node:** Add option for raw json header & query ([#4408](https://github.com/n8n-io/n8n/issues/4408)) ([8f25da5](https://github.com/n8n-io/n8n/commit/8f25da52b1c2d228018df8186985a2b067bd2123))
 * **Write Binary File Node:** Add option to append to a file ([#4386](https://github.com/n8n-io/n8n/issues/4386)) ([4b13b33](https://github.com/n8n-io/n8n/commit/4b13b3398dce5338f46c80867d6e4c8c685f6c22))
 
@@ -106,7 +147,6 @@
 * **editor:** Change horizontal scrollbar rendering in various places ([#4282](https://github.com/n8n-io/n8n/issues/4282)) ([fdbc11a](https://github.com/n8n-io/n8n/commit/fdbc11a288f9fe9aac36017366b5817a05f4fbbf))
 * **editor:** Disable trigger node execution pinning toolip for schedule nodes ([#4334](https://github.com/n8n-io/n8n/issues/4334)) ([d4b74bd](https://github.com/n8n-io/n8n/commit/d4b74bd66a4929517c0a66665443bf4059a74932))
 * **editor:** Fix for menu collapse lag when loading a credentials page ([#4329](https://github.com/n8n-io/n8n/issues/4329)) ([298c4f2](https://github.com/n8n-io/n8n/commit/298c4f20a9ec5099953f57f3233e51d1c53d159f))
-* **editor:** Menu UI fixes (no-changelog) ([#4316](https://github.com/n8n-io/n8n/issues/4316)) ([51e8f5f](https://github.com/n8n-io/n8n/commit/51e8f5ff22eec8c662c55ea58470a34d4cce6184))
 * **G Suite Admin Node:** Fix issue with user update operation failing ([#4317](https://github.com/n8n-io/n8n/issues/4317)) ([3e157f7](https://github.com/n8n-io/n8n/commit/3e157f73a441884dc2015c5cf3cdac6644876a7e))
 * **GitLab Trigger Node:** Fix issue with trigger not always activating ([#4303](https://github.com/n8n-io/n8n/issues/4303)) ([2e916b6](https://github.com/n8n-io/n8n/commit/2e916b65644d4b844a4a626a0f0b92c2dd476128))
 * **HTTP Request Node:** Fix oauth credentials not working properly for some predefined credentials ([#4277](https://github.com/n8n-io/n8n/issues/4277)) ([aa6c786](https://github.com/n8n-io/n8n/commit/aa6c786041d754bb795e3afd52e76c09541ffb63))

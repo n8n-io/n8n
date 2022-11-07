@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<aside :class="{'node-creator-scrim': true, expanded: !sidebarMenuCollapsed, active: showScrim}" />
+		<aside :class="{'node-creator-scrim': true, expanded: sidebarMenuCollapsed, active: showScrim}" />
 
 		<slide-transition>
 			<div

@@ -95,6 +95,7 @@ import { INodeCreateElement, ISubcategoryItemProps, ICategoriesWithNodes, ICateg
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
+import { intersection } from '@/utils';
 import { sublimeSearch } from './sortUtils';
 import { store } from '@/store';
 
