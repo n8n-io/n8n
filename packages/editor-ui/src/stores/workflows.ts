@@ -642,7 +642,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return node.name === updateInformation.name;
 			});
 
-			if (node === undefined || node === null) {
+			if (node === undefined || node === null || !updateInformation.key) {
 				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
 			}
 

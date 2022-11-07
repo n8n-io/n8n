@@ -1161,6 +1161,7 @@ export default mixins(
 				const childNodes = workflow.getChildNodes(sourceNodeName);
 				for (const nodeName of childNodes) {
 					const node = this.workflowsStore.nodesByName[nodeName] as INodeUi;
+
 					if (node.position[0] < sourceNode.position[0]) {
 						continue;
 					}
@@ -1168,7 +1169,7 @@ export default mixins(
 					const updateInformation: INodeUpdatePropertiesInformation = {
 						name: nodeName,
 						properties: {
-							position: { position: [node.position[0] + margin, node.position[1]] },
+							position: [node.position[0] + margin, node.position[1]],
 						},
 					};
 
