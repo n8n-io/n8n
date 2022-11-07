@@ -369,6 +369,7 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useCanvasStore,
 				useTagsStore,
 				useCredentialsStore,
 				useNodeCreatorStore,
@@ -490,7 +491,6 @@ export default mixins(
 			getNodeViewOffsetPosition(): XYPosition {
 				return this.uiStore.nodeViewOffsetPosition;
 			},
-			...mapStores(useCanvasStore),
 			nodeViewScale(): number {
 				return this.canvasStore.nodeViewScale;
 			},
