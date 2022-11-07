@@ -371,13 +371,14 @@ import { pinData } from '@/components/mixins/pinData';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
-import RunDataTable from './RunDataTable.vue';
-import RunDataJson from '@/components/RunDataJson.vue';
 import { isEmpty } from '@/utils';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
 import { useNodeTypesStore } from "@/stores/nodeTypes";
+
+const RunDataTable = () => import('@/components/RunDataTable.vue');
+const RunDataJson = () => import('@/components/RunDataJson.vue');
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
