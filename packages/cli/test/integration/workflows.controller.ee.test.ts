@@ -137,19 +137,39 @@ describe('PUT /workflows/:id', () => {
 });
 
 describe('GET /workflows', () => {
-	test.only('should return workflows with ownership and sharing details', async () => {
+	test('should return workflows with ownership, sharing and credential usage details', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
-		const workflow = await createWorkflow({}, owner);
+		const savedCredential = await saveCredential(randomCredentialPayload(), { user: owner });
+
+		const workflow = await createWorkflow(
+			{
+				nodes: [
+					{
+						id: uuid(),
+						name: 'Action Network',
+						type: 'n8n-nodes-base.actionNetwork',
+						parameters: {},
+						typeVersion: 1,
+						position: [0, 0],
+						credentials: {
+							actionNetworkApi: {
+								id: savedCredential.id.toString(),
+								name: savedCredential.name,
+							},
+						},
+					},
+				],
+			},
+			owner,
+		);
 
 		await testDb.shareWorkflowWithUsers(workflow, [member]);
 
 		const response = await authAgent(owner).get('/workflows');
 
 		const [fetchedWorkflow] = response.body.data;
-
-		console.log(response.body.data);
 
 		expect(response.statusCode).toBe(200);
 		expect(fetchedWorkflow.ownedBy).toMatchObject({
@@ -168,6 +188,16 @@ describe('GET /workflows', () => {
 			email: member.email,
 			firstName: member.firstName,
 			lastName: member.lastName,
+		});
+
+		expect(fetchedWorkflow.usedCredentials).toHaveLength(1);
+
+		const [usedCredential] = fetchedWorkflow.usedCredentials;
+
+		expect(usedCredential).toMatchObject({
+			id: savedCredential.id.toString(),
+			name: savedCredential.name,
+			currentUserHasAccess: true,
 		});
 	});
 });
