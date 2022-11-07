@@ -1,5 +1,5 @@
 import { eventEmitter } from 'n8n-core';
-import { INode, IRun, IWorkflowBase } from 'n8n-workflow';
+import { INode, INodeCredentialsDetails, IRun, IWorkflowBase } from 'n8n-workflow';
 import { Db, InternalHooksManager } from '..';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
 import { getWorkflowOwner } from '../UserManagement/UserManagementHelper';
@@ -56,7 +56,6 @@ eventEmitter.on(
 );
 
 eventEmitter.on(eventEmitter.types.nodeFetchedData, async (workflowId: string, node: INode) => {
-	console.log(node);
 	// Get the workflow id
 	let id: number;
 	try {
@@ -74,6 +73,26 @@ eventEmitter.on(eventEmitter.types.nodeFetchedData, async (workflowId: string, n
 
 	// If response.affected is 1 then we know this was the first time data was loaded into the workflow; do posthog event here
 	if (response.affected) {
-		console.log('posthog');
+		// Compile the metrics
+		const owner = await getWorkflowOwner(workflowId);
+		let metrics = {
+			user_id: owner.id,
+			workflow_id: workflowId,
+			node_type: node.type,
+			node_id: node.id,
+		};
+
+		// This is probably naive but I can't see a way for a node to have multiple credentials attached so..
+		if (node.credentials) {
+			Object.entries(node.credentials).forEach(([credName, credDetails]) => {
+				metrics = Object.assign(metrics, {
+					credential_type: credName,
+					credential_id: credDetails.id,
+				});
+			});
+		}
+
+		// Send metrics to posthog
+		await InternalHooksManager.getInstance().onFirstWorkflowDataLoad(metrics);
 	}
 });
