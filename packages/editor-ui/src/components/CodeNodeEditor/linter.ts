@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import { Diagnostic, linter as createLinter } from '@codemirror/lint';
-import * as esprima from 'esprima';
+import * as esprima from 'esprima-next';
 
 import {
 	DEFAULT_LINTER_DELAY_IN_MS,
