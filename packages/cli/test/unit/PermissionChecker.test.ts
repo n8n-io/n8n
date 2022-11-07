@@ -5,7 +5,11 @@ import { Db } from '../../src';
 import * as testDb from '../integration/shared/testDb';
 import { NodeTypes as MockNodeTypes } from './Helpers';
 import { PermissionChecker } from '../../src/UserManagement/PermissionChecker';
-import { randomCredentialPayload as randomCred, randomDigit } from '../integration/shared/random';
+import {
+	randomCredentialPayload as randomCred,
+	randomDigit,
+	randomPositiveDigit,
+} from '../integration/shared/random';
 
 import type { Role } from '../../src/databases/entities/Role';
 import type { SaveCredentialFunction } from '../integration/shared/types';
@@ -30,8 +34,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['SharedWorkflow', 'SharedCredentials'], testDbName);
 	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
+	await testDb.truncate(['SharedWorkflow', 'SharedCredentials'], testDbName);
 });
 
 afterAll(async () => {
@@ -43,7 +47,7 @@ describe('PermissionChecker.check()', () => {
 		const userId = uuid();
 
 		const workflow = new Workflow({
-			id: randomDigit().toString(),
+			id: randomPositiveDigit().toString(),
 			name: 'test',
 			active: false,
 			connections: {},
@@ -67,7 +71,7 @@ describe('PermissionChecker.check()', () => {
 		const owner = await testDb.createOwner();
 
 		const workflow = new Workflow({
-			id: randomDigit().toString(),
+			id: randomPositiveDigit().toString(),
 			name: 'test',
 			active: false,
 			connections: {},
@@ -82,7 +86,7 @@ describe('PermissionChecker.check()', () => {
 					position: [0, 0],
 					credentials: {
 						actionNetworkApi: {
-							id: randomDigit().toString(),
+							id: randomPositiveDigit().toString(),
 							name: 'Action Network Account',
 						},
 					},
@@ -101,7 +105,7 @@ describe('PermissionChecker.check()', () => {
 		);
 
 		const workflow = new Workflow({
-			id: randomDigit().toString(),
+			id: randomPositiveDigit().toString(),
 			name: 'test',
 			active: false,
 			connections: {},
@@ -147,7 +151,7 @@ describe('PermissionChecker.check()', () => {
 		const memberCred = await saveCredential(randomCred(), { user: member });
 
 		const workflowDetails = {
-			id: randomDigit(),
+			id: randomPositiveDigit(),
 			name: 'test',
 			active: false,
 			connections: {},

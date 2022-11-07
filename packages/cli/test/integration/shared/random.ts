@@ -19,6 +19,12 @@ const chooseRandomly = <T>(array: T[]) => array[Math.floor(Math.random() * array
 
 export const randomDigit = () => Math.floor(Math.random() * 10);
 
+export const randomPositiveDigit = (): number => {
+	const digit = randomDigit();
+
+	return digit === 0 ? randomPositiveDigit() : digit;
+};
+
 const randomUppercaseLetter = () => chooseRandomly('ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split(''));
 
 export const randomValidPassword = () =>
