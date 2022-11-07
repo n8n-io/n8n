@@ -15,17 +15,6 @@ module.exports = defineConfig({
 		screenshotOnRunFailure: false,
 		experimentalSessionAndOrigin: true,
 		experimentalInteractiveRunEvents: true,
-		setupNodeEvents(on, config) {
-			on('before:run', async () => {
-				await copyFile(n8nCypressDb, n8nCypressDbBackup);
-			});
-
-			on('task', {
-				async 'db:reset'() {
-					await copyFile(n8nCypressDbBackup, n8nCypressDb);
-					return null;
-				},
-			})
-		},
+		setupNodeEvents(on, config) {},
 	}
 });
