@@ -109,8 +109,10 @@ export class WorkflowsService {
 			}
 		}
 
+		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+
 		const query: FindManyOptions<WorkflowEntity> = {
-			select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
+			select: config.get('enterprise.features.sharing') ? [...fields, 'nodes'] : fields,
 			relations: config.get('enterprise.features.sharing')
 				? ['tags', 'shared', 'shared.user', 'shared.role']
 				: ['tags'],

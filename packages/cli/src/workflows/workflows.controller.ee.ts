@@ -193,7 +193,11 @@ EEWorkflowController.get(
 			req.query.filter,
 		)) as unknown as WorkflowEntity[];
 
-		return workflows.map((workflow) => EEWorkflows.addOwnerAndSharings(workflow));
+		return Promise.all(
+			workflows.map(async (workflow) =>
+				EEWorkflows.addCredentialsToWorkflow(EEWorkflows.addOwnerAndSharings(workflow), req.user),
+			),
+		);
 	}),
 );
 
