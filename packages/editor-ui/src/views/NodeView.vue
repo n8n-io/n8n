@@ -128,9 +128,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import { mapStores } from 'pinia';
-import {
-	OnConnectionBindInfo, Connection, Endpoint, N8nPlusEndpoint, jsPlumbInstance,
-} from 'jsplumb';
+import type { OnConnectionBindInfo, Connection, Endpoint, N8nPlusEndpoint, jsPlumbInstance } from 'jsplumb';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import once from 'lodash/once';
 
