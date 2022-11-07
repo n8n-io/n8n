@@ -131,6 +131,9 @@ export class NotionTrigger implements INodeType {
 			? moment(webhookData.lastTimeChecked as string)
 			: moment().set({ second: 0, millisecond: 0 }); // Notion timestamp accuracy is only down to the minute
 
+		// update lastTimeChecked to now
+		webhookData.lastTimeChecked = moment().set({ second: 0, millisecond: 0 });
+
 		// because Notion timestamp accuracy is only down to the minute some duplicates can be fetch
 		const possibleDuplicates = (webhookData.possibleDuplicates as string[]) ?? [];
 
@@ -217,7 +220,6 @@ export class NotionTrigger implements INodeType {
 
 			// Save the time of the most recent record processed
 			if (records[0]) {
-				webhookData.lastTimeChecked = moment(records[0][sortProperty] as string);
 				const latestTimestamp = moment(records[0][sortProperty] as string);
 
 				// Save record ids with the same timestamp as the latest processed records
@@ -226,7 +228,10 @@ export class NotionTrigger implements INodeType {
 						moment(record[sortProperty] as string).isSame(latestTimestamp),
 					)
 					.map((record: IDataObject) => record.id);
+			} else {
+				webhookData.possibleDuplicates = undefined;
 			}
+
 			if (simple === true) {
 				records = simplifyObjects(records, false, 1);
 			}
