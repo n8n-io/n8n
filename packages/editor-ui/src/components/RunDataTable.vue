@@ -5,8 +5,13 @@
 				<th :class="$style.emptyCell"></th>
 				<th :class="$style.tableRightMargin"></th>
 			</tr>
-			<tr v-for="(row, index1) in tableData.data" :key="index1">
-				<td>
+			<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
+				<td
+					:data-row="index1"
+					:data-col="0"
+					@mouseenter="onMouseEnterCell"
+					@mouseleave="onMouseLeaveCell"
+				>
 					<n8n-text>{{ $locale.baseText('runData.emptyItemHint') }}</n8n-text>
 				</td>
 				<td :class="$style.tableRightMargin"></td>
@@ -61,6 +66,19 @@
 							</draggable>
 						</n8n-tooltip>
 					</th>
+					<th v-if="columnLimitExceeded" :class="$style.header">
+						<n8n-tooltip placement="bottom-end">
+							<div slot="content">
+								<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
+									<a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+								</i18n>
+							</div>
+							<span>
+								<font-awesome-icon :class="$style['warningTooltip']" icon="exclamation-triangle"></font-awesome-icon>
+								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
+							</span>
+						</n8n-tooltip>
+					</th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
@@ -88,18 +106,17 @@
 					</div>
 				</template>
 				<template>
-					<tr v-for="(row, index1) in tableData.data" :key="index1">
+					<tr v-for="(row, index1) in tableData.data" :key="index1" :class="{[$style.hoveringRow]: isHoveringRow(index1)}">
 						<td
 							v-for="(data, index2) in row"
 							:key="index2"
+							:data-row="index1"
 							:data-col="index2"
 							@mouseenter="onMouseEnterCell"
 							@mouseleave="onMouseLeaveCell"
 							:class="hasJsonInColumn(index2) ? $style.minColWidth : $style.limitColWidth"
 						>
-							<span v-if="isSimple(data)" :class="$style.value">{{
-								[null, undefined].includes(data) ? '&nbsp;' : data
-							}}</span>
+							<span v-if="isSimple(data)" :class="{[$style.value]: true, [$style.empty]: isEmpty(data)}">{{ getValueToRender(data) }}</span>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
 								<template v-slot:label="{ label, path }">
 									<span
@@ -125,6 +142,7 @@
 								</template>
 							</n8n-tree>
 						</td>
+						<td v-if="columnLimitExceeded"></td>
 						<td :class="$style.tableRightMargin"></td>
 					</tr>
 				</template>
@@ -135,14 +153,19 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
-
+import { INodeUi, ITableData, NDVState } from '@/Interface';
+import { getPairedItemId } from '@/pairedItemUtils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
-import { INodeUi, ITableData } from '@/Interface';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+
+const MAX_COLUMNS_LIMIT = 40;
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
@@ -163,8 +186,17 @@ export default mixins(externalHooks).extend({
 		runIndex: {
 			type: Number,
 		},
+		outputIndex: {
+			type: Number,
+		},
 		totalRuns: {
 			type: Number,
+		},
+		pageOffset: {
+			type: Number,
+		},
+		hasDefaultHoverState: {
+			type: Boolean,
 		},
 	},
 	data() {
@@ -174,6 +206,8 @@ export default mixins(externalHooks).extend({
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
+			activeRow: null as number | null,
+			columnLimitExceeded: false,
 		};
 	},
 	mounted() {
@@ -187,12 +221,39 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+			useWorkflowsStore,
+		),
+		hoveringItem(): NDVState['hoveringItem'] {
+			return this.ndvStore.hoveringItem;
+		},
+		pairedItemMappings(): {[itemId: string]: Set<string>} {
+			return this.workflowsStore.workflowExecutionPairedItemMappings;
+		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
 		},
 	},
 	methods: {
 		shorten,
+		isHoveringRow(row: number): boolean {
+			if (row === this.activeRow) {
+				return true;
+			}
+
+			const itemIndex = this.pageOffset + row;
+			if (itemIndex === 0 && !this.hoveringItem && this.hasDefaultHoverState && this.distanceFromActive === 1) {
+				return true;
+			}
+			const itemNodeId = getPairedItemId(this.node.name, this.runIndex || 0, this.outputIndex || 0, itemIndex);
+			if (!this.hoveringItem || !this.pairedItemMappings[itemNodeId]) {
+				return false;
+			}
+
+			const hoveringItemId = getPairedItemId(this.hoveringItem.nodeName, this.hoveringItem.runIndex, this.hoveringItem.outputIndex, this.hoveringItem.itemIndex);
+			return this.pairedItemMappings[itemNodeId].has(hoveringItemId);
+		},
 		onMouseEnterCell(e: MouseEvent) {
 			const target = e.target;
 			if (target && this.mappingEnabled) {
@@ -201,9 +262,19 @@ export default mixins(externalHooks).extend({
 					this.activeColumn = parseInt(col, 10);
 				}
 			}
+
+			if (target) {
+				const row = (target as HTMLElement).dataset.row;
+				if (row && !isNaN(parseInt(row, 10))) {
+					this.activeRow = parseInt(row, 10);
+					this.$emit('activeRowChanged', this.pageOffset + this.activeRow);
+				}
+			}
 		},
 		onMouseLeaveCell() {
 			this.activeColumn = -1;
+			this.activeRow = null;
+			this.$emit('activeRowChanged', null);
 		},
 		onMouseEnterKey(path: string[], colIndex: number) {
 			this.hoveringPath = this.getCellExpression(path, colIndex);
@@ -265,11 +336,12 @@ export default mixins(externalHooks).extend({
 
 			return `{{ $node["${this.node.name}"].json["${column}"]${expr} }}`;
 		},
-		isEmpty(value: unknown) {
+		isEmpty(value: unknown): boolean {
 			return (
 				value === '' ||
 				(Array.isArray(value) && value.length === 0) ||
-				(typeof value === 'object' && value !== null && Object.keys(value).length === 0)
+				(typeof value === 'object' && value !== null && Object.keys(value).length === 0) ||
+				(value === null || value === undefined)
 			);
 		},
 		getValueToRender(value: unknown) {
@@ -288,12 +360,15 @@ export default mixins(externalHooks).extend({
 				return this.$locale.baseText('runData.emptyObject');
 			}
 
+			if (value === null || value === undefined) {
+				return `[${value}]`;
+			}
+
 			return value;
 		},
 		onDragStart() {
 			this.draggedColumn = true;
-
-			this.$store.commit('ui/resetMappingTelemetry');
+			this.ndvStore.resetMappingTelemetry();
 		},
 		onCellDragStart(el: HTMLElement) {
 			if (el && el.dataset.value) {
@@ -316,7 +391,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragEnd(column: string, src: string, depth = '0') {
 			setTimeout(() => {
-				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
+				const mappingTelemetry = this.ndvStore.mappingTelemetry;
 				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: column,
@@ -336,7 +411,9 @@ export default mixins(externalHooks).extend({
 			}, 1000); // ensure dest data gets set if drop
 		},
 		isSimple(data: unknown): boolean {
-			return typeof data !== 'object';
+			return (typeof data !== 'object' || data === null) ||
+				(Array.isArray(data) && data.length === 0) ||
+				(typeof data === 'object' && Object.keys(data).length === 0);
 		},
 		hasJsonInColumn(colIndex: number): boolean {
 			return this.tableData.hasJson[this.tableData.columns[colIndex]];
@@ -356,7 +433,14 @@ export default mixins(externalHooks).extend({
 
 				// Go over all keys of entry
 				entryRows = [];
-				leftEntryColumns = Object.keys(entry || {});
+				const entryColumns = Object.keys(entry || {});
+
+				if(entryColumns.length > MAX_COLUMNS_LIMIT) {
+					this.columnLimitExceeded = true;
+					leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
+				} else {
+					leftEntryColumns = entryColumns;
+				}
 
 				// Go over all the already existing column-keys
 				tableColumns.forEach((key) => {
@@ -395,8 +479,8 @@ export default mixins(externalHooks).extend({
 			// Make sure that all entry-rows have the same length
 			tableData.forEach((entryRows) => {
 				if (tableColumns.length > entryRows.length) {
-					// Has to less entries so add the missing ones
-					entryRows.push.apply(entryRows, new Array(tableColumns.length - entryRows.length));
+					// Has fewer entries so add the missing ones
+					entryRows.push(...new Array(tableColumns.length - entryRows.length));
 				}
 			});
 
@@ -405,6 +489,9 @@ export default mixins(externalHooks).extend({
 				columns: tableColumns,
 				data: tableData,
 			};
+		},
+		switchToJsonView(){
+			this.$emit('displayModeChange', 'json');
 		},
 	},
 });
@@ -438,6 +525,7 @@ export default mixins(externalHooks).extend({
 		position: sticky;
 		top: 0;
 		color: var(--color-text-dark);
+		z-index: 1;
 	}
 
 	td {
@@ -447,6 +535,27 @@ export default mixins(externalHooks).extend({
 		border-left: var(--border-base);
 		overflow-wrap: break-word;
 		white-space: pre-wrap;
+	}
+
+	td:first-child, td:nth-last-child(2) {
+		position: relative;
+		z-index: 0;
+
+		&:after { // add border without shifting content
+			content: '';
+			position: absolute;
+			height: 100%;
+			width: 2px;
+			top: 0;
+		}
+	}
+
+	td:nth-last-child(2):after {
+		right: -1px;
+	}
+
+	td:first-child:after {
+		left: -1px;
 	}
 
 	th:last-child,
@@ -565,9 +674,21 @@ export default mixins(externalHooks).extend({
 
 .tableRightMargin {
 	// becomes necessary with large tables
+	background-color: var(--color-background-base) !important;
 	width: var(--spacing-s);
 	border-right: none !important;
 	border-top: none !important;
 	border-bottom: none !important;
 }
+
+.hoveringRow {
+	td:first-child:after, td:nth-last-child(2):after {
+		background-color: var(--color-secondary);
+	}
+}
+
+.warningTooltip {
+	color: var(--color-warning);
+}
+
 </style>

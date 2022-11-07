@@ -6,6 +6,7 @@ import { copyFile, mkdir, readFile, writeFile } from 'fs/promises';
 import { join, dirname, resolve as resolvePath } from 'path';
 import { file as tmpFile } from 'tmp-promise';
 
+import { jsonParse } from 'n8n-workflow';
 import { UserSettings } from 'n8n-core';
 import { IBuildOptions } from '.';
 
@@ -22,7 +23,7 @@ export async function createCustomTsconfig() {
 	// Read the tsconfig file
 	const tsConfigString = await readFile(tsconfigPath, { encoding: 'utf8' });
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-	const tsConfig = JSON.parse(tsConfigString);
+	const tsConfig = jsonParse<{ include: string[] }>(tsConfigString);
 
 	// Set absolute include paths
 	const newIncludeFiles = [];

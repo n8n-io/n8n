@@ -8,6 +8,7 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
+	jsonParse,
 	NodeApiError,
 } from 'n8n-workflow';
 
@@ -524,7 +525,7 @@ export class NotionV2 implements INodeType {
 					} else if (filterType === 'json') {
 						const filterJson = this.getNodeParameter('filterJson', i) as string;
 						if (validateJSON(filterJson) !== undefined) {
-							body.filter = JSON.parse(filterJson);
+							body.filter = jsonParse(filterJson);
 						} else {
 							throw new NodeApiError(this.getNode(), {
 								message: 'Filters (JSON) must be a valid json',

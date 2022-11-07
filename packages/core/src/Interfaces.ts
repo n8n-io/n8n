@@ -4,7 +4,6 @@ import {
 	IAllExecuteFunctions,
 	IBinaryData,
 	ICredentialTestFunctions as ICredentialTestFunctionsBase,
-	ICredentialType,
 	IDataObject,
 	IExecuteFunctions as IExecuteFunctionsBase,
 	IExecuteSingleFunctions as IExecuteSingleFunctionsBase,
@@ -12,7 +11,6 @@ import {
 	IHttpRequestOptions,
 	ILoadOptionsFunctions as ILoadOptionsFunctionsBase,
 	INodeExecutionData,
-	INodeType,
 	IOAuth2Options,
 	IPairedItemData,
 	IPollFunctions as IPollFunctionsBase,
@@ -24,12 +22,8 @@ import {
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
-import { OptionsWithUri, OptionsWithUrl } from 'request';
-import requestPromise from 'request-promise-native';
-
-interface Constructable<T> {
-	new (): T;
-}
+import type { OptionsWithUri, OptionsWithUrl } from 'request';
+import type { RequestPromiseAPI, RequestPromiseOptions } from 'request-promise-native';
 
 export interface IProcessMessage {
 	data?: any;
@@ -50,19 +44,19 @@ export interface IExecuteFunctions extends IExecuteFunctionsBase {
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<any>;
 		requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any>; // tslint:disable-line:no-any
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUrl | RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 		normalizeItems(items: INodeExecutionData | INodeExecutionData[]): INodeExecutionData[];
@@ -92,19 +86,19 @@ export interface IExecuteSingleFunctions extends IExecuteSingleFunctionsBase {
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<any>;
 		requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any>; // tslint:disable-line:no-any
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUrl | RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
@@ -126,19 +120,19 @@ export interface IPollFunctions extends IPollFunctionsBase {
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<any>;
 		requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any>; // tslint:disable-line:no-any
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUrl | RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 		httpRequestWithAuthentication(
@@ -165,19 +159,19 @@ export interface ITriggerFunctions extends ITriggerFunctionsBase {
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<any>;
 		requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any>; // tslint:disable-line:no-any
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUrl | RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 		httpRequestWithAuthentication(
@@ -201,19 +195,19 @@ export interface ILoadOptionsFunctions extends ILoadOptionsFunctionsBase {
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<any>;
 		requestOAuth2?: (
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
 		) => Promise<any>; // tslint:disable-line:no-any
 		requestOAuth1?(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUrl | RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
@@ -225,7 +219,7 @@ export interface ILoadOptionsFunctions extends ILoadOptionsFunctionsBase {
 
 export interface ICredentialTestFunctions extends ICredentialTestFunctionsBase {
 	helpers: {
-		request: requestPromise.RequestPromiseAPI;
+		request: RequestPromiseAPI;
 	};
 }
 
@@ -236,19 +230,19 @@ export interface IHookFunctions extends IHookFunctionsBase {
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<any>;
 		requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any>; // tslint:disable-line:no-any
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUrl | RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		httpRequestWithAuthentication(
 			this: IAllExecuteFunctions,
@@ -270,19 +264,19 @@ export interface IWebhookFunctions extends IWebhookFunctionsBase {
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<any>;
 		requestOAuth2(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUri | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUri | RequestPromiseOptions,
 			oAuth2Options?: IOAuth2Options,
 		): Promise<any>; // tslint:disable-line:no-any
 		requestOAuth1(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: OptionsWithUrl | requestPromise.RequestPromiseOptions,
+			requestOptions: OptionsWithUrl | RequestPromiseOptions,
 		): Promise<any>; // tslint:disable-line:no-any
 		returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 		httpRequestWithAuthentication(
@@ -297,16 +291,6 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	errorWorkflow?: string;
 	timezone?: string;
 	saveManualRuns?: boolean;
-}
-
-// New node definition in file
-export interface INodeDefinitionFile {
-	[key: string]: Constructable<INodeType | ICredentialType>;
-}
-
-// Is identical to TaskDataConnections but does not allow null value to be used as input for nodes
-export interface INodeInputDataConnections {
-	[key: string]: INodeExecutionData[][];
 }
 
 export interface IWorkflowData {

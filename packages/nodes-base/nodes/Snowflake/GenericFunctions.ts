@@ -1,4 +1,4 @@
-import { IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy, IDataObject, INodeExecutionData } from 'n8n-workflow';
 
 import snowflake from 'snowflake-sdk';
 
@@ -53,7 +53,7 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 			if (item.json[property] === undefined) {
 				newItem[property] = null;
 			} else {
-				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+				newItem[property] = deepCopy(item.json[property]);
 			}
 		}
 		return newItem;

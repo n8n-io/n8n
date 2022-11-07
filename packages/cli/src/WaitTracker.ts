@@ -6,8 +6,11 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-floating-promises */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { IRun, LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
-
+import {
+	ErrorReporterProxy as ErrorReporter,
+	LoggerProxy as Logger,
+	WorkflowOperationError,
+} from 'n8n-workflow';
 import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
 
 import { DateUtils } from 'typeorm/util/DateUtils';
@@ -20,8 +23,6 @@ import {
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
 	ResponseHelper,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
 	WorkflowRunner,
 } from '.';
 import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
@@ -173,7 +174,8 @@ export class WaitTrackerClass {
 			// Start the execution again
 			const workflowRunner = new WorkflowRunner();
 			await workflowRunner.run(data, false, false, executionId);
-		})().catch((error) => {
+		})().catch((error: Error) => {
+			ErrorReporter.error(error);
 			Logger.error(
 				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
 				{ executionId },

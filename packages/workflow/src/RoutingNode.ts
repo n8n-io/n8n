@@ -277,12 +277,12 @@ export class RoutingNode {
 						};
 					});
 				});
-			} catch (e) {
-				throw new NodeOperationError(
-					this.node,
-					`The rootProperty "${action.properties.property}" could not be found on item.`,
-					{ runIndex, itemIndex },
-				);
+			} catch (error) {
+				throw new NodeOperationError(this.node, error, {
+					runIndex,
+					itemIndex,
+					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
+				});
 			}
 		}
 		if (action.type === 'limit') {

@@ -1,6 +1,6 @@
-# n8n-node-dev
+![n8n.io - Workflow Automation](https://user-images.githubusercontent.com/65276001/173571060-9f2f6d7b-bac0-43b6-bdb2-001da9694058.png)
 
-![n8n.io - Workflow Automation](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-logo.png)
+# n8n-node-dev
 
 Currently very simple and not very sophisticated CLI which makes it easier
 to create credentials and nodes in TypeScript for n8n.

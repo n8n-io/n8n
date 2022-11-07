@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { createTransport, Transporter } from 'nodemailer';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import * as config from '../../../config';
 import { MailData, SendEmailResult, UserManagementMailerImplementation } from './Interfaces';
 
@@ -24,22 +24,15 @@ export class NodeMailer implements UserManagementMailerImplementation {
 		const user = config.getEnv('userManagement.emails.smtp.auth.user');
 		const pass = config.getEnv('userManagement.emails.smtp.auth.pass');
 
-		return new Promise((resolve, reject) => {
-			this.transport.verify((error: Error) => {
-				if (!error) {
-					resolve();
-					return;
-				}
-
-				const message = [];
-
-				if (!host) message.push('SMTP host not defined (N8N_SMTP_HOST).');
-				if (!user) message.push('SMTP user not defined (N8N_SMTP_USER).');
-				if (!pass) message.push('SMTP pass not defined (N8N_SMTP_PASS).');
-
-				reject(new Error(message.length ? message.join(' ') : error.message));
-			});
-		});
+		try {
+			await this.transport.verify();
+		} catch (error) {
+			const message: string[] = [];
+			if (!host) message.push('SMTP host not defined (N8N_SMTP_HOST).');
+			if (!user) message.push('SMTP user not defined (N8N_SMTP_USER).');
+			if (!pass) message.push('SMTP pass not defined (N8N_SMTP_PASS).');
+			throw message.length ? new Error(message.join(' '), { cause: error }) : error;
+		}
 	}
 
 	async sendMail(mailData: MailData): Promise<SendEmailResult> {
@@ -62,6 +55,7 @@ export class NodeMailer implements UserManagementMailerImplementation {
 				`Email sent successfully to the following recipients: ${mailData.emailRecipients.toString()}`,
 			);
 		} catch (error) {
+			ErrorReporter.error(error);
 			Logger.error('Failed to send email', { recipients: mailData.emailRecipients, error });
 			return {
 				success: false,

@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-cycle */
 import { Response } from 'express';
-import { LoggerProxy as Logger } from 'n8n-workflow';
+import { ErrorReporterProxy as ErrorReporter, LoggerProxy as Logger } from 'n8n-workflow';
 import { In } from 'typeorm';
 import validator from 'validator';
 
@@ -159,6 +159,7 @@ export function usersNamespace(this: N8nApp): void {
 					public_api: false,
 				});
 			} catch (error) {
+				ErrorReporter.error(error);
 				Logger.error('Failed to create user shells', { userShells: createUsers });
 				throw new ResponseHelper.ResponseError('An error occurred during user creation');
 			}

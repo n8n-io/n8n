@@ -13,7 +13,7 @@ export default {
 		color: {
 			control: {
 				type: 'select',
-				options: ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight'],
+				options: ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger', 'success'],
 			},
 		},
 	},
