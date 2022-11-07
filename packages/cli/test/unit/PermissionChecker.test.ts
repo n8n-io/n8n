@@ -7,7 +7,6 @@ import { NodeTypes as MockNodeTypes } from './Helpers';
 import { PermissionChecker } from '../../src/UserManagement/PermissionChecker';
 import {
 	randomCredentialPayload as randomCred,
-	randomDigit,
 	randomPositiveDigit,
 } from '../integration/shared/random';
 
@@ -34,8 +33,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
 	await testDb.truncate(['SharedWorkflow', 'SharedCredentials'], testDbName);
+	await testDb.truncate(['User', 'Workflow', 'Credentials'], testDbName);
 });
 
 afterAll(async () => {
@@ -100,9 +99,8 @@ describe('PermissionChecker.check()', () => {
 	test('should allow if workflow creds are valid subset', async () => {
 		const [owner, member] = await Promise.all([testDb.createOwner(), testDb.createUser()]);
 
-		const [ownerCred, memberCred] = await Promise.all(
-			[owner, member].map((user) => saveCredential(randomCred(), { user })),
-		);
+		const ownerCred = await saveCredential(randomCred(), { user: owner });
+		const memberCred = await saveCredential(randomCred(), { user: member });
 
 		const workflow = new Workflow({
 			id: randomPositiveDigit().toString(),
