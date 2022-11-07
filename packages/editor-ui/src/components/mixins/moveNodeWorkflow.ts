@@ -1,6 +1,4 @@
 import mixins from 'vue-typed-mixins';
-// @ts-ignore
-import normalizeWheel from 'normalize-wheel';
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { getMousePosition } from '@/views/canvasHelpers';
 import { mapStores } from 'pinia';
@@ -87,13 +85,6 @@ export const moveNodeWorkflow = mixins(
 			}
 
 			this.moveWorkflow(e);
-		},
-		wheelMoveWorkflow (e: WheelEvent) {
-			const normalized = normalizeWheel(e);
-			const offsetPosition = this.uiStore.nodeViewOffsetPosition;
-			const nodeViewOffsetPositionX = offsetPosition[0] - (e.shiftKey ? normalized.pixelY : normalized.pixelX);
-			const nodeViewOffsetPositionY = offsetPosition[1] - (e.shiftKey ? normalized.pixelX : normalized.pixelY);
-			this.uiStore.nodeViewOffsetPosition = [nodeViewOffsetPositionX, nodeViewOffsetPositionY];
 		},
 	},
 });

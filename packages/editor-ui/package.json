@@ -39,7 +39,7 @@
     "@fortawesome/vue-fontawesome": "^2.0.2",
     "axios": "^0.21.1",
     "dateformat": "^3.0.3",
-    "esprima": "^4.0.1",
+    "esprima-next": "5.8.4",
     "fast-json-stable-stringify": "^2.1.0",
     "file-saver": "^2.0.2",
     "flatted": "^3.2.4",
@@ -68,7 +68,7 @@
     "vue-agile": "^2.0.0",
     "vue-fragment": "1.5.1",
     "vue-i18n": "^8.26.7",
-    "vue-json-pretty": "1.9.2",
+    "vue-json-pretty": "1.9.3",
     "vue-prism-editor": "^0.3.0",
     "vue-router": "^3.0.6",
     "vue-template-compiler": "~2.7.10",
@@ -82,10 +82,10 @@
   "devDependencies": {
     "@intlify/vue-i18n-loader": "^1.1.0",
     "@n8n_io/eslint-config": "",
+    "@pinia/testing": "^0.0.14",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/vue": "^5.8.3",
     "@types/dateformat": "^3.0.0",
-    "@types/esprima": "^4.0.3",
     "@types/express": "^4.17.6",
     "@types/file-saver": "^2.0.1",
     "@types/jsonpath": "^0.2.0",
@@ -113,7 +113,7 @@
     "vite": "2.9.5",
     "vite-plugin-html": "^3.2.0",
     "vite-plugin-monaco-editor": "^1.0.10",
-    "vue-tsc": "^0.34.15",
-    "vitest": "0.9.3"
+    "vitest": "0.9.3",
+    "vue-tsc": "^0.34.15"
   }
 }
