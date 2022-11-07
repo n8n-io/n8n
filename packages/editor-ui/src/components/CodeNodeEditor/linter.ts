@@ -267,34 +267,38 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
-			 * Lint for `.first()` or `.last()` called with argument in `runOnceForAllItems` mode
+			 * Lint for `$input.first()` or `$input.last()` called with argument in `runOnceForAllItems` mode
 			 *
-			 * $input.itemMatching()
+			 * $input.first(arg) -> $input.first()
+			 * $input.last(arg) -> $input.last()
 			 */
 
 			if (this.mode === 'runOnceForAllItems') {
 				type TargetNode = RangeNode & {
-					callee: RangeNode & { property: { name: string } & RangeNode };
+					callee: { property: { name: string } & RangeNode };
 				};
 
-				const isItemMatchingCallWithoutArg = (node: Node) =>
+				const inputFirstOrLastCalledWithArg = (node: Node) =>
 					node.type === 'CallExpression' &&
 					node.callee.type === 'MemberExpression' &&
+					node.callee.computed === false &&
+					node.callee.object.type === 'Identifier' &&
+					node.callee.object.name === '$input' &&
 					node.callee.property.type === 'Identifier' &&
-					['first', 'last'].includes(node.callee.property.name) &&
-					node.arguments.length !== 0;
+					['first', 'last'].includes(node.callee.property.name)
+					&& node.arguments.length !== 0;
 
-				walk<TargetNode>(ast, isItemMatchingCallWithoutArg).forEach((node) => {
+				walk<TargetNode>(ast, inputFirstOrLastCalledWithArg).forEach((node) => {
 					const [start, end] = this.getRange(node.callee.property);
 
 					const message = [
-						`\`.${node.callee.property.name}()\``,
+						`\`$input.${node.callee.property.name}()\``,
 						this.$locale.baseText('codeNodeEditor.linter.allItems.firstOrLastCalledWithArg'),
 					].join(' ');
 
 					lintings.push({
 						from: start,
-						to: end + '()'.length,
+						to: end,
 						severity: DEFAULT_LINTER_SEVERITY,
 						message,
 					});

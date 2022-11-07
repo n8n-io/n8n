@@ -32,6 +32,8 @@ import { ITag, ITagRow } from "@/Interface";
 import TagsTableHeader from "@/components/TagsManager/TagsView/TagsTableHeader.vue";
 import TagsTable from "@/components/TagsManager/TagsView/TagsTable.vue";
 import { mapGetters } from 'vuex';
+import { mapStores } from "pinia";
+import { useUsersStore } from "@/stores/users";
 
 const matches = (name: string, filter: string) => name.toLowerCase().trim().includes(filter.toLowerCase().trim());
 
@@ -51,7 +53,7 @@ export default Vue.extend({
 		};
 	},
 	computed: {
-		...mapGetters('users', ['canUserDeleteTags']),
+		...mapStores(useUsersStore),
 		isCreateEnabled(): boolean {
 			return (this.$props.tags || []).length === 0 || this.$data.createEnabled;
 		},
@@ -69,7 +71,7 @@ export default Vue.extend({
 					disable: disabled && tag.id !== this.deleteId && tag.id !== this.$data.updateId,
 					update: disabled && tag.id === this.$data.updateId,
 					delete: disabled && tag.id === this.$data.deleteId,
-					canDelete: this.canUserDeleteTags,
+					canDelete: this.usersStore.canUserDeleteTags,
 				}));
 
 			return this.isCreateEnabled

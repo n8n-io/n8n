@@ -55,7 +55,9 @@
 </template>
 
 <script lang="ts">
+import { useUIStore } from '@/stores/ui';
 import { PublicInstalledPackage } from 'n8n-workflow';
+import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import {
 	NPM_PACKAGE_DOCS_BASE_URL,
@@ -91,6 +93,9 @@ export default mixins(
 			],
 		};
 	},
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		async onAction(value: string) {
 			switch (value) {
@@ -102,14 +107,14 @@ export default mixins(
 					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${this.communityPackage.packageName}`, '_blank');
 					break;
 				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
-					this.$store.dispatch('ui/openCommunityPackageUninstallConfirmModal', this.communityPackage.packageName);
+					this.uiStore.openCommunityPackageUninstallConfirmModal(this.communityPackage.packageName);
 					break;
 				default:
 					break;
 			}
 		},
 		onUpdateClick() {
-			this.$store.dispatch('ui/openCommunityPackageUpdateConfirmModal', this.communityPackage.packageName);
+			this.uiStore.openCommunityPackageUpdateConfirmModal(this.communityPackage.packageName);
 		},
 	},
 });
