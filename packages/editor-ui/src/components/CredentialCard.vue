@@ -142,7 +142,7 @@ export default mixins(
 				);
 
 				if (deleteConfirmed) {
-					await this.credentialsStore.deleteCredential({ id:  this.data.id });
+					this.credentialsStore.deleteCredential({ id:  this.data.id });
 				}
 			}
 		},
