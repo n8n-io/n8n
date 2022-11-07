@@ -55,7 +55,7 @@ export class NotionTrigger implements INodeType {
 			},
 			{
 				displayName:
-					"In Notion, make sure you share your database with your integration. Otherwise it won't be accessible, or listed here.",
+					'In Notion, make sure you <a href="https://www.notion.so/help/add-and-manage-connections-with-the-api#add-connections-to-pages" target="_blank">share your database with your integration</a> . Otherwise it won\'t be accessible, or listed here.',
 				name: 'notionNotice',
 				type: 'notice',
 				default: '',
