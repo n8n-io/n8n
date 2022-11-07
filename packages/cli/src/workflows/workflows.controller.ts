@@ -1,8 +1,5 @@
-/* eslint-disable no-param-reassign */
-/* eslint-disable import/no-cycle */
-
 import express from 'express';
-import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
+import { JsonObject, jsonParse, LoggerProxy } from 'n8n-workflow';
 
 import axios from 'axios';
 import { FindManyOptions, In } from 'typeorm';
@@ -10,17 +7,11 @@ import {
 	ActiveWorkflowRunner,
 	Db,
 	GenericHelpers,
-	NodeTypes,
 	ResponseHelper,
 	whereClause,
 	WorkflowHelpers,
-	WorkflowExecuteAdditionalData,
 	IWorkflowResponse,
 	IExecutionPushResponse,
-	IWorkflowExecutionDataProcess,
-	TestWebhooks,
-	WorkflowRunner,
-	IWorkflowDb,
 } from '..';
 import config from '../../config';
 import * as TagHelpers from '../TagHelpers';
@@ -70,18 +61,6 @@ workflowsController.use((req, res, next) => {
 });
 
 workflowsController.use('/', EEWorkflowController);
-
-const isTrigger = (nodeType: string) =>
-	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
-
-function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
-	if (!pinData) return;
-
-	// eslint-disable-next-line consistent-return
-	return workflow.nodes.find(
-		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
-	);
-}
 
 /**
  * POST /workflows
@@ -365,12 +344,7 @@ workflowsController.patch(
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		const updatedWorkflow = await WorkflowsService.updateWorkflow(
-			req.user,
-			updateData,
-			workflowId,
-			tags,
-		);
+		const updatedWorkflow = await WorkflowsService.update(req.user, updateData, workflowId, tags);
 
 		const { id, ...remainder } = updatedWorkflow;
 
@@ -431,82 +405,8 @@ workflowsController.delete(
  * POST /workflows/run
  */
 workflowsController.post(
-	`/run`,
+	'/run',
 	ResponseHelper.send(async (req: WorkflowRequest.ManualRun): Promise<IExecutionPushResponse> => {
-		const { workflowData } = req.body;
-		const { runData } = req.body;
-		const { pinData } = req.body;
-		const { startNodes } = req.body;
-		const { destinationNode } = req.body;
-		const executionMode = 'manual';
-		const activationMode = 'manual';
-
-		const sessionId = GenericHelpers.getSessionId(req);
-
-		const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
-
-		// If webhooks nodes exist and are active we have to wait for till we receive a call
-		if (
-			pinnedTrigger === undefined &&
-			(runData === undefined ||
-				startNodes === undefined ||
-				startNodes.length === 0 ||
-				destinationNode === undefined)
-		) {
-			const additionalData = await WorkflowExecuteAdditionalData.getBase(req.user.id);
-			const nodeTypes = NodeTypes();
-			const workflowInstance = new Workflow({
-				id: workflowData.id?.toString(),
-				name: workflowData.name,
-				nodes: workflowData.nodes,
-				connections: workflowData.connections,
-				active: false,
-				nodeTypes,
-				staticData: undefined,
-				settings: workflowData.settings,
-			});
-			const needsWebhook = await TestWebhooks.getInstance().needsWebhookData(
-				workflowData,
-				workflowInstance,
-				additionalData,
-				executionMode,
-				activationMode,
-				sessionId,
-				destinationNode,
-			);
-			if (needsWebhook) {
-				return {
-					waitingForWebhook: true,
-				};
-			}
-		}
-
-		// For manual testing always set to not active
-		workflowData.active = false;
-
-		// Start the workflow
-		const data: IWorkflowExecutionDataProcess = {
-			destinationNode,
-			executionMode,
-			runData,
-			pinData,
-			sessionId,
-			startNodes,
-			workflowData,
-			userId: req.user.id,
-		};
-
-		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
-
-		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
-			data.startNodes = [pinnedTrigger.name];
-		}
-
-		const workflowRunner = new WorkflowRunner();
-		const executionId = await workflowRunner.run(data);
-
-		return {
-			executionId,
-		};
+		return WorkflowsService.runManually(req.body, req.user, GenericHelpers.getSessionId(req));
 	}),
 );
