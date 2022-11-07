@@ -44,7 +44,7 @@
     "@types/lodash.merge": "^4.6.6",
     "@types/lodash.set": "^4.3.6",
     "@types/luxon": "^2.0.9",
-    "@types/node": "^18.11.9",
+    "@types/node": "^16.11.22",
     "@types/xml2js": "^0.4.3",
     "prettier": "^2.3.2",
     "typescript": "~4.8.0"
