@@ -33,7 +33,7 @@
     "@types/express": "^4.17.6",
     "@types/lodash.get": "^4.4.6",
     "@types/mime-types": "^2.1.0",
-    "@types/node": "^18.11.9",
+    "@types/node": "^16.11.22",
     "@types/request-promise-native": "~1.0.15",
     "@types/uuid": "^8.3.2",
     "source-map-support": "^0.5.9",
