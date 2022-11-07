@@ -3,10 +3,17 @@
  */
 module.exports = {
 	extends: ['@n8n_io/eslint-config/node'],
+
+	parserOptions: {
+		project: ['./tsconfig.json'],
+		tsconfigRootDir: __dirname,
+	},
+
 	ignorePatterns: [
 		'jest.config.js',
 		// TODO: Remove these
 		'src/databases/migrations/**',
+		'src/databases/ormconfig.ts',
 	],
 	rules: {
 		// TODO: Remove this

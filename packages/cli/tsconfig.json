@@ -6,10 +6,10 @@
 		"noEmit": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"baseUrl": ".",
+		"baseUrl": "src",
 		"paths": {
-			"@/*": ["./src/*"],
-			"@db/*": ["./src/databases/*"]
+			"@/*": ["./*"],
+			"@db/*": ["./databases/*"]
 		},
 		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
