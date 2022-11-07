@@ -16,23 +16,18 @@
 import { computed, getCurrentInstance } from 'vue';
 import camelcase from 'lodash.camelcase';
 import { CategoryName } from '@/plugins/i18n';
-import { INodeCreateElement, ICategoriesWithNodes, ICategoryItemProps } from '@/Interface';
+import { INodeCreateElement, ICategoryItemProps } from '@/Interface';
 import { NODE_TYPE_COUNT_MAPPER } from '@/constants';
-import { store } from '@/store';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
 	item: INodeCreateElement;
 }
 const props = defineProps<Props>();
 const instance = getCurrentInstance();
-
-const selectedType = computed<"Regular" | "Trigger" | "All">(() => {
-	return store.getters['nodeCreator/selectedType'];
-});
-
-const categoriesWithNodes = computed<ICategoriesWithNodes>(() => {
-	return store.getters['nodeTypes/categoriesWithNodes'];
-});
+const { categoriesWithNodes } = useNodeTypesStore();
+const nodeCreatorStore = useNodeCreatorStore();
 
 const isExpadned = computed<boolean>(() => {
 	return (props.item.properties as ICategoryItemProps).expanded;
@@ -43,13 +38,13 @@ const categoryName = computed<CategoryName>(() => {
 });
 
 const nodesCount = computed<number>(() => {
-	const currentCategory = categoriesWithNodes.value[props.item.category];
+	const currentCategory = categoriesWithNodes[props.item.category];
 	const subcategories = Object.keys(currentCategory);
 
 	// We need to sum subcategories count for the curent nodeType view
 	// to get the total count of category
 	const count = subcategories.reduce((accu: number, subcategory: string) => {
-		const countKeys = NODE_TYPE_COUNT_MAPPER[selectedType.value];
+		const countKeys = NODE_TYPE_COUNT_MAPPER[nodeCreatorStore.selectedType];
 
 		for (const countKey of countKeys) {
 			accu += currentCategory[subcategory][(countKey as "triggerCount" | "regularCount")];
@@ -68,7 +63,6 @@ function renderCategoryName(categoryName: CategoryName) {
 		: categoryName;
 }
 </script>
-
 
 <style lang="scss" module>
 .category {

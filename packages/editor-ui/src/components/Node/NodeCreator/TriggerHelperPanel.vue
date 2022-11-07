@@ -8,10 +8,10 @@
 			:searchItems="searchItems"
 			:withActions="isAppEventSubcategory"
 			:firstLevelItems="firstLevelItems"
-			:excludedCategories="[CORE_NODES_CATEGORY]"
+			:excludedCategories="isRoot ? [] : [CORE_NODES_CATEGORY]"
 			:initialActiveCategories="[COMMUNICATION_CATEGORY]"
 			:flatten="true"
-			:subcategoryItems="{'app_nodes': mergedNodes}"
+			:subcategoryItems="showMergedActions ? {'*': mergedNodes} : undefined"
 		>
 			<template #header>
 				<slot name="header" />
@@ -22,7 +22,7 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, toRefs, getCurrentInstance, computed } from 'vue';
+import { reactive, toRefs, getCurrentInstance, computed, onMounted } from 'vue';
 
 import { INodeCreateElement, INodeItemProps } from '@/Interface';
 import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
@@ -34,15 +34,16 @@ export interface Props {
 }
 
 const props = defineProps<Props>();
-
 const instance = getCurrentInstance();
+
 const state = reactive({
 	isRoot: true,
 	selectedSubcategory: '',
+	showMergedActions: false,
 });
 
 const items: INodeCreateElement[] = [{
-		key: "app_nodes",
+		key: "*",
 		type: "subcategory",
 		title: instance?.proxy.$locale.baseText('nodeCreator.subcategoryNames.appTriggerNodes'),
 		properties: {
@@ -149,7 +150,7 @@ function onSubcategoryClose(subcategory: INodeCreateElement) {
 	state.isRoot = isRootSubcategory(subcategory);
 }
 
-const isAppEventSubcategory = computed(() => state.selectedSubcategory === "app_nodes");
+const isAppEventSubcategory = computed(() => state.selectedSubcategory === "*");
 
 const firstLevelItems = computed(() => isRoot.value ? items : []);
 
@@ -180,7 +181,12 @@ const mergedNodes = computed<INodeCreateElement[]>(() => {
 	return Object.values(mergedNodes);
 });
 
-const { isRoot } = toRefs(state);
+onMounted(() => {
+	const isLocal = window.location.href.includes('localhost');
+	state.showMergedActions = isLocal || window?.posthog?.getFeatureFlag('merged-actions-nodes') === 'test';
+});
+
+const { isRoot, showMergedActions } = toRefs(state);
 </script>
 
 <style lang="scss" module>

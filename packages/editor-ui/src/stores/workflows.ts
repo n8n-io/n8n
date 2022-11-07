@@ -14,6 +14,7 @@ import {
 	WorkflowsState,
 } from "@/Interface";
 import { defineStore } from "pinia";
+import { findLast } from 'lodash';
 import { IConnection, IConnections, IDataObject, INode, INodeConnections, INodeCredentials, INodeCredentialsDetails, INodeExecutionData, INodeIssueData, IPinData, IRunData, ITaskData, IWorkflowSettings } from 'n8n-workflow';
 import Vue from "vue";
 import { useRootStore } from "./n8nRootStore";
@@ -669,6 +670,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				Vue.set(this.nodeMetadata, node.name, {});
 			}
 			Vue.set(this.nodeMetadata[node.name], 'parametersLastUpdatedAt', Date.now());
+		},
+
+		setLastNodeParameters(updateInformation: IUpdateInformation) {
+			const latestNode = findLast(this.workflow.nodes, (node) => node.type === updateInformation.key) as INodeUi;
+
+			if(latestNode) this.setNodeParameters({...updateInformation, name: latestNode.name});
 		},
 
 		addNodeExecutionData(pushData: IPushDataNodeExecuteAfter): void {

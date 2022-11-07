@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<aside :class="{'node-creator-scrim': true, expanded: sidebarMenuCollapsed, active: showScrim}" />
+		<aside :class="{'node-creator-scrim': true, active: nodeCreatorStore.showScrim}" />
 
 		<slide-transition>
 			<div
@@ -25,11 +25,12 @@
 import { computed, watch, reactive, toRefs } from 'vue';
 
 import { INodeCreateElement } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
 import SlideTransition from '@/components/transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
-import { store } from '@/store';
+import { useUIStore } from '@/stores/ui';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
 	active?: boolean;
@@ -41,24 +42,15 @@ const emit = defineEmits<{
 	(event: 'closeNodeCreator'): void,
 }>();
 
+const { visibleNodeTypes } = useNodeTypesStore();
+const uiStore = useUIStore();
+const nodeCreatorStore = useNodeCreatorStore();
 const state = reactive({
 	nodeCreator: null as HTMLElement | null,
 });
 
-const showScrim = computed<boolean>(() => {
-	return store.getters['nodeCreator/showScrim'];
-});
-
-const sidebarMenuCollapsed = computed<boolean>(() => {
-	return store.getters['ui/sidebarMenuCollapsed'];
-});
-
-const visibleNodeTypes = computed<INodeTypeDescription[]>(() => {
-	return store.getters['nodeTypes/visibleNodeTypes'];
-});
-
 const searchItems = computed<INodeCreateElement[]>(() => {
-	const sorted = [...visibleNodeTypes.value];
+	const sorted = [...visibleNodeTypes];
 	sorted.sort((a, b) => {
 		const textA = a.displayName.toLowerCase();
 		const textB = b.displayName.toLowerCase();
@@ -101,7 +93,7 @@ function onDrop(event: DragEvent) {
 }
 
 watch(() => props.active, (isActive) => {
-	if(isActive === false) store.commit('nodeCreator/setShowScrim', false);
+	if(isActive === false) nodeCreatorStore.setShowScrim(false);
 });
 
 const { nodeCreator } = toRefs(state);
@@ -133,10 +125,6 @@ const { nodeCreator } = toRefs(state);
 	background: var(--color-background-dark);
 	pointer-events: none;
 	transition: opacity 200ms ease-in-out;
-
-	&.expanded {
-		left: $sidebar-expanded-width
-	}
 
 	&.active {
 		opacity: 0.7;

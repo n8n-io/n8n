@@ -227,6 +227,7 @@ import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCanvasStore } from '@/stores/canvas';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -265,6 +266,7 @@ export default mixins(
 		},
 		setup() {
 			const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
+
 			return {
 				registerCustomAction,
 				unregisterCustomAction,
@@ -324,7 +326,6 @@ export default mixins(
 			},
 			nodeViewScale(newScale) {
 				const element = this.$refs.nodeView as HTMLDivElement;
-
 				if(element) {
 					element.style.transform = `scale(${newScale})`;
 				}
@@ -377,8 +378,9 @@ export default mixins(
 				useSettingsStore,
 				useTemplatesStore,
 				useUIStore,
-				useUsersStore,
 				useWorkflowsStore,
+				useUsersStore,
+				useNodeCreatorStore,
 			),
 			nativelyNumberSuffixedDefaults(): string[] {
 				return this.rootStore.nativelyNumberSuffixedDefaults;
@@ -654,10 +656,10 @@ export default mixins(
 			},
 			showTriggerCreator(source: string) {
 				if(this.createNodeActive) return;
-				this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
-				this.$store.commit('nodeCreator/setShowScrim', true);
+				this.nodeCreatorStore.setSelectedType(TRIGGER_NODE_FILTER);
+				this.nodeCreatorStore.setShowScrim(true);
 				this.onToggleNodeCreator({ source, createNodeActive: true });
-				this.$nextTick(() => this.$store.commit('nodeCreator/setShowTabs', false));
+				this.$nextTick(() => this.nodeCreatorStore.setShowTabs(false));
 			},
 			async openExecution(executionId: string) {
 				this.startLoading();
@@ -1582,7 +1584,7 @@ export default mixins(
 				return newNodeData;
 			},
 
-			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}) {
+			async injectNode (nodeTypeName: string, options: AddNodeOptions = {}, showDetail = true) {
 				const nodeTypeData: INodeTypeDescription | null = this.nodeTypesStore.getNodeType(nodeTypeName);
 
 				if (nodeTypeData === null) {
@@ -3194,7 +3196,7 @@ export default mixins(
 				if (createNodeActive === this.createNodeActive) return;
 
 				// Default to the trigger tab in node creator if there's no trigger node yet
-				if (!this.containsTrigger) this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
+				if (!this.containsTrigger) this.nodeCreatorStore.setSelectedType(TRIGGER_NODE_FILTER);
 
 				this.createNodeActive = createNodeActive;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
@@ -3207,13 +3209,13 @@ export default mixins(
 					// If there's more than one node, we want to connect them
 					// this has to be done in mutation subscriber to make sure both nodes already
 					// exist
-					const unsubscribe = this.$store.subscribe((mutation) => {
-						if(mutation.type === 'addNode' && mutation.payload.type === nodeTypeName) {
-							const lastAddedNode = this.nodes[this.nodes.length - 1];
-							const previouslyAddedNode = this.nodes[this.nodes.length - 2];
-							this.$nextTick(() => {
-								this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0);
-								unsubscribe();
+					this.workflowsStore.$onAction(({ name, after, args }) => {
+						if(name === 'addNode' && args[0].type === nodeTypeName) {
+							after(() => {
+								const lastAddedNode = this.nodes[this.nodes.length - 1];
+								const previouslyAddedNode = this.nodes[this.nodes.length - 2];
+
+								this.$nextTick(() => this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0));
 							});
 						}
 					});

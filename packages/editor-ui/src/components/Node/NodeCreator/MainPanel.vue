@@ -5,7 +5,7 @@
 	>
 		<div class="main-panel">
 			<trigger-helper-panel
-				v-if="selectedType === TRIGGER_NODE_FILTER"
+				v-if="nodeCreatorStore.selectedType === TRIGGER_NODE_FILTER"
 				:searchItems="searchItems"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
 			>
@@ -32,7 +32,8 @@ import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY, 
 import CategorizedItems from './CategorizedItems.vue';
 import TypeSelector from './TypeSelector.vue';
 import { INodeCreateElement } from '@/Interface';
-import { store } from '@/store';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
 	searchItems?: INodeCreateElement[];
@@ -44,10 +45,10 @@ withDefaults(defineProps<Props>(), {
 
 const instance = getCurrentInstance();
 const { $externalHooks } = new externalHooks();
+const { workflowId } = useWorkflowsStore();
+const nodeCreatorStore = useNodeCreatorStore();
 
-const selectedType = computed<string> (() => store.getters['nodeCreator/selectedType']);
-
-watch(selectedType, (newValue, oldValue) => {
+watch(() => nodeCreatorStore.selectedType, (newValue, oldValue) => {
 	$externalHooks().run('nodeCreateList.selectedTypeChanged', {
 		oldValue,
 		newValue,
@@ -55,20 +56,20 @@ watch(selectedType, (newValue, oldValue) => {
 	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.selectedTypeChanged', {
 		old_filter: oldValue,
 		new_filter: newValue,
-		workflow_id: store.getters.workflowId,
+		workflow_id: workflowId,
 	});
 });
 
 onMounted(() => {
 	$externalHooks().run('nodeCreateList.mounted');
 	// Make sure tabs are visible on mount
-	store.commit('nodeCreator/setShowTabs', true);
+	nodeCreatorStore.setShowTabs(true);
 });
 
 onUnmounted(() => {
-	store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
+	nodeCreatorStore.setSelectedType(ALL_NODE_FILTER);
 	$externalHooks().run('nodeCreateList.destroyed');
-	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: store.getters.workflowId });
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: workflowId });
 });
 
 </script>

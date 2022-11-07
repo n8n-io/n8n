@@ -64,18 +64,18 @@
 </template>
 
 <script setup lang="ts">
-
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
 import { INodeTypeDescription, IDataObject } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
 import { isCommunityPackageName } from '@/components/helpers';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
-import { store } from '@/store';
-
+import { IUpdateInformation } from '@/Interface';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import NodeActions from './NodeActions.vue';
+import { useWorkflowsStore } from '@/stores/workflows';
+
 
 export interface Props {
 	nodeType: INodeTypeDescription;
@@ -99,6 +99,7 @@ const emit = defineEmits<{
 }>();
 
 const instance = getCurrentInstance();
+const { workflowTriggerNodes, $onAction: onWorkflowStoreAction } = useWorkflowsStore();
 
 const state = reactive({
 	dragging: false,
@@ -126,10 +127,10 @@ function onClick() {
 	else emit('nodeTypeSelected', [props.nodeType.name]);
 }
 
-function getActionNodeTypes(action: IDataObject): string[] {
+function getActionNodeTypes(action: IUpdateInformation): string[] {
 	const actionKey = action.key as string;
 	const isTriggerAction = actionKey.toLocaleLowerCase().includes('trigger');
-	const workflowContainsTrigger = store.getters.workflowTriggerNodes.length > 0;
+	const workflowContainsTrigger = workflowTriggerNodes.length > 0;
 
 	const nodeTypes = !isTriggerAction && !workflowContainsTrigger
 		? [MANUAL_TRIGGER_NODE_TYPE, actionKey]
@@ -138,21 +139,18 @@ function getActionNodeTypes(action: IDataObject): string[] {
 	return nodeTypes;
 }
 
-function setAddedNodeActionParameters(action: IDataObject) {
-	// We can only set parameters after the node was created and set in store
-	const unsubscribe = store.subscribe((mutation) => {
-		if(mutation.type === 'addNode') {
-			store.commit('setLastNodeParameters', action);
-			unsubscribe();
-		}
+function setAddedNodeActionParameters(action: IUpdateInformation) {
+	onWorkflowStoreAction(({ name, after, store: { setLastNodeParameters } }) => {
+		if (name !== 'addNode') return;
+		after(() => setLastNodeParameters(action));
 	});
 }
 
-function onActionSelected(action: IDataObject) {
+function onActionSelected(action: IUpdateInformation) {
 	emit('nodeTypeSelected', getActionNodeTypes(action));
 	setAddedNodeActionParameters(action);
 }
-function onDragActionSelected(action: IDataObject) {
+function onDragActionSelected(action: IUpdateInformation) {
 	setAddedNodeActionParameters(action);
 }
 function onDragStart(event: DragEvent): void {

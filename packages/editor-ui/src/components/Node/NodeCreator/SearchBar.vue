@@ -22,7 +22,6 @@
 
 <script setup lang="ts">
 import Vue, { onMounted, onUnmounted, reactive, toRefs } from 'vue';
-
 import { externalHooks } from '@/components/mixins/externalHooks';
 
 export interface Props {

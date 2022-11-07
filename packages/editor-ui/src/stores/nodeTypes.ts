@@ -81,9 +81,9 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 
 				for (const version of newNodeVersions) {
 					if (acc[newNodeType.name]) {
-						acc[newNodeType.name][version] = newNodeType;
+						acc[newNodeType.name][version] = Object.assign(acc[newNodeType.name][version] ?? {}, newNodeType);
 					} else {
-						acc[newNodeType.name] = { [version]: newNodeType };
+						acc[newNodeType.name] = Object.assign(acc[newNodeType.name] ?? {}, { [version]: newNodeType });
 					}
 				}
 

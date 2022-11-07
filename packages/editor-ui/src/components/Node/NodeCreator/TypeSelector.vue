@@ -1,6 +1,6 @@
 <template>
-	<div class="type-selector" v-if="showTabs">
-		<el-tabs stretch :value="selectedType" @input="setType">
+	<div class="type-selector" v-if="nodeCreatorStore.showTabs">
+		<el-tabs stretch :value="nodeCreatorStore.selectedType" @input="nodeCreatorStore.setSelectedType">
 			<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.all')" :name="ALL_NODE_FILTER"></el-tab-pane>
 			<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.regular')" :name="REGULAR_NODE_FILTER"></el-tab-pane>
 			<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.trigger')" :name="TRIGGER_NODE_FILTER"></el-tab-pane>
@@ -9,16 +9,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
 import { ALL_NODE_FILTER, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
-import { store } from '@/store';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
-const showTabs = computed<boolean>(() => store.getters['nodeCreator/showTabs']);
-const selectedType = computed<string>(() => store.getters['nodeCreator/selectedType']);
-
-function setType(type: string) {
-	store.commit('nodeCreator/setSelectedType', type);
-}
+const nodeCreatorStore = useNodeCreatorStore();
 </script>
 <style lang="scss" scoped>
 ::v-deep .el-tabs__item {

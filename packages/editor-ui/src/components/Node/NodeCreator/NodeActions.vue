@@ -13,7 +13,7 @@
 			v-model="search"
 			class="ignore-key-press"
 			:class="$style.search"
-			:placeholder="`Search ${nodeNameTitle} Actions...`"
+			:placeholder="$locale.baseText('nodeCreator.actionsCategory.searchActions', { interpolate: { nodeNameTitle }})"
 		/>
 		<main :class="$style.content">
 			<template v-for="action in filteredActions">
@@ -53,17 +53,24 @@
 				/>
 			</template>
 		</main>
+		<footer
+			v-if="containsAPIAction"
+			:class="$style.apiHint"
+			@click.stop="addHttpNode"
+			v-html="$locale.baseText('nodeCreator.actionsList.apiCall', { interpolate: { nodeNameTitle }})"
+		/>
 	</aside>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs } from 'vue';
-import { IDataObject, INodeTypeDescription, INodeAction } from 'n8n-workflow';
-
+import { reactive, computed, toRefs, getCurrentInstance, onUnmounted } from 'vue';
+import { IDataObject, INodeTypeDescription, INodeAction, INodeParameters } from 'n8n-workflow';
+import { IUpdateInformation } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
 import SearchBar from './SearchBar.vue';
 import NodeAction from './NodeAction.vue';
 import { sublimeSearch } from './sortUtils';
+import { CUSTOM_API_CALL_KEY, HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
 export interface Props {
 	nodeType: INodeTypeDescription,
@@ -71,9 +78,10 @@ export interface Props {
 }
 
 const props = defineProps<Props>();
+const instance = getCurrentInstance();
 
 const emit = defineEmits<{
-	(event: 'actionSelected', action: { key: string, value: IDataObject }): void,
+	(event: 'actionSelected', action: IUpdateInformation): void,
 	(event: 'back'): void,
 	(event: 'dragstart', $e: DragEvent): void,
 	(event: 'dragend', $e: DragEvent): void,
@@ -87,16 +95,23 @@ const state = reactive({
 const nodeNameTitle = computed(() => props.nodeType?.displayName?.replace(' Trigger', ''));
 
 const orderedActions = computed(() => {
-	const recommendedTitle = 'Recommended';
+	const recommendedTitle = instance?.proxy.$locale.baseText('nodeCreator.actionsCategory.recommended');
+
+	// Make sure recommended actions are always on top
 	return [
 		...props.actions.filter(action => action.title === recommendedTitle),
 		...props.actions.filter(action => action.title !== recommendedTitle),
 	];
 });
 
+const containsAPIAction = computed(() => {
+	return props.actions
+		.flatMap(action => action.items || [action])
+		.some(action => action.key === CUSTOM_API_CALL_KEY);
+});
+
 const filteredActions = computed(() => {
 	if(state.search.length === 0) return orderedActions.value;
-
 
 	const flattenActions = orderedActions.value.flatMap(actionCategory => actionCategory.items) || [];
 	const matchedActions = sublimeSearch<INodeAction>(
@@ -107,8 +122,6 @@ const filteredActions = computed(() => {
 	return matchedActions.map(({item}) => item);
 });
 
-
-
 function toggleCategory(category: string) {
 	if (state.subtractedCategories.includes(category)) {
 		state.subtractedCategories = state.subtractedCategories.filter((item) => item !== category);
@@ -117,7 +130,7 @@ function toggleCategory(category: string) {
 	}
 }
 
-function getActionData(actionItem: INodeAction) {
+function getActionData(actionItem: INodeAction): IUpdateInformation {
 	const displayOptions = actionItem?.displayOptions ;
 
 	const displayConditions = Object.keys(displayOptions?.show || {})
@@ -126,11 +139,21 @@ function getActionData(actionItem: INodeAction) {
 			return acc;
 		}, {});
 
-
 	return {
+		name: '',
 		key: actionItem.nodeName as string,
-		value: { ...actionItem.values , ...displayConditions},
+		value: { ...actionItem.values , ...displayConditions} as INodeParameters,
 	};
+}
+
+function addHttpNode() {
+	emit('actionSelected', {
+		name: '',
+		key: HTTP_REQUEST_NODE_TYPE,
+		value: {
+			authentication: "predefinedCredentialType",
+		} as INodeParameters,
+	});
 }
 
 function onActionClick(actionItem: INodeAction) {
@@ -146,9 +169,6 @@ function onDragStart(event: DragEvent, action: INodeAction) {
 	emit('dragstart', event);
 }
 
-function onDragEnd(event: DragEvent) {
-	event.dataTransfer?.setData('text/plain', 'drag');
-}
 const { subtractedCategories, search } = toRefs(state);
 </script>
 
@@ -246,5 +266,15 @@ const { subtractedCategories, search } = toRefs(state);
 }
 .nodeIcon {
 	margin-right: var(--spacing-s);
+}
+
+.apiHint {
+	font-size: var(--font-size-2xs);
+	color: var(--color-text-base);
+	margin: 0 var(--spacing-s);
+	padding-top: var(--spacing-s);
+	padding-bottom: var(--spacing-l);
+	border-top: 1px solid #DBDFE7;
+	z-index: 1;
 }
 </style>

@@ -21,7 +21,7 @@
 
 			<search-bar
 				v-if="isSearchVisible"
-				:value="nodeFilter"
+				:value="nodeCreatorStore.itemsFilter"
 				@input="onNodeFilterChange"
 				:eventBus="searchEventBus"
 				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
@@ -64,14 +64,14 @@
 						<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" slot="title" />
 						<template slot="action">
 							{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-							<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
+							<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedType)">
 								{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
 							</n8n-link>
-							<template v-if="selectedType === ALL_NODE_FILTER">
+							<template v-if="nodeCreatorStore.selectedType === ALL_NODE_FILTER">
 								{{ $locale.baseText('nodeCreator.noResults.or') }}
 							</template>
 
-							<n8n-link @click="selectWebhook" v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
+							<n8n-link @click="selectWebhook" v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedType)">
 								{{ $locale.baseText('nodeCreator.noResults.webhook') }}
 							</n8n-link>
 							{{ $locale.baseText('nodeCreator.noResults.node') }}
@@ -91,13 +91,16 @@ import useGlobalLinkActions from '@/components/composables/useGlobalLinkActions'
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
-import { INodeCreateElement, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
+import { INodeCreateElement, ISubcategoryItemProps, ICategoryItemProps, INodeItemProps } from '@/Interface';
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
 import { intersection } from '@/utils';
 import { sublimeSearch } from './sortUtils';
-import { store } from '@/store';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
 	flatten?: boolean;
@@ -129,6 +132,11 @@ const instance = getCurrentInstance();
 const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 
 const { $externalHooks } = new externalHooks();
+const { categoriesWithNodes, categorizedItems } = useNodeTypesStore();
+const { defaultLocale } = useRootStore();
+const { workflowId } = useWorkflowsStore();
+const nodeCreatorStore = useNodeCreatorStore();
+
 const state = reactive({
 	activeCategory: props.initialActiveCategories,
 	// Keep track of activated subcategories so we could traverse back more than one level
@@ -146,16 +154,6 @@ const activeSubcategory = computed<INodeCreateElement | null> (
 	() => state.activeSubcategoryHistory[state.activeSubcategoryHistory.length - 1] || null,
 );
 
-const nodeFilter = computed<string> (() => store.getters['nodeCreator/itemsFilter']);
-
-const selectedType = computed<INodeFilterType> (() => store.getters['nodeCreator/selectedType']);
-
-const categoriesWithNodes = computed<ICategoriesWithNodes> (() => store.getters['nodeTypes/categoriesWithNodes']);
-
-const categorizedItems = computed<INodeCreateElement[]> (() => {
-  return store.getters['nodeTypes/categorizedItems'];
-});
-
 const activeSubcategoryTitle = computed<string> (() => {
   if(!activeSubcategory.value || !activeSubcategory.value.properties) return '';
   const subcategoryName = camelcase((activeSubcategory.value.properties as ISubcategoryItemProps).subcategory);
@@ -171,34 +169,39 @@ const activeSubcategoryTitle = computed<string> (() => {
   return titleLocale === titleLocaleKey ? nameLocale : titleLocale;
 });
 
-const searchFilter = computed<string> (() => nodeFilter.value.toLowerCase().trim());
+const searchFilter = computed<string> (() => nodeCreatorStore.itemsFilter.toLowerCase().trim());
 
-const defaultLocale = computed<string> (() => store.getters.defaultLocale);
 
 const matchedTypeNodes = computed<INodeCreateElement[]> (() => {
   const searchableNodes = subcategorizedNodes.value.length > 0 ? subcategorizedNodes.value : props.searchItems;
 
   if(isAppEventSubcategory.value) return searchableNodes;
-  return searchableNodes.filter((el: INodeCreateElement) => matchesSelectType(el, selectedType.value));
+  return searchableNodes.filter((el: INodeCreateElement) => matchesSelectType(el, nodeCreatorStore.selectedType));
 });
 
 const filteredNodeTypes = computed<INodeCreateElement[]> (() => {
   const filter = searchFilter.value;
-  const searchableNodes = subcategorizedNodes.value.length > 0 ? subcategorizedNodes.value : props.searchItems;
+  const searchableNodes = subcategorizedNodes.value.length > 0 && activeSubcategory.value?.key !== '*'
+		? subcategorizedNodes.value
+		: props.searchItems;
 
   let returnItems: INodeCreateElement[] = [];
-  if (defaultLocale.value !== 'en') {
+  if (defaultLocale !== 'en') {
     returnItems = searchableNodes.filter((el: INodeCreateElement) => {
-      return filter && matchesSelectType(el, selectedType.value) && matchesNodeType(el, filter);
+      return filter && matchesSelectType(el, nodeCreatorStore.selectedType) && matchesNodeType(el, filter);
     });
   }
   else {
-    const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, selectedType.value));
+    const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, nodeCreatorStore.selectedType));
     const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
     returnItems = matchedCategorizedNodes.map(({item}) => item);
   }
 
-  return returnItems;
+	const filteredNodeTypes = props.excludedCategories.length === 0
+		? returnItems
+		: filterOutNodexFromExcludedCategories(returnItems);
+
+  return filteredNodeTypes;
 });
 
 const filteredAllNodeTypes = computed<INodeCreateElement[]> (() => {
@@ -212,7 +215,7 @@ const filteredAllNodeTypes = computed<INodeCreateElement[]> (() => {
 });
 
 const categorized = computed<INodeCreateElement[]> (() => {
-  return categorizedItems.value
+  return categorizedItems
     .reduce((accu: INodeCreateElement[], el: INodeCreateElement) => {
       if((props.excludedCategories || []).includes(el.category)) return accu;
 
@@ -230,7 +233,7 @@ const categorized = computed<INodeCreateElement[]> (() => {
         return accu;
       }
 
-      if (!matchesSelectType(el, selectedType.value)) {
+      if (!matchesSelectType(el, nodeCreatorStore.selectedType)) {
         return accu;
       }
 
@@ -257,13 +260,13 @@ const subcategorizedItems = computed<INodeCreateElement[]> (() => {
 
   // If no category is set, we use all categorized nodes
   const nodes = category
-    ? categoriesWithNodes.value[category][subcategory].nodes
+    ? categoriesWithNodes[category][subcategory].nodes
     : categorized.value;
 
-  return nodes.filter((el: INodeCreateElement) => matchesSelectType(el, selectedType.value));
+  return nodes.filter((el: INodeCreateElement) => matchesSelectType(el, nodeCreatorStore.selectedType));
 });
 
-const isAppEventSubcategory = computed<boolean> (() => activeSubcategory.value?.key === 'app_nodes');
+const isAppEventSubcategory = computed<boolean> (() => activeSubcategory.value?.key === '*');
 
 const subcategorizedNodes = computed<INodeCreateElement[]> (() => {
 	const subcategorizedNodesOverride = props.subcategoryItems?.[activeSubcategory.value?.key as string];
@@ -287,9 +290,9 @@ const isSearchVisible = computed<boolean> (() => {
     // Category contains many nodes so we need to count all of them
     // for the current selectedType
     if(item.type === 'category') {
-      const categoryItems = categoriesWithNodes.value[item.key];
+      const categoryItems = categoriesWithNodes[item.key];
       const categoryItemsCount = Object.values(categoryItems)?.[0];
-      const countKeys = NODE_TYPE_COUNT_MAPPER[selectedType.value];
+      const countKeys = NODE_TYPE_COUNT_MAPPER[nodeCreatorStore.selectedType];
 
       for (const countKey of countKeys) {
         totalItems += categoryItemsCount[(countKey as "triggerCount" | "regularCount")];
@@ -305,16 +308,16 @@ const isSearchVisible = computed<boolean> (() => {
 
 // Methods
 function switchToAllTabAndFilter() {
-  const currentFilter = nodeFilter.value;
-  store.commit('nodeCreator/setShowTabs', true);
-  store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
+	const currentFilter = nodeCreatorStore.itemsFilter;
+  nodeCreatorStore.setShowTabs(true);
+  nodeCreatorStore.setSelectedType(ALL_NODE_FILTER);
   state.activeSubcategoryHistory = [];
 
-  Vue.nextTick(() => store.commit('nodeCreator/setFilter', currentFilter));
+  Vue.nextTick(() => nodeCreatorStore.setFilter(currentFilter));
 }
 
 function onNodeFilterChange(filter: string) {
-  store.commit('nodeCreator/setFilter', filter);
+  nodeCreatorStore.setFilter(filter);
 }
 
 function selectWebhook() {
@@ -400,7 +403,7 @@ function onCategorySelected(category: string) {
     );
   } else {
     state.activeCategory = [...state.activeCategory, category];
-    instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: store.getters.workflowId });
+    instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: workflowId });
   }
 
   state.activeIndex = categorized.value.findIndex(
@@ -410,20 +413,20 @@ function onCategorySelected(category: string) {
 
 function onSubcategorySelected(selected: INodeCreateElement) {
   emit('onSubcategorySelected', selected);
-  store.commit('nodeCreator/setShowTabs', false);
+  nodeCreatorStore.setShowTabs(false);
   state.activeSubcategoryIndex = 0;
   state.activeSubcategoryHistory.push(selected);
-  instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: store.getters.workflowId });
+  instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: workflowId });
 }
 
 function onSubcategoryClose() {
   emit('subcategoryClose', activeSubcategory.value as INodeCreateElement);
   state.activeSubcategoryHistory.pop();
   state.activeSubcategoryIndex = 0;
-  store.commit('nodeCreator/setFilter', '');
+  nodeCreatorStore.setFilter('');
 
-  if(!store.getters['nodeCshowScrimreator/']) {
-    store.commit('nodeCreator/setShowTabs', true);
+  if(!nodeCreatorStore.showScrim) {
+    nodeCreatorStore.setShowTabs(true);
   }
 }
 
@@ -431,20 +434,31 @@ function onClickInside() {
   state.searchEventBus.$emit('focus');
 }
 
+function filterOutNodexFromExcludedCategories(nodes: INodeCreateElement[]) {
+	return nodes.filter(node => {
+		const excludedCategoriesIntersect = intersection(
+			props.excludedCategories,
+			((node.properties as INodeItemProps)?.nodeType.codex?.categories || []),
+		);
+
+		return excludedCategoriesIntersect.length === 0;
+	});
+}
+
 onMounted(() => {
 	registerCustomAction('showAllNodeCreatorNodes', switchToAllTabAndFilter);
 });
 
 onUnmounted(() => {
-	store.commit('nodeCreator/setFilter', '');
+	nodeCreatorStore.setFilter('');
 	unregisterCustomAction('showAllNodeCreatorNodes');
 });
 
 watch(filteredNodeTypes, (returnItems) => {
 	$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
-		nodeFilter: nodeFilter.value,
+		nodeFilter: nodeCreatorStore.itemsFilter,
 		result: returnItems,
-		selectedType: selectedType.value,
+		selectedType: nodeCreatorStore.selectedType,
 	});
 });
 
@@ -455,22 +469,22 @@ watch(isSearchVisible, (isVisible) => {
 		Vue.nextTick(() => state.mainPanelContainer?.focus());
 	}
 });
-watch(nodeFilter, (newValue, oldValue) => {
+watch(() => nodeCreatorStore.itemsFilter, (newValue, oldValue) => {
 	// Reset the index whenver the filter-value changes
 	state.activeIndex = 0;
 	state.activeSubcategoryIndex = 0;
 	$externalHooks().run('nodeCreateList.nodeFilterChanged', {
 		oldValue,
 		newValue,
-		selectedType: selectedType.value,
+		selectedType: nodeCreatorStore.selectedType,
 		filteredNodes: filteredNodeTypes.value,
 	});
 	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.nodeFilterChanged', {
 		oldValue,
 		newValue,
-		selectedType: selectedType.value,
+		selectedType: nodeCreatorStore.selectedType,
 		filteredNodes: filteredNodeTypes.value,
-		workflow_id: store.getters.workflowId,
+		workflow_id: workflowId,
 	});
 });
 

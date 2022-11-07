@@ -2,7 +2,6 @@ import Vue from 'vue';
 import Vuex from 'vuex';
 import credentials from './modules/credentials';
 import tags from './modules/tags';
-import nodeCreator from './modules/nodeCreator';
 import versions from './modules/versions';
 import { IMenuItem } from 'n8n-design-system';
 import { useUIStore } from './stores/ui';
@@ -23,7 +22,6 @@ const modules = {
 	credentials,
 	tags,
 	versions,
-	nodeCreator,
 	users: {
 		namespaced: true,
 		getters: { globalRoleName () { return useUsersStore().globalRoleName; } },
