@@ -34,7 +34,6 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 					port: config.getEnv(`database.${configDBType}.port`),
 			  };
 	return {
-		name: dbType,
 		entityPrefix,
 		entities: Object.values(entities),
 		migrationsRun: true,
