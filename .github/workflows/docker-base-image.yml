@@ -7,7 +7,7 @@ on:
         description: 'Node.js version to build this image with.'
         type: string
         required: true
-        default: '18'
+        default: '16'
 
 jobs:
   build:
