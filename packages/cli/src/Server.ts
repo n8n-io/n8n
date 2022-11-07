@@ -156,6 +156,15 @@ import { ResponseError } from './ResponseHelper';
 
 import { toHttpNodeParameters } from './CurlConverterHelper';
 import { initErrorHandling } from './ErrorReporting';
+import { registerSerializer } from 'threads/worker';
+import { EventMessage, messageEventSerializer } from './eventbus/EventMessage/EventMessage';
+import { eventBus } from './eventbus';
+import { EventMessageSubscriptionSet } from './eventbus/EventMessage/EventMessageSubscriptionSet';
+import { MessageEventBusForwarderToLocalBroker } from './eventbus/MessageEventBusForwarder/MessageEventBusForwarderToLocalBroker';
+import { MessageEventBusLevelDbWriter } from './eventbus/MessageEventBusWriter/MessageEventBusLevelDbWriter';
+import { ConsoleEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/ConsoleEventSubscriptionReceiver';
+import { FileEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/FileEventSubscriptionReceiver';
+import { EventMessageNames } from './eventbus/types/eventMessageTypes';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1663,6 +1672,108 @@ class App {
 					return this.getSettingsForFrontend();
 				},
 			),
+		);
+
+		// ----------------------------------------
+		// MessageBuffer TESTING
+		// ----------------------------------------
+
+		// Register the serializer on the main thread
+		registerSerializer(messageEventSerializer);
+		const subscriptionSetCore = new EventMessageSubscriptionSet({
+			name: 'core',
+			eventGroups: ['n8n.core'],
+			eventNames: [],
+		});
+		const subscriptionSetCustom = new EventMessageSubscriptionSet({
+			name: 'ui',
+			eventGroups: ['n8n.ui'],
+			eventNames: ['n8n.workflow.workflowStarted'],
+		});
+		// const fileReceiverCoreNode = new FileEventSubscriptionReceiverNode({
+		// 	name: 'coreEventsFileLogger2',
+		// 	fileName: 'events_core2.txt',
+		// });
+		const consoleReceiver = new ConsoleEventSubscriptionReceiver();
+		const fileReceiverCore = new FileEventSubscriptionReceiver({
+			name: 'coreEventsFileLogger',
+			fileName: 'events_core.txt',
+		});
+		const fileReceiverUi = new FileEventSubscriptionReceiver({
+			name: 'uiEventsFileLogger',
+			fileName: 'events_ui.txt',
+		});
+		const localBrokerForwarder = new MessageEventBusForwarderToLocalBroker();
+		await localBrokerForwarder.addReceiver(consoleReceiver);
+		localBrokerForwarder.addSubscription(consoleReceiver, [
+			subscriptionSetCore,
+			subscriptionSetCustom,
+		]);
+		await localBrokerForwarder.addReceiver(fileReceiverCore);
+		localBrokerForwarder.addSubscription(fileReceiverCore, [subscriptionSetCore]);
+		await localBrokerForwarder.addReceiver(fileReceiverUi);
+		localBrokerForwarder.addSubscription(fileReceiverUi, [subscriptionSetCustom]);
+		await eventBus.initialize({
+			immediateWriters: [new MessageEventBusLevelDbWriter()],
+			forwarders: [localBrokerForwarder],
+		});
+		process.on('SIGTERM', () => eventBus.close());
+		process.on('SIGINT', () => eventBus.close());
+
+		this.app.post(
+			`/${this.restEndpoint}/messagebuffer/add/msg`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+				const eventName = req.body.eventName as EventMessageNames;
+				if (eventName) {
+					const msg = new EventMessage({
+						eventName,
+						level: 'debug',
+						severity: 'normal',
+					});
+					return eventBus.send(msg);
+				} else {
+					return 'not a valid eventName';
+				}
+			}),
+		);
+
+		this.app.post(
+			`/${this.restEndpoint}/messagebuffer/add/load`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+				const eventName = req.body.eventName as EventMessageNames;
+				if (eventName) {
+					for (let i = 0; i < 1000; i++) {
+						const msg = new EventMessage<number>({
+							eventName,
+							level: 'debug',
+							severity: 'normal',
+							payload: i,
+						});
+						await eventBus.send(msg);
+					}
+					return 'sent 1000';
+				} else {
+					return 'not a valid eventName';
+				}
+			}),
+		);
+		// this.app.get(
+		// 	`/${this.restEndpoint}/messagebuffer/get/all`,
+		// 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+		// 		return eventBus.getEvents();
+		// 	}),
+		// );
+		this.app.get(
+			`/${this.restEndpoint}/messagebuffer/get/sent`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+				return eventBus.getEventsSent();
+			}),
+		);
+		this.app.get(
+			`/${this.restEndpoint}/messagebuffer/get/unsent`,
+			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+				return eventBus.getEventsUnsent();
+			}),
 		);
 
 		// ----------------------------------------
