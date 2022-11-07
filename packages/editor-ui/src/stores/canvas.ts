@@ -2,6 +2,7 @@ import { computed, ref } from 'vue';
 import { defineStore } from 'pinia';
 import { jsPlumb } from 'jsplumb';
 import { v4 as uuid } from 'uuid';
+import normalizeWheel from 'normalize-wheel';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
@@ -88,6 +89,29 @@ export const useCanvasStore = defineStore('canvas', () => {
 		setZoomLevel(zoomLevel, offset);
 	};
 
+	const wheelMoveWorkflow = (e: WheelEvent) => {
+		const normalized = normalizeWheel(e);
+		const offsetPosition = uiStore.nodeViewOffsetPosition;
+		const nodeViewOffsetPositionX = offsetPosition[0] - (e.shiftKey ? normalized.pixelY : normalized.pixelX);
+		const nodeViewOffsetPositionY = offsetPosition[1] - (e.shiftKey ? normalized.pixelX : normalized.pixelY);
+		uiStore.nodeViewOffsetPosition = [nodeViewOffsetPositionX, nodeViewOffsetPositionY];
+	};
+
+	const wheelScroll = (e: WheelEvent) => {
+		//* Control + scroll zoom
+		if (e.ctrlKey) {
+			if (e.deltaY > 0) {
+				zoomOut();
+			} else {
+				zoomIn();
+			}
+
+			e.preventDefault();
+			return;
+		}
+		wheelMoveWorkflow(e);
+	};
+
 	return {
 		jsPlumbInstance,
 		isDemo,
@@ -100,5 +124,6 @@ export const useCanvasStore = defineStore('canvas', () => {
 		zoomIn,
 		zoomOut,
 		zoomToFit,
+		wheelScroll,
 	};
 });

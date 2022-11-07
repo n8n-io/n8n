@@ -15,7 +15,7 @@
 			@mousedown="mouseDown"
 			v-touch:tap="touchTap"
 			@mouseup="mouseUp"
-			@wheel="wheelScroll"
+			@wheel="canvasStore.wheelScroll"
 		>
 			<div id="node-view-background" class="node-view-background" :style="backgroundStyle" />
 			<div
@@ -849,20 +849,6 @@ export default mixins(
 			mouseUp(e: MouseEvent) {
 				this.mouseUpMouseSelect(e);
 				this.mouseUpMoveWorkflow(e);
-			},
-			wheelScroll(e: WheelEvent) {
-				//* Control + scroll zoom
-				if (e.ctrlKey) {
-					if (e.deltaY > 0) {
-						this.canvasStore.zoomOut();
-					} else {
-						this.canvasStore.zoomIn();
-					}
-
-					e.preventDefault();
-					return;
-				}
-				this.wheelMoveWorkflow(e);
 			},
 			keyUp(e: KeyboardEvent) {
 				if (e.key === this.controlKeyCode) {
