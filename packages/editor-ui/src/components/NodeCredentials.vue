@@ -103,7 +103,6 @@ export default mixins(
 	data () {
 		return {
 			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
-			newCredentialUnsubscribe: null as null | (() => void),
 		};
 	},
 	computed: {
@@ -190,27 +189,6 @@ export default mixins(
 			return styles;
 		},
 
-		listenForNewCredentials(credentialType: string) {
-			this.stopListeningForNewCredentials();
-
-			// TODO: FIX THIS:
-			// this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
-			// 	if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
-			// 		this.onCredentialSelected(credentialType, mutation.payload.id);
-			// 	}
-			// 	if (mutation.type === 'credentials/deleteCredential') {
-			// 		this.clearSelectedCredential(credentialType);
-			// 		this.stopListeningForNewCredentials();
-			// 	}
-			// });
-		},
-
-		stopListeningForNewCredentials() {
-			if (this.newCredentialUnsubscribe) {
-				this.newCredentialUnsubscribe();
-			}
-		},
-
 		clearSelectedCredential(credentialType: string) {
 			const node: INodeUi = this.node;
 
@@ -232,7 +210,6 @@ export default mixins(
 
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
 			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
-				this.listenForNewCredentials(credentialType);
 				this.uiStore.openNewCredential(credentialType);
 				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.workflowsStore.workflowId });
 				return;
@@ -249,7 +226,7 @@ export default mixins(
 				},
 			);
 
-			const selectedCredentials = this.credentialsStore.getCredentialTypeByName(credentialId);
+			const selectedCredentials = this.credentialsStore.getCredentialById(credentialId);
 			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
 
 			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
@@ -332,12 +309,7 @@ export default mixins(
 			this.uiStore.openExistingCredential(id);
 
 			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.workflowsStore.workflowId });
-
-			this.listenForNewCredentials(credentialType);
 		},
-	},
-	beforeDestroy () {
-		this.stopListeningForNewCredentials();
 	},
 });
 </script>
