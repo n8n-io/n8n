@@ -1,6 +1,7 @@
 import { randomBytes } from 'crypto';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from '../../../src/databases/entities/User';
 import type { CredentialPayload } from './types';
+import { v4 as uuid } from 'uuid';
 
 /**
  * Create a random alphanumeric string of random length between two limits, both inclusive.
@@ -53,3 +54,5 @@ export const randomCredentialPayload = (): CredentialPayload => ({
 	nodesAccess: [{ nodeType: randomName() }],
 	data: { accessToken: randomString(6, 16) },
 });
+
+export const uniqueId = () => uuid();

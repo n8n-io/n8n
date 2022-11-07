@@ -34,7 +34,7 @@ let credentialOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['auth', 'ldap'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 

@@ -35,7 +35,8 @@ import type {
 	InstalledPackagePayload,
 	MappingName,
 } from './types';
-import { SignInType } from '../../../src/Ldap/constants';
+import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME, SignInType } from '../../../src/Ldap/constants';
+import { LdapConfig } from '../../../src/Ldap/constants';
 
 export type TestDBType = 'postgres' | 'mysql';
 
@@ -712,4 +713,12 @@ async function encryptCredentialData(credential: CredentialsEntity) {
 	coreCredential.setData(credential.data, encryptionKey);
 
 	return coreCredential.getDataToSave() as ICredentialsDb;
+}
+
+export async function createLdapDefaultConfig(attributes: Partial<LdapConfig> = {}) {
+	const configuration = {
+		...LDAP_DEFAULT_CONFIGURATION,
+		...attributes,
+	}
+	return Db.collections.FeatureConfig.save({ name: LDAP_FEATURE_NAME, data: JSON.stringify(configuration) })
 }

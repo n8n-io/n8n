@@ -40,6 +40,7 @@ import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/m
 import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
 import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
 import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
+import { ldapController } from '../../../src/Ldap/routes/ldap.controller.ee';
 import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
 import { nodesController } from '../../../src/api/nodes.api';
 import { workflowsController } from '../../../src/workflows/workflows.controller';
@@ -68,6 +69,7 @@ import type {
 } from './types';
 import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
 import { v4 as uuid } from 'uuid';
+import { handleLdapInit } from '../../../src/Ldap/helpers';
 
 /**
  * Initialize a test server.
@@ -119,6 +121,7 @@ export async function initTestServer({
 			workflows: { controller: workflowsController, path: 'workflows' },
 			nodes: { controller: nodesController, path: 'nodes' },
 			publicApi: apiRouters,
+			ldap: { controller: ldapController, path: 'ldap' },
 		};
 
 		for (const group of routerEndpoints) {
@@ -164,7 +167,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
+	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi', 'ldap'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -226,6 +229,13 @@ export async function initCredentialsTypes(): Promise<void> {
 			sourcePath: '',
 		},
 	});
+}
+
+/**
+ * Initialize LDAP manager.
+ */
+export async function initLdapManager(): Promise<void> {
+	await handleLdapInit();
 }
 
 /**
