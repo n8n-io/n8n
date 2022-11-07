@@ -706,10 +706,7 @@ export const emptyPackage = () => {
 //           workflow
 // ----------------------------------
 
-export function makeWorkflow({
-	withPinData,
-	withCredential,
-}: {
+export function makeWorkflow(options?: {
 	withPinData: boolean;
 	withCredential?: { id: string; name: string };
 }) {
@@ -717,16 +714,16 @@ export function makeWorkflow({
 
 	const node: INode = {
 		id: uuid(),
-		name: 'Spotify',
-		type: 'n8n-nodes-base.spotify',
-		parameters: { resource: 'track', operation: 'get', id: '123' },
+		name: 'Cron',
+		type: 'n8n-nodes-base.cron',
+		parameters: {},
 		typeVersion: 1,
 		position: [740, 240],
 	};
 
-	if (withCredential) {
+	if (options?.withCredential) {
 		node.credentials = {
-			spotifyApi: withCredential,
+			spotifyApi: options.withCredential,
 		};
 	}
 
@@ -735,7 +732,7 @@ export function makeWorkflow({
 	workflow.connections = {};
 	workflow.nodes = [node];
 
-	if (withPinData) {
+	if (options?.withPinData) {
 		workflow.pinData = MOCK_PINDATA;
 	}
 

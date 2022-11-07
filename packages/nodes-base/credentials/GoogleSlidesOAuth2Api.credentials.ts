@@ -9,7 +9,7 @@ export class GoogleSlidesOAuth2Api implements ICredentialType {
 	name = 'googleSlidesOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google Slides OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

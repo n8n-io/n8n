@@ -1,7 +1,7 @@
 <template>
 	<el-drawer
 		:direction="direction"
-		:visible="visible"
+		:visible="uiStore.isModalOpen(this.$props.name)"
 		:size="width"
 		:before-close="close"
 		:modal="modal"
@@ -19,6 +19,8 @@
 </template>
 
 <script lang="ts">
+import { useUIStore } from "@/stores/ui";
+import { mapStores } from "pinia";
 import Vue from "vue";
 
 export default Vue.extend({
@@ -65,9 +67,12 @@ export default Vue.extend({
 	beforeDestroy() {
 		window.removeEventListener('keydown', this.onWindowKeydown);
 	},
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		onWindowKeydown(event: KeyboardEvent) {
-			if (!this.isActive) {
+			if (!this.uiStore.isModalActive(this.$props.name)) {
 				return;
 			}
 
@@ -76,7 +81,7 @@ export default Vue.extend({
 			}
 		},
 		handleEnter() {
-			if (this.isActive) {
+			if (this.uiStore.isModalActive(this.$props.name)) {
 				this.$emit('enter');
 			}
 		},
@@ -87,16 +92,7 @@ export default Vue.extend({
 					return;
 				}
 			}
-
-			this.$store.commit('ui/closeModal', this.$props.name);
-		},
-	},
-	computed: {
-		isActive(): boolean {
-			return this.$store.getters['ui/isModalActive'](this.$props.name);
-		},
-		visible(): boolean {
-			return this.$store.getters['ui/isModalOpen'](this.$props.name);
+			this.uiStore.closeModal(this.$props.name);
 		},
 	},
 });

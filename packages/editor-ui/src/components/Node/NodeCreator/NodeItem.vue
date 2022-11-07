@@ -3,9 +3,9 @@
 		draggable
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
-		:class="{[$style['node-item']]: true, [$style.bordered]: bordered}"
+		:class="{[$style['node-item']]: true}"
 	>
-		<NodeIcon :class="$style['node-icon']" :nodeType="nodeType" />
+		<node-icon :class="$style['node-icon']" :nodeType="nodeType" />
 		<div>
 			<div :class="$style.details">
 				<span :class="$style.name">
@@ -16,7 +16,7 @@
 					}}
 				</span>
 				<span v-if="isTrigger" :class="$style['trigger-icon']">
-					<TriggerIcon />
+					<trigger-icon />
 				</span>
 				<n8n-tooltip v-if="isCommunityNode" placement="top">
 					<div
@@ -45,7 +45,7 @@
 					ref="draggable"
 					v-show="dragging"
 				>
-					<NodeIcon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
+					<node-icon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
 				</div>
 			</transition>
 		</div>
@@ -54,26 +54,29 @@
 
 <script lang="ts">
 
-import {getNewNodePosition, NODE_SIZE} from '@/views/canvasHelpers';
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
+import { INodeTypeDescription } from 'n8n-workflow';
 
-import NodeIcon from '../../NodeIcon.vue';
-import TriggerIcon from '../../TriggerIcon.vue';
-
+import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
-import { isCommunityPackageName } from '../../helpers';
 
-Vue.component('NodeIcon', NodeIcon);
-Vue.component('TriggerIcon', TriggerIcon);
+import NodeIcon from '@/components/NodeIcon.vue';
+import TriggerIcon from '@/components/TriggerIcon.vue';
+import { isCommunityPackageName } from '@/components/helpers';
+
+Vue.component('node-icon', NodeIcon);
+Vue.component('trigger-icon', TriggerIcon);
 
 export default Vue.extend({
 	name: 'NodeItem',
-	props: [
-		'active',
-		'filter',
-		'nodeType',
-		'bordered',
-	],
+	props: {
+		nodeType: {
+			type: Object as PropType<INodeTypeDescription>,
+		},
+		active: {
+			type: Boolean,
+		},
+	},
 	data() {
 		return {
 			dragging: false,
@@ -101,19 +104,14 @@ export default Vue.extend({
 			return isCommunityPackageName(this.nodeType.name);
 		},
 	},
-	mounted() {
-		/**
-		 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
-		 * All browsers attach the correct page coordinates to the "dragover" event.
-		 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
-		 */
-		document.body.addEventListener("dragover", this.onDragOver);
-	},
-	destroyed() {
-		document.body.removeEventListener("dragover", this.onDragOver);
-	},
 	methods: {
 		onDragStart(event: DragEvent): void {
+			/**
+			 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
+			 * All browsers attach the correct page coordinates to the "dragover" event.
+			 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
+			 */
+			document.body.addEventListener("dragover", this.onDragOver);
 			const { pageX: x, pageY: y } = event;
 
 			this.$emit('dragstart', event);
@@ -138,6 +136,7 @@ export default Vue.extend({
 			this.draggablePosition = { x, y };
 		},
 		onDragEnd(event: DragEvent): void {
+			document.body.removeEventListener("dragover", this.onDragOver);
 			this.$emit('dragend', event);
 
 			this.dragging = false;
@@ -160,10 +159,7 @@ export default Vue.extend({
 	margin-left: 15px;
 	margin-right: 12px;
 	display: flex;
-
-	&.bordered {
-		border-bottom: 1px solid $node-creator-border-color;
-	}
+	cursor: grab;
 }
 
 .details {
@@ -177,7 +173,7 @@ export default Vue.extend({
 }
 
 .name {
-	font-weight: bold;
+	font-weight: var(--font-weight-bold);
 	font-size: 14px;
 	line-height: 18px;
 	margin-right: 5px;
@@ -189,7 +185,7 @@ export default Vue.extend({
 
 .description {
 	margin-top: 2px;
-	font-size: 11px;
+	font-size: var(--font-size-2xs);
 	line-height: 16px;
 	font-weight: 400;
 	color: $node-creator-description-color;

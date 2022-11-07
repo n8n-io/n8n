@@ -12,7 +12,7 @@
 				:width="relativeWidthToPx(mainPanelDimensions.relativeWidth)"
 				:minWidth="MIN_PANEL_WIDTH"
 				:gridSize="20"
-				@resize="onResize"
+				@resize="onResizeDebounced"
 				@resizestart="onResizeStart"
 				@resizeend="onResizeEnd"
 				:supportedDirections="supportedResizeDirections"
@@ -47,6 +47,11 @@ import {
 	LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH,
 	MAIN_NODE_PANEL_WIDTH,
 } from '@/constants';
+import mixins from 'vue-typed-mixins';
+import { debounceHelper } from './mixins/debounce';
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
+import { nodePanelType } from '@/Interface';
 
 
 const SIDE_MARGIN = 24;
@@ -63,7 +68,7 @@ const initialMainPanelWidth:{ [key: string]: number } = {
 	wide: MAIN_NODE_PANEL_WIDTH * 2,
 };
 
-export default Vue.extend({
+export default mixins(debounceHelper).extend({
 	name: 'NDVDraggablePanels',
 	components: {
 		PanelDragButton,
@@ -83,11 +88,12 @@ export default Vue.extend({
 			default: () => ({}),
 		},
 	},
-	data(): { windowWidth: number, isDragging: boolean, MIN_PANEL_WIDTH: number} {
+	data(): { windowWidth: number, isDragging: boolean, MIN_PANEL_WIDTH: number, initialized: boolean} {
 		return {
 			windowWidth: 1,
 			isDragging: false,
 			MIN_PANEL_WIDTH,
+			initialized: false,
 		};
 	},
 	mounted() {
@@ -105,37 +111,43 @@ export default Vue.extend({
 
 		window.addEventListener('resize', this.setTotalWidth);
 		this.$emit('init', { position: this.mainPanelDimensions.relativeLeft });
+		setTimeout(() => {
+			this.initialized = true;
+		}, 0);
 	},
 	destroyed() {
 		window.removeEventListener('resize', this.setTotalWidth);
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+		),
 		mainPanelDimensions(): {
 			relativeWidth: number,
 			relativeLeft: number,
 			relativeRight: number
 			} {
-			return this.$store.getters['ui/mainPanelDimensions'](this.currentNodePaneType);
+			return this.ndvStore.getMainPanelDimensions(this.currentNodePaneType as nodePanelType);
 		},
-		supportedResizeDirections() {
+		supportedResizeDirections(): string[] {
 			const supportedDirections = ['right'];
 
 			if(this.isDraggable) supportedDirections.push('left');
 			return supportedDirections;
 		},
-		currentNodePaneType() {
+		currentNodePaneType(): string {
 			if(!this.hasInputSlot) return 'inputless';
 			if(!this.isDraggable) return 'dragless';
 			if(this.nodeType === null) return 'unknown';
 			return get(this, 'nodeType.parameterPane') || 'regular';
 		},
-		hasInputSlot() {
+		hasInputSlot(): boolean {
 			return this.$slots.input !== undefined;
 		},
 		inputPanelMargin(): number {
 			return this.pxToRelativeWidth(SIDE_PANELS_MARGIN);
 		},
-		minWindowWidth() {
+		minWindowWidth(): number {
 			return 2 * (SIDE_MARGIN + SIDE_PANELS_MARGIN) + MIN_PANEL_WIDTH;
 		},
 		minimumLeftPosition(): number {
@@ -190,7 +202,7 @@ export default Vue.extend({
 			const currentRelativeLeftDelta = this.calculatedPositions.outputPanelRelativeLeft - panelMinLeft;
 			return currentRelativeLeftDelta > 0 ? currentRelativeLeftDelta : 0;
 		},
-		hasDoubleWidth() {
+		hasDoubleWidth(): boolean {
 			return get(this, 'nodeType.parameterPane') === 'wide';
 		},
 		fixedPanelWidth(): number {
@@ -238,7 +250,7 @@ export default Vue.extend({
 		setMainPanelWidth(relativeWidth?: number) {
 			const mainPanelRelativeWidth = relativeWidth || this.pxToRelativeWidth(initialMainPanelWidth[this.currentNodePaneType]);
 
-			this.$store.commit('ui/setMainPanelDimensions', {
+			this.ndvStore.setMainPanelDimensions({
 				panelType: this.currentNodePaneType,
 				dimensions: {
 					relativeWidth: mainPanelRelativeWidth,
@@ -254,7 +266,7 @@ export default Vue.extend({
 			const isInputless = this.currentNodePaneType === 'inputless';
 
 			if(isMinLeft) {
-				this.$store.commit('ui/setMainPanelDimensions', {
+				this.ndvStore.setMainPanelDimensions({
 					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: this.minimumLeftPosition,
@@ -265,18 +277,18 @@ export default Vue.extend({
 			}
 
 			if(isMaxRight) {
-				this.$store.commit('ui/setMainPanelDimensions', {
-					panelType: this.currentNodePaneType,
+				this.ndvStore.setMainPanelDimensions({
+					panelType: this.currentNodePaneType as nodePanelType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
-						relativeRight: this.maximumRightPosition,
+						relativeRight: this.maximumRightPosition as number,
 					},
 				});
 				return;
 			}
 
-			this.$store.commit('ui/setMainPanelDimensions', {
-				panelType: this.currentNodePaneType,
+			this.ndvStore.setMainPanelDimensions({
+				panelType: this.currentNodePaneType as nodePanelType,
 				dimensions: {
 					relativeLeft: isInputless ? this.minimumLeftPosition : mainPanelRelativeLeft,
 					relativeRight: mainPanelRelativeRight,
@@ -294,6 +306,11 @@ export default Vue.extend({
 		},
 		onResizeEnd() {
 			this.storePositionData();
+		},
+		onResizeDebounced(data: { direction: string, x: number, width: number}) {
+			if (this.initialized) {
+				this.callDebounced('onResize', { debounceTime: 10, trailing: true }, data);
+			}
 		},
 		onResize({ direction, x, width }: { direction: string, x: number, width: number}) {
 			const relativeDistance = this.pxToRelativeWidth(x);
@@ -408,10 +425,6 @@ export default Vue.extend({
 
 .draggable {
 	visibility: hidden;
-}
-
-.double-width {
-	left: 90%;
 }
 
 .dragButtonContainer {

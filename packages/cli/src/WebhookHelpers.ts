@@ -34,6 +34,7 @@ import {
 	IWebhookResponseData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowExecuteAdditionalData,
+	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	NodeHelpers,
 	Workflow,
@@ -435,6 +436,7 @@ export async function executeWebhook(
 					didSendResponse = true;
 				})
 				.catch(async (error) => {
+					ErrorReporter.error(error);
 					Logger.error(
 						`Error with Webhook-Response for execution "${executionId}": "${error.message}"`,
 						{ executionId, workflowId: workflow.id },

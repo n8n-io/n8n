@@ -40,7 +40,6 @@ import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
 import type { TagEntity } from './databases/entities/TagEntity';
 import type { User } from './databases/entities/User';
 import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { CredentialUsage } from './databases/entities/CredentialUsage';
 import { WorkflowStatistics } from './databases/entities/WorkflowStatistics';
 
 export interface IActivationError {
@@ -85,7 +84,6 @@ export interface IDatabaseCollections {
 	Settings: Repository<Settings>;
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
-	CredentialUsage: Repository<CredentialUsage>;
 	WorkflowStatistics: Repository<WorkflowStatistics>;
 }
 
@@ -487,6 +485,7 @@ export interface IN8nUISettings {
 	saveManualExecutions: boolean;
 	executionTimeout: number;
 	maxExecutionTimeout: number;
+	workflowCallerPolicyDefaultOption: 'any' | 'none' | 'workflowsFromAList';
 	oauthCallbackUrls: {
 		oauth1: string;
 		oauth2: string;

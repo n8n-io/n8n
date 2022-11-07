@@ -28,6 +28,7 @@ export class NextCloudApi implements ICredentialType {
 			displayName: 'Password',
 			name: 'password',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

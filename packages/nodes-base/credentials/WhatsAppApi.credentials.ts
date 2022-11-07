@@ -16,6 +16,7 @@ export class WhatsAppApi implements ICredentialType {
 		{
 			displayName: 'Access Token',
 			type: 'string',
+			typeOptions: { password: true },
 			name: 'accessToken',
 			default: '',
 			required: true,

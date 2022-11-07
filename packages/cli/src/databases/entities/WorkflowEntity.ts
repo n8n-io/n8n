@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
+import crypto from 'crypto';
 import { Length } from 'class-validator';
 
-import {
+import type {
 	IBinaryKeyData,
 	IConnections,
 	IDataObject,
@@ -12,10 +11,10 @@ import {
 } from 'n8n-workflow';
 
 import {
-	BeforeUpdate,
+	AfterLoad,
+	AfterUpdate,
+	AfterInsert,
 	Column,
-	ColumnOptions,
-	CreateDateColumn,
 	Entity,
 	Index,
 	JoinColumn,
@@ -23,11 +22,12 @@ import {
 	ManyToMany,
 	OneToMany,
 	PrimaryGeneratedColumn,
-	UpdateDateColumn,
 } from 'typeorm';
 
 import * as config from '../../../config';
-import { DatabaseType, IWorkflowDb } from '../..';
+import type { DatabaseType, IWorkflowDb } from '../../Interfaces';
+import { alphabetizeKeys } from '../../utils';
+import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
 import { objectRetriever, sqlite } from '../utils/transformers';
@@ -65,7 +65,7 @@ function getTimestampSyntax() {
 }
 
 @Entity()
-export class WorkflowEntity implements IWorkflowDb {
+export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	@PrimaryGeneratedColumn()
 	id: number;
 
@@ -80,30 +80,20 @@ export class WorkflowEntity implements IWorkflowDb {
 	@Column()
 	active: boolean;
 
-	@Column(resolveDataType('json'))
+	@Column(jsonColumnType)
 	nodes: INode[];
 
-	@Column(resolveDataType('json'))
+	@Column(jsonColumnType)
 	connections: IConnections;
 
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
-	createdAt: Date;
-
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
-	})
-	updatedAt: Date;
-
 	@Column({
-		type: resolveDataType('json') as ColumnOptions['type'],
+		type: jsonColumnType,
 		nullable: true,
 	})
 	settings?: IWorkflowSettings;
 
 	@Column({
-		type: resolveDataType('json') as ColumnOptions['type'],
+		type: jsonColumnType,
 		nullable: true,
 		transformer: objectRetriever,
 	})
@@ -143,9 +133,28 @@ export class WorkflowEntity implements IWorkflowDb {
 	})
 	pinData: ISimplifiedPinData;
 
-	@BeforeUpdate()
-	setUpdateDate() {
-		this.updatedAt = new Date();
+	/**
+	 * Hash of editable workflow state.
+	 */
+	hash: string;
+
+	@AfterLoad()
+	@AfterUpdate()
+	@AfterInsert()
+	setHash(): void {
+		const { name, active, nodes, connections, settings, staticData, pinData } = this;
+
+		const state = JSON.stringify({
+			name,
+			active,
+			nodes: nodes ? nodes.map(alphabetizeKeys) : [],
+			connections,
+			settings,
+			staticData,
+			pinData,
+		});
+
+		this.hash = crypto.createHash('md5').update(state).digest('hex');
 	}
 }
 

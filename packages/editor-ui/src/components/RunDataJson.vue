@@ -62,10 +62,12 @@ import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from "n8n-workflow";
 import Draggable from '@/components/Draggable.vue';
-import { convertPath, executionDataToJson, isString, isStringNumber } from "@/components/helpers";
+import { convertPath, executionDataToJson, isString } from "@/components/helpers";
 import { INodeUi } from "@/Interface";
 import { shorten } from './helpers';
 import { externalHooks } from "@/components/mixins/externalHooks";
+import { mapStores } from "pinia";
+import { useNDVStore } from "@/stores/ndv";
 
 const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
 
@@ -137,8 +139,11 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+		),
 		jsonData(): IDataObject[] {
-			return executionDataToJson(this.inputData as INodeExecutionData[]);
+			return executionDataToJson(this.inputData);
 		},
 		showHint(): boolean {
 			return (
@@ -165,13 +170,13 @@ export default mixins(externalHooks).extend({
 				this.draggingPath = el.dataset.path;
 			}
 
-			this.$store.commit('ui/resetMappingTelemetry');
+			this.ndvStore.resetMappingTelemetry();
 		},
 		onDragEnd(el: HTMLElement) {
 			this.draggingPath = null;
 
 			setTimeout(() => {
-				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
+				const mappingTelemetry = this.ndvStore.mappingTelemetry;
 				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: el.dataset.name || '',
@@ -190,8 +195,8 @@ export default mixins(externalHooks).extend({
 				this.$telemetry.track('User dragged data for mapping', telemetryPayload);
 			}, 1000); // ensure dest data gets set if drop
 		},
-		getContent(value: string): string {
-			return isString(value) && !isStringNumber(value) ? `"${ value }"` : value;
+		getContent(value: unknown): string {
+			return isString(value) ? `"${ value }"` : JSON.stringify(value);
 		},
 	},
 });
@@ -271,13 +276,19 @@ export default mixins(externalHooks).extend({
 	}
 }
 
-.vjs-key {
+.vjs-key,
+.vjs-value {
 	> span {
 		color: var(--color-text-dark);
 		line-height: 1.7;
 		border-radius: var(--border-radius-base);
+	}
+}
+
+.vjs-value {
+	> span {
 		padding: 0 var(--spacing-5xs) 0 var(--spacing-5xs);
-		margin-right: var(--spacing-5xs);
+		margin-left: var(--spacing-5xs);
 	}
 }
 

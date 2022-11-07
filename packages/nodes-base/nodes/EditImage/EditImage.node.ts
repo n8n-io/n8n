@@ -1,5 +1,6 @@
 import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -1269,8 +1270,8 @@ export class EditImage implements INodeType {
 					Object.assign(newItem.binary, item.binary);
 					// Make a deep copy of the binary data we change
 					if (newItem.binary![dataPropertyName as string]) {
-						newItem.binary![dataPropertyName as string] = JSON.parse(
-							JSON.stringify(newItem.binary![dataPropertyName as string]),
+						newItem.binary![dataPropertyName as string] = deepCopy(
+							newItem.binary![dataPropertyName as string],
 						);
 					}
 				}

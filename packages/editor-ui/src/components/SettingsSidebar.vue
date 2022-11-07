@@ -12,7 +12,7 @@
 			<template #menuSuffix>
 				<div :class="$style.versionContainer">
 					<n8n-link @click="onVersionClick" size="small">
-						{{ $locale.baseText('settings.version') }} {{ versionCli }}
+						{{ $locale.baseText('settings.version') }} {{ rootStore.versionCli }}
 					</n8n-link>
 				</div>
 			</template>
@@ -27,22 +27,26 @@ import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { pushConnection } from "@/components/mixins/pushConnection";
 import { IFakeDoor } from '@/Interface';
-import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import { IMenuItem } from 'n8n-design-system';
 import { BaseTextKey } from '@/plugins/i18n';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(
 	userHelpers,
 	pushConnection,
 ).extend({
 	name: 'SettingsSidebar',
-	components: {
-		GiftNotificationIcon,
-	},
 	computed: {
-		...mapGetters('settings', ['versionCli']),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+		),
 		settingsFakeDoorFeatures(): IFakeDoor[] {
-			return this.$store.getters['ui/getFakeDoorByLocation']('settings');
+			return this.uiStore.getFakeDoorByLocation('settings');
 		},
 		sidebarMenuItems(): IMenuItem[] {
 
@@ -117,13 +121,13 @@ export default mixins(
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
 		onVersionClick() {
-			this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
+			this.uiStore.openModal(ABOUT_MODAL_KEY);
 		},
 		onReturn() {
 			this.$router.push({name: VIEWS.HOMEPAGE});
 		},
 		openUpdatesPanel() {
-			this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
+			this.uiStore.openModal(VERSIONS_MODAL_KEY);
 		},
 		async handleSelect (key: string) {
 			switch (key) {

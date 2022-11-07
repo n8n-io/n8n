@@ -56,3 +56,9 @@ export const isEmpty = (value?: unknown): boolean => {
 	}
 	return false;
 };
+
+export const intersection = <T>(...arrays: T[][]): T[] => {
+	const [a, b, ...rest] = arrays;
+	const ab = a.filter(v => b.includes(v));
+	return [...new Set(rest.length ? intersection(ab, ...rest) : ab)];
+};

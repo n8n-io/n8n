@@ -32,7 +32,9 @@ import {
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
+	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
+	SubworkflowOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -67,6 +69,7 @@ import {
 } from './UserManagement/UserManagementHelper';
 import { whereClause } from './WorkflowHelpers';
 import { IWorkflowErrorData } from './Interfaces';
+import { findSubworkflowStart } from './utils';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -160,7 +163,8 @@ export function executeErrorWorkflow(
 						user,
 					);
 				})
-				.catch((error) => {
+				.catch((error: Error) => {
+					ErrorReporter.error(error);
 					Logger.error(
 						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
 						{
@@ -217,8 +221,9 @@ function pruneExecutionData(this: WorkflowHooks): void {
 				}, timeout * 1000),
 			)
 			.catch((error) => {
-				throttling = false;
+				ErrorReporter.error(error);
 
+				throttling = false;
 				Logger.error(
 					`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
 					{
@@ -449,6 +454,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						flattenedExecutionData as IExecutionFlattedDb,
 					);
 				} catch (err) {
+					ErrorReporter.error(err);
 					// TODO: Improve in the future!
 					// Errors here might happen because of database access
 					// For busy machines, we may get "Database is locked" errors.
@@ -509,6 +515,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
+							ErrorReporter.error(e);
 							Logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave)`,
 								{ executionId: this.executionId, workflowId: this.workflowData.id },
@@ -627,6 +634,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						);
 					}
 				} catch (error) {
+					ErrorReporter.error(error);
 					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
 						executionId: this.executionId,
 						workflowId: this.workflowData.id,
@@ -685,6 +693,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
+							ErrorReporter.error(e);
 							Logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
 								{ sessionId: this.sessionId, workflowId: this.workflowData.id },
@@ -767,24 +776,39 @@ export async function getRunData(
 	workflowData: IWorkflowBase,
 	userId: string,
 	inputData?: INodeExecutionData[],
+	parentWorkflowId?: string,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
-	// Find Start-Node
-	const requiredNodeTypes = ['n8n-nodes-base.start'];
-	let startNode: INode | undefined;
-	// eslint-disable-next-line no-restricted-syntax
-	for (const node of workflowData.nodes) {
-		if (requiredNodeTypes.includes(node.type)) {
-			startNode = node;
-			break;
+	const policy =
+		workflowData.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
+
+	if (policy === 'none') {
+		throw new SubworkflowOperationError(
+			`Target workflow ID ${workflowData.id} may not be called by other workflows.`,
+			'Please update the settings of the target workflow or ask its owner to do so.',
+		);
+	}
+
+	if (
+		policy === 'workflowsFromAList' &&
+		typeof workflowData.settings?.callerIds === 'string' &&
+		parentWorkflowId !== undefined
+	) {
+		const allowedCallerIds = workflowData.settings.callerIds
+			.split(',')
+			.map((id) => id.trim())
+			.filter((id) => id !== '');
+
+		if (!allowedCallerIds.includes(parentWorkflowId)) {
+			throw new SubworkflowOperationError(
+				`Target workflow ID ${workflowData.id} may only be called by a list of workflows, which does not include current workflow ID ${parentWorkflowId}.`,
+				'Please update the settings of the target workflow or ask its owner to do so.',
+			);
 		}
 	}
-	if (startNode === undefined) {
-		// If the workflow does not contain a start-node we can not know what
-		// should be executed and with what data to start.
-		throw new Error(`The workflow does not contain a "Start" node and can so not be executed.`);
-	}
+
+	const startingNode = findSubworkflowStart(workflowData.nodes);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [
@@ -796,7 +820,7 @@ export async function getRunData(
 	// Initialize the incoming data
 	const nodeExecutionStack: IExecuteData[] = [];
 	nodeExecutionStack.push({
-		node: startNode,
+		node: startingNode,
 		data: {
 			main: [inputData],
 		},
