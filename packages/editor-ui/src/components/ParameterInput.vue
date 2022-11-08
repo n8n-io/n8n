@@ -483,16 +483,16 @@ export default mixins(
 			),
 			...mapGetters('credentials', ['allCredentialTypes']),
 			expressionDisplayValue(): string {
-				if (this.activeDrop || this.forceShowExpression) {
-					return '';
-				}
-
 				const value = isResourceLocatorValue(this.value) ? this.value.value : this.value;
 				if (typeof value === 'string' && value.startsWith('=')) {
 					return value.slice(1);
 				}
 
-				return '';
+				if (this.displayValue === null) {
+					return '';
+				}
+
+				return this.displayValue + '';
 			},
 			isValueExpression(): boolean {
 				return isValueExpression(this.parameter, this.value);
