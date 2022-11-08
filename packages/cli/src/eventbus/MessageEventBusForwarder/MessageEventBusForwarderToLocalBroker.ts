@@ -5,12 +5,23 @@ import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessageSubscriptionSet } from '../EventMessage/EventMessageSubscriptionSet';
 import { MessageEventSubscriptionReceiverInterface } from '../MessageEventSubscriptionReceiver/MessageEventSubscriptionReceiverInterface';
 
+interface MessageEventBusForwarderToLocalBrokerOptions {
+	name?: string;
+}
+
 export class MessageEventBusForwarderToLocalBroker implements MessageEventBusForwarder {
 	#localBroker: LocalEventBroker;
 
-	constructor() {
+	#name: string;
+
+	constructor(options?: MessageEventBusForwarderToLocalBrokerOptions) {
 		this.#localBroker = new LocalEventBroker();
+		this.#name = options?.name ?? 'LocalBrokerForwarder';
 		console.debug(`MessageForwarderToLocalBroker Broker initialized`);
+	}
+
+	getName(): string {
+		return this.#name;
 	}
 
 	async forward(msg: EventMessage): Promise<boolean> {

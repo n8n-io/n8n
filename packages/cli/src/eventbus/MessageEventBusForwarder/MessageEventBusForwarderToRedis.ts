@@ -10,6 +10,7 @@ import { RedisEventSubscriptionReceiver } from '../MessageEventSubscriptionRecei
 interface MessageEventBusForwarderToRedisOptions {
 	channelName: string;
 	redisOptions?: RedisOptions;
+	name?: string;
 }
 
 export class MessageEventBusForwarderToRedis implements MessageEventBusForwarder {
@@ -19,6 +20,8 @@ export class MessageEventBusForwarderToRedis implements MessageEventBusForwarder
 
 	#receivers: RedisEventSubscriptionReceiver[] = [];
 
+	#name: string;
+
 	constructor(options: MessageEventBusForwarderToRedisOptions) {
 		options.redisOptions = options?.redisOptions ?? {
 			port: 6379, // Redis port
@@ -26,6 +29,7 @@ export class MessageEventBusForwarderToRedis implements MessageEventBusForwarder
 			db: 0, // Defaults to 0
 		};
 		this.#channelName = options.channelName;
+		this.#name = options.name ?? 'RedisForwarder';
 		this.#client = new Redis(options.redisOptions);
 		this.#client
 			?.monitor((error, monitor) => {
@@ -35,6 +39,10 @@ export class MessageEventBusForwarderToRedis implements MessageEventBusForwarder
 			})
 			.catch((error) => console.log(error));
 		console.debug(`MessageForwarderToRedis Broker initialized`);
+	}
+
+	getName(): string {
+		return this.#name;
 	}
 
 	async forward(msg: EventMessage): Promise<boolean> {

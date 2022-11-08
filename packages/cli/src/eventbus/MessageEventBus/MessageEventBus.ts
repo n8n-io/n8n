@@ -3,6 +3,7 @@ import { MessageEventBusWriter } from '../MessageEventBusWriter/MessageEventBusW
 import { MessageEventBusForwarder } from '../MessageEventBusForwarder/MessageEventBusForwarder';
 import unionBy from 'lodash.unionby';
 import iteratee from 'lodash.iteratee';
+import remove from 'lodash.remove';
 
 interface MessageEventBusInitializationOptions {
 	forwarders: MessageEventBusForwarder[];
@@ -50,6 +51,18 @@ class MessageEventBus {
 		}, 5000);
 
 		console.debug('MessageEventBus initialized');
+	}
+
+	addForwarder(forwarder: MessageEventBusForwarder) {
+		this.#forwarders.push(forwarder);
+	}
+
+	removeForwarder(name: string) {
+		const removedForwarder = remove(this.#forwarders, (e) => e.getName() === name);
+		removedForwarder.map((e) => {
+			e.close();
+		});
+		removedForwarder.fill(undefined);
 	}
 
 	async trySendingUnsent() {
