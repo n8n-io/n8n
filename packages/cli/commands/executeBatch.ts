@@ -11,8 +11,7 @@ import { Command, flags } from '@oclif/command';
 
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { INode, ITaskData, LoggerProxy } from 'n8n-workflow';
+import { ITaskData, LoggerProxy, sleep } from 'n8n-workflow';
 
 import { sep } from 'path';
 
@@ -147,9 +146,7 @@ export class ExecuteBatch extends Command {
 				});
 			}
 			// eslint-disable-next-line no-await-in-loop
-			await new Promise((resolve) => {
-				setTimeout(resolve, 500);
-			});
+			await sleep(500);
 			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 		}
 		// We may receive true but when called from `process.on`
@@ -192,8 +189,8 @@ export class ExecuteBatch extends Command {
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
-		process.on('SIGTERM', ExecuteBatch.stopProcess);
-		process.on('SIGINT', ExecuteBatch.stopProcess);
+		process.once('SIGTERM', ExecuteBatch.stopProcess);
+		process.once('SIGINT', ExecuteBatch.stopProcess);
 
 		const logger = getLogger();
 		LoggerProxy.init(logger);
