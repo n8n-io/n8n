@@ -9,6 +9,7 @@ export class FreshserviceApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			placeholder: 'atuH3AbeH9HsKvgHuxg',
 		},

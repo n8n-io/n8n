@@ -250,6 +250,7 @@ export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_FLAG = 'N8N_MAPPING_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
+export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -412,3 +413,15 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	'imap': 'IMAP',
 	'imaps': 'IMAP',
 };
+
+export enum STORES {
+	COMMUNITY_NODES = 'communityNodes',
+	ROOT = 'root',
+	SETTINGS = 'settings',
+	UI = 'ui',
+	USERS = 'users',
+	WORKFLOWS = 'workflows',
+	NDV = 'ndv',
+	TEMPLATES = 'templates',
+	NODE_TYPES = 'nodeTypes',
+}

@@ -35,10 +35,10 @@
 
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowActivate } from '@/components/mixins/workflowActivate';
-
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from "vuex";
-
 import { getActivatableTriggerNodes } from './helpers';
 
 export default mixins(
@@ -53,14 +53,18 @@ export default mixins(
 				'workflowId',
 			],
 			computed: {
-				...mapGetters({
-					dirtyState: "getStateIsDirty",
-				}),
+				...mapStores(
+					useUIStore,
+					useWorkflowsStore,
+				),
+				getStateIsDirty (): boolean {
+					return this.uiStore.stateIsDirty;
+				},
 				nodesIssuesExist (): boolean {
-					return this.$store.getters.nodesIssuesExist;
+					return this.workflowsStore.nodesIssuesExist;
 				},
 				isWorkflowActive (): boolean {
-					const activeWorkflows = this.$store.getters.getActiveWorkflows;
+					const activeWorkflows =  this.workflowsStore.activeWorkflows;
 					return activeWorkflows.includes(this.workflowId);
 				},
 				couldNotBeStarted (): boolean {
@@ -73,7 +77,7 @@ export default mixins(
 					return '#13ce66';
 				},
 				isCurrentWorkflow(): boolean {
-					return this.$store.getters['workflowId'] === this.workflowId;
+					return this.workflowsStore.workflowId === this.workflowId;
 				},
 				disabled(): boolean {
 					const isNewWorkflow = !this.workflowId;
@@ -84,7 +88,7 @@ export default mixins(
 					return false;
 				},
 				containsTrigger(): boolean {
-					const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
+					const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
 					return foundTriggers.length > 0;
 				},
 			},

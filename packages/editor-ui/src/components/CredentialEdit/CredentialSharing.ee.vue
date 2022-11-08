@@ -15,7 +15,7 @@
 			v-if="credentialPermissions.updateSharing"
 			size="large"
 			:users="usersList"
-			:currentUserId="currentUser.id"
+			:currentUserId="usersStore.currentUser.id"
 			:placeholder="$locale.baseText('credentialEdit.credentialSharing.select.placeholder')"
 			@input="onAddSharee"
 		>
@@ -25,7 +25,7 @@
 		</n8n-user-select>
 		<n8n-users-list
 			:users="sharedWithList"
-			:currentUserId="currentUser.id"
+			:currentUserId="usersStore.currentUser.id"
 			:delete-label="$locale.baseText('credentialEdit.credentialSharing.list.delete')"
 			:readonly="!credentialPermissions.updateSharing"
 			@delete="onRemoveSharee"
@@ -37,6 +37,8 @@
 import {IUser} from "@/Interface";
 import mixins from "vue-typed-mixins";
 import {showMessage} from "@/components/mixins/showMessage";
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(
 	showMessage,
@@ -44,15 +46,10 @@ export default mixins(
 	name: 'CredentialSharing',
 	props: ['credential', 'credentialId', 'credentialData', 'sharedWith', 'credentialPermissions'],
 	computed: {
-		allUsers(): IUser[] {
-			return this.$store.getters['users/allUsers'];
-		},
-		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
+		...mapStores(useUsersStore),
 		usersList(): IUser[] {
-			return this.allUsers.filter((user: IUser) => {
-				const isCurrentUser = user.id === this.currentUser.id;
+			return this.usersStore.allUsers.filter((user: IUser) => {
+				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
 				const isAlreadySharedWithUser = (this.credentialData.sharedWith || []).find((sharee: IUser) => sharee.id === user.id);
 
 				return !isCurrentUser && !isAlreadySharedWithUser;
@@ -61,7 +58,7 @@ export default mixins(
 		sharedWithList(): IUser[] {
 			return [
 				{
-					...(this.credential ? this.credential.ownedBy : this.currentUser),
+					...(this.credential ? this.credential.ownedBy : this.usersStore.currentUser),
 					isOwner: true,
 				},
 			].concat(this.credentialData.sharedWith || []);
@@ -72,30 +69,30 @@ export default mixins(
 	},
 	methods: {
 		async onAddSharee(userId: string) {
-			const { id, firstName, lastName, email } = this.$store.getters['users/getUserById'](userId);
-			const sharee = { id, firstName, lastName, email };
-
+			const sharee =  this.usersStore.getUserById(userId);
 			this.$emit('change', (this.credentialData.sharedWith || []).concat(sharee));
 		},
 		async onRemoveSharee(userId: string) {
-			const user = this.$store.getters['users/getUserById'](userId);
+			const user = this.usersStore.getUserById(userId);
 
-			const confirm = await this.confirmMessage(
-				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.message', { interpolate: { name: user.fullName } }),
-				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.title'),
-				null,
-				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText'),
-				this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText'),
-			);
+			if (user) {
+				const confirm = await this.confirmMessage(
+					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.message', { interpolate: { name: user.fullName || '' } }),
+					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.title'),
+					null,
+					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.confirmButtonText'),
+					this.$locale.baseText('credentialEdit.credentialSharing.list.delete.confirm.cancelButtonText'),
+				);
 
-			if (confirm) {
-				this.$emit('change', this.credentialData.sharedWith.filter((sharee: IUser) => {
-					return sharee.id !== user.id;
-				}));
+				if (confirm) {
+					this.$emit('change', this.credentialData.sharedWith.filter((sharee: IUser) => {
+						return sharee.id !== user.id;
+					}));
+				}
 			}
 		},
 		async loadUsers() {
-			await this.$store.dispatch('users/fetchUsers');
+			await this.usersStore.fetchUsers();
 		},
 	},
 	mounted() {

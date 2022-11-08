@@ -54,6 +54,8 @@ import Vue, { PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import { isValueExpression } from './helpers';
 import { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default Vue.extend({
 	name: 'parameter-input-expanded',
@@ -85,6 +87,9 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
 		showRequiredErrors(): boolean {
 			if (!this.$props.parameter.required) {
 				return false;
@@ -136,7 +141,7 @@ export default Vue.extend({
 			this.$telemetry.track('User clicked credential modal docs link', {
 				docs_link: this.documentationUrl,
 				source: 'field',
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
 	},

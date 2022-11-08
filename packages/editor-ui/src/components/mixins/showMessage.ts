@@ -7,10 +7,17 @@ import { IRunExecutionData } from 'n8n-workflow';
 import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import type { ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 let stickyNotificationQueue: ElNotificationComponent[] = [];
 
 export const showMessage = mixins(externalHooks).extend({
+	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
+	},
 	methods: {
 		$showMessage(
 			messageData: Omit<ElNotificationOptions, 'message'> & { message?: string },
@@ -34,7 +41,7 @@ export const showMessage = mixins(externalHooks).extend({
 					error_title: messageData.title,
 					error_message: messageData.message,
 					caused_by_credential: this.causedByCredential(messageData.message),
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 				});
 			}
 
@@ -134,7 +141,7 @@ export const showMessage = mixins(externalHooks).extend({
 				error_description: message,
 				error_message: error.message,
 				caused_by_credential: this.causedByCredential(error.message),
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
 

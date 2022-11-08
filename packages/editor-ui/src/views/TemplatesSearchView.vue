@@ -20,7 +20,7 @@
 			<div :class="$style.contentWrapper">
 				<div :class="$style.filters">
 					<TemplateFilters
-						:categories="allCategories"
+						:categories="templatesStore.allCategories"
 						:sortOnPopulate="areCategoriesPrepopulated"
 						:loading="loadingCategories"
 						:selected="categories"
@@ -81,18 +81,22 @@ import TemplatesView from './TemplatesView.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery, ITemplatesCategory } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
 import { IDataObject } from 'n8n-workflow';
 import { setPageTitle } from '@/components/helpers';
 import { VIEWS } from '@/constants';
 import { debounceHelper } from '@/components/mixins/debounce';
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { useTemplatesStore } from '@/stores/templates';
+import { useUIStore } from '@/stores/ui';
 
 interface ISearchEvent {
 	search_string: string;
 	workflow_results_count: number;
 	collection_results_count: number;
 	categories_applied: ITemplatesCategory[];
-	wf_template_repo_session_id: number;
+	wf_template_repo_session_id: string;
 }
 
 export default mixins(genericHelpers, debounceHelper).extend({
@@ -103,11 +107,34 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		TemplateList,
 		TemplatesView,
 	},
+	data() {
+		return {
+			areCategoriesPrepopulated: false,
+			categories: [] as number[],
+			loading: true,
+			loadingCategories: true,
+			loadingCollections: true,
+			loadingWorkflows: true,
+			search: '',
+			searchEventToTrack: null as null | ISearchEvent,
+			errorLoadingWorkflows: false,
+		};
+	},
 	computed: {
-		...mapGetters('templates', ['allCategories', 'getSearchedWorkflowsTotal', 'getSearchedWorkflows', 'getSearchedCollections']),
-		...mapGetters('settings', ['isTemplatesEndpointReachable']),
+		...mapStores(
+			useSettingsStore,
+			useTemplatesStore,
+			useUIStore,
+			useUsersStore,
+		),
+		totalWorkflows(): number {
+			return this.templatesStore.getSearchedWorkflowsTotal(this.query);
+		},
+		workflows(): ITemplatesWorkflow[] {
+			return this.templatesStore.getSearchedWorkflows(this.query) || [];
+		},
 		collections(): ITemplatesCollection[] {
-			return this.getSearchedCollections(this.query) || [];
+			return this.templatesStore.getSearchedCollections(this.query) || [];
 		},
 		endOfSearchMessage(): string | null {
 			if (this.loadingWorkflows) {
@@ -117,7 +144,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				return this.$locale.baseText('templates.endResult');
 			}
 			if (!this.loadingCollections && this.workflows.length === 0 && this.collections.length === 0) {
-				if (!this.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
+				if (!this.settingsStore.isTemplatesEndpointReachable && this.errorLoadingWorkflows) {
 					return this.$locale.baseText('templates.connectionWarning');
 				}
 				return this.$locale.baseText('templates.noSearchResults');
@@ -139,25 +166,6 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				this.collections.length === 0
 			);
 		},
-		totalWorkflows(): number {
-			return this.getSearchedWorkflowsTotal(this.query);
-		},
-		workflows(): ITemplatesWorkflow[] {
-			return this.getSearchedWorkflows(this.query) || [];
-		},
-	},
-	data() {
-		return {
-			areCategoriesPrepopulated: false,
-			categories: [] as number[],
-			loading: true,
-			loadingCategories: true,
-			loadingCollections: true,
-			loadingWorkflows: true,
-			search: '',
-			searchEventToTrack: null as null | ISearchEvent,
-			errorLoadingWorkflows: false,
-		};
 	},
 	methods: {
 		onOpenCollection({event, id}: {event: MouseEvent, id: string}) {
@@ -189,12 +197,12 @@ export default mixins(genericHelpers, debounceHelper).extend({
 
 			this.searchEventToTrack = {
 				search_string: search,
-				workflow_results_count: this.getSearchedWorkflowsTotal({search, categories}),
-				collection_results_count: this.getSearchedCollections({search, categories}).length,
+				workflow_results_count: this.workflows.length,
+				collection_results_count: this.collections.length,
 				categories_applied: categories.map((categoryId) =>
-					this.$store.getters['templates/getCategoryById'](categoryId),
+					this.templatesStore.getCategoryById(categoryId.toString()),
 				) as ITemplatesCategory[],
-				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+				wf_template_repo_session_id: this.templatesStore.currentSessionId,
 			};
 		},
 		trackSearch() {
@@ -204,7 +212,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 			}
 		},
 		openNewWorkflow() {
-			this.$store.commit('ui/setNodeViewInitialized', false);
+			this.uiStore.nodeViewInitialized = false;
 			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 		},
 		onSearchInput(search: string) {
@@ -236,9 +244,9 @@ export default mixins(genericHelpers, debounceHelper).extend({
 				this.$telemetry.track('User changed template filters', {
 					search_string: this.search,
 					categories_applied: this.categories.map((categoryId: number) =>
-						this.$store.getters['templates/getCategoryById'](categoryId),
+						this.templatesStore.getCollectionById(categoryId.toString()),
 					),
-					wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+					wf_template_repo_session_id: this.templatesStore.currentSessionId,
 				});
 			}
 		},
@@ -265,7 +273,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 			}
 			try {
 				this.loadingWorkflows = true;
-				await this.$store.dispatch('templates/getMoreWorkflows', {
+				await this.templatesStore.getMoreWorkflows({
 					categories: this.categories,
 					search: this.search,
 				});
@@ -281,16 +289,14 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		},
 		async loadCategories() {
 			try {
-				await this.$store.dispatch('templates/getCategories');
-			} catch (e) {
-			}
-
+				await this.templatesStore.getCategories();
+			} catch (e) { }
 			this.loadingCategories = false;
 		},
 		async loadCollections() {
 			try {
 				this.loadingCollections = true;
-				await this.$store.dispatch('templates/getCollections', {
+				await this.templatesStore.getCollections({
 					categories: this.categories,
 					search: this.search,
 				});
@@ -302,7 +308,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		async loadWorkflows() {
 			try {
 				this.loadingWorkflows = true;
-				await this.$store.dispatch('templates/getWorkflows', {
+				await this.templatesStore.getWorkflows({
 					search: this.search,
 					categories: this.categories,
 				});
@@ -356,7 +362,7 @@ export default mixins(genericHelpers, debounceHelper).extend({
 		setPageTitle('n8n - Templates');
 		this.loadCategories();
 		this.loadWorkflowsAndCollections(true);
-		this.$store.dispatch('users/showPersonalizationSurvey');
+		this.usersStore.showPersonalizationSurvey();
 
 		setTimeout(() => {
 			// Check if there is scroll position saved in route and scroll to it
