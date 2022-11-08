@@ -12,7 +12,7 @@ import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis from 'ioredis';
 
-import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
 import { createHash } from 'crypto';
 import config from '../config';
 import {
@@ -34,6 +34,8 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
+import { initErrorHandling } from '../src/ErrorReporting';
+import * as CrashJournal from '../src/CrashJournal';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -83,13 +85,19 @@ export class Start extends Command {
 	}
 
 	/**
-	 * Stoppes the n8n in a graceful way.
+	 * Stop n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
 		getLogger().info('\nStopping n8n...');
+
+		const exit = () => {
+			CrashJournal.cleanup().finally(() => {
+				process.exit(processExitCode);
+			});
+		};
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
@@ -102,7 +110,7 @@ export class Start extends Command {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
 				console.log(`process exited after 30s`);
-				process.exit(processExitCode);
+				exit();
 			}, 30000);
 
 			await InternalHooksManager.getInstance().onN8nStop();
@@ -136,22 +144,27 @@ export class Start extends Command {
 					});
 				}
 				// eslint-disable-next-line no-await-in-loop
-				await new Promise((resolve) => {
-					setTimeout(resolve, 500);
-				});
+				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 		} catch (error) {
 			console.error('There was an error shutting down n8n.', error);
 		}
 
-		process.exit(processExitCode);
+		exit();
 	}
 
 	async run() {
 		// Make sure that n8n shuts down gracefully if possible
-		process.on('SIGTERM', Start.stopProcess);
-		process.on('SIGINT', Start.stopProcess);
+		process.once('SIGTERM', Start.stopProcess);
+		process.once('SIGINT', Start.stopProcess);
+
+		const logger = getLogger();
+		LoggerProxy.init(logger);
+		logger.info('Initializing n8n process');
+
+		initErrorHandling();
+		await CrashJournal.init();
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
@@ -159,10 +172,6 @@ export class Start extends Command {
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
 			try {
-				const logger = getLogger();
-				LoggerProxy.init(logger);
-				logger.info('Initializing n8n process');
-
 				// Start directly with the init of the database to improve startup time
 				const startDbInitPromise = Db.init().catch((error: Error) => {
 					logger.error(`There was an error initializing DB: "${error.message}"`);

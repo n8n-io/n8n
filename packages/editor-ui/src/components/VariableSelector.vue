@@ -40,6 +40,10 @@ import {
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useNDVStore } from '@/stores/ndv';
 
 // Node types that should not be displayed in variable selector
 const SKIPPED_NODE_TYPES = [
@@ -64,6 +68,11 @@ export default mixins(
 			};
 		},
 		computed: {
+			...mapStores(
+				useNDVStore,
+				useRootStore,
+				useWorkflowsStore,
+			),
 			extendAll (): boolean {
 				if (this.variableFilter) {
 					return true;
@@ -406,7 +415,7 @@ export default mixins(
 				const runIndex = 0;
 				const returnData: IVariableSelectorOption[] = [];
 
-				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
+				const activeNode: INodeUi | null = this.ndvStore.activeNode;
 
 				if (activeNode === null) {
 					return returnData;
@@ -431,7 +440,7 @@ export default mixins(
 					$resumeWebhookUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 				};
 
-				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', this.$store.getters.timezone, additionalKeys);
+				const dataProxy = new WorkflowDataProxy(workflow, runExecutionData, runIndex, itemIndex, nodeName, connectionInputData, {}, 'manual', this.rootStore.timezone, additionalKeys);
 				const proxy = dataProxy.getDataProxy();
 
 				// @ts-ignore
@@ -486,15 +495,15 @@ export default mixins(
 			getFilterResults (filterText: string, itemIndex: number): IVariableSelectorOption[] {
 				const inputName = 'main';
 
-				const activeNode: INodeUi | null = this.$store.getters['ndv/activeNode'];
+				const activeNode: INodeUi | null = this.ndvStore.activeNode;
 
 				if (activeNode === null) {
 					return [];
 				}
 
-				const executionData = this.$store.getters.getWorkflowExecution as IExecutionResponse | null;
+				const executionData = this.workflowsStore.getWorkflowExecution;
 				let parentNode = this.workflow.getParentNodes(activeNode.name, inputName, 1);
-				let runData = this.$store.getters.getWorkflowRunData as IRunData | null;
+				let runData = this.workflowsStore.getWorkflowRunData;
 
 				if (runData === null) {
 					runData = {};
@@ -543,7 +552,7 @@ export default mixins(
 						},
 					];
 					parentNode.forEach((parentNodeName) => {
-						const pinData = this.$store.getters['pinDataByNodeName'](parentNodeName);
+						const pinData = this.workflowsStore.pinDataByNodeName(parentNodeName);
 
 						if (pinData) {
 							const output = this.getNodePinDataOutput(parentNodeName, pinData, filterText, true);
@@ -677,7 +686,7 @@ export default mixins(
 
 					if (upstreamNodes.includes(nodeName)) {
 						// If the node is an upstream node add also the output data which can be referenced
-						const pinData = this.$store.getters['pinDataByNodeName'](nodeName);
+						const pinData = this.workflowsStore.pinDataByNodeName(nodeName);
 						tempOutputData = pinData
 							? this.getNodePinDataOutput(nodeName, pinData, filterText)
 							: this.getNodeRunDataOutput(nodeName, runData, filterText, itemIndex);

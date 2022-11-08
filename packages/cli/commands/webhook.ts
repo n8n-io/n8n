@@ -9,7 +9,7 @@ import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis from 'ioredis';
 
-import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
 import config from '../config';
 import {
 	ActiveExecutions,
@@ -26,9 +26,11 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { initErrorHandling } from '../src/ErrorReporting';
+import * as CrashJournal from '../src/CrashJournal';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
-let processExistCode = 0;
+let processExitCode = 0;
 
 export class Webhook extends Command {
 	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
@@ -40,13 +42,19 @@ export class Webhook extends Command {
 	};
 
 	/**
-	 * Stops the n8n in a graceful way.
+	 * Stops n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	static async stopProcess() {
 		LoggerProxy.info(`\nStopping n8n...`);
+
+		const exit = () => {
+			CrashJournal.cleanup().finally(() => {
+				process.exit(processExitCode);
+			});
+		};
 
 		try {
 			const externalHooks = ExternalHooks();
@@ -55,7 +63,7 @@ export class Webhook extends Command {
 			setTimeout(() => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				process.exit(processExistCode);
+				exit();
 			}, 30000);
 
 			// Wait for active workflow executions to finish
@@ -70,16 +78,14 @@ export class Webhook extends Command {
 					);
 				}
 				// eslint-disable-next-line no-await-in-loop
-				await new Promise((resolve) => {
-					setTimeout(resolve, 500);
-				});
+				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 		} catch (error) {
 			LoggerProxy.error('There was an error shutting down n8n.', error);
 		}
 
-		process.exit(processExistCode);
+		exit();
 	}
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
@@ -88,8 +94,11 @@ export class Webhook extends Command {
 		LoggerProxy.init(logger);
 
 		// Make sure that n8n shuts down gracefully if possible
-		process.on('SIGTERM', Webhook.stopProcess);
-		process.on('SIGINT', Webhook.stopProcess);
+		process.once('SIGTERM', Webhook.stopProcess);
+		process.once('SIGINT', Webhook.stopProcess);
+
+		initErrorHandling();
+		await CrashJournal.init();
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-shadow
 		const { flags } = this.parse(Webhook);
@@ -118,7 +127,7 @@ export class Webhook extends Command {
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					logger.error(`There was an error initializing DB: "${error.message}"`);
 
-					processExistCode = 1;
+					processExitCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
 					process.exit(1);
@@ -230,7 +239,7 @@ export class Webhook extends Command {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				logger.error(`Webhook process cannot continue. "${error.message}"`);
 
-				processExistCode = 1;
+				processExitCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
 				process.exit(1);

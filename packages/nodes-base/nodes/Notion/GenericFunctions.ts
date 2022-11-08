@@ -9,8 +9,6 @@ import {
 
 import {
 	IBinaryKeyData,
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IDisplayOptions,
 	INodeExecutionData,

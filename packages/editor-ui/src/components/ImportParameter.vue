@@ -12,6 +12,8 @@
 
 <script lang="ts">
 import { IMPORT_CURL_MODAL_KEY } from '@/constants';
+import { useUIStore } from '@/stores/ui';
+import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
 
@@ -23,9 +25,12 @@ export default mixins(showMessage).extend({
 			default: false,
 		},
 	},
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		onImportCurlClicked() {
-			this.$store.dispatch('ui/openModal', IMPORT_CURL_MODAL_KEY);
+			this.uiStore.openModal(IMPORT_CURL_MODAL_KEY);
 		},
 	},
 });

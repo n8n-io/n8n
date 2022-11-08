@@ -15,7 +15,9 @@
 
 <script lang="ts">
 import { IVersionNode } from '@/Interface';
+import { useRootStore } from '@/stores/n8nRootStore';
 import { INodeTypeDescription } from 'n8n-workflow';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 interface NodeIconSource {
@@ -47,6 +49,9 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useRootStore,
+		),
 		type (): string {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
 			let iconType = 'unknown';
@@ -68,7 +73,7 @@ export default Vue.extend({
 		},
 		iconSource () : NodeIconSource {
 			const nodeType = this.nodeType as INodeTypeDescription | IVersionNode | null;
-			const restUrl = this.$store.getters.getRestUrl;
+			const restUrl = this.rootStore.getRestUrl;
 			const iconSource = {} as NodeIconSource;
 
 			if (nodeType) {

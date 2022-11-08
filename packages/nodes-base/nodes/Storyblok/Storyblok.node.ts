@@ -9,13 +9,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { storyblokApiRequest, storyblokApiRequestAllItems, validateJSON } from './GenericFunctions';
+import { storyblokApiRequest, storyblokApiRequestAllItems } from './GenericFunctions';
 
 import { storyContentFields, storyContentOperations } from './StoryContentDescription';
 
 import { storyManagementFields, storyManagementOperations } from './StoryManagementDescription';
-
-import { v4 as uuidv4 } from 'uuid';
 
 export class Storyblok implements INodeType {
 	description: INodeTypeDescription = {

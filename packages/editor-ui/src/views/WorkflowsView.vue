@@ -39,7 +39,7 @@
 			</div>
 		</template>
 		<template v-slot:filters="{ setKeyValue }">
-			<div class="mb-s" v-if="areTagsEnabled">
+			<div class="mb-s" v-if="settingsStore.areTagsEnabled">
 				<n8n-input-label
 					:label="$locale.baseText('workflows.filters.tags')"
 					:bold="false"
@@ -73,6 +73,11 @@ import {VIEWS} from '@/constants';
 import Vue from "vue";
 import {ITag, IUser, IWorkflowDb} from "@/Interface";
 import TagsDropdown from "@/components/TagsDropdown.vue";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -101,19 +106,22 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+		),
 		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
-		areTagsEnabled(): boolean {
-			return this.$store.getters['settings/areTagsEnabled'];
+			return this.usersStore.currentUser || {} as IUser;
 		},
 		allWorkflows(): IWorkflowDb[] {
-			return this.$store.getters['allWorkflows'];
+			return this.workflowsStore.allWorkflows;
 		},
 	},
 	methods: {
 		addWorkflow() {
-			this.$store.commit('ui/setNodeViewInitialized', false);
+			this.uiStore.nodeViewInitialized = false;
 			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 
 			this.$telemetry.track('User clicked add workflow button', {
@@ -124,11 +132,11 @@ export default mixins(
 			this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 		async initialize() {
-			this.$store.dispatch('users/fetchUsers'); // Can be loaded in the background, used for filtering
+			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 
 			return await Promise.all([
-				this.$store.dispatch('fetchAllWorkflows'),
-				this.$store.dispatch('fetchActiveWorkflows'),
+				this.workflowsStore.fetchAllWorkflows(),
+				this.workflowsStore.fetchActiveWorkflows(),
 			]);
 		},
 		onClickTag(tagId: string, event: PointerEvent) {
@@ -137,7 +145,7 @@ export default mixins(
 			}
 		},
 		onFilter(resource: IWorkflowDb, filters: { tags: string[]; search: string; }, matches: boolean): boolean {
-			if (this.areTagsEnabled && filters.tags.length > 0) {
+			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches = matches && filters.tags.every(
 					(tag) => (resource.tags as ITag[])?.find((resourceTag) => typeof resourceTag === 'object' ? `${resourceTag.id}` === `${tag}` : `${resourceTag}` === `${tag}`),
 				);
@@ -155,7 +163,7 @@ export default mixins(
 		},
 	},
 	mounted() {
-		this.$store.dispatch('users/showPersonalizationSurvey');
+		this.usersStore.showPersonalizationSurvey();
 	},
 });
 </script>

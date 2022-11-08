@@ -35,5 +35,8 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test E2E
+        run: pnpm test:e2e:ci:smoke
+
       - name: Lint
         run: pnpm lint
