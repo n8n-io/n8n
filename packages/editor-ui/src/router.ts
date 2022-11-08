@@ -426,6 +426,7 @@ const router = new Router({
 		{
 			path: '/settings',
 			component: SettingsView,
+			props: true,
 			children: [
 				{
 					path: 'personal',
@@ -534,10 +535,9 @@ const router = new Router({
 				{
 					path: 'coming-soon/:featureId',
 					name: VIEWS.FAKE_DOOR,
-					component: {
+					components: {
 						settingsView: SettingsFakeDoorView,
 					},
-					props: true,
 					meta: {
 						telemetry: {
 							pageCategory: 'settings',
