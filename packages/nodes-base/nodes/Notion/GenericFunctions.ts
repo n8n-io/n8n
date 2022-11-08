@@ -341,6 +341,12 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 				select: version === 1 ? { id: value.selectValue } : { name: value.selectValue },
 			};
 			break;
+		case 'status':
+			result = {
+				type: 'status',
+				status: { name: value.statusValue },
+			};
+			break;
 		case 'date':
 			const format = getDateFormat(value.includeTime);
 			const timezoneValue = value.timezone === 'default' ? timezone : value.timezone;

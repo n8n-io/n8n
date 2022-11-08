@@ -302,6 +302,22 @@ export const databasePageFields = [
 							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
+						displayName: 'Status Name or ID',
+						name: 'statusValue',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getPropertySelectValues',
+						},
+						displayOptions: {
+							show: {
+								type: ['status'],
+							},
+						},
+						default: '',
+						description:
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					},
+					{
 						displayName: 'Email',
 						name: 'emailValue',
 						type: 'string',
@@ -710,6 +726,22 @@ export const databasePageFields = [
 							},
 						},
 						default: '',
+					},
+					{
+						displayName: 'Status Name or ID',
+						name: 'statusValue',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getDatabaseOptionsFromPage',
+						},
+						displayOptions: {
+							show: {
+								type: ['status'],
+							},
+						},
+						default: '',
+						description:
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Email',

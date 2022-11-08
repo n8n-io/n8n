@@ -112,13 +112,13 @@ export class NotionV2 implements INodeType {
 				const operation = this.getCurrentNodeParameter('operation') as string;
 				const { properties } = await notionApiRequest.call(this, 'GET', `/databases/${databaseId}`);
 				if (resource === 'databasePage') {
-					if (['multi_select', 'select'].includes(type) && operation === 'getAll') {
+					if (['multi_select', 'select', 'status'].includes(type) && operation === 'getAll') {
 						return properties[name][type].options.map((option: IDataObject) => ({
 							name: option.name,
 							value: option.name,
 						}));
 					} else if (
-						['multi_select', 'select'].includes(type) &&
+						['multi_select', 'select', 'status'].includes(type) &&
 						['create', 'update'].includes(operation)
 					) {
 						return properties[name][type].options.map((option: IDataObject) => ({
