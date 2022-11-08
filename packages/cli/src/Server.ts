@@ -343,6 +343,7 @@ class App {
 				sharing: false,
 				workflowSharing: false,
 			},
+			startAtCanvas: config.getEnv('workflows.startAtCanvas'),
 		};
 	}
 
