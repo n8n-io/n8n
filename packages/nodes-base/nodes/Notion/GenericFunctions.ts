@@ -547,6 +547,8 @@ function simplifyProperty(property: any) {
 			// tslint:disable-next-line: no-any
 			(file: { type: string; [key: string]: any }) => file[file.type].url,
 		);
+	} else if (['status'].includes(property.type)) {
+		result = property[type].name;
 	}
 	return result;
 }
