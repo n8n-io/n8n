@@ -197,6 +197,12 @@ export const schema = {
 			default: 'any',
 			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
+		startAtCanvas: {
+			doc: 'Start at canvas with manual trigger node, for development purposes',
+			format: 'Boolean',
+			default: false,
+			env: 'N8N_START_AT_CANVAS',
+		},
 	},
 
 	executions: {
