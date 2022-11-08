@@ -13,22 +13,20 @@ import { todoistApiRequest } from './GenericFunctions';
 
 import { OperationType, TodoistService } from './Service';
 
-// never used
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface IBodyCreateTask {
-	content?: string;
-	description?: string;
-	project_id?: number;
-	section_id?: number;
-	parent_id?: number;
-	order?: number;
-	label_ids?: number[];
-	priority?: number;
-	due_string?: string;
-	due_datetime?: string;
-	due_date?: string;
-	due_lang?: string;
-}
+// interface IBodyCreateTask {
+// 	content?: string;
+// 	description?: string;
+// 	project_id?: number;
+// 	section_id?: number;
+// 	parent_id?: number;
+// 	order?: number;
+// 	label_ids?: number[];
+// 	priority?: number;
+// 	due_string?: string;
+// 	due_datetime?: string;
+// 	due_date?: string;
+// 	due_lang?: string;
+// }
 
 export class Todoist implements INodeType {
 	description: INodeTypeDescription = {

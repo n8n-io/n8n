@@ -243,12 +243,6 @@ export function rowDeleteInternalColumns(row: IRow): IRow {
 	return row;
 }
 
-//never used
-export function rowsDeleteInternalColumns(rows: IRow[]) {
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	rows = rows.map(rowDeleteInternalColumns);
-}
-
 function rowFormatColumn(input: unknown): boolean | number | string | string[] | null {
 	if (null === input || undefined === input) {
 		return null;

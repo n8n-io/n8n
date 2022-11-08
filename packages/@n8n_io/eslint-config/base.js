@@ -284,11 +284,6 @@ const config = (module.exports = {
 		'@typescript-eslint/no-unused-expressions': 'error',
 
 		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 */
-		// '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '_' }],
-
-		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-nullish-coalescing.md
 		 */
 		'@typescript-eslint/prefer-nullish-coalescing': 'error',
