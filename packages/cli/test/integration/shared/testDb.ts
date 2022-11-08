@@ -720,5 +720,5 @@ export async function createLdapDefaultConfig(attributes: Partial<LdapConfig> = 
 		...LDAP_DEFAULT_CONFIGURATION,
 		...attributes,
 	}
-	return Db.collections.FeatureConfig.save({ name: LDAP_FEATURE_NAME, data: JSON.stringify(configuration) })
+	return Db.collections.FeatureConfig.save({ name: LDAP_FEATURE_NAME, data: configuration })
 }
