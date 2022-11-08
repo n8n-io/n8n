@@ -55,12 +55,6 @@ export default mixins(
 	showMessage,
 ).extend({
 	name: 'SettingsPersonalView',
-	// beforeRouteEnter(to, from, next) {
-	// 	console.log("🚀 ~ file: SettingsSidebar.vue ~ line 44 ~ beforeRouteEnter ~ from", from);
-	// 	// next(vm => {
-	// 	// 	vm.previousRoute = from;
-	// 	// });
-	// },
 	data() {
 		return {
 			hasAnyChanges: false,

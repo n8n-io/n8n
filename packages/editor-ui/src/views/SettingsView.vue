@@ -3,9 +3,7 @@
 		<SettingsSidebar @return="onReturn" />
 		<div :class="$style.contentContainer">
 			<div :class="$style.content">
-				<keep-alive include="NodeView" :max="1">
 					<router-view name="settingsView" />
-				</keep-alive>
 			</div>
 		</div>
 	</div>
