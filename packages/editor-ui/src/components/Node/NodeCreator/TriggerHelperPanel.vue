@@ -11,7 +11,8 @@
 			:excludedCategories="isRoot ? [] : [CORE_NODES_CATEGORY]"
 			:initialActiveCategories="[COMMUNICATION_CATEGORY]"
 			:flatten="true"
-			:subcategoryItems="showMergedActions ? {'*': mergedNodes} : undefined"
+			:filterByType="isAppEventSubcategory && !showMergedActions"
+			:subcategoryItems="showMergedActions ? {'*': mergedNodes} : {'*': searchItems}"
 		>
 			<template #header>
 				<slot name="header" />
@@ -183,7 +184,7 @@ const mergedNodes = computed<INodeCreateElement[]>(() => {
 
 onMounted(() => {
 	const isLocal = window.location.href.includes('localhost');
-	state.showMergedActions = isLocal || window?.posthog?.getFeatureFlag('merged-actions-nodes') === 'test';
+	state.showMergedActions = isLocal || window?.posthog?.getFeatureFlag('merged-actions-nodes') === 'merge-actions';
 });
 
 const { isRoot, showMergedActions } = toRefs(state);

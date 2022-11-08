@@ -104,6 +104,7 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export interface Props {
 	flatten?: boolean;
+	filterByType?: boolean;
 	withActions?: boolean;
 	searchItems?: INodeCreateElement[];
 	excludedCategories?: string[];
@@ -115,6 +116,7 @@ export interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
+	filterByType: true,
 	searchItems: () => [],
 	excludedCategories: () => [],
 	excludedSubcategories: () => [],
@@ -175,7 +177,7 @@ const searchFilter = computed<string> (() => nodeCreatorStore.itemsFilter.toLowe
 const matchedTypeNodes = computed<INodeCreateElement[]> (() => {
   const searchableNodes = subcategorizedNodes.value.length > 0 ? subcategorizedNodes.value : props.searchItems;
 
-  if(isAppEventSubcategory.value) return searchableNodes;
+  if(!props.filterByType) return searchableNodes;
   return searchableNodes.filter((el: INodeCreateElement) => matchesSelectType(el, nodeCreatorStore.selectedType));
 });
 
@@ -265,8 +267,6 @@ const subcategorizedItems = computed<INodeCreateElement[]> (() => {
 
   return nodes.filter((el: INodeCreateElement) => matchesSelectType(el, nodeCreatorStore.selectedType));
 });
-
-const isAppEventSubcategory = computed<boolean> (() => activeSubcategory.value?.key === '*');
 
 const subcategorizedNodes = computed<INodeCreateElement[]> (() => {
 	const subcategorizedNodesOverride = props.subcategoryItems?.[activeSubcategory.value?.key as string];
