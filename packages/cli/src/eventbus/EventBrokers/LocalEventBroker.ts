@@ -27,6 +27,8 @@ export class LocalEventBroker {
 				if (subscriptionSets) {
 					for (const subscriptionSet of subscriptionSets) {
 						if (
+							subscriptionSet.eventGroups.includes('*') ||
+							subscriptionSet.eventNames.includes('*') ||
 							(eventGroup !== undefined && subscriptionSet.eventGroups.includes(eventGroup)) ||
 							subscriptionSet.eventNames.includes(eventName)
 						) {
