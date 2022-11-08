@@ -31,7 +31,12 @@ jobs:
         run: npm run build --if-present
 
       - name: Test
-        run: npm run test
+        run:
+          npm run test
+
+      - name: Test E2E
+        run:
+          npm run test:e2e:ci:smoke
 
       - name: Lint
         run: npm run lint
