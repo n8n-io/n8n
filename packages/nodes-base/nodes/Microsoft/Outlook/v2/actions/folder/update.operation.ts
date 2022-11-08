@@ -4,19 +4,6 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Folder ID',
-		name: 'folderId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['update'],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		description: 'Fields to update',

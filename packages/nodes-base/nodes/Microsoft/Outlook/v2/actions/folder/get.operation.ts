@@ -4,23 +4,10 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Folder ID',
-		name: 'folderId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['get'],
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -56,14 +43,14 @@ export async function execute(
 	const qs: IDataObject = {};
 
 	const folderId = this.getNodeParameter('folderId', index) as string;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
-	if (additionalFields.fields) {
-		qs['$select'] = additionalFields.fields;
+	if (options.fields) {
+		qs['$select'] = options.fields;
 	}
 
-	if (additionalFields.filter) {
-		qs['$filter'] = additionalFields.filter;
+	if (options.filter) {
+		qs['$filter'] = options.filter;
 	}
 	responseData = await microsoftApiRequest.call(this, 'GET', `/mailFolders/${folderId}`, {}, qs);
 

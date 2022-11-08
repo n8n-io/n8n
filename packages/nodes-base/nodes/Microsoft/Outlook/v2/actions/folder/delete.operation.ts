@@ -2,21 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 
-export const description: INodeProperties[] = [
-	{
-		displayName: 'Folder ID',
-		name: 'folderId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['delete'],
-			},
-		},
-	},
-];
+export const description: INodeProperties[] = [];
 
 export async function execute(
 	this: IExecuteFunctions,

@@ -48,6 +48,7 @@ export async function getFolders(this: ILoadOptionsFunctions): Promise<INodeProp
 	}
 	return returnData;
 }
+
 export async function getCalendarGroups(
 	this: ILoadOptionsFunctions,
 ): Promise<INodePropertyOptions[]> {

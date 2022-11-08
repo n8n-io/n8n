@@ -214,3 +214,19 @@ export async function getMimeContent(
 
 	return binary;
 }
+
+export async function getSubfolders(this: IExecuteFunctions, folders: IDataObject[]) {
+	const returnData: IDataObject[] = [...folders];
+	for (const folder of folders) {
+		if ((folder.childFolderCount as number) > 0) {
+			const subfolders = await microsoftApiRequest.call(
+				this,
+				'GET',
+				`/mailFolders/${folder.id}/childFolders`,
+			);
+
+			returnData.push(...(await getSubfolders.call(this, subfolders.value)));
+		}
+	}
+	return returnData;
+}

@@ -1,21 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { getSubfolders, microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 export const description: INodeProperties[] = [
-	{
-		displayName: 'Folder ID',
-		name: 'folderId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['folder'],
-				operation: ['getChildren'],
-			},
-		},
-	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -48,10 +35,10 @@ export const description: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -75,6 +62,13 @@ export const description: INodeProperties[] = [
 				description:
 					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
 			},
+			{
+				displayName: 'Include Child Folders',
+				name: 'includeChildFolders',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include child folders in the response',
+			},
 		],
 	},
 ];
@@ -88,14 +82,14 @@ export async function execute(
 
 	const folderId = this.getNodeParameter('folderId', index) as string;
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
-	if (additionalFields.fields) {
-		qs['$select'] = additionalFields.fields;
+	if (options.fields) {
+		qs['$select'] = options.fields;
 	}
 
-	if (additionalFields.filter) {
-		qs['$filter'] = additionalFields.filter;
+	if (options.filter) {
+		qs['$filter'] = options.filter;
 	}
 
 	if (returnAll) {
@@ -116,6 +110,10 @@ export async function execute(
 			qs,
 		);
 		responseData = responseData.value;
+	}
+
+	if (options.includeChildFolders) {
+		responseData = await getSubfolders.call(this, responseData);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(

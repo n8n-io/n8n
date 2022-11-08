@@ -364,7 +364,6 @@ export async function execute(
 		}
 	}
 
-	// console.log(await microsoftApiRequest.call(this, 'GET', '/outlook/masterCategories'));
 	const endpoint = '/messages';
 
 	if (returnAll === true) {

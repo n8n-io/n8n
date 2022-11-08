@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { getSubfolders, microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
@@ -35,8 +35,8 @@ export const description: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -62,6 +62,13 @@ export const description: INodeProperties[] = [
 				description:
 					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
 			},
+			{
+				displayName: 'Include Child Folders',
+				name: 'includeChildFolders',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to include child folders in the response',
+			},
 		],
 	},
 ];
@@ -74,14 +81,14 @@ export async function execute(
 	const qs: IDataObject = {};
 
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
-	if (additionalFields.fields) {
-		qs['$select'] = additionalFields.fields;
+	if (options.fields) {
+		qs['$select'] = options.fields;
 	}
 
-	if (additionalFields.filter) {
-		qs['$filter'] = additionalFields.filter;
+	if (options.filter) {
+		qs['$filter'] = options.filter;
 	}
 
 	if (returnAll === true) {
@@ -97,6 +104,10 @@ export async function execute(
 		qs['$top'] = this.getNodeParameter('limit', index) as number;
 		responseData = await microsoftApiRequest.call(this, 'GET', '/mailFolders', {}, qs);
 		responseData = responseData.value;
+	}
+
+	if (options.includeChildFolders) {
+		responseData = await getSubfolders.call(this, responseData);
 	}
 
 	const executionData = this.helpers.constructExecutionMetaData(
