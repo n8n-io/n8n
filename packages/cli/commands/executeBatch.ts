@@ -192,8 +192,8 @@ export class ExecuteBatch extends Command {
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
-		process.on('SIGTERM', ExecuteBatch.stopProcess);
-		process.on('SIGINT', ExecuteBatch.stopProcess);
+		process.once('SIGTERM', ExecuteBatch.stopProcess);
+		process.once('SIGINT', ExecuteBatch.stopProcess);
 
 		const logger = getLogger();
 		LoggerProxy.init(logger);

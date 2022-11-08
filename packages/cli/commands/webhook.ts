@@ -88,8 +88,8 @@ export class Webhook extends Command {
 		LoggerProxy.init(logger);
 
 		// Make sure that n8n shuts down gracefully if possible
-		process.on('SIGTERM', Webhook.stopProcess);
-		process.on('SIGINT', Webhook.stopProcess);
+		process.once('SIGTERM', Webhook.stopProcess);
+		process.once('SIGINT', Webhook.stopProcess);
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-shadow
 		const { flags } = this.parse(Webhook);

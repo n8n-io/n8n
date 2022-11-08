@@ -150,8 +150,8 @@ export class Start extends Command {
 
 	async run() {
 		// Make sure that n8n shuts down gracefully if possible
-		process.on('SIGTERM', Start.stopProcess);
-		process.on('SIGINT', Start.stopProcess);
+		process.once('SIGTERM', Start.stopProcess);
+		process.once('SIGINT', Start.stopProcess);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);

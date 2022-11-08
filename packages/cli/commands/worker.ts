@@ -258,8 +258,8 @@ export class Worker extends Command {
 		console.info('Starting n8n worker...');
 
 		// Make sure that n8n shuts down gracefully if possible
-		process.on('SIGTERM', Worker.stopProcess);
-		process.on('SIGINT', Worker.stopProcess);
+		process.once('SIGTERM', Worker.stopProcess);
+		process.once('SIGINT', Worker.stopProcess);
 
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
