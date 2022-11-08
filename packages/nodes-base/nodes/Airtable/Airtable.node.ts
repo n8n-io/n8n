@@ -2,26 +2,13 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
-interface AirtableBase {
-	id: string;
-	name: string;
-}
-
-interface AirtableTable {
-	id: string;
-	name: string;
-	description: string;
-}
 
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
