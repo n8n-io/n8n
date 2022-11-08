@@ -2,7 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
 
 import { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
