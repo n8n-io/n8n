@@ -7,8 +7,10 @@ import { UserSettings } from 'n8n-core';
 import path from 'path';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-// TODO: make configurable
-const KEEP_MESSAGE_BUFFER_FOR_SECONDS = 10;
+interface MessageEventBusLevelDbWriterOptions {
+	dbName?: string;
+	keepSentEventsForSeconds?: number;
+}
 
 /**
  * MessageEventBusWriter for LevelDB
@@ -25,10 +27,12 @@ export class MessageEventBusLevelDbWriter implements MessageEventBusWriter {
 	// db partition holding unsent messages
 	#unsentLevel;
 
-	constructor(dbName = 'eventdb') {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+	#keepSentEventsForSeconds: number;
+
+	constructor(options?: MessageEventBusLevelDbWriterOptions) {
+		this.#keepSentEventsForSeconds = options?.keepSentEventsForSeconds ?? 10;
 		const n8nFolder = UserSettings.getUserN8nFolderPath();
-		const dbPath = path.join(n8nFolder, dbName);
+		const dbPath = path.join(n8nFolder, options?.dbName ?? 'eventsdb');
 		this.#db = new Level<string, EventMessageSerialized>(dbPath, { valueEncoding: 'json' });
 		this.#sentLevel = this.#db.sublevel<string, EventMessageSerialized>('sent', {
 			valueEncoding: 'json',
@@ -105,9 +109,7 @@ export class MessageEventBusLevelDbWriter implements MessageEventBusWriter {
 		return unsentValues.map((e) => EventMessage.deserialize(e));
 	}
 
-	async flushSentMessages(
-		ageLimitSeconds: number = KEEP_MESSAGE_BUFFER_FOR_SECONDS,
-	): Promise<void> {
+	async flushSentMessages(ageLimitSeconds: number = this.#keepSentEventsForSeconds): Promise<void> {
 		const clearDate = DateTime.now().minus({ seconds: ageLimitSeconds }).toMillis();
 		try {
 			await this.#sentLevel.clear({ lte: clearDate });

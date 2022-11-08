@@ -7,7 +7,7 @@ import {
 	EventMessageNames,
 	EventMessageLevel,
 	EventMessageSeverity,
-} from '../types/eventMessageTypes';
+} from '../types/EventMessageTypes';
 import { SerializerImplementation } from 'threads';
 
 export interface EventMessageSerialized {

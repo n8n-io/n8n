@@ -164,7 +164,7 @@ import { MessageEventBusForwarderToLocalBroker } from './eventbus/MessageEventBu
 import { MessageEventBusLevelDbWriter } from './eventbus/MessageEventBusWriter/MessageEventBusLevelDbWriter';
 import { ConsoleEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/ConsoleEventSubscriptionReceiver';
 import { FileEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/FileEventSubscriptionReceiver';
-import { EventMessageNames } from './eventbus/types/eventMessageTypes';
+import { EventMessageNames } from './eventbus/types/EventMessageTypes';
 import { MessageEventBusFileWriter } from './eventbus/MessageEventBusWriter/MessageEventBusFileWriter';
 import { MessageEventBusForwarderToRedis } from './eventbus/MessageEventBusForwarder/MessageEventBusForwarderToRedis';
 import { RedisEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/RedisEventSubscriptionReceiver';
@@ -1694,7 +1694,7 @@ class App {
 			eventNames: ['n8n.workflow.workflowStarted'],
 		});
 		const subscriptionSetAll = new EventMessageSubscriptionSet({
-			name: 'ui',
+			name: 'All Events',
 			eventGroups: ['*'],
 			eventNames: ['*'],
 		});

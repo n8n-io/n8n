@@ -1,4 +1,4 @@
-import { EventMessageGroups, EventMessageNames } from '../types/eventMessageTypes';
+import { EventMessageGroups, EventMessageNames } from '../types/EventMessageTypes';
 
 export class EventMessageSubscriptionSet {
 	name: string;

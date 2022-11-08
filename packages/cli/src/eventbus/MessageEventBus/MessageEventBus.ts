@@ -16,8 +16,6 @@ class MessageEventBus {
 
 	#forwarders: MessageEventBusForwarder[];
 
-	// #receivers: MessageEventSubscriptionReceiver[];
-
 	#pushInteralTimer: NodeJS.Timer;
 
 	#eventMessageQueue: EventMessage[] = [];
@@ -76,18 +74,6 @@ class MessageEventBus {
 			console.error('Messages left in MessageBuffer queue');
 		}
 	}
-
-	// async #addMessageToQueue(msg: EventMessage) {
-	// 	// this.#queue.push(msg);
-	// 	// await this.#localBroker?.addMessage(msg);
-	// }
-
-	// #popMessageFromQueue(): EventMessage | undefined {
-	// 	if (this.#eventMessageQueue.length > 0) {
-	// 		return this.#eventMessageQueue.shift();
-	// 	}
-	// 	return;
-	// }
 
 	async send(msg: EventMessage) {
 		console.debug(`MessageEventBus Msg received ${msg.eventName} - ${msg.id}`);
