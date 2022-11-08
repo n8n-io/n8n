@@ -192,6 +192,7 @@ export default mixins(
 
 			return styles;
 		},
+		// TODO: Investigate if this can be solved using only the store data (storing selected flag in credentials objects, ...)
 		listenForNewCredentials() {
 			// Listen for credentials store changes so credential selection can be updated if creds are changed from the modal
 			this.credentialsStore.$subscribe((mutation, state) => {
