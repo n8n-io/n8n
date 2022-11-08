@@ -113,6 +113,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		workflowCallerPolicyDefaultOption(): WorkflowCallerPolicyDefaultOption {
 			return this.settings.workflowCallerPolicyDefaultOption;
 		},
+		startAtCanvas(): boolean {
+			return this.settings.startAtCanvas;
+		},
 	},
 	actions: {
 		setSettings(settings: IN8nUISettings): void {
@@ -134,6 +137,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			this.setSettings(settings);
 			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
 			this.setAllowedModules(settings.allowedModules as { builtIn?: string, external?: string });
+			this.setStartAtCanvas(settings.startAtCanvas);
 			this.setSaveDataErrorExecution(settings.saveDataErrorExecution);
 			this.setSaveDataSuccessExecution(settings.saveDataSuccessExecution);
 			this.setSaveManualExecutions(settings.saveManualExecutions);
@@ -165,6 +169,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				...(allowedModules.builtIn && { builtIn: allowedModules.builtIn.split(',') }),
 				...(allowedModules.external && { external: allowedModules.external.split(',') }),
 			};
+		},
+		setStartAtCanvas(startAtCanvas: boolean) {
+			this.settings.startAtCanvas = startAtCanvas;
 		},
 		async fetchPromptsData(): Promise<void> {
 			if (!this.isTelemetryEnabled) {
