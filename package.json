@@ -19,18 +19,30 @@
     "test": "turbo run test",
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
-    "worker": "./packages/cli/bin/n8n worker"
+    "worker": "./packages/cli/bin/n8n worker",
+    "test:e2e:db:clean": "rimraf ~/.n8n/cypress.sqlite ~/.n8n/cypress.sqlite.bak",
+    "test:e2e:cypress:run": "cypress run",
+    "test:e2e": "npm run test:e2e:db:clean && cross-env DB_FILE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:run",
+    "test:e2e:cypress:dev": "cypress open",
+    "test:e2e:dev": "npm run test:e2e:db:clean && cross-env DB_FILE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:dev",
+    "test:e2e:cypress:ci:smoke": "cypress run --headless --spec \"cypress/e2e/0-smoke.cy.ts\"",
+    "test:e2e:ci:smoke": "npm run test:e2e:db:clean && cross-env DB_FILE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:ci:smoke"
   },
   "devDependencies": {
+    "@ngneat/falso": "^6.1.0",
     "@types/jest": "^28.1.8",
+    "cross-env": "^7.0.3",
+    "cypress": "^10.0.3",
     "jest": "^28.1.3",
     "jest-environment-jsdom": "^28.1.3",
     "jest-mock": "^28.1.3",
     "patch-package": "^6.4.7",
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7",
+    "start-server-and-test": "^1.14.0",
     "ts-jest": "^28.0.8",
-    "turbo": "1.2.15"
+    "turbo": "1.2.15",
+    "typescript": "^4.8.4"
   },
   "postcss": {},
   "workspaces": [

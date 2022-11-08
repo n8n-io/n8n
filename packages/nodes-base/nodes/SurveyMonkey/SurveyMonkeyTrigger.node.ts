@@ -10,7 +10,6 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	jsonParse,
-	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -496,7 +495,7 @@ export class SurveyMonkeyTrigger implements INodeType {
 			return {};
 		}
 
-		return new Promise((resolve, reject) => {
+		return new Promise((resolve, _reject) => {
 			const data: Buffer[] = [];
 
 			req.on('data', (chunk) => {

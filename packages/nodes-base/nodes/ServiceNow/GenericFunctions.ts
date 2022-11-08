@@ -112,7 +112,7 @@ export async function serviceNowDownloadAttachment(
 	return binaryData;
 }
 
-export const mapEndpoint = (resource: string, operation: string) => {
+export const mapEndpoint = (resource: string, _operation: string) => {
 	const resourceEndpoint = new Map([
 		['attachment', 'sys_dictionary'],
 		['tableRecord', 'sys_dictionary'],

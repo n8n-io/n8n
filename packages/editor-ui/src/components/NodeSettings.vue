@@ -66,7 +66,11 @@
 				</template>
 			</i18n>
 		</div>
-		<div class="node-parameters-wrapper" v-if="node && nodeValid">
+		<div
+			class="node-parameters-wrapper"
+			data-test-id="node-parameters"
+			v-if="node && nodeValid"
+		>
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
 

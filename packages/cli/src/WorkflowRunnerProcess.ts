@@ -86,8 +86,8 @@ export class WorkflowRunnerProcess {
 	}
 
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
-		process.on('SIGTERM', WorkflowRunnerProcess.stopProcess);
-		process.on('SIGINT', WorkflowRunnerProcess.stopProcess);
+		process.once('SIGTERM', WorkflowRunnerProcess.stopProcess);
+		process.once('SIGINT', WorkflowRunnerProcess.stopProcess);
 
 		// eslint-disable-next-line no-multi-assign
 		const logger = (this.logger = getLogger());
