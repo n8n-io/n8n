@@ -488,11 +488,7 @@ export default mixins(
 					return value.slice(1);
 				}
 
-				if (this.displayValue === null) {
-					return '';
-				}
-
-				return this.displayValue + '';
+				return `${this.displayValue ?? ''}`;
 			},
 			isValueExpression(): boolean {
 				return isValueExpression(this.parameter, this.value);
