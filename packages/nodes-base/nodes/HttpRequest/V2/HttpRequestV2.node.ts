@@ -8,6 +8,7 @@ import {
 	INodeTypeDescription,
 	NodeApiError,
 	NodeOperationError,
+	sleep,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -701,7 +702,7 @@ export class HttpRequestV2 implements INodeType {
 				const batchSize: number =
 					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
 				if (itemIndex % batchSize === 0) {
-					await new Promise((resolve) => setTimeout(resolve, options.batchInterval as number));
+					await sleep(options.batchInterval as number);
 				}
 			}
 
