@@ -231,6 +231,7 @@ import { useCanvasStore } from '@/stores/canvas';
 interface AddNodeOptions {
 	position?: XYPosition;
 	dragAndDrop?: boolean;
+	openNdv?: boolean;
 }
 
 const NodeCreator = () => import('@/components/Node/NodeCreator/NodeCreator.vue');
@@ -1678,6 +1679,9 @@ export default mixins(
 				// Automatically deselect all nodes and select the current one and also active
 				// current node
 				this.deselectAllNodes();
+
+				if (!options?.openNdv) return newNodeData;
+
 				setTimeout(() => {
 					this.nodeSelectedByName(newNodeData.name, nodeTypeName !== STICKY_NODE_TYPE);
 				});
@@ -2129,6 +2133,11 @@ export default mixins(
 				this.stopLoading();
 			}),
 			async initView(): Promise<void> {
+				if (useSettingsStore().startAtCanvas) {
+					this.addNode('n8n-nodes-base.manualTrigger', { openNdv: false });
+					this.ndvStore.activeNodeName = null;
+				}
+
 				if (this.$route.params.action === 'workflowSave') {
 					// In case the workflow got saved we do not have to run init
 					// as only the route changed but all the needed data is already loaded
