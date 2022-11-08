@@ -68,8 +68,8 @@ export class EventMessage<T = any> {
 	 * @returns instance of EventMessage
 	 */
 	constructor(props: EventMessageSerialized) {
-		this.id = uuid();
-		this.ts = DateTime.now();
+		this.id = props.id ?? uuid();
+		this.ts = props.ts ? DateTime.fromISO(props.ts) : DateTime.now();
 		this.eventName = props.eventName;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.payload = props.payload;

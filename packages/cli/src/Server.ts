@@ -165,6 +165,7 @@ import { MessageEventBusLevelDbWriter } from './eventbus/MessageEventBusWriter/M
 import { ConsoleEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/ConsoleEventSubscriptionReceiver';
 import { FileEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/FileEventSubscriptionReceiver';
 import { EventMessageNames } from './eventbus/types/eventMessageTypes';
+import { MessageEventBusFileWriter } from './eventbus/MessageEventBusWriter/MessageEventBusFileWriter';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1714,7 +1715,10 @@ class App {
 		await localBrokerForwarder.addReceiver(fileReceiverUi);
 		localBrokerForwarder.addSubscription(fileReceiverUi, [subscriptionSetCustom]);
 		await eventBus.initialize({
-			immediateWriters: [new MessageEventBusLevelDbWriter()],
+			immediateWriters: [
+				new MessageEventBusLevelDbWriter(),
+				new MessageEventBusFileWriter({ keepSentEventsForSeconds: 10, syncFileAccess: false }),
+			],
 			forwarders: [localBrokerForwarder],
 		});
 		process.on('SIGTERM', () => eventBus.close());

@@ -138,7 +138,11 @@ class MessageEventBus {
 				}
 			}
 			const unionResult = unionBy(allQueryResults, iteratee('id'));
-			return unionResult;
+			if (unionResult && unionResult.length > 0) {
+				return unionResult[0];
+			}
+			// return allQueryResults[0];
+			return [];
 		} else if (this.#immediateWriters.length === 1) {
 			let queryResult: EventMessage[];
 			if (options.returnUnsent) {
