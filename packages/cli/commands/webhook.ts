@@ -26,6 +26,7 @@ import {
 } from '../src';
 
 import { getLogger } from '../src/Logger';
+import { initErrorHandling } from '../src/ErrorReporting';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExistCode = 0;
@@ -90,6 +91,8 @@ export class Webhook extends Command {
 		// Make sure that n8n shuts down gracefully if possible
 		process.once('SIGTERM', Webhook.stopProcess);
 		process.once('SIGINT', Webhook.stopProcess);
+
+		initErrorHandling();
 
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-shadow
 		const { flags } = this.parse(Webhook);

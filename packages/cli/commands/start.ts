@@ -34,6 +34,7 @@ import {
 
 import { getLogger } from '../src/Logger';
 import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
+import { initErrorHandling } from '../src/ErrorReporting';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
@@ -152,6 +153,8 @@ export class Start extends Command {
 		// Make sure that n8n shuts down gracefully if possible
 		process.once('SIGTERM', Start.stopProcess);
 		process.once('SIGINT', Start.stopProcess);
+
+		initErrorHandling();
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
 		const { flags } = this.parse(Start);
