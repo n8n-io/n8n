@@ -1,7 +1,7 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable no-param-reassign */
-import { DeleteResult, EntityManager, FindManyOptions, In, Not } from 'typeorm';
-import { Db, ICredentialsDb } from '..';
+import { DeleteResult, EntityManager, In, Not } from 'typeorm';
+import { Db } from '..';
 import { RoleService } from '../role/role.service';
 import { CredentialsService } from './credentials.service';
 

@@ -401,7 +401,7 @@ export class GoogleSheet {
 			if (itemKey === undefined || itemKey === null) {
 				// Item does not have the indexKey so we can ignore it or append it if upsert true
 				if (upsert) {
-					const data = await this.appendSheetData(
+					const _data = await this.appendSheetData(
 						[inputItem],
 						this.encodeRange(range),
 						keyRowIndex,
@@ -417,7 +417,7 @@ export class GoogleSheet {
 			if (itemKeyIndex === -1) {
 				// Key does not exist in the Sheet so it can not be updated so skip it or append it if upsert true
 				if (upsert) {
-					const data = await this.appendSheetData(
+					const _data = await this.appendSheetData(
 						[inputItem],
 						this.encodeRange(range),
 						keyRowIndex,
