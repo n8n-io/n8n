@@ -39,19 +39,6 @@ export const description: INodeProperties[] = [
 		default: 100,
 		description: 'Max number of results to return',
 	},
-	// {
-	// 	displayName: 'Simplify',
-	// 	name: 'simple',
-	// 	type: 'boolean',
-	// 	displayOptions: {
-	// 		show: {
-	// 			operation: ['getAll'],
-	// 			resource: ['message'],
-	// 		},
-	// 	},
-	// 	default: true,
-	// 	description: 'Whether to return a simplified version of the response instead of the raw data',
-	// },
 	{
 		displayName: 'Output',
 		name: 'output',

@@ -72,6 +72,46 @@ export const eventfields = [
 	'webLink',
 ].map((field) => ({ name: field, value: field }));
 
+export const contactFields = [
+	'createdDateTime',
+	'lastModifiedDateTime',
+	'changeKey',
+	'categories',
+	'parentFolderId',
+	'birthday',
+	'fileAs',
+	'displayName',
+	'givenName',
+	'initials',
+	'middleName',
+	'nickName',
+	'surname',
+	'title',
+	'yomiGivenName',
+	'yomiSurname',
+	'yomiCompanyName',
+	'generation',
+	'imAddresses',
+	'jobTitle',
+	'companyName',
+	'department',
+	'officeLocation',
+	'profession',
+	'businessHomePage',
+	'assistantName',
+	'manager',
+	'homePhones',
+	'mobilePhone',
+	'businessPhones',
+	'spouseName',
+	'personalNotes',
+	'children',
+	'emailAddresses',
+	'homeAddress',
+	'businessAddress',
+	'otherAddress',
+].map((field) => ({ name: field, value: field }));
+
 export function makeRecipient(email: string) {
 	return {
 		emailAddress: {
