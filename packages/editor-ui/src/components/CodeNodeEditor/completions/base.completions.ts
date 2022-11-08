@@ -4,6 +4,8 @@ import { addVarType } from '../utils';
 import type { Completion, CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import type { INodeUi } from '@/Interface';
 import type { CodeNodeEditorMixin } from '../types';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 function getAutocompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
@@ -12,6 +14,11 @@ function getAutocompletableNodeNames(nodes: INodeUi[]) {
 }
 
 export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
+	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
+	},
 	methods: {
 		/**
 		 * - Complete `$` to `$execution $input $prevNode $runIndex $workflow $now $today
@@ -58,7 +65,7 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES.map(addVarType);
 
 			options.push(
-				...getAutocompletableNodeNames(this.$store.getters.allNodes).map((nodeName) => {
+				...getAutocompletableNodeNames(this.workflowsStore.allNodes).map((nodeName) => {
 					return {
 						label: `$('${nodeName}')`,
 						type: 'variable',
@@ -96,7 +103,7 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
-			const options: Completion[] = getAutocompletableNodeNames(this.$store.getters.allNodes).map(
+			const options: Completion[] = getAutocompletableNodeNames(this.workflowsStore.allNodes).map(
 				(nodeName) => {
 					return {
 						label: `$('${nodeName}')`,

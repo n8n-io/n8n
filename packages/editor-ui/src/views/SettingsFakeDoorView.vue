@@ -9,6 +9,8 @@ import { IFakeDoor } from '@/Interface';
 import Vue from 'vue';
 import SettingsView from './SettingsView.vue';
 import FeatureComingSoon from '../components/FeatureComingSoon.vue';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default Vue.extend({
 	name: 'SettingsFakeDoorView',
@@ -23,13 +25,16 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-		featureInfo(): IFakeDoor {
-			return this.$store.getters['ui/getFakeDoorFeatures'][this.featureId] as IFakeDoor;
+		...mapStores(useUIStore),
+		featureInfo(): IFakeDoor|undefined {
+			return this.uiStore.getFakeDoorById(this.featureId);
 		},
 	},
 	methods: {
 		openLinkPage() {
-			window.open(this.featureInfo.linkURL, '_blank');
+			if (this.featureInfo) {
+				window.open(this.featureInfo.linkURL, '_blank');
+			}
 		},
 	},
 });

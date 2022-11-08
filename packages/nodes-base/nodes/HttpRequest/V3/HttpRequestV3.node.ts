@@ -1356,7 +1356,11 @@ export class HttpRequestV3 implements INodeType {
 			}
 
 			if (responseFormat === 'file') {
-				const outputPropertyName = this.getNodeParameter('outputPropertyName', 0, 'data') as string;
+				const outputPropertyName = this.getNodeParameter(
+					'options.response.response.outputPropertyName',
+					0,
+					'data',
+				) as string;
 
 				const newItem: INodeExecutionData = {
 					json: {},
