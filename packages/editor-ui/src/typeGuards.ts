@@ -9,6 +9,6 @@ export function isNotNull<T>(value: T | null): value is T {
 	return value !== null;
 }
 
-export function isValidCredentialResponse(value: {}): value is ICredentialsResponse {
+export function isValidCredentialResponse(value: Record<string, any>): value is ICredentialsResponse {
 	return 'id' in value && 'createdAt' in value && 'createdAt' in value;
 }

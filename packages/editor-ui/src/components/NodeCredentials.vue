@@ -103,7 +103,11 @@ export default mixins(
 	data () {
 		return {
 			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
+			subscribedToCredentialType: '',
 		};
+	},
+	mounted() {
+		this.listenForNewCredentials();
 	},
 	computed: {
 		...mapStores(
@@ -188,7 +192,30 @@ export default mixins(
 
 			return styles;
 		},
-
+		listenForNewCredentials() {
+			// Listen for credentials store changes so credential selection can be updated if creds are changed from the modal
+			this.credentialsStore.$subscribe((mutation, state) => {
+				// This data pro stores credential type that the component is currently interested in
+				const credentialType = this.subscribedToCredentialType;
+				const credentialsOfType = this.credentialsStore.allCredentialsByType[credentialType].sort((a, b) => (a.id < b.id ? -1 : 1));
+				if (credentialsOfType.length > 0) {
+					// If nothing has been selected previously, select the first one (newly added)
+					if (!this.selected[credentialType]) {
+						this.onCredentialSelected(credentialType, credentialsOfType[0].id);
+					} else {
+						// Else, check id currently selected cred has been updated
+						const newSelected = credentialsOfType.find(cred => cred.id === this.selected[credentialType].id);
+						// If it has changed, select it
+						if (newSelected && newSelected.name !== this.selected[credentialType].name) {
+							this.onCredentialSelected(credentialType, newSelected.id);
+						} else { // Else select the last cred with that type since selected has been deleted or a new one has been added
+							this.onCredentialSelected(credentialType, credentialsOfType[credentialsOfType.length - 1].id);
+						}
+					}
+				}
+				this.subscribedToCredentialType = '';
+			});
+		},
 		clearSelectedCredential(credentialType: string) {
 			const node: INodeUi = this.node;
 
@@ -209,6 +236,10 @@ export default mixins(
 		},
 
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
+			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
+				// this.listenForNewCredentials(credentialType);
+				this.subscribedToCredentialType = credentialType;
+			}
 			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.uiStore.openNewCredential(credentialType);
 				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.workflowsStore.workflowId });
@@ -309,6 +340,7 @@ export default mixins(
 			this.uiStore.openExistingCredential(id);
 
 			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.workflowsStore.workflowId });
+			this.subscribedToCredentialType = credentialType;
 		},
 	},
 });
