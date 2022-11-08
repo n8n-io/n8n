@@ -153,8 +153,6 @@ test('DELETE /users/:id should delete the user', async () => {
 
 	const response = await authAgent(owner).delete(`/users/${userToDelete.id}`);
 
-	console.log(JSON.stringify(response, undefined, 2));
-
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
 
