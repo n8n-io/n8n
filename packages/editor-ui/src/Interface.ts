@@ -777,6 +777,7 @@ export interface IN8nUISettings {
 		type: string;
 	};
 	isWorkflowSharingEnabled: boolean;
+	startAtCanvas: boolean;
 }
 
 export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {

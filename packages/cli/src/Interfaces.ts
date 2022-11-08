@@ -525,6 +525,7 @@ export interface IN8nUISettings {
 		sharing: boolean;
 		workflowSharing: boolean;
 	};
+	startAtCanvas: boolean;
 }
 
 export interface IPersonalizationSurveyAnswers {
