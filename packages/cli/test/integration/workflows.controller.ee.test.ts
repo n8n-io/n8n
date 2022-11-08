@@ -197,6 +197,7 @@ describe('GET /workflows', () => {
 		expect(usedCredential).toMatchObject({
 			id: savedCredential.id.toString(),
 			name: savedCredential.name,
+			type: savedCredential.type,
 			currentUserHasAccess: true,
 		});
 	});
