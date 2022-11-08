@@ -12,5 +12,6 @@ export interface WorkflowWithSharingsAndCredentials extends Omit<WorkflowEntity,
 export interface CredentialUsedByWorkflow {
 	id: string;
 	name: string;
+	type?: string;
 	currentUserHasAccess: boolean;
 }
