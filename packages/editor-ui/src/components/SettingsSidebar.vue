@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
 			<template #header>
-				<div :class="$style.returnButton" @click="onReturn">
+				<div :class="$style.returnButton" @click="$emit('return')">
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
@@ -124,7 +124,9 @@ export default mixins(
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
 		},
 		onReturn() {
-			this.$router.push({name: VIEWS.HOMEPAGE});
+			// const history = this.$router.options.routes;
+			console.log("🚀 ~ file: SettingsSidebar.vue ~ line 128 ~ onReturn ~ history", this.previousRoute);
+			// this.$router.back();
 		},
 		openUpdatesPanel() {
 			this.uiStore.openModal(VERSIONS_MODAL_KEY);

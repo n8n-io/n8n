@@ -17,6 +17,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
 	const jsPlumbInstance = jsPlumb.getInstance();
+	console.log("🚀 ~ file: canvas.ts ~ line 20 ~ useCanvasStore ~ jsPlumbInstance", jsPlumbInstance);
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
 	const triggerNodes = computed<INodeUi[]>(
