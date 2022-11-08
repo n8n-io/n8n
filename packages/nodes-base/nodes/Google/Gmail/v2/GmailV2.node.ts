@@ -2,7 +2,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -785,9 +784,12 @@ export class GmailV2 implements INodeType {
 				}
 				//------------------------------------------------------------------//
 
-				const executionData = this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-					itemData: { item: i },
-				});
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{
+						itemData: { item: i },
+					},
+				);
 				returnData.push(...executionData);
 			} catch (error) {
 				error.message = `${error.message} (item ${i})`;

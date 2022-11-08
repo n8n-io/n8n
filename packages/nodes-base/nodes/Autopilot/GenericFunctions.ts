@@ -12,7 +12,7 @@ export async function autopilotApiRequest(
 	body: any = {},
 	query: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	_option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = (await this.getCredentials('autopilotApi')) as IDataObject;

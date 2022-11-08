@@ -2,8 +2,6 @@ import {
 	IDataObject,
 	IExecuteSingleFunctions,
 	IHttpRequestOptions,
-	IN8nHttpFullResponse,
-	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';

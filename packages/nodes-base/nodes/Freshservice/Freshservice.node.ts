@@ -32,8 +32,6 @@ import {
 	agentRoleOperations,
 	announcementFields,
 	announcementOperations,
-	assetFields,
-	assetOperations,
 	assetTypeFields,
 	assetTypeOperations,
 	changeFields,

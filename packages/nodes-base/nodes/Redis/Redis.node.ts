@@ -513,7 +513,7 @@ export class Redis implements INodeType {
 				try {
 					const client = await redis.createClient(redisOptions);
 					// tslint:disable-next-line: no-any
-					const data = await new Promise((resolve, reject): any => {
+					const _data = await new Promise((resolve, reject): any => {
 						client.on('connect', async () => {
 							client.ping('ping', (error, pong) => {
 								if (error) reject(error);
@@ -677,7 +677,7 @@ export class Redis implements INodeType {
 				reject(err);
 			});
 
-			client.on('ready', async (err: Error | null) => {
+			client.on('ready', async (_err: Error | null) => {
 				client.select(credentials.database as number);
 				try {
 					if (operation === 'info') {
