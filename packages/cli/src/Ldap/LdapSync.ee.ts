@@ -1,6 +1,6 @@
 /* eslint-disable import/no-cycle */
 /* eslint-disable no-underscore-dangle */
-import { Entry, InvalidDNSyntaxError } from 'ldapts';
+import { Entry } from 'ldapts';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
