@@ -34,7 +34,7 @@ let credentialOwnerRole: Role;
 let authAgent: AuthAgent;
 
 beforeAll(async () => {
-	app = await utils.initTestServer({ endpointGroups: ['auth', 'ldap'], applyAuth: true });
+	app = await utils.initTestServer({ endpointGroups: ['users'], applyAuth: true });
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
@@ -152,6 +152,8 @@ test('DELETE /users/:id should delete the user', async () => {
 	});
 
 	const response = await authAgent(owner).delete(`/users/${userToDelete.id}`);
+
+	console.log(JSON.stringify(response, undefined, 2));
 
 	expect(response.statusCode).toBe(200);
 	expect(response.body).toEqual(SUCCESS_RESPONSE_BODY);
