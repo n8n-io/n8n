@@ -15,7 +15,14 @@ import PCancelable from 'p-cancelable';
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
+import {
+	IExecuteResponsePromiseData,
+	INodeTypes,
+	IRun,
+	Workflow,
+	LoggerProxy,
+	sleep,
+} from 'n8n-workflow';
 
 import { FindOneOptions, getConnectionManager } from 'typeorm';
 
@@ -103,9 +110,7 @@ export class Worker extends Command {
 					);
 				}
 				// eslint-disable-next-line no-await-in-loop
-				await new Promise((resolve) => {
-					setTimeout(resolve, 500);
-				});
+				await sleep(500);
 			}
 		} catch (error) {
 			LoggerProxy.error('There was an error shutting down n8n.', error);

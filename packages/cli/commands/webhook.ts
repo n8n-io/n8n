@@ -9,7 +9,7 @@ import { Command, flags } from '@oclif/command';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis from 'ioredis';
 
-import { IDataObject, LoggerProxy } from 'n8n-workflow';
+import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
 import config from '../config';
 import {
 	ActiveExecutions,
@@ -71,9 +71,7 @@ export class Webhook extends Command {
 					);
 				}
 				// eslint-disable-next-line no-await-in-loop
-				await new Promise((resolve) => {
-					setTimeout(resolve, 500);
-				});
+				await sleep(500);
 				executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 			}
 		} catch (error) {
