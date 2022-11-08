@@ -1,5 +1,5 @@
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { IDataObject, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, jsonParse, NodeApiError } from 'n8n-workflow';
 import { OptionsWithUri } from 'request';
 
 export async function cockpitApiRequest(

@@ -193,7 +193,7 @@ export async function uploadAttachments(
 			// data has not been uploaded yet, so wait for it to be ready
 			if (response.processing_info) {
 				const { check_after_secs } = response.processing_info as IDataObject;
-				await new Promise((resolve, reject) => {
+				await new Promise((resolve, _reject) => {
 					setTimeout(() => {
 						// @ts-ignore
 						resolve();

@@ -52,6 +52,7 @@ export class WorkflowsService {
 		workflow: WorkflowEntity,
 		workflowId: string,
 		tags?: string[],
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
 		const shared = await Db.collections.SharedWorkflow.findOne({

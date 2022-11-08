@@ -6,7 +6,7 @@ import { apiRequest } from '../../../transport';
 
 export async function getAll(
 	this: IExecuteFunctions,
-	index: number,
+	_index: number,
 ): Promise<INodeExecutionData[]> {
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
