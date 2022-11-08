@@ -138,20 +138,16 @@ export class EventMessage<T = any> {
 export const messageEventSerializer: SerializerImplementation = {
 	deserialize(message, defaultHandler) {
 		if (isEventMessageSerialized(message)) {
-			console.log(`deserialize msg`);
 			return EventMessage.deserialize(message);
 		} else {
-			console.log(`deserialize default`);
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			return defaultHandler(message);
 		}
 	},
 	serialize(thing, defaultHandler) {
 		if (thing instanceof EventMessage) {
-			console.log(`serialize msg`);
 			return thing.serialize();
 		} else {
-			console.log(`serialize default`);
 			return defaultHandler(thing);
 		}
 	},

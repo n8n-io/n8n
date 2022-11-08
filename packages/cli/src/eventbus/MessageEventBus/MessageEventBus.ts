@@ -45,15 +45,22 @@ class MessageEventBus {
 		);
 
 		// check for unsent messages
+		await this.trySendingUnsent();
+		this.#pushInteralTimer = setInterval(async () => {
+			console.debug('Checking for unsent messages...');
+			await this.trySendingUnsent();
+		}, 5000);
+
+		console.debug('MessageEventBus initialized');
+	}
+
+	async trySendingUnsent() {
+		// check for unsent messages
 		const unsentMessages = await this.getEventsUnsent();
 		console.debug(`Found unsent messages: ${unsentMessages.length}`);
 		for (const unsentMsg of unsentMessages) {
 			await this.#forwardMessage(unsentMsg);
 		}
-		// this.#pushInteral = setInterval(() => {
-		// 	this.#localBroker?.addMessage()
-		// }, 1000);
-		console.debug('MessageEventBus initialized');
 	}
 
 	close() {
@@ -70,17 +77,17 @@ class MessageEventBus {
 		}
 	}
 
-	async #addMessageToQueue(msg: EventMessage) {
-		// this.#queue.push(msg);
-		// await this.#localBroker?.addMessage(msg);
-	}
+	// async #addMessageToQueue(msg: EventMessage) {
+	// 	// this.#queue.push(msg);
+	// 	// await this.#localBroker?.addMessage(msg);
+	// }
 
-	#popMessageFromQueue(): EventMessage | undefined {
-		if (this.#eventMessageQueue.length > 0) {
-			return this.#eventMessageQueue.shift();
-		}
-		return;
-	}
+	// #popMessageFromQueue(): EventMessage | undefined {
+	// 	if (this.#eventMessageQueue.length > 0) {
+	// 		return this.#eventMessageQueue.shift();
+	// 	}
+	// 	return;
+	// }
 
 	async send(msg: EventMessage) {
 		console.debug(`MessageEventBus Msg received ${msg.eventName} - ${msg.id}`);
@@ -112,16 +119,6 @@ class MessageEventBus {
 			console.debug(`MessageEventBus Msg forwarded  ${msg.eventName} - ${msg.id}`);
 		}
 	}
-
-	// publishEventSync(msg: EventMessage) {
-	// 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-	// 	this.#writer.putMessageSync(msg);
-	// 	this.#addMessageToQueue(msg).catch(() => {});
-	// }
-
-	// async confirmMessageSent(key: string) {
-	// 	await this.#writer.confirmMessageSent(key);
-	// }
 
 	async getEvents(options: { returnUnsent: boolean }): Promise<EventMessage[]> {
 		if (this.#immediateWriters.length > 1) {

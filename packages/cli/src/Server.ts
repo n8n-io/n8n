@@ -166,6 +166,8 @@ import { ConsoleEventSubscriptionReceiver } from './eventbus/MessageEventSubscri
 import { FileEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/FileEventSubscriptionReceiver';
 import { EventMessageNames } from './eventbus/types/eventMessageTypes';
 import { MessageEventBusFileWriter } from './eventbus/MessageEventBusWriter/MessageEventBusFileWriter';
+import { MessageEventBusForwarderToRedis } from './eventbus/MessageEventBusForwarder/MessageEventBusForwarderToRedis';
+import { RedisEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/RedisEventSubscriptionReceiver';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1691,6 +1693,11 @@ class App {
 			eventGroups: ['n8n.ui'],
 			eventNames: ['n8n.workflow.workflowStarted'],
 		});
+		const subscriptionSetAll = new EventMessageSubscriptionSet({
+			name: 'ui',
+			eventGroups: ['*'],
+			eventNames: ['*'],
+		});
 		// const fileReceiverCoreNode = new FileEventSubscriptionReceiverNode({
 		// 	name: 'coreEventsFileLogger2',
 		// 	fileName: 'events_core2.txt',
@@ -1714,12 +1721,16 @@ class App {
 		localBrokerForwarder.addSubscription(fileReceiverCore, [subscriptionSetCore]);
 		await localBrokerForwarder.addReceiver(fileReceiverUi);
 		localBrokerForwarder.addSubscription(fileReceiverUi, [subscriptionSetCustom]);
+		const redisForwarder = new MessageEventBusForwarderToRedis({ channelName: 'n8n-events' });
+		const redisReceiver = new RedisEventSubscriptionReceiver();
+		await redisForwarder.addReceiver(redisReceiver);
+		await redisForwarder.addSubscription(redisReceiver, [subscriptionSetAll]);
 		await eventBus.initialize({
 			immediateWriters: [
-				new MessageEventBusLevelDbWriter(),
+				// new MessageEventBusLevelDbWriter(),
 				new MessageEventBusFileWriter({ keepSentEventsForSeconds: 10, syncFileAccess: false }),
 			],
-			forwarders: [localBrokerForwarder],
+			forwarders: [localBrokerForwarder, redisForwarder],
 		});
 		process.on('SIGTERM', () => eventBus.close());
 		process.on('SIGINT', () => eventBus.close());

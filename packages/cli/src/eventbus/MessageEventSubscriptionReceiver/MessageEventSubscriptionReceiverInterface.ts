@@ -8,9 +8,11 @@ export interface MessageEventSubscriptionReceiverInterface {
 
 	workerFile: string;
 
-	worker: ModuleThread<EventSubscriberWorker> | Worker | undefined;
+	// worker: ModuleThread<EventSubscriberWorker> | Worker | undefined;
+	worker: ModuleThread<EventSubscriberWorker> | undefined;
 
-	launchThread(): Promise<ModuleThread<EventSubscriberWorker>> | Promise<Worker>;
+	// launchThread(): Promise<ModuleThread<EventSubscriberWorker>> | Promise<Worker>;
+	launchThread(): Promise<ModuleThread<EventSubscriberWorker>>;
 
 	terminateThread(): Promise<void>;
 
