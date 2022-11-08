@@ -75,13 +75,13 @@ export class WorkflowsService {
 			);
 		}
 
-		if (!forceSave && workflow.hash !== shared.workflow.hash) {
-			throw new ResponseHelper.ResponseError(
-				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
-				undefined,
-				400,
-			);
-		}
+		// if (!forceSave && workflow.hash !== shared.workflow.hash) {
+		// 	throw new ResponseHelper.ResponseError(
+		// 		`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
+		// 		undefined,
+		// 		400,
+		// 	);
+		// }
 
 		// check credentials for old format
 		await WorkflowHelpers.replaceInvalidCredentials(workflow);

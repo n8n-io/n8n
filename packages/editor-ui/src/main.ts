@@ -22,6 +22,8 @@ import { runExternalHook } from './components/mixins/externalHooks';
 import { TelemetryPlugin } from './plugins/telemetry';
 import { I18nPlugin, i18nInstance } from './plugins/i18n';
 
+import { createPinia, PiniaVuePlugin } from 'pinia';
+
 import { store } from './store';
 
 Vue.config.productionTip = false;
@@ -31,11 +33,15 @@ router.afterEach((to, from) => {
 
 Vue.use(TelemetryPlugin);
 Vue.use((vue) => I18nPlugin(vue, store));
+Vue.use(PiniaVuePlugin);
+
+const pinia = createPinia();
 
 new Vue({
 	i18n: i18nInstance,
 	router,
 	store,
+	pinia,
 	render: h => h(App),
 }).$mount('#app');
 
