@@ -635,6 +635,7 @@ export function getConditions() {
 		checkbox: 'checkbox',
 		select: 'select',
 		multi_select: 'multi_select',
+		status: 'status',
 		date: 'date',
 		people: 'people',
 		files: 'files',
@@ -673,6 +674,7 @@ export function getConditions() {
 		checkbox: ['equals', 'does_not_equal'],
 		select: ['equals', 'does_not_equal', 'is_empty', 'is_not_empty'],
 		multi_select: ['contains', 'does_not_equal', 'is_empty', 'is_not_empty'],
+		status: ['equals', 'does_not_equal'],
 		date: [
 			'equals',
 			'before',
