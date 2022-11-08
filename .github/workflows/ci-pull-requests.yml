@@ -32,6 +32,9 @@ jobs:
       - name: Test
         run: pnpm test
 
+      - name: Test E2E
+        run: pnpm test:e2e:ci:smoke
+
       - name: Fetch base branch for `git diff`
         run: git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
 

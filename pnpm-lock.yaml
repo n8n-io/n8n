@@ -1,7 +1,9 @@
 lockfileVersion: 5.4
 
 onlyBuiltDependencies:
+  - cypress
   - sqlite3
+  - vue-demi
 
 overrides:
   browserslist: ^4.21.4
@@ -461,7 +463,6 @@ importers:
       '@yfwz100/vite-plugin-vue2-i18n': ^1.0.0-2
       axios: ^0.21.1
       c8: ^7.12.0
-      cross-env: ^7.0.2
       dateformat: ^3.0.3
       esprima: ^4.0.1
       fast-json-stable-stringify: ^2.1.0
@@ -583,7 +584,6 @@ importers:
       '@vitejs/plugin-vue2': 1.1.2_vite@2.9.5+vue@2.7.13
       '@yfwz100/vite-plugin-vue2-i18n': 1.0.0-3_vite@2.9.5
       c8: 7.12.0
-      cross-env: 7.0.3
       jshint: 2.13.5
       sass: 1.55.0
       sass-loader: 10.3.1_sass@1.55.0+webpack@5.74.0
@@ -9334,14 +9334,6 @@ packages:
     dependencies:
       moment-timezone: 0.5.37
     dev: false
-
-  /cross-env/7.0.3:
-    resolution: {integrity: sha512-+/HKd6EgcQCJGh2PSjZuUitQBQynKor4wrFbRg4DtAgS1aWO+gU52xpH7M9ScGgXSYmAVS9bIJ8EzuaGw0oNAw==}
-    engines: {node: '>=10.14', npm: '>=6', yarn: '>=1'}
-    hasBin: true
-    dependencies:
-      cross-spawn: 7.0.3
-    dev: true
 
   /cross-spawn/4.0.2:
     resolution: {integrity: sha512-yAXz/pA1tD8Gtg2S98Ekf/sewp3Lcp3YoFKJ4Hkp5h5yLWnKVTDU0kwjKJ8NDCYcfTLfyGkzTikst+jWypT1iA==}

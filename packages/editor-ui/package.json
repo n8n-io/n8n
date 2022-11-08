@@ -98,7 +98,6 @@
     "@vitejs/plugin-vue2": "^1.1.2",
     "@yfwz100/vite-plugin-vue2-i18n": "^1.0.0-2",
     "c8": "^7.12.0",
-    "cross-env": "^7.0.2",
     "jshint": "^2.9.7",
     "sass": "^1.55.0",
     "sass-loader": "^10.1.1",

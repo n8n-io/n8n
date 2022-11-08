@@ -49,7 +49,9 @@
       "quill@2.0.0-dev.4": "patches/quill@2.0.0-dev.4.patch"
     },
     "onlyBuiltDependencies": [
-      "sqlite3"
+      "cypress",
+      "sqlite3",
+      "vue-demi"
     ],
     "overrides": {
       "browserslist": "^4.21.4",
