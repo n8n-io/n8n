@@ -7,20 +7,6 @@ import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } fro
 import _ from 'lodash';
 import { v4 as uuid } from 'uuid';
 
-//never used
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface MessageResponse {
-	chunk: Message[];
-}
-
-interface Message {
-	content: object;
-	room_id: string;
-	sender: string;
-	type: string;
-	user_id: string;
-}
-
 export async function matrixApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,

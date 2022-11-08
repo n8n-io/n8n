@@ -14,10 +14,7 @@ export async function twakeApiRequest(
 	body: object,
 	query?: object,
 	uri?: string,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
-	const _authenticationMethod = this.getNodeParameter('twakeVersion', 0, 'twakeCloudApi') as string;
-
+) {
 	const options: OptionsWithUri = {
 		headers: {},
 		method,

@@ -171,12 +171,6 @@ export async function awsApiRequestSOAPAllItems(
 	return returnData;
 }
 
-function _queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
-}
-
 export function keysTPascalCase(object: IDataObject) {
 	const data: IDataObject = {};
 	for (const key of Object.keys(object)) {

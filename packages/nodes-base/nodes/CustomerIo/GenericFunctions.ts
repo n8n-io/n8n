@@ -11,10 +11,8 @@ export async function customerIoApiRequest(
 	body: object,
 	baseApi?: string,
 	_query?: IDataObject,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('customerIoApi');
-	_query = _query || {};
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',

@@ -369,9 +369,3 @@ export class Aws implements ICredentialType {
 		},
 	};
 }
-
-function _queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
-}

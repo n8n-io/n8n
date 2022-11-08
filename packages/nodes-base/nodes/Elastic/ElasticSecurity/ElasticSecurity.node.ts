@@ -250,7 +250,7 @@ export class ElasticSecurity implements INodeType {
 						body.connector = connector;
 
 						const {
-							syncAlerts: _syncAlerts, // ignored because already set
+							syncAlerts, // ignored because already set
 							...rest
 						} = this.getNodeParameter('additionalFields', i) as IDataObject;
 

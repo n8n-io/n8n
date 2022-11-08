@@ -23,7 +23,6 @@ export async function awsApiRequest(
 	_region?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const _credentials = await this.getCredentials('aws');
 	const requestOptions = {
 		qs: {
 			...query,
@@ -168,10 +167,4 @@ export async function awsApiRequestSOAPAllItems(
 	);
 
 	return returnData;
-}
-
-function _queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
 }

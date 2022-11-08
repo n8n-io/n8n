@@ -10,21 +10,6 @@ import {
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
 
-// never used
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface AirtableBase {
-	id: string;
-	name: string;
-}
-
-// never used
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-interface AirtableTable {
-	id: string;
-	name: string;
-	description: string;
-}
-
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Airtable',

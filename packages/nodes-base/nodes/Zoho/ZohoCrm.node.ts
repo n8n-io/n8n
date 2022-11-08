@@ -334,7 +334,6 @@ export class ZohoCrm implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const _resolveData = this.getNodeParameter('resolveData', 0, false) as boolean;
 
 		let responseData;
 

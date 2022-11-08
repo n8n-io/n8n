@@ -157,7 +157,7 @@ function compactResult(splunkObject: any): any {
 // ----------------------------------------
 
 function formatEntry(entry: any): any {
-	const { content, link: _link, ...rest } = entry;
+	const { content, link, ...rest } = entry;
 	const formattedEntry = { ...rest, ...formatEntryContent(content) };
 
 	if (formattedEntry.id) {
