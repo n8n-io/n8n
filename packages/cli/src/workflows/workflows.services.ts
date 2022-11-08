@@ -50,6 +50,7 @@ export class WorkflowsService {
 		workflow: WorkflowEntity,
 		workflowId: string,
 		tags?: string[],
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
 		const shared = await Db.collections.SharedWorkflow.findOne({
@@ -73,13 +74,13 @@ export class WorkflowsService {
 			);
 		}
 
-		if (!forceSave && workflow.hash !== shared.workflow.hash) {
-			throw new ResponseHelper.ResponseError(
-				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
-				undefined,
-				400,
-			);
-		}
+		// if (!forceSave && workflow.hash !== shared.workflow.hash) {
+		// 	throw new ResponseHelper.ResponseError(
+		// 		`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
+		// 		undefined,
+		// 		400,
+		// 	);
+		// }
 
 		// check credentials for old format
 		await WorkflowHelpers.replaceInvalidCredentials(workflow);

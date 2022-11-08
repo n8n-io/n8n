@@ -2,13 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
 
 export async function postmarkApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,

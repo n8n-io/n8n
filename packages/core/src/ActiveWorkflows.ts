@@ -159,7 +159,6 @@ export class ActiveWorkflows {
 				const pollResponse = await workflow.runPoll(node, pollFunctions);
 
 				if (pollResponse !== null) {
-					// eslint-disable-next-line no-underscore-dangle
 					pollFunctions.__emit(pollResponse);
 				}
 			} catch (error) {
@@ -169,8 +168,7 @@ export class ActiveWorkflows {
 				if (testingTrigger) {
 					throw error;
 				}
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, no-underscore-dangle
-				pollFunctions.__emit(error);
+				pollFunctions.__emitError(error);
 			}
 		};
 
