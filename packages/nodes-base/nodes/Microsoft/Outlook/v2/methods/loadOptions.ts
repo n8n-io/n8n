@@ -67,6 +67,7 @@ export async function getCalendarGroups(
 	}
 	return returnData;
 }
+
 export async function getCalendars(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
 	const calendars = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/calendars');
@@ -74,6 +75,56 @@ export async function getCalendars(this: ILoadOptionsFunctions): Promise<INodePr
 		returnData.push({
 			name: calendar.name as string,
 			value: calendar.id as string,
+		});
+	}
+	return returnData;
+}
+
+export async function getMessageAttachments(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const messageId = this.getNodeParameter('messageId', '') as string;
+
+	if (messageId === '') {
+		return [];
+	}
+
+	const attachments = await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		`/messages/${messageId}/attachments`,
+	);
+	for (const attachment of attachments) {
+		returnData.push({
+			name: attachment.name as string,
+			value: attachment.id as string,
+			description: attachment.contentType as string,
+		});
+	}
+	return returnData;
+}
+
+export async function getDrafts(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const qs = {
+		$select: 'id,conversationId,subject,bodyPreview',
+		$filter: 'isDraft eq true',
+	};
+	const drafts = await microsoftApiRequestAllItems.call(
+		this,
+		'value',
+		'GET',
+		'/messages',
+		undefined,
+		qs,
+	);
+	for (const draft of drafts) {
+		returnData.push({
+			name: (draft.subject as string) || 'No Subject',
+			value: draft.id as string,
+			description: draft.bodyPreview as string,
 		});
 	}
 	return returnData;

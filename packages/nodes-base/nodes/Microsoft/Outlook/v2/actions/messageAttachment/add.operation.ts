@@ -25,10 +25,10 @@ export const description: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -58,7 +58,7 @@ export async function execute(
 
 	const messageId = this.getNodeParameter('messageId', index) as string;
 	const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
 	if (items[index].binary === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No binary data exists on item!');
@@ -78,8 +78,7 @@ export async function execute(
 	const binaryData = (items[index].binary as IBinaryKeyData)[binaryPropertyName];
 	const dataBuffer = await this.helpers.getBinaryDataBuffer(index, binaryPropertyName);
 
-	const fileName =
-		additionalFields.fileName === undefined ? binaryData.fileName : additionalFields.fileName;
+	const fileName = options.fileName === undefined ? binaryData.fileName : options.fileName;
 
 	if (!fileName) {
 		throw new NodeOperationError(

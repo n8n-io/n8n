@@ -1,26 +1,54 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { messageFields, simplifyOutputMessages } from '../../helpers/utils';
 import { downloadAttachments, microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
-		default: '',
+		displayName: 'Output',
+		name: 'output',
+		type: 'options',
+		default: 'simple',
 		displayOptions: {
 			show: {
-				resource: ['draft'],
 				operation: ['get'],
+				resource: ['draft'],
 			},
 		},
+		options: [
+			{
+				name: 'Simplified',
+				value: 'simple',
+			},
+			{
+				name: 'Raw',
+				value: 'raw',
+			},
+			{
+				name: 'Select Included Fields',
+				value: 'fields',
+			},
+		],
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Fields',
+		name: 'fields',
+		type: 'multiOptions',
+		displayOptions: {
+			show: {
+				operation: ['get'],
+				resource: ['draft'],
+				output: ['fields'],
+			},
+		},
+		options: messageFields,
+		default: [],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -31,27 +59,19 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				displayName: 'Attachments Prefix',
-				name: 'dataPropertyAttachmentsPrefixName',
+				name: 'attachmentsPrefix',
 				type: 'string',
 				default: 'attachment_',
 				description:
 					'Prefix for name of the binary property to which to write the attachments. An index starting with 0 will be added. So if name is "attachment_" the first attachment is saved to "attachment_0"',
 			},
 			{
-				displayName: 'Fields',
-				name: 'fields',
-				type: 'string',
-				default: '',
-				description: 'Fields the response will contain. Multiple can be added separated by comma.',
-			},
-			{
-				displayName: 'Filter',
-				name: 'filter',
-				type: 'string',
-				default: '',
-				placeholder: 'isRead eq false',
+				displayName: 'Download Attachments',
+				name: 'downloadAttachments',
+				type: 'boolean',
+				default: false,
 				description:
-					'Microsoft Graph API OData $filter query. Information about the syntax can be found <a href="https://docs.microsoft.com/en-us/graph/query-parameters#filter-parameter">here</a>.',
+					"Whether the message's attachments will be downloaded and included in the output",
 			},
 		],
 	},
@@ -64,35 +84,37 @@ export async function execute(
 	let responseData;
 	const qs: IDataObject = {};
 
-	const messageId = this.getNodeParameter('messageId', index) as string;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const draftId = this.getNodeParameter('draftId', index) as string;
+	const options = this.getNodeParameter('options', index, {}) as IDataObject;
+	const output = this.getNodeParameter('output', index) as string;
 
-	if (additionalFields.fields) {
-		qs['$select'] = additionalFields.fields;
+	if (output === 'fields') {
+		const fields = this.getNodeParameter('fields', index) as string[];
+		qs['$select'] = fields.join(',');
 	}
 
-	if (additionalFields.filter) {
-		qs['$filter'] = additionalFields.filter;
+	if (output === 'simple') {
+		qs['$select'] =
+			'id,conversationId,subject,bodyPreview,from,toRecipients,categories,hasAttachments';
 	}
 
-	responseData = await microsoftApiRequest.call(
-		this,
-		'GET',
-		`/messages/${messageId}`,
-		undefined,
-		qs,
-	);
+	responseData = await microsoftApiRequest.call(this, 'GET', `/messages/${draftId}`, undefined, qs);
 
-	if (additionalFields.dataPropertyAttachmentsPrefixName) {
-		const prefix = additionalFields.dataPropertyAttachmentsPrefixName as string;
-		const data = await downloadAttachments.call(this, responseData, prefix);
-		return data;
+	if (output === 'simple') {
+		responseData = simplifyOutputMessages([responseData]);
 	}
 
-	const executionData = this.helpers.constructExecutionMetaData(
-		this.helpers.returnJsonArray(responseData),
-		{ itemData: { item: index } },
-	);
+	let executionData: INodeExecutionData[] = [];
+
+	if (options.downloadAttachments) {
+		const prefix = (options.attachmentsPrefix as string) || 'attachment_';
+		executionData = await downloadAttachments.call(this, responseData, prefix);
+	} else {
+		executionData = this.helpers.constructExecutionMetaData(
+			this.helpers.returnJsonArray(responseData),
+			{ itemData: { item: index } },
+		);
+	}
 
 	return executionData;
 }

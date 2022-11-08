@@ -5,19 +5,6 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['update'],
-			},
-		},
-	},
-	{
 		displayName: 'Update Fields',
 		name: 'updateFields',
 		type: 'collection',
@@ -185,14 +172,14 @@ export async function execute(
 ): Promise<INodeExecutionData[]> {
 	let responseData;
 
-	const messageId = this.getNodeParameter('messageId', index) as string;
+	const draftId = this.getNodeParameter('draftId', index) as string;
 
 	const updateFields = this.getNodeParameter('updateFields', index) as IDataObject;
 
 	// Create message from optional fields
 	const body: IDataObject = createMessage(updateFields);
 
-	responseData = await microsoftApiRequest.call(this, 'PATCH', `/messages/${messageId}`, body, {});
+	responseData = await microsoftApiRequest.call(this, 'PATCH', `/messages/${draftId}`, body, {});
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData),

@@ -52,6 +52,23 @@ export const description: INodeProperties[] = [
 		],
 		default: 'create',
 	},
+	{
+		displayName: 'Draft Name or ID',
+		name: 'draftId',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getDrafts',
+		},
+		default: '',
+		description:
+			'Only return messages from selected folders. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		displayOptions: {
+			show: {
+				resource: ['draft'],
+				operation: ['delete', 'get', 'send', 'update'],
+			},
+		},
+	},
 
 	...create.description,
 	...del.description,

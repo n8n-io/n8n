@@ -4,21 +4,8 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Attachment ID',
-		name: 'attachmentId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['get'],
-			},
-		},
-	},
-	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
 		placeholder: 'Add Field',
 		default: {},
@@ -32,16 +19,33 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				type: 'string',
-				default: '',
-				description: 'Fields the response will contain. Multiple can be added separated by ,.',
-			},
-			{
-				displayName: 'Filter',
-				name: 'filter',
-				type: 'string',
-				default: '',
-				description: 'Microsoft Graph API OData $filter query',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{
+						name: 'contentType',
+						value: 'contentType',
+					},
+					{
+						name: 'isInline',
+						value: 'isInline',
+					},
+					{
+						name: 'lastModifiedDateTime',
+						value: 'lastModifiedDateTime',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'name',
+						value: 'name',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'size',
+						value: 'size',
+					},
+				],
+				description: 'Fields the response will contain',
 			},
 		],
 	},
@@ -56,12 +60,13 @@ export async function execute(
 
 	const messageId = this.getNodeParameter('messageId', index) as string;
 	const attachmentId = this.getNodeParameter('attachmentId', index) as string;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
 	// Have sane defaults so we don't fetch attachment data in this operation
 	qs['$select'] = 'id,lastModifiedDateTime,name,contentType,size,isInline';
-	if (additionalFields.fields) {
-		qs['$select'] = additionalFields.fields;
+
+	if (options.fields && (options.fields as string[]).length) {
+		qs['$select'] = (options.fields as string[]).map((field) => field.trim()).join(',');
 	}
 
 	responseData = await microsoftApiRequest.call(

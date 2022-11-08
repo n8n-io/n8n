@@ -5,19 +5,6 @@ import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{
-		displayName: 'Message ID',
-		name: 'messageId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['draft'],
-				operation: ['send'],
-			},
-		},
-	},
-	{
 		displayName: 'Additional Fields',
 		name: 'additionalFields',
 		type: 'collection',
@@ -45,9 +32,7 @@ export async function execute(
 	this: IExecuteFunctions,
 	index: number,
 ): Promise<INodeExecutionData[]> {
-	let responseData;
-
-	const messageId = this.getNodeParameter('messageId', index);
+	const draftId = this.getNodeParameter('draftId', index);
 	const additionalFields = this.getNodeParameter('additionalFields', index, {}) as IDataObject;
 
 	if (additionalFields && additionalFields.recipients) {
@@ -55,13 +40,13 @@ export async function execute(
 			(email) => !!email,
 		);
 		if (recipients.length !== 0) {
-			await microsoftApiRequest.call(this, 'PATCH', `/messages/${messageId}`, {
+			await microsoftApiRequest.call(this, 'PATCH', `/messages/${draftId}`, {
 				toRecipients: recipients.map((recipient: string) => makeRecipient(recipient)),
 			});
 		}
 	}
 
-	responseData = await microsoftApiRequest.call(this, 'POST', `/messages/${messageId}/send`);
+	await microsoftApiRequest.call(this, 'POST', `/messages/${draftId}/send`);
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),

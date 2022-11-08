@@ -35,10 +35,10 @@ export const description: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Additional Fields',
-		name: 'additionalFields',
+		displayName: 'Options',
+		name: 'options',
 		type: 'collection',
-		placeholder: 'Add Field',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -50,16 +50,40 @@ export const description: INodeProperties[] = [
 			{
 				displayName: 'Fields',
 				name: 'fields',
-				type: 'string',
-				default: '',
-				description: 'Fields the response will contain. Multiple can be added separated by ,.',
+				type: 'multiOptions',
+				default: [],
+				options: [
+					{
+						name: 'contentType',
+						value: 'contentType',
+					},
+					{
+						name: 'isInline',
+						value: 'isInline',
+					},
+					{
+						name: 'lastModifiedDateTime',
+						value: 'lastModifiedDateTime',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'name',
+						value: 'name',
+					},
+					{
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'size',
+						value: 'size',
+					},
+				],
+				description: 'Fields the response will contain',
 			},
 			{
 				displayName: 'Filter',
 				name: 'filter',
 				type: 'string',
 				default: '',
-				description: 'Microsoft Graph API OData $filter query',
+				hint: 'Information about the syntax can be found <a href="https://learn.microsoft.com/en-us/graph/filter-query-parameter">here</a>',
 			},
 		],
 	},
@@ -74,16 +98,17 @@ export async function execute(
 
 	const messageId = this.getNodeParameter('messageId', index) as string;
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const options = this.getNodeParameter('options', index) as IDataObject;
 
 	// Have sane defaults so we don't fetch attachment data in this operation
 	qs['$select'] = 'id,lastModifiedDateTime,name,contentType,size,isInline';
-	if (additionalFields.fields) {
-		qs['$select'] = additionalFields.fields;
+
+	if (options.fields && (options.fields as string[]).length) {
+		qs['$select'] = (options.fields as string[]).map((field) => field.trim()).join(',');
 	}
 
-	if (additionalFields.filter) {
-		qs['$filter'] = additionalFields.filter;
+	if (options.filter) {
+		qs['$filter'] = options.filter;
 	}
 
 	const endpoint = `/messages/${messageId}/attachments`;

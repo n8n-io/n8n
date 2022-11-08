@@ -1,21 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
-	{
-		displayName: 'Attachment ID',
-		name: 'attachmentId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				resource: ['messageAttachment'],
-				operation: ['download'],
-			},
-		},
-	},
 	{
 		displayName: 'Binary Property',
 		name: 'binaryPropertyName',
