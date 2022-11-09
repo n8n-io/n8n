@@ -36,7 +36,7 @@ import type {
 	MappingName,
 } from './types';
 import { LDAP_DEFAULT_CONFIGURATION, LDAP_FEATURE_NAME, SignInType } from '../../../src/Ldap/constants';
-import { LdapConfig } from '../../../src/Ldap/constants';
+import { LdapConfig } from '../../../src/Ldap/types';
 
 export type TestDBType = 'postgres' | 'mysql';
 

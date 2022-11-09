@@ -11,7 +11,7 @@ export class CreateLdapEntities1666304975928 implements MigrationInterface {
 
 		await queryRunner.query(
 			`ALTER TABLE \`${tablePrefix}user\`
-			ADD COLUMN \`ldapId\` varchar(30) DEFAULT null,
+			ADD COLUMN \`ldapId\` varchar(60) DEFAULT null,
 			ADD COLUMN \`signInType\` varchar(20) DEFAULT \'email'\,
 			ADD COLUMN \`disabled\` boolean NOT NULL DEFAULT false;`,
 		);
