@@ -106,4 +106,12 @@ class License {
 	}
 }
 
-export const license = new License();
+let licenseInstance: License | undefined;
+
+export function getLicense(): License {
+	if (licenseInstance === undefined) {
+		licenseInstance = new License();
+	}
+
+	return licenseInstance;
+}

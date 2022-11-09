@@ -159,7 +159,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
-import { license } from './License';
+import { getLicense } from '@/License';
 
 require('body-parser-xml')(bodyParser);
 
@@ -385,6 +385,7 @@ class App {
 	}
 
 	async initLicense(): Promise<void> {
+		const license = getLicense();
 		await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
 
 		const activationKey = config.getEnv('license.activationKey');

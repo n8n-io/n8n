@@ -13,7 +13,7 @@ import { Role } from '@db/entities/Role';
 import { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
-import { license } from '@/License';
+import { getLicense } from '@/License';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
@@ -41,6 +41,7 @@ export function isUserManagementEnabled(): boolean {
 }
 
 export function isSharingEnabled(): boolean {
+	const license = getLicense();
 	return (
 		isUserManagementEnabled() &&
 		(config.getEnv('enterprise.features.sharing') || license.isSharingEnabled())
