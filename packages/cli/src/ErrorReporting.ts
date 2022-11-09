@@ -6,7 +6,7 @@ import { ErrorReporterProxy } from 'n8n-workflow';
 
 let initialized = false;
 
-export const initErrorHandling = (app?: Application) => {
+export const initErrorHandling = () => {
 	if (initialized) return;
 
 	if (!config.getEnv('diagnostics.enabled')) {
@@ -27,15 +27,15 @@ export const initErrorHandling = (app?: Application) => {
 		},
 	});
 
-	if (app) {
-		const { requestHandler, errorHandler } = Sentry.Handlers;
-		app.use(requestHandler());
-		app.use(errorHandler());
-	}
-
 	ErrorReporterProxy.init({
 		report: (error, options) => Sentry.captureException(error, options),
 	});
 
 	initialized = true;
+};
+
+export const setupErrorMiddleware = (app: Application) => {
+	const { requestHandler, errorHandler } = Sentry.Handlers;
+	app.use(requestHandler());
+	app.use(errorHandler());
 };
