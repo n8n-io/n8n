@@ -10,6 +10,7 @@ import Vue from "vue";
 import { useRootStore } from "./n8nRootStore";
 import { useUIStore } from "./ui";
 import { useUsersStore } from "./users";
+import { useVersionsStore } from "./versions";
 
 export const useSettingsStore = defineStore(STORES.SETTINGS, {
 	state: (): ISettingsState => ({
@@ -129,7 +130,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		async getSettings(): Promise<void> {
 			const rootStore = useRootStore();
 			const settings = await getSettings(rootStore.getRestApiContext);
-			const vuexStore = store;
 
 			this.setSettings(settings);
 			this.settings.communityNodesEnabled = settings.communityNodesEnabled;
@@ -151,7 +151,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			rootStore.setN8nMetadata(settings.n8nMetadata || {});
 			rootStore.setDefaultLocale(settings.defaultLocale);
 			rootStore.setIsNpmAvailable(settings.isNpmAvailable);
-			vuexStore.commit('versions/setVersionNotificationSettings', settings.versionNotifications, {root: true});
+			useVersionsStore().setVersionNotificationSettings(settings.versionNotifications);
 		},
 		stopShowingSetupPage(): void {
 			Vue.set(this.userManagement, 'showSetupOnFirstLoad', false);

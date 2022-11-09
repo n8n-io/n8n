@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
+import config from '@/config';
 
 export class AddExecutionEntityIndexes1644422880309 implements MigrationInterface {
 	name = 'AddExecutionEntityIndexes1644422880309';

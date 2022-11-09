@@ -44,6 +44,8 @@ import Vue from 'vue';
 import { ITag } from '@/Interface';
 import IntersectionObserver from './IntersectionObserver.vue';
 import IntersectionObserved from './IntersectionObserved.vue';
+import { mapStores } from 'pinia';
+import { useTagsStore } from '@/stores/tags';
 
 // random upper limit if none is set to minimize performance impact of observers
 const DEFAULT_MAX_TAGS_LIMIT = 20;
@@ -70,8 +72,11 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		...mapStores(
+			useTagsStore,
+		),
 		tags() {
-			const tags = this.$props.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
+			const tags = this.$props.tagIds.map((tagId: string) => this.tagsStore.getTagById(tagId))
 				.filter(Boolean); // if tag has been deleted from store
 
 			const limit = this.$props.limit || DEFAULT_MAX_TAGS_LIMIT;

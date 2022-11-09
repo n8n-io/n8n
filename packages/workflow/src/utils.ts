@@ -64,3 +64,8 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 		throw error;
 	}
 };
+
+export const sleep = async (ms: number): Promise<void> =>
+	new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});

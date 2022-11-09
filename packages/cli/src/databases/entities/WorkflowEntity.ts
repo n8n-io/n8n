@@ -24,45 +24,14 @@ import {
 	PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import * as config from '../../../config';
-import type { DatabaseType, IWorkflowDb } from '../../Interfaces';
-import { alphabetizeKeys } from '../../utils';
-import { AbstractEntity, jsonColumnType } from './AbstractEntity';
+import config from '@/config';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
 import { objectRetriever, sqlite } from '../utils/transformers';
+import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 import { WorkflowStatistics } from './WorkflowStatistics';
-
-function resolveDataType(dataType: string) {
-	const dbType = config.getEnv('database.type');
-
-	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
-		sqlite: {
-			json: 'simple-json',
-		},
-		postgresdb: {
-			datetime: 'timestamptz',
-		},
-		mysqldb: {},
-		mariadb: {},
-	};
-
-	return typeMap[dbType][dataType] ?? dataType;
-}
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-function getTimestampSyntax() {
-	const dbType = config.getEnv('database.type');
-
-	const map: { [key in DatabaseType]: string } = {
-		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
-		postgresdb: 'CURRENT_TIMESTAMP(3)',
-		mysqldb: 'CURRENT_TIMESTAMP(3)',
-		mariadb: 'CURRENT_TIMESTAMP(3)',
-	};
-
-	return map[dbType];
-}
+import type { IWorkflowDb } from '@/Interfaces';
+import { alphabetizeKeys } from '@/utils';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {

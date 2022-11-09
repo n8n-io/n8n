@@ -9,8 +9,6 @@ import {
 
 import {
 	IBinaryKeyData,
-	ICredentialDataDecryptedObject,
-	ICredentialTestFunctions,
 	IDataObject,
 	IDisplayOptions,
 	INodeExecutionData,
@@ -221,12 +219,11 @@ function getTexts(
 					annotations: text.annotationUi,
 				});
 			} else {
-				//@ts-ignore
 				results.push({
 					type: 'mention',
 					mention: {
 						type: text.mentionType,
-						//@ts-ignore
+						//@ts-expect-error any
 						[text.mentionType]: { id: text[text.mentionType] as string },
 					},
 					annotations: text.annotationUi,
@@ -254,9 +251,8 @@ export function formatBlocks(blocks: IDataObject[]) {
 			[block.type as string]: {
 				...(block.type === 'to_do' ? { checked: block.checked } : {}),
 				// prettier-ignore
-				//@ts-expect-error
 				// tslint:disable-next-line: no-any
-				text: (block.richText === false) ? formatText(block.textContent).text : getTexts(block.text.text as any || []),
+				text: (block.richText === false) ? formatText(block.textContent as string).text : getTexts((block.text as IDataObject).text as any || []),
 			},
 		});
 	}
@@ -268,7 +264,7 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 	// tslint:disable-next-line: no-any
 	const ignoreIfEmpty = <T>(v: T, cb: (v: T) => any) =>
 		!v && value.ignoreIfEmpty ? undefined : cb(v);
-	let result = {};
+	let result: IDataObject = {};
 
 	switch (type) {
 		case 'rich_text':
@@ -364,7 +360,6 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 
 			//if the date was left empty, set it to null so it resets the value in notion
 			if (value.date === '' || (value.dateStart === '' && value.dateEnd === '')) {
-				//@ts-ignore
 				result.date = null;
 			}
 
