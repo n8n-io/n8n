@@ -26,7 +26,7 @@ import {
 	VERSIONS_MODAL_KEY,
 	VIEWS,
 	WORKFLOW_ACTIVE_MODAL_KEY,
-	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_SHARE_MODAL_KEY,
 } from "@/constants";
 import {
 	CurlToJSONResponse,
@@ -97,6 +97,9 @@ export const useUIStore = defineStore(STORES.UI, {
 			[EXECUTIONS_MODAL_KEY]: {
 				open: false,
 			},
+			[WORKFLOW_SHARE_MODAL_KEY]: {
+				open: false,
+			},
 			[WORKFLOW_ACTIVE_MODAL_KEY]: {
 				open: false,
 			},
@@ -141,12 +144,21 @@ export const useUIStore = defineStore(STORES.UI, {
 				uiLocations: ['settings'],
 			},
 			{
-				id: FAKE_DOOR_FEATURES.SHARING,
+				id: FAKE_DOOR_FEATURES.CREDENTIALS_SHARING,
 				featureName: 'fakeDoor.credentialEdit.sharing.name',
 				actionBoxTitle: 'fakeDoor.credentialEdit.sharing.actionBox.title',
 				actionBoxDescription: 'fakeDoor.credentialEdit.sharing.actionBox.description',
 				linkURL: 'https://n8n-community.typeform.com/to/l7QOrERN#f=sharing',
 				uiLocations: ['credentialsModal'],
+			},
+			{
+				id: FAKE_DOOR_FEATURES.WORKFLOWS_SHARING,
+				featureName: 'fakeDoor.workflowsSharing.name',
+				actionBoxTitle: 'workflows.shareModal.title', // Use this translation in modal title when removing fakeDoor
+				actionBoxDescription: 'fakeDoor.workflowsSharing.description',
+				actionBoxButtonLabel: 'fakeDoor.workflowsSharing.button',
+				linkURL: 'https://n8n.cloud',
+				uiLocations: ['workflowShareModal'],
 			},
 		],
 		draggable: {

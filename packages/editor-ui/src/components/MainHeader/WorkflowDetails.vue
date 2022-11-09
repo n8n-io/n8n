@@ -233,7 +233,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			if (saved) await this.settingsStore.fetchPromptsData();
 		},
 		onShareButtonClick() {
-			this.$store.dispatch('ui/openModal', WORKFLOW_SHARE_MODAL_KEY);
+			this.uiStore.openModal(WORKFLOW_SHARE_MODAL_KEY);
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;

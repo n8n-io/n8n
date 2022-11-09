@@ -33,9 +33,9 @@ export type IPermissionsTable = IPermissionsTableRow[];
  * @param user
  * @param table
  */
-export const parsePermissionsTable = (user: IUser, table: IPermissionsTable): IPermissions => {
+export const parsePermissionsTable = (user: IUser | null, table: IPermissionsTable): IPermissions => {
 	const genericTable = [
-		{ name: UserRole.InstanceOwner, test: () => user.isOwner },
+		{ name: UserRole.InstanceOwner, test: () => user?.isOwner },
 	];
 
 	return [
@@ -54,11 +54,11 @@ export const parsePermissionsTable = (user: IUser, table: IPermissionsTable): IP
  * User permissions definition
  */
 
-export const getCredentialPermissions = (user: IUser, credential: ICredentialsResponse, store: Store<IRootState>) => {
+export const getCredentialPermissions = (user: IUser | null, credential: ICredentialsResponse) => {
 	const settingsStore = useSettingsStore();
 	const table: IPermissionsTable = [
-		{ name: UserRole.ResourceOwner, test: () => !!(credential && credential.ownedBy && credential.ownedBy.id === user.id) || !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) },
-		{ name: UserRole.ResourceReader, test: () => !!(credential && credential.sharedWith && credential.sharedWith.find((sharee) => sharee.id === user.id)) },
+		{ name: UserRole.ResourceOwner, test: () => !!(credential && credential.ownedBy && credential.ownedBy.id === user?.id) || !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) },
+		{ name: UserRole.ResourceReader, test: () => !!(credential && credential.sharedWith && credential.sharedWith.find((sharee) => sharee.id === user?.id)) },
 		{ name: 'read', test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceReader] },
 		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
@@ -72,11 +72,11 @@ export const getCredentialPermissions = (user: IUser, credential: ICredentialsRe
 	return parsePermissionsTable(user, table);
 };
 
-export const getWorkflowPermissions = (user: IUser, workflow: IWorkflowDb, store: Store<IRootState>) => {
+export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb) => {
 	const settingsStore = useSettingsStore();
 	const table: IPermissionsTable = [
-		{ name: UserRole.ResourceOwner, test: () => !!(workflow && workflow.ownedBy && workflow.ownedBy.id === user.id) || !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) },
-		{ name: UserRole.ResourceReader, test: () => !!(workflow && workflow.sharedWith && workflow.sharedWith.find((sharee) => sharee.id === user.id)) },
+		{ name: UserRole.ResourceOwner, test: () => !!(workflow && workflow.ownedBy && workflow.ownedBy.id === user?.id) || !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) },
+		{ name: UserRole.ResourceReader, test: () => !!(workflow && workflow.sharedWith && workflow.sharedWith.find((sharee) => sharee.id === user?.id)) },
 		{ name: UserRole.ResourceReader, test: () => true },
 		{ name: 'read', test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceReader] },
 		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },

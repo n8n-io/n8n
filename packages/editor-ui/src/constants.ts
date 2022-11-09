@@ -421,6 +421,7 @@ export enum STORES {
 	UI = 'ui',
 	USERS = 'users',
 	WORKFLOWS = 'workflows',
+	WORKFLOWS_EE = 'workflowsEE',
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',

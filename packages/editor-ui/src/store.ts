@@ -13,7 +13,6 @@ import { useRootStore } from './stores/n8nRootStore';
 import { useWorkflowsStore } from './stores/workflows';
 import { useNDVStore } from './stores/ndv';
 import { IWorkflowSettings } from 'n8n-workflow';
-import workflowsEEModule from "@/modules/workflows.ee";
 
 Vue.use(Vuex);
 
@@ -51,8 +50,6 @@ export const store = new Vuex.Store({
 		setFakeDoorFeatures(state: IRootState, fakeDoors: IFakeDoor[]): void {
 			useUIStore().fakeDoorFeatures = fakeDoors;
 		},
-
-		...workflowsEEModule.mutations,
 	},
 	getters: {
 		getFakeDoorItems(): IFakeDoor[] {
@@ -88,7 +85,5 @@ export const store = new Vuex.Store({
 		allNodes(): INodeUi[] {
 			return useWorkflowsStore().allNodes;
 		},
-
-		...workflowsEEModule.actions,
 	},
 });

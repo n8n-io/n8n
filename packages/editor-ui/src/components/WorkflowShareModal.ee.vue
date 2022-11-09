@@ -106,6 +106,12 @@ import { getWorkflowPermissions, IPermissions } from "@/permissions";
 import mixins from "vue-typed-mixins";
 import {showMessage} from "@/components/mixins/showMessage";
 import {nodeViewEventBus} from "@/event-bus/node-view-event-bus";
+import {mapStores} from "pinia";
+import {useSettingsStore} from "@/stores/settings";
+import {useUIStore} from "@/stores/ui";
+import {useUsersStore} from "@/stores/users";
+import {useWorkflowsStore} from "@/stores/workflows";
+import useWorkflowsEEStore from "@/stores/workflows.ee";
 
 export default mixins(
 	showMessage,
@@ -115,24 +121,21 @@ export default mixins(
 		Modal,
 	},
 	data() {
+		const workflowsStore = useWorkflowsStore();
+
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
 			loading: false,
 			modalBus: new Vue(),
-			sharedWith: [...(this.$store.getters.workflow.sharedWith || [])],
+			sharedWith: [...(workflowsStore.workflow.sharedWith || [])],
 			EnterpriseEditionFeature,
 		};
 	},
 	computed: {
-		allUsers(): IUser[] {
-			return this.$store.getters['users/allUsers'];
-		},
-		currentUser(): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
+		...mapStores(useSettingsStore, useUIStore, useUsersStore, useWorkflowsStore, useWorkflowsEEStore),
 		usersList(): IUser[] {
-			return this.allUsers.filter((user: IUser) => {
-				const isCurrentUser = user.id === this.currentUser.id;
+			return this.usersStore.allUsers.filter((user: IUser) => {
+				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
 				const isAlreadySharedWithUser = (this.sharedWith || []).find((sharee) => sharee.id === user.id);
 
 				return !isCurrentUser && !isAlreadySharedWithUser;
@@ -141,22 +144,25 @@ export default mixins(
 		sharedWithList(): Array<Partial<IUser>> {
 			return ([
 				{
-					...(this.workflow && this.workflow.ownedBy ? this.workflow.ownedBy : this.currentUser),
+					...(this.workflow && this.workflow.ownedBy ? this.workflow.ownedBy : this.usersStore.currentUser),
 					isOwner: true,
 				},
 			] as Array<Partial<IUser>>).concat(this.sharedWith || []);
 		},
 		workflow(): IWorkflowDb {
-			return this.$store.getters.workflow;
+			return this.workflowsStore.workflow;
+		},
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
 		},
 		workflowPermissions(): IPermissions {
-			return getWorkflowPermissions(this.currentUser, this.workflow, this.$store);
+			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
 		},
 		isSharingAvailable(): boolean {
-			return this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.WorkflowSharing) === true;
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) === true;
 		},
-		fakeDoor(): IFakeDoor {
-			return this.$store.getters['ui/getFakeDoorById'](FAKE_DOOR_FEATURES.WORKFLOWS_SHARING);
+		fakeDoor(): IFakeDoor | undefined {
+			return this.uiStore.getFakeDoorById(FAKE_DOOR_FEATURES.WORKFLOWS_SHARING);
 		},
 		isDirty(): boolean {
 			const previousSharedWith = this.workflow.sharedWith || [];
@@ -175,28 +181,28 @@ export default mixins(
 				return new Promise((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.$emit('saveWorkflow', () => {
-							resolve(this.$store.getters.workflowId);
+							resolve(this.workflowsStore.workflowId);
 						});
 					} else {
-						resolve(this.$store.getters.workflowId);
+						resolve(this.workflowsStore.workflowId);
 					}
 				});
 			};
 
 			const workflowId = await saveWorkflowPromise();
-			await this.$store.dispatch('setWorkflowSharedWith', { workflowId, sharedWith: this.sharedWith });
+			await this.workflowsEEStore.saveWorkflowSharedWith({ workflowId, sharedWith: this.sharedWith });
 			this.loading = false;
 
 			this.modalBus.$emit('close');
 		},
 		async onAddSharee(userId: string) {
-			const { id, firstName, lastName, email } = this.$store.getters['users/getUserById'](userId);
+			const { id, firstName, lastName, email } = this.usersStore.getUserById(userId);
 			const sharee = { id, firstName, lastName, email };
 
 			this.sharedWith = this.sharedWith.concat(sharee);
 		},
 		async onRemoveSharee(userId: string) {
-			const user = this.$store.getters['users/getUserById'](userId);
+			const user = this.usersStore.getUserById(userId);
 			const isNewSharee = !(this.workflow.sharedWith || []).find((sharee) => sharee.id === userId);
 
 			let confirm = true;
@@ -224,7 +230,7 @@ export default mixins(
 			}
 		},
 		async loadUsers() {
-			await this.$store.dispatch('users/fetchUsers');
+			await this.usersStore.fetchUsers();
 		},
 	},
 	mounted() {

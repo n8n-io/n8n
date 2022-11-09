@@ -119,7 +119,7 @@ export default mixins(
 			return this.workflowsStore.allWorkflows;
 		},
 		isShareable(): boolean {
-			return this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.WorkflowSharing);
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing);
 		},
 	},
 	methods: {

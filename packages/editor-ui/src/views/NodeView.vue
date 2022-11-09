@@ -228,6 +228,7 @@ import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useCanvasStore } from '@/stores/canvas';
+import useWorkflowsEEStore from "@/stores/workflows.ee";
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -374,6 +375,7 @@ export default mixins(
 				useUIStore,
 				useUsersStore,
 				useWorkflowsStore,
+				useWorkflowsEEStore,
 			),
 			nativelyNumberSuffixedDefaults(): string[] {
 				return this.rootStore.nativelyNumberSuffixedDefaults;
@@ -818,18 +820,23 @@ export default mixins(
 				this.workflowsStore.setWorkflowHash(data.hash || '');
 
 				// @TODO
-				this.$store.commit('addWorkflow', {
+				this.workflowsStore.addWorkflow({
 					id: data.id,
 					name: data.name,
 					ownedBy: data.ownedBy,
 					sharedWith: data.sharedWith,
 					tags: data.tags || [],
+					active: data.active,
+					createdAt: data.createdAt,
+					updatedAt: data.updatedAt,
+					nodes: data.nodes,
+					connections: data.connections,
 				});
-				this.$store.commit('setWorkflowOwnedBy', {
+				this.workflowsEEStore.setWorkflowOwnedBy({
 					workflowId: data.id,
 					ownedBy: data.ownedBy,
 				});
-				this.$store.commit('setWorkflowSharedWith', {
+				this.workflowsEEStore.setWorkflowSharedWith({
 					workflowId: data.id,
 					sharedWith: data.sharedWith,
 				});

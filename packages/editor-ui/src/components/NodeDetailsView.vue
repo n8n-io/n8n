@@ -147,6 +147,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
+import {useSettingsStore} from "@/stores/settings";
 
 export default mixins(
 	externalHooks,
@@ -201,6 +202,7 @@ export default mixins(
 			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
+			useSettingsStore,
 		),
 		sessionId(): string {
 			return this.ndvStore.sessionId;
@@ -365,7 +367,7 @@ export default mixins(
 			const foreignCredentials = this.$store.getters['credentials/foreignCredentialsById'];
 
 			let hasForeignCredential = false;
-			if (credentials && this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.WorkflowSharing)) {
+			if (credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
 				Object.values(credentials).forEach((credential) => {
 					if (credential.id && !foreignCredentials[credential.id]?.currentUserHasAccess) {
 						hasForeignCredential = true;
