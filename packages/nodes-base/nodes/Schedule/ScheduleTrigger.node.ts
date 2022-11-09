@@ -431,13 +431,14 @@ export class ScheduleTrigger implements INodeType {
 				Second: moment.tz(timezone).format('ss'),
 				Timezone: moment.tz(timezone).format('z Z'),
 			};
-			const weeklyExecution = i ? (staticData[i] as IDataObject) : ({} as IDataObject);
+			const weeklyExecution =
+				i !== undefined ? (staticData[i] as IDataObject) : ({} as IDataObject);
 
 			// Checks if have the right week interval, handels new years as well
 			if (
 				isWeekly &&
 				weeklyExecution &&
-				i &&
+				i !== undefined &&
 				(moment.tz(timezone).month() - (weeklyExecution.weekInterval as number) ===
 					(weeklyExecution.week as number) ||
 					moment.tz(timezone).month() + 52 - (weeklyExecution.weekInterval as number) ===
