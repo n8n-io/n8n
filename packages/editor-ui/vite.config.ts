@@ -39,7 +39,6 @@ const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map(name 
 export default mergeConfig(
 	defineConfig({
 		define: {
-			'process.env': process.env,
 			// This causes test to fail but is required for actually running it
 			...(process.env.NODE_ENV !== 'test' ? { global: 'globalThis' } : {}),
 		},
