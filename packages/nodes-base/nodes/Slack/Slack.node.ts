@@ -1,12 +1,10 @@
-import { INodeTypeBaseDescription, INodeVersionedType } from 'n8n-workflow';
+import { INodeTypeBaseDescription, IVersionedNodeType, VersionedNodeType } from 'n8n-workflow';
 
 import { SlackV1 } from './V1/SlackV1.node';
 
 import { SlackV2 } from './V2/SlackV2.node';
 
-import { NodeVersionedType } from '../../src/NodeVersionedType';
-
-export class Slack extends NodeVersionedType {
+export class Slack extends VersionedNodeType {
 	constructor() {
 		const baseDescription: INodeTypeBaseDescription = {
 			displayName: 'Slack',
@@ -18,7 +16,7 @@ export class Slack extends NodeVersionedType {
 			defaultVersion: 2,
 		};
 
-		const nodeVersions: INodeVersionedType['nodeVersions'] = {
+		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new SlackV1(baseDescription),
 			2: new SlackV2(baseDescription),
 		};
