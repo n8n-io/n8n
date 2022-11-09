@@ -20,6 +20,7 @@ async function saveCertStr(value: TLicenseContainerStr): Promise<void> {
 		{
 			key: SETTINGS_LICENSE_CERT_KEY,
 			value,
+			loadOnStartup: false,
 		},
 		['key'],
 	);
@@ -43,19 +44,23 @@ export class License {
 		const autoRenewEnabled = config.getEnv('license.autoRenewEnabled');
 		const autoRenewOffset = config.getEnv('license.autoRenewOffset');
 
-		this.manager = new LicenseManager({
-			server,
-			tenantId: 1,
-			productIdentifier: `n8n-${version}`,
-			autoRenewEnabled,
-			autoRenewOffset,
-			logger: this.logger,
-			loadCertStr,
-			saveCertStr,
-			deviceFingerprint: () => instanceId,
-		});
+		try {
+			this.manager = new LicenseManager({
+				server,
+				tenantId: 1,
+				productIdentifier: `n8n-${version}`,
+				autoRenewEnabled,
+				autoRenewOffset,
+				logger: this.logger,
+				loadCertStr,
+				saveCertStr,
+				deviceFingerprint: () => instanceId,
+			});
 
-		await this.manager.initialize();
+			await this.manager.initialize();
+		} catch (e) {
+			console.log('e', e);
+		}
 	}
 
 	async activate(activationKey: string): Promise<void> {
@@ -71,6 +76,7 @@ export class License {
 			await this.manager.activate(activationKey);
 		} catch (e) {
 			// todo
+			console.log('e', e);
 		}
 	}
 
@@ -83,6 +89,7 @@ export class License {
 			await this.manager.renew();
 		} catch (e) {
 			// todo
+			console.log('e', e);
 		}
 	}
 
