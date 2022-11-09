@@ -148,7 +148,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						const document = { fields: {} };
 						columnList.map((column) => {
 							// @ts-ignore
-							if (item['json'][column]) {
+							if (item['json'][column] != null) {
 								// @ts-ignore
 								document.fields[column] = jsonToDocument(item['json'][column]);
 							} else {
