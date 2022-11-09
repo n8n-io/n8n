@@ -32,7 +32,7 @@ export const blockOperations: INodeProperties[] = [
 	},
 ];
 
-export const blockFields = [
+export const blockFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                block:append                                 */
 	/* -------------------------------------------------------------------------- */
@@ -101,4 +101,4 @@ export const blockFields = [
 		default: 50,
 		description: 'Max number of results to return',
 	},
-] as INodeProperties[];
+];
