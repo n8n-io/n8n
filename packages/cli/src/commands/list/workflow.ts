@@ -4,7 +4,7 @@ import { Command, flags } from '@oclif/command';
 
 import { IDataObject } from 'n8n-workflow';
 
-import { Db } from '../../src';
+import * as Db from '@/Db';
 
 export class ListWorkflowCommand extends Command {
 	static description = '\nList workflows';

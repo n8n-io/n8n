@@ -186,12 +186,18 @@ importers:
       posthog-node: ^1.3.0
       prom-client: ^13.1.0
       psl: ^1.8.0
+      run-script-os: ^1.0.7
       shelljs: ^0.8.5
       sqlite3: ^5.1.2
       sse-channel: ^3.1.1
+      supertest: ^6.2.2
       swagger-ui-express: ^4.3.0
+      ts-node: ^8.9.1
+      tsc-alias: ^1.7.0
+      tsconfig-paths: ^3.14.1
       tslib: 1.14.1
       typeorm: 0.2.45
+      typescript: ~4.8.0
       uuid: ^8.3.2
       validator: 13.7.0
       winston: ^3.3.3
@@ -303,6 +309,12 @@ importers:
       '@types/yamljs': 0.2.31
       concurrently: 5.3.0
       nodemon: 2.0.20
+      run-script-os: 1.1.6
+      supertest: 6.3.0
+      ts-node: 8.10.2_typescript@4.8.4
+      tsc-alias: 1.7.1
+      tsconfig-paths: 3.14.1
+      typescript: 4.8.4
 
   packages/core:
     specifiers:
@@ -8985,7 +8997,6 @@ packages:
   /commander/9.4.1:
     resolution: {integrity: sha512-5EEkTNyHNGFPD2H+c/dXXfQZYa/scCKasxWcXJaWnNJ99pnQN9Vnmqow+p+PlFPE63Q6mThaZws1T+HxfpgtPw==}
     engines: {node: ^12.20.0 || >=14}
-    dev: false
 
   /commist/1.1.0:
     resolution: {integrity: sha512-rraC8NXWOEjhADbZe9QBNzLAN5Q3fsTPQtBV+fEVj6xKIgDgNiEVE6ZNfHpZOqfQ21YUzfVNUXLOEZquYvQPPg==}
@@ -15720,6 +15731,11 @@ packages:
     resolution: {integrity: sha512-nnbWWOkoWyUsTjKrhgD0dcz22mdkSnpYqbEjIm2nhwhuxlSkpywJmBo8h0ZqJdkp73mb90SssHkN4rsRaBAfAA==}
     dev: false
 
+  /mylas/2.1.13:
+    resolution: {integrity: sha512-+MrqnJRtxdF+xngFfUUkIMQrUUL0KsxbADUkn23Z/4ibGg192Q+z+CQyiYwvWTsYjJygmMR8+w3ZDa98Zh6ESg==}
+    engines: {node: '>=12.0.0'}
+    dev: true
+
   /mysql2/2.3.3:
     resolution: {integrity: sha512-wxJUev6LgMSgACDkb/InIFxDprRa6T95+VEoR+xPvtngtccNH2dGjEB/fVZ8yg1gWv1510c9CvXuJHi5zUm0ZA==}
     engines: {node: '>= 8.0'}
@@ -16964,6 +16980,12 @@ packages:
       find-up: 5.0.0
     dev: true
 
+  /plimit-lit/1.4.1:
+    resolution: {integrity: sha512-bK14ePAod0XWhXwjT6XvYfjcQ9PbCUkZXnDCAKRMZTJCaDIV9VFya1S/I+3WSbpdR8uBhCDh8TS4lQ/JQvhNFA==}
+    dependencies:
+      queue-lit: 1.5.0
+    dev: true
+
   /pluralize/8.0.0:
     resolution: {integrity: sha512-Nc3IT5yHzflTfbjgqWcCPpo7DaKy4FnpB0l/zCAW0Tc7jxAiuqSxHasntB3D7887LSrA93kDJ9IXovxJYxyLCA==}
     engines: {node: '>=4'}
@@ -17674,6 +17696,10 @@ packages:
 
   /querystringify/2.2.0:
     resolution: {integrity: sha512-FIqgj2EUvTa7R50u0rGsyTftzjYmv/a3hO345bZNrqabNqjtgiDMgmo4mkUjd+nzU5oF3dClKqFIPUKybUyqoQ==}
+
+  /queue-lit/1.5.0:
+    resolution: {integrity: sha512-IslToJ4eiCEE9xwMzq3viOO5nH8sUWUCwoElrhNMozzr9IIt2qqvB4I+uHu/zJTQVqc9R5DFwok4ijNK1pU3fA==}
+    dev: true
 
   /queue-microtask/1.2.3:
     resolution: {integrity: sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A==}
@@ -20306,6 +20332,21 @@ packages:
     resolution: {integrity: sha512-vDWbsl26LIcPGmDpoVzjEP6+hvHZkBkLW7JpvwbCv/5IYPJlsbzCVXY3wsCeAxAUeTclNOUZxnLdGh3VBD/J6w==}
     dev: true
 
+  /ts-node/8.10.2_typescript@4.8.4:
+    resolution: {integrity: sha512-ISJJGgkIpDdBhWVu3jufsWpK3Rzo7bdiIXJjQc0ynKxVOVcg2oIrf2H2cejminGrptVc6q6/uynAHNCuWGbpVA==}
+    engines: {node: '>=6.0.0'}
+    hasBin: true
+    peerDependencies:
+      typescript: '>=2.7'
+    dependencies:
+      arg: 4.1.3
+      diff: 4.0.2
+      make-error: 1.3.6
+      source-map-support: 0.5.21
+      typescript: 4.8.4
+      yn: 3.1.1
+    dev: true
+
   /ts-node/9.1.1_typescript@4.8.4:
     resolution: {integrity: sha512-hPlt7ZACERQGf03M253ytLY3dHbGNGrAq9qIHWUY9XHYl1z7wYngSr3OQ5xmui8o2AaxsONxIzjafLUiWBo1Fg==}
     engines: {node: '>=10.0.0'}
@@ -20332,6 +20373,18 @@ packages:
         optional: true
     dependencies:
       typescript: 4.8.4
+    dev: true
+
+  /tsc-alias/1.7.1:
+    resolution: {integrity: sha512-P4+0i+OB0hX17Ca+U6EJ4WZZ+OSupqW32VJ34N7g7+Ch+bwSx1AqYOvDdIVYEKymBh3dfG0t1qxbxPlBbtB1lQ==}
+    hasBin: true
+    dependencies:
+      chokidar: 3.5.3
+      commander: 9.4.1
+      globby: 11.1.0
+      mylas: 2.1.13
+      normalize-path: 3.0.0
+      plimit-lit: 1.4.1
     dev: true
 
   /tsconfig-paths/3.14.1:

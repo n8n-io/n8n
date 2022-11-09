@@ -9,3 +9,4 @@ packages/**/dist
 packages/**/.turbo
 .git
 .github
+*.tsbuildinfo

@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable import/no-cycle */
 
 import jwt from 'jsonwebtoken';
 import { Response } from 'express';
 import { createHash } from 'crypto';
-import { Db } from '../..';
-import { AUTH_COOKIE_NAME } from '../../constants';
+import * as Db from '@/Db';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { JwtPayload, JwtToken } from '../Interfaces';
-import { User } from '../../databases/entities/User';
-import * as config from '../../../config';
+import { User } from '@db/entities/User';
+import config from '@/config';
 
 export function issueJWT(user: User): JwtToken {
 	const { id, email, password } = user;

@@ -13,15 +13,16 @@
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "main": "dist/index",
-  "types": "dist/src/index.d.ts",
+  "types": "dist/index.d.ts",
   "oclif": {
     "commands": "./dist/commands",
     "bin": "n8n"
   },
   "scripts": {
     "clean": "rimraf dist .turbo",
-    "build": "node scripts/build.mjs",
-    "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"pnpm watch\" \"nodemon\"",
+    "typecheck": "tsc",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/build.mjs",
+    "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "format": "prettier **/**.ts --write",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
@@ -30,12 +31,13 @@
     "start": "run-script-os",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
+    "swagger": "swagger-cli",
     "test": "pnpm test:sqlite",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb jest",
     "test:postgres:alt-schema": "DB_POSTGRESDB_SCHEMA=alt_schema pnpm test:postgres",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb jest",
-    "watch": "tsc --watch",
+    "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\"",
     "typeorm": "ts-node -T ../../node_modules/typeorm/cli.js"
   },
   "bin": {
@@ -92,7 +94,13 @@
     "@types/validator": "^13.7.0",
     "@types/yamljs": "^0.2.31",
     "concurrently": "^5.1.0",
-    "nodemon": "^2.0.2"
+    "nodemon": "^2.0.2",
+    "run-script-os": "^1.0.7",
+    "supertest": "^6.2.2",
+    "ts-node": "^8.9.1",
+    "tsc-alias": "^1.7.0",
+    "tsconfig-paths": "^3.14.1",
+    "typescript": "~4.8.0"
   },
   "dependencies": {
     "@oclif/command": "^1.8.16",
