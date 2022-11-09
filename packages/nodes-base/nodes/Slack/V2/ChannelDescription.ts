@@ -129,6 +129,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
+		description: 'The Slack channel to archive',
 		displayOptions: {
 			show: {
 				operation: ['archive'],
@@ -242,8 +243,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'The name of the channel to close. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to close',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -350,8 +350,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'The ID of the channel to invite user to. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to invite to',
 	},
 	{
 		displayName: 'User Names or IDs',
@@ -433,7 +432,7 @@ export const channelFields: INodeProperties[] = [
 				resource: ['channel'],
 			},
 		},
-		description: 'Channel ID to learn more about',
+		description: 'The Slack channel to get',
 	},
 	{
 		displayName: 'Options',
@@ -518,8 +517,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to kick the user from',
 	},
 	{
 		displayName: 'User Name or ID',
@@ -548,6 +546,7 @@ export const channelFields: INodeProperties[] = [
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
 		placeholder: 'Select a channel...',
+		description: 'The Slack channel to join',
 		modes: [
 			{
 				displayName: 'From List',
@@ -747,8 +746,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to get the history from',
 	},
 	{
 		displayName: 'Return All',
@@ -880,8 +878,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'The name of the channel to leave. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to leave from',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -892,6 +889,7 @@ export const channelFields: INodeProperties[] = [
 		displayName: 'Channel',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
+		description: 'The Slack channel to get the members from',
 		placeholder: 'Select a channel...',
 		modes: [
 			{
@@ -1098,8 +1096,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'The name of the channel to rename. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to rename',
 	},
 	{
 		displayName: 'Name',
@@ -1177,8 +1174,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'The name of the channel to create. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to replies to',
 	},
 	{
 		displayName: 'Message Timestamp',
@@ -1325,8 +1321,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'Conversation to set the purpose of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to set the purpose of',
 	},
 	{
 		displayName: 'Purpose',
@@ -1404,8 +1399,7 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'Conversation to set the topic of. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to set the topic of',
 	},
 	{
 		displayName: 'Topic',
@@ -1482,7 +1476,6 @@ export const channelFields: INodeProperties[] = [
 			},
 		},
 		required: true,
-		description:
-			'The ID of the channel to unarchive. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+		description: 'The Slack channel to unarchive',
 	},
 ];

@@ -316,6 +316,24 @@ export class SlackV2 implements INodeType {
 					})),
 				};
 			},
+			async getUsers(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const users = await slackApiRequestAllItems.call(this, 'members', 'GET', '/users.list');
+				users.sort((a: IDataObject, b: IDataObject) => {
+					if (a.name! < b.name!) {
+						return -1;
+					}
+					if (a.name! > b.name!) {
+						return 1;
+					}
+					return 0;
+				});
+				return {
+					results: users.map((user: IDataObject) => ({
+						name: user.name,
+						value: user.id,
+					})),
+				};
+			},
 		},
 		loadOptions: {
 			// Get all the users to display them to user so that he can
@@ -837,14 +855,21 @@ export class SlackV2 implements INodeType {
 				if (resource === 'message') {
 					//https://api.slack.com/methods/chat.postMessage
 					if (['post', 'postEphemeral'].includes(operation)) {
-						const channel = this.getNodeParameter('channel', i) as string;
+						const select = this.getNodeParameter('select', i) as string;
+						const target =
+							select === 'channel'
+								? (this.getNodeParameter('channelId', i, undefined, {
+										extractValue: true,
+								  }) as string)
+								: (this.getNodeParameter('user', i, undefined, {
+										extractValue: true,
+								  }) as string);
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						const text = this.getNodeParameter('text', i) as string;
 						const body: IDataObject = {
-							channel,
+							channel: target,
 							text,
 						};
-
 						let action = 'postMessage';
 
 						if (operation === 'postEphemeral') {
