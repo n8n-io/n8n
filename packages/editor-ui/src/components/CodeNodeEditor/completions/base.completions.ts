@@ -15,9 +15,7 @@ function getAutocompletableNodeNames(nodes: INodeUi[]) {
 
 export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 	computed: {
-		...mapStores(
-			useWorkflowsStore,
-		),
+		...mapStores(useWorkflowsStore),
 	},
 	methods: {
 		itemCompletions(context: CompletionContext): CompletionResult | null {
@@ -28,9 +26,15 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 			const options: Completion[] = [];
 
 			if (this.mode === 'runOnceForEachItem') {
-				options.push({ label: 'item', info: 'description....' });
+				options.push({
+					label: 'item',
+					info: this.$locale.baseText('codeNodeEditor.completer.$input.item'),
+				});
 			} else if (this.mode === 'runOnceForAllItems') {
-				options.push({ label: 'items', info: 'description....' });
+				options.push({
+					label: 'items',
+					info: this.$locale.baseText('codeNodeEditor.completer.$input.all'),
+				});
 			}
 
 			return {
