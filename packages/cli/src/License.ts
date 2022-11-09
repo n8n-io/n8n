@@ -43,6 +43,8 @@ export class License {
 			return this.manager.isValid();
 		} catch (e) {
 			// todo
+
+			return false;
 		}
 	}
 
