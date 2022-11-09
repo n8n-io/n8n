@@ -159,7 +159,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
-import { License } from './License';
+import { license } from './License';
 
 require('body-parser-xml')(bodyParser);
 
@@ -225,8 +225,6 @@ class App {
 	presetCredentialsLoaded: boolean;
 
 	webhookMethods: WebhookHttpMethod[];
-
-	license: License;
 
 	constructor() {
 		this.app = express();
@@ -350,8 +348,6 @@ class App {
 				workflowSharing: false,
 			},
 		};
-
-		this.license = new License();
 	}
 
 	/**
@@ -389,11 +385,11 @@ class App {
 	}
 
 	async initLicense(): Promise<void> {
-		await this.license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
+		await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
 
 		const activationKey = config.getEnv('license.activationKey');
 		if (activationKey) {
-			await this.license.activate(activationKey);
+			await license.activate(activationKey);
 		}
 	}
 
