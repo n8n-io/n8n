@@ -12,6 +12,7 @@
 import get from 'lodash.get';
 import merge from 'lodash.merge';
 import set from 'lodash.set';
+import cloneDeep from 'lodash.clonedeep';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -163,7 +164,7 @@ export class RoutingNode {
 							i,
 							runIndex,
 							executeData,
-							{ $credentials: credentials, $version: this.node.typeVersion },
+							{ $credentials: credentials },
 							false,
 						) as string;
 						// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -179,7 +180,7 @@ export class RoutingNode {
 						i,
 						runIndex,
 						executeData,
-						{ $credentials: credentials, $version: this.node.typeVersion },
+						{ $credentials: credentials },
 						true,
 					) as string | NodeParameterValue;
 
@@ -189,7 +190,7 @@ export class RoutingNode {
 						i,
 						runIndex,
 						'',
-						{ $credentials: credentials, $value: value, $version: this.node.typeVersion },
+						{ $credentials: credentials, $value: value },
 					);
 
 					this.mergeOptions(requestData, tempOptions);
@@ -217,12 +218,7 @@ export class RoutingNode {
 					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
-				throw new NodeApiError(this.node, error, {
-					runIndex,
-					itemIndex: i,
-					message: error?.message,
-					description: error?.description,
-				});
+				throw new NodeApiError(this.node, error, { runIndex, itemIndex: i });
 			}
 		}
 
@@ -238,11 +234,15 @@ export class RoutingNode {
 			destinationOptions.maxResults = sourceOptions.maxResults
 				? sourceOptions.maxResults
 				: destinationOptions.maxResults;
+
 			merge(destinationOptions.options, sourceOptions.options);
+
 			destinationOptions.preSend.push(...sourceOptions.preSend);
 			destinationOptions.postReceive.push(...sourceOptions.postReceive);
-			if (sourceOptions.requestOperations && destinationOptions.requestOperations) {
+
+			if (sourceOptions.requestOperations) {
 				destinationOptions.requestOperations = Object.assign(
+					{},
 					destinationOptions.requestOperations,
 					sourceOptions.requestOperations,
 				);
@@ -277,12 +277,12 @@ export class RoutingNode {
 						};
 					});
 				});
-			} catch (error) {
-				throw new NodeOperationError(this.node, error, {
-					runIndex,
-					itemIndex,
-					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
-				});
+			} catch (e) {
+				throw new NodeOperationError(
+					this.node,
+					`The rootProperty "${action.properties.property}" could not be found on item.`,
+					{ runIndex, itemIndex },
+				);
 			}
 		}
 		if (action.type === 'limit') {
@@ -291,7 +291,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
+				{ $response: responseData, $value: parameterValue },
 				false,
 			) as string;
 			return inputData.slice(0, parseInt(maxResults, 10));
@@ -306,7 +306,7 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						executeSingleFunctions.getExecuteData(),
-						{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
+						{ $response: responseData, $value: parameterValue },
 						false,
 					) as IDataObject,
 				},
@@ -357,7 +357,6 @@ export class RoutingNode {
 							$response: responseData,
 							$responseItem: item.json,
 							$value: parameterValue,
-							$version: this.node.typeVersion,
 						},
 						true,
 					) as string;
@@ -378,7 +377,7 @@ export class RoutingNode {
 				itemIndex,
 				runIndex,
 				executeSingleFunctions.getExecuteData(),
-				{ $response: responseData, $value: parameterValue, $version: this.node.typeVersion },
+				{ $response: responseData, $value: parameterValue },
 				false,
 			) as string;
 
@@ -503,7 +502,6 @@ export class RoutingNode {
 				);
 			} else {
 				// Pagination via JSON properties
-				const { properties } = requestOperations.pagination;
 				responseData = [];
 				if (!requestData.options.qs) {
 					requestData.options.qs = {};
@@ -511,6 +509,8 @@ export class RoutingNode {
 
 				// Different predefined pagination types
 				if (requestOperations.pagination.type === 'offset') {
+					const { properties } = requestOperations.pagination;
+
 					const optionsType = properties.type === 'body' ? 'body' : 'qs';
 					if (properties.type === 'body' && !requestData.options.body) {
 						requestData.options.body = {};
@@ -566,6 +566,136 @@ export class RoutingNode {
 
 						responseData.push(...tempResponseData);
 					} while (tempResponseData.length && tempResponseData.length === properties.pageSize);
+				}
+				// Generic pagination, using the contents of the previous response to
+				// decide whether a new one should be made.
+				else if (requestOperations.pagination.type === 'generic') {
+					const { properties } = requestOperations.pagination;
+
+					// Merge request properties coming in from different parts of the declaration
+					// (avoiding Object.assign() as it only does a shallow merge)
+					if (properties.request) {
+						requestData.options = merge({}, requestData.options, properties.request);
+					}
+
+					let previousResponseData: INodeExecutionData | null = null;
+					let currentResponseData: INodeExecutionData[] = [];
+					let canContinue = false;
+
+					do {
+						// Deep-clone requestData, as evaluating a parameter would overwrite it
+						const currentRequestData: DeclarativeRestApiSettings.ResultOptions =
+							cloneDeep(requestData);
+
+						// Evaluate any additional qs/body/headers parameters into the request
+						type QueryOption = keyof DeclarativeRestApiSettings.HttpRequestOptions;
+						const configurableQueryOptions: QueryOption[] = ['qs', 'body', 'headers'];
+
+						for (const optionType of configurableQueryOptions) {
+							if (currentRequestData.options[optionType]) {
+								const value = this.getParameterValue(
+									currentRequestData.options[optionType] as INodeParameters,
+									itemIndex,
+									runIndex,
+									executeSingleFunctions.getExecuteData(),
+									{
+										$response: previousResponseData?.json,
+									},
+									false,
+								) as IDataObject;
+								(currentRequestData.options[optionType] as IDataObject) = value;
+							}
+						}
+
+						// TODO: how to handle postreceiveaction?
+						// currentRequestData.postReceive = ...;
+
+						// Execute the request for this page
+						currentResponseData = await this.rawRoutingRequest(
+							executeSingleFunctions,
+							currentRequestData,
+							itemIndex,
+							runIndex,
+							credentialType,
+							credentialsDecrypted,
+						);
+
+						// Take aside the previous raw response before it possibly gets transformed
+						previousResponseData = currentResponseData?.[0];
+
+						// Evaluate the 'continue' clause after the request. The declarative paginator can
+						// decide whether a new request should be made, using the data from the previous
+						// response, potentially combined with some other value such as $parameter.returnAll.
+						canContinue = this.getParameterValue(
+							requestOperations.pagination.properties.continue,
+							itemIndex,
+							runIndex,
+							executeSingleFunctions.getExecuteData(),
+							{
+								$response: previousResponseData?.json,
+							},
+						) as boolean;
+
+						if (properties.postReceive) {
+							const $response = previousResponseData?.json;
+							const postReceiveActions = properties.postReceive.filter((action) => {
+								if (typeof action === 'function') {
+									return true;
+								}
+
+								if (typeof action.enabled === 'string' && action.enabled.charAt(0) === '=') {
+									// If the propertyName is an expression resolve it
+									return this.getParameterValue(
+										action.enabled,
+										itemIndex,
+										runIndex,
+										executeSingleFunctions.getExecuteData(),
+										{ /*$value: parameterValue,*/ $response },
+										true,
+									) as boolean;
+								}
+
+								return action.enabled !== false;
+							});
+
+							console.log('todo: got postReceiveActions', { postReceiveActions });
+							// if (postReceiveActions.length) {
+							// 	returnData.postReceive.push({
+							// 		data: {
+							// 			parameterValue,
+							// 		},
+							// 		actions: postReceiveActions,
+							// 	});
+						}
+
+						// Map items to a rootProperty if one is defined.
+						//
+						// Attempting to do this as a postReceive 'rootProperty' operation doesn't cut it
+						// for pagination, because for each page of results we'd also need to access the
+						// original response (e.g. for a cursor), but it has already been lost when we get
+						// it from rawRoutingRequest.
+						if (properties.rootProperty) {
+							const tempResponseValue = get(
+								currentResponseData[0].json,
+								properties.rootProperty,
+							) as IDataObject[] | undefined;
+							if (tempResponseValue === undefined) {
+								throw new NodeOperationError(
+									this.node,
+									`The rootProperty "${properties.rootProperty}" could not be found on item.`,
+									{ runIndex, itemIndex },
+								);
+							}
+
+							currentResponseData = tempResponseValue.map((item) => {
+								return {
+									json: item,
+								};
+							});
+						}
+
+						responseData.push(...currentResponseData);
+					} while (currentResponseData.length && canContinue);
 				}
 			}
 		} else {
@@ -831,7 +961,7 @@ export class RoutingNode {
 					itemIndex,
 					runIndex,
 					`${basePath}${nodeProperties.name}`,
-					{ $value: optionValue, $version: this.node.typeVersion },
+					{ $value: optionValue },
 				);
 
 				this.mergeOptions(returnData, tempOptions);
@@ -855,7 +985,6 @@ export class RoutingNode {
 						itemIndex,
 						runIndex,
 						`${basePath}${nodeProperties.name}`,
-						{ $version: this.node.typeVersion },
 					);
 
 					this.mergeOptions(returnData, tempOptions);

@@ -4,7 +4,6 @@
 // eslint-disable-next-line max-classes-per-file
 import * as express from 'express';
 import * as FormData from 'form-data';
-import type { IncomingHttpHeaders } from 'http';
 import type { URLSearchParams } from 'url';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { Workflow } from './Workflow';
@@ -12,7 +11,6 @@ import type { WorkflowHooks } from './WorkflowHooks';
 import type { WorkflowActivationError } from './WorkflowActivationError';
 import type { WorkflowOperationError } from './WorkflowErrors';
 import type { NodeApiError, NodeOperationError } from './NodeErrors';
-import { ExpressionError } from './ExpressionError';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -64,7 +62,6 @@ export interface IConnection {
 }
 
 export type ExecutionError =
-	| ExpressionError
 	| WorkflowActivationError
 	| WorkflowOperationError
 	| NodeOperationError
@@ -521,6 +518,7 @@ export interface IN8nHttpFullResponse {
 export interface IN8nRequestOperations {
 	pagination?:
 		| IN8nRequestOperationPaginationOffset
+		| IN8NRequestOperationPaginationGeneric
 		| ((
 				this: IExecutePaginationFunctions,
 				requestOptions: DeclarativeRestApiSettings.ResultOptions,
@@ -530,7 +528,7 @@ export interface IN8nRequestOperations {
 export interface IN8nRequestOperationPaginationBase {
 	type: string;
 	properties: {
-		[key: string]: string | number;
+		[key: string]: unknown;
 	};
 }
 
@@ -542,6 +540,16 @@ export interface IN8nRequestOperationPaginationOffset extends IN8nRequestOperati
 		pageSize: number;
 		rootProperty?: string; // Optional Path to option array
 		type: 'body' | 'query';
+	};
+}
+
+export interface IN8NRequestOperationPaginationGeneric extends IN8nRequestOperationPaginationBase {
+	type: 'generic';
+	properties: {
+		continue: string;
+		request: IRequestOptionsSimplifiedAuth;
+		postReceive?: PostReceiveAction[];
+		rootProperty?: string; // TODO: remove?
 	};
 }
 
@@ -720,12 +728,7 @@ export interface IHookFunctions {
 }
 
 export interface IPollFunctions {
-	__emit(
-		data: INodeExecutionData[][],
-		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
-		donePromise?: IDeferredPromise<IRun>,
-	): void;
-	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
+	__emit(data: INodeExecutionData[][] | NodeApiError): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
@@ -790,7 +793,7 @@ export interface ITriggerFunctions {
 export interface IWebhookFunctions {
 	getBodyData(): IDataObject;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
-	getHeaderData(): IncomingHttpHeaders;
+	getHeaderData(): object;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getNodeParameter(
@@ -947,12 +950,11 @@ export type NodePropertyTypes =
 	| 'options'
 	| 'string'
 	| 'credentialsSelect'
-	| 'resourceLocator'
-	| 'curlImport';
+	| 'resourceLocator';
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'codeNodeEditor' | 'json';
+export type EditorTypes = 'code' | 'json';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1150,7 +1152,7 @@ export interface INodeType {
 	};
 }
 
-export interface IVersionedNodeType {
+export interface INodeVersionedType {
 	nodeVersions: {
 		[key: number]: INodeType;
 	};
@@ -1218,7 +1220,6 @@ export interface INodeTypeBaseDescription {
 	subtitle?: string;
 	defaultVersion?: number;
 	codex?: CodexData;
-	parameterPane?: 'wide';
 
 	/**
 	 * Whether the node must be hidden in the node creator panel,
@@ -1405,7 +1406,6 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
-	constructor: any;
 }
 
 export type IWorkflowDataProxyAdditionalKeys = IDataObject;
@@ -1430,7 +1430,7 @@ export type WebhookResponseMode = 'onReceived' | 'lastNode';
 export interface INodeTypes {
 	nodeTypes: INodeTypeData;
 	init(nodeTypes?: INodeTypeData): Promise<void>;
-	getAll(): Array<INodeType | IVersionedNodeType>;
+	getAll(): Array<INodeType | INodeVersionedType>;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
@@ -1443,7 +1443,7 @@ export interface ICredentialTypeData {
 
 export interface INodeTypeData {
 	[key: string]: {
-		type: INodeType | IVersionedNodeType;
+		type: INodeType | INodeVersionedType;
 		sourcePath: string;
 	};
 }
@@ -1629,17 +1629,9 @@ export interface IStatusCodeMessages {
 	[key: string]: string;
 }
 
-export type DocumentationLink = {
-	url: string;
-};
-
 export type CodexData = {
 	categories?: string[];
 	subcategories?: { [category: string]: string[] };
-	resources?: {
-		credentialDocumentation?: DocumentationLink[];
-		primaryDocumentation?: DocumentationLink[];
-	};
 	alias?: string[];
 };
 
