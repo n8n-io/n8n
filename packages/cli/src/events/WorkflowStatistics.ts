@@ -1,65 +1,67 @@
-import { eventEmitter } from 'n8n-core';
-import { INode, INodeCredentialsDetails, IRun, IWorkflowBase } from 'n8n-workflow';
+import { INode, IRun, IWorkflowBase } from 'n8n-workflow';
 import { Db, InternalHooksManager } from '..';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
 import { getWorkflowOwner } from '../UserManagement/UserManagementHelper';
 
-eventEmitter.on(
-	eventEmitter.types.workflowExecutionCompleted,
-	async (workflowData: IWorkflowBase, runData: IRun) => {
-		// Determine the name of the statistic
-		const finished = runData.finished ? runData.finished : false;
-		const manual = runData.mode === 'manual';
-		let name: StatisticsNames;
+export async function workflowExecutionCompleted(
+	workflowData: IWorkflowBase,
+	runData: IRun,
+): Promise<void> {
+	// Determine the name of the statistic
+	const finished = runData.finished ? runData.finished : false;
+	const manual = runData.mode === 'manual';
+	let name: StatisticsNames;
 
-		if (finished) {
-			if (manual) name = StatisticsNames.manualSuccess;
-			else name = StatisticsNames.productionSuccess;
-		} else {
-			if (manual) name = StatisticsNames.manualError;
-			else name = StatisticsNames.productionError;
-		}
+	if (finished) {
+		if (manual) name = StatisticsNames.manualSuccess;
+		else name = StatisticsNames.productionSuccess;
+	} else {
+		if (manual) name = StatisticsNames.manualError;
+		else name = StatisticsNames.productionError;
+	}
 
-		// Get the workflow id
-		let workflowId: number;
-		try {
-			workflowId = parseInt(workflowData.id as string, 10);
-		} catch (error) {
-			console.error(`Error ${error as string} when casting workflow ID to a number`);
-			return;
-		}
+	// Get the workflow id
+	let workflowId: number;
+	try {
+		workflowId = parseInt(workflowData.id as string, 10);
+		if (isNaN(workflowId)) throw new Error('not a number');
+	} catch (error) {
+		console.error(`Error "${error as string}" when casting workflow ID to a number`);
+		return;
+	}
 
-		// Try insertion and if it fails due to key conflicts then update the existing entry instead
-		try {
-			await Db.collections.WorkflowStatistics.insert({ count: 1, name, workflowId });
+	// Try insertion and if it fails due to key conflicts then update the existing entry instead
+	try {
+		await Db.collections.WorkflowStatistics.insert({ count: 1, name, workflowId });
 
-			// If we're here we can check if we're sending the first production success metric
-			if (name !== StatisticsNames.productionSuccess) return;
+		// If we're here we can check if we're sending the first production success metric
+		if (name !== StatisticsNames.productionSuccess) return;
 
-			// Get the owner of the workflow so we can send the metric
-			const owner = await getWorkflowOwner(workflowId);
-			const metrics = {
-				user_id: owner.id,
-				workflow_id: workflowId,
-			};
+		// Get the owner of the workflow so we can send the metric
+		const owner = await getWorkflowOwner(workflowId);
+		const metrics = {
+			user_id: owner.id,
+			workflow_id: workflowId,
+		};
 
-			// Send the metrics
-			await InternalHooksManager.getInstance().onFirstProductionWorkflowSuccess(metrics);
-		} catch (error) {
-			// Do we just assume it's a conflict error? If there is any other sort of error in the DB it should trigger here too
-			await Db.collections.WorkflowStatistics.update(
-				{ workflowId, name },
-				{ count: () => '"count" + 1' },
-			);
-		}
-	},
-);
+		// Send the metrics
+		await InternalHooksManager.getInstance().onFirstProductionWorkflowSuccess(metrics);
+	} catch (error) {
+		console.error(error);
+		// Do we just assume it's a conflict error? If there is any other sort of error in the DB it should trigger here too
+		await Db.collections.WorkflowStatistics.update(
+			{ workflowId, name },
+			{ count: () => '"count" + 1' },
+		);
+	}
+}
 
-eventEmitter.on(eventEmitter.types.nodeFetchedData, async (workflowId: string, node: INode) => {
+export async function nodeFetchedData(workflowId: string, node: INode): Promise<void> {
 	// Get the workflow id
 	let id: number;
 	try {
 		id = parseInt(workflowId, 10);
+		if (isNaN(id)) throw new Error('not a number');
 	} catch (error) {
 		console.error(`Error ${error as string} when casting workflow ID to a number`);
 		return;
@@ -72,27 +74,27 @@ eventEmitter.on(eventEmitter.types.nodeFetchedData, async (workflowId: string, n
 	);
 
 	// If response.affected is 1 then we know this was the first time data was loaded into the workflow; do posthog event here
-	if (response.affected) {
-		// Compile the metrics
-		const owner = await getWorkflowOwner(workflowId);
-		let metrics = {
-			user_id: owner.id,
-			workflow_id: workflowId,
-			node_type: node.type,
-			node_id: node.id,
-		};
+	if (!response.affected) return;
 
-		// This is probably naive but I can't see a way for a node to have multiple credentials attached so..
-		if (node.credentials) {
-			Object.entries(node.credentials).forEach(([credName, credDetails]) => {
-				metrics = Object.assign(metrics, {
-					credential_type: credName,
-					credential_id: credDetails.id,
-				});
+	// Compile the metrics
+	const owner = await getWorkflowOwner(workflowId);
+	let metrics = {
+		user_id: owner.id,
+		workflow_id: id,
+		node_type: node.type,
+		node_id: node.id,
+	};
+
+	// This is probably naive but I can't see a way for a node to have multiple credentials attached so..
+	if (node.credentials) {
+		Object.entries(node.credentials).forEach(([credName, credDetails]) => {
+			metrics = Object.assign(metrics, {
+				credential_type: credName,
+				credential_id: credDetails.id,
 			});
-		}
-
-		// Send metrics to posthog
-		await InternalHooksManager.getInstance().onFirstWorkflowDataLoad(metrics);
+		});
 	}
-});
+
+	// Send metrics to posthog
+	await InternalHooksManager.getInstance().onFirstWorkflowDataLoad(metrics);
+}
