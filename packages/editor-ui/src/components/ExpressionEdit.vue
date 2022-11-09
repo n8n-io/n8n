@@ -22,7 +22,14 @@
 							{{ $locale.baseText('expressionEdit.expression') }}
 						</div>
 						<div class="expression-editor ph-no-capture">
-							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
+							<expression-editor-modal-input
+								:parameter="parameter"
+								:value="value"
+								:path="path"
+								@change="valueChanged"
+								@keydown.stop="noOp"
+								ref="inputFieldExpression"
+							/>
 						</div>
 					</div>
 
@@ -44,6 +51,7 @@
 
 <script lang="ts">
 import ExpressionInput from '@/components/ExpressionInput.vue';
+import ExpressionEditorModalInput from '@/components/ExpressionEditorModal/ExpressionEditorModalInput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
 
 import { IVariableItemSelected } from '@/Interface';
@@ -73,6 +81,7 @@ export default mixins(
 	],
 	components: {
 		ExpressionInput,
+		ExpressionEditorModalInput,
 		VariableSelector,
 	},
 	data () {
