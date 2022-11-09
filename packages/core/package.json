@@ -12,10 +12,11 @@
     "type": "git",
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
-  "main": "dist/src/index",
-  "types": "dist/src/index.d.ts",
+  "main": "dist/index",
+  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
+    "typecheck": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "dev": "npm run watch",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/core/**/**.ts --write",
     "lint": "eslint .",
