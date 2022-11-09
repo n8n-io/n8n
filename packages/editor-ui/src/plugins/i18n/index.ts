@@ -15,6 +15,7 @@ import {
 } from 'n8n-design-system';
 
 import englishBaseText from './locales/en.json';
+import { INodeProperties } from "n8n-workflow";
 
 Vue.use(VueI18n);
 locale.use('en');
@@ -189,7 +190,7 @@ export class I18nClass {
 	 * except for `eventTriggerDescription`.
 	 */
 	nodeText () {
-		const activeNode = this.$store.getters.activeNode;
+		const activeNode = this.$store.getters['ndv/activeNode'];
 		const nodeType = activeNode ? this.shortNodeType(activeNode.type) : ''; // unused in eventTriggerDescription
 		const initialKey = `n8n-nodes-base.nodes.${nodeType}.nodeView`;
 		const context = this;
@@ -335,12 +336,11 @@ export class I18nClass {
 			 * `fixedCollection` param having `multipleValues: true`.
 			 */
 			multipleValueButtonText(
-				{ name: parameterName, typeOptions: { multipleValueButtonText } }:
-				{ name: string; typeOptions: { multipleValueButtonText: string; } },
+				{ name: parameterName, typeOptions}: INodeProperties,
 			) {
 				return context.dynamicRender({
 					key: `${initialKey}.${parameterName}.multipleValueButtonText`,
-					fallback: multipleValueButtonText,
+					fallback: typeOptions!.multipleValueButtonText!,
 				});
 			},
 

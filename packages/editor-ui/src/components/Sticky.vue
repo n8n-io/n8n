@@ -142,10 +142,10 @@ export default mixins(externalHooks, nodeBase, nodeHelpers, workflowHelpers).ext
 		},
 		onEdit(edit: boolean) {
 			if (edit && !this.isActive && this.node) {
-				this.$store.commit('setActiveNode', this.node.name);
+				this.$store.commit('ndv/setActiveNodeName', this.node.name);
 			}
 			else if (this.isActive && !edit) {
-				this.$store.commit('setActiveNode', null);
+				this.$store.commit('ndv/setActiveNodeName', null);
 			}
 		},
 		onMarkdownClick ( link:HTMLAnchorElement, event: Event ) {

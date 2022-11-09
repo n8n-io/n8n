@@ -230,9 +230,9 @@ export const workflowRun = mixins(
 				this.$store.commit('setWorkflowExecutionData', executionData);
 				this.updateNodesExecutionIssues();
 
-				 const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
+				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
-				 this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
+				this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
 
 				 return runWorkflowApiResponse;
 			} catch (error) {

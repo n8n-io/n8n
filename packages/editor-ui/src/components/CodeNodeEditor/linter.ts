@@ -215,22 +215,25 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 				const isUnavailableMethodinEachItem = (node: Node) =>
 					node.type === 'MemberExpression' &&
 					node.computed === false &&
+					node.object.type === 'Identifier' &&
+					node.object.name === '$input' &&
 					node.property.type === 'Identifier' &&
 					['first', 'last', 'all', 'itemMatching'].includes(node.property.name);
 
 				walk<TargetNode>(ast, isUnavailableMethodinEachItem).forEach((node) => {
 					const [start, end] = this.getRange(node.property);
 
-					const message = [
-						`\`.${node.property.name}()\``,
-						this.$locale.baseText('codeNodeEditor.linter.eachItem.unavailableMethod'),
-					].join(' ');
+					const method = this.getText(node.property);
+
+					if (!method) return;
 
 					lintings.push({
 						from: start,
 						to: end,
 						severity: DEFAULT_LINTER_SEVERITY,
-						message,
+						message: this.$locale.baseText('codeNodeEditor.linter.eachItem.unavailableMethod', {
+							interpolate: { method },
+						}),
 					});
 				});
 			}

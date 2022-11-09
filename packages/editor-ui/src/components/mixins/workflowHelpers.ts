@@ -20,7 +20,7 @@ import {
 	INodeTypes,
 	INodeTypeData,
 	INodeTypeDescription,
-	INodeVersionedType,
+	IVersionedNodeType,
 	IPinData,
 	IRunData,
 	IRunExecutionData,
@@ -313,7 +313,7 @@ export const workflowHelpers = mixins(
 				const nodeTypes: INodeTypes = {
 					nodeTypes: {},
 					init: async (nodeTypes?: INodeTypeData): Promise<void> => { },
-					getAll: (): Array<INodeType | INodeVersionedType> => {
+					getAll: (): Array<INodeType | IVersionedNodeType> => {
 						// Does not get used in Workflow so no need to return it
 						return [];
 					},
@@ -400,6 +400,7 @@ export const workflowHelpers = mixins(
 					active: this.$store.getters.isActive,
 					settings: this.$store.getters.workflowSettings,
 					tags: this.$store.getters.workflowTags,
+					hash: this.$store.getters.workflowHash,
 				};
 
 				const workflowId = this.$store.getters.workflowId;
@@ -534,7 +535,7 @@ export const workflowHelpers = mixins(
 				let itemIndex = opts?.targetItem?.itemIndex || 0;
 
 				const inputName = 'main';
-				const activeNode = this.$store.getters.activeNode;
+				const activeNode = this.$store.getters['ndv/activeNode'];
 				const workflow = this.getCurrentWorkflow();
 				const workflowRunData = this.$store.getters.getWorkflowRunData as IRunData | null;
 				let parentNode = workflow.getParentNodes(activeNode.name, inputName, 1);
@@ -660,6 +661,9 @@ export const workflowHelpers = mixins(
 				const isCurrentWorkflow = workflowId === this.$store.getters.workflowId;
 				if (isCurrentWorkflow) {
 					data = await this.getWorkflowDataToSave();
+				} else {
+					const { hash } = await this.restApi().getWorkflow(workflowId);
+					data.hash = hash as string;
 				}
 
 				if (active !== undefined) {
@@ -667,6 +671,7 @@ export const workflowHelpers = mixins(
 				}
 
 				const workflow = await this.restApi().updateWorkflow(workflowId, data);
+				this.$store.commit('setWorkflowHash', workflow.hash);
 
 				if (isCurrentWorkflow) {
 					this.$store.commit('setActive', !!workflow.active);
@@ -680,9 +685,10 @@ export const workflowHelpers = mixins(
 				}
 			},
 
-			async saveCurrentWorkflow({name, tags}: {name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
-				const currentWorkflow = this.$route.params.name;
-				if (!currentWorkflow) {
+			async saveCurrentWorkflow({id, name, tags}: {id?: string, name?: string, tags?: string[]} = {}, redirect = true): Promise<boolean> {
+				const currentWorkflow = id ||  this.$route.params.name;
+
+				if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
 					return this.saveAsNewWorkflow({name, tags}, redirect);
 				}
 
@@ -700,7 +706,10 @@ export const workflowHelpers = mixins(
 						workflowDataRequest.tags = tags;
 					}
 
+					workflowDataRequest.hash = this.$store.getters.workflowHash;
+
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
+					this.$store.commit('setWorkflowHash', workflowData.hash);
 
 					if (name) {
 						this.$store.commit('setWorkflowName', {newName: workflowData.name});
@@ -767,6 +776,7 @@ export const workflowHelpers = mixins(
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
 					this.$store.commit('addWorkflow', workflowData);
+					this.$store.commit('setWorkflowHash', workflowData.hash);
 
 					if (openInNewWindow) {
 						const routeData = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: workflowData.id}});

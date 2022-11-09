@@ -22,8 +22,6 @@ import { taskFields, taskOperations } from './descriptions/TaskDescription';
 
 import { logFields, logOperations } from './descriptions/LogDescription';
 
-import { Buffer } from 'buffer';
-
 import { And, Between, ContainsString, Eq, Id, In, IQueryObject, Parent } from './QueryFunctions';
 
 import {
@@ -36,6 +34,8 @@ import {
 	splitTags,
 	theHiveApiRequest,
 } from './GenericFunctions';
+
+import { set } from 'lodash';
 
 export class TheHive implements INodeType {
 	description: INodeTypeDescription = {
@@ -396,9 +396,14 @@ export class TheHive implements INodeType {
 							source: this.getNodeParameter('source', i),
 							sourceRef: this.getNodeParameter('sourceRef', i),
 							follow: this.getNodeParameter('follow', i, true),
-							customFields,
 							...prepareOptional(additionalFields),
 						};
+
+						if (customFields) {
+							Object.keys(customFields).forEach((key) => {
+								set(body, key, customFields[key]);
+							});
+						}
 
 						const artifactUi = this.getNodeParameter('artifactUi', i) as IDataObject;
 
@@ -510,8 +515,18 @@ export class TheHive implements INodeType {
 
 					if (operation === 'get') {
 						const alertId = this.getNodeParameter('id', i) as string;
+						const includeSimilar = this.getNodeParameter(
+							'options.includeSimilar',
+							i,
+							false,
+						) as boolean;
+						const qs: IDataObject = {};
 
-						responseData = await theHiveApiRequest.call(this, 'GET', `/alert/${alertId}`, {});
+						if (includeSimilar) {
+							qs.similarity = true;
+						}
+
+						responseData = await theHiveApiRequest.call(this, 'GET', `/alert/${alertId}`, {}, qs);
 					}
 					if (operation === 'getAll') {
 						const credentials = await this.getCredentials('theHiveApi');
@@ -665,7 +680,7 @@ export class TheHive implements INodeType {
 						delete updateFields.artifactUi;
 
 						const body: IDataObject = {
-							customFields,
+							...customFields,
 						};
 
 						Object.assign(body, updateFields);
@@ -1272,9 +1287,14 @@ export class TheHive implements INodeType {
 							flag: this.getNodeParameter('flag', i),
 							tlp: this.getNodeParameter('tlp', i),
 							tags: splitTags(this.getNodeParameter('tags', i) as string),
-							customFields,
 							...prepareOptional(options),
 						};
+
+						if (customFields) {
+							Object.keys(customFields).forEach((key) => {
+								set(body, key, customFields[key]);
+							});
+						}
 
 						responseData = await theHiveApiRequest.call(this, 'POST', '/case' as string, body);
 					}
@@ -1415,7 +1435,7 @@ export class TheHive implements INodeType {
 						const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
 
 						const body: IDataObject = {
-							customFields,
+							...customFields,
 							...prepareOptional(updateFields),
 						};
 

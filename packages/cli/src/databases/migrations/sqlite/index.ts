@@ -19,6 +19,7 @@ import { AddJsonKeyPinData1659888469333 } from './1659888469333-AddJsonKeyPinDat
 import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
 import { CreateWorkflowsEditorRole1663755770892 } from './1663755770892-CreateWorkflowsUserRole';
 import { CreateCredentialUsageTable1665484192211 } from './1665484192211-CreateCredentialUsageTable';
+import { RemoveCredentialUsageTable1665754637024 } from './1665754637024-RemoveCredentialUsageTable';
 
 const sqliteMigrations = [
 	InitialMigration1588102412422,
@@ -42,6 +43,7 @@ const sqliteMigrations = [
 	CreateCredentialsUserRole1660062385367,
 	CreateWorkflowsEditorRole1663755770892,
 	CreateCredentialUsageTable1665484192211,
+	RemoveCredentialUsageTable1665754637024,
 ];
 
 export { sqliteMigrations };

@@ -1,5 +1,5 @@
 dist/test
-dist/**/*.{js.map,d.ts}
+dist/**/*.{js.map}
 
 .DS_Store
 

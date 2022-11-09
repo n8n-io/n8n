@@ -19,3 +19,9 @@ export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions, UserSettings };
+
+declare module 'http' {
+	export interface IncomingMessage {
+		rawBody: Buffer;
+	}
+}
