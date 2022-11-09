@@ -97,7 +97,7 @@ export const databaseFields: INodeProperties[] = [
 						properties: {
 							regex:
 								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
-							errorMessage: 'Not a valid Notion Database URL',
+							errorMessage: 'Not a valid Notion Database URL. Hint: use the URL of the database itself, not a page containing it.',
 						},
 					},
 				],
