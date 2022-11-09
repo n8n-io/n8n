@@ -1,6 +1,4 @@
-import { request } from 'http';
 import {
-	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
