@@ -1,6 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable no-console */
 import { Command } from '@oclif/command';
 
 import { LoggerProxy } from 'n8n-workflow';
@@ -15,7 +12,6 @@ export class ClearLicenseCommand extends Command {
 
 	static examples = [`$ n8n clear:license`];
 
-	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
 		const logger = getLogger();
 		LoggerProxy.init(logger);
@@ -28,12 +24,16 @@ export class ClearLicenseCommand extends Command {
 				key: SETTINGS_LICENSE_CERT_KEY,
 			});
 			console.info('Done');
-		} catch (e) {
+		} catch (e: unknown) {
 			console.error('Error updating database. See log messages for details.');
 			logger.error('\nGOT ERROR');
 			logger.info('====================================');
-			logger.error(e.message);
-			logger.error(e.stack);
+			if (e instanceof Error) {
+				logger.error(e.message);
+				if (e.stack) {
+					logger.error(e.stack);
+				}
+			}
 			this.exit(1);
 		}
 
