@@ -40,7 +40,20 @@ export const executionOperations: INodeProperties[] = [
 						paginate: true,
 					},
 					operations: {
-						pagination: getCursorPaginator(),
+						pagination: {
+							type: 'generic',
+							properties: {
+								request: {
+									qs: {
+										cursor: '={{ $response.nextCursor }}',
+										// limit: 10, // Can be set to have more control over the page size
+									},
+								},
+								rootProperty: 'data',
+								// Here '$response.nextCursor' might be undefined or null based on the API response
+								continue: '={{ $parameter.returnAll && !!$response.nextCursor }}',
+							},
+						},
 					},
 				},
 			},
