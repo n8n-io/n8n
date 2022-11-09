@@ -39,7 +39,7 @@
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
-						@removeNode="(name) => removeNode(name, true)"
+						@removeNode="removeNode"
 						@runWorkflow="onRunNode"
 						@moved="onNodeMoved"
 						@run="onNodeRun"
@@ -60,7 +60,7 @@
 						@deselectAllNodes="deselectAllNodes"
 						@deselectNode="nodeDeselectedByName"
 						@nodeSelected="nodeSelectedByName"
-						@removeNode="(name) => removeNode(name, true)"
+						@removeNode="removeNode"
 						:key="`${nodeData.id}_sticky`"
 						:name="nodeData.name"
 						:isReadOnly="isReadOnly"
@@ -1106,7 +1106,7 @@ export default mixins(
 					return node.name;
 				});
 				nodesToDelete.forEach((nodeName: string) => {
-					this.removeNode(nodeName, true);
+					this.removeNode(nodeName);
 				});
 			},
 
@@ -1740,7 +1740,6 @@ export default mixins(
 				];
 
 				this.__addConnection(connectionData, true);
-				this.historyStore.addConnection(connectionData);
 			},
 			async addNode(nodeTypeName: string, options: AddNodeOptions = {}) {
 				this.historyStore.startRecordingUndo(BULK_COMMANDS.RECONNECT_NODES);
@@ -1960,7 +1959,6 @@ export default mixins(
 								() => {
 									activeConnection = null;
 									this.__deleteJSPlumbConnection(info.connection);
-									this.historyStore.removeConnection(targetConnection);
 								},
 								() => {
 									setTimeout(() => {
@@ -2277,6 +2275,7 @@ export default mixins(
 						uuids: uuid,
 						detachable: !this.isReadOnly,
 					});
+					this.historyStore.addConnection(connection);
 				} else {
 					const connectionProperties = { connection, setStateDirty: false };
 					// When nodes get connected it gets saved automatically to the storage
@@ -2343,6 +2342,7 @@ export default mixins(
 						},
 					];
 					this.__removeConnection(connectionInfo, removeVisualConnection);
+					this.historyStore.removeConnection(connectionInfo);
 				}
 			},
 			async duplicateNode(nodeName: string) {
@@ -2529,7 +2529,7 @@ export default mixins(
 					});
 				});
 			},
-			removeNode(nodeName: string, trackHistory = false) {
+			removeNode(nodeName: string) {
 				if (!this.editAllowedCheck()) {
 					return;
 				}
@@ -2628,9 +2628,7 @@ export default mixins(
 
 					// Remove node from selected index if found in it
 					this.uiStore.removeNodeFromSelection(node);
-					if (trackHistory) {
-						this.historyStore.removeNode(node);
-					}
+					this.historyStore.removeNode(node);
 					const recordingTimeout = waitForNewConnection ? 100 : 0;
 					setTimeout(() => {
 						this.historyStore.stopRecordingUndo();
