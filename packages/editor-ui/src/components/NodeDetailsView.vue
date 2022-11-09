@@ -89,6 +89,7 @@
 						:nodeType="activeNodeType"
 						:isReadOnly="readOnly || hasForeignCredential"
 						:blockUI="blockUi && showTriggerPanel"
+						:executable="!readOnly || hasForeignCredential"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@stopExecution="onStopExecution"

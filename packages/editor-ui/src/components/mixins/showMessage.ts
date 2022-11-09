@@ -3,7 +3,7 @@ import { ElNotificationComponent, ElNotificationOptions } from 'element-ui/types
 import mixins from 'vue-typed-mixins';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { IRunExecutionData } from 'n8n-workflow';
+import {IExecuteContextData, IRunExecutionData} from 'n8n-workflow';
 import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import type { ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
 import { sanitizeHtml } from '@/utils';
@@ -89,13 +89,13 @@ export const showMessage = mixins(externalHooks).extend({
 			return this.$message(config);
 		},
 
-		$getExecutionError(data: IRunExecutionData) {
+		$getExecutionError(data: IRunExecutionData | IExecuteContextData) {
 			const error = data.resultData.error;
 
 			let errorMessage: string;
 
 			if (data.resultData.lastNodeExecuted && error) {
-				errorMessage = error.message;
+				errorMessage = error.message || error.description;
 			} else {
 				errorMessage = 'There was a problem executing the workflow!';
 

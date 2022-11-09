@@ -366,6 +366,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	updatedAt: number | string;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
+	currentUserHasAccess?: boolean;
 }
 
 export interface ICredentialsBase {

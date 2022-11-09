@@ -340,9 +340,7 @@ export const nodeHelpers = mixins(
 						}
 
 						if (nameMatches.length === 0) {
-							if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.notAvailable')];
-							} else {
+							if (!this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
 								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.doNotExist', { interpolate: { name: selectedCredentials.name, type: credentialDisplayName } }), this.$locale.baseText('nodeIssues.credentials.doNotExist.hint')];
 							}
 						}

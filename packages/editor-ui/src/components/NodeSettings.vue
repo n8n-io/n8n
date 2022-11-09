@@ -10,7 +10,7 @@
 					:isReadOnly="isReadOnly"
 					@input="nameChanged"
 				></NodeTitle>
-				<div v-if="!isReadOnly">
+				<div v-if="executable">
 					<NodeExecuteButton
 						v-if="!blockUI"
 						:nodeName="node.name"
@@ -83,7 +83,7 @@
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
-					<node-credentials :node="node" @credentialSelected="credentialSelected" />
+					<node-credentials :node="node" :readonly="isReadOnly" @credentialSelected="credentialSelected" />
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
@@ -263,6 +263,10 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		blockUI: {
 			type: Boolean,
 			default: false,
+		},
+		executable: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	data() {

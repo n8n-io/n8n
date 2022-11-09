@@ -383,9 +383,10 @@ export const pushConnection = mixins(
 					// it can be displayed in the node-view
 					this.updateNodesExecutionIssues();
 
+					const lastNodeExecuted: string | undefined = runDataExecuted.data.resultData.lastNodeExecuted;
 					let itemsCount = 0;
-					if(runDataExecuted.data.resultData.lastNodeExecuted && !runDataExecutedErrorMessage) {
-						itemsCount = runDataExecuted.data.resultData.runData[runDataExecuted.data.resultData.lastNodeExecuted][0].data!.main[0]!.length;
+					if(lastNodeExecuted && runDataExecuted.data.resultData.runData[lastNodeExecuted as string] && !runDataExecutedErrorMessage) {
+						itemsCount = runDataExecuted.data.resultData.runData[lastNodeExecuted as string][0].data!.main[0]!.length;
 					}
 
 					this.$externalHooks().run('pushConnection.executionFinished', {

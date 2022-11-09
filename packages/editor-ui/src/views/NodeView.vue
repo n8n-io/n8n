@@ -218,12 +218,8 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { getNodeViewTab } from '@/components/helpers';
-<<<<<<< HEAD
-import { Route } from 'vue-router';
-import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
-=======
 import { Route, RawLocation } from 'vue-router';
->>>>>>> master
+import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
