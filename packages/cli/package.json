@@ -104,7 +104,7 @@
     "typescript": "~4.8.0"
   },
   "dependencies": {
-    "@n8n_io/license-sdk": "file:../../../license-management/packages/sdk",
+    "@n8n_io/license-sdk": "^1.2.3",
     "@oclif/command": "^1.5.18",
     "@oclif/core": "^1.9.3",
     "@oclif/errors": "^1.2.2",
