@@ -140,7 +140,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		addCredentials(credentials: ICredentialsResponse[]): void {
 			credentials.forEach((cred: ICredentialsResponse) => {
 				if (cred.id) {
-					this.credentials[cred.id] = cred;
+					this.credentials[cred.id] = { ...this.credentials[cred.id], ...cred };
 				}
 			});
 		},
