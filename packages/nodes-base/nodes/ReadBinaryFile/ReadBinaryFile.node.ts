@@ -78,7 +78,7 @@ export class ReadBinaryFile implements INodeType {
 					},
 				};
 
-				if (item.binary !== undefined) {
+				if (item.binary !== undefined && newItem.binary) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.

@@ -19,8 +19,10 @@ import englishBaseText from './locales/en.json';
 Vue.use(VueI18n);
 locale.use('en');
 
+export let i18n: I18nClass;
+
 export function I18nPlugin(vue: typeof _Vue, store: Store<IRootState>): void {
-	const i18n = new I18nClass(store);
+	i18n = new I18nClass(store);
 
 	Object.defineProperty(vue, '$locale', {
 		get() { return i18n; },
@@ -122,11 +124,11 @@ export class I18nClass {
 			 * Hint for a top-level param.
 			 */
 			hint(
-				{ name: parameterName, hint }: { name: string; hint: string; },
+				{ name: parameterName, hint }: { name: string; hint?: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.hint`,
-					fallback: hint,
+					fallback: hint || '',
 				});
 			},
 
@@ -172,11 +174,11 @@ export class I18nClass {
 			 * Placeholder for a `string` param.
 			 */
 			placeholder(
-				{ name: parameterName, placeholder }: { name: string; placeholder: string; },
+				{ name: parameterName, placeholder }: { name: string; placeholder?: string; },
 			) {
 				return context.dynamicRender({
 					key: `${credentialPrefix}.${parameterName}.placeholder`,
-					fallback: placeholder,
+					fallback: placeholder || '',
 				});
 			},
 		};
@@ -245,7 +247,7 @@ export class I18nClass {
 			 * - For a `collection` or `fixedCollection`, the placeholder is the button text.
 			 */
 			placeholder(
-				parameter: { name: string; placeholder: string; type: string },
+				parameter: { name: string; placeholder?: string; type: string },
 				path: string,
 			) {
 				let middleKey = parameter.name;
@@ -257,7 +259,7 @@ export class I18nClass {
 
 				return context.dynamicRender({
 					key: `${initialKey}.${middleKey}.placeholder`,
-					fallback: parameter.placeholder,
+					fallback: parameter.placeholder || '',
 				});
 			},
 
@@ -388,7 +390,7 @@ export async function loadLanguage(language?: string) {
 		return Promise.resolve(setLanguage(language));
 	}
 
-	const { numberFormats, ...rest } = require(`./locales/${language}.json`);
+	const { numberFormats, ...rest } = (await import(`./locales/${language}.json`)).default;
 
 	i18nInstance.setLocaleMessage(language, rest);
 

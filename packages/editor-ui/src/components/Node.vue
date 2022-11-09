@@ -2,7 +2,7 @@
 	<div class="node-wrapper" :style="nodePosition" :id="nodeId">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
-			<div :class="nodeClass" :style="nodeStyle"  @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
+			<div :class="nodeClass" :style="nodeStyle" @dblclick="setNodeActive" @click.left="mouseLeftClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
@@ -60,7 +60,7 @@
 				<div v-touch:tap="disableNode" class="option" :title="$locale.baseText('node.activateDeactivateNode')">
 					<font-awesome-icon :icon="nodeDisabledIcon" />
 				</div>
-				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')">
+				<div v-touch:tap="duplicateNode" class="option" :title="$locale.baseText('node.duplicateNode')" v-if="isDuplicatable">
 					<font-awesome-icon icon="clone" />
 				</div>
 				<div v-touch:tap="setNodeActive" class="option touch" :title="$locale.baseText('node.editNode')" v-if="!isReadOnly">
@@ -73,7 +73,7 @@
 			<div :class="{'disabled-linethrough': true, success: workflowDataItems > 0}" v-if="showDisabledLinethrough"></div>
 		</div>
 		<div class="node-description">
-			<div class="node-name" :title="nodeTitle">
+			<div class="node-name ph-no-capture" :title="nodeTitle">
 				<p>
 					{{ nodeTitle }}
 				</p>
@@ -91,7 +91,7 @@
 <script lang="ts">
 
 import Vue from 'vue';
-import {CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED} from '@/constants';
+import { CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
@@ -126,6 +126,13 @@ export default mixins(
 		NodeIcon,
 	},
 	computed: {
+		isDuplicatable(): boolean {
+			if(!this.nodeType) return true;
+			return this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes;
+		},
+		isScheduledGroup (): boolean {
+			return this.nodeType?.group.includes('schedule') === true;
+		},
 		nodeRunData(): ITaskData[] {
 			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
 		},
@@ -180,8 +187,11 @@ export default mixins(
 
 			return nodes.length === 1;
 		},
+		isManualTypeNode (): boolean {
+			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
+		},
 		isTriggerNode (): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+			return this.$store.getters['nodeTypes/isTriggerNode'](this.data.type);
 		},
 		isTriggerNodeTooltipEmpty () : boolean {
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
@@ -194,6 +204,9 @@ export default mixins(
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
 			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
+		},
+		sameTypeNodes (): INodeUi[] {
+			return this.$store.getters.allNodes.filter((node: INodeUi) => node.type === this.data.type);
 		},
 		nodeClass (): object {
 			return {
@@ -375,14 +388,12 @@ export default mixins(
 	},
 	methods: {
 		showPinDataDiscoveryTooltip(dataItemsCount: number): void {
-			if (!this.isTriggerNode) { return; }
+			if (!this.isTriggerNode || this.isManualTypeNode || this.isScheduledGroup || dataItemsCount === 0) return;
 
-			if (dataItemsCount > 0) {
-				localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
+			localStorage.setItem(LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, 'true');
 
-				this.pinDataDiscoveryTooltipVisible = true;
-				this.unwatchWorkflowDataItems();
-			}
+			this.pinDataDiscoveryTooltipVisible = true;
+			this.unwatchWorkflowDataItems();
 		},
 		setSubtitle() {
 			const nodeSubtitle = this.getNodeSubtitle(this.data, this.nodeType, this.getCurrentWorkflow()) || '';
@@ -466,7 +477,7 @@ export default mixins(
 			overflow: hidden;
 			text-overflow: ellipsis;
 			font-weight: 400;
-			color: $--custom-font-light;
+			color: $custom-font-light;
 			font-size: 0.8em;
 		}
 	}
@@ -582,7 +593,7 @@ export default mixins(
 				}
 
 				&:hover {
-					color: $--color-primary;
+					color: $color-primary;
 				}
 
 				.execute-icon {

@@ -15,6 +15,7 @@
 		@linkRun="onLinkRun"
 		@unlinkRun="onUnlinkRun"
 		@tableMounted="$emit('tableMounted', $event)"
+		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
 	>
 		<template v-slot:header>
@@ -85,7 +86,7 @@ import RunInfo from './RunInfo.vue';
 import { pinData } from "@/components/mixins/pinData";
 import mixins from 'vue-typed-mixins';
 
-type RunData = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
+type RunDataRef = Vue & { enterEditMode: (args: EnterEditModeArgs) => void };
 
 export default mixins(
 	pinData,
@@ -120,7 +121,7 @@ export default mixins(
 			return null;
 		},
 		isTriggerNode (): boolean {
-			return !!(this.nodeType && this.nodeType.group.includes('trigger'));
+			return this.$store.getters['nodeTypes/isTriggerNode'](this.node.type);
 		},
 		isPollingTypeNode (): boolean {
 			return !!(this.nodeType && this.nodeType.polling);
@@ -142,10 +143,15 @@ export default mixins(
 			if (this.workflowExecution === null) {
 				return null;
 			}
-			const executionData: IRunExecutionData = this.workflowExecution.data;
+			const executionData: IRunExecutionData | undefined = this.workflowExecution.data;
+			if (!executionData || !executionData.resultData || !executionData.resultData.runData) {
+				return null;
+			}
 			return executionData.resultData.runData;
 		},
 		hasNodeRun(): boolean {
+			if (this.$store.getters.subworkflowExecutionError) return true;
+
 			return Boolean(
 				this.node && this.workflowRunData && this.workflowRunData.hasOwnProperty(this.node.name),
 			);
@@ -205,7 +211,7 @@ export default mixins(
 	methods: {
 		insertTestData() {
 			if (this.$refs.runData) {
-				(this.$refs.runData as RunData).enterEditMode({
+				(this.$refs.runData as RunDataRef).enterEditMode({
 					origin: 'insertTestDataLink',
 				});
 

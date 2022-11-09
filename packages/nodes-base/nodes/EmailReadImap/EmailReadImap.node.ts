@@ -30,7 +30,7 @@ import _ from 'lodash';
 
 export class EmailReadImap implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'EmailReadImap',
+		displayName: 'Email Trigger (IMAP)',
 		name: 'emailReadImap',
 		icon: 'fa:inbox',
 		group: ['trigger'],
@@ -38,7 +38,7 @@ export class EmailReadImap implements INodeType {
 		description: 'Triggers the workflow when a new email is received',
 		eventTriggerDescription: 'Waiting for you to receive an email',
 		defaults: {
-			name: 'IMAP Email',
+			name: 'Email Trigger',
 			color: '#44AA22',
 		},
 		inputs: [],

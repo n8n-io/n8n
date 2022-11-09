@@ -141,7 +141,7 @@ export default Vue.extend({
 	}
 
 	.el-tag.hoverable:hover {
-		border-color: $--color-primary;
+		border-color: $color-primary;
 	}
 
 	.count-container {

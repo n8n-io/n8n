@@ -35,7 +35,7 @@ export const documentOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all documents',
+				description: 'Get many documents',
 				action: 'Get many documents',
 			},
 			{
@@ -191,6 +191,25 @@ export const documentFields: INodeProperties[] = [
 			show: {
 				resource: ['document'],
 				operation: ['getAll'],
+			},
+		},
+	},
+	{
+		displayName: 'By default, you cannot page through more than 10,000 hits. To page through more hits, add "Sort" from options.',
+		name: 'paginateNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				resource: [
+					'document',
+				],
+				operation: [
+					'getAll',
+				],
+				returnAll: [
+					true,
+				],
 			},
 		},
 	},

@@ -21,7 +21,7 @@ export const recordOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all records',
+				description: 'Retrieve many records',
 				action: 'Get many records',
 			},
 		],

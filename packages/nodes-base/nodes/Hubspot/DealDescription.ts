@@ -33,7 +33,7 @@ export const dealOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all deals',
+				description: 'Get many deals',
 				action: 'Get many deals',
 			},
 			{
@@ -617,7 +617,7 @@ export const dealFields: INodeProperties[] = [
 										options: [
 											{
 												name: 'Contains Exactly',
-												value: 'CONSTAIN_TOKEN',
+												value: 'CONTAINS_TOKEN',
 											},
 											{
 												name: 'Equal',

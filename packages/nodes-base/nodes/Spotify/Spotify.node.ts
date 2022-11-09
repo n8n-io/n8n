@@ -358,6 +358,7 @@ export class Spotify implements INodeType {
 						resource: ['playlist'],
 					},
 				},
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{
 						name: 'Add an Item',
@@ -378,16 +379,16 @@ export class Spotify implements INodeType {
 						action: 'Get a playlist',
 					},
 					{
+						name: "Get the User's Playlists",
+						value: 'getUserPlaylists',
+						description: "Get a user's playlists",
+						action: "Get a user's playlists",
+					},
+					{
 						name: 'Get Tracks',
 						value: 'getTracks',
 						description: "Get a playlist's tracks by URI or ID",
 						action: "Get a playlist's tracks by URI or ID",
-					},
-					{
-						name: `Get the User's Playlists`,
-						value: 'getUserPlaylists',
-						description: "Get a user's playlists",
-						action: "Get a user's playlists",
 					},
 					{
 						name: 'Remove an Item',
@@ -396,7 +397,7 @@ export class Spotify implements INodeType {
 						action: 'Remove an item from a playlist',
 					},
 					{
-						name: `Search`,
+						name: 'Search',
 						value: 'search',
 						description: 'Search playlists by keyword',
 						action: 'Search playlists by keyword',

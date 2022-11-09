@@ -33,7 +33,7 @@ export const maintenanceWindowOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Get all a maintenance windows',
+				description: 'Get many a maintenance windows',
 				action: 'Get many maintenance windows',
 			},
 			{

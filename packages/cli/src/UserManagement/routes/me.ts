@@ -32,7 +32,8 @@ export function meNamespace(this: N8nApp): void {
 		`/${this.restEndpoint}/me`,
 		ResponseHelper.send(
 			async (req: MeRequest.Settings, res: express.Response): Promise<PublicUser> => {
-				if (!req.body.email) {
+				const { email } = req.body;
+				if (!email) {
 					Logger.debug('Request to update user email failed because of missing email in payload', {
 						userId: req.user.id,
 						payload: req.body,
@@ -40,10 +41,10 @@ export function meNamespace(this: N8nApp): void {
 					throw new ResponseHelper.ResponseError('Email is mandatory', undefined, 400);
 				}
 
-				if (!validator.isEmail(req.body.email)) {
+				if (!validator.isEmail(email)) {
 					Logger.debug('Request to update user email failed because of invalid email in payload', {
 						userId: req.user.id,
-						invalidEmail: req.body.email,
+						invalidEmail: email,
 					});
 					throw new ResponseHelper.ResponseError('Invalid email address', undefined, 400);
 				}

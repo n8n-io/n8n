@@ -33,7 +33,7 @@ export const eventOperations: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all events from a calendar',
+				description: 'Retrieve many events from a calendar',
 				action: 'Get many events',
 			},
 			{

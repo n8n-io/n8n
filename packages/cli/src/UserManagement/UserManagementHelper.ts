@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable import/no-cycle */
-import { Workflow } from 'n8n-workflow';
+import { INode, NodeOperationError, Workflow } from 'n8n-workflow';
 import { In } from 'typeorm';
 import express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
@@ -37,6 +37,10 @@ export function isUserManagementEnabled(): boolean {
 		!config.getEnv('userManagement.disabled') ||
 		config.getEnv('userManagement.isInstanceOwnerSetUp')
 	);
+}
+
+export function isSharingEnabled(): boolean {
+	return isUserManagementEnabled() && config.getEnv('enterprise.features.sharing');
 }
 
 export function isUserManagementDisabled(): boolean {
@@ -147,6 +151,7 @@ export async function checkPermissionsForExecution(
 ): Promise<boolean> {
 	const credentialIds = new Set();
 	const nodeNames = Object.keys(workflow.nodes);
+	const credentialUsedBy = new Map();
 	// Iterate over all nodes
 	nodeNames.forEach((nodeName) => {
 		const node = workflow.nodes[nodeName];
@@ -165,16 +170,21 @@ export async function checkPermissionsForExecution(
 				// Migrations should handle the case where a credential does
 				// not have an id.
 				if (credentialDetail.id === null) {
-					throw new Error(
+					throw new NodeOperationError(
+						node,
 						`The credential on node '${node.name}' is not valid. Please open the workflow and set it to a valid value.`,
 					);
 				}
 				if (!credentialDetail.id) {
-					throw new Error(
+					throw new NodeOperationError(
+						node,
 						`Error initializing workflow: credential ID not present. Please open the workflow and save it to fix this error. [Node: '${node.name}']`,
 					);
 				}
 				credentialIds.add(credentialDetail.id.toString());
+				if (!credentialUsedBy.has(credentialDetail.id)) {
+					credentialUsedBy.set(credentialDetail.id, node);
+				}
 			});
 		}
 	});
@@ -197,7 +207,7 @@ export async function checkPermissionsForExecution(
 	}
 
 	// Check for the user's permission to all used credentials
-	const credentialCount = await Db.collections.SharedCredentials.count({
+	const credentialsWithAccess = await Db.collections.SharedCredentials.find({
 		where: {
 			user: { id: userId },
 			credentials: In(ids),
@@ -207,8 +217,21 @@ export async function checkPermissionsForExecution(
 	// Considering the user needs to have access to all credentials
 	// then both arrays (allowed credentials vs used credentials)
 	// must be the same length
-	if (ids.length !== credentialCount) {
-		throw new Error('One or more of the used credentials are not accessible.');
+	if (ids.length !== credentialsWithAccess.length) {
+		credentialsWithAccess.forEach((credential) => {
+			credentialUsedBy.delete(credential.credentialId.toString());
+		});
+
+		// Find the first missing node from the Set - this is arbitrarily fetched
+		const firstMissingCredentialNode = credentialUsedBy.values().next().value as INode;
+		throw new NodeOperationError(
+			firstMissingCredentialNode,
+			'This node does not have access to the required credential',
+			{
+				description:
+					'Maybe the credential was removed or you have lost access to it. Try contacting the owner if this credential does not belong to you',
+			},
+		);
 	}
 	return true;
 }
@@ -256,4 +279,25 @@ export async function compareHash(plaintext: string, hashed: string): Promise<bo
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		throw new Error(error);
 	}
+}
+
+// return the difference between two arrays
+export function rightDiff<T1, T2>(
+	[arr1, keyExtractor1]: [T1[], (item: T1) => string],
+	[arr2, keyExtractor2]: [T2[], (item: T2) => string],
+): T2[] {
+	// create map { itemKey => true } for fast lookup for diff
+	const keyMap = arr1.reduce<{ [key: string]: true }>((map, item) => {
+		// eslint-disable-next-line no-param-reassign
+		map[keyExtractor1(item)] = true;
+		return map;
+	}, {});
+
+	// diff against map
+	return arr2.reduce<T2[]>((acc, item) => {
+		if (!keyMap[keyExtractor2(item)]) {
+			acc.push(item);
+		}
+		return acc;
+	}, []);
 }

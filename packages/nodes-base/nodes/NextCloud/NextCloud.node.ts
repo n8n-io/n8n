@@ -557,6 +557,7 @@ export class NextCloud implements INodeType {
 						displayName: 'Password',
 						name: 'password',
 						type: 'string',
+						typeOptions: { password: true },
 						displayOptions: {
 							show: {
 								'/resource': ['file', 'folder'],

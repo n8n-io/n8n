@@ -11,8 +11,6 @@ import {
 
 import { allEvents, eventExists, getId, jiraSoftwareCloudApiRequest } from './GenericFunctions';
 
-import * as queryString from 'querystring';
-
 export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Jira Trigger',
@@ -450,7 +448,8 @@ export class JiraTrigger implements INodeType {
 				}
 
 				if (Object.keys(parameters).length) {
-					body.url = `${body.url}?${queryString.unescape(queryString.stringify(parameters))}`;
+					const params = new URLSearchParams(parameters).toString();
+					body.url = `${body.url}?${decodeURIComponent(params)}`;
 				}
 
 				const responseData = await jiraSoftwareCloudApiRequest.call(this, endpoint, 'POST', body);

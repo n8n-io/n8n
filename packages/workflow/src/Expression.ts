@@ -7,22 +7,22 @@ import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 import * as BabelCore from '@babel/core';
 
-// eslint-disable-next-line import/no-cycle
 import {
-	ExpressionError,
-	ExpressionExtensionError,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
+	INodeParameterResourceLocator,
 	INodeParameters,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	NodeParameterValue,
-	Workflow,
-	WorkflowDataProxy,
+	NodeParameterValueType,
 	WorkflowExecuteMode,
-} from '.';
+} from './Interfaces';
+import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
+import { WorkflowDataProxy } from './WorkflowDataProxy';
+import type { Workflow } from './Workflow';
 
 // eslint-disable-next-line import/no-cycle
 import {
@@ -57,9 +57,6 @@ export class Expression {
 	 * Converts an object to a string in a way to make it clear that
 	 * the value comes from an object
 	 *
-	 * @param {object} value
-	 * @returns {string}
-	 * @memberof Workflow
 	 */
 	convertObjectValueToString(value: object): string {
 		const typeName = Array.isArray(value) ? 'Array' : 'Object';
@@ -70,15 +67,8 @@ export class Expression {
 	 * Resolves the parameter value.  If it is an expression it will execute it and
 	 * return the result. For everything simply the supplied value will be returned.
 	 *
-	 * @param {NodeParameterValue} parameterValue
 	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
 	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
 	 */
 	resolveSimpleParameterValue(
 		parameterValue: NodeParameterValue,
@@ -126,16 +116,19 @@ export class Expression {
 		const data = dataProxy.getDataProxy();
 
 		// Support only a subset of process properties
-		data.process = {
-			arch: process.arch,
-			env: process.env,
-			platform: process.platform,
-			pid: process.pid,
-			ppid: process.ppid,
-			release: process.release,
-			version: process.pid,
-			versions: process.versions,
-		};
+		data.process =
+			typeof process !== 'undefined'
+				? {
+						arch: process.arch,
+						env: process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true' ? {} : process.env,
+						platform: process.platform,
+						pid: process.pid,
+						ppid: process.ppid,
+						release: process.release,
+						version: process.pid,
+						versions: process.versions,
+				  }
+				: {};
 
 		/**
 		 * Denylist
@@ -269,6 +262,15 @@ export class Expression {
 		// expression extensions
 		data.extend = extend;
 
+		const constructorValidation = new RegExp(/\.\s*constructor/gm);
+		if (parameterValue.match(constructorValidation)) {
+			throw new ExpressionError('Expression contains invalid constructor function call', {
+				causeDetailed: 'Constructor override attempt is not allowed due to security concerns',
+				runIndex,
+				itemIndex,
+			});
+		}
+
 		// Execute the expression
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let returnValue;
@@ -337,11 +339,7 @@ export class Expression {
 	/**
 	 * Resolves value of parameter. But does not work for workflow-data.
 	 *
-	 * @param {INode} node
 	 * @param {(string | undefined)} parameterValue
-	 * @param {string} [defaultValue]
-	 * @returns {(string | undefined)}
-	 * @memberof Workflow
 	 */
 	getSimpleParameterValue(
 		node: INode,
@@ -384,11 +382,8 @@ export class Expression {
 	/**
 	 * Resolves value of complex parameter. But does not work for workflow-data.
 	 *
-	 * @param {INode} node
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)} [defaultValue]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined)}
-	 * @memberof Workflow
 	 */
 	getComplexParameterValue(
 		node: INode,
@@ -397,14 +392,9 @@ export class Expression {
 		timezone: string,
 		additionalKeys: IWorkflowDataProxyAdditionalKeys,
 		executeData?: IExecuteData,
-		defaultValue:
-			| NodeParameterValue
-			| INodeParameters
-			| NodeParameterValue[]
-			| INodeParameters[]
-			| undefined = undefined,
+		defaultValue: NodeParameterValueType | undefined = undefined,
 		selfData = {},
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] | undefined {
+	): NodeParameterValueType | undefined {
 		if (parameterValue === undefined) {
 			// Value is not set so return the default
 			return defaultValue;
@@ -460,16 +450,10 @@ export class Expression {
 	 *
 	 * @param {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])} parameterValue
 	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {number} runIndex
-	 * @param {number} itemIndex
-	 * @param {string} activeNodeName
-	 * @param {INodeExecutionData[]} connectionInputData
 	 * @param {boolean} [returnObjectAsString=false]
-	 * @returns {(NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[])}
-	 * @memberof Workflow
 	 */
 	getParameterValue(
-		parameterValue: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+		parameterValue: NodeParameterValueType | INodeParameterResourceLocator,
 		runExecutionData: IRunExecutionData | null,
 		runIndex: number,
 		itemIndex: number,
@@ -481,17 +465,15 @@ export class Expression {
 		executeData?: IExecuteData,
 		returnObjectAsString = false,
 		selfData = {},
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+	): NodeParameterValueType {
 		// Helper function which returns true when the parameter is a complex one or array
-		const isComplexParameter = (
-			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
-		) => {
+		const isComplexParameter = (value: NodeParameterValueType) => {
 			return typeof value === 'object';
 		};
 
 		// Helper function which resolves a parameter value depending on if it is simply or not
 		const resolveParameterValue = (
-			value: NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[],
+			value: NodeParameterValueType,
 			siblingParameters: INodeParameters,
 		) => {
 			if (isComplexParameter(value)) {
@@ -566,7 +548,10 @@ export class Expression {
 		const returnData: INodeParameters = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const [key, value] of Object.entries(parameterValue)) {
-			returnData[key] = resolveParameterValue(value, parameterValue);
+			returnData[key] = resolveParameterValue(
+				value as NodeParameterValueType,
+				parameterValue as INodeParameters,
+			);
 		}
 
 		if (returnObjectAsString && typeof returnData === 'object') {

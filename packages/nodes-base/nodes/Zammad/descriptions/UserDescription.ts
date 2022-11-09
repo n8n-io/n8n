@@ -36,7 +36,7 @@ export const userDescription: INodeProperties[] = [
 			{
 				name: 'Get Many',
 				value: 'getAll',
-				description: 'Retrieve all users',
+				description: 'Retrieve many users',
 				action: 'Get many users',
 			},
 			{

@@ -17,6 +17,7 @@ import {
 	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
 	Workflow,
+	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
@@ -28,22 +29,31 @@ import { Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
-import { Request } from 'express';
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { TagEntity } from './databases/entities/TagEntity';
-import { Role } from './databases/entities/Role';
-import { User } from './databases/entities/User';
-import { SharedCredentials } from './databases/entities/SharedCredentials';
-import { SharedWorkflow } from './databases/entities/SharedWorkflow';
-import { Settings } from './databases/entities/Settings';
-import { InstalledPackages } from './databases/entities/InstalledPackages';
-import { InstalledNodes } from './databases/entities/InstalledNodes';
+
+import type { Request } from 'express';
+import type { InstalledNodes } from './databases/entities/InstalledNodes';
+import type { InstalledPackages } from './databases/entities/InstalledPackages';
+import type { Role } from './databases/entities/Role';
+import type { Settings } from './databases/entities/Settings';
+import type { SharedCredentials } from './databases/entities/SharedCredentials';
+import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
+import type { TagEntity } from './databases/entities/TagEntity';
+import type { User } from './databases/entities/User';
+import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import { CredentialUsage } from './databases/entities/CredentialUsage';
 
 export interface IActivationError {
 	time: number;
 	error: {
 		message: string;
 	};
+}
+
+export interface IQueuedWorkflowActivations {
+	activationMode: WorkflowActivateMode;
+	lastTimeout: number;
+	timeout: NodeJS.Timeout;
+	workflowData: IWorkflowDb;
 }
 
 export interface ICustomRequest extends Request {
@@ -74,6 +84,7 @@ export interface IDatabaseCollections {
 	Settings: Repository<Settings>;
 	InstalledPackages: Repository<InstalledPackages>;
 	InstalledNodes: Repository<InstalledNodes>;
+	CredentialUsage: Repository<CredentialUsage>;
 }
 
 export interface IWebhookDb {
@@ -153,6 +164,7 @@ export interface ICredentialsBase {
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: number | string;
 	name: string;
+	shared?: SharedCredentials[];
 }
 
 export interface ICredentialsResponse extends ICredentialsDb {
@@ -506,6 +518,14 @@ export interface IN8nUISettings {
 		type: string;
 	};
 	isNpmAvailable: boolean;
+	allowedModules: {
+		builtIn?: string;
+		external?: string;
+	};
+	enterprise: {
+		sharing: boolean;
+		workflowSharing: boolean;
+	};
 }
 
 export interface IPersonalizationSurveyAnswers {

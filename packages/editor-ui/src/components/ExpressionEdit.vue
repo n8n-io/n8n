@@ -21,7 +21,7 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.expression') }}
 						</div>
-						<div class="expression-editor" ref="expressionInput">
+						<div class="expression-editor ph-no-capture">
 							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
 						</div>
 					</div>
@@ -30,7 +30,7 @@
 						<div class="editor-description">
 							{{ $locale.baseText('expressionEdit.result') }}
 						</div>
-						<div ref="expressionOutput">
+						<div class="ph-no-capture">
 							<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
 						</div>
 					</div>
@@ -53,10 +53,12 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { hasExpressionMapping } from './helpers';
+import { debounceHelper } from './mixins/debounce';
 
 export default mixins(
 	externalHooks,
 	genericHelpers,
+	debounceHelper,
 ).extend({
 	name: 'ExpressionEdit',
 	props: [
@@ -75,17 +77,6 @@ export default mixins(
 			displayValue: '',
 			latestValue: '',
 		};
-	},
-	updated() {
-		if (this.$refs.expressionInput && this.$refs.expressionOutput) {
-			this.$externalHooks().run(
-				'expressionEdit.mounted',
-				{
-					expressionInputRef: this.$refs.expressionInput,
-					expressionOutputRef: this.$refs.expressionOutput,
-				},
-			);
-		}
 	},
 	methods: {
 		valueChanged (value: string, forceUpdate = false) {
@@ -238,7 +229,7 @@ export default mixins(
 
 	background-color: var(--color-background-base);
 	color: var(--color-text-dark);
-	border-bottom: 1px solid $--color-primary;
+	border-bottom: 1px solid $color-primary;
 	margin-bottom: 1em;
 
 	.headline {
@@ -253,7 +244,7 @@ export default mixins(
 		text-align: center;
 		line-height: 1.5;
 		padding-top: 1.5em;
-		color: $--color-primary;
+		color: $color-primary;
 	}
 }
 

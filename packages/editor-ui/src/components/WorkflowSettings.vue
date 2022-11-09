@@ -192,6 +192,7 @@ import { WORKFLOW_SETTINGS_MODAL_KEY } from '../constants';
 import mixins from 'vue-typed-mixins';
 
 import { mapGetters } from "vuex";
+import { deepCopy } from "n8n-workflow";
 
 export default mixins(
 	externalHooks,
@@ -274,7 +275,7 @@ export default mixins(
 			this.$showError(error, 'Problem loading settings', 'The following error occurred loading the data:');
 		}
 
-		const workflowSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
+		const workflowSettings = deepCopy(this.$store.getters.workflowSettings);
 
 		if (workflowSettings.timezone === undefined) {
 			workflowSettings.timezone = 'DEFAULT';
@@ -536,7 +537,7 @@ export default mixins(
 				}
 			}
 
-			const oldSettings = JSON.parse(JSON.stringify(this.$store.getters.workflowSettings));
+			const oldSettings = deepCopy(this.$store.getters.workflowSettings);
 
 			this.$store.commit('setWorkflowSettings', localWorkflowSettings);
 
@@ -557,9 +558,8 @@ export default mixins(
 		},
 		convertToHMS(num: number): ITimeoutHMS {
 			if (num > 0) {
-				let remainder: number;
 				const hours = Math.floor(num / 3600);
-				remainder = num % 3600;
+				const remainder = num % 3600;
 				const minutes = Math.floor(remainder / 60);
 				const seconds = remainder % 60;
 				return { hours, minutes, seconds };

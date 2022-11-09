@@ -7,19 +7,21 @@
 	>
 		<template v-slot:content>
 
-			<div class="filters" ref="filters">
+			<div class="filters">
 				<el-row>
 					<el-col :span="2" class="filter-headline">
 						{{ $locale.baseText('executionsList.filters') }}:
 					</el-col>
 					<el-col :span="7">
 						<n8n-select v-model="filter.workflowId" :placeholder="$locale.baseText('executionsList.selectWorkflow')" size="medium" filterable @change="handleFilterChanged">
-							<n8n-option
-								v-for="item in workflows"
-								:key="item.id"
-								:label="item.name"
-								:value="item.id">
-							</n8n-option>
+							<div class="ph-no-capture">
+								<n8n-option
+									v-for="item in workflows"
+									:key="item.id"
+									:label="item.name"
+									:value="item.id">
+								</n8n-option>
+							</div>
 						</n8n-select>
 					</el-col>
 					<el-col :span="5" :offset="1">
@@ -45,7 +47,7 @@
 				</span>
 			</div>
 
-			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass" ref="table">
+			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass">
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
 					<template slot="header" slot-scope="scope">
@@ -63,9 +65,11 @@
 				</el-table-column>
 				<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
 					<template slot-scope="scope">
-						<span class="workflow-name">
-							{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
-						</span>
+						<div class="ph-no-capture">
+							<span class="workflow-name">
+								{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
+							</span>
+						</div>
 
 						<span v-if="scope.row.stoppedAt === undefined">
 							({{ $locale.baseText('executionsList.running') }})
@@ -164,6 +168,7 @@
 </template>
 
 <script lang="ts">
+/* eslint-disable prefer-spread */
 import Vue from 'vue';
 
 import ExecutionTime from '@/components/ExecutionTime.vue';
@@ -245,11 +250,6 @@ export default mixins(
 
 		this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', { workflow_id: this.$store.getters.workflowId });
-
-		this.$externalHooks().run('executionsList.created', {
-			tableRef: this.$refs['table'],
-			filtersRef: this.$refs['filters'],
-		});
 	},
 	beforeDestroy() {
 		if (this.autoRefreshInterval) {
@@ -365,7 +365,7 @@ export default mixins(
 
 
 			if (this.autoRefresh) {
-				this.autoRefreshInterval = setInterval(this.loadAutoRefresh, 4 * 1000); // refresh data every 4 secs
+				this.autoRefreshInterval = setInterval(() => this.loadAutoRefresh(), 4 * 1000); // refresh data every 4 secs
 			}
 		},
 		handleCheckAllChange () {

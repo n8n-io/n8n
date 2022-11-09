@@ -7,11 +7,6 @@ import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
 /**
  * Make an API request to Trello
  *
- * @param {IHookFunctions} this
- * @param {string} method
- * @param {string} url
- * @param {object} body
- * @returns {Promise<any>}
  */
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -34,6 +29,9 @@ export async function apiRequest(
 	try {
 		return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
 	} catch (error) {
+		if (error instanceof NodeApiError) {
+			throw error;
+		}
 		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
