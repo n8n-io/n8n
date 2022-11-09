@@ -831,7 +831,7 @@ export const workflowHelpers = mixins(
 					}
 
 					if (redirect) {
-						this.$router.push({
+						this.$router.replace({
 							name: VIEWS.WORKFLOW,
 							params: { name: workflowData.id as string, action: 'workflowSave' },
 						});
