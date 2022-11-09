@@ -5,7 +5,6 @@
  */
 
 import {IUser, ICredentialsResponse, IRootState, IWorkflowDb} from "@/Interface";
-import {Store} from "vuex";
 import {EnterpriseEditionFeature} from "@/constants";
 import { useSettingsStore } from "./stores/settings";
 

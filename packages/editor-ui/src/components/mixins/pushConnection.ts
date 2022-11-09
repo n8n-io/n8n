@@ -27,6 +27,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export const pushConnection = mixins(
 	externalHooks,
@@ -46,6 +47,7 @@ export const pushConnection = mixins(
 		},
 		computed: {
 			...mapStores(
+				useCredentialsStore,
 				useNodeTypesStore,
 				useUIStore,
 				useWorkflowsStore,
@@ -443,7 +445,7 @@ export const pushConnection = mixins(
 					const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
 
 					// Force reload of all credential types
-					this.$store.dispatch('credentials/fetchCredentialTypes')
+					this.credentialsStore.fetchCredentialTypes()
 						.then(() => {
 							this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 						});

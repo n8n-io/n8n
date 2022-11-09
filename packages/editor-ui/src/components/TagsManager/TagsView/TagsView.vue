@@ -31,7 +31,6 @@ import Vue from "vue";
 import { ITag, ITagRow } from "@/Interface";
 import TagsTableHeader from "@/components/TagsManager/TagsView/TagsTableHeader.vue";
 import TagsTable from "@/components/TagsManager/TagsView/TagsTable.vue";
-import { mapGetters } from 'vuex';
 import { mapStores } from "pinia";
 import { useUsersStore } from "@/stores/users";
 

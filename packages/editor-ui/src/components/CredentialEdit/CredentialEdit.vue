@@ -106,7 +106,6 @@
 import Vue from 'vue';
 
 import {
-	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
 	IFakeDoor,
 	IUser,
@@ -150,6 +149,8 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+import { useCredentialsStore } from '@/stores/credentials';
+import { isValidCredentialResponse } from '@/typeGuards';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;
@@ -184,7 +185,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		return {
 			activeTab: 'connection',
 			authError: '',
-			credentialId: '' as string | number,
+			credentialId: '',
 			credentialName: '',
 			credentialData: {} as ICredentialDataDecryptedObject,
 			modalBus: new Vue(),
@@ -214,18 +215,17 @@ export default mixins(showMessage, nodeHelpers).extend({
 			{},
 		);
 
-		if (this.mode === 'new') {
-			this.credentialName = await this.$store.dispatch(
-				'credentials/getNewCredentialName',
-				{ credentialTypeName: this.credentialTypeName },
-			);
+		if (this.mode === 'new' && this.credentialTypeName) {
+			this.credentialName = await this.credentialsStore.getNewCredentialName({ credentialTypeName: this.credentialTypeName });
 
-			Vue.set(this.credentialData, 'ownedBy', {
-				id: this.currentUser.id,
-				firstName: this.currentUser.firstName,
-				lastName: this.currentUser.lastName,
-				email: this.currentUser.email,
-			});
+			if (this.currentUser) {
+				Vue.set(this.credentialData, 'ownedBy', {
+					id: this.currentUser.id,
+					firstName: this.currentUser.firstName,
+					lastName: this.currentUser.lastName,
+					email: this.currentUser.email,
+				});
+			}
 		} else {
 			await this.loadCurrentCredential();
 		}
@@ -259,23 +259,22 @@ export default mixins(showMessage, nodeHelpers).extend({
 	},
 	computed: {
 		...mapStores(
+				useCredentialsStore,
 				useNDVStore,
 				useSettingsStore,
 				useUIStore,
 				useUsersStore,
 				useWorkflowsStore,
 			),
-		currentUser(): IUser {
-			return this.usersStore.currentUser || {} as IUser;
+		currentUser(): IUser | null {
+			return this.usersStore.currentUser;
 		},
 		currentCredential(): ICredentialsResponse | null {
 			if (!this.credentialId) {
 				return null;
 			}
 
-			return this.$store.getters['credentials/getCredentialById'](
-				this.credentialId,
-			);
+			return this.credentialsStore.getCredentialById(this.credentialId);
 		},
 		credentialTypeName(): string | null {
 			if (this.mode === 'edit') {
@@ -293,9 +292,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return null;
 			}
 
-			const type = this.$store.getters['credentials/getCredentialTypeByName'](
-				this.credentialTypeName,
-			);
+			const type = this.credentialsStore.getCredentialTypeByName(this.credentialTypeName);
 
 			if (!type) {
 				return null;
@@ -333,9 +330,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 		nodesWithAccess(): INodeTypeDescription[] {
 			if (this.credentialTypeName) {
-				return this.$store.getters['credentials/getNodesWithAccess'](
-					this.credentialTypeName,
-				);
+				return this.credentialsStore.getNodesWithAccess(this.credentialTypeName);
 			}
 
 			return [];
@@ -408,7 +403,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return {};
 			}
 
-			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse, this.$store);
+			return getCredentialPermissions(this.currentUser, (this.credentialId ? this.currentCredential : this.credentialData) as ICredentialsResponse);
 		},
 		sidebarItems(): IMenuItem[] {
 				const items: IMenuItem[] = [
@@ -502,8 +497,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			);
 		},
 		getCredentialProperties(name: string): INodeProperties[] {
-			const credentialTypeData =
-				this.$store.getters['credentials/getCredentialTypeByName'](name);
+			const credentialTypeData = this.credentialsStore.getCredentialTypeByName(name);
 
 			if (!credentialTypeData) {
 				return [];
@@ -536,9 +530,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			this.credentialId = this.activeId;
 
 			try {
-				const currentCredentials: ICredentialsDecryptedResponse = await this.$store.dispatch('credentials/getCredentialData', {
-					id: this.credentialId,
-				});
+				const currentCredentials = await this.credentialsStore.getCredentialData({ id: this.credentialId });
 
 				if (!currentCredentials) {
 					throw new Error(
@@ -622,8 +614,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 
 		getParentTypes(name: string): string[] {
-			const credentialType =
-				this.$store.getters['credentials/getCredentialTypeByName'](name);
+			const credentialType = this.credentialsStore.getCredentialTypeByName(name);
 
 			if (
 				credentialType === undefined ||
@@ -691,7 +682,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		},
 
 		async testCredential(credentialDetails: ICredentialsDecrypted) {
-			const result: INodeCredentialTestResult = await this.$store.dispatch('credentials/testCredential', credentialDetails);
+			const result = await this.credentialsStore.testCredential(credentialDetails);
 			if (result.status === 'Error') {
 				this.authError = result.message;
 				this.testedSuccessfully = false;
@@ -812,10 +803,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			let credential;
 
 			try {
-				credential = (await this.$store.dispatch(
-					'credentials/createNewCredential',
-					credentialDetails,
-				)) as ICredentialsResponse;
+				credential = await this.credentialsStore.createNewCredential(credentialDetails);
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(
@@ -846,10 +834,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 		): Promise<ICredentialsResponse | null> {
 			let credential;
 			try {
-				credential = (await this.$store.dispatch(
-					'credentials/updateCredential',
-					{ id: this.credentialId, data: credentialDetails },
-				)) as ICredentialsResponse;
+				credential = await this.credentialsStore.updateCredential({ id: this.credentialId, data: credentialDetails });
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(
@@ -893,9 +878,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			try {
 				this.isDeleting = true;
-				await this.$store.dispatch('credentials/deleteCredential', {
-					id: this.credentialId,
-				});
+				this.credentialsStore.deleteCredential({ id: this.credentialId });
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(
@@ -929,22 +912,21 @@ export default mixins(showMessage, nodeHelpers).extend({
 			const types = this.parentTypes;
 
 			try {
+				const credData = { id: credential.id, ...this.credentialData };
 				if (
 					this.credentialTypeName === 'oAuth2Api' ||
 					types.includes('oAuth2Api')
 				) {
-					url = (await this.$store.dispatch('credentials/oAuth2Authorize', {
-						...this.credentialData,
-						id: credential.id,
-					})) as string;
+					if (isValidCredentialResponse(credData)) {
+						url = await this.credentialsStore.oAuth2Authorize(credData);
+					}
 				} else if (
 					this.credentialTypeName === 'oAuth1Api' ||
 					types.includes('oAuth1Api')
 				) {
-					url = (await this.$store.dispatch('credentials/oAuth1Authorize', {
-						...this.credentialData,
-						id: credential.id,
-					})) as string;
+					if (isValidCredentialResponse(credData)) {
+						url = await this.credentialsStore.oAuth1Authorize(credData);
+					}
 				}
 			} catch (error) {
 				this.$showError(
@@ -971,7 +953,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					// Set some kind of data that status changes.
 					// As data does not get displayed directly it does not matter what data.
 					Vue.set(this.credentialData, 'oauthTokenData', {});
-					this.$store.commit('credentials/enableOAuthCredential', credential);
+					this.credentialsStore.enableOAuthCredential(credential);
 
 					// Close the window
 					if (oauthPopup) {

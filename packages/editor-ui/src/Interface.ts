@@ -320,7 +320,7 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
-	hash?: string;
+	hash: string;
 	usedCredentials?: Array<Partial<ICredentialsDb>>;
 }
 
@@ -1005,7 +1005,7 @@ export interface ICredentialsState {
 
 export interface ITagsState {
 	tags: { [id: string]: ITag };
-	isLoading: boolean;
+	loading: boolean;
 	fetchedAll: boolean;
 	fetchedUsageCount: boolean;
 }
