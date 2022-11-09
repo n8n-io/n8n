@@ -613,7 +613,7 @@ export class ActiveWorkflowRunner {
 
 	/**
 	 * Return poll function which gets the global functions from n8n-core
-	 * and overwrites the __emit to be able to start it in subprocess
+	 * and overwrites the emit to be able to start it in subprocess
 	 *
 	 */
 	getExecutePollFunctions(
@@ -630,19 +630,38 @@ export class ActiveWorkflowRunner {
 				mode,
 				activation,
 			);
-			// eslint-disable-next-line no-underscore-dangle
-			returnFunctions.__emit = async (
-				data: INodeExecutionData[][] | ExecutionError,
-			): Promise<void> => {
-				if (data instanceof Error) {
-					await createErrorExecution(data, node, workflowData, workflow, mode);
-					this.executeErrorWorkflow(data, workflowData, mode);
-					return;
-				}
+			returnFunctions.__emit = (
+				data: INodeExecutionData[][],
+				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+				donePromise?: IDeferredPromise<IRun | undefined>,
+			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				WorkflowHelpers.saveStaticData(workflow);
-				this.runWorkflow(workflowData, node, data, additionalData, mode);
+				const executePromise = this.runWorkflow(
+					workflowData,
+					node,
+					data,
+					additionalData,
+					mode,
+					responsePromise,
+				);
+
+				if (donePromise) {
+					executePromise.then((executionId) => {
+						activeExecutions
+							.getPostExecutePromise(executionId)
+							.then(donePromise.resolve)
+							.catch(donePromise.reject);
+					});
+				} else {
+					executePromise.catch(console.error);
+				}
+			};
+
+			returnFunctions.__emitError = async (error: ExecutionError): Promise<void> => {
+				await createErrorExecution(error, node, workflowData, workflow, mode);
+				this.executeErrorWorkflow(error, workflowData, mode);
 			};
 			return returnFunctions;
 		};

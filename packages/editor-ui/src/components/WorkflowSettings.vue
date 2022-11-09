@@ -611,7 +611,7 @@ export default mixins(
 
 			try {
 				const workflow = await this.restApi().updateWorkflow(this.$route.params.name, data);
-				this.workflowsStore.setWorkflowHash(workflow.hash || '');
+				this.workflowsStore.setWorkflowHash(workflow.hash);
 			} catch (error) {
 				this.$showError(
 					error,

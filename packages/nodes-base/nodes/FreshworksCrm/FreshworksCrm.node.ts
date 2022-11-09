@@ -15,7 +15,6 @@ import {
 	getAllItemsViewId,
 	handleListing,
 	loadResource,
-	throwOnEmptyFilter,
 	throwOnEmptyUpdate,
 } from './GenericFunctions';
 

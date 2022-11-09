@@ -2,7 +2,7 @@ import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } fro
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function contentfulApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -12,7 +12,7 @@ export async function contentfulApiRequest(
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	_option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('contentfulApi');

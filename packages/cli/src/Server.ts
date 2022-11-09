@@ -155,7 +155,7 @@ import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
 
 import { toHttpNodeParameters } from './CurlConverterHelper';
-import { initErrorHandling } from './ErrorReporting';
+import { setupErrorMiddleware } from './ErrorReporting';
 
 require('body-parser-xml')(bodyParser);
 
@@ -259,7 +259,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		initErrorHandling(this.app);
+		setupErrorMiddleware(this.app);
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {

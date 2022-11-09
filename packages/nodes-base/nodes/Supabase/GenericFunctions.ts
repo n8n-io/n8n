@@ -55,7 +55,6 @@ export async function supabaseApiRequest(
 			delete options.body;
 		}
 		return await this.helpers.requestWithAuthentication.call(this, 'supabaseApi', options);
-
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
@@ -75,6 +74,7 @@ export function getFilters(
 		includeNoneOption = true,
 		filterTypeDisplayName = 'Filter',
 		filterFixedCollectionDisplayName = 'Filters',
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		filterStringDisplayName = 'Filters (String)',
 		mustMatchOptions = [
 			{
