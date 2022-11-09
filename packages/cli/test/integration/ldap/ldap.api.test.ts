@@ -1,11 +1,11 @@
 import express from 'express';
 
-import config from '../../../config';
-import { Db } from '../../../src';
-import type { Role } from '../../../src/databases/entities/Role';
+import config from '@/config';
+import * as Db from '@/Db';
+import type { Role } from '@db/entities/Role';
 import {
 	LdapSyncHistory as ADSync,
-} from '../../../src/databases/entities/LdapSyncHistory';
+} from '@db/entities/LdapSyncHistory';
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import type { AuthAgent } from '../shared/types';
@@ -15,13 +15,13 @@ import {
 	LDAP_DEFAULT_CONFIGURATION,
 	RunningMode,
 	SignInType,
-} from '../../../src/Ldap/constants';
-import { LdapManager } from '../../../src/Ldap/LdapManager.ee';
-import { LdapConfig } from '../../../src/Ldap/types';
-import { LdapService } from '../../../src/Ldap/LdapService.ee';
+} from '@/Ldap/constants';
+import { LdapManager } from '@/Ldap/LdapManager.ee';
+import { LdapConfig } from '@/Ldap/types';
+import { LdapService } from '@/Ldap/LdapService.ee';
 
-jest.mock('../../../src/telemetry');
-jest.mock('../../../src/UserManagement/email/NodeMailer');
+jest.mock('@/telemetry');
+jest.mock('@/UserManagement/email/NodeMailer');
 
 let app: express.Application;
 let testDbName = '';
@@ -63,7 +63,7 @@ beforeEach(async () => {
 		testDbName,
 	);
 
-	jest.mock('../../../config');
+	jest.mock('@/telemetry');
 
 	config.set('userManagement.disabled', false);
 	config.set('userManagement.isInstanceOwnerSetUp', true);

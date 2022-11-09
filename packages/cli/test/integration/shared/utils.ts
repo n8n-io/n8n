@@ -26,7 +26,6 @@ import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
-import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -68,6 +67,7 @@ import type {
 
 import { v4 as uuid } from 'uuid';
 import { handleLdapInit } from '../../../src/Ldap/helpers';
+import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 
 /**
  * Initialize a test server.
