@@ -1,7 +1,7 @@
-diff --git a/node_modules/quill/core/selection.js b/node_modules/quill/core/selection.js
-index 9dfc94f..7719a41 100644
---- a/node_modules/quill/core/selection.js
-+++ b/node_modules/quill/core/selection.js
+diff --git a/core/selection.js b/core/selection.js
+index 9dfc94f127529675d443fa9b2cfff52962b3c7b0..7719a4163992fcd7e043a122439ebece3036860d 100644
+--- a/core/selection.js
++++ b/core/selection.js
 @@ -151,7 +151,7 @@ class Selection {
      }
      let side = 'left';
@@ -27,10 +27,10 @@ index 9dfc94f..7719a41 100644
              offset = node.data.length;
            } else if (node.childNodes.length > 0) {
              // Container case
-diff --git a/node_modules/quill/dist/quill.core.js b/node_modules/quill/dist/quill.core.js
-index 7c7891e..1a7fd8a 100644
---- a/node_modules/quill/dist/quill.core.js
-+++ b/node_modules/quill/dist/quill.core.js
+diff --git a/dist/quill.core.js b/dist/quill.core.js
+index 7c7891e6e2a748ebea0daf7f5210fd3f10d759bc..977fa23f5e2ee5b0edfb05e95363c9fb57a5b0c6 100644
+--- a/dist/quill.core.js
++++ b/dist/quill.core.js
 @@ -290,7 +290,7 @@ eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export (binding) *
  /***/ (function(module, __webpack_exports__, __webpack_require__) {
  
@@ -40,10 +40,10 @@ index 7c7891e..1a7fd8a 100644
  
  /***/ }),
  
-diff --git a/node_modules/quill/dist/quill.js b/node_modules/quill/dist/quill.js
-index 2d45561..52e4303 100644
---- a/node_modules/quill/dist/quill.js
-+++ b/node_modules/quill/dist/quill.js
+diff --git a/dist/quill.js b/dist/quill.js
+index 2d455617a699b1bee8bf81f3ef964f8499622977..0c46e3f6354d1aca2e69e494f8adda42126dc581 100644
+--- a/dist/quill.js
++++ b/dist/quill.js
 @@ -620,7 +620,7 @@ eval("__webpack_require__.r(__webpack_exports__);\n/* harmony export (binding) *
  /***/ (function(module, __webpack_exports__, __webpack_require__) {
  

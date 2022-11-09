@@ -1,0 +1,3 @@
+packages:
+  - packages/*
+  - packages/@n8n_io/*
