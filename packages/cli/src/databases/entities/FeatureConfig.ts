@@ -1,6 +1,6 @@
 import { Column, ColumnOptions, Entity, PrimaryColumn } from 'typeorm';
-import { IFeatureConfigDb } from '../..';
-import type { LdapConfig } from '../../Ldap/types';
+import { IFeatureConfigDb } from '@/Interfaces';
+import type { LdapConfig } from '@/Ldap/types';
 import { jsonColumnType } from './AbstractEntity';
 
 @Entity()
