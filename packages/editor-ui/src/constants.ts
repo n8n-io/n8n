@@ -421,6 +421,11 @@ export enum STORES {
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',
+	CREDENTIALS = 'credentials',
+	TAGS = 'tags',
+	VERSIONS = 'versions',
+	NODE_CREATOR = 'nodeCreator',
+	WEBHOOKS = 'webhooks',
 	HISTORY = 'history',
 };
 
@@ -435,11 +440,6 @@ export enum COMMANDS {
 export enum BULK_COMMANDS {
 	IMPORT_WORKFLOW = 'importWorkflow',
 	RECONNECT_NODES = 'reconnectNodes',
-	CREDENTIALS = 'credentials',
-	TAGS = 'tags',
-	VERSIONS = 'versions',
-	NODE_CREATOR = 'nodeCreator',
-	WEBHOOKS = 'webhooks',
 }
 
 export const UNDOABLE_NODE_PROPERTIES = new Set([
