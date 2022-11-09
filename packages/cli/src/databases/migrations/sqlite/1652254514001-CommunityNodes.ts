@@ -1,6 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import config from '@/config';
-import { logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
+import {
+	logMigrationEnd,
+	logMigrationStart,
+} from '@db/utils/migrationHelpers';
 
 export class CommunityNodes1652254514001 implements MigrationInterface {
 	name = 'CommunityNodes1652254514001';
@@ -19,7 +22,7 @@ export class CommunityNodes1652254514001 implements MigrationInterface {
 				`"createdAt"	datetime(3) NOT NULL DEFAULT 'STRFTIME(''%Y-%m-%d %H:%M:%f'', ''NOW'')',` +
 				`"updatedAt"	datetime(3) NOT NULL DEFAULT 'STRFTIME(''%Y-%m-%d %H:%M:%f'', ''NOW'')',` +
 				`PRIMARY KEY("packageName")` +
-				`);`,
+			`);`
 		);
 
 		await queryRunner.query(
@@ -30,7 +33,7 @@ export class CommunityNodes1652254514001 implements MigrationInterface {
 				`"package"	char(214) NOT NULL,` +
 				`PRIMARY KEY("name"),` +
 				`FOREIGN KEY("package") REFERENCES "${tablePrefix}installed_packages"("packageName") ON DELETE CASCADE ON UPDATE CASCADE` +
-				`);`,
+			`);`
 		);
 		logMigrationEnd(this.name);
 	}
