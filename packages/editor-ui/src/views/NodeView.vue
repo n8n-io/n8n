@@ -218,7 +218,7 @@ import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { getNodeViewTab } from '@/components/helpers';
-import { Route } from 'vue-router';
+import { Route, RawLocation } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
@@ -349,11 +349,25 @@ export default mixins(
 
 					if (confirmModal === MODAL_CONFIRMED) {
 						const saved = await this.saveCurrentWorkflow({}, false);
-						if (saved) this.settingsStore.fetchPromptsData();
+						if (saved) await this.settingsStore.fetchPromptsData();
 						this.uiStore.stateIsDirty = false;
-						next();
+
+						if(from.name === VIEWS.NEW_WORKFLOW) {
+							// Replace the current route with the new workflow route
+							// before navigating to the new route when saving new workflow.
+							this.$router.replace({ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } }, () => {
+
+							// We can't use next() here since vue-router
+							// would prevent the navigation with an error
+							this.$router.push(to as RawLocation);
+							});
+						} else {
+							next();
+						}
 					} else if (confirmModal === MODAL_CANCEL) {
+						await this.resetWorkspace();
 						this.uiStore.stateIsDirty = false;
+
 						next();
 					} else if (confirmModal === MODAL_CLOSE) {
 						next(false);
@@ -818,7 +832,7 @@ export default mixins(
 				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
 				this.workflowsStore.setWorkflowSettings(data.settings || {});
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
-				this.workflowsStore.setWorkflowHash(data.hash || '');
+				this.workflowsStore.setWorkflowHash(data.hash);
 
 				const tags = (data.tags || []) as ITag[];
 				const tagIds = tags.map((tag) => tag.id);

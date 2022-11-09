@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
 			<template #header>
-				<div :class="$style.returnButton" @click="onReturn">
+				<div :class="$style.returnButton" @click="$emit('return')">
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
@@ -121,9 +121,6 @@ export default mixins(
 		},
 		onVersionClick() {
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
-		},
-		onReturn() {
-			this.$router.push({name: VIEWS.HOMEPAGE});
 		},
 		openUpdatesPanel() {
 			this.uiStore.openModal(VERSIONS_MODAL_KEY);
