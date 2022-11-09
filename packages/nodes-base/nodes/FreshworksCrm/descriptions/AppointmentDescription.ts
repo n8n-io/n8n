@@ -33,10 +33,10 @@ export const appointmentOperations: INodeProperties[] = [
 				action: 'Get an appointment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all appointments',
-				action: 'Get all appointments',
+				action: 'Get many appointments',
 			},
 			{
 				name: 'Update',

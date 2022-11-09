@@ -137,9 +137,9 @@ export function sanitizeCredentials(
 
 /**
  * toJsonSchema
- * Take an array of crendentials parameter and map it
+ * Take an array of credentials parameter and map it
  * to a JSON Schema (see https://json-schema.org/). With
- * the JSON Schema defintion we can validate the credential's shape
+ * the JSON Schema definition we can validate the credential's shape
  * @param properties - Credentials properties
  * @returns The credentials schema definition.
  */
@@ -155,7 +155,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 	const optionsValues: { [key: string]: string[] } = {};
 	const resolveProperties: string[] = [];
 
-	// get all posible values of properties type "options"
+	// get all possible values of properties type "options"
 	// so we can later resolve the displayOptions dependencies
 	properties
 		.filter((property) => property.type === 'options')
@@ -177,7 +177,7 @@ export function toJsonSchema(properties: INodeProperties[]): IDataObject {
 		requiredFields.push(property.name);
 		if (property.type === 'options') {
 			// if the property is type options,
-			// include all possible values in the anum property.
+			// include all possible values in the enum property.
 			Object.assign(jsonSchema.properties, {
 				[property.name]: {
 					type: 'string',

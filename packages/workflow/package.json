@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "0.114.0",
+  "version": "0.115.1",
   "description": "Workflow base code of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -67,17 +67,16 @@
   },
   "jest": {
     "transform": {
-      "^.+\\.tsx?$": "ts-jest"
+      "^.+\\.ts$": "ts-jest"
     },
     "testURL": "http://localhost/",
-    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$",
+    "testRegex": "(/__tests__/.*|(\\.|/)(test|spec))\\.(js|ts)$",
     "testPathIgnorePatterns": [
       "/dist/",
       "/node_modules/"
     ],
     "moduleFileExtensions": [
       "ts",
-      "tsx",
       "js",
       "json"
     ]

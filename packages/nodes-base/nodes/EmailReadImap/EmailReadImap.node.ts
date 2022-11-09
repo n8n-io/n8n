@@ -3,8 +3,12 @@ import {
 	createDeferredPromise,
 	IBinaryData,
 	IBinaryKeyData,
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
 	IDeferredPromise,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -43,6 +47,7 @@ export class EmailReadImap implements INodeType {
 			{
 				name: 'imap',
 				required: true,
+				testedBy: 'imapConnectionTest',
 			},
 		],
 		properties: [
@@ -169,6 +174,51 @@ export class EmailReadImap implements INodeType {
 				],
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async imapConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const config: ImapSimpleOptions = {
+						imap: {
+							user: credentials.user as string,
+							password: credentials.password as string,
+							host: credentials.host as string,
+							port: credentials.port as number,
+							tls: credentials.secure as boolean,
+							authTimeout: 20000,
+						},
+					};
+					const tlsOptions: IDataObject = {};
+
+					if (credentials.secure) {
+						tlsOptions.servername = credentials.host as string;
+					}
+					if (!_.isEmpty(tlsOptions)) {
+						config.imap.tlsOptions = tlsOptions;
+					}
+					const conn = imapConnect(config).then(async (conn) => {
+						return conn;
+					});
+					(await conn).getBoxes((err, boxes) => {});
+				} catch (error) {
+					console.log(error);
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {

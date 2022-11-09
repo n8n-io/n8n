@@ -37,10 +37,10 @@ export const channelOperations: INodeProperties[] = [
 				action: 'Get a channel',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all channels',
-				action: 'Get all channels',
+				action: 'Get many channels',
 			},
 			{
 				name: 'Unarchive',

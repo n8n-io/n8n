@@ -31,10 +31,10 @@ export const recordOperations: INodeProperties[] = [
 				action: 'Delete a record',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all records',
-				action: 'Get all records',
+				action: 'Get many records',
 			},
 			{
 				name: 'Update',

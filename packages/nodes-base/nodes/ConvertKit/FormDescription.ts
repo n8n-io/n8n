@@ -19,10 +19,10 @@ export const formOperations: INodeProperties[] = [
 				action: 'Add a subscriber',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all forms',
-				action: 'Get all forms',
+				action: 'Get many forms',
 			},
 			{
 				name: 'Get Subscriptions',

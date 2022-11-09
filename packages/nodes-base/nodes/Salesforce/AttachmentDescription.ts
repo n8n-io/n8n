@@ -31,10 +31,10 @@ export const attachmentOperations: INodeProperties[] = [
 				action: 'Get an attachment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all attachments',
-				action: 'Get all attachments',
+				action: 'Get many attachments',
 			},
 			{
 				name: 'Get Summary',

@@ -110,7 +110,7 @@ oauth2CredentialController.get(
 			clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 			accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
 			authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
-			redirectUri: `${getInstanceBaseUrl()}${restEndpoint}/oauth2-credential/callback`,
+			redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
 			scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			state: stateEncodedStr,
 		};
@@ -266,7 +266,7 @@ oauth2CredentialController.get(
 				clientSecret: get(oauthCredentials, 'clientSecret', '') as string | undefined,
 				accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
 				authorizationUri: get(oauthCredentials, 'authUrl', '') as string,
-				redirectUri: `${getInstanceBaseUrl()}${restEndpoint}/oauth2-credential/callback`,
+				redirectUri: `${getInstanceBaseUrl()}/${restEndpoint}/oauth2-credential/callback`,
 				scopes: split(get(oauthCredentials, 'scope', 'openid,') as string, ','),
 			};
 

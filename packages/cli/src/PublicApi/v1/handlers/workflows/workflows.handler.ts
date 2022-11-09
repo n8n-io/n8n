@@ -251,7 +251,7 @@ export = {
 				return res.json(sharedWorkflow.workflow);
 			}
 
-			// nothing to do as the wokflow is already active
+			// nothing to do as the workflow is already active
 			return res.json(sharedWorkflow.workflow);
 		},
 	],
@@ -280,7 +280,7 @@ export = {
 				return res.json(sharedWorkflow.workflow);
 			}
 
-			// nothing to do as the wokflow is already inactive
+			// nothing to do as the workflow is already inactive
 			return res.json(sharedWorkflow.workflow);
 		},
 	],

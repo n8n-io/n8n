@@ -15,10 +15,10 @@ export const subredditOperations: INodeProperties[] = [
 				action: 'Get a subreddit',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve information about subreddits from all of Reddit',
-				action: 'Get all subreddits',
+				action: 'Get many subreddits',
 			},
 		],
 		displayOptions: {

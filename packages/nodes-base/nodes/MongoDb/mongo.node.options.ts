@@ -20,6 +20,7 @@ export const nodeDescription: INodeTypeDescription = {
 		{
 			name: 'mongoDb',
 			required: true,
+			testedBy: 'mongoDbCredentialTest',
 		},
 	],
 	properties: [
@@ -46,6 +47,18 @@ export const nodeDescription: INodeTypeDescription = {
 					value: 'find',
 					description: 'Find documents',
 					action: 'Find documents',
+				},
+				{
+					name: 'Find And Replace',
+					value: 'findOneAndReplace',
+					description: 'Find and replace documents',
+					action: 'Find and replace documents',
+				},
+				{
+					name: 'Find And Update',
+					value: 'findOneAndUpdate',
+					description: 'Find and update documents',
+					action: 'Find and update documents',
 				},
 				{
 					name: 'Insert',
@@ -207,7 +220,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
 				},
 			},
 			default: 'id',
@@ -222,7 +235,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'string',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
 				},
 			},
 			default: '',
@@ -235,7 +248,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'boolean',
 			displayOptions: {
 				show: {
-					operation: ['update'],
+					operation: ['update', 'findOneAndReplace', 'findOneAndUpdate'],
 				},
 			},
 			default: false,
@@ -247,7 +260,7 @@ export const nodeDescription: INodeTypeDescription = {
 			type: 'collection',
 			displayOptions: {
 				show: {
-					operation: ['update', 'insert'],
+					operation: ['update', 'insert', 'findOneAndReplace', 'findOneAndUpdate'],
 				},
 			},
 			placeholder: 'Add Option',

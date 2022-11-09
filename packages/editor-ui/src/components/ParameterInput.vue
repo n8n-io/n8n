@@ -37,6 +37,7 @@
 					:type="editorType"
 					:codeAutocomplete="codeAutocomplete"
 					:path="path"
+					:readonly="isReadOnly"
 					@closeDialog="closeCodeEditDialog"
 					@valueChanged="expressionUpdated"
 				></code-edit>
@@ -991,11 +992,11 @@ export default mixins(
 				// Reload function on change element from
 				// displayOptions.typeOptions.reloadOnChange parameters
 				if (this.parameter.typeOptions && this.parameter.typeOptions.reloadOnChange) {
-					// Get all paramter in reloadOnChange property
+					// Get all parameter in reloadOnChange property
 					// This reload when parameters in reloadOnChange is updated
-					const paramtersOnChange : string[] = this.parameter.typeOptions.reloadOnChange;
-					for (let i = 0; i < paramtersOnChange.length; i++) {
-						const parameter = paramtersOnChange[i] as string;
+					const parametersOnChange : string[] = this.parameter.typeOptions.reloadOnChange;
+					for (let i = 0; i < parametersOnChange.length; i++) {
+						const parameter = parametersOnChange[i] as string;
 						if (parameter in this.node.parameters) {
 							this.$watch(() => {
 								if (this.node && this.node.parameters && this.node.parameters[parameter]) {

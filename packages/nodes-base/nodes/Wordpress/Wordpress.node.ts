@@ -288,10 +288,6 @@ export class Wordpress implements INodeType {
 							qs.per_page = this.getNodeParameter('limit', i) as number;
 							responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
 						}
-						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
-							{ itemData: { item: i } },
-						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#delete-a-post
 					if (operation === 'delete') {
@@ -414,10 +410,6 @@ export class Wordpress implements INodeType {
 							qs.per_page = this.getNodeParameter('limit', i) as number;
 							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
 						}
-						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
-							{ itemData: { item: i } },
-						);
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#delete-a-user
 					if (operation === 'delete') {

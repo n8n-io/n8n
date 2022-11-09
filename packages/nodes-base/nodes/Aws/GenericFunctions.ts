@@ -1,6 +1,3 @@
-import { URL } from 'url';
-import { Request, sign } from 'aws4';
-import { OptionsWithUri } from 'request';
 import { parseString as parseXml } from 'xml2js';
 
 import {
@@ -10,7 +7,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 export async function awsApiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions | IWebhookFunctions,
@@ -28,14 +25,14 @@ export async function awsApiRequest(
 			path,
 		},
 		method,
-		body: JSON.stringify(body),
+		body: service === 'lambda' ? body : JSON.stringify(body),
 		url: '',
 		headers,
 		region: credentials?.region as string,
 	} as IHttpRequestOptions;
 
 	try {
-		return await this.helpers.requestWithAuthentication.call(this,'aws', requestOptions);
+		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error, { parseXml: true });
 	}

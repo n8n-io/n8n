@@ -25,10 +25,10 @@ export const issueOperations: INodeProperties[] = [
 				action: 'Get an issue',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all issues',
-				action: 'Get all issues',
+				action: 'Get many issues',
 			},
 			{
 				name: 'Update',

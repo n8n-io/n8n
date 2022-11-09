@@ -31,10 +31,10 @@ export const searchJobOperations: INodeProperties[] = [
 				action: 'Get a search job',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all search jobs',
-				action: 'Get all search jobs',
+				action: 'Get many search jobs',
 			},
 		],
 		default: 'create',

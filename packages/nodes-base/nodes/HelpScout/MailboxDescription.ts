@@ -19,10 +19,10 @@ export const mailboxOperations: INodeProperties[] = [
 				action: 'Get a mailbox',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all mailboxes',
-				action: 'Get all mailboxes',
+				action: 'Get many mailboxes',
 			},
 		],
 		default: 'get',

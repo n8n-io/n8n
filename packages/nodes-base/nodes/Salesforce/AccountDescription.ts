@@ -44,10 +44,10 @@ export const accountOperations: INodeProperties[] = [
 				action: 'Get an account',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all accounts',
-				action: 'Get all accounts',
+				action: 'Get many accounts',
 			},
 			{
 				name: 'Get Summary',

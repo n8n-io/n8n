@@ -121,7 +121,7 @@ export async function getConfigValue(
 		return config.getEnv(configKey);
 	}
 
-	// Check if special file enviroment variable exists
+	// Check if special file environment variable exists
 	const fileEnvironmentVariable = process.env[`${currentSchema.env}_FILE`];
 	if (fileEnvironmentVariable === undefined) {
 		// Does not exist, so return value from config

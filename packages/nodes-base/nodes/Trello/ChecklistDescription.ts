@@ -46,12 +46,6 @@ export const checklistOperations: INodeProperties[] = [
 				action: 'Get a checklist',
 			},
 			{
-				name: 'Get All',
-				value: 'getAll',
-				description: 'Returns all checklists for the card',
-				action: 'Get all checklists',
-			},
-			{
 				name: 'Get Checklist Items',
 				value: 'getCheckItem',
 				description: 'Get a specific checklist on a card',
@@ -62,6 +56,12 @@ export const checklistOperations: INodeProperties[] = [
 				value: 'completedCheckItems',
 				description: 'Get the completed checklist items on a card',
 				action: 'Get completed checklist items',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Returns all checklists for the card',
+				action: 'Get many checklists',
 			},
 			{
 				name: 'Update Checklist Item',

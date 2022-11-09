@@ -19,10 +19,10 @@ export const serviceOperations: INodeProperties[] = [
 				action: 'Call a service',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all services',
-				action: 'Get all services',
+				action: 'Get many services',
 			},
 		],
 		default: 'getAll',

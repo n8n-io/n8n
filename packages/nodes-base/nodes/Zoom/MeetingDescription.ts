@@ -31,10 +31,10 @@ export const meetingOperations: INodeProperties[] = [
 				action: 'Get a meeting',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all meetings',
-				action: 'Get all meetings',
+				action: 'Get many meetings',
 			},
 			{
 				name: 'Update',

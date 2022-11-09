@@ -31,10 +31,10 @@ export const messageConversationOperations: INodeProperties[] = [
 				action: 'Get a message',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all messages in a conversation',
-				action: 'Get all messages',
+				action: 'Get many messages',
 			},
 			{
 				name: 'Update',

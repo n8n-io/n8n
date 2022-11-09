@@ -25,7 +25,7 @@ export const alertsOperations: INodeProperties[] = [
 				action: 'Get an alert',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all the alerts',
 				routing: {
@@ -34,7 +34,7 @@ export const alertsOperations: INodeProperties[] = [
 						url: '/api/alert/',
 					},
 				},
-				action: 'Get all alerts',
+				action: 'Get many alerts',
 			},
 		],
 		default: 'getAll',

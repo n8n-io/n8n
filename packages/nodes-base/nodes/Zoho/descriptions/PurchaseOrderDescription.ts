@@ -46,10 +46,10 @@ export const purchaseOrderOperations: INodeProperties[] = [
 				action: 'Get a purchase order',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all purchase orders',
-				action: 'Get all purchase orders',
+				action: 'Get many purchase orders',
 			},
 			{
 				name: 'Update',

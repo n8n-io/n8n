@@ -32,7 +32,7 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timezone') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-html="helpTexts.timezone"></div>
+							<div slot="content" v-text="helpTexts.timezone"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -51,7 +51,7 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveDataErrorExecution') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-html="helpTexts.saveDataErrorExecution"></div>
+							<div slot="content" v-text="helpTexts.saveDataErrorExecution"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -70,7 +70,7 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveDataSuccessExecution') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-html="helpTexts.saveDataSuccessExecution"></div>
+							<div slot="content" v-text="helpTexts.saveDataSuccessExecution"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -89,7 +89,7 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveManualExecutions') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-html="helpTexts.saveManualExecutions"></div>
+							<div slot="content" v-text="helpTexts.saveManualExecutions"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -108,7 +108,7 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveExecutionProgress') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-html="helpTexts.saveExecutionProgress"></div>
+							<div slot="content" v-text="helpTexts.saveExecutionProgress"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -127,7 +127,7 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timeoutWorkflow') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-html="helpTexts.executionTimeoutToggle"></div>
+							<div slot="content" v-text="helpTexts.executionTimeoutToggle"></div>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -142,7 +142,7 @@
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.timeoutAfter') + ":" }}
 							<n8n-tooltip class="setting-info" placement="top" >
-								<div slot="content" v-html="helpTexts.executionTimeout"></div>
+								<div slot="content" v-text="helpTexts.executionTimeout"></div>
 								<font-awesome-icon icon="question-circle" />
 							</n8n-tooltip>
 						</el-col>

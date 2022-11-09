@@ -19,10 +19,10 @@ export const noteOperations: INodeProperties[] = [
 				action: 'Create a note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all notes for a member',
-				action: 'Get all notes',
+				action: 'Get many notes',
 			},
 			{
 				name: 'Update',

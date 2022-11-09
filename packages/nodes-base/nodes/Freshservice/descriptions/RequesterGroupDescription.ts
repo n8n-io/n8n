@@ -31,10 +31,10 @@ export const requesterGroupOperations: INodeProperties[] = [
 				action: 'Get a requester group',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all requester groups',
-				action: 'Get all requester groups',
+				action: 'Get many requester groups',
 			},
 			{
 				name: 'Update',

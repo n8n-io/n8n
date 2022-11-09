@@ -31,10 +31,10 @@ export const goalOperations: INodeProperties[] = [
 				action: 'Get a goal',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all goals',
-				action: 'Get all goals',
+				action: 'Get many goals',
 			},
 			{
 				name: 'Update',

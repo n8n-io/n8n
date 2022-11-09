@@ -1,7 +1,11 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	ICredentialDataDecryptedObject,
+	ICredentialsDecrypted,
+	ICredentialTestFunctions,
 	IDataObject,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -42,6 +46,7 @@ export class MicrosoftSql implements INodeType {
 			{
 				name: 'microsoftSql',
 				required: true,
+				testedBy: 'microsoftSqlConnectionTest',
 			},
 		],
 		properties: [
@@ -211,6 +216,44 @@ export class MicrosoftSql implements INodeType {
 					'Name of the property which decides which rows in the database should be deleted. Normally that would be "id".',
 			},
 		],
+	};
+
+	methods = {
+		credentialTest: {
+			async microsoftSqlConnectionTest(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as ICredentialDataDecryptedObject;
+				try {
+					const config = {
+						server: credentials.server as string,
+						port: credentials.port as number,
+						database: credentials.database as string,
+						user: credentials.user as string,
+						password: credentials.password as string,
+						domain: credentials.domain ? (credentials.domain as string) : undefined,
+						connectionTimeout: credentials.connectTimeout as number,
+						requestTimeout: credentials.requestTimeout as number,
+						options: {
+							encrypt: credentials.tls as boolean,
+							enableArithAbort: false,
+						},
+					};
+					const pool = new mssql.ConnectionPool(config);
+					await pool.connect();
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Connection successful!',
+				};
+			},
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

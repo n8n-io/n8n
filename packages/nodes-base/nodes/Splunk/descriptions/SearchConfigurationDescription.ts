@@ -25,10 +25,10 @@ export const searchConfigurationOperations: INodeProperties[] = [
 				action: 'Get a search configuration',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Retrieve all search configurations',
-				action: 'Get all search configurations',
+				action: 'Get many search configurations',
 			},
 		],
 		default: 'delete',

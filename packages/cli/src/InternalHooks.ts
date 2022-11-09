@@ -343,7 +343,7 @@ export class InternalHooksClass implements IInternalHooksClass {
 		public_api: boolean;
 	}): Promise<void> {
 		return this.telemetry.track(
-			'Instance sent transacptional email to user',
+			'Instance sent transactional email to user',
 			userTransactionalEmailData,
 		);
 	}

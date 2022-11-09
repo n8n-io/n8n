@@ -19,10 +19,10 @@ export const activityOperations: INodeProperties[] = [
 				action: 'Create an activity',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all activities',
-				action: 'Get all activities',
+				action: 'Get many activities',
 			},
 		],
 		default: 'create',

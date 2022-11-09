@@ -1,6 +1,6 @@
 # n8n on Subfolder with SSL
 
-Starts n8n and deployes it on a subfolder
+Starts n8n and deploys it on a subfolder
 
 ## Start
 

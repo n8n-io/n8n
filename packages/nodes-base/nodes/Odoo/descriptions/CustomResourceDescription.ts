@@ -48,10 +48,10 @@ export const customResourceOperations: INodeProperties[] = [
 				action: 'Get an item',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all items',
-				action: 'Get all items',
+				action: 'Get many items',
 			},
 			{
 				name: 'Update',

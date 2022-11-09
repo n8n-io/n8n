@@ -272,7 +272,7 @@ export class Aws implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> {
-		let endpoint;
+		let endpoint: URL;
 		let service = requestOptions.qs?.service as string;
 		let path = requestOptions.qs?.path;
 		const method = requestOptions.method;
@@ -280,27 +280,28 @@ export class Aws implements ICredentialType {
 		let region = credentials.region;
 		const query = requestOptions.qs?.query as IDataObject;
 		if (!requestOptions.baseURL && !requestOptions.url) {
+			let endpointString: string;
 			if (service === 'lambda' && credentials.lambdaEndpoint) {
-				endpoint = credentials.lambdaEndpoint;
+				endpointString = credentials.lambdaEndpoint as string;
 			} else if (service === 'sns' && credentials.snsEndpoint) {
-				endpoint = credentials.snsEndpoint;
+				endpointString = credentials.snsEndpoint as string;
 			} else if (service === 'sqs' && credentials.sqsEndpoint) {
-				endpoint = credentials.sqsEndpoint;
+				endpointString = credentials.sqsEndpoint as string;
 			} else if (service === 's3' && credentials.s3Endpoint) {
-				endpoint = credentials.s3Endpoint;
+				endpointString = credentials.s3Endpoint as string;
 			} else if (service === 'ses' && credentials.sesEndpoint) {
-				endpoint = credentials.sesEndpoint;
+				endpointString = credentials.sesEndpoint as string;
 			} else if (service === 'rekognition' && credentials.rekognitionEndpoint) {
-				endpoint = credentials.rekognitionEndpoint;
+				endpointString = credentials.rekognitionEndpoint as string;
 			} else if (service === 'sqs' && credentials.sqsEndpoint) {
-				endpoint = credentials.sqsEndpoint;
+				endpointString = credentials.sqsEndpoint as string;
 			} else if (service) {
-				endpoint = `https://${service}.${credentials.region}.amazonaws.com`;
+				endpointString = `https://${service}.${credentials.region}.amazonaws.com`;
 			}
-			endpoint = new URL((endpoint as string).replace('{region}', credentials.region as string));
+			endpoint = new URL(endpointString!.replace('{region}', credentials.region as string) + path);
 		} else {
 			// If no endpoint is set, we try to decompose the path and use the default endpoint
-			const customUrl = new URL(requestOptions.baseURL! + requestOptions.url!);
+			const customUrl = new URL(requestOptions.baseURL! + requestOptions.url! + path);
 			service = customUrl.hostname.split('.')[0] as string;
 			region = customUrl.hostname.split('.')[1] as string;
 			if (service === 'sts') {
@@ -311,19 +312,24 @@ export class Aws implements ICredentialType {
 					console.log(err);
 				}
 			}
-			path = customUrl.pathname as string;
 			endpoint = customUrl;
 		}
-		if (service.includes('.s3')) {
-			path = `${endpoint.pathname}?${queryToString(query).replace(/\+/g, '%2B')}`;
+
+		if (query && Object.keys(query).length !== 0) {
+			Object.keys(query).forEach((key) => {
+				endpoint.searchParams.append(key, query[key] as string);
+			});
 		}
 
+		path = endpoint.pathname + endpoint.search;
+
 		const signOpts = {
-			headers: requestOptions.headers,
+			...requestOptions,
+			headers: requestOptions.headers ?? {},
 			host: endpoint.host,
 			method,
 			path,
-			body,
+			body: body !== '' ? body : undefined,
 			region,
 		} as Request;
 
@@ -340,10 +346,12 @@ export class Aws implements ICredentialType {
 			console.log(err);
 		}
 		const options: IHttpRequestOptions = {
+			...requestOptions,
 			headers: signOpts.headers,
 			method,
 			url: endpoint.origin + path,
 			body: signOpts.body,
+			qs: undefined, // override since it's already in the url
 		};
 
 		return options;

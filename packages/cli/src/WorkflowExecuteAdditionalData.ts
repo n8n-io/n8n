@@ -930,7 +930,7 @@ export async function executeWorkflow(
 		await checkPermissionsForExecution(workflow, additionalData.userId);
 
 		// Create new additionalData to have different workflow loaded and to call
-		// different webooks
+		// different webhooks
 		const additionalDataIntegrated = await getBase(additionalData.userId);
 		additionalDataIntegrated.hooks = getWorkflowHooksIntegrated(
 			runData.executionMode,
@@ -1059,7 +1059,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 			this.sessionId,
 		);
 	} catch (error) {
-		Logger.warn(`There was a problem sending messsage to UI: ${error.message}`);
+		Logger.warn(`There was a problem sending message to UI: ${error.message}`);
 	}
 }
 

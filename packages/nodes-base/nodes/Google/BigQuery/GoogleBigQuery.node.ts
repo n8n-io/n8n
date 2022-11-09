@@ -58,7 +58,8 @@ export class GoogleBigQuery implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'OAuth2 (Recommended)',
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+						name: 'OAuth2 (recommended)',
 						value: 'oAuth2',
 					},
 					{

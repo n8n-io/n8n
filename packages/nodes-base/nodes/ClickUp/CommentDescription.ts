@@ -25,10 +25,10 @@ export const commentOperations: INodeProperties[] = [
 				action: 'Delete a comment',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all comments',
-				action: 'Get all comments',
+				action: 'Get many comments',
 			},
 			{
 				name: 'Update',

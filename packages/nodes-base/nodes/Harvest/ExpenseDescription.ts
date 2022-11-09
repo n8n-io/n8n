@@ -33,7 +33,7 @@ export const expenseOperations: INodeProperties[] = [
 				action: 'Get data of an expense',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get data of all expenses',
 				action: 'Get data of all expenses',

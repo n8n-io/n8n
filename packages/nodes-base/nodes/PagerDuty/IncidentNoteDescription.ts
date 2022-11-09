@@ -19,10 +19,10 @@ export const incidentNoteOperations: INodeProperties[] = [
 				action: 'Create an incident note',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: "Get all incident's notes",
-				action: 'Get all incident notes',
+				action: 'Get many incident notes',
 			},
 		],
 		default: 'create',

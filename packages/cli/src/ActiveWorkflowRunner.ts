@@ -75,7 +75,7 @@ export class ActiveWorkflowRunner {
 
 		// NOTE
 		// Here I guess we can have a flag on the workflow table like hasTrigger
-		// so intead of pulling all the active wehhooks just pull the actives that have a trigger
+		// so instead of pulling all the active webhooks just pull the actives that have a trigger
 		const workflowsData: IWorkflowDb[] = (await Db.collections.Workflow.find({
 			where: { active: true },
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
@@ -183,7 +183,7 @@ export class ActiveWorkflowRunner {
 		req: express.Request,
 		res: express.Response,
 	): Promise<IResponseCallbackData> {
-		Logger.debug(`Received webhoook "${httpMethod}" for path "${path}"`);
+		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 		if (this.activeWorkflows === null) {
 			throw new ResponseHelper.ResponseError(
 				'The "activeWorkflows" instance did not get initialized yet.',
@@ -480,7 +480,7 @@ export class ActiveWorkflowRunner {
 					config.getEnv('endpoints.skipWebhoooksDeregistrationOnShutdown') &&
 					error.name === 'QueryFailedError'
 				) {
-					// When skipWebhoooksDeregistrationOnShutdown is enabled,
+					// When skipWebhooksDeregistrationOnShutdown is enabled,
 					// n8n does not remove the registered webhooks on exit.
 					// This means that further initializations will always fail
 					// when inserting to database. This is why we ignore this error
@@ -504,7 +504,7 @@ export class ActiveWorkflowRunner {
 				if (error.name === 'QueryFailedError') {
 					error.message = `The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`;
 				} else if (error.detail) {
-					// it's a error runnig the webhook methods (checkExists, create)
+					// it's a error running the webhook methods (checkExists, create)
 					error.message = error.detail;
 				}
 

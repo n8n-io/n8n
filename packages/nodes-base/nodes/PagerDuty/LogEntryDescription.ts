@@ -19,10 +19,10 @@ export const logEntryOperations: INodeProperties[] = [
 				action: 'Get a log entry',
 			},
 			{
-				name: 'Get All',
+				name: 'Get Many',
 				value: 'getAll',
 				description: 'Get all log entries',
-				action: 'Get all log entries',
+				action: 'Get many log entries',
 			},
 		],
 		default: 'get',

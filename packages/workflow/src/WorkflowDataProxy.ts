@@ -352,7 +352,7 @@ export class WorkflowDataProxy {
 		}
 
 		return new Proxy(
-			{},
+			{ binary: undefined, data: undefined, json: undefined },
 			{
 				get(target, name, receiver) {
 					name = name.toString();
@@ -445,7 +445,7 @@ export class WorkflowDataProxy {
 	}
 
 	/**
-	 * Returns a proxt to query data from the workflow
+	 * Returns a proxy to query data from the workflow
 	 *
 	 * @private
 	 * @returns
@@ -472,8 +472,7 @@ export class WorkflowDataProxy {
 						throw new Error(`The key "${name.toString()}" is not supported!`);
 					}
 
-					// @ts-ignore
-					return that.workflow[name.toString()];
+					return that.workflow[name as keyof typeof target];
 				},
 			},
 		);
@@ -693,12 +692,12 @@ export class WorkflowDataProxy {
 			}
 
 			if (sourceData === null) {
-				// 'Could not resolve, proably no pairedItem exists.'
+				// 'Could not resolve, probably no pairedItem exists.'
 				throw createExpressionError(
 					'Can’t get data for expression',
 					{
 						messageTemplate: `Can’t get data for expression under ‘%%PARAMETER%%’`,
-						description: `Could not resolve, proably no pairedItem exists`,
+						description: `Could not resolve, probably no pairedItem exists`,
 					},
 					nodeBeforeLast,
 				);
@@ -1004,12 +1003,10 @@ export class WorkflowDataProxy {
 		return new Proxy(base, {
 			get(target, name, receiver) {
 				if (['$data', '$json'].includes(name as string)) {
-					// @ts-ignore
-					return that.nodeDataGetter(that.activeNodeName, true).json;
+					return that.nodeDataGetter(that.activeNodeName, true)?.json;
 				}
 				if (name === '$binary') {
-					// @ts-ignore
-					return that.nodeDataGetter(that.activeNodeName, true).binary;
+					return that.nodeDataGetter(that.activeNodeName, true)?.binary;
 				}
 
 				return Reflect.get(target, name, receiver);

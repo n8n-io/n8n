@@ -492,10 +492,12 @@ export class NotionV2 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, download);
 					}
-					returnData.push.apply(
-						returnData,
-						Array.isArray(responseData) ? responseData : [responseData],
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -567,7 +569,12 @@ export class NotionV2 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, download);
 					}
-					returnData.push.apply(returnData, responseData);
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionData);
 				}
 			}
 
@@ -591,10 +598,12 @@ export class NotionV2 implements INodeType {
 					if (simple === true) {
 						responseData = simplifyObjects(responseData, false);
 					}
-					returnData.push.apply(
-						returnData,
-						Array.isArray(responseData) ? responseData : [responseData],
+
+					const executionData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray(responseData),
+						{ itemData: { item: i } },
 					);
+					returnData.push(...executionData);
 				}
 			}
 		}

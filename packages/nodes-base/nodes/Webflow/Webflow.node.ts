@@ -239,10 +239,6 @@ export class Webflow implements INodeType {
 							);
 							responseData = responseData.items;
 						}
-						responseData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(responseData),
-							{ itemData: { item: i } },
-						);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         item: update
