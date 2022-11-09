@@ -1,36 +1,41 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable no-console */
 import { Command, flags } from '@oclif/command';
+
+import { Credentials, UserSettings } from 'n8n-core';
 
 import { IDataObject, LoggerProxy } from 'n8n-workflow';
 
 import fs from 'fs';
 import path from 'path';
-import { getLogger } from '../../src/Logger';
-import { Db } from '../../src';
+import { getLogger } from '@/Logger';
+import * as Db from '@/Db';
+import type { ICredentialsDecryptedDb } from '@/Interfaces';
 
-export class ExportWorkflowsCommand extends Command {
-	static description = 'Export workflows';
+export class ExportCredentialsCommand extends Command {
+	static description = 'Export credentials';
 
 	static examples = [
-		`$ n8n export:workflow --all`,
-		`$ n8n export:workflow --id=5 --output=file.json`,
-		`$ n8n export:workflow --all --output=backups/latest/`,
-		`$ n8n export:workflow --backup --output=backups/latest/`,
+		`$ n8n export:credentials --all`,
+		`$ n8n export:credentials --id=5 --output=file.json`,
+		`$ n8n export:credentials --all --output=backups/latest.json`,
+		`$ n8n export:credentials --backup --output=backups/latest/`,
+		`$ n8n export:credentials --all --decrypted --output=backups/decrypted.json`,
 	];
 
 	static flags = {
 		help: flags.help({ char: 'h' }),
 		all: flags.boolean({
-			description: 'Export all workflows',
+			description: 'Export all credentials',
 		}),
 		backup: flags.boolean({
 			description:
 				'Sets --all --pretty --separate for simple backups. Only --output has to be set additionally.',
 		}),
 		id: flags.string({
-			description: 'The ID of the workflow to export',
+			description: 'The ID of the credential to export',
 		}),
 		output: flags.string({
 			char: 'o',
@@ -41,7 +46,11 @@ export class ExportWorkflowsCommand extends Command {
 		}),
 		separate: flags.boolean({
 			description:
-				'Exports one file per workflow (useful for versioning). Must inform a directory via --output.',
+				'Exports one file per credential (useful for versioning). Must inform a directory via --output.',
+		}),
+		decrypted: flags.boolean({
+			description:
+				'Exports data decrypted / in plain text. ALL SENSITIVE INFORMATION WILL BE VISIBLE IN THE FILES. Use to migrate from a installation to another that have a different secret key (in the config file).',
 		}),
 	};
 
@@ -51,7 +60,7 @@ export class ExportWorkflowsCommand extends Command {
 		LoggerProxy.init(logger);
 
 		// eslint-disable-next-line @typescript-eslint/no-shadow
-		const { flags } = this.parse(ExportWorkflowsCommand);
+		const { flags } = this.parse(ExportCredentialsCommand);
 
 		if (flags.backup) {
 			flags.all = true;
@@ -111,37 +120,43 @@ export class ExportWorkflowsCommand extends Command {
 				findQuery.id = flags.id;
 			}
 
-			const workflows = await Db.collections.Workflow.find({
-				where: findQuery,
-				relations: ['tags'],
-			});
+			// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+			const credentials = await Db.collections.Credentials.find(findQuery);
 
-			if (workflows.length === 0) {
-				throw new Error('No workflows found with specified filters.');
+			if (flags.decrypted) {
+				const encryptionKey = await UserSettings.getEncryptionKey();
+
+				for (let i = 0; i < credentials.length; i++) {
+					const { name, type, nodesAccess, data } = credentials[i];
+					const id = credentials[i].id as string;
+					const credential = new Credentials({ id, name }, type, nodesAccess, data);
+					const plainData = credential.getData(encryptionKey);
+					(credentials[i] as ICredentialsDecryptedDb).data = plainData;
+				}
+			}
+
+			if (credentials.length === 0) {
+				throw new Error('No credentials found with specified filters.');
 			}
 
 			if (flags.separate) {
 				let fileContents: string;
 				let i: number;
-				for (i = 0; i < workflows.length; i++) {
-					fileContents = JSON.stringify(workflows[i], null, flags.pretty ? 2 : undefined);
+				for (i = 0; i < credentials.length; i++) {
+					fileContents = JSON.stringify(credentials[i], null, flags.pretty ? 2 : undefined);
 					const filename = `${
-						// eslint-disable-next-line @typescript-eslint/restrict-plus-operands, @typescript-eslint/no-non-null-assertion
+						// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
 						(flags.output!.endsWith(path.sep) ? flags.output! : flags.output + path.sep) +
-						workflows[i].id
+						credentials[i].id
 					}.json`;
 					fs.writeFileSync(filename, fileContents);
 				}
-				console.info(`Successfully exported ${i} workflows.`);
+				console.info(`Successfully exported ${i} credentials.`);
 			} else {
-				const fileContents = JSON.stringify(workflows, null, flags.pretty ? 2 : undefined);
+				const fileContents = JSON.stringify(credentials, null, flags.pretty ? 2 : undefined);
 				if (flags.output) {
 					fs.writeFileSync(flags.output, fileContents);
-					console.info(
-						`Successfully exported ${workflows.length} ${
-							workflows.length === 1 ? 'workflow.' : 'workflows.'
-						}`,
-					);
+					console.info(`Successfully exported ${credentials.length} credentials.`);
 				} else {
 					console.info(fileContents);
 				}
@@ -149,7 +164,7 @@ export class ExportWorkflowsCommand extends Command {
 			// Force exit as process won't exit using MySQL or Postgres.
 			process.exit(0);
 		} catch (error) {
-			console.error('Error exporting workflows. See log messages for details.');
+			console.error('Error exporting credentials. See log messages for details.');
 			logger.error(error.message);
 			this.exit(1);
 		}

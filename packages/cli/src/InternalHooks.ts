@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import { snakeCase } from 'change-case';
 import { BinaryDataManager } from 'n8n-core';
 import {
@@ -15,9 +14,9 @@ import {
 	ITelemetryUserDeletionData,
 	IWorkflowBase,
 	IWorkflowDb,
-} from '.';
-import { IExecutionTrackProperties } from './Interfaces';
-import { Telemetry } from './telemetry';
+	IExecutionTrackProperties,
+} from '@/Interfaces';
+import { Telemetry } from '@/telemetry';
 
 export class InternalHooksClass implements IInternalHooksClass {
 	private versionCli: string;

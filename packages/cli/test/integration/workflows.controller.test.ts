@@ -2,14 +2,13 @@ import express from 'express';
 
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
-import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
+import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 
-import type { Role } from '../../src/databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 import type { IPinData } from 'n8n-workflow';
 import { makeWorkflow, MOCK_PINDATA } from './shared/utils';
 
-jest.mock('../../src/telemetry');
+jest.mock('@/telemetry');
 
 let app: express.Application;
 let testDbName = '';

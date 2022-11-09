@@ -1,6 +1,6 @@
 import {MigrationInterface, QueryRunner} from "typeorm";
 
-import * as config from '../../../../config';
+import config from '@/config';
 
 export class MakeStoppedAtNullable1607431743768 implements MigrationInterface {
 	name = 'MakeStoppedAtNullable1607431743768';

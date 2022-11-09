@@ -6,26 +6,22 @@ import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, UserSettings, PLACEHOLDER_EMPTY_WORKFLOW_ID } from 'n8n-core';
 import { LoggerProxy } from 'n8n-workflow';
 
-import {
-	ActiveExecutions,
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	InternalHooksManager,
-	IWorkflowBase,
-	IWorkflowExecutionDataProcess,
-	LoadNodesAndCredentials,
-	NodeTypes,
-	WorkflowHelpers,
-	WorkflowRunner,
-} from '../src';
-
-import { getLogger } from '../src/Logger';
-import config from '../config';
-import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
-import { findCliWorkflowStart } from '../src/utils';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { WorkflowRunner } from '@/WorkflowRunner';
+import { IWorkflowBase, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { getLogger } from '@/Logger';
+import config from '@/config';
+import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
+import { findCliWorkflowStart } from '@/utils';
 
 export class Execute extends Command {
 	static description = '\nExecutes a given workflow';

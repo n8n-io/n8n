@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable import/no-cycle */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -42,34 +41,33 @@ import {
 
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
-import config from '../config';
+import config from '@/config';
+import * as Db from '@/Db';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { ExternalHooks } from '@/ExternalHooks';
 import {
-	ActiveExecutions,
-	CredentialsHelper,
-	Db,
-	ExternalHooks,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
-	InternalHooksManager,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
-	NodeTypes,
-	Push,
-	ResponseHelper,
-	WebhookHelpers,
-	WorkflowHelpers,
-} from '.';
+	IWorkflowErrorData,
+} from '@/Interfaces';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { NodeTypes } from '@/NodeTypes';
+import * as Push from '@/Push';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
 import {
 	checkPermissionsForExecution,
 	getUserById,
 	getWorkflowOwner,
-} from './UserManagement/UserManagementHelper';
-import { whereClause } from './WorkflowHelpers';
-import { IWorkflowErrorData } from './Interfaces';
-import { findSubworkflowStart } from './utils';
+} from '@/UserManagement/UserManagementHelper';
+import { findSubworkflowStart } from '@/utils';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -857,7 +855,7 @@ export async function getWorkflowData(
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations,
-			where: whereClause({
+			where: WorkflowHelpers.whereClause({
 				user,
 				entityType: 'workflow',
 				entityId: workflowInfo.id,
