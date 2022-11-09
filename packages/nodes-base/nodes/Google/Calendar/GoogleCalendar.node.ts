@@ -13,7 +13,7 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { encodeURIComponentOnce, getCalendars, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import { encodeURIComponentOnce, getCalendars, getTimezones, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { eventFields, eventOperations } from './EventDescription';
 
@@ -73,6 +73,7 @@ export class GoogleCalendar implements INodeType {
 	methods = {
 		listSearch: {
 			getCalendars,
+			getTimezones,
 		},
 		loadOptions: {
 			// Get all the calendars to display them to user so that he can
@@ -356,11 +357,12 @@ export class GoogleCalendar implements INodeType {
 						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
+						const tz = this.getNodeParameter('options.timeZone', i, '', { extractValue: true }) as string;
 						if (options.maxAttendees) {
 							qs.maxAttendees = options.maxAttendees as number;
 						}
-						if (options.timeZone) {
-							qs.timeZone = options.timeZone as string;
+						if (tz) {
+							qs.timeZone = tz;
 						}
 						responseData = await googleApiRequest.call(
 							this,

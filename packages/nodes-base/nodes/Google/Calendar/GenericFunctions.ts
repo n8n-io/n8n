@@ -4,6 +4,8 @@ import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } fro
 
 import { IDataObject, INodeListSearchItems, INodeListSearchResult, IPollFunctions, NodeApiError } from 'n8n-workflow';
 
+import moment from 'moment-timezone';
+
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	method: string,
@@ -95,5 +97,25 @@ export async function getCalendars(
 			if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 			return 0;
 		});
+	return { results };
+}
+
+export const TIMEZONE_VALIDATION_REGEX = `(${moment.tz.names().map(t => t.replace('+', '\\+')).join('|')})[ \t]*`;
+
+export async function getTimezones(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const results: INodeListSearchItems[] = moment.tz.names()
+		.map(timezone => ({
+			name: timezone,
+			value: timezone,
+		}))
+		.filter(
+			(c) =>
+				!filter ||
+				c.name.toLowerCase().includes(filter.toLowerCase()) ||
+				c.value?.toString() === filter,
+		);
 	return { results };
 }
