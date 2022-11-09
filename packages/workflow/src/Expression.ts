@@ -270,7 +270,6 @@ export class Expression {
 		data.extend = extend;
 
 		// Execute the expression
-<<<<<<< HEAD
 		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		let returnValue;
 		let expressionTemplate: string = parameterValue;
@@ -281,25 +280,6 @@ export class Expression {
 				expressionTemplate = this.extendSyntax(parameterValue);
 				returnValue = tmpl.tmpl(expressionTemplate, data);
 			}
-=======
-		const returnValue = this.renderExpression(parameterValue, data);
-		if (typeof returnValue === 'function') {
-			throw new Error('Expression resolved to a function. Please add "()"');
-		} else if (typeof returnValue === 'string') {
-			return returnValue;
-		} else if (returnValue !== null && typeof returnValue === 'object') {
-			if (returnObjectAsString) {
-				return this.convertObjectValueToString(returnValue);
-			}
-		}
-
-		return returnValue;
-	}
-
-	private renderExpression(expression: string, data: IWorkflowDataProxyData): tmpl.ReturnValue {
-		try {
-			return tmpl.tmpl(expression, data);
->>>>>>> refs/rewritten/master
 		} catch (error) {
 			if (error instanceof ExpressionError) {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed
@@ -319,7 +299,6 @@ export class Expression {
 				returnValue = tmpl.tmpl(expressionTemplate, data);
 			}
 		}
-<<<<<<< HEAD
 
 		if (typeof returnValue === 'function') {
 			throw new Error('Expression resolved to a function. Please add "()"');
@@ -353,9 +332,6 @@ export class Expression {
 		}
 
 		return `{{ ${output.code} }}`;
-=======
-		return null;
->>>>>>> refs/rewritten/master
 	}
 
 	/**

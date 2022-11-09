@@ -1,7 +1,9 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { createHash } from 'crypto';
+// import { createHash } from 'crypto';
 import * as ExpressionError from '../ExpressionError';
 import { BaseExtension, ExtensionMethodHandler } from './Extensions';
+
+// TODO: hashing functions
 
 export class StringExtensions extends BaseExtension<string> {
 	methodMapping = new Map<string, ExtensionMethodHandler<string>>();
@@ -31,9 +33,9 @@ export class StringExtensions extends BaseExtension<string> {
 				extraArgs?: string | number[] | string[] | boolean[] | undefined,
 			) => boolean | string | Date | number
 		>([
-			['encrypt', this.encrypt],
+			// ['encrypt', this.encrypt],
 			['getOnlyFirstCharacters', this.getOnlyFirstCharacters],
-			['hash', this.encrypt],
+			// ['hash', this.encrypt],
 			['removeMarkdown', this.removeMarkdown],
 			['sayHi', this.sayHi],
 			['stripTags', this.stripTags],
@@ -43,10 +45,10 @@ export class StringExtensions extends BaseExtension<string> {
 		]);
 	}
 
-	encrypt(value: string, extraArgs?: any): string {
-		const [format = 'MD5'] = extraArgs as string[];
-		return createHash(format).update(value.toString()).digest('hex');
-	}
+	// encrypt(value: string, extraArgs?: any): string {
+	// 	const [format = 'MD5'] = extraArgs as string[];
+	// 	return createHash(format).update(value.toString()).digest('hex');
+	// }
 
 	getOnlyFirstCharacters(value: string, extraArgs?: any): string {
 		if (typeof value !== 'string') {
