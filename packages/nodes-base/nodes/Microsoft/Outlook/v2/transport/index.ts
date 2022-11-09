@@ -215,17 +215,32 @@ export async function getMimeContent(
 	return binary;
 }
 
-export async function getSubfolders(this: IExecuteFunctions, folders: IDataObject[]) {
+export async function getSubfolders(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	folders: IDataObject[],
+	addPathToDisplayName = false,
+) {
 	const returnData: IDataObject[] = [...folders];
 	for (const folder of folders) {
 		if ((folder.childFolderCount as number) > 0) {
-			const subfolders = await microsoftApiRequest.call(
+			let subfolders = await microsoftApiRequest.call(
 				this,
 				'GET',
 				`/mailFolders/${folder.id}/childFolders`,
 			);
 
-			returnData.push(...(await getSubfolders.call(this, subfolders.value)));
+			if (addPathToDisplayName === true) {
+				subfolders = subfolders.value.map((subfolder: IDataObject) => {
+					return {
+						...subfolder,
+						displayName: `${folder.displayName}/${subfolder.displayName}`,
+					};
+				});
+			} else {
+				subfolders = subfolders.value;
+			}
+
+			returnData.push(...(await getSubfolders.call(this, subfolders, addPathToDisplayName)));
 		}
 	}
 	return returnData;

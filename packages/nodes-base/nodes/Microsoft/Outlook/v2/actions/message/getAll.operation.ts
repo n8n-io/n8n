@@ -1,6 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
-import { messageFields, simplifyOutputMessages } from '../../helpers/utils';
+import { messageFields, prepareFilterString, simplifyOutputMessages } from '../../helpers/utils';
 import {
 	downloadAttachments,
 	microsoftApiRequest,
@@ -301,53 +301,10 @@ export async function execute(
 	}
 
 	if (filters.filterBy === 'filters') {
-		const selectedFilters = filters.filters as IDataObject;
-		const filterString: string[] = [];
+		const filterString = prepareFilterString(filters);
 
-		if (selectedFilters.foldersToInclude) {
-			const folders = (selectedFilters.foldersToInclude as string[])
-				.filter((folder) => folder !== '')
-				.map((folder) => `parentFolderId eq '${folder}'`)
-				.join(' or ');
-
-			filterString.push(folders);
-		}
-
-		if (selectedFilters.foldersToExclude) {
-			for (const folder of selectedFilters.foldersToExclude as string[]) {
-				filterString.push(`parentFolderId ne '${folder}'`);
-			}
-		}
-
-		if (selectedFilters.sender) {
-			const sender = selectedFilters.sender as string;
-			const byMailAddress = `from/emailAddress/address eq '${sender}'`;
-			const byName = `from/emailAddress/name eq '${sender}'`;
-			filterString.push(`(${byMailAddress} or ${byName})`);
-		}
-
-		if (selectedFilters.hasAttachments) {
-			filterString.push(`hasAttachments eq ${selectedFilters.hasAttachments}`);
-		}
-
-		if (selectedFilters.readStatus && selectedFilters.readStatus !== 'both') {
-			filterString.push(`isRead eq ${selectedFilters.readStatus === 'read'}`);
-		}
-
-		if (selectedFilters.receivedAfter) {
-			filterString.push(`receivedDateTime ge ${selectedFilters.receivedAfter}`);
-		}
-
-		if (selectedFilters.receivedBefore) {
-			filterString.push(`receivedDateTime le ${selectedFilters.receivedBefore}`);
-		}
-
-		if (selectedFilters.custom) {
-			filterString.push(selectedFilters.custom as string);
-		}
-
-		if (filterString.length) {
-			qs['$filter'] = filterString.join(' and ');
+		if (filterString) {
+			qs['$filter'] = filterString;
 		}
 	}
 

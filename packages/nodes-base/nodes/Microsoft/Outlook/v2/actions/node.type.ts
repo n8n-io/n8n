@@ -7,7 +7,7 @@ type MicrosoftOutlookMap = {
 	event: 'create' | 'delete' | 'get' | 'getAll' | 'update';
 	folder: 'create' | 'delete' | 'get' | 'getChildren' | 'getAll' | 'update';
 	folderMessage: 'getAll';
-	message: 'delete' | 'get' | 'getAll' | 'update' | 'send' | 'reply';
+	message: 'delete' | 'get' | 'getAll' | 'move' | 'update' | 'send' | 'reply';
 	messageAttachment: 'add' | 'download' | 'getAll' | 'get';
 };
 

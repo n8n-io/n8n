@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeProperties, NodeOperationError } from 'n8n-workflow';
 import { microsoftApiRequest } from '../../transport';
 
 import { DateTime } from 'luxon';
@@ -14,7 +14,7 @@ export const description: INodeProperties[] = [
 		typeOptions: {
 			loadOptionsMethod: 'getCalendars',
 		},
-		default: [],
+		default: '',
 		description:
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		displayOptions: {
@@ -245,7 +245,10 @@ export async function execute(
 	let responseData;
 
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
-	const calendarId = this.getNodeParameter('calendarId', index) as string;
+	const calendarId = this.getNodeParameter('calendarId', index, '') as string;
+	if (calendarId === '') {
+		throw new NodeOperationError(this.getNode(), 'Calendar ID is required');
+	}
 	const subject = this.getNodeParameter('subject', index) as string;
 
 	const endpoint = `/calendars/${calendarId}/events`;

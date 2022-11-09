@@ -1,5 +1,5 @@
 import { ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
-import { microsoftApiRequestAllItems } from '../transport';
+import { getSubfolders, microsoftApiRequestAllItems } from '../transport';
 
 export async function getCategories(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
@@ -39,7 +39,23 @@ export async function getCategoriesNames(
 
 export async function getFolders(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const returnData: INodePropertyOptions[] = [];
-	const folders = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/mailFolders', {});
+	const response = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/mailFolders', {});
+	const folders = await getSubfolders.call(this, response);
+	for (const folder of folders) {
+		returnData.push({
+			name: folder.displayName as string,
+			value: folder.id as string,
+		});
+	}
+	return returnData;
+}
+
+export async function getFoldersWithFilepath(
+	this: ILoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	const returnData: INodePropertyOptions[] = [];
+	const response = await microsoftApiRequestAllItems.call(this, 'value', 'GET', '/mailFolders', {});
+	const folders = await getSubfolders.call(this, response, true);
 	for (const folder of folders) {
 		returnData.push({
 			name: folder.displayName as string,
