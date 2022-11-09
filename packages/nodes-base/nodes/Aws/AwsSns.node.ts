@@ -38,6 +38,12 @@ export class AwsSns implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Create',
+						value: 'create',
+						description: 'Create a topic',
+						action: 'Create a topic',
+					},
+					{
 						name: 'Publish',
 						value: 'publish',
 						description: 'Publish a message to a topic',
@@ -45,6 +51,47 @@ export class AwsSns implements INodeType {
 					},
 				],
 				default: 'publish',
+			},
+			{
+				displayName: 'Name',
+				name: 'name',
+				type: 'string',
+				required: true,
+				default: '',
+				displayOptions: {
+					show: {
+						operation: ['create'],
+					},
+				},
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [
+					{
+						displayName: 'Display Name',
+						name: 'displayName',
+						type: 'string',
+						default: '',
+						description: 'The display name to use for a topic with SMS subscriptions',
+					},
+					{
+						displayName: 'Fifo Topic',
+						name: 'fifoTopic',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether the topic you want to create is a FIFO (first-in-first-out) topic',
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: ['create'],
+					},
+				},
 			},
 			{
 				displayName: 'Topic Name or ID',
@@ -130,24 +177,59 @@ export class AwsSns implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
+		const operation = this.getNodeParameter('operation', 0) as string;
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				const params = [
-					('TopicArn=' + this.getNodeParameter('topic', i)) as string,
-					('Subject=' + this.getNodeParameter('subject', i)) as string,
-					('Message=' + this.getNodeParameter('message', i)) as string,
-				];
+				if (operation === 'create') {
+					let name = this.getNodeParameter('name', i) as string;
+					const fifoTopic = this.getNodeParameter('options.fifoTopic', i, false) as boolean;
+					const displayName = this.getNodeParameter('options.displayName', i, '') as string;
+					const params: string[] = [];
 
-				const responseData = await awsApiRequestSOAP.call(
-					this,
-					'sns',
-					'GET',
-					'/?Action=Publish&' + params.join('&'),
-				);
-				returnData.push({
-					MessageId: responseData.PublishResponse.PublishResult.MessageId,
-				} as IDataObject);
+					if (fifoTopic) {
+						name = `${name}.fifo`;
+					}
+
+					params.push(`Name=${name}`);
+
+					if (fifoTopic) {
+						params.push('Attributes.entry.1.key=FifoTopic');
+						params.push('Attributes.entry.1.value=true');
+					}
+
+					if (displayName) {
+						params.push('Attributes.entry.2.key=DisplayName');
+						params.push(`Attributes.entry.2.value=${displayName}`);
+					}
+
+					const responseData = await awsApiRequestSOAP.call(
+						this,
+						'sns',
+						'GET',
+						'/?Action=CreateTopic&' + params.join('&'),
+					);
+					returnData.push({
+						TopicArn: responseData.CreateTopicResponse.CreateTopicResult.TopicArn,
+					} as IDataObject);
+				}
+				if (operation === 'publish') {
+					const params = [
+						('TopicArn=' + this.getNodeParameter('topic', i)) as string,
+						('Subject=' + this.getNodeParameter('subject', i)) as string,
+						('Message=' + this.getNodeParameter('message', i)) as string,
+					];
+
+					const responseData = await awsApiRequestSOAP.call(
+						this,
+						'sns',
+						'GET',
+						'/?Action=Publish&' + params.join('&'),
+					);
+					returnData.push({
+						MessageId: responseData.PublishResponse.PublishResult.MessageId,
+					} as IDataObject);
+				}
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ error: error.message });
