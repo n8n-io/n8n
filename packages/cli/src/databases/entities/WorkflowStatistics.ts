@@ -1,12 +1,10 @@
-/* eslint-disable import/no-cycle */
 import { Column, Entity, RelationId, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import * as config from '../../../config';
+import config from '@/config';
 import { DatabaseType } from '../..';
 import { WorkflowEntity } from './WorkflowEntity';
 
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 function getTimestampSyntax() {
-	const dbType = config.getEnv('database.type');
+	const dbType = config.getEnv('database.type') as DatabaseType;
 
 	const map: { [key in DatabaseType]: string } = {
 		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",

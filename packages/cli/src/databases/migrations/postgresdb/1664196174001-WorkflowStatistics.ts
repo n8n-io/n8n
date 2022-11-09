@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
-import config from '../../../../config';
+import config from '@/config';
 
 export class WorkflowStatistics1664196174001 implements MigrationInterface {
 	name = 'WorkflowStatistics1664196174001';

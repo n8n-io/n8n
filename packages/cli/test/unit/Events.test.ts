@@ -1,4 +1,4 @@
-import config from '../../config';
+import config from '@/config';
 import { InternalHooksManager } from '../../src';
 import { nodeFetchedData, workflowExecutionCompleted } from '../../src/events/WorkflowStatistics';
 import { WorkflowExecuteMode } from 'n8n-workflow';
