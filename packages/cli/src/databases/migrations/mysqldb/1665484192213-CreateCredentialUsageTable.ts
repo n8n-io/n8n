@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class CreateCredentialUsageTable1665484192213 implements MigrationInterface {
 	name = 'CreateCredentialUsageTable1665484192213';

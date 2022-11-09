@@ -1,15 +1,18 @@
 import express from 'express';
-import { Db, InternalHooksManager, ResponseHelper, WorkflowHelpers } from '..';
-import config from '../../config';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { validateEntity } from '../GenericHelpers';
-import type { WorkflowRequest } from '../requests';
-import { isSharingEnabled, rightDiff } from '../UserManagement/UserManagementHelper';
+import * as Db from '@/Db';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import config from '@/config';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { validateEntity } from '@/GenericHelpers';
+import type { WorkflowRequest } from '@/requests';
+import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EEWorkflowsService as EEWorkflows } from './workflows.services.ee';
 import { externalHooks } from '../Server';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
-import * as TagHelpers from '../TagHelpers';
+import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
 import { WorkflowsService } from './workflows.services';
 

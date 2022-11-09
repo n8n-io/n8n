@@ -1,7 +1,7 @@
 import * as Sentry from '@sentry/node';
 import { RewriteFrames } from '@sentry/integrations';
 import type { Application } from 'express';
-import config from '../config';
+import config from '@/config';
 import { ErrorReporterProxy } from 'n8n-workflow';
 
 let initialized = false;
