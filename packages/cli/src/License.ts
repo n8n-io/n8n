@@ -3,7 +3,7 @@ import { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
 import config from '@/config';
 import * as Db from '@/Db';
-import { SETTINGS_LICENSE_CERT_KEY } from './constants';
+import { LICENSE_FEAT_SHARING_KEY, SETTINGS_LICENSE_CERT_KEY } from './constants';
 
 async function loadCertStr(): Promise<TLicenseContainerStr> {
 	const databaseSettings = await Db.collections.Settings.findOne({
@@ -26,7 +26,7 @@ async function saveCertStr(value: TLicenseContainerStr): Promise<void> {
 	);
 }
 
-export class License {
+class License {
 	private logger: ILogger;
 
 	private manager: LicenseManager | undefined;
@@ -100,4 +100,10 @@ export class License {
 
 		return this.manager.hasFeatureEnabled(feature);
 	}
+
+	isSharingEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEAT_SHARING_KEY);
+	}
 }
+
+export const license = new License();
