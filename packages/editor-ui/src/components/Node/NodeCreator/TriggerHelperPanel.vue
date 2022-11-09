@@ -10,7 +10,7 @@
 			:withActionsGetter="shouldShowNodeActions"
 			:firstLevelItems="firstLevelItems"
 			:flatten="isAppEventSubcategory"
-			:filterByType="!isAppEventSubcategory"
+			:filterByType="false"
 		>
 			<template #header>
 				<slot name="header" />
