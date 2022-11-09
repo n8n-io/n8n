@@ -23,7 +23,7 @@ export class ClearLicenseCommand extends Command {
 		try {
 			await Db.init();
 
-			console.log('Clearing license from database.');
+			console.info('Clearing license from database.');
 			await Db.collections.Settings.delete({
 				key: SETTINGS_LICENSE_CERT_KEY,
 			});
