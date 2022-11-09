@@ -26,7 +26,7 @@ async function saveCertStr(value: TLicenseContainerStr): Promise<void> {
 	);
 }
 
-class License {
+export class License {
 	private logger: ILogger;
 
 	private manager: LicenseManager | undefined;
