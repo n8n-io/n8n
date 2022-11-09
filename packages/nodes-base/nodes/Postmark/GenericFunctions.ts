@@ -2,13 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	IHookFunctions,
-	IWebhookFunctions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, IHookFunctions, IWebhookFunctions, NodeApiError } from 'n8n-workflow';
 
 export async function postmarkApiRequest(
 	this: IExecuteFunctions | IWebhookFunctions | IHookFunctions | ILoadOptionsFunctions,
@@ -32,7 +26,7 @@ export async function postmarkApiRequest(
 		uri: 'https://api.postmarkapp.com' + endpoint,
 		json: true,
 	};
-	if (body === {}) {
+	if (Object.keys(body).length === 0) {
 		delete options.body;
 	}
 	options = Object.assign({}, options, option);

@@ -1,9 +1,7 @@
 import {
 	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
 } from 'n8n-workflow';
 
@@ -16,6 +14,7 @@ export class MattermostApi implements ICredentialType {
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

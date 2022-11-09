@@ -1,15 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	JsonObject,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	downloadAttachments,
@@ -36,7 +27,6 @@ export class KoBoToolbox implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'KoBoToolbox',
-			color: '#64C0FF',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -323,13 +313,17 @@ export class KoBoToolbox implements INodeType {
 					//          Hook: getLogs
 					// ----------------------------------
 					const hookId = this.getNodeParameter('hookId', i) as string;
+					const startDate = this.getNodeParameter('startDate', i, null);
+					const endDate = this.getNodeParameter('endDate', i, null);
+					const status = this.getNodeParameter('status', i, null);
+
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${formId}/hooks/${hookId}/logs/`,
 						qs: {
-							start: this.getNodeParameter('start', i, 0) as number,
-							limit: this.getNodeParameter('limit', i, 1000) as number,
+							...(startDate && { start: startDate }),
+							...(endDate && { end: endDate }),
+							...(status && { status }),
 						},
-						scroll: this.getNodeParameter('returnAll', i) as boolean,
 					});
 				}
 
@@ -342,6 +336,7 @@ export class KoBoToolbox implements INodeType {
 
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
+							method: 'PATCH',
 							url: `/api/v2/assets/${formId}/hooks/${hookId}/logs/${logId}/retry/`,
 						}),
 					];

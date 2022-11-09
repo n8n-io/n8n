@@ -44,3 +44,21 @@ export function sanitizeHtml(dirtyHtml: string) {
 
 	return sanitizedHtml;
 }
+
+export const isEmpty = (value?: unknown): boolean => {
+	if (!value && value !== 0) return true;
+	if(Array.isArray(value)){
+		if(!value.length) return true;
+		return value.every(isEmpty);
+	}
+	if (typeof value === 'object') {
+		return Object.values(value).every(isEmpty);
+	}
+	return false;
+};
+
+export const intersection = <T>(...arrays: T[][]): T[] => {
+	const [a, b, ...rest] = arrays;
+	const ab = a.filter(v => b.includes(v));
+	return [...new Set(rest.length ? intersection(ab, ...rest) : ab)];
+};

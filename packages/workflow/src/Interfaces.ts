@@ -4,6 +4,7 @@
 // eslint-disable-next-line max-classes-per-file
 import * as express from 'express';
 import * as FormData from 'form-data';
+import type { IncomingHttpHeaders } from 'http';
 import type { URLSearchParams } from 'url';
 import type { IDeferredPromise } from './DeferredPromise';
 import type { Workflow } from './Workflow';
@@ -719,7 +720,12 @@ export interface IHookFunctions {
 }
 
 export interface IPollFunctions {
-	__emit(data: INodeExecutionData[][] | NodeApiError): void;
+	__emit(
+		data: INodeExecutionData[][],
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		donePromise?: IDeferredPromise<IRun>,
+	): void;
+	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
@@ -784,7 +790,7 @@ export interface ITriggerFunctions {
 export interface IWebhookFunctions {
 	getBodyData(): IDataObject;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
-	getHeaderData(): object;
+	getHeaderData(): IncomingHttpHeaders;
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
 	getNodeParameter(
@@ -946,7 +952,7 @@ export type NodePropertyTypes =
 
 export type CodeAutocompleteTypes = 'function' | 'functionItem';
 
-export type EditorTypes = 'code' | 'json';
+export type EditorTypes = 'code' | 'codeNodeEditor' | 'json';
 
 export interface ILoadOptions {
 	routing?: {
@@ -1144,7 +1150,7 @@ export interface INodeType {
 	};
 }
 
-export interface INodeVersionedType {
+export interface IVersionedNodeType {
 	nodeVersions: {
 		[key: number]: INodeType;
 	};
@@ -1212,6 +1218,7 @@ export interface INodeTypeBaseDescription {
 	subtitle?: string;
 	defaultVersion?: number;
 	codex?: CodexData;
+	parameterPane?: 'wide';
 
 	/**
 	 * Whether the node must be hidden in the node creator panel,
@@ -1398,6 +1405,7 @@ export interface IWorkflowDataProxyData {
 	$thisItemIndex: number;
 	$now: any;
 	$today: any;
+	constructor: any;
 }
 
 export type IWorkflowDataProxyAdditionalKeys = IDataObject;
@@ -1422,7 +1430,7 @@ export type WebhookResponseMode = 'onReceived' | 'lastNode';
 export interface INodeTypes {
 	nodeTypes: INodeTypeData;
 	init(nodeTypes?: INodeTypeData): Promise<void>;
-	getAll(): Array<INodeType | INodeVersionedType>;
+	getAll(): Array<INodeType | IVersionedNodeType>;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
@@ -1435,7 +1443,7 @@ export interface ICredentialTypeData {
 
 export interface INodeTypeData {
 	[key: string]: {
-		type: INodeType | INodeVersionedType;
+		type: INodeType | IVersionedNodeType;
 		sourcePath: string;
 	};
 }

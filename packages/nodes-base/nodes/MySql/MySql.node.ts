@@ -12,7 +12,7 @@ import {
 // @ts-ignore
 import mysql2 from 'mysql2/promise';
 
-import { copyInputItems } from './GenericFunctions';
+import { copyInputItems, createConnection, searchTables } from './GenericFunctions';
 import { IExecuteFunctions } from 'n8n-core';
 
 export class MySql implements INodeType {
@@ -91,14 +91,33 @@ export class MySql implements INodeType {
 			{
 				displayName: 'Table',
 				name: 'table',
-				type: 'string',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Table...',
+						typeOptions: {
+							searchListMethod: 'searchTables',
+							searchFilterRequired: false,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'table_name',
+					},
+				],
 				displayOptions: {
 					show: {
 						operation: ['insert'],
 					},
 				},
-				default: '',
-				required: true,
 				description: 'Name of the table in which to insert data to',
 			},
 			{
@@ -167,14 +186,33 @@ export class MySql implements INodeType {
 			{
 				displayName: 'Table',
 				name: 'table',
-				type: 'string',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Table...',
+						typeOptions: {
+							searchListMethod: 'searchTables',
+							searchFilterRequired: false,
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'Name',
+						name: 'name',
+						type: 'string',
+						placeholder: 'table_name',
+					},
+				],
 				displayOptions: {
 					show: {
 						operation: ['update'],
 					},
 				},
-				default: '',
-				required: true,
 				description: 'Name of the table in which to update data in',
 			},
 			{
@@ -217,23 +255,7 @@ export class MySql implements INodeType {
 			): Promise<INodeCredentialTestResult> {
 				const credentials = credential.data as ICredentialDataDecryptedObject;
 				try {
-					const { ssl, caCertificate, clientCertificate, clientPrivateKey, ...baseCredentials } =
-						credentials;
-
-					if (ssl) {
-						baseCredentials.ssl = {};
-
-						if (caCertificate) {
-							baseCredentials.ssl.ca = caCertificate;
-						}
-
-						if (clientCertificate || clientPrivateKey) {
-							baseCredentials.ssl.cert = clientCertificate;
-							baseCredentials.ssl.key = clientPrivateKey;
-						}
-					}
-
-					const connection = await mysql2.createConnection(baseCredentials);
+					const connection = await createConnection(credentials);
 					connection.end();
 				} catch (error) {
 					return {
@@ -247,30 +269,14 @@ export class MySql implements INodeType {
 				};
 			},
 		},
+		listSearch: {
+			searchTables,
+		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const credentials = await this.getCredentials('mySql');
-
-		// Destructuring SSL configuration
-		const { ssl, caCertificate, clientCertificate, clientPrivateKey, ...baseCredentials } =
-			credentials;
-
-		if (ssl) {
-			baseCredentials.ssl = {};
-
-			if (caCertificate) {
-				baseCredentials.ssl.ca = caCertificate;
-			}
-
-			// client certificates might not be required
-			if (clientCertificate || clientPrivateKey) {
-				baseCredentials.ssl.cert = clientCertificate;
-				baseCredentials.ssl.key = clientPrivateKey;
-			}
-		}
-
-		const connection = await mysql2.createConnection(baseCredentials);
+		const connection = await createConnection(credentials);
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 		let returnItems: INodeExecutionData[] = [];
@@ -287,19 +293,21 @@ export class MySql implements INodeType {
 					return connection.query(rawQuery);
 				});
 
-				returnItems = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result, index) => {
-					const [rows] = result;
+				returnItems = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
+					(collection, result, index) => {
+						const [rows] = result;
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
-						{ itemData: { item: index } },
-					);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
+							{ itemData: { item: index } },
+						);
 
-					collection.push(...executionData);
+						collection.push(...executionData);
 
-					return collection;
-				}, [] as INodeExecutionData[]);
-
+						return collection;
+					},
+					[] as INodeExecutionData[],
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
@@ -314,11 +322,11 @@ export class MySql implements INodeType {
 			// ----------------------------------
 
 			try {
-				const table = this.getNodeParameter('table', 0) as string;
+				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
 				const columns = columnString.split(',').map((column) => column.trim());
 				const insertItems = copyInputItems(items, columns);
-				const insertPlaceholder = `(${columns.map((column) => '?').join(',')})`;
+				const insertPlaceholder = `(${columns.map((_column) => '?').join(',')})`;
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
@@ -326,7 +334,7 @@ export class MySql implements INodeType {
 				const insertSQL = `INSERT ${insertPriority || ''} ${
 					insertIgnore ? 'IGNORE' : ''
 				} INTO ${table}(${columnString}) VALUES ${items
-					.map((item) => insertPlaceholder)
+					.map((_item) => insertPlaceholder)
 					.join(',')};`;
 				const queryItems = insertItems.reduce(
 					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
@@ -350,7 +358,7 @@ export class MySql implements INodeType {
 			// ----------------------------------
 
 			try {
-				const table = this.getNodeParameter('table', 0) as string;
+				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
 				const columns = columnString.split(',').map((column) => column.trim());

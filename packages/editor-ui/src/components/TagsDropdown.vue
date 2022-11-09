@@ -3,7 +3,7 @@
 		<n8n-select
 			:popperAppendToBody="false"
 			:value="appliedTags"
-			:loading="isLoading"
+			:loading="tagsStore.isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
 			@change="onTagsUpdated"
@@ -54,12 +54,14 @@
 
 <script lang="ts">
 import mixins from "vue-typed-mixins";
-import { mapGetters } from "vuex";
 
 import { ITag } from "@/Interface";
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from "@/constants";
 
 import { showMessage } from "@/components/mixins/showMessage";
+import { mapStores } from "pinia";
+import { useUIStore } from "@/stores/ui";
+import { useTagsStore } from "@/stores/tags";
 
 const MANAGE_KEY = "__manage";
 const CREATE_KEY = "__create";
@@ -110,10 +112,19 @@ export default mixins(showMessage).extend({
 			});
 		}
 
-		this.$store.dispatch("tags/fetchAll");
+		this.tagsStore.fetchAll();
 	},
 	computed: {
-		...mapGetters("tags", ["allTags", "isLoading", "hasTags"]),
+		...mapStores(
+			useTagsStore,
+			useUIStore,
+		),
+		allTags(): ITag[] {
+			return this.tagsStore.allTags;
+		},
+		hasTags(): boolean {
+			return this.tagsStore.hasTags;
+		},
 		options(): ITag[] {
 			return this.allTags
 				.filter((tag: ITag) =>
@@ -122,7 +133,7 @@ export default mixins(showMessage).extend({
 		},
 		appliedTags(): string[] {
 			return this.$props.currentTagIds.filter((id: string) =>
-				this.$store.getters['tags/getTagById'](id),
+				this.tagsStore.getTagById(id),
 			);
 		},
 	},
@@ -134,7 +145,7 @@ export default mixins(showMessage).extend({
 		async onCreate() {
 			const name = this.$data.filter;
 			try {
-				const newTag = await this.$store.dispatch("tags/create", name);
+				const newTag = await this.tagsStore.create(name);
 				this.$emit("update", [...this.$props.currentTagIds, newTag.id]);
 				this.$nextTick(() => this.focusOnTag(newTag.id));
 
@@ -156,7 +167,7 @@ export default mixins(showMessage).extend({
 			);
 			if (ops === MANAGE_KEY) {
 				this.$data.filter = "";
-				this.$store.dispatch("ui/openModal", TAGS_MANAGER_MODAL_KEY);
+				this.uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
 			} else if (ops === CREATE_KEY) {
 				this.onCreate();
 			} else {
@@ -245,6 +256,23 @@ $--max-input-height: 60px;
 </style>
 
 <style lang="scss">
+.tags-container {
+	.el-tag {
+		padding: 1px var(--spacing-4xs);
+		color: var(--color-text-dark);
+		background-color: var(--color-background-base);
+		border-radius: var(--border-radius-base);
+		font-size: var(--font-size-2xs);
+		border: 0;
+
+		.el-tag__close {
+			max-height: 14px;
+			max-width: 14px;
+			line-height: 14px;
+		}
+	}
+}
+
 .tags-dropdown {
 	$--item-font-size: 14px;
 	$--item-line-height: 18px;

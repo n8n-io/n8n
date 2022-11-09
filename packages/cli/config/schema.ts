@@ -136,6 +136,12 @@ export const schema = {
 			},
 		},
 		sqlite: {
+			database: {
+				doc: 'SQLite Database file name',
+				format: String,
+				default: 'database.sqlite',
+				env: 'DB_SQLITE_DATABASE',
+			},
 			executeVacuumOnStartup: {
 				doc: 'Runs VACUUM operation on startup to rebuild the database. Reduces filesize and optimizes indexes. WARNING: This is a long running blocking operation. Will increase start-up time.',
 				format: Boolean,
@@ -184,6 +190,12 @@ export const schema = {
 			format: 'Boolean',
 			default: false,
 			env: 'N8N_ONBOARDING_FLOW_DISABLED',
+		},
+		callerPolicyDefaultOption: {
+			doc: 'Default option for which workflows may call the current workflow',
+			format: ['any', 'none', 'workflowsFromAList'] as const,
+			default: 'any',
+			env: 'N8N_WORKFLOW_CALLER_POLICY_DEFAULT_OPTION',
 		},
 	},
 
@@ -882,6 +894,12 @@ export const schema = {
 				default: false,
 			},
 		},
+		// This is a temporary flag (acting as feature toggle)
+		// Will be removed when feature goes live
+		workflowSharingEnabled: {
+			format: Boolean,
+			default: false,
+		},
 	},
 
 	hiringBanner: {
@@ -928,6 +946,15 @@ export const schema = {
 					format: Boolean,
 					default: true,
 					env: 'N8N_DIAGNOSTICS_POSTHOG_DISABLE_RECORDING',
+				},
+			},
+			sentry: {
+				dsn: {
+					doc: 'Data source name for error tracking on Sentry',
+					format: String,
+					default:
+						'https://1f954e089a054b8e943ae4f4042b2bff@o1420875.ingest.sentry.io/4504016528408576',
+					env: 'N8N_SENTRY_DSN',
 				},
 			},
 			frontend: {

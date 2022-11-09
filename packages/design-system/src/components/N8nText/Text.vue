@@ -21,7 +21,7 @@ export default Vue.extend({
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger'].includes(value),
+			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger', 'success', 'warning'].includes(value),
 		},
 		align: {
 			type: String,
@@ -120,6 +120,14 @@ export default Vue.extend({
 
 .danger {
 	color: var(--color-danger);
+}
+
+.success {
+	color: var(--color-success);
+}
+
+.warning {
+	color: var(--color-warning);
 }
 
 .align-left {

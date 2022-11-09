@@ -6,14 +6,19 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	IOAuth2Options,
+	jsonParse,
 	NodeApiError,
 	NodeOperationError,
+	sleep,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request-promise-native';
 
-import { replaceNullValues } from '../GenericFunctions';
+import {
+	binaryContentTypes,
+	getOAuth2AdditionalParameters,
+	replaceNullValues,
+} from '../GenericFunctions';
 export class HttpRequestV3 implements INodeType {
 	description: INodeTypeDescription;
 
@@ -142,12 +147,34 @@ export class HttpRequestV3 implements INodeType {
 					description: 'Whether the request has query params or not',
 				},
 				{
+					displayName: 'Specify Query Parameters',
+					name: 'specifyQuery',
+					type: 'options',
+					displayOptions: {
+						show: {
+							sendQuery: [true],
+						},
+					},
+					options: [
+						{
+							name: 'Using Fields Below',
+							value: 'keypair',
+						},
+						{
+							name: 'Using JSON',
+							value: 'json',
+						},
+					],
+					default: 'keypair',
+				},
+				{
 					displayName: 'Query Parameters',
 					name: 'queryParameters',
 					type: 'fixedCollection',
 					displayOptions: {
 						show: {
 							sendQuery: [true],
+							specifyQuery: ['keypair'],
 						},
 					},
 					typeOptions: {
@@ -182,6 +209,18 @@ export class HttpRequestV3 implements INodeType {
 							],
 						},
 					],
+				},
+				{
+					displayName: 'JSON',
+					name: 'jsonQuery',
+					type: 'json',
+					displayOptions: {
+						show: {
+							sendQuery: [true],
+							specifyQuery: ['json'],
+						},
+					},
+					default: '',
 				},
 				{
 					displayName: 'Send Headers',
@@ -192,12 +231,34 @@ export class HttpRequestV3 implements INodeType {
 					description: 'Whether the request has headers or not',
 				},
 				{
+					displayName: 'Specify Headers',
+					name: 'specifyHeaders',
+					type: 'options',
+					displayOptions: {
+						show: {
+							sendHeaders: [true],
+						},
+					},
+					options: [
+						{
+							name: 'Using Fields Below',
+							value: 'keypair',
+						},
+						{
+							name: 'Using JSON',
+							value: 'json',
+						},
+					],
+					default: 'keypair',
+				},
+				{
 					displayName: 'Header Parameters',
 					name: 'headerParameters',
 					type: 'fixedCollection',
 					displayOptions: {
 						show: {
 							sendHeaders: [true],
+							specifyHeaders: ['keypair'],
 						},
 					},
 					typeOptions: {
@@ -232,6 +293,18 @@ export class HttpRequestV3 implements INodeType {
 							],
 						},
 					],
+				},
+				{
+					displayName: 'JSON',
+					name: 'jsonHeaders',
+					type: 'json',
+					displayOptions: {
+						show: {
+							sendHeaders: [true],
+							specifyHeaders: ['json'],
+						},
+					},
+					default: '',
 				},
 				{
 					displayName: 'Send Body',
@@ -818,24 +891,33 @@ export class HttpRequestV3 implements INodeType {
 		let nodeCredentialType;
 
 		if (authentication === 'genericCredentialType') {
-			try {
-				httpBasicAuth = await this.getCredentials('httpBasicAuth');
-			} catch (_) {}
-			try {
-				httpDigestAuth = await this.getCredentials('httpDigestAuth');
-			} catch (_) {}
-			try {
-				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-			} catch (_) {}
-			try {
-				httpQueryAuth = await this.getCredentials('httpQueryAuth');
-			} catch (_) {}
-			try {
-				oAuth1Api = await this.getCredentials('oAuth1Api');
-			} catch (_) {}
-			try {
-				oAuth2Api = await this.getCredentials('oAuth2Api');
-			} catch (_) {}
+			const genericAuthType = this.getNodeParameter('genericAuthType', 0) as string;
+
+			if (genericAuthType === 'httpBasicAuth') {
+				try {
+					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpDigestAuth') {
+				try {
+					httpDigestAuth = await this.getCredentials('httpDigestAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpHeaderAuth') {
+				try {
+					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpQueryAuth') {
+				try {
+					httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'oAuth1Api') {
+				try {
+					oAuth1Api = await this.getCredentials('oAuth1Api');
+				} catch (_) {}
+			} else if (genericAuthType === 'oAuth2Api') {
+				try {
+					oAuth2Api = await this.getCredentials('oAuth2Api');
+				} catch (_) {}
+			}
 		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
@@ -862,6 +944,9 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
+			const specifyQuery = this.getNodeParameter('specifyQuery', itemIndex, 'keypair') as string;
+			const jsonQueryParameter = this.getNodeParameter('jsonQuery', itemIndex, '') as string;
+
 			const sendBody = this.getNodeParameter('sendBody', itemIndex, false) as boolean;
 			const bodyContentType = this.getNodeParameter('contentType', itemIndex, '') as string;
 			const specifyBody = this.getNodeParameter('specifyBody', itemIndex, '') as string;
@@ -877,6 +962,12 @@ export class HttpRequestV3 implements INodeType {
 				itemIndex,
 				[],
 			) as [{ name: string; value: string }];
+			const specifyHeaders = this.getNodeParameter(
+				'specifyHeaders',
+				itemIndex,
+				'keypair',
+			) as string;
+			const jsonHeadersParameter = this.getNodeParameter('jsonHeaders', itemIndex, '') as string;
 
 			const {
 				redirect,
@@ -912,7 +1003,7 @@ export class HttpRequestV3 implements INodeType {
 
 			if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 				if (itemIndex % batchSize === 0) {
-					await new Promise((resolve) => setTimeout(resolve, batchInterval));
+					await sleep(batchInterval);
 				}
 			}
 
@@ -1021,7 +1112,7 @@ export class HttpRequestV3 implements INodeType {
 						);
 					}
 
-					requestOptions.body = JSON.parse(jsonBodyParameter);
+					requestOptions.body = jsonParse(jsonBodyParameter);
 				} else if (specifyBody === 'string') {
 					//form urlencoded
 					requestOptions.body = Object.fromEntries(new URLSearchParams(body));
@@ -1050,15 +1141,54 @@ export class HttpRequestV3 implements INodeType {
 				}
 			}
 
+			// Get parameters defined in the UI
 			if (sendQuery && queryParameters) {
-				requestOptions.qs = await queryParameters.reduce(parmetersToKeyValue, Promise.resolve({}));
+				if (specifyQuery === 'keypair') {
+					requestOptions.qs = await queryParameters.reduce(
+						parmetersToKeyValue,
+						Promise.resolve({}),
+					);
+				} else if (specifyQuery === 'json') {
+					// query is specified using JSON
+					try {
+						JSON.parse(jsonQueryParameter);
+					} catch (_) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`JSON parameter need to be an valid JSON`,
+							{
+								runIndex: itemIndex,
+							},
+						);
+					}
+
+					requestOptions.qs = jsonParse(jsonQueryParameter);
+				}
 			}
 
+			// Get parameters defined in the UI
 			if (sendHeaders && headerParameters) {
-				requestOptions.headers = await headerParameters.reduce(
-					parmetersToKeyValue,
-					Promise.resolve({}),
-				);
+				if (specifyHeaders === 'keypair') {
+					requestOptions.headers = await headerParameters.reduce(
+						parmetersToKeyValue,
+						Promise.resolve({}),
+					);
+				} else if (specifyHeaders === 'json') {
+					// body is specified using JSON
+					try {
+						JSON.parse(jsonHeadersParameter);
+					} catch (_) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`JSON parameter need to be an valid JSON`,
+							{
+								runIndex: itemIndex,
+							},
+						);
+					}
+
+					requestOptions.headers = jsonParse(jsonHeadersParameter);
+				}
 			}
 
 			if (autoDetectResponseFormat || responseFormat === 'file') {
@@ -1145,25 +1275,7 @@ export class HttpRequestV3 implements INodeType {
 					requestPromises.push(request);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
-				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
-					clickUpOAuth2Api: {
-						keepBearer: false,
-						tokenType: 'Bearer',
-					},
-					slackOAuth2Api: {
-						tokenType: 'Bearer',
-						property: 'authed_user.access_token',
-					},
-					boxOAuth2Api: {
-						includeCredentialsOnRefreshOnBody: true,
-					},
-					shopifyOAuth2Api: {
-						tokenType: 'Bearer',
-						keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
-					},
-				};
-
-				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
+				const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
 
 				// service-specific cred: OAuth1, OAuth2, plain
 
@@ -1223,16 +1335,16 @@ export class HttpRequestV3 implements INodeType {
 			) as boolean;
 
 			if (autoDetectResponseFormat) {
-				const responseContentType = response.headers['content-type'];
+				const responseContentType = response.headers['content-type'] ?? '';
 				if (responseContentType.includes('application/json')) {
 					responseFormat = 'json';
-					response.body = JSON.parse(Buffer.from(response.body).toString());
-				} else if (['image', 'audio', 'video'].some((e) => responseContentType.includes(e))) {
+					response.body = jsonParse(Buffer.from(response.body).toString());
+				} else if (binaryContentTypes.some((e) => responseContentType.includes(e))) {
 					responseFormat = 'file';
 				} else {
 					responseFormat = 'text';
 					const data = Buffer.from(response.body).toString();
-					response.body = (!data) ? undefined : data;
+					response.body = !data ? undefined : data;
 				}
 			}
 
@@ -1245,7 +1357,11 @@ export class HttpRequestV3 implements INodeType {
 			}
 
 			if (responseFormat === 'file') {
-				const outputPropertyName = this.getNodeParameter('outputPropertyName', 0, 'data') as string;
+				const outputPropertyName = this.getNodeParameter(
+					'options.response.response.outputPropertyName',
+					0,
+					'data',
+				) as string;
 
 				const newItem: INodeExecutionData = {
 					json: {},

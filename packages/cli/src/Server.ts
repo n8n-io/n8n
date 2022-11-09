@@ -38,12 +38,10 @@ import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
-import send from 'send';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
-import curlconverter from 'curlconverter';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
 // tested with all possible systems like Windows, Alpine on ARM, FreeBSD, ...
 import { compare } from 'bcryptjs';
@@ -69,8 +67,10 @@ import {
 	ITelemetrySettings,
 	LoggerProxy,
 	NodeHelpers,
+	jsonParse,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
+	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -83,6 +83,7 @@ import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
 import bodyParser from 'body-parser';
+
 import config from '../config';
 import * as Queue from './Queue';
 
@@ -92,7 +93,7 @@ import { WEBHOOK_METHODS } from './WebhookHelpers';
 import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
 
 import { nodesController } from './api/nodes.api';
-import { workflowsController } from './api/workflows.api';
+import { workflowsController } from './workflows/workflows.controller';
 import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
 import { credentialsController } from './credentials/credentials.controller';
 import { oauth2CredentialController } from './credentials/oauth2Credential.api';
@@ -110,12 +111,12 @@ import { resolveJwt } from './UserManagement/auth/jwt';
 import { executionsController } from './api/executions.api';
 import { nodeTypesController } from './api/nodeTypes.api';
 import { tagsController } from './api/tags.api';
-import { isCredentialsSharingEnabled } from './credentials/helpers';
 import { loadPublicApiVersions } from './PublicApi';
 import * as telemetryScripts from './telemetry/scripts';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
+	isSharingEnabled,
 	isUserManagementEnabled,
 } from './UserManagement/UserManagementHelper';
 import {
@@ -154,6 +155,7 @@ import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
 
 import { toHttpNodeParameters } from './CurlConverterHelper';
+import { setupErrorMiddleware } from './ErrorReporting';
 
 require('body-parser-xml')(bodyParser);
 
@@ -257,6 +259,8 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
+		setupErrorMiddleware(this.app);
+
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
 			enabled: config.getEnv('diagnostics.enabled'),
@@ -285,6 +289,7 @@ class App {
 			saveManualExecutions: this.saveManualExecutions,
 			executionTimeout: this.executionTimeout,
 			maxExecutionTimeout: this.maxExecutionTimeout,
+			workflowCallerPolicyDefaultOption: config.getEnv('workflows.callerPolicyDefaultOption'),
 			timezone: this.timezone,
 			urlBaseWebhook,
 			urlBaseEditor: instanceBaseUrl,
@@ -330,8 +335,13 @@ class App {
 				type: config.getEnv('deployment.type'),
 			},
 			isNpmAvailable: false,
+			allowedModules: {
+				builtIn: process.env.NODE_FUNCTION_ALLOW_BUILTIN,
+				external: process.env.NODE_FUNCTION_ALLOW_EXTERNAL,
+			},
 			enterprise: {
 				sharing: false,
+				workflowSharing: false,
 			},
 		};
 	}
@@ -359,7 +369,8 @@ class App {
 
 		// refresh enterprise status
 		Object.assign(this.frontendSettings.enterprise, {
-			sharing: isCredentialsSharingEnabled(),
+			sharing: isSharingEnabled(),
+			workflowSharing: config.getEnv('enterprise.workflowSharingEnabled'),
 		});
 
 		if (config.get('nodes.packagesMissing').length > 0) {
@@ -616,7 +627,6 @@ class App {
 		// Make sure that each request has the "parsedUrl" parameter
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			(req as ICustomRequest).parsedUrl = parseUrl(req);
-			// @ts-ignore
 			req.rawBody = Buffer.from('', 'base64');
 			next();
 		});
@@ -626,7 +636,6 @@ class App {
 			bodyParser.json({
 				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -643,7 +652,6 @@ class App {
 					explicitArray: false, // Only put properties in array if length > 1
 				},
 				verify: (req: express.Request, res: any, buf: any) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -653,7 +661,6 @@ class App {
 			bodyParser.text({
 				limit: `${this.payloadSizeMax}mb`,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -679,7 +686,6 @@ class App {
 				limit: `${this.payloadSizeMax}mb`,
 				extended: false,
 				verify: (req, res, buf) => {
-					// @ts-ignore
 					req.rawBody = buf;
 				},
 			}),
@@ -741,6 +747,7 @@ class App {
 				// DB ping
 				await connection.query('SELECT 1');
 			} catch (err) {
+				ErrorReporter.error(err);
 				LoggerProxy.error('No Database connection!', err);
 				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
 				return ResponseHelper.sendErrorResponse(res, error);
@@ -783,20 +790,20 @@ class App {
 			`/${this.restEndpoint}/node-parameter-options`,
 			ResponseHelper.send(
 				async (req: NodeParameterOptionsRequest): Promise<INodePropertyOptions[]> => {
-					const nodeTypeAndVersion = JSON.parse(
+					const nodeTypeAndVersion = jsonParse(
 						req.query.nodeTypeAndVersion,
 					) as INodeTypeNameVersion;
 
 					const { path, methodName } = req.query;
 
-					const currentNodeParameters = JSON.parse(
+					const currentNodeParameters = jsonParse(
 						req.query.currentNodeParameters,
 					) as INodeParameters;
 
 					let credentials: INodeCredentials | undefined;
 
 					if (req.query.credentials) {
-						credentials = JSON.parse(req.query.credentials);
+						credentials = jsonParse(req.query.credentials);
 					}
 
 					const loadDataInstance = new LoadNodeParameterOptions(
@@ -819,7 +826,7 @@ class App {
 					if (req.query.loadOptions) {
 						return loadDataInstance.getOptionsViaRequestProperty(
 							// @ts-ignore
-							JSON.parse(req.query.loadOptions as string),
+							jsonParse(req.query.loadOptions as string),
 							additionalData,
 						);
 					}
@@ -838,7 +845,7 @@ class App {
 					req: NodeListSearchRequest,
 					res: express.Response,
 				): Promise<INodeListSearchResult | undefined> => {
-					const nodeTypeAndVersion = JSON.parse(
+					const nodeTypeAndVersion = jsonParse(
 						req.query.nodeTypeAndVersion,
 					) as INodeTypeNameVersion;
 
@@ -848,14 +855,14 @@ class App {
 						throw new ResponseError('Parameter currentNodeParameters is required.', undefined, 400);
 					}
 
-					const currentNodeParameters = JSON.parse(
+					const currentNodeParameters = jsonParse(
 						req.query.currentNodeParameters,
 					) as INodeParameters;
 
 					let credentials: INodeCredentials | undefined;
 
 					if (req.query.credentials) {
-						credentials = JSON.parse(req.query.credentials);
+						credentials = jsonParse(req.query.credentials);
 					}
 
 					const listSearchInstance = new LoadNodeListSearch(
@@ -1450,7 +1457,7 @@ class App {
 						if (!sharedWorkflowIds.length) return [];
 
 						if (req.query.filter) {
-							const { workflowId } = JSON.parse(req.query.filter);
+							const { workflowId } = jsonParse<any>(req.query.filter);
 							if (workflowId && sharedWorkflowIds.includes(workflowId)) {
 								Object.assign(findOptions.where!, { workflowId });
 							}
@@ -1477,7 +1484,7 @@ class App {
 
 					const returnData: IExecutionsSummary[] = [];
 
-					const filter = req.query.filter ? JSON.parse(req.query.filter) : {};
+					const filter = req.query.filter ? jsonParse<any>(req.query.filter) : {};
 
 					const sharedWorkflowIds = await getSharedWorkflowIds(req.user).then((ids) =>
 						ids.map((id) => id.toString()),
@@ -1787,18 +1794,18 @@ class App {
 			}
 
 			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
-			const generatedStaticDir = pathJoin(__dirname, '../public');
+			const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
 
-			const firstLinkedScriptSegment = '<link href="/js/';
+			const closingTitleTag = '</title>';
 			const compileFile = async (fileName: string) => {
 				const filePath = pathJoin(editorUiDistDir, fileName);
-				if (/(index.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
+				if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
 					const srcFile = await readFile(filePath, 'utf8');
-					let payload = srcFile.replace(basePathRegEx, n8nPath);
-					if (filePath === 'index.html') {
-						payload = payload
-							.replace(/\/favicon.ico/g, `${n8nPath}favicon.ico`)
-							.replace(firstLinkedScriptSegment, scriptsString + firstLinkedScriptSegment);
+					let payload = srcFile
+						.replace(basePathRegEx, n8nPath)
+						.replace(/\/static\//g, n8nPath + 'static/');
+					if (filePath.endsWith('index.html')) {
+						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
 					const destFile = pathJoin(generatedStaticDir, fileName);
 					await mkdir(pathDirname(destFile), { recursive: true });

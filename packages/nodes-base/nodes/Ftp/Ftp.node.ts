@@ -414,7 +414,6 @@ export class Ftp implements INodeType {
 		const items = this.getInputData();
 		// const returnData: IDataObject[] = [];
 		const returnItems: INodeExecutionData[] = [];
-		const qs: IDataObject = {};
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -456,7 +455,7 @@ export class Ftp implements INodeType {
 					binary: {},
 				};
 
-				if (items[i].binary !== undefined) {
+				if (items[i].binary !== undefined && newItem.binary) {
 					// Create a shallow copy of the binary data so that the old
 					// data references which do not get changed still stay behind
 					// but the incoming data does not get changed.

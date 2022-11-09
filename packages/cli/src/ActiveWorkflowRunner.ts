@@ -32,6 +32,7 @@ import {
 	WorkflowActivationError,
 	WorkflowExecuteMode,
 	LoggerProxy as Logger,
+	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
 import express from 'express';
@@ -121,6 +122,7 @@ export class ActiveWorkflowRunner {
 					});
 					console.log(`     => Started`);
 				} catch (error) {
+					ErrorReporter.error(error);
 					console.log(
 						`     => ERROR: Workflow could not be activated on first try, keep on trying`,
 					);
@@ -611,7 +613,7 @@ export class ActiveWorkflowRunner {
 
 	/**
 	 * Return poll function which gets the global functions from n8n-core
-	 * and overwrites the __emit to be able to start it in subprocess
+	 * and overwrites the emit to be able to start it in subprocess
 	 *
 	 */
 	getExecutePollFunctions(
@@ -628,19 +630,38 @@ export class ActiveWorkflowRunner {
 				mode,
 				activation,
 			);
-			// eslint-disable-next-line no-underscore-dangle
-			returnFunctions.__emit = async (
-				data: INodeExecutionData[][] | ExecutionError,
-			): Promise<void> => {
-				if (data instanceof Error) {
-					await createErrorExecution(data, node, workflowData, workflow, mode);
-					this.executeErrorWorkflow(data, workflowData, mode);
-					return;
-				}
+			returnFunctions.__emit = (
+				data: INodeExecutionData[][],
+				responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+				donePromise?: IDeferredPromise<IRun | undefined>,
+			): void => {
 				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				Logger.debug(`Received event to trigger execution for workflow "${workflow.name}"`);
 				WorkflowHelpers.saveStaticData(workflow);
-				this.runWorkflow(workflowData, node, data, additionalData, mode);
+				const executePromise = this.runWorkflow(
+					workflowData,
+					node,
+					data,
+					additionalData,
+					mode,
+					responsePromise,
+				);
+
+				if (donePromise) {
+					executePromise.then((executionId) => {
+						activeExecutions
+							.getPostExecutePromise(executionId)
+							.then(donePromise.resolve)
+							.catch(donePromise.reject);
+					});
+				} else {
+					executePromise.catch(console.error);
+				}
+			};
+
+			returnFunctions.__emitError = async (error: ExecutionError): Promise<void> => {
+				await createErrorExecution(error, node, workflowData, workflow, mode);
+				this.executeErrorWorkflow(error, workflowData, mode);
 			};
 			return returnFunctions;
 		};
@@ -717,8 +738,7 @@ export class ActiveWorkflowRunner {
 				// Run Error Workflow if defined
 				const activationError = new WorkflowActivationError(
 					`There was a problem with the trigger node "${node.name}", for that reason did the workflow had to be deactivated`,
-					error,
-					node,
+					{ cause: error, node },
 				);
 				this.executeErrorWorkflow(activationError, workflowData, mode);
 
@@ -882,6 +902,7 @@ export class ActiveWorkflowRunner {
 			try {
 				await this.add(workflowId, activationMode, workflowData);
 			} catch (error) {
+				ErrorReporter.error(error);
 				let lastTimeout = this.queuedWorkflowActivations[workflowId].lastTimeout;
 				if (lastTimeout < WORKFLOW_REACTIVATE_MAX_TIMEOUT) {
 					lastTimeout = Math.min(lastTimeout * 2, WORKFLOW_REACTIVATE_MAX_TIMEOUT);
@@ -949,6 +970,7 @@ export class ActiveWorkflowRunner {
 			try {
 				await this.removeWorkflowWebhooks(workflowId);
 			} catch (error) {
+				ErrorReporter.error(error);
 				console.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					`Could not remove webhooks of workflow "${workflowId}" because of error: "${error.message}"`,

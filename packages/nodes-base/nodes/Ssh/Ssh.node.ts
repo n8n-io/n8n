@@ -2,7 +2,6 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IBinaryData,
-	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
@@ -323,7 +322,7 @@ export class Ssh implements INodeType {
 								},
 							};
 
-							if (items[i].binary !== undefined) {
+							if (items[i].binary !== undefined && newItem.binary) {
 								// Create a shallow copy of the binary data so that the old
 								// data references which do not get changed still stay behind
 								// but the incoming data does not get changed.

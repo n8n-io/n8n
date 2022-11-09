@@ -7,7 +7,7 @@
 						template.name
 					}}</n8n-heading>
 					<n8n-text v-if="template && template.name" color="text-base" size="small">
-						{{ $locale.baseText('templates.workflow') }}
+						{{ $locale.baseText('generic.workflow') }}
 					</n8n-text>
 					<n8n-loading :loading="!template || !template.name" :rows="2" variant="h1" />
 				</div>
@@ -64,6 +64,8 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
 import { setPageTitle } from '@/components/helpers';
 import { VIEWS } from '@/constants';
+import { mapStores } from 'pinia';
+import { useTemplatesStore } from '@/stores/templates';
 
 export default mixins(workflowHelpers).extend({
 	name: 'TemplatesWorkflowView',
@@ -73,8 +75,11 @@ export default mixins(workflowHelpers).extend({
 		WorkflowPreview,
 	},
 	computed: {
+		...mapStores(
+			useTemplatesStore,
+		),
 		template(): ITemplatesWorkflow | ITemplatesWorkflowFull {
-			return this.$store.getters['templates/getTemplateById'](this.templateId);
+			return this.templatesStore.getTemplateById(this.templateId);
 		},
 		templateId() {
 			return this.$route.params.id;
@@ -92,7 +97,7 @@ export default mixins(workflowHelpers).extend({
 			const telemetryPayload = {
 				source: 'workflow',
 				template_id: id,
-				wf_template_repo_session_id: this.$store.getters['templates/currentSessionId'],
+				wf_template_repo_session_id: this.templatesStore.currentSessionId,
 			};
 
 			this.$externalHooks().run('templatesWorkflowView.openWorkflow', telemetryPayload);
@@ -138,7 +143,7 @@ export default mixins(workflowHelpers).extend({
 		}
 
 		try {
-			await this.$store.dispatch('templates/getTemplateById', this.templateId);
+			await this.templatesStore.fetchTemplateById(this.templateId);
 		} catch (e) {
 			this.notFoundError = true;
 		}
@@ -168,6 +173,10 @@ export default mixins(workflowHelpers).extend({
 
 .image {
 	width: 100%;
+	height: 500px;
+	border: var(--border-base);
+	border-radius: var(--border-radius-large);
+	overflow: hidden;
 
 	img {
 		width: 100%;

@@ -48,6 +48,7 @@ export declare namespace WorkflowRequest {
 		settings: IWorkflowSettings;
 		active: boolean;
 		tags: string[];
+		hash: string;
 	}>;
 
 	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
@@ -56,7 +57,7 @@ export declare namespace WorkflowRequest {
 
 	type Delete = Get;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody, { forceSave?: string }>;
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
@@ -77,6 +78,8 @@ export declare namespace WorkflowRequest {
 			destinationNode?: string;
 		}
 	>;
+
+	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }
 
 // ----------------------------------

@@ -6,13 +6,13 @@ import {
 	INodeType,
 	INodeTypeBaseDescription,
 	INodeTypeDescription,
-	IOAuth2Options,
 	NodeApiError,
 	NodeOperationError,
+	sleep,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
-import { replaceNullValues } from '../GenericFunctions';
+import { getOAuth2AdditionalParameters, replaceNullValues } from '../GenericFunctions';
 
 interface OptionData {
 	name: string;
@@ -628,24 +628,33 @@ export class HttpRequestV2 implements INodeType {
 		let nodeCredentialType;
 
 		if (authentication === 'genericCredentialType') {
-			try {
-				httpBasicAuth = await this.getCredentials('httpBasicAuth');
-			} catch (_) {}
-			try {
-				httpDigestAuth = await this.getCredentials('httpDigestAuth');
-			} catch (_) {}
-			try {
-				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-			} catch (_) {}
-			try {
-				httpQueryAuth = await this.getCredentials('httpQueryAuth');
-			} catch (_) {}
-			try {
-				oAuth1Api = await this.getCredentials('oAuth1Api');
-			} catch (_) {}
-			try {
-				oAuth2Api = await this.getCredentials('oAuth2Api');
-			} catch (_) {}
+			const genericAuthType = this.getNodeParameter('genericAuthType', 0) as string;
+
+			if (genericAuthType === 'httpBasicAuth') {
+				try {
+					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpDigestAuth') {
+				try {
+					httpDigestAuth = await this.getCredentials('httpDigestAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpHeaderAuth') {
+				try {
+					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpQueryAuth') {
+				try {
+					httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'oAuth1Api') {
+				try {
+					oAuth1Api = await this.getCredentials('oAuth1Api');
+				} catch (_) {}
+			} else if (genericAuthType === 'oAuth2Api') {
+				try {
+					oAuth2Api = await this.getCredentials('oAuth2Api');
+				} catch (_) {}
+			}
 		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
@@ -693,7 +702,7 @@ export class HttpRequestV2 implements INodeType {
 				const batchSize: number =
 					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
 				if (itemIndex % batchSize === 0) {
-					await new Promise((resolve) => setTimeout(resolve, options.batchInterval as number));
+					await sleep(options.batchInterval as number);
 				}
 			}
 
@@ -1010,25 +1019,7 @@ export class HttpRequestV2 implements INodeType {
 					requestPromises.push(request);
 				}
 			} else if (authentication === 'predefinedCredentialType' && nodeCredentialType) {
-				const oAuth2Options: { [credentialType: string]: IOAuth2Options } = {
-					clickUpOAuth2Api: {
-						keepBearer: false,
-						tokenType: 'Bearer',
-					},
-					slackOAuth2Api: {
-						tokenType: 'Bearer',
-						property: 'authed_user.access_token',
-					},
-					boxOAuth2Api: {
-						includeCredentialsOnRefreshOnBody: true,
-					},
-					shopifyOAuth2Api: {
-						tokenType: 'Bearer',
-						keyToIncludeInAccessTokenHeader: 'X-Shopify-Access-Token',
-					},
-				};
-
-				const additionalOAuth2Options = oAuth2Options[nodeCredentialType];
+				const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
 
 				// service-specific cred: OAuth1, OAuth2, plain
 				const requestWithAuthentication = this.helpers.requestWithAuthentication.call(

@@ -51,3 +51,9 @@ export async function oAuth2CredentialAuthorize(context: IRestApiContext, data: 
 export async function testCredential(context: IRestApiContext, data: INodeCredentialTestRequest): Promise<INodeCredentialTestResult> {
 	return makeRestApiRequest(context, 'POST', '/credentials/test', data as unknown as IDataObject);
 }
+
+export async function getForeignCredentials(context: IRestApiContext): Promise<ICredentialsResponse[]> {
+	// TODO: Get foreign credentials
+	//return await makeRestApiRequest(context, 'GET', '/foreign-credentials');
+	return [];
+}
