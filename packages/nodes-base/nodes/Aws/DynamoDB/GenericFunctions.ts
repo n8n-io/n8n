@@ -5,13 +5,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	deepCopy,
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	IHttpRequestOptions,
-	INodeExecutionData,
-} from 'n8n-workflow';
+import { deepCopy, IDataObject, IHttpRequestOptions, INodeExecutionData } from 'n8n-workflow';
 
 import { IRequestBody } from './types';
 

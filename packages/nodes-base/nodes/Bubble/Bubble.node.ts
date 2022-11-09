@@ -2,7 +2,6 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
-	INode,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,

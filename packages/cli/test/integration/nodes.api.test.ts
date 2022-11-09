@@ -11,23 +11,23 @@ import {
 	hasPackageLoaded,
 	removePackageFromMissingList,
 	isNpmError,
-} from '../../src/CommunityNodes/helpers';
-import { findInstalledPackage, isPackageInstalled } from '../../src/CommunityNodes/packageModel';
-import { LoadNodesAndCredentials } from '../../src/LoadNodesAndCredentials';
-import { InstalledPackages } from '../../src/databases/entities/InstalledPackages';
+} from '@/CommunityNodes/helpers';
+import { findInstalledPackage, isPackageInstalled } from '@/CommunityNodes/packageModel';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
 
-import type { Role } from '../../src/databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 import type { AuthAgent } from './shared/types';
-import type { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
+import type { InstalledNodes } from '@db/entities/InstalledNodes';
 import { COMMUNITY_PACKAGE_VERSION } from './shared/constants';
 
-jest.mock('../../src/telemetry');
+jest.mock('@/telemetry');
 
-jest.mock('../../src/Push');
+jest.mock('@/Push');
 
-jest.mock('../../src/CommunityNodes/helpers', () => {
+jest.mock('@/CommunityNodes/helpers', () => {
 	return {
-		...jest.requireActual('../../src/CommunityNodes/helpers'),
+		...jest.requireActual('@/CommunityNodes/helpers'),
 		checkNpmPackageStatus: jest.fn(),
 		executeCommand: jest.fn(),
 		hasPackageLoaded: jest.fn(),
@@ -36,9 +36,9 @@ jest.mock('../../src/CommunityNodes/helpers', () => {
 	};
 });
 
-jest.mock('../../src/CommunityNodes/packageModel', () => {
+jest.mock('@/CommunityNodes/packageModel', () => {
 	return {
-		...jest.requireActual('../../src/CommunityNodes/packageModel'),
+		...jest.requireActual('@/CommunityNodes/packageModel'),
 		isPackageInstalled: jest.fn(),
 		findInstalledPackage: jest.fn(),
 	};

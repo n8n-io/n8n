@@ -1,18 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable import/no-cycle */
 
 import express from 'express';
 import validator from 'validator';
+import { randomBytes } from 'crypto';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { randomBytes } from 'crypto';
-import { Db, InternalHooksManager, ResponseHelper } from '../..';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { InternalHooksManager } from '@/InternalHooksManager';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { validatePassword, sanitizeUser, compareHash, hashPassword } from '../UserManagementHelper';
-import type { AuthenticatedRequest, MeRequest } from '../../requests';
-import { validateEntity } from '../../GenericHelpers';
-import { User } from '../../databases/entities/User';
+import type { AuthenticatedRequest, MeRequest } from '@/requests';
+import { validateEntity } from '@/GenericHelpers';
+import { User } from '@db/entities/User';
 
 export function meNamespace(this: N8nApp): void {
 	/**

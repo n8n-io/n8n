@@ -1,10 +1,17 @@
-import { WorkflowCredentials, Db } from '../../src';
 import { mocked } from 'jest-mock';
-import type { IRun, INode, IWorkflowCredentials, IDataObject } from 'n8n-workflow';
+import type { INode, IWorkflowCredentials } from 'n8n-workflow';
+import * as Db from '@/Db';
+import { WorkflowCredentials } from '@/WorkflowCredentials';
 
 // Define a function used to mock the findOne function
-async function mockFind({ id, type }): Promise<IWorkflowCredentials | null> {
-	// Simple statement that maps a return value based on the `id` paremeter
+async function mockFind({
+	id,
+	type,
+}: {
+	id: string | number;
+	type: string;
+}): Promise<IWorkflowCredentials | null> {
+	// Simple statement that maps a return value based on the `id` parameter
 	if (id === notFoundNode.credentials!!.test.id) {
 		return null;
 	}
@@ -22,7 +29,7 @@ async function mockFind({ id, type }): Promise<IWorkflowCredentials | null> {
 	};
 }
 
-jest.mock('../../src/Db', () => {
+jest.mock('@/Db', () => {
 	return {
 		collections: {
 			Credentials: {
