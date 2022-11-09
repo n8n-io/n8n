@@ -11,7 +11,7 @@ import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '../TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
-import { CredentialUsage } from '../databases/entities/CredentialUsage';
+import { WorkflowsService } from './workflows.services';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -90,9 +90,11 @@ EEWorkflowController.get(
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
 			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
 		}
-		// @TODO: also return the credentials used by the workflow
 
-		return EEWorkflows.addOwnerAndSharings(workflow);
+		return EEWorkflows.addCredentialsToWorkflow(
+			EEWorkflows.addOwnerAndSharings(workflow),
+			req.user,
+		);
 	}),
 );
 
@@ -155,29 +157,6 @@ EEWorkflowController.post(
 			});
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
-
-			const credentialUsage: CredentialUsage[] = [];
-			newWorkflow.nodes.forEach((node) => {
-				if (!node.credentials) {
-					return;
-				}
-				Object.keys(node.credentials).forEach((credentialType) => {
-					const credentialId = node.credentials?.[credentialType].id;
-					if (credentialId) {
-						const newCredentialusage = new CredentialUsage();
-						Object.assign(newCredentialusage, {
-							credentialId,
-							nodeId: node.id,
-							workflowId: savedWorkflow?.id,
-						});
-						credentialUsage.push(newCredentialusage);
-					}
-				});
-			});
-
-			if (credentialUsage.length) {
-				await transactionManager.save<CredentialUsage>(credentialUsage);
-			}
 		});
 
 		if (!savedWorkflow) {
@@ -199,6 +178,52 @@ EEWorkflowController.post(
 		return {
 			id: id.toString(),
 			...rest,
+		};
+	}),
+);
+
+/**
+ * (EE) GET /workflows
+ */
+EEWorkflowController.get(
+	'/',
+	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
+		const workflows = (await WorkflowsService.getMany(
+			req.user,
+			req.query.filter,
+		)) as unknown as WorkflowEntity[];
+
+		return Promise.all(
+			workflows.map(async (workflow) =>
+				EEWorkflows.addCredentialsToWorkflow(EEWorkflows.addOwnerAndSharings(workflow), req.user),
+			),
+		);
+	}),
+);
+
+EEWorkflowController.patch(
+	'/:id(\\d+)',
+	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
+		const { id: workflowId } = req.params;
+		const forceSave = req.query.forceSave === 'true';
+
+		const updateData = new WorkflowEntity();
+		const { tags, ...rest } = req.body;
+		Object.assign(updateData, rest);
+
+		const updatedWorkflow = await EEWorkflows.updateWorkflow(
+			req.user,
+			updateData,
+			workflowId,
+			tags,
+			forceSave,
+		);
+
+		const { id, ...remainder } = updatedWorkflow;
+
+		return {
+			id: id.toString(),
+			...remainder,
 		};
 	}),
 );

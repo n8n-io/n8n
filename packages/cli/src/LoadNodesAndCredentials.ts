@@ -19,8 +19,10 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypeNameVersion,
-	INodeVersionedType,
+	IVersionedNodeType,
 	LoggerProxy,
+	jsonParse,
+	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
 import {
@@ -124,19 +126,23 @@ class LoadNodesAndCredentialsClass {
 		const nodePackages = [];
 		try {
 			// Read downloaded nodes and credentials
-			const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+			const downloadedNodesFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 			const downloadedNodesFolderModules = path.join(downloadedNodesFolder, 'node_modules');
 			await fsAccess(downloadedNodesFolderModules);
 			const downloadedPackages = await this.getN8nNodePackages(downloadedNodesFolderModules);
 			nodePackages.push(...downloadedPackages);
-			// eslint-disable-next-line no-empty
-		} catch (error) {}
+		} catch (error) {
+			// Folder does not exist so ignore and return
+			return;
+		}
 
 		for (const packagePath of nodePackages) {
 			try {
 				await this.loadDataFromPackage(packagePath);
 				// eslint-disable-next-line no-empty
-			} catch (error) {}
+			} catch (error) {
+				ErrorReporter.error(error);
+			}
 		}
 	}
 
@@ -230,7 +236,7 @@ class LoadNodesAndCredentialsClass {
 	}
 
 	async loadNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
-		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 		const command = `npm install ${packageName}${version ? `@${version}` : ''}`;
 
 		await executeCommand(command);
@@ -284,7 +290,7 @@ class LoadNodesAndCredentialsClass {
 		packageName: string,
 		installedPackage: InstalledPackages,
 	): Promise<InstalledPackages> {
-		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
 		const command = `npm i ${packageName}@latest`;
 
@@ -350,7 +356,7 @@ class LoadNodesAndCredentialsClass {
 		nodeName: string,
 		filePath: string,
 	): INodeTypeNameVersion | undefined {
-		let tempNode: INodeType | INodeVersionedType;
+		let tempNode: INodeType | IVersionedNodeType;
 		let nodeVersion = 1;
 
 		try {
@@ -374,9 +380,9 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		if (tempNode.hasOwnProperty('nodeVersions')) {
-			const versionedNodeType = (tempNode as INodeVersionedType).getNodeType();
+			const versionedNodeType = (tempNode as IVersionedNodeType).getNodeType();
 			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
-			nodeVersion = (tempNode as INodeVersionedType).currentVersion;
+			nodeVersion = (tempNode as IVersionedNodeType).currentVersion;
 
 			if (
 				versionedNodeType.description.icon !== undefined &&
@@ -458,7 +464,7 @@ class LoadNodesAndCredentialsClass {
 		filePath,
 		isCustom,
 	}: {
-		node: INodeType | INodeVersionedType;
+		node: INodeType | IVersionedNodeType;
 		filePath: string;
 		isCustom: boolean;
 	}) {
@@ -509,7 +515,7 @@ class LoadNodesAndCredentialsClass {
 	async readPackageJson(packagePath: string): Promise<IN8nNodePackageJson> {
 		// Get the absolute path of the package
 		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
-		return JSON.parse(packageFileString) as IN8nNodePackageJson;
+		return jsonParse(packageFileString);
 	}
 
 	/**

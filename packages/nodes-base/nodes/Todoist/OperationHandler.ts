@@ -1,4 +1,4 @@
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, jsonParse } from 'n8n-workflow';
 import {
 	Context,
 	FormatDueDatetime,
@@ -74,7 +74,7 @@ export class DeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('taskId', itemIndex) as string;
 
-		const responseData = await todoistApiRequest.call(ctx, 'DELETE', `/tasks/${id}`);
+		await todoistApiRequest.call(ctx, 'DELETE', `/tasks/${id}`);
 
 		return {
 			success: true,
@@ -228,7 +228,7 @@ export class SyncHandler implements OperationHandler {
 		const commandsJson = ctx.getNodeParameter('commands', itemIndex) as string;
 		const projectId = ctx.getNodeParameter('project', itemIndex) as number;
 		const sections = await getSectionIds(ctx, projectId);
-		const commands: Command[] = JSON.parse(commandsJson);
+		const commands: Command[] = jsonParse(commandsJson);
 		const tempIdMapping = new Map<string, string>();
 
 		for (let i = 0; i < commands.length; i++) {

@@ -71,7 +71,7 @@ export const pageOperations: INodeProperties[] = [
 	},
 ];
 
-export const pageFields = [
+export const pageFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                page:archive                                */
 	/* -------------------------------------------------------------------------- */
@@ -439,4 +439,4 @@ export const pageFields = [
 			},
 		],
 	},
-] as INodeProperties[];
+];

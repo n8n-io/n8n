@@ -14,6 +14,7 @@ export class ZoomApi implements ICredentialType {
 			displayName: 'JWT Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

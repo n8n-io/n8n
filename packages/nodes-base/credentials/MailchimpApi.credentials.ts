@@ -1,6 +1,5 @@
 import {
 	IAuthenticateGeneric,
-	ICredentialTestFunctions,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,
@@ -15,6 +14,7 @@ export class MailchimpApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

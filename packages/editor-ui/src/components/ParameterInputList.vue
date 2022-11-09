@@ -12,12 +12,14 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
 
 			<import-parameter
 					v-else-if="parameter.type === 'curlImport' && nodeTypeName === 'n8n-nodes-base.httpRequest' && nodeTypeVersion >= 3"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 			/>
 
@@ -53,6 +55,7 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 				<fixed-collection-parameter
@@ -61,6 +64,7 @@
 					:values="getParameterValue(nodeValues, parameter.name, path)"
 					:nodeValues="nodeValues"
 					:path="getPath(parameter.name)"
+					:isReadOnly="isReadOnly"
 					@valueChanged="valueChanged"
 				/>
 			</div>
@@ -97,6 +101,7 @@
 <script lang="ts">
 
 import {
+	deepCopy,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
@@ -106,7 +111,6 @@ import {
 import { INodeUi, IUpdateInformation } from '@/Interface';
 
 import MultipleParameter from '@/components/MultipleParameter.vue';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import ParameterInputFull from '@/components/ParameterInputFull.vue';
 import ImportParameter from '@/components/ImportParameter.vue';
@@ -115,9 +119,11 @@ import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import {Component} from "vue";
+import { mapState, mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
-	genericHelpers,
 	workflowHelpers,
 )
 	.extend({
@@ -135,8 +141,13 @@ export default mixins(
 			'path', // string
 			'hideDelete', // boolean
 			'indent',
+			'isReadOnly',
 		],
 		computed: {
+			...mapStores(
+				useNodeTypesStore,
+				useNDVStore,
+			),
 			nodeTypeVersion(): number | null {
 				if (this.node) {
 					return this.node.typeVersion;
@@ -155,8 +166,8 @@ export default mixins(
 			filteredParameterNames (): string[] {
 				return this.filteredParameters.map(parameter => parameter.name);
 			},
-			node (): INodeUi {
-				return this.$store.getters.activeNode;
+			node (): INodeUi | null {
+				return this.ndvStore.activeNode;
 			},
 			indexToShowSlotAt (): number {
 				let index = 0;
@@ -175,7 +186,7 @@ export default mixins(
 		methods: {
 			getCredentialsDependencies() {
 				const dependencies = new Set();
-				const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+				const nodeType = this.nodeTypesStore.getNodeType(this.node?.type || '', this.node?.typeVersion);
 
 				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
 				if(nodeType && nodeType.credentials) {
@@ -288,7 +299,7 @@ export default mixins(
 
 				if (parameterGotResolved === true) {
 					if (this.path) {
-						rawValues = JSON.parse(JSON.stringify(this.nodeValues));
+						rawValues = deepCopy(this.nodeValues);
 						set(rawValues, this.path, nodeValues);
 						return this.displayParameter(rawValues, parameter, this.path, this.node);
 					} else {
@@ -319,7 +330,7 @@ export default mixins(
 					if (!newValue.includes(parameter)) {
 						const parameterData = {
 							name: `${this.path}.${parameter}`,
-							node: this.$store.getters.activeNode.name,
+							node: this.ndvStore.activeNode?.name || '',
 							value: undefined,
 						};
 						this.$emit('valueChanged', parameterData);

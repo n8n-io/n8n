@@ -2,6 +2,7 @@
 	<AuthView
 		:form="FORM_CONFIG"
 		:formLoading="loading"
+		data-test-id="signin-form"
 		@submit="onSubmit"
 	/>
 </template>
@@ -13,6 +14,8 @@ import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';
 import { VIEWS } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(
 	showMessage,
@@ -61,11 +64,14 @@ export default mixins(
 			loading: false,
 		};
 	},
+	computed: {
+		...mapStores(useUsersStore),
+	},
 	methods: {
 		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/loginWithCreds', values);
+				await this.usersStore.loginWithCreds(values as {email: string, password: string});
 				this.clearAllStickyNotifications();
 				this.loading = false;
 

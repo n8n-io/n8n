@@ -1031,7 +1031,7 @@ export class GoogleSheets implements INodeType {
 					const usePathForKeyRow = (options.usePathForKeyRow || false) as boolean;
 
 					// Convert data into array format
-					const data = await sheet.appendSheetData(
+					const _data = await sheet.appendSheetData(
 						setData,
 						sheet.encodeRange(range),
 						keyRow,
@@ -1143,7 +1143,7 @@ export class GoogleSheets implements INodeType {
 						}
 					}
 
-					const data = await sheet.spreadsheetBatchUpdate(requests);
+					const _data = await sheet.spreadsheetBatchUpdate(requests);
 
 					const items = this.getInputData();
 					return this.prepareOutputData(items);
@@ -1296,7 +1296,7 @@ export class GoogleSheets implements INodeType {
 							});
 						}
 
-						const data = await sheet.batchUpdate(updateData, valueInputMode);
+						const _data = await sheet.batchUpdate(updateData, valueInputMode);
 					} else {
 						const keyName = this.getNodeParameter('key', 0) as string;
 						const keyRow = parseInt(this.getNodeParameter('keyRow', 0) as string, 10);
@@ -1307,7 +1307,7 @@ export class GoogleSheets implements INodeType {
 							setData.push(item.json);
 						});
 
-						const data = await sheet.updateSheetData(
+						const _data = await sheet.updateSheetData(
 							setData,
 							keyName,
 							range,

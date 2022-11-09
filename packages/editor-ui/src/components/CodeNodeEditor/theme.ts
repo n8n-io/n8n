@@ -3,20 +3,16 @@ import { EditorView } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 
 /**
- * Based on Tomorrow theme by Chris Kempson
+ * Light theme based on Tomorrow theme by Chris Kempson
  * https://github.com/vadimdemedes/thememirror/blob/main/source/themes/tomorrow.ts
+ *
+ * Dark theme based on Dracula theme by Zeno Rocha
+ * https://github.com/vadimdemedes/thememirror/blob/main/source/themes/dracula.ts
  */
 
 const BASE_STYLING = {
 	fontSize: '0.8em',
 	fontFamily: "Menlo, Consolas, 'DejaVu Sans Mono', monospace !important",
-	background: '#FFFFFF',
-	foreground: '#4D4D4C',
-	caret: '#AEAFAD',
-	selection: '#D6D6D6',
-	gutterBackground: '#FFFFFF',
-	gutterForeground: '#4D4D4C80',
-	lineHighlight: '#EFEFEF',
 	maxHeight: '400px',
 	tooltip: {
 		maxWidth: '300px',
@@ -31,79 +27,40 @@ const BASE_STYLING = {
 	},
 };
 
-const HIGHLIGHT_STYLING = [
-	{
-		tag: tags.comment,
-		color: '#8E908C',
-	},
-	{
-		tag: [tags.variableName, tags.self, tags.propertyName, tags.attributeName, tags.regexp],
-		color: '#C82829',
-	},
-	{
-		tag: [tags.number, tags.bool, tags.null],
-		color: '#F5871F',
-	},
-	{
-		tag: [tags.className, tags.typeName, tags.definition(tags.typeName)],
-		color: '#C99E00',
-	},
-	{
-		tag: [tags.string, tags.special(tags.brace)],
-		color: '#718C00',
-	},
-	{
-		tag: tags.operator,
-		color: '#3E999F',
-	},
-	{
-		tag: [tags.definition(tags.propertyName), tags.function(tags.variableName)],
-		color: '#4271AE',
-	},
-	{
-		tag: tags.keyword,
-		color: '#8959A8',
-	},
-	{
-		tag: tags.derefOperator,
-		color: '#4D4D4C',
-	},
-];
-
 const cssStyleDeclaration = getComputedStyle(document.documentElement);
 
 export const CODE_NODE_EDITOR_THEME = [
 	EditorView.theme({
 		'&': {
-			backgroundColor: BASE_STYLING.background,
-			color: BASE_STYLING.foreground,
 			'font-size': BASE_STYLING.fontSize,
 			border: cssStyleDeclaration.getPropertyValue('--border-base'),
 			borderRadius: cssStyleDeclaration.getPropertyValue('--border-radius-base'),
+			backgroundColor: 'var(--color-code-background)',
+			color: 'var(--color-code-foreground)',
 		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
-			caretColor: BASE_STYLING.caret,
+			caretColor: 'var(--color-code-caret)',
 		},
 		'.cm-cursor, .cm-dropCursor': {
-			borderLeftColor: BASE_STYLING.caret,
+			borderLeftColor: 'var(--color-code-caret)',
+		},
+		'&.cm-focused .cm-selectionBackgroundm .cm-selectionBackground, .cm-content ::selection': {
+			backgroundColor: 'var(--color-code-selection)',
+		},
+		'.cm-activeLine': {
+			backgroundColor: 'var(--color-code-lineHighlight)',
+		},
+		'.cm-activeLineGutter': {
+			backgroundColor: 'var(--color-code-lineHighlight)',
+		},
+		'.cm-gutters': {
+			backgroundColor: 'var(--color-code-gutterBackground)',
+			color: 'var(--color-code-gutterForeground)',
 		},
 		'.cm-tooltip': {
 			maxWidth: BASE_STYLING.tooltip.maxWidth,
 			lineHeight: BASE_STYLING.tooltip.lineHeight,
-		},
-		'&.cm-focused .cm-selectionBackgroundm .cm-selectionBackground, .cm-content ::selection': {
-			backgroundColor: BASE_STYLING.selection,
-		},
-		'.cm-activeLine': {
-			backgroundColor: BASE_STYLING.lineHighlight,
-		},
-		'.cm-gutters': {
-			backgroundColor: BASE_STYLING.gutterBackground,
-			color: BASE_STYLING.gutterForeground,
-		},
-		'.cm-activeLineGutter': {
-			backgroundColor: BASE_STYLING.lineHighlight,
 		},
 		'.cm-scroller': {
 			overflow: 'auto',
@@ -118,5 +75,34 @@ export const CODE_NODE_EDITOR_THEME = [
 			cursor: BASE_STYLING.diagnosticButton.cursor,
 		},
 	}),
-	syntaxHighlighting(HighlightStyle.define(HIGHLIGHT_STYLING)),
+	syntaxHighlighting(HighlightStyle.define([
+		{
+			tag: tags.comment,
+			color: 'var(--color-code-tags-comment)',
+		},
+		{
+			tag: [tags.string, tags.special(tags.brace)],
+			color: 'var(--color-code-tags-string)',
+		},
+		{
+			tag: [tags.number, tags.self, tags.bool, tags.null],
+			color: 'var(--color-code-tags-primitive)',
+		},
+		{
+			tag: tags.keyword,
+			color: 'var(--color-code-tags-keyword)',
+		},
+		{
+			tag: tags.operator,
+			color: 'var(--color-code-tags-operator)',
+		},
+		{
+			tag: [tags.variableName, tags.propertyName, tags.attributeName, tags.regexp, tags.className, tags.typeName],
+			color: 'var(--color-code-tags-variable)',
+		},
+		{
+			tag: [tags.definition(tags.typeName), tags.definition(tags.propertyName), tags.function(tags.variableName)],
+			color: 'var(--color-code-tags-definition)',
+		},
+	])),
 ];

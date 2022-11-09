@@ -1,6 +1,6 @@
 import Vue from 'vue';
 import { Diagnostic, linter as createLinter } from '@codemirror/lint';
-import * as esprima from 'esprima';
+import * as esprima from 'esprima-next';
 
 import {
 	DEFAULT_LINTER_DELAY_IN_MS,
@@ -215,22 +215,25 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 				const isUnavailableMethodinEachItem = (node: Node) =>
 					node.type === 'MemberExpression' &&
 					node.computed === false &&
+					node.object.type === 'Identifier' &&
+					node.object.name === '$input' &&
 					node.property.type === 'Identifier' &&
 					['first', 'last', 'all', 'itemMatching'].includes(node.property.name);
 
 				walk<TargetNode>(ast, isUnavailableMethodinEachItem).forEach((node) => {
 					const [start, end] = this.getRange(node.property);
 
-					const message = [
-						`\`.${node.property.name}()\``,
-						this.$locale.baseText('codeNodeEditor.linter.eachItem.unavailableMethod'),
-					].join(' ');
+					const method = this.getText(node.property);
+
+					if (!method) return;
 
 					lintings.push({
 						from: start,
 						to: end,
 						severity: DEFAULT_LINTER_SEVERITY,
-						message,
+						message: this.$locale.baseText('codeNodeEditor.linter.eachItem.unavailableMethod', {
+							interpolate: { method },
+						}),
 					});
 				});
 			}
@@ -264,62 +267,38 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
-			 * Lint for `.all()` called with argument in `runOnceForAllItems` mode
+			 * Lint for `$input.first()` or `$input.last()` called with argument in `runOnceForAllItems` mode
 			 *
-			 * $input.itemMatching()
-			 */
-
-			if (this.mode === 'runOnceForAllItems') {
-				type TargetNode = RangeNode & { callee: RangeNode & { property: RangeNode } };
-
-				const isItemMatchingCallWithoutArg = (node: Node) =>
-					node.type === 'CallExpression' &&
-					node.callee.type === 'MemberExpression' &&
-					node.callee.property.type === 'Identifier' &&
-					node.callee.property.name === 'all' &&
-					node.arguments.length !== 0;
-
-				walk<TargetNode>(ast, isItemMatchingCallWithoutArg).forEach((node) => {
-					const [start, end] = this.getRange(node.callee.property);
-
-					lintings.push({
-						from: start,
-						to: end + '()'.length,
-						severity: DEFAULT_LINTER_SEVERITY,
-						message: this.$locale.baseText('codeNodeEditor.linter.allItems.allCalledWithArg'),
-					});
-				});
-			}
-
-			/**
-			 * Lint for `.first()` or `.last()` called with argument in `runOnceForAllItems` mode
-			 *
-			 * $input.itemMatching()
+			 * $input.first(arg) -> $input.first()
+			 * $input.last(arg) -> $input.last()
 			 */
 
 			if (this.mode === 'runOnceForAllItems') {
 				type TargetNode = RangeNode & {
-					callee: RangeNode & { property: { name: string } & RangeNode };
+					callee: { property: { name: string } & RangeNode };
 				};
 
-				const isItemMatchingCallWithoutArg = (node: Node) =>
+				const inputFirstOrLastCalledWithArg = (node: Node) =>
 					node.type === 'CallExpression' &&
 					node.callee.type === 'MemberExpression' &&
+					node.callee.computed === false &&
+					node.callee.object.type === 'Identifier' &&
+					node.callee.object.name === '$input' &&
 					node.callee.property.type === 'Identifier' &&
-					['first', 'last'].includes(node.callee.property.name) &&
-					node.arguments.length !== 0;
+					['first', 'last'].includes(node.callee.property.name)
+					&& node.arguments.length !== 0;
 
-				walk<TargetNode>(ast, isItemMatchingCallWithoutArg).forEach((node) => {
+				walk<TargetNode>(ast, inputFirstOrLastCalledWithArg).forEach((node) => {
 					const [start, end] = this.getRange(node.callee.property);
 
 					const message = [
-						`\`.${node.callee.property.name}()\``,
+						`\`$input.${node.callee.property.name}()\``,
 						this.$locale.baseText('codeNodeEditor.linter.allItems.firstOrLastCalledWithArg'),
 					].join(' ');
 
 					lintings.push({
 						from: start,
-						to: end + '()'.length,
+						to: end,
 						severity: DEFAULT_LINTER_SEVERITY,
 						message,
 					});

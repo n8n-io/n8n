@@ -7,16 +7,18 @@
 					class="node-name"
 					:value="node && node.name"
 					:nodeType="nodeType"
+					:isReadOnly="isReadOnly"
 					@input="nameChanged"
-					:readOnly="isReadOnly"
 				></NodeTitle>
 				<div v-if="!isReadOnly">
 					<NodeExecuteButton
+						v-if="!blockUI"
 						:nodeName="node.name"
-						:disabled="outputPanelEditMode.enabled"
+						:disabled="outputPanelEditMode.enabled && !isTriggerNode"
 						size="small"
 						telemetrySource="parameters"
 						@execute="onNodeExecute"
+						@stopExecution="onStopExecution"
 					/>
 				</div>
 			</div>
@@ -64,7 +66,11 @@
 				</template>
 			</i18n>
 		</div>
-		<div class="node-parameters-wrapper" v-if="node && nodeValid">
+		<div
+			class="node-parameters-wrapper"
+			data-test-id="node-parameters"
+			v-if="node && nodeValid"
+		>
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
 
@@ -72,11 +78,11 @@
 					:parameters="parametersNoneSetting"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path="parameters"
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
-
 					<node-credentials :node="node" @credentialSelected="credentialSelected" />
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
@@ -99,6 +105,7 @@
 				<parameter-input-list
 					:parameters="parametersSetting"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path="parameters"
 					@valueChanged="valueChanged"
 				/>
@@ -106,11 +113,13 @@
 					:parameters="nodeSettings"
 					:hideDelete="true"
 					:nodeValues="nodeValues"
+					:isReadOnly="isReadOnly"
 					path=""
 					@valueChanged="valueChanged"
 				/>
 			</div>
 		</div>
+		<n8n-block-ui :show="blockUI" />
 	</div>
 </template>
 
@@ -122,6 +131,7 @@ import {
 	INodeProperties,
 	NodeHelpers,
 	NodeParameterValue,
+	deepCopy,
 } from 'n8n-workflow';
 import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation } from '@/Interface';
 
@@ -141,14 +151,18 @@ import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import { isCommunityPackageName } from './helpers';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
-export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
+export default mixins(externalHooks, nodeHelpers).extend({
 	name: 'NodeSettings',
 	components: {
 		NodeTitle,
@@ -160,8 +174,14 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		NodeExecuteButton,
 	},
 	computed: {
-		isCurlImportModalOpen() {
-			return this.$store.getters['ui/isModalOpen'](IMPORT_CURL_MODAL_KEY);
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		isCurlImportModalOpen(): boolean {
+			return this.uiStore.isModalOpen(IMPORT_CURL_MODAL_KEY);
 		},
 		nodeTypeName(): string {
 			if (this.nodeType) {
@@ -196,8 +216,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 				'background-color': this.node.color,
 			};
 		},
-		node(): INodeUi {
-			return this.$store.getters.activeNode;
+		node(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
 		parametersSetting(): INodeProperties[] {
 			return this.parameters.filter((item) => {
@@ -217,10 +237,13 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			return this.nodeType.properties;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string } {
-			return this.$store.getters['ui/outputPanelEditMode'];
+			return this.ndvStore.outputPanelEditMode;
 		},
 		isCommunityNode(): boolean {
 			return isCommunityPackageName(this.node.type);
+		},
+		isTriggerNode(): boolean {
+			return this.nodeTypesStore.isTriggerNode(this.node.type);
 		},
 	},
 	props: {
@@ -233,6 +256,13 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		},
 		nodeType: {
 			type: Object as PropType<INodeTypeDescription>,
+		},
+		isReadOnly: {
+			type: Boolean,
+		},
+		blockUI: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
@@ -351,7 +381,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		},
 		isCurlImportModalOpen(newValue, oldValue) {
 			if (newValue === false) {
-				let parameters = this.$store.getters['ui/getHttpNodeParameters'];
+				let parameters = this.uiStore.getHttpNodeParameters || '';
 
 				if (!parameters) return;
 
@@ -367,7 +397,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 						value: parameters,
 					});
 
-					this.$store.dispatch('ui/setHttpNodeParameters', { parameters: '' });
+					this.uiStore.setHttpNodeParameters({ name: IMPORT_CURL_MODAL_KEY, parameters: '' });
 				} catch (_) {}
 			}
 		},
@@ -427,7 +457,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 					// Value should be set
 					if (typeof value === 'object') {
 						// @ts-ignore
-						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, JSON.parse(JSON.stringify(value)));
+						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, deepCopy(value));
 					} else {
 						// @ts-ignore
 						Vue.set(get(this.nodeValues, nameParts.join('.')), lastNamePart, value);
@@ -437,12 +467,14 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 		},
 		credentialSelected(updateInformation: INodeUpdatePropertiesInformation) {
 			// Update the values on the node
-			this.$store.commit('updateNodeProperties', updateInformation);
+			this.workflowsStore.updateNodeProperties(updateInformation);
 
-			const node = this.$store.getters.getNodeByName(updateInformation.name);
+			const node = this.workflowsStore.getNodeByName(updateInformation.name);
 
-			// Update the issues
-			this.updateNodeCredentialIssues(node);
+			if (node) {
+				// Update the issues
+				this.updateNodeCredentialIssues(node);
+			}
 
 			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
@@ -466,7 +498,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 			// Save the node name before we commit the change because
 			// we need the old name to rename the node properly
 			const nodeNameBefore = parameterData.node || this.node.name;
-			const node = this.$store.getters.getNodeByName(nodeNameBefore);
+			const node = this.workflowsStore.getNodeByName(nodeNameBefore);
+
+			if (node === null) {
+				return;
+			}
+
 			if (parameterData.name === 'name') {
 				// Name of node changed so we have to set also the new node name as active
 
@@ -479,10 +516,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 				this.$emit('valueChanged', sendData);
 			} else if (parameterData.name === 'parameters') {
 
-				const nodeType = this.$store.getters['nodeTypes/getNodeType'](
-					node.type,
-					node.typeVersion,
-				) as INodeTypeDescription | null;
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) {
 					return;
 				}
@@ -500,7 +534,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 
 				// Copy the data because it is the data of vuex so make sure that
 				// we do not edit it directly
-				nodeParameters = JSON.parse(JSON.stringify(nodeParameters));
+				nodeParameters = deepCopy(nodeParameters);
 
 				for (const parameterName of Object.keys(parameterData.value)) {
 					//@ts-ignore
@@ -558,23 +592,21 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 					}
 				}
 
-				// Update the data in vuex
-				const updateInformation = {
-					name: node.name,
-					value: nodeParameters,
-				};
+				if (nodeParameters) {
+					const updateInformation: IUpdateInformation = {
+						name: node.name,
+						value: nodeParameters,
+					};
 
-				this.$store.commit('setNodeParameters', updateInformation);
+					this.workflowsStore.setNodeParameters(updateInformation);
 
-				this.updateNodeParameterIssues(node, nodeType);
-				this.updateNodeCredentialIssues(node);
+					this.updateNodeParameterIssues(node, nodeType);
+					this.updateNodeCredentialIssues(node);
+				}
 			} else if (parameterData.name.startsWith('parameters.')) {
 				// A node parameter changed
 
-				const nodeType = this.$store.getters['nodeTypes/getNodeType'](
-					node.type,
-					node.typeVersion,
-				) as INodeTypeDescription | null;
+				const nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				if (!nodeType) {
 					return;
 				}
@@ -591,7 +623,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 
 				// Copy the data because it is the data of vuex so make sure that
 				// we do not edit it directly
-				nodeParameters = JSON.parse(JSON.stringify(nodeParameters));
+				nodeParameters = deepCopy(nodeParameters);
 
 				// Remove the 'parameters.' from the beginning to just have the
 				// actual parameter name
@@ -637,12 +669,12 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 				}
 
 				// Update the data in vuex
-				const updateInformation = {
+				const updateInformation: IUpdateInformation = {
 					name: node.name,
 					value: nodeParameters,
 				};
 
-				this.$store.commit('setNodeParameters', updateInformation);
+				this.workflowsStore.setNodeParameters(updateInformation);
 
 				this.$externalHooks().run('nodeSettings.valueChanged', {
 					parameterPath,
@@ -665,7 +697,8 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 					key: parameterData.name,
 					value: newValue,
 				};
-				this.$store.commit('setNodeValue', updateInformation);
+
+				this.workflowsStore.setNodeValue(updateInformation);
 			}
 		},
 		/**
@@ -734,7 +767,7 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 					}
 				}
 
-				Vue.set(this.nodeValues, 'parameters', JSON.parse(JSON.stringify(this.node.parameters)));
+				Vue.set(this.nodeValues, 'parameters', deepCopy(this.node.parameters));
 			} else {
 				this.nodeValid = false;
 			}
@@ -752,6 +785,9 @@ export default mixins(externalHooks, genericHelpers, nodeHelpers).extend({
 				package_name: this.node.type.split('.')[0],
 				node_type: this.node.type,
 			});
+		},
+		onStopExecution(){
+			this.$emit('stopExecution');
 		},
 	},
 	mounted() {

@@ -2,7 +2,7 @@
 
 @mixin theme {
 	--color-primary-h: 7;
-	--color-primary-s: 100%;
+	--color-primary-s: 90%;
 	--color-primary-l: 68%;
 	--color-primary: hsl(
 		var(--color-primary-h),
@@ -177,7 +177,7 @@
 
 	--color-text-xlight-h: 0;
 	--color-text-xlight-s: 0%;
-	--color-text-xlight-l: 100%;
+	--color-text-xlight-l: 10%;
 	--color-text-xlight: hsl(
 		var(--color-text-xlight-h),
 		var(--color-text-xlight-s),
@@ -204,7 +204,7 @@
 
 	--color-foreground-xlight-h: 0;
 	--color-foreground-xlight-s: 0%;
-	--color-foreground-xlight-l: 0%;
+	--color-foreground-xlight-l: 10%;
 	--color-foreground-xlight: hsl(
 		var(--color-foreground-xlight-h),
 		var(--color-foreground-xlight-s),
@@ -230,8 +230,8 @@
 	);
 
 	--color-background-light-h: 220;
-	--color-background-light-s: 27%;
-	--color-background-light-l: 0%;
+	--color-background-light-s: 10%;
+	--color-background-light-l: 15%;
 	--color-background-light: hsl(
 		var(--color-background-light-h),
 		var(--color-background-light-s),
@@ -265,9 +265,9 @@
 		var(--color-canvas-dot-l)
 	);
 
-	--color-canvas-background-h: 90;
+	--color-canvas-background-h: 200;
 	--color-canvas-background-s: 10%;
-	--color-canvas-background-l: 0%;
+	--color-canvas-background-l: 10%;
 	--color-canvas-background: hsl(
 		var(--color-canvas-background-h),
 		var(--color-canvas-background-s),
@@ -303,6 +303,21 @@
 	--color-json-line: #bfcbd9;
 	--color-json-highlight: #dcdfea;
 
+	--color-code-background: #222020;
+	--color-code-foreground: #f8f8f2;
+	--color-code-caret: #f8f8f0;
+	--color-code-selection: #312b25;
+	--color-code-gutterBackground: #2d2a26;
+	--color-code-gutterForeground: #818080;
+	--color-code-lineHighlight: #312b25;
+	--color-code-tags-comment: #6272a4;
+	--color-code-tags-string: #f1fa8c;
+	--color-code-tags-primitive: #bd93f9;
+	--color-code-tags-keyword: #ff79c6;
+	--color-code-tags-operator: #ff79c6;
+	--color-code-tags-variable: #ea6465;
+	--color-code-tags-definition: #368da5;
+
   // Generated Color Shades from 50 to 950
   // Not yet used in design system
   @each $color in ('neutral', 'success', 'warning', 'danger') {
@@ -313,6 +328,8 @@
 	}
 }
 
-body.theme-dark {
-  @include theme;
+@media (prefers-color-scheme: dark) {
+	body.theme-dark-beta {
+		@include theme;
+	}
 }

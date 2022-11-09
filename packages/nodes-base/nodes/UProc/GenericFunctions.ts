@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import {
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
@@ -15,7 +13,7 @@ export async function uprocApiRequest(
 	body: any = {}, // tslint:disable-line:no-any
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	_option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: IHttpRequestOptions = {

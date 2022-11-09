@@ -81,7 +81,7 @@ export const databasePageOperations: INodeProperties[] = [
 	},
 ];
 
-export const databasePageFields = [
+export const databasePageFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                databasePage:create                         */
 	/* -------------------------------------------------------------------------- */

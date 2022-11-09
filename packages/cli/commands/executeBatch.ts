@@ -11,8 +11,7 @@ import { Command, flags } from '@oclif/command';
 
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { INode, ITaskData, LoggerProxy } from 'n8n-workflow';
+import { ITaskData, LoggerProxy, sleep } from 'n8n-workflow';
 
 import { sep } from 'path';
 
@@ -39,6 +38,7 @@ import {
 import config from '../config';
 import { User } from '../src/databases/entities/User';
 import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
+import { findCliWorkflowStart } from '../src/utils';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';
@@ -146,9 +146,7 @@ export class ExecuteBatch extends Command {
 				});
 			}
 			// eslint-disable-next-line no-await-in-loop
-			await new Promise((resolve) => {
-				setTimeout(resolve, 500);
-			});
+			await sleep(500);
 			executingWorkflows = activeExecutionsInstance.getActiveExecutions();
 		}
 		// We may receive true but when called from `process.on`
@@ -191,8 +189,8 @@ export class ExecuteBatch extends Command {
 
 	// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
 	async run() {
-		process.on('SIGTERM', ExecuteBatch.stopProcess);
-		process.on('SIGINT', ExecuteBatch.stopProcess);
+		process.once('SIGTERM', ExecuteBatch.stopProcess);
+		process.once('SIGINT', ExecuteBatch.stopProcess);
 
 		const logger = getLogger();
 		LoggerProxy.init(logger);
@@ -613,16 +611,6 @@ export class ExecuteBatch extends Command {
 			coveredNodes: {},
 		};
 
-		const requiredNodeTypes = ['n8n-nodes-base.start'];
-		let startNode: INode | undefined;
-		// eslint-disable-next-line no-restricted-syntax
-		for (const node of workflowData.nodes) {
-			if (requiredNodeTypes.includes(node.type)) {
-				startNode = node;
-				break;
-			}
-		}
-
 		// We have a cool feature here.
 		// On each node, on the Settings tab in the node editor you can change
 		// the `Notes` field to add special cases for comparison and snapshots.
@@ -659,14 +647,6 @@ export class ExecuteBatch extends Command {
 		});
 
 		return new Promise(async (resolve) => {
-			if (startNode === undefined) {
-				// If the workflow does not contain a start-node we can not know what
-				// should be executed and with which data to start.
-				executionResult.error = 'Workflow cannot be started as it does not contain a "Start" node.';
-				executionResult.executionStatus = 'warning';
-				resolve(executionResult);
-			}
-
 			let gotCancel = false;
 
 			// Timeouts execution after 5 minutes.
@@ -678,9 +658,11 @@ export class ExecuteBatch extends Command {
 			}, ExecuteBatch.executionTimeout);
 
 			try {
+				const startingNode = findCliWorkflowStart(workflowData.nodes);
+
 				const runData: IWorkflowExecutionDataProcess = {
 					executionMode: 'cli',
-					startNodes: [startNode!.name],
+					startNodes: [startingNode.name],
 					workflowData,
 					userId: ExecuteBatch.instanceOwner.id,
 				};

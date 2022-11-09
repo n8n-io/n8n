@@ -40,6 +40,7 @@
 				:rows="getArgument('rows')"
 				:value="expressionDisplayValue"
 				:title="displayTitle"
+				:readOnly="isReadOnly"
 				@keydown.stop
 			/>
 			<div
@@ -64,6 +65,7 @@
 					:value="value"
 					:parameter="parameter"
 					:path="path"
+					:isReadOnly="isReadOnly"
 					@closeDialog="closeTextEditDialog"
 					@valueChanged="expressionUpdated"
 				></text-edit>
@@ -73,7 +75,7 @@
 					:mode="node.parameters.mode"
 					:jsCode="node.parameters.jsCode"
 					:isReadOnly="isReadOnly"
-					@valueChanged="valueChanged"
+					@valueChanged="valueChangedDebounced"
 				/>
 
 				<div v-else-if="isEditor === true" class="code-edit clickable ph-no-capture" @click="displayEditDialog()">
@@ -333,15 +335,21 @@ import { isResourceLocatorValue } from '@/typeGuards';
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';
-import { mapGetters } from 'vuex';
 import { CODE_NODE_TYPE } from '@/constants';
 import { PropType } from 'vue';
+import { debounceHelper } from './mixins/debounce';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export default mixins(
 	externalHooks,
 	nodeHelpers,
 	showMessage,
 	workflowHelpers,
+	debounceHelper,
 )
 	.extend({
 		name: 'parameter-input',
@@ -468,7 +476,12 @@ export default mixins(
 			},
 		},
 		computed: {
-			...mapGetters('credentials', ['allCredentialTypes']),
+			...mapStores(
+				useCredentialsStore,
+				useNodeTypesStore,
+				useNDVStore,
+				useWorkflowsStore,
+			),
 			expressionDisplayValue(): string {
 				if (this.activeDrop || this.forceShowExpression) {
 					return '';
@@ -495,7 +508,7 @@ export default mixins(
 				}
 
 				// Get the resolved parameter values of the current node
-				const currentNodeParameters = this.$store.getters.activeNode.parameters;
+				const currentNodeParameters = this.ndvStore.activeNode?.parameters;
 				try {
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters);
 
@@ -510,7 +523,7 @@ export default mixins(
 				}
 			},
 			node (): INodeUi | null {
-				return this.$store.getters.activeNode;
+				return this.ndvStore.activeNode;
 			},
 			displayTitle (): string {
 				const interpolation = { interpolate: { shortPath: this.shortPath } };
@@ -550,14 +563,14 @@ export default mixins(
 					returnValue = this.expressionEvaluated;
 				}
 
-				if (this.parameter.type === 'credentialsSelect') {
-					const credType = this.$store.getters['credentials/getCredentialTypeByName'](this.value);
+				if (this.parameter.type === 'credentialsSelect' && typeof this.value === 'string') {
+					const credType = this.credentialsStore.getCredentialTypeByName(this.value);
 					if (credType) {
 						returnValue = credType.displayName;
 					}
 				}
 
-				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
+				if (Array.isArray(returnValue) && this.parameter.type === 'color' && this.getArgument('showAlpha') === true && returnValue.charAt(0) === '#') {
 					// Convert the value to rgba that el-color-picker can display it correctly
 					const bigint = parseInt(returnValue.slice(1), 16);
 					const h = [];
@@ -738,12 +751,14 @@ export default mixins(
 			},
 			credentialSelected (updateInformation: INodeUpdatePropertiesInformation) {
 				// Update the values on the node
-				this.$store.commit('updateNodeProperties', updateInformation);
+				this.workflowsStore.updateNodeProperties(updateInformation);
 
-				const node = this.$store.getters.getNodeByName(updateInformation.name);
+				const node = this.workflowsStore.getNodeByName(updateInformation.name);
 
-				// Update the issues
-				this.updateNodeCredentialIssues(node);
+				if (node) {
+					// Update the issues
+					this.updateNodeCredentialIssues(node);
+				}
 
 				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 			},
@@ -758,12 +773,12 @@ export default mixins(
 					? this.$locale.credText().placeholder(this.parameter)
 					: this.$locale.nodeText().placeholder(this.parameter, this.path);
 			},
-			getOptionsOptionDisplayName(option: { value: string; name: string }): string {
+			getOptionsOptionDisplayName(option: INodePropertyOptions): string {
 				return this.isForCredential
 					? this.$locale.credText().optionsOptionDisplayName(this.parameter, option)
 					: this.$locale.nodeText().optionsOptionDisplayName(this.parameter, option, this.path);
 			},
-			getOptionsOptionDescription(option: { value: string; description: string }): string {
+			getOptionsOptionDescription(option: INodePropertyOptions): string {
 				return this.isForCredential
 					? this.$locale.credText().optionsOptionDescription(this.parameter, option)
 					: this.$locale.nodeText().optionsOptionDescription(this.parameter, option, this.path);
@@ -780,12 +795,12 @@ export default mixins(
 				// Get the resolved parameter values of the current node
 
 				try {
-					const currentNodeParameters = (this.$store.getters.activeNode as INodeUi).parameters;
+					const currentNodeParameters = (this.ndvStore.activeNode as INodeUi).parameters;
 					const resolvedNodeParameters = this.resolveParameter(currentNodeParameters) as INodeParameters;
 					const loadOptionsMethod = this.getArgument('loadOptionsMethod') as string | undefined;
 					const loadOptions = this.getArgument('loadOptions') as ILoadOptions | undefined;
 
-					const options = await this.$store.dispatch('nodeTypes/getNodeParameterOptions',
+					const options = await this.nodeTypesStore.getNodeParameterOptions(
 						{
 							nodeTypeAndVersion: {
 								name: this.node.type,
@@ -823,8 +838,8 @@ export default mixins(
 						parameter_name: this.parameter.displayName,
 						parameter_field_type: this.parameter.type,
 						new_expression: !this.isValueExpression,
-						workflow_id: this.$store.getters.workflowId,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						workflow_id: this.workflowsStore.workflowId,
+						session_id: this.ndvStore.sessionId,
 						source: this.eventSource || 'ndv',
 					});
 				}
@@ -922,6 +937,9 @@ export default mixins(
 
 				this.$emit('textInput', parameterData);
 			},
+			valueChangedDebounced (value: NodeParameterValueType | {} | Date) {
+				this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+			},
 			valueChanged (value: NodeParameterValueType | {} | Date) {
 				if (this.parameter.name === 'nodeCredentialType') {
 					this.activeCredentialType = value as string;
@@ -949,11 +967,11 @@ export default mixins(
 
 				if (this.parameter.name === 'operation' || this.parameter.name === 'mode') {
 					this.$telemetry.track('User set node operation or mode', {
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						node_type: this.node && this.node.type,
 						resource: this.node && this.node.parameters.resource,
 						is_custom: value === CUSTOM_API_CALL_KEY,
-						session_id: this.$store.getters['ui/ndvSessionId'],
+						session_id: this.ndvStore.sessionId,
 						parameter: this.parameter.name,
 					});
 				}

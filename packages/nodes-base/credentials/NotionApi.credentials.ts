@@ -33,6 +33,7 @@ export class NotionApi implements ICredentialType {
 			...requestOptions.headers,
 			Authorization: `Bearer ${credentials.apiKey} `,
 		};
+
 		// if version it's not set, set it to last one
 		// version is only set when the request is made from
 		// the notion node, or was set explicitly in the http node
@@ -42,6 +43,7 @@ export class NotionApi implements ICredentialType {
 				'Notion-Version': '2022-02-22',
 			};
 		}
+
 		return requestOptions;
 	}
 }

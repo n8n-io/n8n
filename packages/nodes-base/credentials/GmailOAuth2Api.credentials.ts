@@ -13,7 +13,7 @@ export class GmailOAuth2Api implements ICredentialType {
 	name = 'gmailOAuth2';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Gmail OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',
