@@ -5,7 +5,6 @@
  */
 
 import {IUser, ICredentialsResponse, IRootState, IWorkflowDb} from "@/Interface";
-import {Store} from "vuex";
 import {EnterpriseEditionFeature} from "@/constants";
 import { useSettingsStore } from "./stores/settings";
 
@@ -54,7 +53,7 @@ export const parsePermissionsTable = (user: IUser, table: IPermissionsTable): IP
  * User permissions definition
  */
 
-export const getCredentialPermissions = (user: IUser, credential: ICredentialsResponse, store: Store<IRootState>) => {
+export const getCredentialPermissions = (user: IUser, credential: ICredentialsResponse) => {
 	const settingsStore = useSettingsStore();
 	const table: IPermissionsTable = [
 		{ name: UserRole.ResourceOwner, test: () => !!(credential && credential.ownedBy && credential.ownedBy.id === user.id) || !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) },
@@ -72,7 +71,7 @@ export const getCredentialPermissions = (user: IUser, credential: ICredentialsRe
 	return parsePermissionsTable(user, table);
 };
 
-export const getWorkflowPermissions = (user: IUser, workflow: IWorkflowDb, store: Store<IRootState>) => {
+export const getWorkflowPermissions = (user: IUser, workflow: IWorkflowDb) => {
 	const table: IPermissionsTable = [
 		// { name: UserRole.ResourceOwner, test: () => !!(workflow && workflow.ownedBy && workflow.ownedBy.id === user.id) || !useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing) },
 		{ name: UserRole.ResourceOwner, test: () => true },

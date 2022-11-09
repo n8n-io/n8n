@@ -82,7 +82,6 @@
 <script lang="ts">
 import Vue from "vue";
 import mixins from "vue-typed-mixins";
-import { mapGetters } from "vuex";
 import {
 	DUPLICATE_MODAL_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
@@ -110,6 +109,7 @@ import { useUIStore } from "@/stores/ui";
 import { useSettingsStore } from "@/stores/settings";
 import { useWorkflowsStore } from "@/stores/workflows";
 import { useRootStore } from "@/stores/n8nRootStore";
+import { useTagsStore } from "@/stores/tags";
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -144,6 +144,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 	},
 	computed: {
 		...mapStores(
+			useTagsStore,
 			useRootStore,
 			useSettingsStore,
 			useUIStore,
@@ -350,7 +351,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 							instanceId: this.rootStore.instanceId,
 						},
 						tags: (tags || []).map(tagId => {
-							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
+							const {usageCount, ...tag} = this.tagsStore.getTagById(tagId);
 
 							return tag;
 						}),

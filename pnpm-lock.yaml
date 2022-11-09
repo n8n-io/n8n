@@ -523,7 +523,6 @@ importers:
       vue2-boring-avatars: 0.3.4
       vue2-teleport: ^1.0.1
       vue2-touch-events: ^3.2.1
-      vuex: ^3.6.2
       xss: ^1.0.10
     dependencies:
       '@codemirror/autocomplete': 6.3.0_2jvnbzbiudbravcwrws2kgi36q
@@ -577,7 +576,6 @@ importers:
       vue2-boring-avatars: 0.3.4
       vue2-teleport: 1.0.1
       vue2-touch-events: 3.2.2
-      vuex: 3.6.2_vue@2.7.13
       xss: 1.0.14
     devDependencies:
       '@intlify/vue-i18n-loader': 1.1.0
@@ -21606,14 +21604,6 @@ packages:
 
   /vue2-touch-events/3.2.2:
     resolution: {integrity: sha512-rGV8jxgOQEJYkJCp7uOBe3hjvmG1arThrq1wGtJHwJTgi65+P2a+0l4CYcQO/U1ZFqTq2/TT2+oTE6H7Y+6Eog==}
-    dev: false
-
-  /vuex/3.6.2_vue@2.7.13:
-    resolution: {integrity: sha512-ETW44IqCgBpVomy520DT5jf8n0zoCac+sxWnn+hMe/CzaSejb/eVw2YToiXYX+Ex/AuHHia28vWTq4goAexFbw==}
-    peerDependencies:
-      vue: ^2.0.0
-    dependencies:
-      vue: 2.7.13
     dev: false
 
   /w3c-hr-time/1.0.2:
