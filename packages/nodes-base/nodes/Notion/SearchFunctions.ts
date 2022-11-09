@@ -4,7 +4,6 @@ import { notionApiRequestAllItems } from "./GenericFunctions";
 export async function getDatabases(
 	this: ILoadOptionsFunctions,
 	filter?: string,
-	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
 	const returnData: INodeListSearchItems[] = [];
 	const body: IDataObject = {
