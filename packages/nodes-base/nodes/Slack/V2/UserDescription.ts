@@ -40,21 +40,44 @@ export const userFields: INodeProperties[] = [
 	/*                                user:info                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
 		name: 'user',
-		type: 'string',
-		typeOptions: {
-			loadOptionsMethod: 'getUsers',
-		},
-		default: '',
+		displayName: 'User',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a user...',
+		description: 'The ID of the user to get information about',
 		displayOptions: {
 			show: {
 				operation: ['info'],
 				resource: ['user'],
 			},
 		},
-		required: true,
-		description: 'The ID of the user to get information about',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a user...',
+				typeOptions: {
+					searchListMethod: 'getUsers',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Not a valid Slack User ID',
+						},
+					},
+				],
+				placeholder: 'U123AB45JGM',
+			},
+		],
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                 user:getAll                                */
@@ -95,20 +118,43 @@ export const userFields: INodeProperties[] = [
 	/*                                user:getPresence                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'User ID',
 		name: 'user',
-		type: 'string',
-		typeOptions: {
-			loadOptionsMethod: 'getUsers',
-		},
-		default: '',
+		displayName: 'User',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		placeholder: 'Select a user...',
+		description: 'The ID of the user to get the online status of',
 		displayOptions: {
 			show: {
 				operation: ['getPresence'],
 				resource: ['user'],
 			},
 		},
-		required: true,
-		description: 'The ID of the user to get the online status of',
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a user...',
+				typeOptions: {
+					searchListMethod: 'getUsers',
+				},
+			},
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[a-zA-Z0-9]{2,}',
+							errorMessage: 'Not a valid Slack User ID',
+						},
+					},
+				],
+				placeholder: 'U123AB45JGM',
+			},
+		],
 	},
 ];

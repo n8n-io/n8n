@@ -1239,7 +1239,7 @@ export class SlackV2 implements INodeType {
 				if (resource === 'user') {
 					//https://api.slack.com/methods/users.info
 					if (operation === 'info') {
-						qs.user = this.getNodeParameter('user', i) as string;
+						qs.user = this.getNodeParameter('user', i, undefined, { extractValue: true }) as string;
 						responseData = await slackApiRequest.call(this, 'GET', '/users.info', {}, qs);
 						responseData = responseData.user;
 					}
@@ -1263,7 +1263,7 @@ export class SlackV2 implements INodeType {
 					}
 					//https://api.slack.com/methods/users.getPresence
 					if (operation === 'getPresence') {
-						qs.user = this.getNodeParameter('user', i) as string;
+						qs.user = this.getNodeParameter('user', i, undefined, { extractValue: true }) as string;
 						responseData = await slackApiRequest.call(this, 'GET', '/users.getPresence', {}, qs);
 					}
 				}
