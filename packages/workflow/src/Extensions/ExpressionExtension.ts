@@ -1,7 +1,7 @@
-import * as BabelCore from '@babel/core';
-import * as BabelTypes from '@babel/types';
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { DateTime } from 'luxon';
 import { ExpressionExtensionError } from '../ExpressionError';
+import { parse, visit, types, print } from 'recast';
 
 import { arrayExtensions } from './ArrayExtensions';
 import { dateExtensions } from './DateExtensions';
@@ -63,8 +63,29 @@ export const hasNativeMethod = (method: string): boolean => {
 };
 
 /**
- * Babel plugin to inject an extender function call into the AST of an expression.
- * After doing that it will collapse all nested extend calls into 1 call.
+ * recast's types aren't great and we need to use a lot of anys
+ */
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const findParent = <T>(path: T, matcher: (path: T) => boolean): T | undefined => {
+	// @ts-ignore
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	let parent = path.parentPath;
+	while (parent) {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		if (matcher(parent)) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+			return parent;
+		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		parent = parent.parentPath;
+	}
+	return;
+};
+
+/**
+ * A function to inject an extender function call into the AST of an expression.
+ * This uses recast to do the transform.
  *
  * ```ts
  * 'a'.method('x') // becomes
@@ -74,33 +95,45 @@ export const hasNativeMethod = (method: string): boolean => {
  * extend(extend('a', 'first', ['x']), 'second', ['y']));
  * ```
  */
-export function expressionExtensionPlugin(): {
-	visitor: {
-		// eslint-disable-next-line @typescript-eslint/naming-convention
-		Identifier(path: BabelCore.NodePath<BabelTypes.Identifier>): void;
-	};
-} {
-	return {
-		visitor: {
-			// eslint-disable-next-line @typescript-eslint/naming-convention
-			Identifier(path: BabelCore.NodePath<BabelTypes.Identifier>) {
-				if (isExpressionExtension(path.node.name) && BabelTypes.isMemberExpression(path.parent)) {
-					const callPath = path.findParent((p) => p.isCallExpression());
+export const extendTransform = (expression: string): { code: string } | undefined => {
+	try {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		const ast = parse(expression);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+		visit(ast, {
+			visitIdentifier(path) {
+				this.traverse(path);
+				if (
+					isExpressionExtension(path.node.name) &&
+					// types.namedTypes.MemberExpression.check(path.parent)
+					path.parentPath?.value?.type === 'MemberExpression'
+				) {
+					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					const callPath: any = findParent(path, (p) => p.value?.type === 'CallExpression');
 
-					if (!callPath || !BabelTypes.isCallExpression(callPath.node)) return;
+					if (!callPath || callPath.value?.type !== 'CallExpression') {
+						return;
+					}
 
-					callPath.replaceWith(
-						BabelTypes.callExpression(BabelTypes.identifier(EXPRESSION_EXTENDER), [
-							path.parent.object,
-							BabelTypes.stringLiteral(path.node.name),
-							BabelTypes.arrayExpression(callPath.node.arguments as BabelTypes.Expression[]),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+					callPath.replace(
+						// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+						types.builders.callExpression(types.builders.identifier(EXPRESSION_EXTENDER), [
+							path.parentPath.value.object,
+							types.builders.stringLiteral(path.node.name),
+							// eslint-disable-next-line
+							types.builders.arrayExpression(callPath.node.arguments),
 						]),
 					);
 				}
 			},
-		},
-	};
-}
+		});
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument
+		return print(ast);
+	} catch (e) {
+		return;
+	}
+};
 
 /**
  * Extender function injected by expression extension plugin to allow calls to extensions.

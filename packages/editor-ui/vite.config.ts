@@ -39,6 +39,7 @@ const lodashAliases = ['orderBy', 'camelCase', 'cloneDeep', 'isEqual'].map(name 
 export default mergeConfig(defineConfig({
 	define: {
 		'process.env': process.env,
+		'global': 'globalThis',
 	},
 	plugins: [
 		legacy({

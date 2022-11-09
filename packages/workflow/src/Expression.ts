@@ -1,13 +1,10 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable id-denylist */
 // @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
-import * as BabelCore from '@babel/core';
 
 import {
+	ExpressionError,
+	ExpressionExtensionError,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -20,24 +17,28 @@ import {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
+import { ExpressionError } from './ExpressionError';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
 // eslint-disable-next-line import/no-cycle
+import { extend, hasExpressionExtension, hasNativeMethod } from './Extensions';
 import {
-	expressionExtensionPlugin,
-	extend,
-	hasExpressionExtension,
-	hasNativeMethod,
-} from './Extensions';
+	ExpressionChunk,
+	ExpressionCode,
+	joinExpression,
+	splitExpression,
+} from './Extensions/ExpressionParser';
+import { extendTransform } from './Extensions/ExpressionExtension';
 
 // @ts-ignore
 
 // Set it to use double curly brackets instead of single ones
+// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 tmpl.brackets.set('{{ }}');
 
 // Make sure that error get forwarded
+// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 tmpl.tmpl.errorHandler = (error: Error) => {
 	if (error instanceof ExpressionError) {
 		if (error.context.failExecution) {
@@ -272,16 +273,28 @@ export class Expression {
 		}
 
 		// Execute the expression
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		let returnValue;
-		let expressionTemplate: string = parameterValue;
-		try {
-			returnValue = tmpl.tmpl(expressionTemplate, data);
-
-			if (returnValue === undefined && hasExpressionExtension(parameterValue)) {
-				expressionTemplate = this.extendSyntax(parameterValue);
-				returnValue = tmpl.tmpl(expressionTemplate, data);
+		const extendedExpression = this.extendSyntax(parameterValue);
+		const returnValue = this.renderExpression(extendedExpression, data);
+		if (typeof returnValue === 'function') {
+			throw new Error('Expression resolved to a function. Please add "()"');
+		} else if (typeof returnValue === 'string') {
+			return returnValue;
+		} else if (returnValue !== null && typeof returnValue === 'object') {
+			if (returnObjectAsString) {
+				return this.convertObjectValueToString(returnValue);
 			}
+		}
+
+		return returnValue;
+	}
+
+	private renderExpression(
+		expression: string,
+		data: IWorkflowDataProxyData,
+	): tmpl.ReturnValue | undefined {
+		try {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+			return tmpl.tmpl(expression, data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
 				// Ignore all errors except if they are ExpressionErrors and they are supposed
@@ -290,50 +303,42 @@ export class Expression {
 					throw error;
 				}
 			}
-
-			// Handle Type Errors,
-			// because we're extending native types,
-			// {{ "".isBlank() }} will always fail once
-			// check and retry with an extended expressionTemplate string
-			// {{ extend("").isBlank() }}
-			if (error instanceof TypeError) {
-				expressionTemplate = this.extendSyntax(parameterValue);
-				returnValue = tmpl.tmpl(expressionTemplate, data);
-			}
 		}
-
-		if (typeof returnValue === 'function') {
-			throw new Error('Expression resolved to a function. Please add "()"');
-		} else if (returnValue !== null && typeof returnValue === 'object') {
-			if (returnObjectAsString) {
-				return this.convertObjectValueToString(returnValue as object);
-			}
-		}
-
-		return returnValue as
-			| NodeParameterValue
-			| INodeParameters
-			| NodeParameterValue[]
-			| INodeParameters[];
+		return undefined;
 	}
 
 	extendSyntax(bracketedExpression: string): string {
 		if (!hasExpressionExtension(bracketedExpression) || hasNativeMethod(bracketedExpression))
 			return bracketedExpression;
 
-		const unbracketedExpression = bracketedExpression.replace(/(^\{\{)|(\}\}$)/g, '').trim();
+		const chunks = splitExpression(bracketedExpression);
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		const output = BabelCore.transformSync(unbracketedExpression, {
-			plugins: [expressionExtensionPlugin],
+		const extendedChunks = chunks.map((chunk): ExpressionChunk => {
+			if (chunk.type === 'code') {
+				const output = extendTransform(chunk.text);
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+				if (!output?.code) {
+					throw new ExpressionExtensionError('Failed to extend syntax');
+				}
+
+				let text = output.code;
+				// We need to cut off any trailing semicolons. These cause issues
+				// with certain types of expression and cause the whole expression
+				// to fail.
+				if (text.trim().endsWith(';')) {
+					text = text.trim().slice(0, -1);
+				}
+
+				return {
+					...chunk,
+					text,
+				} as ExpressionCode;
+			}
+			return chunk;
 		});
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (!output?.code) {
-			throw new ExpressionExtensionError('Failed to extend syntax');
-		}
-
-		return `{{ ${output.code} }}`;
+		return joinExpression(extendedChunks);
 	}
 
 	/**
