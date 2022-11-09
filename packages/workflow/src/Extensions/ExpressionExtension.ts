@@ -68,6 +68,7 @@ export const hasNativeMethod = (method: string): boolean => {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const findParent = <T>(path: T, matcher: (path: T) => boolean): T | undefined => {
+	// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 	// @ts-ignore
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	let parent = path.parentPath;

@@ -1,10 +1,9 @@
+/* eslint-disable @typescript-eslint/ban-ts-comment */
 // @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
 import {
-	ExpressionError,
-	ExpressionExtensionError,
 	IExecuteData,
 	INode,
 	INodeExecutionData,
@@ -17,7 +16,7 @@ import {
 	NodeParameterValueType,
 	WorkflowExecuteMode,
 } from './Interfaces';
-import { ExpressionError } from './ExpressionError';
+import { ExpressionError, ExpressionExtensionError } from './ExpressionError';
 import { WorkflowDataProxy } from './WorkflowDataProxy';
 import type { Workflow } from './Workflow';
 
