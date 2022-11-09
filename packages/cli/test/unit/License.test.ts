@@ -8,6 +8,8 @@ const MOCK_SERVER_URL = 'https://server.com/v1';
 const MOCK_RENEW_OFFSET = 259200;
 const MOCK_INSTANCE_ID = 'instance-id';
 const MOCK_N8N_VERSION = '0.27.0';
+const MOCK_ACTIVATION_KEY = 'activation-key';
+const MOCK_FEATURE_FLAG = 'feat:mock';
 
 describe('License', () => {
 	beforeAll(() => {
@@ -16,9 +18,15 @@ describe('License', () => {
 		config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
 	});
 
+	beforeEach(() => {
+		jest.clearAllMocks();
+	});
+
 	test('initializes license manager', async () => {
 		const license = new License();
+
 		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
+
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: true,
 			autoRenewOffset: MOCK_RENEW_OFFSET,
@@ -30,5 +38,54 @@ describe('License', () => {
 			server: MOCK_SERVER_URL,
 			tenantId: 1,
 		});
+	});
+
+	test('activates license if current license is not valid', async () => {
+		const license = new License();
+		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
+		LicenseManager.prototype.isValid.mockReturnValue(false);
+
+		await license.activate(MOCK_ACTIVATION_KEY);
+
+		expect(LicenseManager.prototype.isValid).toHaveBeenCalled();
+		expect(LicenseManager.prototype.activate).toHaveBeenCalledWith(MOCK_ACTIVATION_KEY);
+	});
+
+	test('does not activate license if current license is valid', async () => {
+		const license = new License();
+		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
+		LicenseManager.prototype.isValid.mockReturnValue(true);
+
+		await license.activate(MOCK_ACTIVATION_KEY);
+
+		expect(LicenseManager.prototype.isValid).toHaveBeenCalled();
+		expect(LicenseManager.prototype.activate).not.toHaveBeenCalledWith();
+	});
+
+	test('renews license', async () => {
+		const license = new License();
+		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
+
+		await license.renew();
+
+		expect(LicenseManager.prototype.renew).toHaveBeenCalled();
+	});
+
+	test('check if feature is enabled', async () => {
+		const license = new License();
+		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
+
+		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+
+		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
+	});
+
+	test('check if sharing feature is enabled', async () => {
+		const license = new License();
+		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
+
+		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
+
+		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 });
