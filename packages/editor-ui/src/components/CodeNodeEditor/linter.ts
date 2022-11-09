@@ -179,7 +179,7 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					lintings.push({
 						from: start,
 						to: end,
-						severity: DEFAULT_LINTER_SEVERITY,
+						severity: 'warning',
 						message: this.$locale.baseText('codeNodeEditor.linter.eachItem.legacyItemAccess'),
 						actions: [
 							{
