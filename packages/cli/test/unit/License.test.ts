@@ -18,15 +18,14 @@ describe('License', () => {
 		config.set('license.autoRenewOffset', MOCK_RENEW_OFFSET);
 	});
 
-	beforeEach(() => {
-		jest.clearAllMocks();
+	let license;
+
+	beforeEach(async () => {
+		license = new License();
+		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
 	});
 
 	test('initializes license manager', async () => {
-		const license = new License();
-
-		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
-
 		expect(LicenseManager).toHaveBeenCalledWith({
 			autoRenewEnabled: true,
 			autoRenewOffset: MOCK_RENEW_OFFSET,
@@ -41,8 +40,6 @@ describe('License', () => {
 	});
 
 	test('activates license if current license is not valid', async () => {
-		const license = new License();
-		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
 		LicenseManager.prototype.isValid.mockReturnValue(false);
 
 		await license.activate(MOCK_ACTIVATION_KEY);
@@ -52,8 +49,6 @@ describe('License', () => {
 	});
 
 	test('does not activate license if current license is valid', async () => {
-		const license = new License();
-		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
 		LicenseManager.prototype.isValid.mockReturnValue(true);
 
 		await license.activate(MOCK_ACTIVATION_KEY);
@@ -63,27 +58,18 @@ describe('License', () => {
 	});
 
 	test('renews license', async () => {
-		const license = new License();
-		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
-
 		await license.renew();
 
 		expect(LicenseManager.prototype.renew).toHaveBeenCalled();
 	});
 
 	test('check if feature is enabled', async () => {
-		const license = new License();
-		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
-
 		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
 	});
 
 	test('check if sharing feature is enabled', async () => {
-		const license = new License();
-		await license.init(MOCK_INSTANCE_ID, MOCK_N8N_VERSION);
-
 		await license.isFeatureEnabled(MOCK_FEATURE_FLAG);
 
 		expect(LicenseManager.prototype.hasFeatureEnabled).toHaveBeenCalledWith(MOCK_FEATURE_FLAG);
