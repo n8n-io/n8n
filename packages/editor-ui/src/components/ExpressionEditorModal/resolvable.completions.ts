@@ -1,5 +1,5 @@
-import { CompletionContext, CompletionResult } from "@codemirror/autocomplete";
-import { syntaxTree } from "@codemirror/language";
+import { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
+import { syntaxTree } from '@codemirror/language';
 
 // @TODO: Fill in after review
 
@@ -21,4 +21,4 @@ export function resolvableCompletions(context: CompletionContext): CompletionRes
 		from: nodeBefore.from + tagBefore.index,
 		options: [{ label: 'autocompletion', info: 'Description of autocompletion' }],
 	};
-};
+}
