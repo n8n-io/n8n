@@ -11,12 +11,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -100,9 +95,9 @@ export async function awsApiRequestRESTAllItems(
 	path: string,
 	body?: string,
 	query: IDataObject = {},
-	headers: IDataObject = {},
-	option: IDataObject = {},
-	region?: string,
+	_headers: IDataObject = {},
+	_option: IDataObject = {},
+	_region?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];

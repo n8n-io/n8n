@@ -12,7 +12,7 @@ export async function clockifyApiRequest(
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	_option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const BASE_URL = 'https://api.clockify.me/api/v1';

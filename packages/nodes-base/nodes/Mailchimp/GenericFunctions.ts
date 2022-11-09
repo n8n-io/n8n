@@ -16,7 +16,7 @@ export async function mailchimpApiRequest(
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
-	headers?: object,
+	_headers?: object,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const authenticationMethod = this.getNodeParameter('authentication', 0) as string;

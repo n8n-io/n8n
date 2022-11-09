@@ -1,7 +1,6 @@
 import { IPollFunctions } from 'n8n-core';
 
 import {
-	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,

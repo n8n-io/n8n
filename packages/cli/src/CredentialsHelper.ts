@@ -38,6 +38,7 @@ import {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	LoggerProxy as Logger,
+	ErrorReporterProxy as ErrorReporter,
 	IHttpRequestHelper,
 } from 'n8n-workflow';
 
@@ -672,6 +673,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				credentialsDecrypted,
 			);
 		} catch (error) {
+			ErrorReporter.error(error);
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {

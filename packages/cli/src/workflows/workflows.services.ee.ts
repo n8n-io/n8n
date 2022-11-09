@@ -127,6 +127,7 @@ export class EEWorkflowsService extends WorkflowsService {
 			workflow.usedCredentials?.push({
 				id: credential.id.toString(),
 				name: credential.name,
+				type: credential.type,
 				currentUserHasAccess: userCredentialIds.includes(credentialId),
 			});
 		});

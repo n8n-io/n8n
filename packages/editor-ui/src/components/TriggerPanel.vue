@@ -108,6 +108,11 @@ import NodeIcon from './NodeIcon.vue';
 import { copyPaste } from './mixins/copyPaste';
 import { showMessage } from '@/components/mixins/showMessage';
 import Vue from 'vue';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 	name: 'TriggerPanel',
@@ -125,12 +130,18 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
 		node(): INodeUi | null {
-			return this.$store.getters.getNodeByName(this.nodeName);
+			return this.workflowsStore.getNodeByName(this.nodeName);
 		},
 		nodeType(): INodeTypeDescription | null {
 			if (this.node) {
-				return this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion);
+				return this.nodeTypesStore.getNodeType(this.node.type, this.node.typeVersion);
 			}
 
 			return null;
@@ -195,8 +206,8 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			return Boolean(this.nodeType && this.nodeType.polling);
 		},
 		isListeningForEvents(): boolean {
-			const waitingOnWebhook = this.$store.getters.executionWaitingForWebhook as boolean;
-			const executedNode = this.$store.getters.executedNode as string | undefined;
+			const waitingOnWebhook = this.workflowsStore.executionWaitingForWebhook as boolean;
+			const executedNode = this.workflowsStore.executedNode as string | undefined;
 			return (
 				!!this.node &&
 				!this.node.disabled &&
@@ -206,15 +217,15 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 			);
 		},
 		workflowRunning(): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		isActivelyPolling(): boolean {
-			const triggeredNode = this.$store.getters.executedNode;
+			const triggeredNode = this.workflowsStore.executedNode;
 
 			return this.workflowRunning && this.isPollingNode && this.nodeName === triggeredNode;
 		},
 		isWorkflowActive(): boolean {
-			return this.$store.getters.isActive;
+			return this.workflowsStore.isWorkflowActive;
 		},
 		header(): string {
 			const serviceName = this.nodeType ? getTriggerNodeServiceName(this.nodeType) : '';
@@ -369,15 +380,15 @@ export default mixins(workflowHelpers, copyPaste, showMessage).extend({
 					this.$emit('activate');
 				} else if (target.dataset.key === 'executions') {
 					this.$telemetry.track('User clicked ndv link', {
-						workflow_id: this.$store.getters.workflowId,
+						workflow_id: this.workflowsStore.workflowId,
 						session_id: this.sessionId,
 						pane: 'input',
 						type: 'open-executions-log',
 					});
-					this.$store.commit('ndv/setActiveNodeName', null);
-					this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+					this.ndvStore.activeNodeName = null;
+					this.uiStore.openModal(EXECUTIONS_MODAL_KEY);
 				} else if (target.dataset.key === 'settings') {
-					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 				}
 			}
 		},

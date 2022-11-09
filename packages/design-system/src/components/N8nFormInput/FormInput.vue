@@ -196,6 +196,8 @@ const showErrors = computed(() => (
 ));
 
 onMounted(() => {
+	emit('validate', !validationError.value);
+
 	if (props.focusInitially && inputRef.value) inputRef.value.focus();
 });
 

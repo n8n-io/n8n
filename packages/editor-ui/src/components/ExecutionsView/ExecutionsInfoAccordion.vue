@@ -3,18 +3,38 @@
 		:class="[$style.accordion, 'mt-2xl']"
 		:title="$locale.baseText('executionsLandingPage.emptyState.accordion.title')"
 		:items="accordionItems"
-		:description="accordionDescription"
 		:initiallyExpanded="shouldExpandAccordion"
 		:headerIcon="accordionIcon"
 		@click="onAccordionClick"
 		@tooltipClick="onItemTooltipClick"
-	></n8n-info-accordion>
+	>
+		<template #customContent>
+			<footer class="mt-2xs">
+				{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer') }}
+				<n8n-tooltip :disabled="!isNewWorkflow">
+					<div slot="content">
+						<n8n-link @click.prevent="onSaveWorkflowClick">{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipLink') }}</n8n-link>
+						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipText') }}
+					</div>
+					<n8n-link @click.prevent="openWorkflowSettings" :class="{[$style.disabled]: isNewWorkflow}" size="small">
+						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.settingsLink') }}
+					</n8n-link>
+				</n8n-tooltip>
+			</footer>
+		</template>
+	</n8n-info-accordion>
 </template>
 
 <script lang="ts">
-import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { mapStores } from 'pinia';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
 import { deepCopy, IWorkflowSettings } from 'n8n-workflow';
-import Vue from 'vue';
+import mixins from 'vue-typed-mixins';
+import { workflowHelpers } from '../mixins/workflowHelpers';
 
 interface IWorkflowSaveSettings {
 	saveFailedExecutions: boolean,
@@ -22,7 +42,7 @@ interface IWorkflowSaveSettings {
 	saveManualExecutions: boolean,
 };
 
-export default Vue.extend({
+export default mixins(workflowHelpers).extend({
 	name: 'executions-info-accordion',
 	props: {
 		initiallyExpanded: {
@@ -45,9 +65,9 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
-		this.defaultValues.saveFailedExecutions = this.$store.getters.saveDataErrorExecution;
-		this.defaultValues.saveSuccessfulExecutions = this.$store.getters.saveDataSuccessExecution;
-		this.defaultValues.saveManualExecutions = this.$store.getters.saveManualExecutions;
+		this.defaultValues.saveFailedExecutions = this.settingsStore.saveDataErrorExecution;
+		this.defaultValues.saveSuccessfulExecutions = this.settingsStore.saveDataSuccessExecution;
+		this.defaultValues.saveManualExecutions = this.settingsStore.saveManualExecutions;
 		this.updateSettings(this.workflowSettings);
 	},
 	watch: {
@@ -56,7 +76,13 @@ export default Vue.extend({
 		},
 	},
 	computed: {
-			accordionItems(): Object[] {
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		accordionItems(): Object[] {
 			return [
 				{
 					id: 'productionExecutions',
@@ -100,15 +126,8 @@ export default Vue.extend({
 			}
 		},
 		workflowSettings(): IWorkflowSettings {
-			const workflowSettings = deepCopy(this.$store.getters.workflowSettings);
+			const workflowSettings = deepCopy(this.workflowsStore.workflowSettings);
 			return workflowSettings;
-		},
-		accordionDescription(): string {
-			return `
-				<footer class="mt-2xs">
-					${this.$locale.baseText('executionsLandingPage.emptyState.accordion.footer')}
-				</footer>
-			`;
 		},
 		accordionIcon(): { icon: string, color: string }|null {
 			if (this.workflowSaveSettings.saveManualExecutions !== true || this.productionExecutionsStatus !== 'saving') {
@@ -116,24 +135,49 @@ export default Vue.extend({
 			}
 			return null;
 		},
+		currentWorkflowId(): string {
+			return this.workflowsStore.workflowId;
+		},
+		isNewWorkflow(): boolean {
+			return !this.currentWorkflowId || (this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID || this.currentWorkflowId === 'new');
+		},
+		workflowName(): string {
+			return this.workflowsStore.workflowName;
+		},
+		currentWorkflowTagIds(): string[] {
+			return this.workflowsStore.workflowTags;
+		},
 	},
 	methods: {
-		updateSettings(settingsInStore: IWorkflowSettings): void {
-			this.workflowSaveSettings.saveFailedExecutions = settingsInStore.saveDataErrorExecution !== 'none';
-			this.workflowSaveSettings.saveSuccessfulExecutions = settingsInStore.saveDataSuccessExecution !== 'none';
-			this.workflowSaveSettings.saveManualExecutions = settingsInStore.saveManualExecutions === undefined ? this.defaultValues.saveManualExecutions : settingsInStore.saveManualExecutions as boolean;
+		updateSettings(workflowSettings: IWorkflowSettings): void {
+			this.workflowSaveSettings.saveFailedExecutions = workflowSettings.saveDataErrorExecution === undefined ?  this.defaultValues.saveFailedExecutions === 'all' : workflowSettings.saveDataErrorExecution === 'all';
+			this.workflowSaveSettings.saveSuccessfulExecutions = workflowSettings.saveDataSuccessExecution === undefined ? this.defaultValues.saveSuccessfulExecutions === 'all' : workflowSettings.saveDataSuccessExecution === 'all';
+			this.workflowSaveSettings.saveManualExecutions = workflowSettings.saveManualExecutions === undefined ? this.defaultValues.saveManualExecutions : workflowSettings.saveManualExecutions as boolean;
 		},
 		onAccordionClick(event: MouseEvent): void {
 			if (event.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
-				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+				this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			}
 		},
 		onItemTooltipClick(item: string, event: MouseEvent): void {
 			if (item === 'productionExecutions' && event.target instanceof HTMLAnchorElement) {
 				event.preventDefault();
-				this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+				this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			}
+		},
+		openWorkflowSettings(event: MouseEvent): void {
+			this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+		},
+		async onSaveWorkflowClick(event: MouseEvent): void {
+			let currentId = undefined;
+			if (this.currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				currentId = this.currentWorkflowId;
+			} else if (this.$route.params.name && this.$route.params.name !== 'new') {
+				currentId = this.$route.params.name;
+			}
+			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
+			if (saved) this.settingsStore.fetchPromptsData();
 		},
 	},
 });
@@ -168,6 +212,14 @@ export default Vue.extend({
 	footer {
 		text-align: left;
 		width: 100%;
+		font-size: var(--font-size-2xs);
+	}
+
+	.disabled a {
+		color: currentColor;
+		cursor: not-allowed;
+		opacity: 0.5;
+		text-decoration: none;
 	}
 }
 

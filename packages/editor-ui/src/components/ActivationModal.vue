@@ -37,9 +37,13 @@
 import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
-import { WORKFLOW_ACTIVE_MODAL_KEY, EXECUTIONS_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG, VIEWS } from '../constants';
+import { WORKFLOW_ACTIVE_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG, VIEWS } from '../constants';
 import { getActivatableTriggerNodes, getTriggerNodeServiceName } from './helpers';
 import { INodeTypeDescription } from 'n8n-workflow';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default Vue.extend({
 	name: 'ActivationModal',
@@ -58,8 +62,8 @@ export default Vue.extend({
 	},
 	methods: {
 		async showExecutionsList () {
-			const activeExecution = this.$store.getters['workflows/getActiveWorkflowExecution'];
-			const currentWorkflow = this.$store.getters.workflowId;
+			const activeExecution = this.workflowsStore.activeWorkflowExecution;
+			const currentWorkflow = this.workflowsStore.workflowId;
 
 			if (activeExecution) {
 				this.$router.push({
@@ -69,10 +73,10 @@ export default Vue.extend({
 			} else {
 				this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } }).catch(() => {});
 			}
-			this.$store.commit('ui/closeModal', WORKFLOW_ACTIVE_MODAL_KEY);
+			this.uiStore.closeModal(WORKFLOW_ACTIVE_MODAL_KEY);
 		},
 		async showSettings() {
-			this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+			this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 		},
 		handleCheckboxChange (checkboxValue: boolean) {
 			this.checked = checkboxValue;
@@ -80,8 +84,13 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
 		triggerContent (): string {
-			const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
+			const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
 			if (!foundTriggers.length) {
 				return '';
 			}
@@ -92,27 +101,28 @@ export default Vue.extend({
 
 			const trigger = foundTriggers[0];
 
-			const triggerNodeType = this.$store.getters['nodeTypes/getNodeType'](trigger.type, trigger.typeVersion) as INodeTypeDescription;
-			if (triggerNodeType.activationMessage) {
-				return triggerNodeType.activationMessage;
-			}
+			const triggerNodeType = this.nodeTypesStore.getNodeType(trigger.type, trigger.typeVersion);
+				if (triggerNodeType) {
+					if (triggerNodeType.activationMessage) {
+						return triggerNodeType.activationMessage;
+					}
 
-			const serviceName = getTriggerNodeServiceName(triggerNodeType);
-			if (trigger.webhookId) {
-				return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
-					interpolate: {
-						serviceName,
-					},
-				});
-			} else if (triggerNodeType.polling) {
-				return this.$locale.baseText('activationModal.yourWorkflowWillNowRegularlyCheck', {
-					interpolate: {
-						serviceName,
-					},
-				});
-			} else {
-				return this.$locale.baseText('activationModal.yourTriggerWillNowFire');
+				const serviceName = getTriggerNodeServiceName(triggerNodeType);
+				if (trigger.webhookId) {
+					return this.$locale.baseText('activationModal.yourWorkflowWillNowListenForEvents', {
+						interpolate: {
+							serviceName,
+						},
+					});
+				} else if (triggerNodeType.polling) {
+					return this.$locale.baseText('activationModal.yourWorkflowWillNowRegularlyCheck', {
+						interpolate: {
+							serviceName,
+						},
+					});
+				}
 			}
+			return this.$locale.baseText('activationModal.yourTriggerWillNowFire');
 		},
 	},
 });
