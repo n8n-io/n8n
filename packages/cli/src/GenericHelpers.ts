@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
@@ -18,26 +17,24 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { validate } from 'class-validator';
-import config from '../config';
-
-// eslint-disable-next-line import/no-cycle
+import config from '@/config';
+import * as Db from '@/Db';
 import {
-	Db,
 	ICredentialsDb,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IPackageVersions,
 	IWorkflowDb,
-	ResponseHelper,
 	IN8nNodePackageJson,
-} from '.';
+} from '@/Interfaces';
+import * as ResponseHelper from '@/ResponseHelper';
 // eslint-disable-next-line import/order
 import { Like } from 'typeorm';
-// eslint-disable-next-line import/no-cycle
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
-import { TagEntity } from './databases/entities/TagEntity';
-import { User } from './databases/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { TagEntity } from '@db/entities/TagEntity';
+import { User } from '@db/entities/User';
+import { CLI_DIR } from '@/constants';
 
 let versionCache: IPackageVersions | undefined;
 
@@ -74,7 +71,7 @@ export async function getVersions(): Promise<IPackageVersions> {
 		return versionCache;
 	}
 
-	const packageFile = await fsReadFile(pathJoin(__dirname, '../../package.json'), 'utf8');
+	const packageFile = await fsReadFile(pathJoin(CLI_DIR, 'package.json'), 'utf8');
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const packageData = jsonParse<IN8nNodePackageJson>(packageFile);
 

@@ -13,13 +13,14 @@
     "url": "git+https://github.com/n8n-io/n8n.git"
   },
   "main": "dist/index",
-  "types": "dist/src/index.d.ts",
+  "types": "dist/index.d.ts",
   "oclif": {
     "commands": "./dist/commands",
     "bin": "n8n"
   },
   "scripts": {
-    "build": "node scripts/build.mjs",
+    "typecheck": "tsc",
+    "build": "tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && node scripts/build.mjs",
     "dev": "concurrently -k -n \"TypeScript,Node\" -c \"yellow.bold,cyan.bold\" \"npm run watch\" \"nodemon\"",
     "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/cli/**/**.ts --write",
     "lint": "eslint .",
@@ -29,12 +30,13 @@
     "start": "run-script-os",
     "start:default": "cd bin && ./n8n",
     "start:windows": "cd bin && n8n",
+    "swagger": "swagger-cli",
     "test": "npm run test:sqlite",
     "test:sqlite": "N8N_LOG_LEVEL=silent DB_TYPE=sqlite jest",
     "test:postgres": "N8N_LOG_LEVEL=silent DB_TYPE=postgresdb jest",
     "test:postgres:alt-schema": "DB_POSTGRESDB_SCHEMA=alt_schema npm run test:postgres",
     "test:mysql": "N8N_LOG_LEVEL=silent DB_TYPE=mysqldb jest",
-    "watch": "tsc --watch",
+    "watch": "concurrently \"tsc -w -p tsconfig.build.json\" \"tsc-alias -w -p tsconfig.build.json\"",
     "typeorm": "ts-node -T ../../node_modules/typeorm/cli.js"
   },
   "bin": {
@@ -97,6 +99,8 @@
     "run-script-os": "^1.0.7",
     "supertest": "^6.2.2",
     "ts-node": "^8.9.1",
+    "tsc-alias": "^1.7.0",
+    "tsconfig-paths": "^3.14.1",
     "typescript": "~4.8.0"
   },
   "dependencies": {

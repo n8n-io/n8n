@@ -1,40 +1,38 @@
 /* eslint-disable no-param-reassign */
-/* eslint-disable import/no-cycle */
 
 import express from 'express';
 import { INode, IPinData, LoggerProxy, Workflow } from 'n8n-workflow';
 
 import axios from 'axios';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import * as Db from '@/Db';
+import * as GenericHelpers from '@/GenericHelpers';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { whereClause } from '@/CredentialsHelper';
+import { NodeTypes } from '@/NodeTypes';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import * as TestWebhooks from '@/TestWebhooks';
+import { WorkflowRunner } from '@/WorkflowRunner';
 import {
-	ActiveWorkflowRunner,
-	Db,
-	GenericHelpers,
-	NodeTypes,
-	ResponseHelper,
-	whereClause,
-	WorkflowHelpers,
-	WorkflowExecuteAdditionalData,
 	IWorkflowResponse,
 	IExecutionPushResponse,
 	IWorkflowExecutionDataProcess,
-	TestWebhooks,
-	WorkflowRunner,
 	IWorkflowDb,
-} from '..';
-import config from '../../config';
-import * as TagHelpers from '../TagHelpers';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { validateEntity } from '../GenericHelpers';
-import { InternalHooksManager } from '../InternalHooksManager';
-import { externalHooks } from '../Server';
-import { getLogger } from '../Logger';
-import type { WorkflowRequest } from '../requests';
-import { isBelowOnboardingThreshold } from '../WorkflowHelpers';
+} from '@/Interfaces';
+import config from '@/config';
+import * as TagHelpers from '@/TagHelpers';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { validateEntity } from '@/GenericHelpers';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { externalHooks } from '@/Server';
+import { getLogger } from '@/Logger';
+import type { WorkflowRequest } from '@/requests';
+import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
 
-const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 export const workflowsController = express.Router();
 
 /**
@@ -325,7 +323,7 @@ workflowsController.delete(
 
 		if (shared.workflow.active) {
 			// deactivate before deleting
-			await activeWorkflowRunner.remove(workflowId);
+			await ActiveWorkflowRunner.getInstance().remove(workflowId);
 		}
 
 		await Db.collections.Workflow.delete(workflowId);
