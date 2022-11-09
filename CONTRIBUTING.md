@@ -66,6 +66,8 @@ After that we recommend enabling [Node.js corepack](https://nodejs.org/docs/late
 
 **IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
 
+**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare pnpm --activate` in a terminal as an administrator.
+
 #### Build tools
 
 The packages which n8n uses depend on a few build tools:
@@ -85,7 +87,7 @@ yum install gcc gcc-c++ make
 Windows:
 
 ```
-pnpm add -g windows-build-tools
+npm add -g windows-build-tools
 ```
 
 #### pnpm workspaces
