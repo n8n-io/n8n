@@ -1,4 +1,4 @@
-import { jsonParse, deepCopy } from '../src/utils';
+import { jsonParse, deepCopy } from '@/utils';
 
 describe('jsonParse', () => {
 	it('parses JSON', () => {

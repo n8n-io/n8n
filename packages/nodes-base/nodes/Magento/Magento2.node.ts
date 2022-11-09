@@ -1,13 +1,8 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -314,7 +309,6 @@ export class Magento2 implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
-		const timezone = this.getTimezone();
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -654,10 +648,11 @@ export class Magento2 implements INodeType {
 						const attributeSetId = this.getNodeParameter('attributeSetId', i) as string;
 						const price = this.getNodeParameter('price', i) as number;
 
-						const { customAttributes, category, ...rest } = this.getNodeParameter(
-							'additionalFields',
-							i,
-						) as {
+						const {
+							customAttributes,
+							category: _category,
+							...rest
+						} = this.getNodeParameter('additionalFields', i) as {
 							customAttributes: {
 								customAttribute: CustomAttribute[];
 							};

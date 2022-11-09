@@ -1,10 +1,10 @@
 import express from 'express';
 
-import { Db } from '../../../src';
-import { Reset } from '../../../commands/user-management/reset';
+import * as Db from '@/Db';
+import { Reset } from '@/commands/user-management/reset';
+import type { Role } from '@db/entities/Role';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
-import type { Role } from '../../../src/databases/entities/Role';
 
 let app: express.Application;
 let testDbName = '';

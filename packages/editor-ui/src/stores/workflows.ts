@@ -287,12 +287,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			if (index === -1) {
 				this.activeWorkflows.push(workflowId);
 			}
+			if (this.workflowsById[workflowId]) {
+				this.workflowsById[workflowId].active = true;
+			}
+			
 		},
 
 		setWorkflowInactive(workflowId: string): void {
 			const index = this.activeWorkflows.indexOf(workflowId);
 			if (index !== -1) {
 				this.activeWorkflows.splice(index, 1);
+			}
+			if (this.workflowsById[workflowId]) {
+				this.workflowsById[workflowId].active = false;
 			}
 		},
 
@@ -642,7 +649,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				return node.name === updateInformation.name;
 			});
 
-			if (node === undefined || node === null) {
+			if (node === undefined || node === null || !updateInformation.key) {
 				throw new Error(`Node with the name "${updateInformation.name}" could not be found to set parameter.`);
 			}
 
