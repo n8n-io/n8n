@@ -416,7 +416,8 @@ export class ScheduleTrigger implements INodeType {
 		const timezone = this.getTimezone();
 		const cronJobs: CronJob[] = [];
 		const intervalArr: NodeJS.Timeout[] = [];
-		const executeTrigger = () => {
+		const staticData = this.getWorkflowStaticData('node');
+		const executeTrigger = (isWeekly?: boolean, i?: number) => {
 			const resultData = {
 				timestamp: moment.tz(timezone).toISOString(true),
 				'Readable date': moment.tz(timezone).format('MMMM Do YYYY, h:mm:ss a'),
@@ -430,7 +431,24 @@ export class ScheduleTrigger implements INodeType {
 				Second: moment.tz(timezone).format('ss'),
 				Timezone: moment.tz(timezone).format('z Z'),
 			};
-			this.emit([this.helpers.returnJsonArray([resultData])]);
+			const weeklyExecution = i ? (staticData[i] as IDataObject) : ({} as IDataObject);
+
+			// Checks if have the right week interval, handels new years as well
+			if (
+				isWeekly &&
+				weeklyExecution &&
+				i &&
+				(moment.tz(timezone).month() - (weeklyExecution.weekInterval as number) ===
+					(weeklyExecution.week as number) ||
+					moment.tz(timezone).month() + 52 - (weeklyExecution.weekInterval as number) ===
+						(weeklyExecution.week as number))
+			) {
+				weeklyExecution.week = moment.tz(timezone).week() as number;
+				staticData[i] = weeklyExecution;
+				this.emit([this.helpers.returnJsonArray([resultData])]);
+			} else {
+				this.emit([this.helpers.returnJsonArray([resultData])]);
+			}
 		};
 		for (let i = 0; i < interval.length; i++) {
 			let intervalValue = 1000;
@@ -485,10 +503,26 @@ export class ScheduleTrigger implements INodeType {
 				const week = interval[i].weeksInterval as number;
 				const days = interval[i].triggerAtDay as IDataObject[];
 				const day = days.length === 0 ? '*' : (days.join(',') as string);
-				const cronTimes: ICronExpression = [minute, hour, `*/${week * 7}`, '*', day];
+				const cronTimes: ICronExpression = [minute, hour, '*', '*', day];
 				const cronExpression = cronTimes.join(' ');
-				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
-				cronJobs.push(cronJob);
+				if (week === 1) {
+					const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+					cronJobs.push(cronJob);
+				} else {
+					const cronJob = new CronJob(
+						cronExpression,
+						() => executeTrigger(true, i),
+						undefined,
+						true,
+						timezone,
+					);
+					const weeklyExecution: IDataObject = {
+						week: moment.tz(timezone).week(),
+						weekInterval: week,
+					};
+					staticData[i] = weeklyExecution;
+					cronJobs.push(cronJob);
+				}
 			}
 
 			if (interval[i].field === 'months') {
