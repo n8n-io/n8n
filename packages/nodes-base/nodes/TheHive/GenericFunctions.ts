@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, jsonParse, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment';
 import { Eq } from './QueryFunctions';

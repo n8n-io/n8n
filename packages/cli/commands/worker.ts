@@ -15,7 +15,14 @@ import PCancelable from 'p-cancelable';
 import { Command, flags } from '@oclif/command';
 import { BinaryDataManager, UserSettings, WorkflowExecute } from 'n8n-core';
 
-import { IExecuteResponsePromiseData, INodeTypes, IRun, Workflow, LoggerProxy } from 'n8n-workflow';
+import {
+	IExecuteResponsePromiseData,
+	INodeTypes,
+	IRun,
+	Workflow,
+	LoggerProxy,
+	sleep,
+} from 'n8n-workflow';
 
 import { FindOneOptions, getConnectionManager } from 'typeorm';
 
@@ -62,11 +69,11 @@ export class Worker extends Command {
 
 	static jobQueue: Queue.JobQueue;
 
-	static processExistCode = 0;
+	static processExitCode = 0;
 	// static activeExecutions = ActiveExecutions.getInstance();
 
 	/**
-	 * Stoppes the n8n in a graceful way.
+	 * Stop n8n in a graceful way.
 	 * Make for example sure that all the webhooks from third party services
 	 * get removed.
 	 */
@@ -88,7 +95,7 @@ export class Worker extends Command {
 			setTimeout(() => {
 				// In case that something goes wrong with shutdown we
 				// kill after max. 30 seconds no matter what
-				process.exit(Worker.processExistCode);
+				process.exit(Worker.processExitCode);
 			}, maxStopTime);
 
 			// Wait for active workflow executions to finish
@@ -103,15 +110,13 @@ export class Worker extends Command {
 					);
 				}
 				// eslint-disable-next-line no-await-in-loop
-				await new Promise((resolve) => {
-					setTimeout(resolve, 500);
-				});
+				await sleep(500);
 			}
 		} catch (error) {
 			LoggerProxy.error('There was an error shutting down n8n.', error);
 		}
 
-		process.exit(Worker.processExistCode);
+		process.exit(Worker.processExitCode);
 	}
 
 	async runJob(job: Queue.Job, nodeTypes: INodeTypes): Promise<Queue.JobResponse> {
@@ -258,8 +263,8 @@ export class Worker extends Command {
 		console.info('Starting n8n worker...');
 
 		// Make sure that n8n shuts down gracefully if possible
-		process.on('SIGTERM', Worker.stopProcess);
-		process.on('SIGINT', Worker.stopProcess);
+		process.once('SIGTERM', Worker.stopProcess);
+		process.once('SIGINT', Worker.stopProcess);
 
 		// Wrap that the process does not close but we can still use async
 		await (async () => {
@@ -270,7 +275,7 @@ export class Worker extends Command {
 				const startDbInitPromise = Db.init().catch((error) => {
 					logger.error(`There was an error initializing DB: "${error.message}"`);
 
-					Worker.processExistCode = 1;
+					Worker.processExitCode = 1;
 					// @ts-ignore
 					process.emit('SIGINT');
 					process.exit(1);
@@ -441,7 +446,7 @@ export class Worker extends Command {
 			} catch (error) {
 				logger.error(`Worker process cannot continue. "${error.message}"`);
 
-				Worker.processExistCode = 1;
+				Worker.processExitCode = 1;
 				// @ts-ignore
 				process.emit('SIGINT');
 				process.exit(1);

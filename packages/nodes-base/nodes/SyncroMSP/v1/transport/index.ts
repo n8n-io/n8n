@@ -7,7 +7,6 @@ import {
 	IDataObject,
 	IHttpRequestOptions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 /**

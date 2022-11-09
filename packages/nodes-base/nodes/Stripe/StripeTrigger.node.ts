@@ -7,7 +7,6 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { stripeApiRequest } from './helpers';

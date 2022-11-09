@@ -33,7 +33,7 @@ import {
 import config from '../config';
 // eslint-disable-next-line import/no-cycle
 import { WEBHOOK_METHODS } from './WebhookHelpers';
-import { initErrorHandling } from './ErrorReporting';
+import { setupErrorMiddleware } from './ErrorReporting';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
 require('body-parser-xml')(bodyParser);
@@ -219,7 +219,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		initErrorHandling(this.app);
+		setupErrorMiddleware(this.app);
 	}
 
 	/**
