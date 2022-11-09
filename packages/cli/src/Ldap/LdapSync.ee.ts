@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable no-underscore-dangle */
 import { Entry } from 'ldapts';
 import { LoggerProxy as Logger } from 'n8n-workflow';
@@ -13,9 +12,9 @@ import {
 	processUsers,
 	saveLdapSyncronization,
 } from './helpers';
-import type { User } from '../databases/entities/User';
-import type { Role } from '../databases/entities/Role';
-import { LdapSyncHistory as ADSync } from '../databases/entities/LdapSyncHistory';
+import type { User } from '@db/entities/User';
+import type { Role } from '@db/entities/Role';
+import { LdapSyncHistory as ADSync } from '@db/entities/LdapSyncHistory';
 import { QueryFailedError } from 'typeorm/error/QueryFailedError';
 
 export class LdapSync {

@@ -1,8 +1,6 @@
-/* eslint-disable import/no-cycle */
-
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import * as config from '../../../config';
-import { DatabaseType } from '../..';
+import * as config from '@/config';
+import { DatabaseType } from '@/Interfaces';
 
 function resolveDataType(dataType: string) {
 	const dbType = config.getEnv('database.type');

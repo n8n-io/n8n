@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import express from 'express';
-import type { User } from '../databases/entities/User';
+import type { User } from '@db/entities/User';
 import { ConnectionSecurity, RunningMode, SyncStatus } from './constants';
 
 export interface LdapConfig {

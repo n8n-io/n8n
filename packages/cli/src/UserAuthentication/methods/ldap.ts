@@ -1,6 +1,5 @@
-/* eslint-disable import/no-cycle */
-import { Db } from '../..';
-import { SignInType } from '../../Ldap/constants';
+import * as Db from '@/Db';
+import { SignInType } from '@/Ldap/constants';
 import {
 	findAndAuthenticateLdapUser,
 	getLdapConfig,
@@ -9,8 +8,8 @@ import {
 	isLdapDisabled,
 	mapLdapAttributesToDb,
 	randomPassword,
-} from '../../Ldap/helpers';
-import type { User } from '../../databases/entities/User';
+} from '@/Ldap/helpers';
+import type { User } from '@db/entities/User';
 
 export const handleLdapLogin = async (
 	email: string,

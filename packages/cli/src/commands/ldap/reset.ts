@@ -1,5 +1,5 @@
-import { Db } from '../../src';
-import { LDAP_FEATURE_NAME, SignInType } from '../../src/Ldap/constants';
+import * as Db from '@/Db';
+import { LDAP_FEATURE_NAME, SignInType } from '@/Ldap/constants';
 import { BaseCommand } from '../BaseCommand';
 
 export class Reset extends BaseCommand {

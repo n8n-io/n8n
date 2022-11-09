@@ -1,5 +1,3 @@
-/* eslint-disable import/no-cycle */
-
 import { LdapService } from './LdapService.ee';
 import { LdapSync } from './LdapSync.ee';
 import type { LdapConfig } from './types';

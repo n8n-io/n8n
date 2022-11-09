@@ -1,16 +1,15 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-shadow */
-/* eslint-disable import/no-cycle */
 import { AES, enc } from 'crypto-js';
 import { Entry } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
 import { UserSettings } from 'n8n-core';
 import { validate } from 'jsonschema';
-import { Db } from '..';
-import config from '../../config';
-import { LdapSyncHistory } from '../databases/entities/LdapSyncHistory';
-import { Role } from '../databases/entities/Role';
-import { User } from '../databases/entities/User';
+import * as Db from '@/Db';
+import config from '@/config';
+import { LdapSyncHistory } from '@db/entities/LdapSyncHistory';
+import { Role } from '@db/entities/Role';
+import { User } from '@db/entities/User';
 import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper';
 import { LdapManager } from './LdapManager.ee';
 
