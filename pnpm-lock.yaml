@@ -1,7 +1,6 @@
 lockfileVersion: 5.4
 
 onlyBuiltDependencies:
-  - cypress
   - sqlite3
   - vue-demi
 
@@ -9720,7 +9719,6 @@ packages:
     resolution: {integrity: sha512-lsaE7dprw5DoXM00skni6W5ElVVLGAdRUUdZjX2dYsGjbY/QnpzWZ95Zom1mkGg0hAaO/QVTZoFVS7Jgr/GUPA==}
     engines: {node: '>=12.0.0'}
     hasBin: true
-    requiresBuild: true
     dependencies:
       '@cypress/request': 2.88.10
       '@cypress/xvfb': 1.2.4_supports-color@8.1.1

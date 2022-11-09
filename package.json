@@ -24,6 +24,7 @@
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
+    "cypress:install": "cypress install",
     "test:e2e:db:clean": "rimraf ~/.n8n/cypress.sqlite ~/.n8n/cypress.sqlite.bak",
     "test:e2e:cypress:run": "cypress run",
     "test:e2e": "pnpm test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:run",
@@ -60,7 +61,6 @@
       "quill@2.0.0-dev.4": "patches/quill@2.0.0-dev.4.patch"
     },
     "onlyBuiltDependencies": [
-      "cypress",
       "sqlite3",
       "vue-demi"
     ],

@@ -36,7 +36,9 @@ jobs:
         run: pnpm test
 
       - name: Test E2E
-        run: pnpm test:e2e:ci:smoke
+        run: |
+          pnpm cypress:install
+          pnpm test:e2e:ci:smoke
 
       - name: Lint
         run: pnpm lint
