@@ -8,9 +8,9 @@ import { entities } from './entities';
 import { mysqlMigrations } from './migrations/mysqldb';
 import { postgresMigrations } from './migrations/postgresdb';
 import { sqliteMigrations } from './migrations/sqlite';
-import type { DatabaseType } from '../Interfaces';
-import config from '../../config';
-import { getConfigValue } from '../GenericHelpers';
+import type { DatabaseType } from '@/Interfaces';
+import config from '@/config';
+import { getConfigValue } from '@/GenericHelpers';
 
 const entitiesDir = path.resolve(__dirname, 'entities');
 
@@ -34,7 +34,6 @@ const getDBConnectionOptions = (dbType: DatabaseType) => {
 					port: config.getEnv(`database.${configDBType}.port`),
 			  };
 	return {
-		name: dbType,
 		entityPrefix,
 		entities: Object.values(entities),
 		migrationsRun: true,

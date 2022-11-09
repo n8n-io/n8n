@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import { Column, ColumnOptions, Entity, PrimaryColumn } from 'typeorm';
 import { IFeatureConfigDb } from '../..';
 import type { LdapConfig } from '../../Ldap/types';

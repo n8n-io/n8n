@@ -1,6 +1,6 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import { LDAP_DEFAULT_CONFIGURATION } from '../../../Ldap/constants';
-import { getTablePrefix, logMigrationEnd, logMigrationStart } from '../../utils/migrationHelpers';
+import { LDAP_DEFAULT_CONFIGURATION } from '@/Ldap/constants';
+import { getTablePrefix, logMigrationEnd, logMigrationStart } from '@db/utils/migrationHelpers';
 
 export class CreateLdapEntities1666304975928 implements MigrationInterface {
 	name = 'CreateLdapEntities1666304975928';

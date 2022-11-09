@@ -1,7 +1,6 @@
 /* eslint-disable no-underscore-dangle */
 import { Client, Entry, ClientOptions } from 'ldapts';
 import { LoggerProxy as Logger } from 'n8n-workflow';
-// eslint-disable-next-line import/no-cycle
 import type { LdapConfig } from './types';
 import { formatUrl } from './helpers';
 import { ConnectionSecurity } from './constants';

@@ -2,9 +2,8 @@ import { existsSync } from 'fs';
 import { readFile } from 'fs/promises';
 import Handlebars from 'handlebars';
 import { join as pathJoin } from 'path';
-// eslint-disable-next-line import/no-cycle
-import { GenericHelpers } from '../..';
-import * as config from '../../../config';
+import * as GenericHelpers from '@/GenericHelpers';
+import config from '@/config';
 import {
 	InviteEmailData,
 	PasswordResetData,

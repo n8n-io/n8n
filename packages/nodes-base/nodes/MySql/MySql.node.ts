@@ -293,19 +293,21 @@ export class MySql implements INodeType {
 					return connection.query(rawQuery);
 				});
 
-				returnItems = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result, index) => {
-					const [rows] = result;
+				returnItems = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
+					(collection, result, index) => {
+						const [rows] = result;
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
-						{ itemData: { item: index } },
-					);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
+							{ itemData: { item: index } },
+						);
 
-					collection.push(...executionData);
+						collection.push(...executionData);
 
-					return collection;
-				}, [] as INodeExecutionData[]);
-
+						return collection;
+					},
+					[] as INodeExecutionData[],
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
@@ -324,15 +326,16 @@ export class MySql implements INodeType {
 				const columnString = this.getNodeParameter('columns', 0) as string;
 				const columns = columnString.split(',').map((column) => column.trim());
 				const insertItems = copyInputItems(items, columns);
-				const insertPlaceholder = `(${columns.map((column) => '?').join(',')})`;
+				const insertPlaceholder = `(${columns.map((_column) => '?').join(',')})`;
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
 
-				const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''
-					} INTO ${table}(${columnString}) VALUES ${items
-						.map((item) => insertPlaceholder)
-						.join(',')};`;
+				const insertSQL = `INSERT ${insertPriority || ''} ${
+					insertIgnore ? 'IGNORE' : ''
+				} INTO ${table}(${columnString}) VALUES ${items
+					.map((_item) => insertPlaceholder)
+					.join(',')};`;
 				const queryItems = insertItems.reduce(
 					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
 					[],

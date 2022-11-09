@@ -100,6 +100,7 @@ export default mixins(
 				name: '',
 				sharedWith: [],
 				ownedBy: {} as IUser,
+				hash: '',
 			}),
 		},
 		readonly: {
@@ -118,7 +119,7 @@ export default mixins(
 			return this.usersStore.currentUser || {} as IUser;
 		},
 		credentialPermissions(): IPermissions {
-			return getWorkflowPermissions(this.currentUser, this.data, this.$store);
+			return getWorkflowPermissions(this.currentUser, this.data);
 		},
 		actions(): Array<{ label: string; value: string; }> {
 			return [

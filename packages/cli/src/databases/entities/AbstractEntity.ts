@@ -1,6 +1,6 @@
 import { BeforeUpdate, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { IsDate, IsOptional } from 'class-validator';
-import config from '../../../config';
+import config from '@/config';
 
 const dbType = config.getEnv('database.type');
 

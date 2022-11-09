@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import express from 'express';
 import { LdapManager } from '../LdapManager.ee';
 import { getLdapConfig, getLdapSyncronizations, updateLdapConfig } from '../helpers';
