@@ -20,6 +20,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
+import { useCredentialsStore } from '@/stores/credentials';
 
 
 export default mixins(
@@ -103,6 +104,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useCredentialsStore,
 			useSettingsStore,
 			useUIStore,
 			useUsersStore,
@@ -110,7 +112,7 @@ export default mixins(
 	},
 	methods: {
 		async getAllCredentials() {
-			const credentials = await this.$store.dispatch('credentials/fetchAllCredentials');
+			const credentials = await this.credentialsStore.fetchAllCredentials();
 			this.credentialsCount = credentials.length;
 		},
 		async getAllWorkflows() {

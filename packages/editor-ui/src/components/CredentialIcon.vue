@@ -7,6 +7,7 @@
 </template>
 
 <script lang="ts">
+import { useCredentialsStore } from '@/stores/credentials';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { ICredentialType, INodeTypeDescription } from 'n8n-workflow';
@@ -21,6 +22,7 @@ export default Vue.extend({
 	},
 	computed: {
 		...mapStores(
+			useCredentialsStore,
 			useNodeTypesStore,
 			useRootStore,
 		),
@@ -42,8 +44,7 @@ export default Vue.extend({
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
 				return this.nodeTypesStore.getNodeType(nodeType);
 			}
-
-			const nodesWithAccess = this.$store.getters['credentials/getNodesWithAccess'](this.credentialTypeName);
+			const nodesWithAccess = this.credentialsStore.getNodesWithAccess(this.credentialTypeName);
 
 			if (nodesWithAccess.length) {
 				return nodesWithAccess[0];
@@ -53,8 +54,12 @@ export default Vue.extend({
 		},
 	},
 	methods: {
-		getCredentialWithIcon(name: string): ICredentialType | null {
-			const type = this.$store.getters['credentials/getCredentialTypeByName'](name);
+		getCredentialWithIcon(name: string | null): ICredentialType | null {
+			if (!name) {
+				return null;
+			}
+
+			const type = this.credentialsStore.getCredentialTypeByName(name);
 
 			if (!type) {
 				return null;
@@ -65,9 +70,12 @@ export default Vue.extend({
 			}
 
 			if (type.extends) {
-				return type.extends.reduce((accu: string | null, type: string) => {
-					return accu || this.getCredentialWithIcon(type);
-				}, null);
+				let parentCred = null;
+				type.extends.forEach(name => {
+					parentCred = this.getCredentialWithIcon(name);
+					if (parentCred !== null) return;
+				});
+				return parentCred;
 			}
 
 			return null;
