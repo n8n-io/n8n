@@ -58,8 +58,10 @@ class License {
 			});
 
 			await this.manager.initialize();
-		} catch (e) {
-			console.log('e', e);
+		} catch (e: unknown) {
+			if (e instanceof Error) {
+				this.logger.error('Could not initialize license manager sdk', e);
+			}
 		}
 	}
 
@@ -75,8 +77,9 @@ class License {
 		try {
 			await this.manager.activate(activationKey);
 		} catch (e) {
-			// todo
-			console.log('e', e);
+			if (e instanceof Error) {
+				this.logger.error('Could not activate license', e);
+			}
 		}
 	}
 
@@ -88,8 +91,9 @@ class License {
 		try {
 			await this.manager.renew();
 		} catch (e) {
-			// todo
-			console.log('e', e);
+			if (e instanceof Error) {
+				this.logger.error('Could not renew license', e);
+			}
 		}
 	}
 
