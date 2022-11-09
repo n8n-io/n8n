@@ -30,7 +30,7 @@ By default, n8n runs in the `en` (English) locale. To have run it in a different
 
 ```
 export N8N_DEFAULT_LOCALE=de
-npm run start
+pnpm start
 ```
 
 Output:
@@ -464,7 +464,7 @@ When translating a base text file at `/packages/editor-ui/src/plugins/i18n/local
 
 ```sh
 export N8N_DEFAULT_LOCALE=de
-npm run start
+pnpm start
 ```
 
 2. Open another terminal:
@@ -472,7 +472,7 @@ npm run start
 ```sh
 export N8N_DEFAULT_LOCALE=de
 cd packages/editor-ui
-npm run dev
+pnpm dev
 ```
 
 Changing the base text file will trigger a rebuild of the client at `http://localhost:8080`.
@@ -485,7 +485,7 @@ When translating a dynamic text file at `/packages/nodes-base/nodes/{node}/trans
 
 ```sh
 export N8N_DEFAULT_LOCALE=de
-npm run start
+pnpm start
 ```
 
 2. Open another terminal:
@@ -493,8 +493,8 @@ npm run start
 ```sh
 export N8N_DEFAULT_LOCALE=de
 cd packages/nodes-base
-npm run build:translations
-npm run watch
+pnpm build:translations
+pnpm watch
 ```
 
 After changing the dynamic text file:
@@ -502,6 +502,6 @@ After changing the dynamic text file:
 1. Stop and restart the first terminal.
 2. Refresh the browser at `http://localhost:5678`
 
-If a `headerText` section was changed, re-run `npm run build:translations` in `/nodes-base`.
+If a `headerText` section was changed, re-run `pnpm build:translations` in `/nodes-base`.
 
 > **Note**: To translate base and dynamic text simultaneously, run three terminals following the steps from both sections (first terminal running only once) and browse `http://localhost:8080`.
