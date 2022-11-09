@@ -1,7 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 import { IDataObject, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { eventfields } from '../../helpers/utils';
-import { microsoftApiRequest, microsoftApiRequestAllItems } from '../../transport';
+import { microsoftApiRequest } from '../../transport';
 
 export const description: INodeProperties[] = [
 	{

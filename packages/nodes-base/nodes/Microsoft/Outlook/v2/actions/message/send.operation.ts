@@ -229,8 +229,6 @@ export async function execute(
 	index: number,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[]> {
-	let responseData;
-
 	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
 	const toRecipients = this.getNodeParameter('toRecipients', index) as string;
 	const subject = this.getNodeParameter('subject', index) as string;
@@ -285,7 +283,7 @@ export async function execute(
 		saveToSentItems,
 	};
 
-	responseData = await microsoftApiRequest.call(this, 'POST', `/sendMail`, body, {});
+	await microsoftApiRequest.call(this, 'POST', `/sendMail`, body, {});
 
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray({ success: true }),
