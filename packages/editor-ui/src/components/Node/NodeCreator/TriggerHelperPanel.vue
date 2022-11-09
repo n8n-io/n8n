@@ -149,6 +149,7 @@ function onSubcategorySelected(subcategory: INodeCreateElement) {
 }
 function onSubcategoryClose(subcategory: INodeCreateElement) {
 	state.isRoot = isRootSubcategory(subcategory);
+	state.selectedSubcategory = '';
 }
 
 const isAppEventSubcategory = computed(() => state.selectedSubcategory === "*");
