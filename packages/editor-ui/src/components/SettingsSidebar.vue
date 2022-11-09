@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
 			<template #header>
-				<div :class="$style.returnButton" @click="onReturn">
+				<div :class="$style.returnButton" @click="$emit('return')">
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
@@ -24,7 +24,6 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { pushConnection } from '@/components/mixins/pushConnection';
@@ -125,9 +124,6 @@ export default mixins(userHelpers, pushConnection).extend({
 		},
 		onVersionClick() {
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
-		},
-		onReturn() {
-			this.$router.push({ name: VIEWS.HOMEPAGE });
 		},
 		openUpdatesPanel() {
 			this.uiStore.openModal(VERSIONS_MODAL_KEY);

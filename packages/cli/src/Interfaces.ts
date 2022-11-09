@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable import/no-cycle */
 import {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
@@ -34,15 +33,15 @@ import { LdapSyncHistory } from './databases/entities/LdapSyncHistory';
 import type { LdapConfig } from './Ldap/types';
 
 import type { Request } from 'express';
-import type { InstalledNodes } from './databases/entities/InstalledNodes';
-import type { InstalledPackages } from './databases/entities/InstalledPackages';
-import type { Role } from './databases/entities/Role';
-import type { Settings } from './databases/entities/Settings';
-import type { SharedCredentials } from './databases/entities/SharedCredentials';
-import type { SharedWorkflow } from './databases/entities/SharedWorkflow';
-import type { TagEntity } from './databases/entities/TagEntity';
-import type { User } from './databases/entities/User';
-import type { WorkflowEntity } from './databases/entities/WorkflowEntity';
+import type { InstalledNodes } from '@db/entities/InstalledNodes';
+import type { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { Role } from '@db/entities/Role';
+import type { Settings } from '@db/entities/Settings';
+import type { SharedCredentials } from '@db/entities/SharedCredentials';
+import type { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import type { TagEntity } from '@db/entities/TagEntity';
+import type { User } from '@db/entities/User';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
 export interface IActivationError {
 	time: number;
@@ -106,16 +105,6 @@ export interface IWebhookDb {
 export interface IFeatureConfigDb {
 	name: string;
 	data: string | LdapConfig;
-}
-
-// ----------------------------------
-//               settings
-// ----------------------------------
-
-export interface ISettingsDb {
-	key: string;
-	value: string | boolean | IDataObject | number;
-	loadOnStartup: boolean;
 }
 
 // ----------------------------------

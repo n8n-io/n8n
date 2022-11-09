@@ -1,20 +1,38 @@
-import { LoggerProxy } from 'n8n-workflow';
-import { FindManyOptions, FindOneOptions, ObjectLiteral } from 'typeorm';
-import {
-	ActiveWorkflowRunner,
-	Db,
-	InternalHooksManager,
-	ResponseHelper,
-	whereClause,
-	WorkflowHelpers,
-} from '..';
-import config from '../../config';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { User } from '../databases/entities/User';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { validateEntity } from '../GenericHelpers';
-import { externalHooks } from '../Server';
-import * as TagHelpers from '../TagHelpers';
+import { JsonObject, jsonParse, LoggerProxy } from 'n8n-workflow';
+import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
+import { validate as jsonSchemaValidate } from 'jsonschema';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import * as Db from '@/Db';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { whereClause } from '@/CredentialsHelper';
+import config from '@/config';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { User } from '@db/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { validateEntity } from '@/GenericHelpers';
+import { externalHooks } from '@/Server';
+import * as TagHelpers from '@/TagHelpers';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+
+export interface IGetWorkflowsQueryFilter {
+	id?: number | string;
+	name?: string;
+	active?: boolean;
+}
+
+const schemaGetWorkflowsQueryFilter = {
+	$id: '/IGetWorkflowsQueryFilter',
+	type: 'object',
+	properties: {
+		id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
+		name: { type: 'string' },
+		active: { type: 'boolean' },
+	},
+};
+
+const allowedWorkflowsQueryFilterFields = Object.keys(schemaGetWorkflowsQueryFilter.properties);
 
 export class WorkflowsService {
 	static async getSharing(
@@ -45,6 +63,80 @@ export class WorkflowsService {
 
 	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
 		return Db.collections.Workflow.findOne(workflow, options);
+	}
+
+	static async getMany(user: User, rawFilter: string) {
+		const sharedWorkflowIds = await getSharedWorkflowIds(user);
+		if (sharedWorkflowIds.length === 0) {
+			// return early since without shared workflows there can be no hits
+			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
+			return [];
+		}
+
+		let filter: IGetWorkflowsQueryFilter | undefined = undefined;
+		if (rawFilter) {
+			try {
+				const filterJson: JsonObject = jsonParse(rawFilter);
+				if (filterJson) {
+					Object.keys(filterJson).map((key) => {
+						if (!allowedWorkflowsQueryFilterFields.includes(key)) delete filterJson[key];
+					});
+					if (jsonSchemaValidate(filterJson, schemaGetWorkflowsQueryFilter).valid) {
+						filter = filterJson as IGetWorkflowsQueryFilter;
+					}
+				}
+			} catch (error) {
+				LoggerProxy.error('Failed to parse filter', {
+					userId: user.id,
+					filter,
+				});
+				throw new ResponseHelper.ResponseError(
+					`Parameter "filter" contained invalid JSON string.`,
+					500,
+					500,
+				);
+			}
+		}
+
+		// safeguard against querying ids not shared with the user
+		if (filter?.id !== undefined) {
+			const workflowId = parseInt(filter.id.toString());
+			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
+				LoggerProxy.verbose(`User ${user.id} attempted to query non-shared workflow ${workflowId}`);
+				return [];
+			}
+		}
+
+		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+
+		const query: FindManyOptions<WorkflowEntity> = {
+			select: config.get('enterprise.features.sharing') ? [...fields, 'nodes'] : fields,
+			relations: config.get('enterprise.features.sharing')
+				? ['tags', 'shared', 'shared.user', 'shared.role']
+				: ['tags'],
+		};
+
+		if (config.getEnv('workflowTagsDisabled')) {
+			delete query.relations;
+		}
+
+		const workflows = await Db.collections.Workflow.find(
+			Object.assign(query, {
+				where: {
+					id: In(sharedWorkflowIds),
+					...filter,
+				},
+			}),
+		);
+
+		return workflows.map((workflow) => {
+			const { id, ...rest } = workflow;
+
+			return {
+				id: id.toString(),
+				...rest,
+			};
+		});
 	}
 
 	static async updateWorkflow(

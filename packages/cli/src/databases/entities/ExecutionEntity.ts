@@ -1,7 +1,7 @@
 import type { WorkflowExecuteMode } from 'n8n-workflow';
 import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 import { datetimeColumnType, jsonColumnType } from './AbstractEntity';
-import type { IExecutionFlattedDb, IWorkflowDb } from '../../Interfaces';
+import type { IExecutionFlattedDb, IWorkflowDb } from '@/Interfaces';
 
 @Entity()
 @Index(['workflowId', 'id'])

@@ -1,7 +1,6 @@
 import Vue from 'vue';
 import axios from 'axios';
 import VueI18n from 'vue-i18n';
-import { Store } from "vuex";
 import { INodeTranslationHeaders, IRootState } from '@/Interface';
 import {
 	deriveMiddleKey,
@@ -23,7 +22,7 @@ locale.use('en');
 
 export let i18n: I18nClass;
 
-export function I18nPlugin(vue: typeof Vue, store: Store<IRootState>): void {
+export function I18nPlugin(vue: typeof Vue): void {
 	i18n = new I18nClass();
 
 	Object.defineProperty(vue, '$locale', {

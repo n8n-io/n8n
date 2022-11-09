@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';
 
