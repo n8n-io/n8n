@@ -559,7 +559,7 @@ const router = new Router({
 					path: 'ldap',
 					name: VIEWS.LDAP_SETTINGS,
 					components: {
-						default: SettingsLdapView,
+						settingsView: SettingsLdapView,
 					},
 					meta: {
 						permissions: {

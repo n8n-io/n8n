@@ -1,110 +1,109 @@
 <template>
-	<SettingsView>
-		<div :class="$style.container">
-			<div :class="$style.header">
-				<n8n-heading size="2xlarge">
-					{{ $locale.baseText('settings.ldap') }}
-				</n8n-heading>
+		<div>
+			<div :class="$style.container">
+				<div :class="$style.header">
+					<n8n-heading size="2xlarge">
+						{{ $locale.baseText('settings.ldap') }}
+					</n8n-heading>
+				</div>
+				<div>
+					<n8n-form-inputs
+						v-if="formInputs"
+						:inputs="formInputs"
+						:eventBus="formBus"
+						:columnView="true"
+						@input="onInput"
+						@ready="onReadyToSubmit"
+						@submit="onSubmit"
+					/>
+				</div>
+				<div>
+					<n8n-button
+						float="right"
+						:label="$locale.baseText('settings.ldap.save')"
+						size="large"
+						:disabled="!hasAnyChanges || !readyToSubmit"
+						@click="onSaveClick"
+					/>
+					<n8n-button
+						float="left"
+						:label="
+							loadingTestConnection
+								? $locale.baseText('settings.ldap.testingConnection')
+								: $locale.baseText('settings.ldap.testConnection')
+						"
+						size="large"
+						:disabled="hasAnyChanges || !readyToSubmit"
+						:loading="loadingTestConnection"
+						@click="onTestConnectionClick"
+					/>
+				</div>
 			</div>
-			<div>
-				<n8n-form-inputs
-					v-if="formInputs"
-					:inputs="formInputs"
-					:eventBus="formBus"
-					:columnView="true"
-					@input="onInput"
-					@ready="onReadyToSubmit"
-					@submit="onSubmit"
-				/>
-			</div>
+			<div :class="$style.syncTable">
+				<el-table
+					v-loading="loadingTable"
+					:border="true"
+					:stripe="true"
+					:data="dataTable"
+					:cell-style="cellClassStyle"
+					style="width: 100%"
+					height="250"
+					:key="tableKey"
+				>
+					<el-table-column
+						prop="status"
+						:label="$locale.baseText('settings.ldap.syncronizationTable.column.status')"
+					>
+					</el-table-column>
+					<el-table-column
+						prop="endedAt"
+						:label="$locale.baseText('settings.ldap.syncronizationTable.column.endedAt')"
+					>
+					</el-table-column>
+					<el-table-column
+						prop="runMode"
+						:label="$locale.baseText('settings.ldap.syncronizationTable.column.runMode')"
+					>
+					</el-table-column>
+					<el-table-column
+						prop="runTime"
+						:label="$locale.baseText('settings.ldap.syncronizationTable.column.runTime')"
+					>
+					</el-table-column>
+					<el-table-column
+						prop="details"
+						:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
+					>
+					</el-table-column>
 
-			<div>
+					<infinite-loading
+						slot="append"
+						@infinite="getLdapSyncronizations"
+						force-use-infinite-wrapper=".el-table__body-wrapper"
+					>
+					</infinite-loading>
+				</el-table>
+			</div>
+			<div :class="$style.syncronizationActionButtons">
 				<n8n-button
 					float="right"
-					:label="$locale.baseText('settings.ldap.save')"
+					:label="$locale.baseText('settings.ldap.dryRun')"
+					type="secondary"
 					size="large"
-					:disabled="!hasAnyChanges || !readyToSubmit"
-					@click="onSaveClick"
+					:disabled="hasAnyChanges || !readyToSubmit"
+					:loading="loadingDryRun"
+					@click="onDryRunClick"
 				/>
 				<n8n-button
 					float="left"
-					:label="
-						loadingTestConnection
-							? $locale.baseText('settings.ldap.testingConnection')
-							: $locale.baseText('settings.ldap.testConnection')
-					"
+					:label="$locale.baseText('settings.ldap.synchronizeNow')"
 					size="large"
 					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingTestConnection"
-					@click="onTestConnectionClick"
+					:loading="loadingLiveRun"
+					@click="onLiveRunClick"
 				/>
 			</div>
 		</div>
-		<div :class="$style.syncTable">
-			<el-table
-				v-loading="loadingTable"
-				:border="true"
-				:stripe="true"
-				:data="dataTable"
-				:cell-style="cellClassStyle"
-				style="width: 100%"
-				height="250"
-				:key="tableKey"
-			>
-				<el-table-column
-					prop="status"
-					:label="$locale.baseText('settings.ldap.syncronizationTable.column.status')"
-				>
-				</el-table-column>
-				<el-table-column
-					prop="endedAt"
-					:label="$locale.baseText('settings.ldap.syncronizationTable.column.endedAt')"
-				>
-				</el-table-column>
-				<el-table-column
-					prop="runMode"
-					:label="$locale.baseText('settings.ldap.syncronizationTable.column.runMode')"
-				>
-				</el-table-column>
-				<el-table-column
-					prop="runTime"
-					:label="$locale.baseText('settings.ldap.syncronizationTable.column.runTime')"
-				>
-				</el-table-column>
-				<el-table-column
-					prop="details"
-					:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
-				>
-				</el-table-column>
-
-				<infinite-loading
-					slot="append"
-					@infinite="getLdapSyncronizations"
-					force-use-infinite-wrapper=".el-table__body-wrapper"
-				>
-				</infinite-loading>
-			</el-table>
-		</div>
-		<div :class="$style.syncronizationActionButtons">
-			<n8n-button
-				float="right"
-				:label="$locale.baseText('settings.ldap.dryRun')"
-				type="secondary"
-				size="large"
-				:disabled="hasAnyChanges || !readyToSubmit"
-				:loading="loadingDryRun"
-				@click="onDryRunClick"
-			/>
-			<n8n-button
-				float="left"
-				:label="$locale.baseText('settings.ldap.synchronizeNow')"
-				size="large"
-				:disabled="hasAnyChanges || !readyToSubmit"
-				:loading="loadingLiveRun"
-				@click="onLiveRunClick"
-			/>
-		</div>
-	</SettingsView>
 </template>
 
 <script lang="ts">
@@ -114,7 +113,6 @@ import { ILdapConfig, ILdapSyncData, ILdapSyncTable, IFormInputs, IUser } from '
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 
-import SettingsView from './SettingsView.vue';
 import humanizeDuration from 'humanize-duration';
 import type { rowCallbackParams, cellCallbackParams } from 'element-ui/types/table';
 import { capitalizeFirstLetter } from '@/utils';
@@ -138,7 +136,6 @@ type cellType = cellCallbackParams & { property: keyof tableRow };
 export default mixins(showMessage).extend({
 	name: 'SettingsLdapView',
 	components: {
-		SettingsView,
 		InfiniteLoading,
 	},
 	data() {
