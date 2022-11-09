@@ -421,4 +421,9 @@ export enum STORES {
 	NDV = 'ndv',
 	TEMPLATES = 'templates',
 	NODE_TYPES = 'nodeTypes',
+	CREDENTIALS = 'credentials',
+	TAGS = 'tags',
+	VERSIONS = 'versions',
+	NODE_CREATOR = 'nodeCreator',
+	WEBHOOKS = 'webhooks',
 }

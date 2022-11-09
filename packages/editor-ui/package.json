@@ -76,7 +76,6 @@
     "vue2-boring-avatars": "0.3.4",
     "vue2-teleport": "^1.0.1",
     "vue2-touch-events": "^3.2.1",
-    "vuex": "^3.6.2",
     "xss": "^1.0.10"
   },
   "devDependencies": {
