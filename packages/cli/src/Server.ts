@@ -142,6 +142,7 @@ import {
 	IN8nUISettings,
 	IPackageVersions,
 	NodeTypes,
+	NodeTypeActions,
 	Push,
 	ResponseHelper,
 	TestWebhooks,
@@ -902,11 +903,12 @@ class App {
 					const withActions = req.query.withActions === 'true';
 
 					const nodeTypes = NodeTypes();
+					const nodeTypeActions = NodeTypeActions();
 					const allNodes = nodeTypes.getAll();
 
 					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
 						const nodeInfo = withActions
-							? nodeTypes.extendWithActions({ ...nodeType.description })
+							? nodeTypeActions.extendWithActions({ ...nodeType.description })
 							: { ...nodeType.description };
 
 						if (req.query.includeProperties !== 'true') {
