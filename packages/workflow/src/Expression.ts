@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/ban-ts-comment */
-// @ts-ignore
 import * as tmpl from '@n8n_io/riot-tmpl';
 import { DateTime, Duration, Interval } from 'luxon';
 
@@ -30,14 +28,10 @@ import {
 } from './Extensions/ExpressionParser';
 import { extendTransform } from './Extensions/ExpressionExtension';
 
-// @ts-ignore
-
 // Set it to use double curly brackets instead of single ones
-// eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 tmpl.brackets.set('{{ }}');
 
 // Make sure that error get forwarded
-// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 tmpl.tmpl.errorHandler = (error: Error) => {
 	if (error instanceof ExpressionError) {
 		if (error.context.failExecution) {
@@ -291,7 +285,6 @@ export class Expression {
 		data: IWorkflowDataProxyData,
 	): tmpl.ReturnValue | undefined {
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 			return tmpl.tmpl(expression, data);
 		} catch (error) {
 			if (error instanceof ExpressionError) {
