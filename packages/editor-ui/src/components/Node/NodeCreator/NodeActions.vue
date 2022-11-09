@@ -175,6 +175,7 @@ const { subtractedCategories, search } = toRefs(state);
 <style lang="scss" module>
 .nodeActions {
 	border: $node-creator-border-color solid 1px;
+	border-top: none;
 	z-index: 1;
 	display: flex;
 	flex-direction: column;

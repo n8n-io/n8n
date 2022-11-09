@@ -15,12 +15,12 @@
 			:data-key="item.key"
 		>
 			<creator-item
-				:allow-actions="allowActions"
 				:item="item"
 				:active="activeIndex === index && !disabled"
 				:clickable="!disabled"
 				:disabled="disabled"
-				:simple-node-style="simpleNodeStyle"
+				:allow-actions="withActionsGetter && withActionsGetter(item)"
+				:simple-node-style="withActionsGetter && withActionsGetter(item)"
 				:lastNode="
 					index === elements.length - 1 || elements[index + 1].type !== 'node'
 				"
@@ -41,9 +41,8 @@ export interface Props {
 	elements: INodeCreateElement[];
 	activeIndex?: number;
 	disabled?: boolean;
-	simpleNodeStyle?: boolean;
 	transitionsEnabled?: boolean;
-	allowActions?: boolean;
+	withActionsGetter?: Function;
 }
 
 const props = withDefaults(defineProps<Props>(), {

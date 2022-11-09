@@ -4,15 +4,13 @@
 			@subcategoryClose="onSubcategoryClose"
 			@onSubcategorySelected="onSubcategorySelected"
 			@nodeTypeSelected="$listeners.nodeTypeSelected"
+			@filterChange="onFilterChange"
 			:initialActiveIndex="0"
-			:searchItems="searchItems"
-			:withActions="isAppEventSubcategory"
+			:searchItems="mergedNodes"
+			:withActionsGetter="shouldShowNodeActions"
 			:firstLevelItems="firstLevelItems"
-			:excludedCategories="isRoot ? [] : [CORE_NODES_CATEGORY]"
-			:initialActiveCategories="[COMMUNICATION_CATEGORY]"
-			:flatten="true"
-			:filterByType="isAppEventSubcategory && !showMergedActions"
-			:subcategoryItems="showMergedActions ? {'*': mergedNodes} : {'*': searchItems}"
+			:flatten="isAppEventSubcategory"
+			:filterByType="!isAppEventSubcategory && !showMergedActions"
 		>
 			<template #header>
 				<slot name="header" />
@@ -26,7 +24,7 @@
 import { reactive, toRefs, getCurrentInstance, computed, onMounted } from 'vue';
 
 import { INodeCreateElement, INodeItemProps } from '@/Interface';
-import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
+import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, EMAIL_IMAP_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
 import { deepCopy } from 'n8n-workflow';
 
@@ -41,6 +39,7 @@ const state = reactive({
 	isRoot: true,
 	selectedSubcategory: '',
 	showMergedActions: false,
+	filter: '',
 });
 
 const items: INodeCreateElement[] = [{
@@ -140,6 +139,10 @@ const items: INodeCreateElement[] = [{
 	},
 ];
 
+function onFilterChange(filter: string) {
+	state.filter = filter;
+}
+
 function isRootSubcategory(subcategory: INodeCreateElement) {
 	return items.find(item => item.key === subcategory.key) !== undefined;
 }
@@ -150,24 +153,38 @@ function onSubcategorySelected(subcategory: INodeCreateElement) {
 function onSubcategoryClose(subcategory: INodeCreateElement) {
 	state.isRoot = isRootSubcategory(subcategory);
 	state.selectedSubcategory = '';
+	state.filter = '';
+}
+
+function shouldShowNodeActions(node: INodeCreateElement) {
+	if(isAppEventSubcategory.value) return true;
+	if(state.isRoot && !isSearchActive.value) return false;
+	// Do not show actions for core category when searching
+	if(node.type === 'node') return !node.properties.nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY);
+
+	return false;
 }
 
 const isAppEventSubcategory = computed(() => state.selectedSubcategory === "*");
 
 const firstLevelItems = computed(() => isRoot.value ? items : []);
 
+const isSearchActive = computed(() => state.filter !== '');
+
 // On App Event is a special subcategory because we want to
 // show merged regular nodes with actions and trigger nodes
-const mergedNodes = computed<INodeCreateElement[]>(() => {
-	const mergedNodes = props.searchItems.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
+const mergedNodes = computed(() => Object.values(
+	props.searchItems.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
 		const clonedNode = deepCopy(node);
 		const isRegularNode = clonedNode.includedByRegular === true;
 		const nodeType = (clonedNode.properties as INodeItemProps).nodeType;
 		const actions = nodeType.actions || [];
+		const isCoreNode = nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) && node.key !== EMAIL_IMAP_NODE_TYPE;
 		const hasActions = actions?.length > 0;
 		const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
+		const isAppEventsSearch = isSearchActive.value && isAppEventSubcategory.value;
 
-		if(isRegularNode && !hasActions) return acc;
+		if((isCoreNode && isAppEventsSearch) || isRegularNode && !hasActions) return acc;
 
 		const existingNode = acc[normalizedName];
 		if(existingNode) {
@@ -178,10 +195,8 @@ const mergedNodes = computed<INodeCreateElement[]>(() => {
 
 		return acc;
 
-	}, {});
-
-	return Object.values(mergedNodes);
-});
+	}, {}),
+));
 
 onMounted(() => {
 	const isLocal = window.location.href.includes('localhost');

@@ -33,8 +33,7 @@
 					:transitionsEnabled="true"
 					@selected="selected"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
-					:simple-node-style="withActions"
-					:allow-actions="withActions"
+					:with-actions-getter="withActionsGetter"
 				/>
 			</div>
 			<div
@@ -46,8 +45,7 @@
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
 					@selected="selected"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
-					:simple-node-style="withActions"
-					:allow-actions="withActions"
+					:with-actions-getter="withActionsGetter"
 				/>
 			</div>
 			<no-results v-else :showRequest="filteredAllNodeTypes.length === 0" :show-icon="filteredAllNodeTypes.length === 0">
@@ -87,7 +85,6 @@ import Vue, { computed, reactive, onMounted, watch, getCurrentInstance, toRefs, 
 import camelcase from 'lodash.camelcase';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import useGlobalLinkActions from '@/components/composables/useGlobalLinkActions';
-
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
@@ -95,7 +92,6 @@ import { INodeCreateElement, ISubcategoryItemProps, ICategoryItemProps, INodeIte
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
-import { intersection } from '@/utils';
 import { sublimeSearch } from './sortUtils';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
@@ -105,20 +101,17 @@ import { useNodeCreatorStore } from '@/stores/nodeCreator';
 export interface Props {
 	flatten?: boolean;
 	filterByType?: boolean;
-	withActions?: boolean;
+	withActionsGetter?: Function;
 	searchItems?: INodeCreateElement[];
-	excludedCategories?: string[];
 	excludedSubcategories?: string[];
 	firstLevelItems?: INodeCreateElement[];
 	initialActiveCategories?: string[];
 	initialActiveIndex?: number;
-	subcategoryItems?: {[key: string]: INodeCreateElement[]};
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	filterByType: true,
 	searchItems: () => [],
-	excludedCategories: () => [],
 	excludedSubcategories: () => [],
 	firstLevelItems: () => [],
 	initialActiveCategories: () => [],
@@ -128,6 +121,7 @@ const emit = defineEmits<{
 	(event: 'subcategoryClose', value: INodeCreateElement): void,
 	(event: 'onSubcategorySelected', value: INodeCreateElement): void,
 	(event: 'nodeTypeSelected', value: string[]): void,
+	(event: 'filterChange', value: string): void,
 }>();
 
 const instance = getCurrentInstance();
@@ -175,42 +169,36 @@ const searchFilter = computed<string> (() => nodeCreatorStore.itemsFilter.toLowe
 
 
 const matchedTypeNodes = computed<INodeCreateElement[]> (() => {
-  const searchableNodes = subcategorizedNodes.value.length > 0 ? subcategorizedNodes.value : props.searchItems;
-
-  if(!props.filterByType) return searchableNodes;
-  return searchableNodes.filter((el: INodeCreateElement) => matchesSelectType(el, nodeCreatorStore.selectedType));
+  if(!props.filterByType) return props.searchItems;
+  return props.searchItems.filter((el: INodeCreateElement) => matchesSelectType(el, nodeCreatorStore.selectedType));
 });
 
 const filteredNodeTypes = computed<INodeCreateElement[]> (() => {
   const filter = searchFilter.value;
-  const searchableNodes = subcategorizedNodes.value.length > 0 && activeSubcategory.value?.key !== '*'
-		? subcategorizedNodes.value
-		: props.searchItems;
 
   let returnItems: INodeCreateElement[] = [];
   if (defaultLocale !== 'en') {
-    returnItems = searchableNodes.filter((el: INodeCreateElement) => {
+    returnItems = props.searchItems.filter((el: INodeCreateElement) => {
       return filter && matchesSelectType(el, nodeCreatorStore.selectedType) && matchesNodeType(el, filter);
     });
   }
   else {
-    const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, nodeCreatorStore.selectedType));
+    const matchingNodes = props.filterByType
+			? props.searchItems.filter((el) => matchesSelectType(el, nodeCreatorStore.selectedType))
+			: props.searchItems;
+
     const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
     returnItems = matchedCategorizedNodes.map(({item}) => item);
   }
 
-	const filteredNodeTypes = props.excludedCategories.length === 0
-		? returnItems
-		: filterOutNodexFromExcludedCategories(returnItems);
-
-  return filteredNodeTypes;
+  return returnItems;
 });
 
 const filteredAllNodeTypes = computed<INodeCreateElement[]> (() => {
   if(filteredNodeTypes.value.length > 0) return [];
 
-  const matchedAllNodex = props.searchItems.filter((el: INodeCreateElement) => {
-    return searchFilter.value && matchesNodeType(el, searchFilter.value);
+  const matchedAllNodex = categorizedItems.filter((el: INodeCreateElement) => {
+    return searchFilter.value && el.type === 'node' && matchesNodeType(el, searchFilter.value);
   });
 
   return matchedAllNodex;
@@ -219,8 +207,6 @@ const filteredAllNodeTypes = computed<INodeCreateElement[]> (() => {
 const categorized = computed<INodeCreateElement[]> (() => {
   return categorizedItems
     .reduce((accu: INodeCreateElement[], el: INodeCreateElement) => {
-      if((props.excludedCategories || []).includes(el.category)) return accu;
-
       if(
         el.type === 'subcategory' &&
         (props.excludedSubcategories || []).includes((el.properties as ISubcategoryItemProps).subcategory)
@@ -268,12 +254,6 @@ const subcategorizedItems = computed<INodeCreateElement[]> (() => {
   return nodes.filter((el: INodeCreateElement) => matchesSelectType(el, nodeCreatorStore.selectedType));
 });
 
-const subcategorizedNodes = computed<INodeCreateElement[]> (() => {
-	const subcategorizedNodesOverride = props.subcategoryItems?.[activeSubcategory.value?.key as string];
-
-  return subcategorizedNodesOverride || subcategorizedItems.value.filter(node => node.type === 'node');
-});
-
 const renderedItems = computed<INodeCreateElement[]> (() => {
   if(props.firstLevelItems.length > 0 && activeSubcategory.value === null) return props.firstLevelItems;
   if(props.flatten) return matchedTypeNodes.value;
@@ -318,6 +298,7 @@ function switchToAllTabAndFilter() {
 
 function onNodeFilterChange(filter: string) {
   nodeCreatorStore.setFilter(filter);
+	emit('filterChange', filter);
 }
 
 function selectWebhook() {
@@ -432,17 +413,6 @@ function onSubcategoryClose() {
 
 function onClickInside() {
   state.searchEventBus.$emit('focus');
-}
-
-function filterOutNodexFromExcludedCategories(nodes: INodeCreateElement[]) {
-	return nodes.filter(node => {
-		const excludedCategoriesIntersect = intersection(
-			props.excludedCategories,
-			((node.properties as INodeItemProps)?.nodeType.codex?.categories || []),
-		);
-
-		return excludedCategoriesIntersect.length === 0;
-	});
 }
 
 onMounted(() => {

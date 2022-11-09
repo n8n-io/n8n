@@ -820,14 +820,29 @@ export interface ICategoryItemProps {
 	expanded: boolean;
 }
 
-export interface INodeCreateElement {
-	type: 'node' | 'category' | 'subcategory';
+export interface CreateElementBase {
 	category: string;
 	key: string;
 	includedByTrigger?: boolean;
 	includedByRegular?: boolean;
-	properties: ISubcategoryItemProps | INodeItemProps | ICategoryItemProps;
 }
+
+export interface NodeCreateElement extends CreateElementBase {
+	type: 'node';
+	properties: INodeItemProps;
+}
+
+export interface CategoryCreateElement extends CreateElementBase {
+	type: 'category';
+	properties: ICategoryItemProps;
+}
+
+export interface SubcategoryCreateElement extends CreateElementBase {
+	type: 'subcategory';
+	properties: ISubcategoryItemProps;
+}
+
+export type INodeCreateElement = NodeCreateElement | CategoryCreateElement | SubcategoryCreateElement;
 
 export interface ICategoriesWithNodes {
 	[category: string]: {

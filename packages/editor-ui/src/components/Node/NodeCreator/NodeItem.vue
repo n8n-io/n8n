@@ -12,10 +12,11 @@
 				<span :class="$style.name">
 					{{ $locale.headerText({
 							key: `headers.${shortNodeType}.displayName`,
-							fallback: nodeType.displayName.replace('Trigger', ''),
+							fallback: allowActions ? nodeType.displayName.replace('Trigger', '') : nodeType.displayName,
 						})
 					}}
 				</span>
+				<trigger-icon v-if="!allowActions && isTriggerNode" :class="$style.triggerIcon" />
 				<n8n-tooltip v-if="isCommunityNode" placement="top" >
 					<div
 						:class="$style['communityNodeIcon']"
@@ -64,6 +65,7 @@
 </template>
 
 <script setup lang="ts">
+import TriggerIcon from '@/components/TriggerIcon.vue';
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
 import { INodeTypeDescription, IDataObject } from 'n8n-workflow';
 
@@ -121,6 +123,8 @@ const draggableStyle = computed<{ top: string; left: string; }>(() => ({
 }));
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
+
+const isTriggerNode = computed<boolean>(() => props.nodeType.displayName.toLowerCase().includes('trigger'));
 
 function onClick() {
 	if(hasActions.value && props.allowActions) state.showActions = true;
@@ -283,7 +287,7 @@ const { showActions, dragging, draggableDataTransfer } = toRefs(state);
 	color: $node-creator-description-color;
 }
 
-.trigger-icon {
+.triggerIcon {
 	height: 16px;
 	width: 16px;
 	display: inline-block;
@@ -330,7 +334,6 @@ const { showActions, dragging, draggableDataTransfer } = toRefs(state);
 		transform: scale(0);
 	}
 }
-
 .el-tooltip svg {
 	color: var(--color-foreground-xdark);
 }
