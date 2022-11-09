@@ -1,9 +1,10 @@
+import type { Optional, Primitives } from '@n8n_io/types';
 import * as ErrorReporter from './ErrorReporterProxy';
 
-export type Primitives = string | number | boolean | bigint | symbol | null | undefined;
-
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument */
-export const deepCopy = <T extends ((object | Date) & { toJSON?: () => string }) | Primitives>(
+export const deepCopy = <
+	T extends ((object | Date) & { toJSON?: () => string }) | Optional<Primitives>,
+>(
 	source: T,
 	hash = new WeakMap(),
 	path = '',
