@@ -10,7 +10,7 @@
 			:withActionsGetter="shouldShowNodeActions"
 			:firstLevelItems="firstLevelItems"
 			:flatten="isAppEventSubcategory"
-			:filterByType="!isAppEventSubcategory && !showMergedActions"
+			:filterByType="!isAppEventSubcategory"
 		>
 			<template #header>
 				<slot name="header" />
@@ -184,7 +184,10 @@ const mergedNodes = computed(() => Object.values(
 		const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
 		const isAppEventsSearch = isSearchActive.value && isAppEventSubcategory.value;
 
-		if((isCoreNode && isAppEventsSearch) || isRegularNode && !hasActions) return acc;
+		const excludedCoreNode = isCoreNode && isAppEventsSearch;
+		const excludedRegularNode = isRegularNode && (!hasActions || !state.showMergedActions);
+
+		if(excludedCoreNode || excludedRegularNode) return acc;
 
 		const existingNode = acc[normalizedName];
 		if(existingNode) {
@@ -203,7 +206,7 @@ onMounted(() => {
 	state.showMergedActions = isLocal || window?.posthog?.getFeatureFlag('merged-actions-nodes') === 'merge-actions';
 });
 
-const { isRoot, showMergedActions } = toRefs(state);
+const { isRoot } = toRefs(state);
 </script>
 
 <style lang="scss" module>
