@@ -1,4 +1,6 @@
+import jp from "jsonpath";
 import { isEmpty, intersection, getJsonSchema } from "@/utils";
+import { N8nJsonSchema } from "@/Interface";
 
 describe("Utils", () => {
 	describe("isEmpty", () => {
@@ -41,23 +43,37 @@ describe("Utils", () => {
 
 	describe("getJsonSchema", () => {
 		test.each([
-			[, { type: 'undefined', value: 'undefined' }],
-			[undefined, { type: 'undefined', value: 'undefined' }],
-			[null, { type: 'string', value: '[null]' }],
-			['John', { type: 'string', value: '"John"' }],
-			['123', { type: 'string', value: '"123"' }],
-			[123, { type: 'number', value: '123' }],
-			[true, { type: 'boolean', value: 'true' }],
-			[false, { type: 'boolean', value: 'false' }],
-			[() => {}, { type: 'function', value: '' }],
-			[Symbol('x'), { type: 'symbol', value: 'Symbol(x)' }],
-			[1n, { type: 'bigint', value: '1' }],
-			[['John', 1, true], { type: 'list', value: 'string' }],
-			[{people: ['Joe', 'John']}, { type: 'object',  value: [{ type: 'list', key: 'people', value: 'string' }] }],
-			[[{name: 'John', age: 22}, {name: 'Joe', age: 33}], { type: 'list', value: [{ type: 'string', key: 'name', value: 'string' }, { type: 'number', key: 'age', value: 'number' }] }],
-			[[{name: 'John', age: 22, hobbies: ['surfing', 'traveling']}, {name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming']}], { type: 'list', value: [{ type: 'string', key: 'name', value: 'string' }, { type: 'number', key: 'age', value: 'number' }, { type: 'list', key: 'hobbies', value: 'string' }] }],
+			[, { type: 'undefined', value: 'undefined', path: '' }],
+			[undefined, { type: 'undefined', value: 'undefined', path: '' }],
+			[null, { type: 'string', value: '[null]', path: '' }],
+			['John', { type: 'string', value: '"John"', path: '' }],
+			['123', { type: 'string', value: '"123"', path: '' }],
+			[123, { type: 'number', value: '123', path: '' }],
+			[true, { type: 'boolean', value: 'true', path: '' }],
+			[false, { type: 'boolean', value: 'false', path: '' }],
+			[() => {}, { type: 'function', value: '', path: '' }],
+			[Symbol('x'), { type: 'symbol', value: 'Symbol(x)', path: '' }],
+			[1n, { type: 'bigint', value: '1', path: '' }],
+			[['John', 1, true], { type: 'list', value: 'string', path: '[*]' }],
+			[{ people: ['Joe', 'John']}, { type: 'object',  value: [{ type: 'list', key: 'people', value: 'string', path: '.people[*]' }], path: '' }],
+			[[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }], { type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }], path: '[*]' }],
+			[[{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }], { type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }, { type: 'list', key: 'hobbies', value: 'string', path: '[*].hobbies[*]' }], path: '[*]' }],
 		])('should return the correct json schema for %s', (input, schema) => {
 			expect(getJsonSchema(input)).toEqual(schema);
+		});
+
+		it('should return the correct data when using the generated json path on an object', () => {
+			const input = { people: ['Joe', 'John']};
+			const schema = getJsonSchema(input) as N8nJsonSchema;
+			const pathData = jp.query(input, `$${ (schema.value[0] as N8nJsonSchema).path }`);
+			expect(pathData).toEqual(['Joe', 'John']);
+		});
+
+		it('should return the correct data when using the generated json path on a list', () => {
+			const input = [{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }];
+			const schema = getJsonSchema(input) as N8nJsonSchema;
+			const pathData = jp.query(input, `$${ (schema.value[2] as N8nJsonSchema).path }`);
+			expect(pathData).toEqual(['surfing', 'traveling', 'skateboarding', 'gaming']);
 		});
 	});
 });

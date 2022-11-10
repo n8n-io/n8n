@@ -66,9 +66,11 @@ export const intersection = <T>(...arrays: T[][]): T[] => {
 
 export const isObj = (obj: unknown): obj is object => !!obj && Object.getPrototypeOf(obj) === Object.prototype;
 
-export const mapObjectToSchema = (obj: object): N8nJsonSchema[] => Object.entries(obj).map(([k, v]) => ({ key: k, ...getJsonSchema(v, k)}));
+export const mapObjectToSchema = (obj: object, path = ''): N8nJsonSchema[] => Object.entries(obj).map(([k, v]) => ({ key: k, ...getJsonSchema(v, k, path + `.${k}`)}));
 
-export const getJsonSchema = (input: Optional<Primitives | object>, key?: string, path?: string): N8nJsonSchema => {
+export const isSchemaTypeObjectOrList = (type: string) => ['object', 'list'].includes(type);
+
+export const getJsonSchema = (input: Optional<Primitives | object>, key?: string, path = ''): N8nJsonSchema => {
 	let schema:N8nJsonSchema = { type: 'undefined', value: 'undefined' };
 	switch (typeof input) {
 		case 'object':
@@ -80,10 +82,16 @@ export const getJsonSchema = (input: Optional<Primitives | object>, key?: string
 			}
 			if (Array.isArray(input)) {
 				const firstItem = input[0];
-				schema = { type: 'list', value: isObj(firstItem) ? mapObjectToSchema(firstItem) : typeof firstItem };
+				schema = {
+					type: 'list',
+					value: isObj(firstItem)
+						? mapObjectToSchema(firstItem, `[*]`)
+						: typeof firstItem,
+					path: `${path}[*]`,
+				};
 			}
 			if (isObj(input)) {
-				schema ={ type: 'object', value: mapObjectToSchema(input) };
+				schema ={ type: 'object', value: mapObjectToSchema(input), path };
 			}
 			break;
 		case 'string':
@@ -96,8 +104,11 @@ export const getJsonSchema = (input: Optional<Primitives | object>, key?: string
 			schema =  { type: typeof input, value: String(input) };
 	}
 
-	if (key && !['object', 'list'].includes(schema.type)) {
-		schema.value = schema.type;
+	if (!isSchemaTypeObjectOrList(schema.type)) {
+		schema.path = path;
+		if(key){
+			schema.value = schema.type;
+		}
 	}
 
 	return schema;
