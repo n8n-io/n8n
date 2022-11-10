@@ -81,17 +81,17 @@ export function jsonToDocument(value: string | number | IDataObject | IDataObjec
 		return { booleanValue: value };
 	} else if (value === null) {
 		return { nullValue: null };
+	} else if (isValidDate(value as string)) {
+		const date = new Date(Date.parse(value as string));
+		return { timestampValue: date.toISOString() };
+	} else if (typeof value === 'string') {
+		return { stringValue: value };
 	} else if (!isNaN(value as number)) {
 		if (value.toString().indexOf('.') !== -1) {
 			return { doubleValue: value };
 		} else {
 			return { integerValue: value };
 		}
-	} else if (isValidDate(value as string)) {
-		const date = new Date(Date.parse(value as string));
-		return { timestampValue: date.toISOString() };
-	} else if (typeof value === 'string') {
-		return { stringValue: value };
 	} else if (value && value.constructor === Array) {
 		return { arrayValue: { values: value.map((v) => jsonToDocument(v)) } };
 	} else if (typeof value === 'object') {
