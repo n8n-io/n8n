@@ -7,11 +7,7 @@ import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 
-interface WaitForCommand {
-	type: 'waitForIt';
-}
-
-function getReversedCommand(command: Command): Command | WaitForCommand {
+function getReversedCommand(command: Command): Command | undefined {
 	if (command.data.action === COMMANDS.POSITION_CHANGE) {
 		return {
 			type: 'command',
@@ -25,10 +21,50 @@ function getReversedCommand(command: Command): Command | WaitForCommand {
 			},
 		};
 	}
+	else if (command.data.action === COMMANDS.ADD_NODE) {
+		return {
+			type: 'command',
+			data: {
+				action: COMMANDS.REMOVE_NODE,
+				options: command.data.options,
+			},
+		};
+	}
+	else if (command.data.action === COMMANDS.REMOVE_NODE) {
+		return {
+			type: 'command',
+			data: {
+				action: COMMANDS.ADD_NODE,
+				options: command.data.options,
+			},
+		};
+	}
 
-	return {
-		type: 'waitForIt',
-	};
+	if (command.data.action === COMMANDS.ADD_CONNECTION) {
+		return {
+			type: 'command',
+			data: {
+				action: COMMANDS.REMOVE_CONNECTION,
+				options: {
+					...command.data.options,
+				},
+			},
+		};
+	}
+
+	if (command.data.action === COMMANDS.REMOVE_CONNECTION) {
+		return {
+			type: 'command',
+			data: {
+				action: COMMANDS.ADD_CONNECTION,
+				options: {
+					...command.data.options,
+				},
+			},
+		};
+	}
+
+	return undefined;
 }
 
 export const historyHelper = mixins(deviceSupportHelpers).extend({
@@ -80,32 +116,29 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 			}
 			if (command.type === 'bulk') {
 				const commands = command.data.commands;
-
-				this.historyStore.waitForRedo();
-				this.historyStore.startRecordingUndo(command.data.name);
-
+				const reverseCommands = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
-					const reverse = getReversedCommand(commands[i]);
-					if (reverse.type !== 'waitForIt') {
-						this.historyStore.trackHistoryEvent(reverse, true);
-					}
-
 					this.revertCommand(commands[i]);
+					const reverse = getReversedCommand(commands[i]);
+					if (reverse) {
+						reverseCommands.push(reverse);
+					}
 				}
-
-				this.historyStore.stopRecordingUndo();
+				this.historyStore.pushUndoableToRedo({
+					type: 'bulk',
+					data: {
+						name: command.data.name,
+						commands: reverseCommands,
+					},
+				});
 				return;
 			}
-
 			if (command.type === 'command') {
-				const reverse = getReversedCommand(command);
-				if (reverse.type === 'waitForIt') {
-					this.historyStore.waitForRedo();
-				}
-				else {
-					this.historyStore.trackHistoryEvent(reverse, true);
-				}
 				this.revertCommand(command);
+				const reverse = getReversedCommand(command);
+				if (reverse) {
+					this.historyStore.pushUndoableToRedo(reverse);
+				}
 				this.uiStore.stateIsDirty = true;
 			}
 		},
@@ -116,25 +149,28 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 			}
 			if (command.type === 'bulk') {
 				const commands = command.data.commands;
-
-				this.historyStore.startRecordingUndo(command.data.name);
-
+				const reverseCommands = [];
 				for (let i = commands.length - 1; i >= 0; i--) {
+					this.revertCommand(commands[i]);
 					const reverse = getReversedCommand(commands[i]);
-					if (reverse.type !== 'waitForIt') {
-						this.historyStore.trackHistoryEvent(reverse);
+					if (reverse) {
+						reverseCommands.push(reverse);
 					}
 				}
-
-				this.historyStore.stopRecordingUndo();
+				this.historyStore.pushBulkCommandToUndo({
+					type: 'bulk',
+					data: {
+						name: command.data.name,
+						commands: reverseCommands,
+					},
+				});
 				return;
 			}
-
 			if (command.type === 'command') {
 				this.revertCommand(command);
 				const reverse = getReversedCommand(command);
-				if (reverse.type !== 'waitForIt') {
-					this.historyStore.trackHistoryEvent(reverse);
+				if (reverse) {
+					this.historyStore.pushCommandToUndo(reverse, false);
 				}
 				this.uiStore.stateIsDirty = true;
 			}

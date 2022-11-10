@@ -1197,7 +1197,6 @@ export interface HistoryState {
 	redoStack: Undoable[];
 	undoStack: Undoable[];
 	currentBulkAction: BulkCommands | null;
-	pushNextToRedo: boolean;
 }
 
 export interface INodeTypesState {

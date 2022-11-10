@@ -10,32 +10,10 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		undoStack: [],
 		redoStack: [],
 		currentBulkAction: null,
-		pushNextToRedo: false,
 	}),
 	getters: {
 	},
 	actions: {
-		trackHistoryEvent(undoable: Undoable, redo = false) {
-			if (this.currentBulkAction && undoable.type === 'command') {
-				this.currentBulkAction.data.commands.push(undoable);
-				return;
-			}
-
-			if (this.pushNextToRedo || redo) {
-				console.log('redo', undoable);
-				this.pushNextToRedo = false;
-
-				this.pushUndoableToRedo(undoable);
-				return;
-			}
-			console.log('undo', undoable);
-
-			if (undoable.type === 'command') {
-				this.pushCommandToUndo(undoable);
-			} else {
-				this.pushBulkCommandToUndo(undoable);
-			}
-		},
 		popUndoableToUndo(): Undoable | undefined {
 			if (this.undoStack.length > 0) {
 				return this.undoStack.pop();
@@ -44,14 +22,15 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			return undefined;
 		},
 		pushCommandToUndo(undoable: Command, clearRedo = true): void {
+			if (this.currentBulkAction) {
+				this.currentBulkAction.data.commands.push(undoable);
+				return;
+			}
 			this.undoStack.push(undoable);
 			this.checkUndoStackLimit();
 			if (clearRedo) {
 				this.clearRedoStack();
 			}
-		},
-		waitForRedo() {
-			this.pushNextToRedo = true;
 		},
 		pushBulkCommandToUndo(undoable: BulkCommands, clearRedo = true): void {
 			this.undoStack.push(undoable);
@@ -109,7 +88,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			}
 		},
 		updateNodePosition(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition) {
-			this.trackHistoryEvent({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.POSITION_CHANGE,
@@ -122,7 +101,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			});
 		},
 		addConnection(connection: [IConnection, IConnection]) {
-			this.trackHistoryEvent({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.ADD_CONNECTION,
@@ -133,7 +112,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			});
 		},
 		addNode(node: INodeUi): void {
-			this.trackHistoryEvent({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.ADD_NODE,
@@ -144,7 +123,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			});
 		},
 		removeNode(node: INodeUi): void {
-			this.trackHistoryEvent({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.REMOVE_NODE,
@@ -155,7 +134,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			});
 		},
 		removeConnection(connection: [IConnection, IConnection]) {
-			this.trackHistoryEvent({
+			this.pushCommandToUndo({
 				type: 'command',
 				data: {
 					action: COMMANDS.REMOVE_CONNECTION,
