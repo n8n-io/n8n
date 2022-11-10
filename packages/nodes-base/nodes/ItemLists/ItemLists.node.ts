@@ -77,6 +77,12 @@ export class ItemLists implements INodeType {
 						description: 'Turn a list inside item(s) into separate items',
 						action: 'Turn a list inside item(s) into separate items',
 					},
+					{
+						name: 'Table Tranformation',
+						value: 'tableTransformation',
+						description: 'Transform a list of items into a table',
+						action: 'Transform a list of items into a table',
+					},
 				],
 				default: 'splitOutItems',
 			},
