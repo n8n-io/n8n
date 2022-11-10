@@ -1,7 +1,6 @@
 import { OptionsWithUri } from 'request';
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 import { IDataObject, NodeApiError } from 'n8n-workflow';
-import { ParserError } from 'redis';
 
 export async function googleApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
