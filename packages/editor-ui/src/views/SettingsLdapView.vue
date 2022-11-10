@@ -301,7 +301,7 @@ export default mixins(showMessage).extend({
 		async onDryRunClick() {
 			this.loadingDryRun = true;
 			try {
-				this.adConfig = await this.settingsStore.runLdapSync({ type: 'dry' });
+				await this.settingsStore.runLdapSync({ type: 'dry' });
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: 'Syncronization succeded',
@@ -317,7 +317,7 @@ export default mixins(showMessage).extend({
 		async onLiveRunClick() {
 			this.loadingLiveRun = true;
 			try {
-				this.adConfig = await this.settingsStore.runLdapSync({ type: 'live' });
+				await this.settingsStore.runLdapSync({ type: 'live' });
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.runSync.title'),
 					message: 'Syncronization succeded',
@@ -681,7 +681,7 @@ export default mixins(showMessage).extend({
 		},
 		async reloadLdapSyncronizations() {
 			try {
-				this.page = 1;
+				this.page = 0;
 				this.tableKey += 1;
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
