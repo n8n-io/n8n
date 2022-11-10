@@ -88,9 +88,6 @@ importers:
       eslint-plugin-prettier: 4.2.1_aniwkeyvlpmwkidetuytnokvcm
       eslint-plugin-vue: 7.17.0_eslint@8.26.0
 
-  packages/@n8n_io/types:
-    specifiers: {}
-
   packages/cli:
     specifiers:
       '@apidevtools/swagger-cli': 4.0.0
@@ -471,7 +468,6 @@ importers:
       '@fortawesome/free-solid-svg-icons': ^5.15.3
       '@fortawesome/vue-fontawesome': ^2.0.2
       '@intlify/vue-i18n-loader': ^1.1.0
-      '@n8n_io/types': '*'
       '@pinia/testing': ^0.0.14
       '@testing-library/jest-dom': ^5.16.5
       '@testing-library/vue': ^5.8.3
@@ -552,7 +548,6 @@ importers:
       '@fortawesome/free-regular-svg-icons': 6.2.0
       '@fortawesome/free-solid-svg-icons': 5.15.4
       '@fortawesome/vue-fontawesome': 2.0.8_tc4irwwlc7tvswdic4b5cxexom
-      '@n8n_io/types': link:../@n8n_io/types
       axios: 0.21.4
       dateformat: 3.0.3
       esprima-next: 5.8.4
@@ -844,7 +839,6 @@ importers:
   packages/workflow:
     specifiers:
       '@n8n_io/riot-tmpl': ^1.0.1
-      '@n8n_io/types': '*'
       '@types/express': ^4.17.6
       '@types/jmespath': ^0.15.0
       '@types/lodash.get': ^4.4.6
@@ -861,7 +855,6 @@ importers:
       xml2js: ^0.4.23
     dependencies:
       '@n8n_io/riot-tmpl': 1.0.1
-      '@n8n_io/types': link:../@n8n_io/types
       jmespath: 0.16.0
       lodash.get: 4.4.2
       lodash.isequal: 4.5.0

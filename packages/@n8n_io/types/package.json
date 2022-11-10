@@ -1,6 +1,0 @@
-{
-  "name": "@n8n_io/types",
-  "private": true,
-  "version": "0.0.1",
-  "main": "index.ts"
-}

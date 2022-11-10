@@ -1,5 +1,5 @@
-import { N8nJsonSchema, Optional, Primitives } from '@n8n_io/types';
 import xss, { friendlyAttrValue } from 'xss';
+import { Primitives, Optional, N8nJsonSchema } from "@/Interface";
 
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 

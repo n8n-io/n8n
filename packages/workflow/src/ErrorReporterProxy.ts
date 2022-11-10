@@ -1,9 +1,9 @@
-import type { Optional, Primitives } from '@n8n_io/types';
+import type { Primitives } from './utils';
 import * as Logger from './LoggerProxy';
 
 export interface ReportingOptions {
 	level?: 'warning' | 'error';
-	tags?: Record<string, Optional<Primitives>>;
+	tags?: Record<string, Primitives>;
 	extra?: Record<string, unknown>;
 }
 
