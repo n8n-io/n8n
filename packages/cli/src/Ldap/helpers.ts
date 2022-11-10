@@ -195,22 +195,17 @@ export const handleLdapInit = async (): Promise<void> => {
 };
 
 /**
- * Create and 'and' condition with the filter
- * and the configuration user filter
- * e.g. Given the input:
- * - filter: (mail=john@example.com)
- * - configUserFilter: (objectClass=person)
-
- * it will return (&(mail=john@example.com)(objectClass=person))
  * @param  {string} filter
  * @param  {string} configUserFilter
  * @returns string
  */
-export const addConfigFilter = (filter: string, configUserFilter: string): string => {
-	if (configUserFilter) {
-		return `(&${configUserFilter}${filter})`;
+
+export const createFilter = (filter: string, userFilter: string) => {
+	let _filter = `(&(|(objectClass=person)(objectClass=user))${filter})`;
+	if (userFilter) {
+		_filter = `(&${userFilter}${filter}`;
 	}
-	return filter;
+	return _filter;
 };
 
 export const escapeFilter = (filter: string): string => {
@@ -242,7 +237,7 @@ export const findAndAuthenticateLdapUser = async (
 
 	try {
 		searchResult = await ldapService.searchWithAdminBinding(
-			addConfigFilter(`(${loginIdAttribute}=${escapeFilter(loginId)})`, userFilter),
+			createFilter(`(${loginIdAttribute}=${escapeFilter(loginId)})`, userFilter),
 		);
 	} catch (_) {
 		return undefined;

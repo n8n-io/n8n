@@ -5,12 +5,12 @@ import { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
 import { RunningMode, SyncStatus } from './constants';
 import {
-	addConfigFilter,
 	getLdapUsers,
 	getLdapUserRole,
 	mapLdapUserToDbUser,
 	processUsers,
 	saveLdapSyncronization,
+	createFilter,
 } from './helpers';
 import type { User } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
@@ -87,7 +87,7 @@ export class LdapSync {
 
 		try {
 			adUsers = await this._ldapService.searchWithAdminBinding(
-				addConfigFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
+				createFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
 			);
 		} catch (e) {
 			if (e instanceof Error) {
