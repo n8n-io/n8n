@@ -311,6 +311,7 @@ export interface ICredentialType {
 	name: string;
 	displayName: string;
 	icon?: string;
+	iconUrl?: string;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
@@ -1215,6 +1216,7 @@ export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
 	icon?: string;
+	iconUrl?: string;
 	group: string[];
 	description: string;
 	documentationUrl?: string;

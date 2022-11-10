@@ -26,7 +26,7 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import { access as fsAccess, readdir as fsReaddir, stat as fsStat } from 'fs/promises';
+import { access as fsAccess, cp, mkdir, readdir as fsReaddir, stat as fsStat } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
@@ -40,8 +40,6 @@ import {
 } from '@/CommunityNodes/packageModel';
 
 class LoadNodesAndCredentialsClass {
-	icons: Known = { nodes: {}, credentials: {} };
-
 	known: Known = { nodes: {}, credentials: {} };
 
 	types: Types = { allNodes: [], latestNodes: [], credentials: [] };
@@ -302,7 +300,7 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		if (loader instanceof PackageDirectoryLoader) {
-			const { packageName, icons, known, types } = loader;
+			const { packageName, known, types } = loader;
 			for (const node in known.nodes) {
 				this.known.nodes[`${packageName}.${node}`] = path.join(dir, known.nodes[node]);
 			}
@@ -315,13 +313,14 @@ class LoadNodesAndCredentialsClass {
 			this.types.latestNodes = this.types.latestNodes.concat(types.latestNodes);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
-			for (const node in icons.nodes) {
-				this.icons.nodes[`${packageName}.${node}`] = path.join(dir, icons.nodes[node]);
-			}
-			for (const credential in icons.credentials) {
-				// TODO: use `${packageName}.${credential}` instead of `${credential}`
-				this.icons.credentials[credential] = path.join(dir, icons.credentials[credential]);
-			}
+			// TODO: move this code somewhere to avoid duplicating it
+			const generatedStaticDir = path.join(UserSettings.getUserHome(), '.cache/n8n/public');
+			await mkdir(path.join(generatedStaticDir, 'icons/nodes'), { recursive: true });
+			await mkdir(path.join(generatedStaticDir, 'icons/credentials'), { recursive: true });
+
+			await cp(path.resolve(dir, 'dist/icons'), path.join(generatedStaticDir, 'icons'), {
+				recursive: true,
+			});
 		}
 
 		return loader;

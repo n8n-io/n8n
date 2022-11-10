@@ -50,8 +50,6 @@ export abstract class DirectoryLoader {
 
 	readonly known: Known = { nodes: {}, credentials: {} };
 
-	readonly icons: Known = { nodes: {}, credentials: {} };
-
 	readonly types: Types = { allNodes: [], latestNodes: [], credentials: [] };
 
 	constructor(
@@ -296,8 +294,6 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 				this.types.latestNodes = await this.readJSON('dist/types/latest-nodes.json');
 				this.types.credentials = await this.readJSON('dist/types/credentials.json');
 
-				this.icons.nodes = await this.readJSON('dist/icons/nodes.json');
-				this.icons.credentials = await this.readJSON('dist/icons/credentials.json');
 				return; // We can loads nodes and credentials lazily now
 			} catch {
 				Logger.warn("Can't enable lazy-loading");

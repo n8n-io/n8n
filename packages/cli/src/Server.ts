@@ -418,6 +418,7 @@ class App {
 			'assets',
 			'healthz',
 			'metrics',
+			'icons',
 			'types',
 			this.endpointWebhook,
 			this.endpointWebhookTest,
@@ -967,35 +968,6 @@ class App {
 
 		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
 
-		// Returns the node icon
-		this.app.get(
-			[
-				`/${this.restEndpoint}/node-icon/:nodeType`,
-				`/${this.restEndpoint}/node-icon/:scope/:nodeType`,
-			],
-			async (req: express.Request, res: express.Response): Promise<void> => {
-				try {
-					const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${
-						req.params.nodeType
-					}`;
-
-					const filepath = loadNodesAndCredentials.icons.nodes[nodeTypeName];
-					if (filepath === undefined) {
-						res.status(404).send('The nodeType is not known.');
-						return;
-					}
-
-					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-					res.setHeader('Cache-control', `private max-age=${maxAge}`);
-
-					res.sendFile(filepath);
-				} catch (error) {
-					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-			},
-		);
-
 		// ----------------------------------------
 		// Active Workflows
 		// ----------------------------------------
@@ -1062,32 +1034,6 @@ class App {
 					}
 				},
 			),
-		);
-		// ----------------------------------------
-		// Credential-Types
-		// ----------------------------------------
-
-		this.app.get(
-			`/${this.restEndpoint}/credential-icon/:credentialType`,
-			async (req: express.Request, res: express.Response): Promise<void> => {
-				try {
-					const credentialName = req.params.credentialType;
-					const filepath = loadNodesAndCredentials.icons.credentials[credentialName];
-
-					if (filepath === undefined) {
-						res.status(404).send('The credentialType is not known.');
-						return;
-					}
-
-					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-					res.setHeader('Cache-control', `private max-age=${maxAge}`);
-
-					res.sendFile(filepath);
-				} catch (error) {
-					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-			},
 		);
 
 		// ----------------------------------------

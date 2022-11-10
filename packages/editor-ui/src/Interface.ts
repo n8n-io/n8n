@@ -887,6 +887,7 @@ export interface IVersionNode {
 	name: string;
 	displayName: string;
 	icon: string;
+	iconUrl?: string;
 	defaults: INodeParameters;
 	iconData: {
 		type: string;

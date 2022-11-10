@@ -4,18 +4,22 @@ const { createContext, Script } = require('vm');
 const { mkdir, writeFile } = require('fs/promises');
 const { LoggerProxy, NodeHelpers } = require('n8n-workflow');
 const { PackageDirectoryLoader } = require('n8n-core');
+const { copyFileSync } = require('fs');
 
 LoggerProxy.init({
 	log: console.log.bind(console),
 	warn: console.warn.bind(console),
 });
 
-const packagePath = path.resolve(__dirname, '..');
+const packageDir = path.resolve(__dirname, '..');
+const { name: packageName } = require(path.join(packageDir, 'package.json'));
+const distDir = path.join(packageDir, 'dist');
+
 const context = Object.freeze(createContext({ require }));
 const loadClass = (filePath) => {
 	try {
 		const [className] = path.parse(filePath).name.split('.');
-		const absolutePath = path.resolve(packagePath, filePath);
+		const absolutePath = path.resolve(packageDir, filePath);
 		const script = new Script(`new (require('${absolutePath}').${className})()`);
 		const instance = script.runInContext(context);
 		return { instance, filePath };
@@ -25,7 +29,7 @@ const loadClass = (filePath) => {
 };
 
 const writeJSON = async (file, data) => {
-	const filePath = path.resolve(packagePath, 'dist', file);
+	const filePath = path.resolve(distDir, file);
 	await mkdir(path.dirname(filePath), { recursive: true });
 	const payload = Array.isArray(data)
 		? `[\n${data.map((entry) => JSON.stringify(entry)).join(',\n')}\n]`
@@ -38,7 +42,7 @@ const writeJSON = async (file, data) => {
 	for (const kind of ['credentials', 'nodes']) {
 		known[kind] = glob
 			.sync(`dist/${kind}/**/*.${kind === 'nodes' ? 'node' : kind}.js`, {
-				cwd: packagePath,
+				cwd: packageDir,
 			})
 			.filter((filePath) => !/[vV]\d.node.js$/.test(filePath))
 			.map(loadClass)
@@ -54,13 +58,36 @@ const writeJSON = async (file, data) => {
 		await writeJSON(`known/${kind}.json`, known[kind]);
 	}
 
-	const loader = new PackageDirectoryLoader(packagePath);
+	await mkdir(path.resolve(distDir, 'icons/nodes'), { recursive: true });
+	await mkdir(path.resolve(distDir, 'icons/credentials'), { recursive: true });
+
+	const loader = new PackageDirectoryLoader(packageDir);
 	await loader.loadAll(false);
 
 	const credentialTypes = Object.values(loader.credentialTypes).map((data) => data.type);
+	credentialTypes
+		.filter(({ icon }) => icon?.startsWith('file:'))
+		.forEach((credential) => {
+			const iconFilePath = path.resolve(packageDir, credential.icon.substring(5));
+			const iconUrl = `icons/credentials/${credential.name}${path.extname(iconFilePath)}`;
+			copyFileSync(iconFilePath, path.resolve(distDir, iconUrl));
+			delete credential.icon;
+			credential.iconUrl = iconUrl;
+		});
 	await writeJSON('types/credentials.json', credentialTypes);
 
 	const nodeTypes = Object.values(loader.nodeTypes).map((data) => data.type);
+	nodeTypes
+		.filter(({ description: { icon } }) => icon?.startsWith('file:'))
+		.forEach(({ description }) => {
+			const nodeName = description.name.split('.').slice(1).join('.');
+			const iconFilePath = path.resolve(packageDir, description.icon.substring(5));
+			const iconUrl = `icons/nodes/${packageName}.${nodeName}${path.extname(iconFilePath)}`;
+			copyFileSync(iconFilePath, path.resolve(distDir, iconUrl));
+			delete description.icon;
+			description.iconUrl = iconUrl;
+		});
+
 	await writeJSON(
 		'types/all-nodes.json',
 		nodeTypes.flatMap((nodeData) => {
@@ -76,23 +103,4 @@ const writeJSON = async (file, data) => {
 			return { ...nodeType.description };
 		}),
 	);
-
-	const icons = { nodes: {}, credentials: {} };
-	nodeTypes
-		.filter((n) => !!n.description.icon)
-		.forEach((n) => {
-			const nodeName = n.description.name.split('.').slice(1).join('.');
-			if (n.description.icon.startsWith('file:')) {
-				icons.nodes[nodeName] = n.description.icon.substring(5);
-			}
-		});
-	await writeJSON('icons/nodes.json', icons.nodes);
-	credentialTypes
-		.filter((c) => !!c.icon)
-		.forEach((c) => {
-			if (c.icon.startsWith('file:')) {
-				icons.credentials[c.name] = c.icon.substring(5);
-			}
-		});
-	await writeJSON('icons/credentials.json', icons.credentials);
 })();
