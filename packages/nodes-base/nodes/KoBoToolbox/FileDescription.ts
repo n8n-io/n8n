@@ -13,16 +13,10 @@ export const fileOperations: INodeProperties[] = [
 		},
 		options: [
 			{
-				name: 'Get',
-				value: 'get',
-				description: 'Get a file',
-				action: 'Get a file',
-			},
-			{
-				name: 'Get Many',
-				value: 'getAll',
-				description: 'Get many files',
-				action: 'Get many files',
+				name: 'Create',
+				value: 'create',
+				description: 'Create a file',
+				action: 'Create a file',
 			},
 			{
 				name: 'Delete',
@@ -31,10 +25,16 @@ export const fileOperations: INodeProperties[] = [
 				action: 'Delete a file',
 			},
 			{
-				name: 'Create',
-				value: 'create',
-				description: 'Create a file',
-				action: 'Create a file',
+				name: 'Get',
+				value: 'get',
+				description: 'Get a file content',
+				action: 'Get a file content',
+			},
+			{
+				name: 'Get Many',
+				value: 'getAll',
+				description: 'Get many files',
+				action: 'Get many files',
 			},
 		],
 		default: 'get',
@@ -78,6 +78,34 @@ export const fileFields: INodeProperties[] = [
 			},
 		},
 		description: 'Uid of the file (should start with "af" e.g. "afQoJxA4kmKEXVpkH6SYbhb"',
+	},
+	{
+		displayName: 'Property Name',
+		name: 'binaryPropertyName',
+		type: 'string',
+		required: true,
+		default: 'data',
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['get'],
+			},
+		},
+		description: 'Name of the binary property to write the file into',
+	},
+	{
+		displayName: 'Download File Content',
+		name: 'download',
+		type: 'boolean',
+		required: true,
+		default: false,
+		displayOptions: {
+			show: {
+				resource: ['file'],
+				operation: ['get'],
+			},
+		},
+		description: 'Whether to download the file content into a binary property',
 	},
 	{
 		displayName: 'File Upload Mode',

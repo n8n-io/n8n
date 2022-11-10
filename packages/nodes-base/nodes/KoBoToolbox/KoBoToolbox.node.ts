@@ -1,18 +1,19 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	IBinaryData,
+	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IBinaryData,
-	IBinaryKeyData,
 } from 'n8n-workflow';
 
 import {
 	downloadAttachments,
 	formatSubmission,
 	koBoToolboxApiRequest,
+	koBoToolboxRawRequest,
 	loadForms,
 	parseStringList,
 } from './GenericFunctions';
@@ -23,7 +24,7 @@ import { submissionFields, submissionOperations } from './SubmissionDescription'
 
 import { hookFields, hookOperations } from './HookDescription';
 
-import { fileOperations, fileFields } from './FileDescription';
+import { fileFields, fileOperations } from './FileDescription';
 
 export class KoBoToolbox implements INodeType {
 	description: INodeTypeDescription = {
@@ -392,21 +393,36 @@ export class KoBoToolbox implements INodeType {
 
 				if (operation === 'get') {
 					const fileId = this.getNodeParameter('fileId', i) as string;
+					const download = this.getNodeParameter('download', i) as boolean;
 
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
 							url: `/api/v2/assets/${formId}/files/${fileId}`,
 						}),
 					];
-				}
 
-				if (operation === 'getContent') {
-					const fileId = this.getNodeParameter('fileId', i) as string;
-					responseData = [
-						await koBoToolboxApiRequest.call(this, {
+					if (responseData && responseData[0] && download) {
+						const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i) as string;
+
+						const binaryItem: INodeExecutionData = {
+							json: responseData[0],
+							binary: {},
+						};
+
+						const response = await koBoToolboxRawRequest.call(this, {
 							url: `/api/v2/assets/${formId}/files/${fileId}/content`,
-						}),
-					];
+							encoding: 'arraybuffer',
+						});
+
+						console.dir(response);
+
+						binaryItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
+							response,
+							responseData[0].metadata.filename,
+						);
+
+						binaryItems.push(binaryItem);
+					}
 				}
 
 				if (operation === 'delete') {
@@ -421,7 +437,7 @@ export class KoBoToolbox implements INodeType {
 
 				if (operation === 'create') {
 					const fileMode = this.getNodeParameter('fileMode', i) as string;
-					let body: any = {
+					const body: IDataObject = {
 						description: 'Uploaded file',
 						file_type: 'form_media',
 					};
