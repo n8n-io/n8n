@@ -1,3 +1,4 @@
+import { N8nJsonSchema, Optional, Primitives } from "@n8n_io/types";
 import xss, { friendlyAttrValue } from 'xss';
 
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
@@ -61,4 +62,43 @@ export const intersection = <T>(...arrays: T[][]): T[] => {
 	const [a, b, ...rest] = arrays;
 	const ab = a.filter(v => b.includes(v));
 	return [...new Set(rest.length ? intersection(ab, ...rest) : ab)];
+};
+
+export const isObj = (obj: unknown): obj is object => !!obj && Object.getPrototypeOf(obj) === Object.prototype;
+
+export const mapObjectToSchema = (obj: object): N8nJsonSchema[] => Object.entries(obj).map(([k, v]) => ({ key: k, ...getJsonSchema(v, k)}));
+
+export const getJsonSchema = (input: Optional<Primitives | object>, key?: string, path?: string): N8nJsonSchema => {
+	let schema:N8nJsonSchema = { type: 'undefined', value: 'undefined' };
+	switch (typeof input) {
+		case 'object':
+			if (input === null) {
+				schema = { type: 'string', value: '[null]' };
+			}
+			if (input instanceof Date) {
+				schema = { type: 'date', value: input.toISOString() };
+			}
+			if (Array.isArray(input)) {
+				const firstItem = input[0];
+				schema = { type: 'list', value: isObj(firstItem) ? mapObjectToSchema(firstItem) : typeof firstItem };
+			}
+			if (isObj(input)) {
+				schema ={ type: 'object', value: mapObjectToSchema(input) };
+			}
+			break;
+		case 'string':
+			schema = { type: 'string', value: `"${input}"` };
+			break;
+		case 'function':
+			schema =  { type: 'function', value: `` };
+			break;
+		default:
+			schema =  { type: typeof input, value: String(input) };
+	}
+
+	if (key && !['object', 'list'].includes(schema.type)) {
+		schema.value = schema.type;
+	}
+
+	return schema;
 };
