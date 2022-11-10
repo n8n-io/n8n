@@ -51,7 +51,7 @@ export async function workflowExecutionCompleted(
 		// Do we just assume it's a conflict error? If there is any other sort of error in the DB it should trigger here too
 		await Db.collections.WorkflowStatistics.update(
 			{ workflowId, name },
-			{ count: () => '"count" + 1' },
+			{ count: () => 'count + 1' },
 		);
 	}
 }
