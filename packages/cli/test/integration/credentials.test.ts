@@ -1,20 +1,20 @@
 import express from 'express';
 import { UserSettings } from 'n8n-core';
 
-import { Db } from '../../src';
-import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
-import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
-import type { Role } from '../../src/databases/entities/Role';
+import * as Db from '@/Db';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
+import type { Role } from '@db/entities/Role';
 import { randomCredentialPayload, randomName, randomString } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 
-import config from '../../config';
-import type { CredentialsEntity } from '../../src/databases/entities/CredentialsEntity';
+import config from '@/config';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import type { AuthAgent } from './shared/types';
 
-jest.mock('../../src/telemetry');
+jest.mock('@/telemetry');
 
 // mock that credentialsSharing is not enabled
 const mockIsCredentialsSharingEnabled = jest.spyOn(UserManagementHelpers, 'isSharingEnabled');

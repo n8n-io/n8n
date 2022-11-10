@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import express from 'express';
 import {
 	IConnections,
@@ -12,10 +11,10 @@ import {
 } from 'n8n-workflow';
 
 import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
-import type { Role } from './databases/entities/Role';
-import type { User } from './databases/entities/User';
-import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
-import type { PublicUser } from './UserManagement/Interfaces';
+import type { Role } from '@db/entities/Role';
+import type { User } from '@db/entities/User';
+import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type { PublicUser } from '@/UserManagement/Interfaces';
 
 export type AuthlessRequest<
 	RouteParams = {},

@@ -22,35 +22,35 @@ import {
 	toCronExpression,
 	TriggerTime,
 } from 'n8n-workflow';
-import type { N8nApp } from '../../../src/UserManagement/Interfaces';
+import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
+import { v4 as uuid } from 'uuid';
 
-import config from '../../../config';
-import {
-	ActiveWorkflowRunner,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	InternalHooksManager,
-	NodeTypes,
-} from '../../../src';
-import { meNamespace as meEndpoints } from '../../../src/UserManagement/routes/me';
-import { usersNamespace as usersEndpoints } from '../../../src/UserManagement/routes/users';
-import { authenticationMethods as authEndpoints } from '../../../src/UserManagement/routes/auth';
-import { ownerNamespace as ownerEndpoints } from '../../../src/UserManagement/routes/owner';
-import { passwordResetNamespace as passwordResetEndpoints } from '../../../src/UserManagement/routes/passwordReset';
-import { nodesController } from '../../../src/api/nodes.api';
-import { workflowsController } from '../../../src/workflows/workflows.controller';
-import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '../../../src/constants';
-import { credentialsController } from '../../../src/credentials/credentials.controller';
-import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
-import type { User } from '../../../src/databases/entities/User';
-import { getLogger } from '../../../src/Logger';
-import { loadPublicApiVersions } from '../../../src/PublicApi/';
-import { issueJWT } from '../../../src/UserManagement/auth/jwt';
-import { addRoutes as authMiddleware } from '../../../src/UserManagement/routes';
+import config from '@/config';
+import * as Db from '@/Db';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { CredentialTypes } from '@/CredentialTypes';
+import { ExternalHooks } from '@/ExternalHooks';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { NodeTypes } from '@/NodeTypes';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { meNamespace as meEndpoints } from '@/UserManagement/routes/me';
+import { usersNamespace as usersEndpoints } from '@/UserManagement/routes/users';
+import { authenticationMethods as authEndpoints } from '@/UserManagement/routes/auth';
+import { ownerNamespace as ownerEndpoints } from '@/UserManagement/routes/owner';
+import { passwordResetNamespace as passwordResetEndpoints } from '@/UserManagement/routes/passwordReset';
+import { nodesController } from '@/api/nodes.api';
+import { workflowsController } from '@/workflows/workflows.controller';
+import { AUTH_COOKIE_NAME, NODE_PACKAGE_PREFIX } from '@/constants';
+import { credentialsController } from '@/credentials/credentials.controller';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { User } from '@db/entities/User';
+import { getLogger } from '@/Logger';
+import { loadPublicApiVersions } from '@/PublicApi/';
+import { issueJWT } from '@/UserManagement/auth/jwt';
+import { addRoutes as authMiddleware } from '@/UserManagement/routes';
 import {
 	AUTHLESS_ENDPOINTS,
 	COMMUNITY_NODE_VERSION,
@@ -66,8 +66,6 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
-import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
-import { v4 as uuid } from 'uuid';
 
 /**
  * Initialize a test server.

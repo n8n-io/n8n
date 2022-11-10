@@ -2,12 +2,13 @@ import express from 'express';
 
 import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
 
-import { ActiveWorkflowRunner, Db } from '../../../..';
-import config = require('../../../../../config');
-import { WorkflowEntity } from '../../../../databases/entities/WorkflowEntity';
-import { InternalHooksManager } from '../../../../InternalHooksManager';
-import { externalHooks } from '../../../../Server';
-import { addNodeIds, replaceInvalidCredentials } from '../../../../WorkflowHelpers';
+import * as Db from '@/Db';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import config from '@/config';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { externalHooks } from '@/Server';
+import { addNodeIds, replaceInvalidCredentials } from '@/WorkflowHelpers';
 import { WorkflowRequest } from '../../../types';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { encodeNextCursor } from '../../shared/services/pagination.service';

@@ -1,9 +1,9 @@
-import { toHttpNodeParameters } from "../../src/CurlConverterHelper";
+import { toHttpNodeParameters } from '@/CurlConverterHelper';
 
 describe('CurlConverterHelper', () => {
-
 	test('Should parse form-urlencoded content type correctly', () => {
-		const curl = 'curl -X POST https://reqbin.com/echo/post/form -H "Content-Type: application/x-www-form-urlencoded" -d "param1=value1&param2=value2"';
+		const curl =
+			'curl -X POST https://reqbin.com/echo/post/form -H "Content-Type: application/x-www-form-urlencoded" -d "param1=value1&param2=value2"';
 		const parameters = toHttpNodeParameters(curl);
 		expect(parameters.url).toBe('https://reqbin.com/echo/post/form');
 		expect(parameters.sendBody).toBe(true);
@@ -113,7 +113,9 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.sendQuery).toBe(false);
 		expect(parameters.sendHeaders).toBe(true);
 		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
-		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.headerParameters?.parameters[0].value).toBe(
+			`Basic ${Buffer.from('login:password').toString('base64')}`,
+		);
 	});
 
 	test('Should parse location flag with --location', () => {
@@ -125,7 +127,9 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.sendQuery).toBe(false);
 		expect(parameters.sendHeaders).toBe(true);
 		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
-		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.headerParameters?.parameters[0].value).toBe(
+			`Basic ${Buffer.from('login:password').toString('base64')}`,
+		);
 		expect(parameters.options.redirect.redirect.followRedirects).toBe(true);
 	});
 
@@ -138,7 +142,9 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.sendQuery).toBe(false);
 		expect(parameters.sendHeaders).toBe(true);
 		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
-		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.headerParameters?.parameters[0].value).toBe(
+			`Basic ${Buffer.from('login:password').toString('base64')}`,
+		);
 		expect(parameters.options.redirect.redirect.followRedirects).toBe(true);
 	});
 
@@ -151,9 +157,11 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.sendQuery).toBe(false);
 		expect(parameters.sendHeaders).toBe(true);
 		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
-		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.headerParameters?.parameters[0].value).toBe(
+			`Basic ${Buffer.from('login:password').toString('base64')}`,
+		);
 		expect(parameters.options.redirect.redirect.followRedirects).toBe(true);
-		expect(parameters.options.redirect.redirect.maxRedirects).toBe("10");
+		expect(parameters.options.redirect.redirect.maxRedirects).toBe('10');
 	});
 
 	test('Should parse proxy flag -x', () => {
@@ -165,7 +173,9 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.sendQuery).toBe(false);
 		expect(parameters.sendHeaders).toBe(true);
 		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
-		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.headerParameters?.parameters[0].value).toBe(
+			`Basic ${Buffer.from('login:password').toString('base64')}`,
+		);
 		expect(parameters.options.proxy).toBe('https://google.com');
 	});
 
@@ -178,7 +188,9 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.sendQuery).toBe(false);
 		expect(parameters.sendHeaders).toBe(true);
 		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
-		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.headerParameters?.parameters[0].value).toBe(
+			`Basic ${Buffer.from('login:password').toString('base64')}`,
+		);
 		expect(parameters.options.proxy).toBe('https://google.com');
 	});
 
@@ -191,7 +203,9 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.sendQuery).toBe(false);
 		expect(parameters.sendHeaders).toBe(true);
 		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
-		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.headerParameters?.parameters[0].value).toBe(
+			`Basic ${Buffer.from('login:password').toString('base64')}`,
+		);
 		expect(parameters.options.response.response.fullResponse).toBe(true);
 	});
 
@@ -204,7 +218,9 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.sendQuery).toBe(false);
 		expect(parameters.sendHeaders).toBe(true);
 		expect(parameters.headerParameters?.parameters[0].name).toBe('authorization');
-		expect(parameters.headerParameters?.parameters[0].value).toBe(`Basic ${Buffer.from('login:password').toString('base64')}`);
+		expect(parameters.headerParameters?.parameters[0].value).toBe(
+			`Basic ${Buffer.from('login:password').toString('base64')}`,
+		);
 		expect(parameters.options.response.response.fullResponse).toBe(true);
 	});
 
@@ -235,13 +251,13 @@ describe('CurlConverterHelper', () => {
 
 	test('Should parse download file flag -O', () => {
 		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" -O`;
-;		const parameters = toHttpNodeParameters(curl);
+		const parameters = toHttpNodeParameters(curl);
 		expect(parameters.url).toBe('https://reqbin.com/echo');
 		expect(parameters.method).toBe('POST');
 		expect(parameters.sendBody).toBe(false);
 		expect(parameters.options.response.response.responseFormat).toBe('file');
 		expect(parameters.options.response.response.outputPropertyName).toBe('data');
-	})
+	});
 
 	test('Should parse download file flag -o', () => {
 		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" -o`;
@@ -251,7 +267,7 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.sendBody).toBe(false);
 		expect(parameters.options.response.response.responseFormat).toBe('file');
 		expect(parameters.options.response.response.outputPropertyName).toBe('data');
-	})
+	});
 
 	test('Should parse ignore SSL flag -k', () => {
 		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" -k`;
@@ -260,7 +276,7 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.method).toBe('POST');
 		expect(parameters.sendBody).toBe(false);
 		expect(parameters.options.allowUnauthorizedCerts).toBe(true);
-	})
+	});
 
 	test('Should parse ignore SSL flag --insecure', () => {
 		const curl = `curl --request POST https://reqbin.com/echo -u "login:password" --insecure`;
@@ -269,6 +285,5 @@ describe('CurlConverterHelper', () => {
 		expect(parameters.method).toBe('POST');
 		expect(parameters.sendBody).toBe(false);
 		expect(parameters.options.allowUnauthorizedCerts).toBe(true);
-	})
+	});
 });
-

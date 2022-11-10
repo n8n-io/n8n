@@ -19,10 +19,11 @@
     "bin": "n8n-node-dev"
   },
   "scripts": {
-    "dev": "npm run watch",
-    "build": "",
+    "clean": "rimraf dist .turbo",
+    "dev": "pnpm watch",
+    "build": "tsc --noEmit",
     "build-node-dev": "tsc",
-    "format": "cd ../.. && node_modules/prettier/bin-prettier.js packages/node-dev/**/**.ts --write",
+    "format": "prettier **/**.ts --write",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "postpack": "rm -f oclif.manifest.json",
@@ -46,11 +47,9 @@
     "src/tsconfig-build.json"
   ],
   "devDependencies": {
-    "@n8n_io/eslint-config": "",
     "@oclif/dev-cli": "^1.22.2",
     "@types/express": "^4.17.6",
     "@types/inquirer": "^6.5.0",
-    "@types/node": "^16.11.22",
     "@types/tmp": "^0.2.0",
     "@types/vorpal": "^1.11.0"
   },
@@ -65,7 +64,6 @@
     "oauth-1.0a": "^2.2.6",
     "replace-in-file": "^6.0.0",
     "request": "^2.88.2",
-    "tmp-promise": "^3.0.2",
-    "typescript": "~4.8.0"
+    "tmp-promise": "^3.0.2"
   }
 }
