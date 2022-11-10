@@ -4,8 +4,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeListSearchItems,
-	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -112,20 +110,6 @@ export class GoogleCalendar implements INodeType {
 					returnData.push({
 						name: `${colorName}`,
 						value: colorId,
-					});
-				}
-				return returnData;
-			},
-			// Get all the timezones to display them to user so that he can
-			// select them easily
-			async getTimezones(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				for (const timezone of moment.tz.names()) {
-					const timezoneName = timezone;
-					const timezoneId = timezone;
-					returnData.push({
-						name: timezoneName,
-						value: timezoneId,
 					});
 				}
 				return returnData;
