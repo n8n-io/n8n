@@ -1,20 +1,20 @@
 import { LocalEventBroker } from '../EventBrokers/LocalEventBroker';
-import { EventMessage } from '../EventMessage/EventMessage';
-import { MessageEventBusForwarder } from './MessageEventBusForwarder';
+import { EventMessage } from '../EventMessageClasses/EventMessage';
+import { MessageEventBusDestination } from './MessageEventBusDestination';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import { EventMessageSubscriptionSet } from '../EventMessage/EventMessageSubscriptionSet';
+import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
 import { MessageEventSubscriptionReceiverInterface } from '../MessageEventSubscriptionReceiver/MessageEventSubscriptionReceiverInterface';
 
-interface MessageEventBusForwarderToLocalBrokerOptions {
+interface MessageEventBusDestinationLocalBrokerOptions {
 	name?: string;
 }
 
-export class MessageEventBusForwarderToLocalBroker implements MessageEventBusForwarder {
+export class MessageEventBusDestinationLocalBroker implements MessageEventBusDestination {
 	#localBroker: LocalEventBroker;
 
 	#name: string;
 
-	constructor(options?: MessageEventBusForwarderToLocalBrokerOptions) {
+	constructor(options?: MessageEventBusDestinationLocalBrokerOptions) {
 		this.#localBroker = new LocalEventBroker();
 		this.#name = options?.name ?? 'LocalBrokerForwarder';
 		console.debug(`MessageForwarderToLocalBroker Broker initialized`);
@@ -24,7 +24,7 @@ export class MessageEventBusForwarderToLocalBroker implements MessageEventBusFor
 		return this.#name;
 	}
 
-	async forward(msg: EventMessage): Promise<boolean> {
+	async sendToDestination(msg: EventMessage): Promise<boolean> {
 		const result = await this.#localBroker?.addMessage(msg);
 		console.debug(`MessageForwarderToLocalBroker forwarded  ${msg.eventName} - ${msg.id}`);
 		console.debug(
@@ -41,8 +41,8 @@ export class MessageEventBusForwarderToLocalBroker implements MessageEventBusFor
 		return false;
 	}
 
-	close() {
-		this.#localBroker.terminateReceiver().catch((error) => console.log(error));
+	async close() {
+		await this.#localBroker.terminateReceiver();
 	}
 
 	async addReceiver(receiver: MessageEventSubscriptionReceiverInterface) {

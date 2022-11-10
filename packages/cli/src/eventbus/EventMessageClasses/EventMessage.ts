@@ -12,7 +12,8 @@ import { SerializerImplementation } from 'threads';
 
 export interface EventMessageSerialized {
 	[key: string]: any | undefined;
-	__type?: '$$MessageEvent';
+	__type?: '$$EventMessage';
+	__payloadtype?: string;
 	id?: string | undefined;
 	ts?: string | undefined;
 	eventName: EventMessageNames;
@@ -37,16 +38,11 @@ export const isEventMessageSerialized = (
 ): candidate is EventMessageSerialized => {
 	const o = candidate as EventMessageSerialized;
 	if (!o) return false;
-	return (
-		o.eventName !== undefined &&
-		o.id !== undefined &&
-		o.ts !== undefined &&
-		o.__type === '$$MessageEvent'
-	);
+	return o.eventName !== undefined && o.id !== undefined && o.ts !== undefined;
 };
 
-export class EventMessage<T = any> {
-	readonly __type: '$$MessageEvent';
+export class EventMessage {
+	readonly __type: '$$EventMessage';
 
 	readonly id: string;
 
@@ -58,7 +54,9 @@ export class EventMessage<T = any> {
 
 	readonly severity: EventMessageSeverity;
 
-	payload: T;
+	readonly __payloadtype: string;
+
+	payload: any;
 
 	/**
 	 * Creates a new instance of Event Message
@@ -73,6 +71,7 @@ export class EventMessage<T = any> {
 		this.eventName = props.eventName;
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		this.payload = props.payload;
+		this.__payloadtype = props.__payloadtype ?? '$$EventMessageAny';
 		this.level = props.level ?? 'info';
 		this.severity = props.severity ?? 'normal';
 	}
@@ -96,7 +95,7 @@ export class EventMessage<T = any> {
 	serialize(): EventMessageSerialized {
 		// TODO: filter payload for sensitive info here?
 		return {
-			__type: '$$MessageEvent',
+			__type: '$$EventMessage',
 			id: this.id,
 			ts: this.ts.toISO(),
 			eventName: this.eventName,

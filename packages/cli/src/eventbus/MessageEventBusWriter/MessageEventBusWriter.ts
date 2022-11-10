@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { EventMessage } from '../EventMessage/EventMessage';
+import { EventMessage } from '../EventMessageClasses/EventMessage';
 
 export interface MessageEventBusWriter {
 	putMessage(msg: EventMessage): Promise<void>;

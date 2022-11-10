@@ -1,5 +1,5 @@
 import { spawn, Worker, Thread, ModuleThread } from 'threads';
-import { EventMessage } from '../EventMessage/EventMessage';
+import { EventMessage } from '../EventMessageClasses/EventMessage';
 import { MessageEventSubscriptionReceiverInterface } from './MessageEventSubscriptionReceiverInterface';
 
 export type EventSubscriberWorker = {

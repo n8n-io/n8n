@@ -1,19 +1,19 @@
-import { EventMessage } from '../EventMessage/EventMessage';
-import { MessageEventBusForwarder } from './MessageEventBusForwarder';
+import { EventMessage } from '../EventMessageClasses/EventMessage';
+import { MessageEventBusDestination } from './MessageEventBusDestination';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import { EventMessageSubscriptionSet } from '../EventMessage/EventMessageSubscriptionSet';
+import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
 import { MessageEventSubscriptionReceiverInterface } from '../MessageEventSubscriptionReceiver/MessageEventSubscriptionReceiverInterface';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis, { RedisOptions } from 'ioredis';
 import { RedisEventSubscriptionReceiver } from '../MessageEventSubscriptionReceiver/RedisEventSubscriptionReceiver';
 
-interface MessageEventBusForwarderToRedisOptions {
+interface MessageEventBusDestinationRedisOptions {
 	channelName: string;
 	redisOptions?: RedisOptions;
 	name?: string;
 }
 
-export class MessageEventBusForwarderToRedis implements MessageEventBusForwarder {
+export class MessageEventBusDestinationRedis implements MessageEventBusDestination {
 	#client: Redis | undefined;
 
 	#channelName: string;
@@ -22,7 +22,7 @@ export class MessageEventBusForwarderToRedis implements MessageEventBusForwarder
 
 	#name: string;
 
-	constructor(options: MessageEventBusForwarderToRedisOptions) {
+	constructor(options: MessageEventBusDestinationRedisOptions) {
 		options.redisOptions = options?.redisOptions ?? {
 			port: 6379, // Redis port
 			host: '127.0.0.1', // Redis host
@@ -45,7 +45,7 @@ export class MessageEventBusForwarderToRedis implements MessageEventBusForwarder
 		return this.#name;
 	}
 
-	async forward(msg: EventMessage): Promise<boolean> {
+	async sendToDestination(msg: EventMessage): Promise<boolean> {
 		if (this.#client?.status === 'ready') {
 			const publishResult = await this.#client?.publish(this.#channelName, msg.toString());
 			console.log(publishResult);
@@ -58,7 +58,7 @@ export class MessageEventBusForwarderToRedis implements MessageEventBusForwarder
 		}
 	}
 
-	close() {
+	async close() {
 		this.#client?.disconnect();
 		this.#client = undefined;
 	}

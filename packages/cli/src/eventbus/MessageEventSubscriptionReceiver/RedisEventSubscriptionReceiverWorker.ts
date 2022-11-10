@@ -1,5 +1,5 @@
 import { expose, isWorkerRuntime, registerSerializer } from 'threads/worker';
-import { EventMessage, messageEventSerializer } from '../EventMessage/EventMessage';
+import { EventMessage, messageEventSerializer } from '../EventMessageClasses/EventMessage';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis, { RedisOptions } from 'ioredis';
 

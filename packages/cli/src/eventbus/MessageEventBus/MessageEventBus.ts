@@ -1,25 +1,22 @@
-import { EventMessage, EventMessageSerialized } from '../EventMessage/EventMessage';
-import { MessageEventBusWriter } from '../MessageEventBusWriter/MessageEventBusWriter';
-import { MessageEventBusForwarder } from '../MessageEventBusForwarder/MessageEventBusForwarder';
-import unionBy from 'lodash.unionby';
-import iteratee from 'lodash.iteratee';
+import { EventMessage, EventMessageSerialized } from '../EventMessageClasses/EventMessage';
+import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination';
 import remove from 'lodash.remove';
+import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 
 interface MessageEventBusInitializationOptions {
-	forwarders: MessageEventBusForwarder[];
-	immediateWriters: MessageEventBusWriter[];
+	forwarders?: MessageEventBusDestination[];
 }
+
+export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
 class MessageEventBus {
 	static #instance: MessageEventBus;
 
-	#immediateWriters: MessageEventBusWriter[];
+	#immediateWriter: MessageEventBusLogWriter;
 
-	#forwarders: MessageEventBusForwarder[];
+	#forwarders: MessageEventBusDestination[];
 
 	#pushInteralTimer: NodeJS.Timer;
-
-	#eventMessageQueue: EventMessage[] = [];
 
 	static getInstance(): MessageEventBus {
 		if (!MessageEventBus.#instance) {
@@ -28,12 +25,12 @@ class MessageEventBus {
 		return MessageEventBus.#instance;
 	}
 
-	async initialize(options: MessageEventBusInitializationOptions) {
+	async initialize(options?: MessageEventBusInitializationOptions) {
 		if (this.#pushInteralTimer) {
 			clearInterval(this.#pushInteralTimer);
 		}
-		this.#immediateWriters = options.immediateWriters;
-		this.#forwarders = options.forwarders;
+		this.#immediateWriter = await MessageEventBusLogWriter.getInstance();
+		this.#forwarders = options?.forwarders ?? [];
 
 		await this.send(
 			new EventMessage({
@@ -45,6 +42,10 @@ class MessageEventBus {
 
 		// check for unsent messages
 		await this.trySendingUnsent();
+
+		// now start the logging to a fresh event log
+		await this.#immediateWriter.startLogging();
+
 		this.#pushInteralTimer = setInterval(async () => {
 			console.debug('Checking for unsent messages...');
 			await this.trySendingUnsent();
@@ -53,20 +54,19 @@ class MessageEventBus {
 		console.debug('MessageEventBus initialized');
 	}
 
-	addForwarder(forwarder: MessageEventBusForwarder) {
+	async addForwarder(forwarder: MessageEventBusDestination) {
+		await this.removeForwarder(forwarder.getName());
 		this.#forwarders.push(forwarder);
 	}
 
-	removeForwarder(name: string) {
+	async removeForwarder(name: string) {
 		const removedForwarder = remove(this.#forwarders, (e) => e.getName() === name);
-		removedForwarder.map((e) => {
-			e.close();
-		});
-		removedForwarder.fill(undefined);
+		for (const forwarder of removedForwarder) {
+			await forwarder.close();
+		}
 	}
 
 	async trySendingUnsent() {
-		// check for unsent messages
 		const unsentMessages = await this.getEventsUnsent();
 		console.debug(`Found unsent messages: ${unsentMessages.length}`);
 		for (const unsentMsg of unsentMessages) {
@@ -74,17 +74,10 @@ class MessageEventBus {
 		}
 	}
 
-	close() {
-		// TODO: make sure all msg are written
-		for (const writer of this.#immediateWriters) {
-			writer.close();
-		}
+	async close() {
+		await this.#immediateWriter.close();
 		for (const forwarder of this.#forwarders) {
-			forwarder.close();
-		}
-		// TODO: make sure all msg are sent
-		if (this.#eventMessageQueue.length > 0) {
-			console.error('Messages left in MessageBuffer queue');
+			await forwarder.close();
 		}
 	}
 
@@ -95,72 +88,47 @@ class MessageEventBus {
 	}
 
 	async confirmSent(msg: EventMessage) {
-		await this.#writeConfirmMessageSent(msg.getKey());
+		await this.#writeConfirmMessageSent(msg.id);
 	}
 
 	async #writePutMessage(msg: EventMessage) {
-		for (const writer of this.#immediateWriters) {
-			await writer.putMessage(msg);
-			console.debug(`MessageEventBus Msg written  ${msg.eventName} - ${msg.id}`);
-		}
+		await this.#immediateWriter.putMessage(msg);
 	}
 
-	async #writeConfirmMessageSent(key: string) {
-		for (const writer of this.#immediateWriters) {
-			await writer.confirmMessageSent(key);
-			console.debug(`MessageEventBus confirmed ${key}`);
-		}
+	async #writeConfirmMessageSent(id: string) {
+		await this.#immediateWriter.confirmMessageSent(id);
 	}
 
 	async #forwardMessage(msg: EventMessage) {
 		for (const forwarder of this.#forwarders) {
-			await forwarder.forward(msg);
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+			await forwarder.sendToDestination(msg);
 			console.debug(`MessageEventBus Msg forwarded  ${msg.eventName} - ${msg.id}`);
 		}
 	}
 
-	async getEvents(options: { returnUnsent: boolean }): Promise<EventMessage[]> {
-		if (this.#immediateWriters.length > 1) {
-			const allQueryResults = [];
-			for (const writer of this.#immediateWriters) {
-				let queryResult: EventMessage[];
-				if (options.returnUnsent) {
-					queryResult = await writer.getMessagesUnsent();
-				} else {
-					queryResult = await writer.getMessagesSent();
-				}
-				if (queryResult.length > 0) {
-					allQueryResults.push(queryResult);
-				}
-			}
-			const unionResult = unionBy(allQueryResults, iteratee('id'));
-			if (unionResult && unionResult.length > 0) {
-				return unionResult[0];
-			}
-			// return allQueryResults[0];
-			return [];
-		} else if (this.#immediateWriters.length === 1) {
-			let queryResult: EventMessage[];
-			if (options.returnUnsent) {
-				queryResult = await this.#immediateWriters[0].getMessagesUnsent();
-			} else {
-				queryResult = await this.#immediateWriters[0].getMessagesSent();
-			}
-			return queryResult;
-		} else {
-			return [];
+	async getEvents(mode: EventMessageReturnMode = 'all'): Promise<EventMessage[]> {
+		let queryResult: EventMessage[];
+		switch (mode) {
+			case 'all':
+				queryResult = await this.#immediateWriter.getMessages();
+				break;
+			case 'sent':
+				queryResult = await this.#immediateWriter.getMessagesSent();
+				break;
+			case 'unsent':
+				queryResult = await this.#immediateWriter.getMessagesUnsent();
 		}
+		return queryResult;
 	}
 
 	async getEventsSent() {
-		const sentMessages = await this.getEvents({ returnUnsent: false });
-		console.debug(`Sent Messages: ${sentMessages.length}`);
+		const sentMessages = await this.getEvents('sent');
 		return sentMessages;
 	}
 
 	async getEventsUnsent() {
-		const unSentMessages = await this.getEvents({ returnUnsent: true });
-		console.debug(`Unsent Messages: ${unSentMessages.length}`);
+		const unSentMessages = await this.getEvents('unsent');
 		return unSentMessages;
 	}
 }

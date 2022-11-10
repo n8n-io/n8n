@@ -157,17 +157,12 @@ import { ResponseError } from './ResponseHelper';
 import { toHttpNodeParameters } from './CurlConverterHelper';
 import { initErrorHandling } from './ErrorReporting';
 import { registerSerializer } from 'threads/worker';
-import { EventMessage, messageEventSerializer } from './eventbus/EventMessage/EventMessage';
+import { EventMessage, messageEventSerializer } from './eventbus/EventMessageClasses/EventMessage';
 import { eventBus } from './eventbus';
-import { EventMessageSubscriptionSet } from './eventbus/EventMessage/EventMessageSubscriptionSet';
-import { MessageEventBusForwarderToLocalBroker } from './eventbus/MessageEventBusForwarder/MessageEventBusForwarderToLocalBroker';
-import { MessageEventBusLevelDbWriter } from './eventbus/MessageEventBusWriter/MessageEventBusLevelDbWriter';
+import { MessageEventBusDestinationLocalBroker } from './eventbus/MessageEventBusDestination/MessageEventBusDestinationLocalBroker';
 import { ConsoleEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/ConsoleEventSubscriptionReceiver';
-import { FileEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/FileEventSubscriptionReceiver';
 import { EventMessageNames } from './eventbus/types/EventMessageTypes';
-import { MessageEventBusFileWriter } from './eventbus/MessageEventBusWriter/MessageEventBusFileWriter';
-import { MessageEventBusForwarderToRedis } from './eventbus/MessageEventBusForwarder/MessageEventBusForwarderToRedis';
-import { RedisEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/RedisEventSubscriptionReceiver';
+import { eventMessageConfirmSerializer } from './eventbus/EventMessageClasses/EventMessageConfirm';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1681,59 +1676,76 @@ class App {
 		// MessageBuffer TESTING
 		// ----------------------------------------
 
-		// Register the serializer on the main thread
+		// Register the thread serializer on the main thread
 		registerSerializer(messageEventSerializer);
-		const subscriptionSetCore = new EventMessageSubscriptionSet({
-			name: 'core',
-			eventGroups: ['n8n.core'],
-			eventNames: [],
-		});
-		const subscriptionSetCustom = new EventMessageSubscriptionSet({
-			name: 'ui',
-			eventGroups: ['n8n.ui'],
-			eventNames: ['n8n.workflow.workflowStarted'],
-		});
-		const subscriptionSetAll = new EventMessageSubscriptionSet({
-			name: 'All Events',
-			eventGroups: ['*'],
-			eventNames: ['*'],
-		});
-		// const fileReceiverCoreNode = new FileEventSubscriptionReceiverNode({
-		// 	name: 'coreEventsFileLogger2',
-		// 	fileName: 'events_core2.txt',
+		registerSerializer(eventMessageConfirmSerializer);
+
+		// these will have to be made user configurable
+		// const subscriptionSetCore = new EventMessageSubscriptionSet({
+		// 	name: 'core',
+		// 	eventGroups: ['n8n.core'],
+		// 	eventNames: [],
+		// });
+		// const subscriptionSetCustom = new EventMessageSubscriptionSet({
+		// 	name: 'ui',
+		// 	eventGroups: ['n8n.ui'],
+		// 	eventNames: ['n8n.workflow.workflowStarted'],
+		// });
+		// const subscriptionSetAll = new EventMessageSubscriptionSet({
+		// 	name: 'All Events',
+		// 	eventGroups: ['*'],
+		// 	eventNames: ['*'],
+		// });
+
+		// // multiple receivers of the same type can exist, but need to have separate names
+		// const fileReceiverCore = new FileEventSubscriptionReceiver({
+		// 	name: 'coreEventsFileLogger',
+		// 	fileName: 'events_core.txt',
+		// });
+		// const fileReceiverUi = new FileEventSubscriptionReceiver({
+		// 	name: 'uiEventsFileLogger',
+		// 	fileName: 'events_ui.txt',
 		// });
 		const consoleReceiver = new ConsoleEventSubscriptionReceiver();
-		const fileReceiverCore = new FileEventSubscriptionReceiver({
-			name: 'coreEventsFileLogger',
-			fileName: 'events_core.txt',
-		});
-		const fileReceiverUi = new FileEventSubscriptionReceiver({
-			name: 'uiEventsFileLogger',
-			fileName: 'events_ui.txt',
-		});
-		const localBrokerForwarder = new MessageEventBusForwarderToLocalBroker();
+
+		// local broker is optional
+		const localBrokerForwarder = new MessageEventBusDestinationLocalBroker();
 		await localBrokerForwarder.addReceiver(consoleReceiver);
-		localBrokerForwarder.addSubscription(consoleReceiver, [
-			subscriptionSetCore,
-			subscriptionSetCustom,
-		]);
-		await localBrokerForwarder.addReceiver(fileReceiverCore);
-		localBrokerForwarder.addSubscription(fileReceiverCore, [subscriptionSetCore]);
-		await localBrokerForwarder.addReceiver(fileReceiverUi);
-		localBrokerForwarder.addSubscription(fileReceiverUi, [subscriptionSetCustom]);
-		const redisForwarder = new MessageEventBusForwarderToRedis({ channelName: 'n8n-events' });
-		const redisReceiver = new RedisEventSubscriptionReceiver();
-		await redisForwarder.addReceiver(redisReceiver);
-		await redisForwarder.addSubscription(redisReceiver, [subscriptionSetAll]);
+		// localBrokerForwarder.addSubscription(consoleReceiver, [
+		// 	subscriptionSetCore,
+		// 	subscriptionSetCustom,
+		// ]);
+		// await localBrokerForwarder.addReceiver(fileReceiverCore);
+		// localBrokerForwarder.addSubscription(fileReceiverCore, [subscriptionSetCore]);
+		// await localBrokerForwarder.addReceiver(fileReceiverUi);
+		// localBrokerForwarder.addSubscription(fileReceiverUi, [subscriptionSetCustom]);
+
+		// const redisForwarder = new MessageEventBusForwarderToRedis({ channelName: 'n8n-events' });
+		// const redisReceiver = new RedisEventSubscriptionReceiver();
+		// await redisForwarder.addReceiver(redisReceiver);
+		// await redisForwarder.addSubscription(redisReceiver, [subscriptionSetAll]);
+
+		// testrun as thread for memory use check (ca. 20mb)
+		// await MessageEventBusFileWriter.runAsThread();
+
+		// Initialize EventBus
 		await eventBus.initialize({
-			immediateWriters: [
-				// new MessageEventBusLevelDbWriter(),
-				new MessageEventBusFileWriter({ keepSentEventsForSeconds: 10, syncFileAccess: false }),
-			],
-			forwarders: [localBrokerForwarder, redisForwarder],
+			// immediateWriters: [
+			// 	new MessageEventBusFileWriter({ keepSentEventsForSeconds: 10, syncFileAccess: false }),
+			// ],
+			// forwarders: [localBrokerForwarder, redisForwarder],
+			// forwarders: [localBrokerForwarder],
 		});
-		process.on('SIGTERM', () => eventBus.close());
-		process.on('SIGINT', () => eventBus.close());
+
+		// process.on('SIGTERM', () => messageAppendWriter.getThread()?.communicate('SIGTERM'));
+		// process.on('SIGINT', () => messageAppendWriter.getThread()?.communicate('SIGINT'));
+		// process.on('SIGQUIT', () => messageAppendWriter.getThread()?.communicate('SIGQUIT'));
+		// process.on('SIGKILL', () => messageAppendWriter.getThread()?.communicate('SIGKILL'));
+		// process.on('SIGHUP', () => messageAppendWriter.getThread()?.communicate('SIGHUP'));
+
+		// // EventBus shutdown
+		// process.on('SIGTERM', () => eventBus.close());
+		// process.on('SIGINT', () => eventBus.close());
 
 		this.app.post(
 			`/${this.restEndpoint}/messagebuffer/add/msg`,
@@ -1758,7 +1770,7 @@ class App {
 				const eventName = req.body.eventName as EventMessageNames;
 				if (eventName) {
 					for (let i = 0; i < 1000; i++) {
-						const msg = new EventMessage<number>({
+						const msg = new EventMessage({
 							eventName,
 							level: 'debug',
 							severity: 'normal',
@@ -1766,6 +1778,7 @@ class App {
 						});
 						await eventBus.send(msg);
 					}
+					process.exit();
 					return 'sent 1000';
 				} else {
 					return 'not a valid eventName';

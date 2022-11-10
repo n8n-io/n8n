@@ -1,7 +1,7 @@
 import { ModuleThread } from 'threads';
 import { EventSubscriberWorker } from './MessageEventSubscriptionReceiver';
 import { Worker } from 'node:worker_threads';
-import { EventMessage } from '../EventMessage/EventMessage';
+import { EventMessage } from '../EventMessageClasses/EventMessage';
 
 export interface MessageEventSubscriptionReceiverInterface {
 	name: string;

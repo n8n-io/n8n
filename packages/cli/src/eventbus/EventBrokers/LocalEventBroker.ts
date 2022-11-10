@@ -1,5 +1,5 @@
-import { EventMessage } from '../EventMessage/EventMessage';
-import { EventMessageSubscriptionSet } from '../EventMessage/EventMessageSubscriptionSet';
+import { EventMessage } from '../EventMessageClasses/EventMessage';
+import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
 import unionBy from 'lodash.unionby';
 import iteratee from 'lodash.iteratee';
 import remove from 'lodash.remove';

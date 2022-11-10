@@ -1,5 +1,5 @@
 import { expose, isWorkerRuntime, registerSerializer } from 'threads/worker';
-import { EventMessage, messageEventSerializer } from '../EventMessage/EventMessage';
+import { EventMessage, messageEventSerializer } from '../EventMessageClasses/EventMessage';
 
 // -----------------------------------------
 // * This part runs in the Worker Thread ! *
