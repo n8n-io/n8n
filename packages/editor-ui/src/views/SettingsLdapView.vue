@@ -237,7 +237,7 @@ export default mixins(showMessage).extend({
 				connection: {
 					url: form.serverAddress,
 					allowUnauthorizedCerts: form.allowUnauthorizedCerts === 'true' ? true : false,
-					port: form.port ?? 389,
+					port: parseInt(form.port || '389', 10),
 					security: form.connectionSecurity,
 				},
 				binding: {
