@@ -1005,7 +1005,7 @@ export const schema = {
 			format: Number,
 			default: 60 * 60 * 72, // 72 hours
 			env: 'N8N_LICENSE_AUTO_RENEW_OFFSET',
-			doc: 'How often to renew licenses automatically.',
+			doc: 'How many seconds before expiry a license should get automatically renewed. ',
 		},
 		activationKey: {
 			format: String,
