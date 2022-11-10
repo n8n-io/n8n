@@ -377,6 +377,7 @@ export class GoogleCalendar implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
 						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
 						const options = this.getNodeParameter('options', i) as IDataObject;
+						const tz = this.getNodeParameter('options.timeZone', i, '', { extractValue: true }) as string;
 						if (options.iCalUID) {
 							qs.iCalUID = options.iCalUID as string;
 						}
@@ -404,8 +405,8 @@ export class GoogleCalendar implements INodeType {
 						if (options.timeMin) {
 							qs.timeMin = options.timeMin as string;
 						}
-						if (options.timeZone) {
-							qs.timeZone = options.timeZone as string;
+						if (tz) {
+							qs.timeZone = tz;
 						}
 						if (options.updatedMin) {
 							qs.updatedMin = options.updatedMin as string;

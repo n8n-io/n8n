@@ -724,15 +724,42 @@ export const eventFields: INodeProperties[] = [
 				description: "Lower bound (exclusive) for an event's end time to filter by",
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone',
 				name: 'timeZone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description:
-					'Time zone used in the response. The default is the time zone of the calendar. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				description: 'Time zone used in the response. The default is the time zone of the calendar.',
+				modes: [
+					{
+						displayName: 'Timezone',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Timezone...',
+						typeOptions: {
+							searchListMethod: 'getTimezones',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: TIMEZONE_VALIDATION_REGEX,
+									errorMessage: 'Not a valid Timezone',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '([-+/_a-zA-Z0-9]*)',
+						},
+						placeholder: 'Europe/Berlin',
+					},
+				],
 			},
 			{
 				displayName: 'Updated Min',
