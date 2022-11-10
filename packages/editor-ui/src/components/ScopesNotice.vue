@@ -6,8 +6,9 @@
 </template>
 
 <script lang="ts">
+import { useCredentialsStore } from '@/stores/credentials';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
-import { mapGetters } from 'vuex';
 
 export default Vue.extend({
 	name: 'ScopesNotice',
@@ -16,7 +17,9 @@ export default Vue.extend({
 		'scopes',
 	],
 	computed: {
-		...mapGetters('credentials', ['getCredentialTypeByName']),
+		...mapStores(
+			useCredentialsStore,
+		),
 		scopesShortContent (): string {
 			return this.$locale.baseText(
 				'nodeSettings.scopes.notice',
@@ -46,7 +49,7 @@ export default Vue.extend({
 			const oauth1Api = this.$locale.baseText('generic.oauth1Api');
 			const oauth2Api = this.$locale.baseText('generic.oauth2Api');
 
-			return this.getCredentialTypeByName(this.activeCredentialType).displayName
+			return this.credentialsStore.getCredentialTypeByName(this.activeCredentialType).displayName
 				.replace(new RegExp(`${oauth1Api}|${oauth2Api}`), '')
 				.trim();
 		},

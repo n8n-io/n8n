@@ -1,22 +1,20 @@
 import { JsonObject, jsonParse, LoggerProxy } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
-import {
-	ActiveWorkflowRunner,
-	Db,
-	InternalHooksManager,
-	ResponseHelper,
-	whereClause,
-	WorkflowHelpers,
-} from '..';
-import config from '../../config';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { User } from '../databases/entities/User';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { validateEntity } from '../GenericHelpers';
-import { externalHooks } from '../Server';
-import * as TagHelpers from '../TagHelpers';
-import { getSharedWorkflowIds } from '../WorkflowHelpers';
 import { validate as jsonSchemaValidate } from 'jsonschema';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import * as Db from '@/Db';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { whereClause } from '@/CredentialsHelper';
+import config from '@/config';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { User } from '@db/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { validateEntity } from '@/GenericHelpers';
+import { externalHooks } from '@/Server';
+import * as TagHelpers from '@/TagHelpers';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;

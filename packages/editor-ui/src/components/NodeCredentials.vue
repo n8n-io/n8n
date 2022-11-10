@@ -69,7 +69,6 @@ import {
 	ICredentialType,
 	INodeCredentialDescription,
 	INodeCredentialsDetails,
-	INodeTypeDescription,
 } from 'n8n-workflow';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers';
@@ -78,8 +77,6 @@ import { showMessage } from '@/components/mixins/showMessage';
 
 import TitledList from '@/components/TitledList.vue';
 
-import { mapGetters } from "vuex";
-
 import mixins from 'vue-typed-mixins';
 import {getCredentialPermissions} from "@/permissions";
 import { mapStores } from 'pinia';
@@ -87,6 +84,7 @@ import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export default mixins(
 	genericHelpers,
@@ -105,20 +103,23 @@ export default mixins(
 	data () {
 		return {
 			NEW_CREDENTIALS_TEXT: `- ${this.$locale.baseText('nodeCredentials.createNew')} -`,
-			newCredentialUnsubscribe: null as null | (() => void),
+			subscribedToCredentialType: '',
 		};
+	},
+	mounted() {
+		this.listenForNewCredentials();
 	},
 	computed: {
 		...mapStores(
+			useCredentialsStore,
 			useNodeTypesStore,
 			useUIStore,
 			useUsersStore,
 			useWorkflowsStore,
 		),
-		...mapGetters('credentials', {
-			allCredentialsByType: 'allCredentialsByType',
-			getCredentialTypeByName: 'getCredentialTypeByName',
-		}),
+		allCredentialsByType(): {[type: string]: ICredentialsResponse[]} {
+			return this.credentialsStore.allCredentialsByType;
+		},
 		currentUser (): IUser {
 			return this.usersStore.currentUser || {} as IUser;
 		},
@@ -135,7 +136,7 @@ export default mixins(
 		credentialTypesNodeDescription (): INodeCredentialDescription[] {
 			const node = this.node as INodeUi;
 
-			const credType = this.getCredentialTypeByName(this.overrideCredType);
+			const credType = this.credentialsStore.getCredentialTypeByName(this.overrideCredType);
 
 			if (credType) return [credType];
 
@@ -152,7 +153,7 @@ export default mixins(
 			} = {};
 			let credentialType: ICredentialType | null;
 			for (const credentialTypeName of this.credentialTypesNode) {
-				credentialType = this.$store.getters['credentials/getCredentialTypeByName'](credentialTypeName);
+				credentialType = this.credentialsStore.getCredentialTypeByName(credentialTypeName);
 				returnData[credentialTypeName] = credentialType !== null ? credentialType.displayName : credentialTypeName;
 			}
 			return returnData;
@@ -165,7 +166,7 @@ export default mixins(
 	methods: {
 		getCredentialOptions(type: string): ICredentialsResponse[] {
 			return (this.allCredentialsByType as Record<string, ICredentialsResponse[]>)[type].filter((credential) => {
-				const permissions = getCredentialPermissions(this.currentUser, credential, this.$store);
+				const permissions = getCredentialPermissions(this.currentUser, credential);
 
 				return permissions.use;
 			});
@@ -191,27 +192,31 @@ export default mixins(
 
 			return styles;
 		},
-
-		listenForNewCredentials(credentialType: string) {
-			this.stopListeningForNewCredentials();
-
-			this.newCredentialUnsubscribe = this.$store.subscribe((mutation, state) => {
-				if (mutation.type === 'credentials/upsertCredential' || mutation.type === 'credentials/enableOAuthCredential'){
-					this.onCredentialSelected(credentialType, mutation.payload.id);
+		// TODO: Investigate if this can be solved using only the store data (storing selected flag in credentials objects, ...)
+		listenForNewCredentials() {
+			// Listen for credentials store changes so credential selection can be updated if creds are changed from the modal
+			this.credentialsStore.$subscribe((mutation, state) => {
+				// This data pro stores credential type that the component is currently interested in
+				const credentialType = this.subscribedToCredentialType;
+				const credentialsOfType = this.credentialsStore.allCredentialsByType[credentialType].sort((a, b) => (a.id < b.id ? -1 : 1));
+				if (credentialsOfType.length > 0) {
+					// If nothing has been selected previously, select the first one (newly added)
+					if (!this.selected[credentialType]) {
+						this.onCredentialSelected(credentialType, credentialsOfType[0].id);
+					} else {
+						// Else, check id currently selected cred has been updated
+						const newSelected = credentialsOfType.find(cred => cred.id === this.selected[credentialType].id);
+						// If it has changed, select it
+						if (newSelected && newSelected.name !== this.selected[credentialType].name) {
+							this.onCredentialSelected(credentialType, newSelected.id);
+						} else { // Else select the last cred with that type since selected has been deleted or a new one has been added
+							this.onCredentialSelected(credentialType, credentialsOfType[credentialsOfType.length - 1].id);
+						}
+					}
 				}
-				if (mutation.type === 'credentials/deleteCredential') {
-					this.clearSelectedCredential(credentialType);
-					this.stopListeningForNewCredentials();
-				}
+				this.subscribedToCredentialType = '';
 			});
 		},
-
-		stopListeningForNewCredentials() {
-			if (this.newCredentialUnsubscribe) {
-				this.newCredentialUnsubscribe();
-			}
-		},
-
 		clearSelectedCredential(credentialType: string) {
 			const node: INodeUi = this.node;
 
@@ -233,7 +238,10 @@ export default mixins(
 
 		onCredentialSelected (credentialType: string, credentialId: string | null | undefined) {
 			if (credentialId === this.NEW_CREDENTIALS_TEXT) {
-				this.listenForNewCredentials(credentialType);
+				// this.listenForNewCredentials(credentialType);
+				this.subscribedToCredentialType = credentialType;
+			}
+			if (!credentialId || credentialId === this.NEW_CREDENTIALS_TEXT) {
 				this.uiStore.openNewCredential(credentialType);
 				this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: true, workflow_id: this.workflowsStore.workflowId });
 				return;
@@ -250,13 +258,13 @@ export default mixins(
 				},
 			);
 
-			const selectedCredentials = this.$store.getters['credentials/getCredentialById'](credentialId);
+			const selectedCredentials = this.credentialsStore.getCredentialById(credentialId);
 			const oldCredentials = this.node.credentials && this.node.credentials[credentialType] ? this.node.credentials[credentialType] : {};
 
 			const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
 
 			// if credentials has been string or neither id matched nor name matched uniquely
-			if (oldCredentials.id === null || (oldCredentials.id && !this.$store.getters['credentials/getCredentialByIdAndType'](oldCredentials.id, credentialType))) {
+			if (oldCredentials.id === null || (oldCredentials.id && !this.credentialsStore.getCredentialByIdAndType(oldCredentials.id, credentialType))) {
 				// update all nodes in the workflow with the same old/invalid credentials
 				this.workflowsStore.replaceInvalidWorkflowCredentials({
 					credentials: selected,
@@ -333,12 +341,8 @@ export default mixins(
 			this.uiStore.openExistingCredential(id);
 
 			this.$telemetry.track('User opened Credential modal', { credential_type: credentialType, source: 'node', new_credential: false, workflow_id: this.workflowsStore.workflowId });
-
-			this.listenForNewCredentials(credentialType);
+			this.subscribedToCredentialType = credentialType;
 		},
-	},
-	beforeDestroy () {
-		this.stopListeningForNewCredentials();
 	},
 });
 </script>
