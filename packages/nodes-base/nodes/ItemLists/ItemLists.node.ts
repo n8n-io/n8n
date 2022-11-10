@@ -10,6 +10,8 @@ import {
 } from 'n8n-workflow';
 
 import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } from 'lodash';
+import { tableTransformationDescription } from './tableTransformation/description';
+import { tableTransformationRouter } from './tableTransformation/router';
 
 const { NodeVM } = require('vm2');
 
@@ -32,11 +34,16 @@ export class ItemLists implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
-				type: 'hidden',
+				type: 'options',
+				noDataExpression: true,
 				options: [
 					{
 						name: 'Item List',
 						value: 'itemList',
+					},
+					{
+						name: 'Table Tranformation',
+						value: 'tableTransformation',
 					},
 				],
 				default: 'itemList',
@@ -77,14 +84,13 @@ export class ItemLists implements INodeType {
 						description: 'Turn a list inside item(s) into separate items',
 						action: 'Turn a list inside item(s) into separate items',
 					},
-					{
-						name: 'Table Tranformation',
-						value: 'tableTransformation',
-						description: 'Transform a list of items into a table',
-						action: 'Transform a list of items into a table',
-					},
 				],
 				default: 'splitOutItems',
+				displayOptions: {
+					show: {
+						resource: ['itemList'],
+					},
+				},
 			},
 			// Split out items - Fields
 
@@ -735,6 +741,7 @@ return 0;`,
 					},
 				],
 			},
+			...tableTransformationDescription,
 		],
 	};
 
@@ -1360,6 +1367,8 @@ return 0;`,
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}
+		} else if (resource === 'tableTransformation') {
+			return await tableTransformationRouter.call(this);
 		} else {
 			throw new NodeOperationError(this.getNode(), `Resource '${resource}' is not recognized`);
 		}
