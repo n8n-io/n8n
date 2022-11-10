@@ -992,7 +992,7 @@ export interface ICredentialsState {
 
 export interface ITagsState {
 	tags: { [id: string]: ITag };
-	isLoading: boolean;
+	loading: boolean;
 	fetchedAll: boolean;
 	fetchedUsageCount: boolean;
 }

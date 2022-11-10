@@ -23,13 +23,13 @@ import {
 	PrimaryGeneratedColumn,
 } from 'typeorm';
 
-import * as config from '../../../config';
+import config from '@/config';
 import { TagEntity } from './TagEntity';
 import { SharedWorkflow } from './SharedWorkflow';
 import { objectRetriever, sqlite } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
-import type { IWorkflowDb } from '../../Interfaces';
-import { alphabetizeKeys } from '../../utils';
+import type { IWorkflowDb } from '@/Interfaces';
+import { alphabetizeKeys } from '@/utils';
 
 @Entity()
 export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
