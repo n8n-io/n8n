@@ -153,6 +153,7 @@ export class GoogleCalendar implements INodeType {
 						const timeMax = this.getNodeParameter('timeMax', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const outputFormat = options.outputFormat || 'availability';
+						const tz = this.getNodeParameter('options.timezone', i, '', { extractValue: true }) as string;
 
 						const body: IDataObject = {
 							timeMin: moment(timeMin).utc().format(),
@@ -162,7 +163,7 @@ export class GoogleCalendar implements INodeType {
 									id: calendarId,
 								},
 							],
-							timeZone: options.timezone || timezone,
+							timeZone: tz || timezone,
 						};
 
 						responseData = await googleApiRequest.call(

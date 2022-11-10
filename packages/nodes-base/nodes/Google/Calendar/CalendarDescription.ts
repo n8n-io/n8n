@@ -1,4 +1,5 @@
 import { INodeProperties } from 'n8n-workflow';
+import { TIMEZONE_VALIDATION_REGEX } from './GenericFunctions';
 
 export const calendarOperations: INodeProperties[] = [
 	{
@@ -138,15 +139,42 @@ export const calendarFields: INodeProperties[] = [
 				description: 'The format to return the data in',
 			},
 			{
-				displayName: 'Timezone Name or ID',
+				displayName: 'Timezone',
 				name: 'timezone',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getTimezones',
-				},
-				default: '',
-				description:
-					'Time zone used in the response. By default n8n timezone is used. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				description: 'Time zone used in the response. By default n8n timezone is used.',
+				modes: [
+					{
+						displayName: 'Timezone',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a Timezone...',
+						typeOptions: {
+							searchListMethod: 'getTimezones',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: TIMEZONE_VALIDATION_REGEX,
+									errorMessage: 'Not a valid Timezone',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: '([-+/_a-zA-Z0-9]*)',
+						},
+						placeholder: 'Europe/Berlin',
+					},
+				],
 			},
 		],
 	},
