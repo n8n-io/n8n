@@ -33,6 +33,7 @@ export const DEFAULT_START_POSITION_X = 180;
 export const DEFAULT_START_POSITION_Y = 240;
 export const HEADER_HEIGHT = 65;
 export const SIDEBAR_WIDTH = 65;
+export const INNER_SIDEBAR_WIDTH = 310;
 export const SIDEBAR_WIDTH_EXPANDED = 200;
 export const MAX_X_TO_PUSH_DOWNSTREAM_NODES = 300;
 export const PUSH_NODES_OFFSET = NODE_SIZE * 2 + GRID_SIZE;
@@ -40,17 +41,6 @@ const LOOPBACK_MINIMUM = 140;
 export const INPUT_UUID_KEY = '-input';
 export const OUTPUT_UUID_KEY = '-output';
 export const PLACEHOLDER_BUTTON = 'PlaceholderTriggerButton';
-
-export const DEFAULT_START_NODE = {
-	name: 'Start',
-	type: START_NODE_TYPE,
-	typeVersion: 1,
-	position: [
-		DEFAULT_START_POSITION_X,
-		DEFAULT_START_POSITION_Y,
-	] as XYPosition,
-	parameters: {},
-};
 
 export const DEFAULT_PLACEHOLDER_TRIGGER_BUTTON = {
 	name: 'Choose a Trigger...',
@@ -515,10 +505,19 @@ export const getMidCanvasPosition = (scale: number, offset: XYPosition): XYPosit
 	return getRelativePosition(editorWidth / 2, (editorHeight - HEADER_HEIGHT) / 2, scale, offset);
 };
 
-export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) => {
+export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition, executionPreview: boolean) => {
 	const squareSize = GRID_SIZE * scale;
 	const dotSize = 1 * scale;
 	const dotPosition = (GRID_SIZE / 2) * scale;
+
+	if (executionPreview) {
+		return {
+			'background-image': 'linear-gradient(135deg, #f9f9fb 25%, #ffffff 25%, #ffffff 50%, #f9f9fb 50%, #f9f9fb 75%, #ffffff 75%, #ffffff 100%)',
+			'background-size': `${squareSize}px ${squareSize}px`,
+			'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
+		};
+	}
+
 	const styles: object = {
 		'background-size': `${squareSize}px ${squareSize}px`,
 		'background-position': `left ${offsetPosition[0]}px top ${offsetPosition[1]}px`,
@@ -530,6 +529,7 @@ export const getBackgroundStyles = (scale: number, offsetPosition: XYPosition) =
 			'background-image': `radial-gradient(circle at ${dotPosition}px ${dotPosition}px, ${dotColor} ${dotSize}px, transparent 0)`,
 		};
 	}
+
 	return styles;
 };
 
@@ -651,10 +651,10 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 const getContentDimensions = (): { editorWidth: number, editorHeight: number } => {
 	let contentWidth = window.innerWidth;
 	let contentHeight = window.innerHeight;
-	const contentElement = document.getElementById('content');
+	const nodeViewRoot = document.getElementById('node-view-root');
 
-	if (contentElement) {
-		const contentBounds = contentElement.getBoundingClientRect();
+	if (nodeViewRoot) {
+		const contentBounds = nodeViewRoot.getBoundingClientRect();
 		contentWidth = contentBounds.width;
 		contentHeight = contentBounds.height;
 	}
@@ -766,7 +766,6 @@ export const getInputEndpointUUID = (nodeId: string, inputIndex: number) => {
 
 export const getFixedNodesList = (workflowNodes: INode[]) => {
 	const nodes = [...workflowNodes];
-	const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
 
 	const leftmostTop = getLeftmostTopNode(nodes);
 
@@ -774,12 +773,9 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 	const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
 
 	nodes.map((node) => {
-		node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
+		node.position[0] += diffX + (NODE_SIZE * 2);
 		node.position[1] += diffY;
 	});
 
-	if (!hasStartNode) {
-		nodes.push({...DEFAULT_START_NODE, id: uuid() });
-	}
 	return nodes;
 };

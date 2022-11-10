@@ -1,4 +1,4 @@
-import config from '../../../config';
+import config from '@/config';
 
 export const REST_PATH_SEGMENT = config.getEnv('endpoints.rest') as Readonly<string>;
 
@@ -56,18 +56,6 @@ export const MAPPING_TABLES_TO_CLEAR: Record<string, string[] | undefined> = {
 	Workflow: ['workflows_tags'],
 	Tag: ['workflows_tags'],
 };
-
-/**
- * Name of the connection used for creating and dropping a Postgres DB
- * for each suite test run.
- */
-export const BOOTSTRAP_POSTGRES_CONNECTION_NAME: Readonly<string> = 'n8n_bs_postgres';
-
-/**
- * Name of the connection (and database) used for creating and dropping a MySQL DB
- * for each suite test run.
- */
-export const BOOTSTRAP_MYSQL_CONNECTION_NAME: Readonly<string> = 'n8n_bs_mysql';
 
 export const COMMUNITY_PACKAGE_VERSION = {
 	CURRENT: '0.1.0',

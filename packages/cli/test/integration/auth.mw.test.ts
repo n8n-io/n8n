@@ -1,7 +1,7 @@
 import express from 'express';
 
 import request from 'supertest';
-import type { Role } from '../../src/databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 import {
 	REST_PATH_SEGMENT,
 	ROUTES_REQUIRING_AUTHENTICATION,
@@ -11,7 +11,7 @@ import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
-jest.mock('../../src/telemetry');
+jest.mock('@/telemetry');
 
 let app: express.Application;
 let testDbName = '';

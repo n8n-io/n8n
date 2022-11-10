@@ -39,8 +39,7 @@ import {
 } from 'n8n-workflow';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { get } from 'lodash';
-// eslint-disable-next-line import/no-cycle
-import { NodeExecuteFunctions } from '.';
+import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -156,7 +155,6 @@ export class WorkflowExecute {
 		startNodes: string[],
 		destinationNode: string,
 		pinData?: IPinData,
-		// @ts-ignore
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
@@ -783,7 +781,6 @@ export class WorkflowExecute {
 						gotCancel = true;
 					}
 
-					// @ts-ignore
 					if (gotCancel) {
 						return Promise.resolve();
 					}
@@ -911,7 +908,6 @@ export class WorkflowExecute {
 					}
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
-						// @ts-ignore
 						if (gotCancel) {
 							return Promise.resolve();
 						}

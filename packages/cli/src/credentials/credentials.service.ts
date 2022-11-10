@@ -1,5 +1,4 @@
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/no-cycle */
 import { Credentials, UserSettings } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
@@ -7,23 +6,20 @@ import {
 	INodeCredentialTestResult,
 	LoggerProxy,
 } from 'n8n-workflow';
-import { FindOneOptions, In } from 'typeorm';
+import { FindManyOptions, FindOneOptions, In } from 'typeorm';
 
-import {
-	createCredentialsFromCredentialsEntity,
-	CredentialsHelper,
-	Db,
-	ICredentialsDb,
-	ResponseHelper,
-} from '..';
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { validateEntity } from '../GenericHelpers';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { ICredentialsDb } from '@/Interfaces';
+import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { validateEntity } from '@/GenericHelpers';
 import { externalHooks } from '../Server';
 
-import type { User } from '../databases/entities/User';
-import type { CredentialRequest } from '../requests';
+import type { User } from '@db/entities/User';
+import type { CredentialRequest } from '@/requests';
 
 export class CredentialsService {
 	static async get(
@@ -69,6 +65,10 @@ export class CredentialsService {
 				id: In(userSharings.map((x) => x.credentialId)),
 			},
 		});
+	}
+
+	static async getMany(filter: FindManyOptions<ICredentialsDb>): Promise<ICredentialsDb[]> {
+		return Db.collections.Credentials.find(filter);
 	}
 
 	/**

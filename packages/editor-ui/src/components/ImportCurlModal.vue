@@ -50,6 +50,9 @@ import {
 import { showMessage } from './mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { INodeUi } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(showMessage).extend({
 	name: 'ImportCurlModal',
@@ -64,8 +67,12 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		node(): INodeUi {
-			return this.$store.getters['ndv/activeNode'];
+		...mapStores(
+			useNDVStore,
+			useUIStore,
+		),
+		node(): INodeUi | null {
+			return this.ndvStore.activeNode;
 		},
 	},
 	methods: {
@@ -80,8 +87,7 @@ export default mixins(showMessage).extend({
 			if (curlCommand === '') return;
 
 			try {
-				const parameters = await this.$store.dispatch('ui/getCurlToJson', curlCommand);
-
+				const parameters = await this.uiStore.getCurlToJson(curlCommand);
 				const url = parameters['parameters.url'];
 
 				const invalidProtocol = CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS.find((p) =>
@@ -89,7 +95,8 @@ export default mixins(showMessage).extend({
 				);
 
 				if (!invalidProtocol) {
-					this.$store.dispatch('ui/setHttpNodeParameters', {
+					this.uiStore.setHttpNodeParameters({
+						name: IMPORT_CURL_MODAL_KEY,
 						parameters: JSON.stringify(parameters),
 					});
 
@@ -114,7 +121,7 @@ export default mixins(showMessage).extend({
 
 				this.sendTelemetry({ success: false, invalidProtocol: false });
 			} finally {
-				this.$store.dispatch('ui/setCurlCommand', { command: this.curlCommand });
+				this.uiStore.setCurlCommand({ name: IMPORT_CURL_MODAL_KEY, command: this.curlCommand });
 			}
 		},
 		showProtocolErrorWithSupportedNode(protocol: string, node: string): void {
@@ -168,7 +175,7 @@ export default mixins(showMessage).extend({
 		},
 	},
 	mounted() {
-		this.curlCommand = this.$store.getters['ui/getCurlCommand'];
+		this.curlCommand = this.uiStore.getCurlCommand || '';
 		setTimeout(() => {
 			(this.$refs.input as HTMLTextAreaElement).focus();
 		});

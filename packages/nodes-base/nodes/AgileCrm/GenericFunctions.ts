@@ -103,7 +103,7 @@ export async function agileCrmApiRequestUpdate(
 	endpoint?: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
-	query: IDataObject = {},
+	_query: IDataObject = {},
 	uri?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {

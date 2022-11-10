@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import express from 'express';
 import {
 	IConnections,
@@ -12,10 +11,10 @@ import {
 } from 'n8n-workflow';
 
 import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
-import type { Role } from './databases/entities/Role';
-import type { User } from './databases/entities/User';
-import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
-import type { PublicUser } from './UserManagement/Interfaces';
+import type { Role } from '@db/entities/Role';
+import type { User } from '@db/entities/User';
+import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type { PublicUser } from '@/UserManagement/Interfaces';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -48,6 +47,7 @@ export declare namespace WorkflowRequest {
 		settings: IWorkflowSettings;
 		active: boolean;
 		tags: string[];
+		hash: string;
 	}>;
 
 	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
@@ -56,7 +56,7 @@ export declare namespace WorkflowRequest {
 
 	type Delete = Get;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody>;
+	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody, { forceSave?: string }>;
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 

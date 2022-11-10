@@ -1,16 +1,16 @@
-import express = require('express');
+import express from 'express';
 import validator from 'validator';
-import config from '../../config';
-import { Db } from '../../src';
-import { AUTH_COOKIE_NAME } from '../../src/constants';
-import type { Role } from '../../src/databases/entities/Role';
+import config from '@/config';
+import * as Db from '@/Db';
+import { AUTH_COOKIE_NAME } from '@/constants';
+import type { Role } from '@db/entities/Role';
 import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { randomValidPassword } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { AuthAgent } from './shared/types';
 import * as utils from './shared/utils';
 
-jest.mock('../../src/telemetry');
+jest.mock('@/telemetry');
 
 let app: express.Application;
 let testDbName = '';
@@ -103,8 +103,9 @@ test('GET /login should return 401 Unauthorized if no cookie', async () => {
 	expect(authToken).toBeUndefined();
 });
 
-test('GET /login should return cookie if UM is disabled', async () => {
-	const ownerShell = await testDb.createUserShell(globalOwnerRole);
+test('GET /login should return cookie if UM is disabled and no cookie is already set', async () => {
+	const authlessAgent = utils.createAgent(app);
+	await testDb.createUserShell(globalOwnerRole);
 
 	config.set('userManagement.isInstanceOwnerSetUp', false);
 
@@ -113,7 +114,7 @@ test('GET /login should return cookie if UM is disabled', async () => {
 		{ value: JSON.stringify(false) },
 	);
 
-	const response = await authAgent(ownerShell).get('/login');
+	const response = await authlessAgent.get('/login');
 
 	expect(response.statusCode).toBe(200);
 

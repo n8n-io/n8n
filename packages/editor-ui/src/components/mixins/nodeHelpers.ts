@@ -12,21 +12,22 @@ import {
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssues,
-	INodeIssueData,
 	INodeIssueObjectProperty,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 	IRunData,
-	IRunExecutionData,
 	ITaskDataConnections,
 	INode,
 	INodePropertyOptions,
+	IDataObject,
 } from 'n8n-workflow';
 
 import {
 	ICredentialsResponse,
 	INodeUi,
+	INodeUpdatePropertiesInformation,
+	IUser,
 } from '@/Interface';
 
 import { restApi } from '@/components/mixins/restApi';
@@ -34,16 +35,26 @@ import { restApi } from '@/components/mixins/restApi';
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
 import { isObjectLiteral } from '@/utils';
 import {getCredentialPermissions} from "@/permissions";
+import { mapStores } from 'pinia';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export const nodeHelpers = mixins(
 	restApi,
 )
 	.extend({
 		computed: {
-			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
+			...mapStores(
+				useCredentialsStore,
+				useNodeTypesStore,
+				useSettingsStore,
+				useWorkflowsStore,
+			),
 		},
 		methods: {
 			hasProxyAuth (node: INodeUi): boolean {
@@ -76,7 +87,7 @@ export const nodeHelpers = mixins(
 
 			// Returns all the issues of the node
 			getNodeIssues (nodeType: INodeTypeDescription | null, node: INodeUi, ignoreIssues?: string[]): INodeIssues | null {
-				const pinDataNodeNames = Object.keys(this.$store.getters.pinData || {});
+				const pinDataNodeNames = Object.keys(this.workflowsStore.getPinData || {});
 
 				let nodeIssues: INodeIssues | null = null;
 				ignoreIssues = ignoreIssues || [];
@@ -125,7 +136,7 @@ export const nodeHelpers = mixins(
 			// Set the status on all the nodes which produced an error so that it can be
 			// displayed in the node-view
 			hasNodeExecutionIssues (node: INodeUi): boolean {
-				const workflowResultData: IRunData = this.$store.getters.getWorkflowRunData;
+				const workflowResultData = this.workflowsStore.getWorkflowRunData;
 
 				if (workflowResultData === null || !workflowResultData.hasOwnProperty(node.name)) {
 					return false;
@@ -159,10 +170,10 @@ export const nodeHelpers = mixins(
 
 			// Updates the execution issues.
 			updateNodesExecutionIssues () {
-				const nodes = this.$store.getters.allNodes;
+				const nodes = this.workflowsStore.allNodes;
 
 				for (const node of nodes) {
-					this.$store.commit('setNodeIssue', {
+					this.workflowsStore.setNodeIssue({
 						node: node.name,
 						type: 'execution',
 						value: this.hasNodeExecutionIssues(node) ? true : null,
@@ -179,17 +190,17 @@ export const nodeHelpers = mixins(
 					newIssues = fullNodeIssues.credentials!;
 				}
 
-				this.$store.commit('setNodeIssue', {
+				this.workflowsStore.setNodeIssue({
 					node: node.name,
 					type: 'credentials',
 					value: newIssues,
-				} as INodeIssueData);
+				});
 			},
 
 			// Updates the parameter-issues of the node
 			updateNodeParameterIssues(node: INodeUi, nodeType?: INodeTypeDescription): void {
 				if (nodeType === undefined) {
-					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+					nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				}
 
 				if (nodeType === null) {
@@ -205,11 +216,11 @@ export const nodeHelpers = mixins(
 					newIssues = fullNodeIssues.parameters!;
 				}
 
-				this.$store.commit('setNodeIssue', {
+				this.workflowsStore.setNodeIssue({
 					node: node.name,
 					type: 'parameters',
 					value: newIssues,
-				} as INodeIssueData);
+				});
 			},
 
 			// Returns all the credential-issues of the node
@@ -220,7 +231,7 @@ export const nodeHelpers = mixins(
 				}
 
 				if (!nodeType) {
-					nodeType = this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion);
+					nodeType = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				}
 
 				if (!nodeType?.credentials) {
@@ -234,7 +245,7 @@ export const nodeHelpers = mixins(
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
-				const foreignCredentials = this.$store.getters['credentials/allForeignCredentials'];
+				const foreignCredentials = this.credentialsStore.allForeignCredentials;
 
 				// TODO: Check if any of the node credentials is found in foreign credentials
 				if(foreignCredentials?.some(() => true)){
@@ -256,7 +267,7 @@ export const nodeHelpers = mixins(
 					genericAuthType !== '' &&
 					selectedCredsAreUnusable(node, genericAuthType)
 				) {
-					const credential = this.getCredentialTypeByName(genericAuthType);
+					const credential = this.credentialsStore.getCredentialTypeByName(genericAuthType);
 					return this.reportUnsetCredential(credential);
 				}
 
@@ -266,10 +277,10 @@ export const nodeHelpers = mixins(
 					nodeCredentialType !== '' &&
 					node.credentials !== undefined
 				) {
-					const stored = this.getCredentialsByType(nodeCredentialType);
+					const stored = this.credentialsStore.getCredentialsByType(nodeCredentialType);
 
 					if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
-						const credential = this.getCredentialTypeByName(nodeCredentialType);
+						const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
 						return this.reportUnsetCredential(credential);
 					}
 				}
@@ -280,7 +291,7 @@ export const nodeHelpers = mixins(
 					nodeCredentialType !== '' &&
 					selectedCredsAreUnusable(node, nodeCredentialType)
 				) {
-					const credential = this.getCredentialTypeByName(nodeCredentialType);
+					const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
 					return this.reportUnsetCredential(credential);
 				}
 
@@ -291,7 +302,7 @@ export const nodeHelpers = mixins(
 					}
 
 					// Get the display name of the credential type
-					credentialType = this.$store.getters['credentials/getCredentialTypeByName'](credentialTypeDescription.name);
+					credentialType = this.credentialsStore.getCredentialTypeByName(credentialTypeDescription.name);
 					if (credentialType === null) {
 						credentialDisplayName = credentialTypeDescription.name;
 					} else {
@@ -313,9 +324,11 @@ export const nodeHelpers = mixins(
 							};
 						}
 
-						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name)
+						const usersStore = useUsersStore();
+						const currentUser = usersStore.currentUser || {} as IUser;
+						userCredentials = this.credentialsStore.getCredentialsByType(credentialTypeDescription.name)
 							.filter((credential: ICredentialsResponse) => {
-								const permissions = getCredentialPermissions(this.$store.getters['users/currentUser'], credential, this.$store);
+								const permissions = getCredentialPermissions(currentUser, credential);
 								return permissions.use;
 							});
 
@@ -337,7 +350,7 @@ export const nodeHelpers = mixins(
 						}
 
 						if (nameMatches.length === 0) {
-							if (this.$store.getters['settings/isEnterpriseFeatureEnabled'](EnterpriseEditionFeature.Sharing)) {
+							if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.notAvailable')];
 							} else {
 								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.doNotExist', { interpolate: { name: selectedCredentials.name, type: credentialDisplayName } }), this.$locale.baseText('nodeIssues.credentials.doNotExist.hint')];
@@ -358,13 +371,13 @@ export const nodeHelpers = mixins(
 
 			// Updates the node credential issues
 			updateNodesCredentialsIssues () {
-				const nodes = this.$store.getters.allNodes;
+				const nodes = this.workflowsStore.allNodes;
 				let issues: INodeIssues | null;
 
 				for (const node of nodes) {
 					issues = this.getNodeCredentialIssues(node);
 
-					this.$store.commit('setNodeIssue', {
+					this.workflowsStore.setNodeIssue({
 						node: node.name,
 						type: 'credentials',
 						value: issues === null ? null : issues.credentials,
@@ -377,10 +390,10 @@ export const nodeHelpers = mixins(
 					return [];
 				}
 
-				if (this.$store.getters.getWorkflowExecution === null) {
+				if (this.workflowsStore.getWorkflowExecution === null) {
 					return [];
 				}
-				const executionData: IRunExecutionData = this.$store.getters.getWorkflowExecution.data;
+				const executionData = this.workflowsStore.getWorkflowExecution.data;
 				if (!executionData || !executionData.resultData) { // unknown status
 					return [];
 				}
@@ -437,13 +450,13 @@ export const nodeHelpers = mixins(
 						name: node.name,
 						properties: {
 							disabled: !node.disabled,
-						},
-					};
+						} as IDataObject,
+					} as INodeUpdatePropertiesInformation;
 
-					this.$telemetry.track('User set node enabled status', { node_type: node.type, is_enabled: node.disabled, workflow_id: this.$store.getters.workflowId });
+					this.$telemetry.track('User set node enabled status', { node_type: node.type, is_enabled: node.disabled, workflow_id: this.workflowsStore.workflowId });
 
-					this.$store.commit('updateNodeProperties', updateInformation);
-					this.$store.commit('clearNodeExecutionData', node.name);
+					this.workflowsStore.updateNodeProperties(updateInformation);
+					this.workflowsStore.clearNodeExecutionData(node.name);
 					this.updateNodeParameterIssues(node);
 					this.updateNodeCredentialIssues(node);
 				}

@@ -17,7 +17,7 @@
 			<div slot="content" :class="$style.triggerWarning">
 				{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
 			</div>
-			<div :class="$style.backToCanvas" @click="close">
+			<div :class="$style.backToCanvas" @click="close" data-test-id="back-to-canvas">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
 				<n8n-text color="text-xlight" size="medium" :bold="true">
 					{{ $locale.baseText('ndv.backToCanvas') }}
@@ -72,6 +72,7 @@
 						:linkedRuns="linked"
 						:sessionId="sessionId"
 						:isReadOnly="readOnly || hasForeignCredential"
+						:blockUI="blockUi && isTriggerNode"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -87,8 +88,10 @@
 						:sessionId="sessionId"
 						:nodeType="activeNodeType"
 						:isReadOnly="readOnly || hasForeignCredential"
+						:blockUI="blockUi && showTriggerPanel"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
+						@stopExecution="onStopExecution"
 						@activate="onWorkflowActivate"
 					/>
 					<a
@@ -129,7 +132,6 @@ import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
-import { mapGetters } from 'vuex';
 import {
 	BASE_NODE_SURVEY_URL,
 	START_NODE_TYPE,
@@ -138,6 +140,11 @@ import {
 import { workflowActivate } from './mixins/workflowActivate';
 import { pinData } from "@/components/mixins/pinData";
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(
 	externalHooks,
@@ -179,8 +186,7 @@ export default mixins(
 		};
 	},
 	mounted() {
-		this.$store.commit('ndv/setNDVSessionId');
-
+		this.ndvStore.setNDVSessionId;
 		dataPinningEventBus.$on('data-pinning-discovery', ({ isTooltipVisible }: { isTooltipVisible: boolean }) => {
 			this.pinDataDiscoveryTooltipVisible = isTooltipVisible;
 		});
@@ -189,12 +195,17 @@ export default mixins(
 		dataPinningEventBus.$off('data-pinning-discovery');
 	},
 	computed: {
-		...mapGetters(['executionWaitingForWebhook']),
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
 		sessionId(): string {
-			return this.$store.getters['ndv/ndvSessionId'];
+			return this.ndvStore.sessionId;
 		},
 		workflowRunning(): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		showTriggerWaitingWarning(): boolean {
 			return (
@@ -202,37 +213,33 @@ export default mixins(
 				!!this.activeNodeType &&
 				!this.activeNodeType.group.includes('trigger') &&
 				this.workflowRunning &&
-				this.executionWaitingForWebhook
+				this.workflowsStore.executionWaitingForWebhook
 			);
 		},
 		activeNode(): INodeUi | null {
-			return this.$store.getters['ndv/activeNode'];
+			return this.ndvStore.activeNode;
 		},
 		inputNodeName(): string | undefined {
 			return this.selectedInput || this.parentNode;
 		},
 		inputNode(): INodeUi | null {
 			if (this.inputNodeName) {
-				return this.$store.getters.getNodeByName(this.inputNodeName);
+				return this.workflowsStore.getNodeByName(this.inputNodeName);
 			}
 
 			return null;
 		},
 		activeNodeType(): INodeTypeDescription | null {
 			if (this.activeNode) {
-				return this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion);
+				return this.nodeTypesStore.getNodeType(this.activeNode.type, this.activeNode.typeVersion);
 			}
 			return null;
 		},
 		showTriggerPanel(): boolean {
-			const isWebhookBasedNode = this.activeNodeType && this.activeNodeType.webhooks && this.activeNodeType.webhooks.length;
-			const isPollingNode = this.activeNodeType && this.activeNodeType.polling;
-			const override = this.activeNodeType && this.activeNodeType.triggerPanel;
-			return Boolean(
-				!this.readOnly &&
-				this.isTriggerNode &&
-				(isWebhookBasedNode || isPollingNode || override),
-			);
+			const isWebhookBasedNode = !!this.activeNodeType?.webhooks?.length;
+			const isPollingNode = this.activeNodeType?.polling;
+			const override = !!this.activeNodeType?.triggerPanel;
+			return !this.readOnly && this.isTriggerNode && (isWebhookBasedNode || isPollingNode || override);
 		},
 		workflow(): Workflow {
 			return this.getCurrentWorkflow();
@@ -258,11 +265,11 @@ export default mixins(
 		},
 		isActiveStickyNode(): boolean {
 			return (
-				!!this.$store.getters['ndv/activeNode'] && this.$store.getters['ndv/activeNode'].type === STICKY_NODE_TYPE
+				!!this.ndvStore.activeNode && this.ndvStore.activeNode .type === STICKY_NODE_TYPE
 			);
 		},
 		workflowExecution(): IExecutionResponse | null {
-			return this.$store.getters.getWorkflowExecution;
+			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowRunData(): IRunData | null {
 			if (this.workflowExecution === null) {
@@ -341,7 +348,16 @@ export default mixins(
 			return `${BASE_NODE_SURVEY_URL}${this.activeNodeType.name}`;
 		},
 		outputPanelEditMode(): { enabled: boolean; value: string; } {
-			return this.$store.getters['ndv/outputPanelEditMode'];
+			return this.ndvStore.outputPanelEditMode;
+		},
+		isWorkflowRunning(): boolean {
+			return this.uiStore.isActionActive('workflowRunning');
+		},
+		isExecutionWaitingForWebhook(): boolean {
+			return this.workflowsStore.executionWaitingForWebhook;
+		},
+		blockUi(): boolean {
+			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
 		},
 	},
 	watch: {
@@ -356,7 +372,7 @@ export default mixins(
 				this.avgInputRowHeight = 0;
 
 				setTimeout(() => {
-					this.$store.commit('ndv/setNDVSessionId');
+					this.ndvStore.setNDVSessionId;
 				}, 0);
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
@@ -366,24 +382,24 @@ export default mixins(
 
 				setTimeout(() => {
 					if (this.activeNode) {
-						const outogingConnections = this.$store.getters.outgoingConnectionsByNodeName(
+						const outgoingConnections = this.workflowsStore.outgoingConnectionsByNodeName(
 							this.activeNode.name,
 						) as INodeConnections;
 
 						this.$telemetry.track('User opened node modal', {
 							node_type: this.activeNodeType ? this.activeNodeType.name : '',
-							workflow_id: this.$store.getters.workflowId,
+							workflow_id: this.workflowsStore.workflowId,
 							session_id: this.sessionId,
 							parameters_pane_position: this.mainPanelPosition,
 							input_first_connector_runs: this.maxInputRun,
 							output_first_connector_runs: this.maxOutputRun,
 							selected_view_inputs: this.isTriggerNode
 								? 'trigger'
-								: this.$store.getters['ndv/inputPanelDisplayMode'],
-							selected_view_outputs: this.$store.getters['ndv/outputPanelDisplayMode'],
+								: this.ndvStore.inputPanelDisplayMode,
+							selected_view_outputs: this.ndvStore.outputPanelDisplayMode,
 							input_connectors: this.parentNodes.length,
 							output_connectors:
-								outogingConnections && outogingConnections.main && outogingConnections.main.length,
+								outgoingConnections && outgoingConnections.main && outgoingConnections.main.length,
 							input_displayed_run_index: this.inputRun,
 							output_displayed_run_index: this.outputRun,
 							data_pinning_tooltip_presented: this.pinDataDiscoveryTooltipVisible,
@@ -405,12 +421,12 @@ export default mixins(
 		},
 		inputNodeName(nodeName: string | undefined) {
 			setTimeout(() => {
-				this.$store.commit('ndv/setInputNodeName', nodeName);
+				this.ndvStore.setInputNodeName(nodeName);
 			}, 0);
 		},
 		inputRun() {
 			setTimeout(() => {
-				this.$store.commit('ndv/setInputRunIndex', this.inputRun);
+				this.ndvStore.setInputRunIndex(this.inputRun);
 			}, 0);
 		},
 	},
@@ -420,7 +436,7 @@ export default mixins(
 				return;
 			}
 			if (e === null) {
-				this.$store.commit('ndv/setHoveringItem', null);
+				this.ndvStore.setHoveringItem(null);
 				return;
 			}
 
@@ -430,11 +446,11 @@ export default mixins(
 				outputIndex: e.outputIndex,
 				itemIndex: e.itemIndex,
 			};
-			this.$store.commit('ndv/setHoveringItem', item);
+			this.ndvStore.setHoveringItem(item);
 		},
 		onOutputItemHover(e: {itemIndex: number, outputIndex: number} | null) {
 			if (e === null || !this.activeNode) {
-				this.$store.commit('ndv/setHoveringItem', null);
+				this.ndvStore.setHoveringItem(null);
 				return;
 			}
 
@@ -444,7 +460,7 @@ export default mixins(
 				outputIndex: e.outputIndex,
 				itemIndex: e.itemIndex,
 			};
-			this.$store.commit('ndv/setHoveringItem', item);
+			this.ndvStore.setHoveringItem(item);
 		},
 		onInputTableMounted(e: { avgRowHeight: number }) {
 			this.avgInputRowHeight = e.avgRowHeight;
@@ -453,7 +469,7 @@ export default mixins(
 			this.avgOutputRowHeight = e.avgRowHeight;
 		},
 		onWorkflowActivate() {
-			this.$store.commit('ndv/setActiveNodeName', null);
+			this.ndvStore.activeNodeName = null;
 			setTimeout(() => {
 				this.activateCurrentWorkflow('ndv');
 			}, 1000);
@@ -463,7 +479,7 @@ export default mixins(
 			if (this.activeNode) {
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: 'main',
 					type: 'i-wish-this-node-would',
@@ -485,7 +501,7 @@ export default mixins(
 				end_position: e.position,
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 			this.mainPanelPosition = e.position;
 		},
@@ -559,21 +575,23 @@ export default mixins(
 						return;
 					}
 
-					this.$store.commit('pinData', { node: this.activeNode, data: jsonParse(value) });
+					if (this.activeNode) {
+						this.workflowsStore.pinData({ node: this.activeNode, data: jsonParse(value) });
+					}
 				}
 
-				this.$store.commit('ndv/setOutputPanelEditModeEnabled', false);
+				this.ndvStore.setOutputPanelEditModeEnabled(false);
 			}
 
 			this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 			this.$telemetry.track('User closed node modal', {
 				node_type: this.activeNodeType ? this.activeNodeType.name : '',
 				session_id: this.sessionId,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 			this.triggerWaitingWarningEnabled = false;
-			this.$store.commit('ndv/setActiveNodeName', null);
-			this.$store.commit('ndv/resetNDVSessionId');
+			this.ndvStore.activeNodeName = null;
+			this.ndvStore.resetNDVSessionId();
 		},
 		onRunOutputIndexChange(run: number) {
 			this.runOutputIndex = run;
@@ -602,14 +620,19 @@ export default mixins(
 			this.$telemetry.track('User changed ndv input dropdown', {
 				node_type: this.activeNode ? this.activeNode.type : '',
 				session_id: this.sessionId,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 				selection_value: index,
 				input_node_type: this.inputNode ? this.inputNode.type : '',
 			});
 		},
 		checkForeignCredentials() {
-			const issues = this.getNodeCredentialIssues(this.activeNode);
-			this.hasForeignCredential = !!issues?.credentials?.foreign;
+			if(this.activeNode){
+				const issues = this.getNodeCredentialIssues(this.activeNode);
+				this.hasForeignCredential = !!issues?.credentials?.foreign;
+			}
+		},
+		onStopExecution(){
+			this.$emit('stopExecution');
 		},
 	},
 });

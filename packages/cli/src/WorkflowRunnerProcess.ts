@@ -9,6 +9,7 @@
 import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
+	ErrorReporterProxy as ErrorReporter,
 	ExecutionError,
 	ICredentialType,
 	ICredentialTypeData,
@@ -31,27 +32,24 @@ import {
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import {
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	IWorkflowExecuteProcess,
-	IWorkflowExecutionDataProcessWithExecution,
-	NodeTypes,
-	WebhookHelpers,
-	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
-} from '.';
+import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import { IWorkflowExecuteProcess, IWorkflowExecutionDataProcessWithExecution } from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { getLogger } from '@/Logger';
 
-import { getLogger } from './Logger';
-
-import config from '../config';
-import { InternalHooksManager } from './InternalHooksManager';
-import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
-import { loadClassInIsolation } from './CommunityNodes/helpers';
-import { generateFailedExecutionFromError } from './WorkflowHelpers';
+import config from '@/config';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { checkPermissionsForExecution } from '@/UserManagement/UserManagementHelper';
+import { loadClassInIsolation } from '@/CommunityNodes/helpers';
+import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
+import { initErrorHandling } from '@/ErrorReporting';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -79,9 +77,13 @@ export class WorkflowRunnerProcess {
 		}, 30000);
 	}
 
+	constructor() {
+		initErrorHandling();
+	}
+
 	async runWorkflow(inputData: IWorkflowExecutionDataProcessWithExecution): Promise<IRun> {
-		process.on('SIGTERM', WorkflowRunnerProcess.stopProcess);
-		process.on('SIGINT', WorkflowRunnerProcess.stopProcess);
+		process.once('SIGTERM', WorkflowRunnerProcess.stopProcess);
+		process.once('SIGINT', WorkflowRunnerProcess.stopProcess);
 
 		// eslint-disable-next-line no-multi-assign
 		const logger = (this.logger = getLogger());
@@ -265,6 +267,7 @@ export class WorkflowRunnerProcess {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				await sendToParentProcess('sendMessageToUI', { source, message });
 			} catch (error) {
+				ErrorReporter.error(error);
 				this.logger.error(
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem sending UI data to parent process: "${error.message}"`,
@@ -291,6 +294,7 @@ export class WorkflowRunnerProcess {
 				workflowData,
 				additionalData.userId,
 				options?.inputData,
+				options?.parentWorkflowId,
 			);
 			await sendToParentProcess('startExecution', { runData });
 			const executionId: string = await new Promise((resolve) => {
@@ -361,12 +365,11 @@ export class WorkflowRunnerProcess {
 		) {
 			// Execute all nodes
 
-			const pinDataKeys = this.data?.pinData ? Object.keys(this.data.pinData) : [];
-			const noPinData = pinDataKeys.length === 0;
-			const isPinned = (nodeName: string) => pinDataKeys.includes(nodeName);
-
 			let startNode;
-			if (this.data.startNodes?.length === 1 && (noPinData || isPinned(this.data.startNodes[0]))) {
+			if (
+				this.data.startNodes?.length === 1 &&
+				Object.keys(this.data.pinData ?? {}).includes(this.data.startNodes[0])
+			) {
 				startNode = this.workflow.getNode(this.data.startNodes[0]) ?? undefined;
 			}
 
@@ -402,6 +405,7 @@ export class WorkflowRunnerProcess {
 				parameters,
 			});
 		} catch (error) {
+			ErrorReporter.error(error);
 			this.logger.error(`There was a problem sending hook: "${hook}"`, { parameters, error });
 		}
 	}

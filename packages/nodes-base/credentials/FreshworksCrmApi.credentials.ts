@@ -14,6 +14,7 @@ export class FreshworksCrmApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			placeholder: 'BDsTn15vHezBlt_XGp3Tig',
 		},
