@@ -1,52 +1,29 @@
-import express from 'express';
-import { JsonObject, jsonParse, LoggerProxy } from 'n8n-workflow';
+/* eslint-disable no-param-reassign */
 
+import express from 'express';
+import { LoggerProxy } from 'n8n-workflow';
 import axios from 'axios';
-import { FindManyOptions, In } from 'typeorm';
-import {
-	ActiveWorkflowRunner,
-	Db,
-	GenericHelpers,
-	ResponseHelper,
-	whereClause,
-	WorkflowHelpers,
-	IWorkflowResponse,
-	IExecutionPushResponse,
-} from '..';
-import config from '../../config';
-import * as TagHelpers from '../TagHelpers';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { validateEntity } from '../GenericHelpers';
-import { InternalHooksManager } from '../InternalHooksManager';
-import { externalHooks } from '../Server';
-import { getLogger } from '../Logger';
-import type { WorkflowRequest } from '../requests';
-import { getSharedWorkflowIds, isBelowOnboardingThreshold } from '../WorkflowHelpers';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import * as Db from '@/Db';
+import * as GenericHelpers from '@/GenericHelpers';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { whereClause } from '@/CredentialsHelper';
+import { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
+import config from '@/config';
+import * as TagHelpers from '@/TagHelpers';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { validateEntity } from '@/GenericHelpers';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { externalHooks } from '@/Server';
+import { getLogger } from '@/Logger';
+import type { WorkflowRequest } from '@/requests';
+import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
-import { validate as jsonSchemaValidate } from 'jsonschema';
 
-const activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 export const workflowsController = express.Router();
-
-const schemaGetWorkflowsQueryFilter = {
-	$id: '/IGetWorkflowsQueryFilter',
-	type: 'object',
-	properties: {
-		id: { anyOf: [{ type: 'integer' }, { type: 'string' }] },
-		name: { type: 'string' },
-		active: { type: 'boolean' },
-	},
-};
-
-const allowedWorkflowsQueryFilterFields = Object.keys(schemaGetWorkflowsQueryFilter.properties);
-
-interface IGetWorkflowsQueryFilter {
-	id?: number | string;
-	name?: string;
-	active?: boolean;
-}
 
 /**
  * Initialize Logger if needed
@@ -134,83 +111,13 @@ workflowsController.post(
 	}),
 );
 
-// Returns workflows
 /**
  * GET /workflows
  */
 workflowsController.get(
-	`/`,
+	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
-		if (sharedWorkflowIds.length === 0) {
-			// return early since without shared workflows there can be no hits
-			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
-			return [];
-		}
-
-		// parse incoming filter object and remove non-valid fields
-		let filter: IGetWorkflowsQueryFilter | undefined = undefined;
-		if (req.query.filter) {
-			try {
-				const filterJson: JsonObject = jsonParse(req.query.filter);
-				if (filterJson) {
-					Object.keys(filterJson).map((key) => {
-						if (!allowedWorkflowsQueryFilterFields.includes(key)) delete filterJson[key];
-					});
-					if (jsonSchemaValidate(filterJson, schemaGetWorkflowsQueryFilter).valid) {
-						filter = filterJson as IGetWorkflowsQueryFilter;
-					}
-				}
-			} catch (error) {
-				LoggerProxy.error('Failed to parse filter', {
-					userId: req.user.id,
-					filter: req.query.filter,
-				});
-				throw new ResponseHelper.ResponseError(
-					`Parameter "filter" contained invalid JSON string.`,
-					500,
-					500,
-				);
-			}
-		}
-
-		// safeguard against querying ids not shared with the user
-		if (filter?.id !== undefined) {
-			const workflowId = parseInt(filter.id.toString());
-			if (workflowId && !sharedWorkflowIds.includes(workflowId)) {
-				LoggerProxy.verbose(
-					`User ${req.user.id} attempted to query non-shared workflow ${workflowId}`,
-				);
-				return [];
-			}
-		}
-
-		const query: FindManyOptions<WorkflowEntity> = {
-			select: ['id', 'name', 'active', 'createdAt', 'updatedAt'],
-			relations: ['tags'],
-		};
-
-		if (config.getEnv('workflowTagsDisabled')) {
-			delete query.relations;
-		}
-
-		const workflows = await Db.collections.Workflow.find(
-			Object.assign(query, {
-				where: {
-					id: In(sharedWorkflowIds),
-					...filter,
-				},
-			}),
-		);
-
-		return workflows.map((workflow) => {
-			const { id, ...rest } = workflow;
-
-			return {
-				id: id.toString(),
-				...rest,
-			};
-		});
+		return WorkflowsService.getMany(req.user, req.query.filter);
 	}),
 );
 
@@ -389,7 +296,7 @@ workflowsController.delete(
 
 		if (shared.workflow.active) {
 			// deactivate before deleting
-			await activeWorkflowRunner.remove(workflowId);
+			await ActiveWorkflowRunner.getInstance().remove(workflowId);
 		}
 
 		await Db.collections.Workflow.delete(workflowId);

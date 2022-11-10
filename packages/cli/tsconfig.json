@@ -1,14 +1,25 @@
 {
 	"extends": "../../tsconfig.json",
 	"compilerOptions": {
-		"outDir": "dist",
+		"rootDir": ".",
 		"types": ["node", "jest"],
+		"noEmit": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
+		"baseUrl": "src",
+		"paths": {
+			"@/*": ["./*"],
+			"@db/*": ["./databases/*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
 		// TODO: remove all options below this line
 		"strict": false,
 		"noUnusedLocals": false,
 		"useUnknownInCatchVariables": false
 	},
-	"include": ["**/*.d.ts", "commands/**/*", "config/**/*", "src/**/*"]
+	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"references": [
+		{ "path": "../workflow/tsconfig.build.json" },
+		{ "path": "../core/tsconfig.build.json" }
+	]
 }

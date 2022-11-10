@@ -9,6 +9,7 @@ import NodeView from '@/views/NodeView.vue';
 import ExecutionsView from '@/components/ExecutionsView/ExecutionsView.vue';
 import ExecutionsLandingPage from '@/components/ExecutionsView/ExecutionsLandingPage.vue';
 import ExecutionPreview from '@/components/ExecutionsView/ExecutionPreview.vue';
+import SettingsView from './views/SettingsView.vue';
 import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
@@ -25,7 +26,7 @@ import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
 import { IPermissions } from './Interface';
-import { LOGIN_STATUS, ROLE } from './modules/userHelpers';
+import { LOGIN_STATUS, ROLE } from './stores/userHelpers';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
@@ -424,132 +425,136 @@ const router = new Router({
 		},
 		{
 			path: '/settings',
-			redirect: '/settings/personal',
-		},
-		{
-			path: '/settings/users',
-			name: VIEWS.USERS_SETTINGS,
-			components: {
-				default: SettingsUsersView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-					getProperties(route: Route) {
-						return {
-							feature: 'users',
-						};
-					},
-				},
-				permissions: {
-					allow: {
-						role: [ROLE.Default, ROLE.Owner],
-					},
-					deny: {
-						shouldDeny: () => {
-							const settingsStore = useSettingsStore();
-							return settingsStore.isUserManagementEnabled === false;
-						},
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/personal',
-			name: VIEWS.PERSONAL_SETTINGS,
-			components: {
-				default: SettingsPersonalView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-					getProperties(route: Route) {
-						return {
-							feature: 'personal',
-						};
-					},
-				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-					deny: {
-						role: [ROLE.Default],
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/api',
-			name: VIEWS.API_SETTINGS,
-			components: {
-				default: SettingsApiView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-					getProperties(route: Route) {
-						return {
-							feature: 'api',
-						};
-					},
-				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
-					},
-					deny: {
-						shouldDeny: () => {
-							const settingsStore =  useSettingsStore();
-							return settingsStore.isPublicApiEnabled === false;
-						},
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/community-nodes',
-			name: VIEWS.COMMUNITY_NODES,
-			components: {
-				default: SettingsCommunityNodesView,
-			},
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-				},
-				permissions: {
-					allow: {
-						role: [ROLE.Default, ROLE.Owner],
-					},
-					deny: {
-						shouldDeny: () => {
-							const settingsStore = useSettingsStore();
-							return settingsStore.isCommunityNodesFeatureEnabled === false;
-						},
-					},
-				},
-			},
-		},
-		{
-			path: '/settings/coming-soon/:featureId',
-			name: VIEWS.FAKE_DOOR,
-			component: SettingsFakeDoorView,
+			component: SettingsView,
 			props: true,
-			meta: {
-				telemetry: {
-					pageCategory: 'settings',
-					getProperties(route: Route) {
-						return {
-							feature: route.params['featureId'],
-						};
+			children: [
+				{
+					path: 'personal',
+					name: VIEWS.PERSONAL_SETTINGS,
+					components: {
+						settingsView: SettingsPersonalView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'personal',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								role: [ROLE.Default],
+							},
+						},
 					},
 				},
-				permissions: {
-					allow: {
-						loginStatus: [LOGIN_STATUS.LoggedIn],
+				{
+					path: 'users',
+					name: VIEWS.USERS_SETTINGS,
+					components: {
+						settingsView: SettingsUsersView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'users',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								role: [ROLE.Default, ROLE.Owner],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return settingsStore.isUserManagementEnabled === false;
+								},
+							},
+						},
 					},
 				},
-			},
+				{
+					path: 'api',
+					name: VIEWS.API_SETTINGS,
+					components: {
+						settingsView: SettingsApiView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'api',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore =  useSettingsStore();
+									return settingsStore.isPublicApiEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
+					path: 'community-nodes',
+					name: VIEWS.COMMUNITY_NODES,
+					components: {
+						settingsView: SettingsCommunityNodesView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+						},
+						permissions: {
+							allow: {
+								role: [ROLE.Default, ROLE.Owner],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return settingsStore.isCommunityNodesFeatureEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
+					path: 'coming-soon/:featureId',
+					name: VIEWS.FAKE_DOOR,
+					components: {
+						settingsView: SettingsFakeDoorView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: route.params['featureId'],
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+						},
+					},
+				},
+			],
 		},
 		{
 			path: '*',

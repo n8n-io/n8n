@@ -20,6 +20,7 @@ import { INodeCreateElement, ICategoriesWithNodes } from '@/Interface';
 import { NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { mapStores } from 'pinia';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 
 export default Vue.extend({
@@ -30,10 +31,11 @@ export default Vue.extend({
 	},
 	computed: {
 		...mapStores(
+			useNodeCreatorStore,
 			useNodeTypesStore,
 		),
 		selectedType(): "Regular" | "Trigger" | "All" {
-			return this.$store.getters['nodeCreator/selectedType'];
+			return this.nodeCreatorStore.selectedType;
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return this.nodeTypesStore.categoriesWithNodes;

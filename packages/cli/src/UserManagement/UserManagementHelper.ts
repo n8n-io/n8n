@@ -1,17 +1,17 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable import/no-cycle */
 import { INode, NodeOperationError, Workflow } from 'n8n-workflow';
 import { In } from 'typeorm';
 import express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
 import { PublicUser } from './Interfaces';
-import { Db, ResponseHelper } from '..';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
-import { Role } from '../databases/entities/Role';
-import { AuthenticatedRequest } from '../requests';
-import * as config from '../../config';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '@db/entities/User';
+import { Role } from '@db/entities/Role';
+import { AuthenticatedRequest } from '@/requests';
+import config from '@/config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {

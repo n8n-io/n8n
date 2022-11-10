@@ -44,7 +44,7 @@
 
 <script lang="ts">
 import {showMessage} from '@/components/mixins/showMessage';
-import {ICredentialsResponse, IUser} from '@/Interface';
+import {ICredentialsResponse, ICredentialTypeMap, IUser} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -63,6 +63,7 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
 
@@ -93,18 +94,19 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useCredentialsStore,
 			useNodeTypesStore,
 			useUIStore,
 			useUsersStore,
 		),
 		allCredentials(): ICredentialsResponse[] {
-			return this.$store.getters['credentials/allCredentials'];
+			return this.credentialsStore.allCredentials;
 		},
 		allCredentialTypes(): ICredentialType[] {
-			return this.$store.getters['credentials/allCredentialTypes'];
+			return this.credentialsStore.allCredentialTypes;
 		},
-		credentialTypesById(): Record<ICredentialType['name'], ICredentialType> {
-			return this.$store.getters['credentials/credentialTypesById'];
+		credentialTypesById(): ICredentialTypeMap {
+			return this.credentialsStore.credentialTypesById;
 		},
 	},
 	methods: {
@@ -116,9 +118,10 @@ export default mixins(
 			});
 		},
 		async initialize() {
+
 			const loadPromises = [
-				this.$store.dispatch('credentials/fetchAllCredentials'),
-				this.$store.dispatch('credentials/fetchCredentialTypes'),
+				this.credentialsStore.fetchAllCredentials(),
+				this.credentialsStore.fetchCredentialTypes(false),
 			];
 
 			if (this.nodeTypesStore.allNodeTypes.length === 0) {

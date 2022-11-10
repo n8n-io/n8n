@@ -1,15 +1,15 @@
 import { UserSettings } from 'n8n-core';
 import { Connection, ConnectionOptions, createConnection, getConnection } from 'typeorm';
 
-import config from '../../../config';
-import { DatabaseType, Db, ICredentialsDb } from '../../../src';
-import { createCredentialsFromCredentialsEntity } from '../../../src/CredentialsHelper';
-import { entities } from '../../../src/databases/entities';
-import { CredentialsEntity } from '../../../src/databases/entities/CredentialsEntity';
-import { mysqlMigrations } from '../../../src/databases/migrations/mysqldb';
-import { postgresMigrations } from '../../../src/databases/migrations/postgresdb';
-import { sqliteMigrations } from '../../../src/databases/migrations/sqlite';
-import { hashPassword } from '../../../src/UserManagement/UserManagementHelper';
+import config from '@/config';
+import * as Db from '@/Db';
+import { createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
+import { entities } from '@db/entities';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { mysqlMigrations } from '@db/migrations/mysqldb';
+import { postgresMigrations } from '@db/migrations/postgresdb';
+import { sqliteMigrations } from '@db/migrations/sqlite';
+import { hashPassword } from '@/UserManagement/UserManagementHelper';
 import { DB_INITIALIZATION_TIMEOUT, MAPPING_TABLES, MAPPING_TABLES_TO_CLEAR } from './constants';
 import {
 	randomApiKey,
@@ -21,13 +21,13 @@ import {
 } from './random';
 import { categorize, getPostgresSchemaSection } from './utils';
 
-import { ExecutionEntity } from '../../../src/databases/entities/ExecutionEntity';
-import { InstalledNodes } from '../../../src/databases/entities/InstalledNodes';
-import { InstalledPackages } from '../../../src/databases/entities/InstalledPackages';
-import type { Role } from '../../../src/databases/entities/Role';
-import { TagEntity } from '../../../src/databases/entities/TagEntity';
-import { User } from '../../../src/databases/entities/User';
-import { WorkflowEntity } from '../../../src/databases/entities/WorkflowEntity';
+import { ExecutionEntity } from '@db/entities/ExecutionEntity';
+import { InstalledNodes } from '@db/entities/InstalledNodes';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
+import type { Role } from '@db/entities/Role';
+import { TagEntity } from '@db/entities/TagEntity';
+import { User } from '@db/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import type {
 	CollectionName,
 	CredentialPayload,
@@ -35,6 +35,7 @@ import type {
 	InstalledPackagePayload,
 	MappingName,
 } from './types';
+import type { DatabaseType, ICredentialsDb } from '@/Interfaces';
 
 export type TestDBType = 'postgres' | 'mysql';
 

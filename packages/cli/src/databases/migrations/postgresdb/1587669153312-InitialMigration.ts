@@ -1,7 +1,7 @@
 import {
 	MigrationInterface, QueryRunner } from 'typeorm';
 
-import * as config from '../../../../config';
+import config from '@/config';
 
 export class InitialMigration1587669153312 implements MigrationInterface {
 	name = 'InitialMigration1587669153312';

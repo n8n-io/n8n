@@ -23,8 +23,8 @@ import {
 	NodeParameterValue,
 	WorkflowHooks,
 } from 'n8n-workflow';
-
-import { Credentials, IExecuteFunctions } from '../src';
+import { Credentials } from '@/Credentials';
+import { IExecuteFunctions } from '@/Interfaces';
 
 export class CredentialsHelper extends ICredentialsHelper {
 	async authenticate(
