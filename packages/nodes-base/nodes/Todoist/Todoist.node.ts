@@ -4,6 +4,7 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
+	INodeListSearchResult,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
@@ -175,7 +176,7 @@ export class Todoist implements INodeType {
 					},
 				},
 			},
-			{
+			/*{
 				displayName: 'Project Name or ID',
 				name: 'project',
 				type: 'options',
@@ -191,6 +192,38 @@ export class Todoist implements INodeType {
 				default: '',
 				description:
 					'The project you want to operate on. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			},*/
+			{
+				displayName: 'Project Name or ID',
+				name: 'project',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a project...',
+						typeOptions: {
+							searchListMethod: 'searchProjects',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: '2302163813',
+					},
+				],
+				displayOptions: {
+					show: {
+						resource: ['task'],
+						operation: ['create', 'move', 'sync'],
+					},
+				},
+				description: 'The project you want to operate on. Choose from the list, or specify an ID.',
 			},
 			{
 				displayName: 'Section Name or ID',
@@ -540,6 +573,26 @@ export class Todoist implements INodeType {
 	};
 
 	methods = {
+		listSearch: {
+			async searchProjects(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const projects = await todoistApiRequest.call(this, 'GET', '/projects');
+				return {
+					results: projects.map((project: any) => ({
+						name: project.name,
+						value: project.id,
+					})),
+				};
+			},
+			async searchLabels(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+				const labels = await todoistApiRequest.call(this, 'GET', '/labels');
+				return {
+					results: labels.map((label: any) => ({
+						name: label.name,
+						value: label.id,
+					})),
+				};
+			},
+		},
 		loadOptions: {
 			// Get all the available projects to display them to user so that he can
 			// select them easily
@@ -571,7 +624,8 @@ export class Todoist implements INodeType {
 				) as IDataObject;
 
 				const projectId =
-					(options.projectId as number) ?? (this.getCurrentNodeParameter('project') as number);
+					(options.projectId as number) ??
+					(this.getCurrentNodeParameter('project', { extractValue: true }) as number);
 				if (projectId) {
 					const qs: IDataObject = { project_id: projectId };
 					const sections = await todoistApiRequest.call(this, 'GET', '/sections', {}, qs);
@@ -601,7 +655,8 @@ export class Todoist implements INodeType {
 				) as IDataObject;
 
 				const projectId =
-					(options.projectId as number) ?? (this.getCurrentNodeParameter('project') as number);
+					(options.projectId as number) ??
+					(this.getCurrentNodeParameter('project', { extractValue: true }) as number);
 
 				const sectionId =
 					(options.sectionId as number) ||

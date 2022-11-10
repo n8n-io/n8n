@@ -16,7 +16,7 @@ export class CreateHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		//https://developer.todoist.com/rest/v1/#create-a-new-task
 		const content = ctx.getNodeParameter('content', itemIndex) as string;
-		const projectId = ctx.getNodeParameter('project', itemIndex) as number;
+		const projectId = ctx.getNodeParameter('project', itemIndex, { extractValue: true }) as number;
 		const labels = ctx.getNodeParameter('labels', itemIndex) as number[];
 		const options = ctx.getNodeParameter('options', itemIndex) as IDataObject;
 

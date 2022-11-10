@@ -23,7 +23,7 @@ export async function todoistApiRequest(
 ): Promise<any> {
 	const authentication = this.getNodeParameter('authentication', 0) as string;
 
-	const endpoint = 'api.todoist.com/rest/v1';
+	const endpoint = 'api.todoist.com/rest/v2';
 
 	const options: OptionsWithUri = {
 		method,
@@ -35,6 +35,8 @@ export async function todoistApiRequest(
 	if (Object.keys(body).length !== 0) {
 		options.body = body;
 	}
+
+	console.log(JSON.stringify(options, null, 2));
 
 	try {
 		const credentialType = authentication === 'apiKey' ? 'todoistApi' : 'todoistOAuth2Api';
