@@ -199,7 +199,7 @@ export default mixins(
 			this.credentialsStore.$subscribe((mutation, state) => {
 				// This data pro stores credential type that the component is currently interested in
 				const credentialType = this.subscribedToCredentialType;
-				const credentialsOfType = this.credentialsStore.allCredentialsByType[credentialType].sort((a, b) => (a.id < b.id ? -1 : 1));
+				const credentialsOfType = (this.credentialsStore.allCredentialsByType[credentialType] || []).sort((a, b) => (a.id < b.id ? -1 : 1));
 				if (credentialsOfType.length > 0) {
 					// If nothing has been selected previously, select the first one (newly added)
 					if (!this.selected[credentialType]) {

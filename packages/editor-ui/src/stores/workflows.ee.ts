@@ -45,7 +45,7 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 					.filter((sharee) => sharee.id !== payload.sharee.id),
 			);
 		},
-		async saveWorkflowSharedWith(payload: { sharedWith: IUser[]; workflowId: string; }): Promise<void> {
+		async saveWorkflowSharedWith(payload: { sharedWith: Array<Partial<IUser>>; workflowId: string; }): Promise<void> {
 			const rootStore = useRootStore();
 			const settingsStore = useSettingsStore();
 
@@ -54,7 +54,7 @@ export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 					rootStore.getRestApiContext,
 					payload.workflowId,
 					{
-						shareWithIds: payload.sharedWith.map((sharee) => sharee.id),
+						shareWithIds: payload.sharedWith.map((sharee) => sharee.id as string),
 					},
 				);
 

@@ -5,7 +5,7 @@
  */
 
 import {IUser, ICredentialsResponse, IRootState, IWorkflowDb} from "@/Interface";
-import {EnterpriseEditionFeature} from "@/constants";
+import {EnterpriseEditionFeature, PLACEHOLDER_EMPTY_WORKFLOW_ID} from "@/constants";
 import { useSettingsStore } from "./stores/settings";
 
 export enum UserRole {
@@ -73,10 +73,11 @@ export const getCredentialPermissions = (user: IUser | null, credential: ICreden
 
 export const getWorkflowPermissions = (user: IUser | null, workflow: IWorkflowDb) => {
 	const settingsStore = useSettingsStore();
+	const isNewWorkflow = workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID;
+
 	const table: IPermissionsTable = [
-		{ name: UserRole.ResourceOwner, test: () => !!(workflow && workflow.ownedBy && workflow.ownedBy.id === user?.id) || !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) },
+		{ name: UserRole.ResourceOwner, test: () => !!(isNewWorkflow || workflow && workflow.ownedBy && workflow.ownedBy.id === user?.id) || !settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing) },
 		{ name: UserRole.ResourceReader, test: () => !!(workflow && workflow.sharedWith && workflow.sharedWith.find((sharee) => sharee.id === user?.id)) },
-		{ name: UserRole.ResourceReader, test: () => true },
 		{ name: 'read', test: [UserRole.ResourceOwner, UserRole.InstanceOwner, UserRole.ResourceReader] },
 		{ name: 'save', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },
 		{ name: 'updateName', test: [UserRole.ResourceOwner, UserRole.InstanceOwner] },

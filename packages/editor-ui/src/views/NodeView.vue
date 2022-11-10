@@ -3330,10 +3330,6 @@ export default mixins(
 					}, promptTimeout);
 				}
 			}
-
-			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
-			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
-			nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
 		},
 		activated() {
 			const openSideMenu = this.uiStore.addFirstStepOnLoad;
@@ -3345,18 +3341,22 @@ export default mixins(
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 			window.addEventListener('message', this.onPostMessageReceived);
+
 			this.$root.$on('newWorkflow', this.newWorkflow);
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 			nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
+
 			this.canvasStore.isDemo = this.isDemo;
 		},
 		deactivated () {
 			document.removeEventListener('keydown', this.keyDown);
 			document.removeEventListener('keyup', this.keyUp);
 			window.removeEventListener('message', this.onPostMessageReceived);
+
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
@@ -3372,10 +3372,6 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-
-			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
-			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
-			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
 		},
 	});
 </script>

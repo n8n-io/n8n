@@ -127,7 +127,7 @@ export default mixins(
 			WORKFLOW_SHARE_MODAL_KEY,
 			loading: false,
 			modalBus: new Vue(),
-			sharedWith: [...(workflowsStore.workflow.sharedWith || [])],
+			sharedWith: [...(workflowsStore.workflow.sharedWith || [])] as Array<Partial<IUser>>,
 			EnterpriseEditionFeature,
 		};
 	},
@@ -175,10 +175,14 @@ export default mixins(
 	},
 	methods: {
 		async onSave() {
+			if (this.loading) {
+				return;
+			}
+
 			this.loading = true;
 
 			const saveWorkflowPromise = () => {
-				return new Promise((resolve) => {
+				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.$emit('saveWorkflow', () => {
 							resolve(this.workflowsStore.workflowId);
@@ -192,11 +196,9 @@ export default mixins(
 			const workflowId = await saveWorkflowPromise();
 			await this.workflowsEEStore.saveWorkflowSharedWith({ workflowId, sharedWith: this.sharedWith });
 			this.loading = false;
-
-			this.modalBus.$emit('close');
 		},
 		async onAddSharee(userId: string) {
-			const { id, firstName, lastName, email } = this.usersStore.getUserById(userId);
+			const { id, firstName, lastName, email } = this.usersStore.getUserById(userId)!;
 			const sharee = { id, firstName, lastName, email };
 
 			this.sharedWith = this.sharedWith.concat(sharee);

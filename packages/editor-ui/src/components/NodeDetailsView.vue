@@ -369,7 +369,7 @@ export default mixins(
 			let hasForeignCredential = false;
 			if (credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
 				Object.values(credentials).forEach((credential) => {
-					if (credential.id && !foreignCredentials[credential.id]?.currentUserHasAccess) {
+					if (credential.id && foreignCredentials[credential.id] && !foreignCredentials[credential.id].currentUserHasAccess) {
 						hasForeignCredential = true;
 					}
 				});
