@@ -14,28 +14,27 @@ import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
 import { createHash } from 'crypto';
-import config from '../config';
-import {
-	ActiveExecutions,
-	ActiveWorkflowRunner,
-	CredentialsOverwrites,
-	CredentialTypes,
-	DatabaseType,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	InternalHooksManager,
-	LoadNodesAndCredentials,
-	NodeTypes,
-	Server,
-	TestWebhooks,
-	WaitTracker,
-} from '../src';
+import config from '@/config';
 
-import { getLogger } from '../src/Logger';
-import { getAllInstalledPackages } from '../src/CommunityNodes/packageModel';
-import { initErrorHandling } from '../src/ErrorReporting';
-import * as CrashJournal from '../src/CrashJournal';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as Server from '@/Server';
+import { DatabaseType } from '@/Interfaces';
+import * as TestWebhooks from '@/TestWebhooks';
+import { WaitTracker } from '@/WaitTracker';
+
+import { getLogger } from '@/Logger';
+import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
+import { initErrorHandling } from '@/ErrorReporting';
+import * as CrashJournal from '@/CrashJournal';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');

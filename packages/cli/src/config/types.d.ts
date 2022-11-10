@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { IBinaryDataConfig } from '../../core/dist/src';
+import { IBinaryDataConfig } from 'n8n-core';
 import { schema } from './schema';
 
 // -----------------------------------

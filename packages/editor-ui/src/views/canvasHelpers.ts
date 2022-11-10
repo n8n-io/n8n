@@ -42,17 +42,6 @@ export const INPUT_UUID_KEY = '-input';
 export const OUTPUT_UUID_KEY = '-output';
 export const PLACEHOLDER_BUTTON = 'PlaceholderTriggerButton';
 
-export const DEFAULT_START_NODE = {
-	name: 'Start',
-	type: START_NODE_TYPE,
-	typeVersion: 1,
-	position: [
-		DEFAULT_START_POSITION_X,
-		DEFAULT_START_POSITION_Y,
-	] as XYPosition,
-	parameters: {},
-};
-
 export const DEFAULT_PLACEHOLDER_TRIGGER_BUTTON = {
 	name: 'Choose a Trigger...',
 	type: PLACEHOLDER_BUTTON,
@@ -777,7 +766,6 @@ export const getInputEndpointUUID = (nodeId: string, inputIndex: number) => {
 
 export const getFixedNodesList = (workflowNodes: INode[]) => {
 	const nodes = [...workflowNodes];
-	const hasStartNode = !!nodes.find(node => node.type === START_NODE_TYPE);
 
 	const leftmostTop = getLeftmostTopNode(nodes);
 
@@ -785,12 +773,9 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 	const diffY = DEFAULT_START_POSITION_Y - leftmostTop.position[1];
 
 	nodes.map((node) => {
-		node.position[0] += diffX + (hasStartNode? 0 : NODE_SIZE * 2);
+		node.position[0] += diffX + (NODE_SIZE * 2);
 		node.position[1] += diffY;
 	});
 
-	if (!hasStartNode) {
-		nodes.push({...DEFAULT_START_NODE, id: uuid() });
-	}
 	return nodes;
 };
