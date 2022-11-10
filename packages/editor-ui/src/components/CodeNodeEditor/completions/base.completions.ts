@@ -19,7 +19,7 @@ export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 	},
 	methods: {
 		itemCompletions(context: CompletionContext): CompletionResult | null {
-			const preCursor = context.matchBefore(/i/);
+			const preCursor = context.matchBefore(/i\w*/);
 
 			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
 
