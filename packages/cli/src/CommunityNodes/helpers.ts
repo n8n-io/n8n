@@ -236,11 +236,11 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 }
 
 const context = createContext({ require });
-export const loadClassInIsolation = (filePath: string, className: string) => {
+export const loadClassInIsolation = <T>(filePath: string, className: string) => {
 	if (process.platform === 'win32') {
 		filePath = filePath.replace(/\\/g, '/');
 	}
 	const script = new Script(`new (require('${filePath}').${className})()`);
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-	return script.runInContext(context);
+	return script.runInContext(context) as T;
 };

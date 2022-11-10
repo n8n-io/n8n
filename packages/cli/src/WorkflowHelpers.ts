@@ -248,14 +248,10 @@ export function getAllNodeTypeData(): ITransferNodeTypes {
 	// Get the data of all the node types that they
 	// can be loaded again in the process
 	const returnData: ITransferNodeTypes = {};
-	for (const nodeTypeName of Object.keys(nodeTypes.nodeTypes)) {
-		if (nodeTypes.nodeTypes[nodeTypeName] === undefined) {
-			throw new Error(`The NodeType "${nodeTypeName}" could not be found!`);
-		}
-
+	for (const [nodeTypeName, node] of Object.entries(nodeTypes.nodeTypes)) {
 		returnData[nodeTypeName] = {
-			className: nodeTypes.nodeTypes[nodeTypeName].type.constructor.name,
-			sourcePath: nodeTypes.nodeTypes[nodeTypeName].sourcePath,
+			className: node.type.constructor.name,
+			sourcePath: node.sourcePath,
 		};
 	}
 
@@ -266,7 +262,7 @@ export function getAllNodeTypeData(): ITransferNodeTypes {
  * Returns all the defined CredentialTypes
  *
  */
-export function getAllCredentalsTypeData(): ICredentialsTypeData {
+export function getAllCredentialsTypeData(): ICredentialsTypeData {
 	const credentialTypes = CredentialTypes();
 
 	// Get the data of all the credential types that they
@@ -301,14 +297,11 @@ export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
 	// Get all the data of the needed node types that they
 	// can be loaded again in the process
 	const returnData: ITransferNodeTypes = {};
-	for (const nodeTypeName of neededNodeTypes) {
-		if (nodeTypes.nodeTypes[nodeTypeName.type] === undefined) {
-			throw new Error(`The NodeType "${nodeTypeName.type}" could not be found!`);
-		}
-
-		returnData[nodeTypeName.type] = {
-			className: nodeTypes.nodeTypes[nodeTypeName.type].type.constructor.name,
-			sourcePath: nodeTypes.nodeTypes[nodeTypeName.type].sourcePath,
+	for (const { type } of neededNodeTypes) {
+		const nodeType = nodeTypes.getNode(type);
+		returnData[type] = {
+			className: nodeType.type.constructor.name,
+			sourcePath: nodeType.sourcePath,
 		};
 	}
 

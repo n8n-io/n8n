@@ -64,14 +64,13 @@ export function getSessionId(req: express.Request): string | undefined {
 
 /**
  * Returns information which version of the packages are installed
- *
  */
 export async function getVersions(): Promise<IPackageVersions> {
 	if (versionCache !== undefined) {
 		return versionCache;
 	}
 
-const packageFile = await fsReadFile(pathJoin(CLI_DIR, 'package.json'), 'utf8');
+	const packageFile = await fsReadFile(pathJoin(CLI_DIR, 'package.json'), 'utf8');
 	const packageData = jsonParse<n8n.PackageJson>(packageFile);
 
 	versionCache = {

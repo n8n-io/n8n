@@ -2,6 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { Known } from 'n8n-core';
 import {
 	INodeType,
 	INodeTypeData,
@@ -10,9 +11,17 @@ import {
 	IVersionedNodeType,
 	NodeHelpers,
 } from 'n8n-workflow';
+import * as path from 'path';
+import { loadClassInIsolation } from './CommunityNodes/helpers';
 
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {};
+
+	private known: Known['nodes'];
+
+	register(known: Known) {
+		this.known = known.nodes;
+	}
 
 	async init(nodeTypes: INodeTypeData): Promise<void> {
 		// Some nodeTypes need to get special parameters applied like the
@@ -31,6 +40,10 @@ class NodeTypesClass implements INodeTypes {
 
 	getAll(): Array<INodeType | IVersionedNodeType> {
 		return Object.values(this.nodeTypes).map((data) => data.type);
+	}
+
+	getNode(nodeType: string): INodeTypeData[string] {
+		return this.nodeTypes[nodeType] ?? this.loadNode(nodeType);
 	}
 
 	/**
@@ -52,10 +65,7 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
-		if (this.nodeTypes[nodeType] === undefined) {
-			throw new Error(`The node-type "${nodeType}" is not known!`);
-		}
-		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
+		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
 	}
 
 	attachNodeType(
@@ -71,6 +81,20 @@ class NodeTypesClass implements INodeTypes {
 
 	removeNodeType(nodeType: string): void {
 		delete this.nodeTypes[nodeType];
+	}
+
+	private loadNode(type: string): INodeTypeData[string] {
+		if (type in this.known) {
+			const sourcePath = this.known[type];
+			const [name] = path.parse(sourcePath).name.split('.');
+			const loaded: INodeType = loadClassInIsolation(sourcePath, name);
+			this.nodeTypes[type] = {
+				sourcePath,
+				type: loaded,
+			};
+			return this.nodeTypes[type];
+		}
+		throw new Error(`The node-type "${type}" is not known!`);
 	}
 }
 

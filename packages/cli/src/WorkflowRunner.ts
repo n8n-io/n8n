@@ -635,7 +635,7 @@ export class WorkflowRunner {
 		if (loadAllNodeTypes) {
 			// Supply all nodeTypes and credentialTypes
 			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
-			credentialTypeData = WorkflowHelpers.getAllCredentalsTypeData();
+			credentialTypeData = WorkflowHelpers.getAllCredentialsTypeData();
 		} else {
 			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
 			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);

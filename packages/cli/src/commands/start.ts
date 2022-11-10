@@ -211,8 +211,10 @@ export class Start extends Command {
 
 				// Add the found types to an instance other parts of the application can use
 				const nodeTypes = NodeTypes();
+				nodeTypes.register(loadNodesAndCredentials.known);
 				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
 				const credentialTypes = CredentialTypes();
+				credentialTypes.register(loadNodesAndCredentials.known);
 				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 				// Load the credentials overwrites if any exist

@@ -29,7 +29,7 @@
 /* eslint-disable no-await-in-loop */
 
 import { exec as callbackExec } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, createWriteStream, writeFileSync } from 'fs';
 import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
 import os from 'os';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -54,22 +54,21 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialType,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeListSearchResult,
 	INodeParameters,
 	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
 	LoggerProxy,
-	NodeHelpers,
 	jsonParse,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
 	ErrorReporterProxy as ErrorReporter,
+	INodeTypes,
+	ICredentialTypes,
+	NodeHelpers,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -159,6 +158,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 require('body-parser-xml')(bodyParser);
 
@@ -225,6 +225,10 @@ class App {
 
 	webhookMethods: WebhookHttpMethod[];
 
+	nodeTypes: INodeTypes;
+
+	credentialTypes: ICredentialTypes;
+
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -249,6 +253,9 @@ class App {
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
 		this.push = Push.getInstance();
+
+		this.nodeTypes = NodeTypes();
+		this.credentialTypes = CredentialTypes();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
@@ -411,6 +418,7 @@ class App {
 			'assets',
 			'healthz',
 			'metrics',
+			'types',
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
@@ -766,6 +774,22 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
 
+		// pre-render all the node and credential types as static json files
+		const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
+		await mkdir(pathJoin(generatedStaticDir, 'types'), { recursive: true });
+
+		const writeStaticJSON = async (name: string, data: any[]) => {
+			const filePath = pathJoin(generatedStaticDir, `types/${name}.json`);
+			const payload = `[\n${data.map((entry) => JSON.stringify(entry)).join(',\n')}\n]`;
+			writeFileSync(filePath, payload, { encoding: 'utf-8' });
+		};
+
+		const loadNodesAndCredentials = LoadNodesAndCredentials();
+		// TODO: re-render these after a new community package is installed
+		await writeStaticJSON('all-nodes', loadNodesAndCredentials.types.allNodes);
+		await writeStaticJSON('latest-nodes', loadNodesAndCredentials.types.latestNodes);
+		await writeStaticJSON('credentials', loadNodesAndCredentials.types.credentials);
+
 		// ----------------------------------------
 		// Metrics
 		// ----------------------------------------
@@ -811,7 +835,7 @@ class App {
 
 					const loadDataInstance = new LoadNodeParameterOptions(
 						nodeTypeAndVersion,
-						NodeTypes(),
+						this.nodeTypes,
 						path,
 						currentNodeParameters,
 						credentials,
@@ -870,7 +894,7 @@ class App {
 
 					const listSearchInstance = new LoadNodeListSearch(
 						nodeTypeAndVersion,
-						NodeTypes(),
+						this.nodeTypes,
 						path,
 						currentNodeParameters,
 						credentials,
@@ -891,47 +915,6 @@ class App {
 					}
 
 					throw new ResponseError('Parameter methodName is required.', undefined, 400);
-				},
-			),
-		);
-
-		// Returns all the node-types
-		this.app.get(
-			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const returnData: INodeTypeDescription[] = [];
-					const onlyLatest = req.query.onlyLatest === 'true';
-
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
-
-					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
-						if (req.query.includeProperties !== 'true') {
-							// @ts-ignore
-							delete nodeInfo.properties;
-						}
-						return nodeInfo;
-					};
-
-					if (onlyLatest) {
-						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-							returnData.push(nodeInfo);
-						});
-					} else {
-						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-							allNodeTypes.forEach((element) => {
-								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-								returnData.push(nodeInfo);
-							});
-						});
-					}
-
-					return returnData;
 				},
 			),
 		);
@@ -996,25 +979,11 @@ class App {
 						req.params.nodeType
 					}`;
 
-					const nodeTypes = NodeTypes();
-					const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
-
-					if (nodeType === undefined) {
+					const filepath = loadNodesAndCredentials.icons.nodes[nodeTypeName];
+					if (filepath === undefined) {
 						res.status(404).send('The nodeType is not known.');
 						return;
 					}
-
-					if (nodeType.description.icon === undefined) {
-						res.status(404).send('No icon found for node.');
-						return;
-					}
-
-					if (!nodeType.description.icon.startsWith('file:')) {
-						res.status(404).send('Node does not have a file icon.');
-						return;
-					}
-
-					const filepath = nodeType.description.icon.substr(5);
 
 					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
 					res.setHeader('Cache-control', `private max-age=${maxAge}`);
@@ -1098,48 +1067,17 @@ class App {
 		// Credential-Types
 		// ----------------------------------------
 
-		// Returns all the credential types which are defined in the loaded n8n-modules
-		this.app.get(
-			`/${this.restEndpoint}/credential-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialType[]> => {
-					const returnData: ICredentialType[] = [];
-
-					const credentialTypes = CredentialTypes();
-
-					credentialTypes.getAll().forEach((credentialData) => {
-						returnData.push(credentialData);
-					});
-
-					return returnData;
-				},
-			),
-		);
-
 		this.app.get(
 			`/${this.restEndpoint}/credential-icon/:credentialType`,
 			async (req: express.Request, res: express.Response): Promise<void> => {
 				try {
 					const credentialName = req.params.credentialType;
+					const filepath = loadNodesAndCredentials.icons.credentials[credentialName];
 
-					const credentialType = CredentialTypes().getByName(credentialName);
-
-					if (credentialType === undefined) {
+					if (filepath === undefined) {
 						res.status(404).send('The credentialType is not known.');
 						return;
 					}
-
-					if (credentialType.icon === undefined) {
-						res.status(404).send('No icon found for credential.');
-						return;
-					}
-
-					if (!credentialType.icon.startsWith('file:')) {
-						res.status(404).send('Credential does not have a file icon.');
-						return;
-					}
-
-					const filepath = credentialType.icon.substr(5);
 
 					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
 					res.setHeader('Cache-control', `private max-age=${maxAge}`);
@@ -1795,7 +1733,6 @@ class App {
 			}
 
 			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
-			const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
 
 			const closingTitleTag = '</title>';
 			const compileFile = async (fileName: string) => {
@@ -1825,6 +1762,8 @@ class App {
 				res.setHeader('Last-Modified', startTime);
 				next();
 			});
+		} else {
+			this.app.use('/', express.static(generatedStaticDir));
 		}
 	}
 }

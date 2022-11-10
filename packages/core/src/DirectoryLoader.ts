@@ -2,7 +2,13 @@ import * as path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { createContext, Context, Script } from 'node:vm';
 import glob from 'fast-glob';
-import { DocumentationLink, jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
+import {
+	DocumentationLink,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
+	jsonParse,
+	LoggerProxy as Logger,
+} from 'n8n-workflow';
 import type {
 	CodexData,
 	ICredentialType,
@@ -22,14 +28,31 @@ function toJSON(this: ICredentialType) {
 	};
 }
 
+export type Known = {
+	nodes: Record<string, string>;
+	credentials: Record<string, string>;
+};
+
+export type Types = {
+	allNodes: INodeTypeBaseDescription[];
+	latestNodes: INodeTypeBaseDescription[];
+	credentials: ICredentialType[];
+};
+
 export abstract class DirectoryLoader {
 	private context: Context;
 
-	loadedNodes: INodeTypeNameVersion[] = [];
+	readonly loadedNodes: INodeTypeNameVersion[] = [];
 
-	nodeTypes: INodeTypeData = {};
+	readonly nodeTypes: INodeTypeData = {};
 
-	credentialTypes: ICredentialTypeData = {};
+	readonly credentialTypes: ICredentialTypeData = {};
+
+	readonly known: Known = { nodes: {}, credentials: {} };
+
+	readonly icons: Known = { nodes: {}, credentials: {} };
+
+	readonly types: Types = { allNodes: [], latestNodes: [], credentials: [] };
 
 	constructor(
 		protected readonly directory: string,
@@ -61,32 +84,25 @@ export abstract class DirectoryLoader {
 		}
 
 		const fullNodeName = `${packageName}.${tempNode.description.name}`;
+
+		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
+			return;
+		}
+
+		if (this.excludeNodes?.includes(fullNodeName)) {
+			return;
+		}
+
 		tempNode.description.name = fullNodeName;
 
-		if (tempNode.description.icon?.startsWith('file:')) {
-			// If a file icon gets used add the full path
-			tempNode.description.icon = `file:${path.join(
-				path.dirname(filePath),
-				tempNode.description.icon.substr(5),
-			)}`;
-		}
+		this.fixIconPath(tempNode.description, filePath);
 
-		function isVersioned(nodeType: INodeType | IVersionedNodeType): nodeType is IVersionedNodeType {
-			return 'nodeVersions' in nodeType;
-		}
-
-		if (isVersioned(tempNode)) {
+		if ('nodeVersions' in tempNode) {
 			const versionedNodeType = tempNode.nodeVersions[tempNode.currentVersion];
 			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
 			nodeVersion = tempNode.currentVersion;
 
-			if (versionedNodeType.description.icon?.startsWith('file:')) {
-				// If a file icon gets used add the full path
-				versionedNodeType.description.icon = `file:${path.join(
-					path.dirname(filePath),
-					versionedNodeType.description.icon.substring(5),
-				)}`;
-			}
+			this.fixIconPath(versionedNodeType.description, filePath);
 
 			if (versionedNodeType.hasOwnProperty('executeSingle')) {
 				Logger.warn(
@@ -100,14 +116,6 @@ export abstract class DirectoryLoader {
 			nodeVersion = Array.isArray(tmpNode.description.version)
 				? tmpNode.description.version.slice(-1)[0]
 				: tmpNode.description.version;
-		}
-
-		if (this.includeNodes !== undefined && !this.includeNodes.includes(fullNodeName)) {
-			return;
-		}
-
-		if (this.excludeNodes?.includes(fullNodeName)) {
-			return;
 		}
 
 		this.nodeTypes[fullNodeName] = {
@@ -133,13 +141,7 @@ export abstract class DirectoryLoader {
 			// include the credential type in the predefined credentials (HTTP node)
 			Object.assign(tempCredential, { toJSON });
 
-			if (tempCredential.icon?.startsWith('file:')) {
-				// If a file icon gets used add the full path
-				tempCredential.icon = `file:${path.join(
-					path.dirname(filePath),
-					tempCredential.icon.substring(5),
-				)}`;
-			}
+			this.fixIconPath(tempCredential, filePath);
 		} catch (e) {
 			if (e instanceof TypeError) {
 				throw new Error(
@@ -156,13 +158,13 @@ export abstract class DirectoryLoader {
 		};
 	}
 
-	private loadClassInIsolation(filePath: string, className: string) {
+	private loadClassInIsolation<T>(filePath: string, className: string) {
 		if (process.platform === 'win32') {
 			filePath = filePath.replace(/\\/g, '/');
 		}
 		const script = new Script(`new (require('${filePath}').${className})()`);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-		return script.runInContext(this.context);
+		return script.runInContext(this.context) as T;
 	}
 
 	/**
@@ -235,6 +237,17 @@ export abstract class DirectoryLoader {
 			}
 		}
 	}
+
+	private fixIconPath(
+		obj: INodeTypeDescription | INodeTypeBaseDescription | ICredentialType,
+		filePath: string,
+	) {
+		if (obj.icon?.startsWith('file:')) {
+			const iconPath = path.join(path.dirname(filePath), obj.icon.substring(5));
+			const relativePath = path.relative(this.directory, iconPath);
+			obj.icon = `file:${relativePath}`;
+		}
+	}
 }
 
 /**
@@ -257,20 +270,42 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 				this.loadCredentialFromFile(fileName, filePath);
 			}
 		}
+
+		// TODO: add these to this.types
 	}
 }
 
 /**
- * Loader for source files of nodes and creds located in a package dir,
+ * Loader for source files of nodes and credentials located in a package dir,
  * e.g. /nodes-base or community packages.
  */
 export class PackageDirectoryLoader extends DirectoryLoader {
+	packageName = '';
+
 	packageJson!: n8n.PackageJson;
 
-	override async loadAll() {
+	override async loadAll(lazy = true) {
 		this.packageJson = await this.readJSON<n8n.PackageJson>('package.json');
 
 		const { n8n, name: packageName } = this.packageJson;
+		this.packageName = packageName;
+
+		if (lazy) {
+			try {
+				this.known.nodes = await this.readJSON('dist/known/nodes.json');
+				this.known.credentials = await this.readJSON('dist/known/credentials.json');
+
+				this.types.allNodes = await this.readJSON('dist/types/all-nodes.json');
+				this.types.latestNodes = await this.readJSON('dist/types/latest-nodes.json');
+				this.types.credentials = await this.readJSON('dist/types/credentials.json');
+
+				this.icons.nodes = await this.readJSON('dist/icons/nodes.json');
+				this.icons.credentials = await this.readJSON('dist/icons/credentials.json');
+				return; // We can loads nodes and credentials lazily now
+			} catch {
+				Logger.warn("Can't enable lazy-loading");
+			}
+		}
 
 		if (!n8n) return;
 

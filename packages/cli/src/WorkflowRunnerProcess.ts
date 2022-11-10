@@ -103,6 +103,7 @@ export class WorkflowRunnerProcess {
 		const nodeTypesData: INodeTypeData = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const nodeTypeName of Object.keys(this.data.nodeTypeData)) {
+			// TODO: use NodeTypes.loadNode instead
 			let tempNode: INodeType;
 			const { className, sourcePath } = this.data.nodeTypeData[nodeTypeName];
 

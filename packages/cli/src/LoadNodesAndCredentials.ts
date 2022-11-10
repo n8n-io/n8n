@@ -12,9 +12,11 @@
 import {
 	CUSTOM_EXTENSION_ENV,
 	UserSettings,
+	Known,
 	CustomDirectoryLoader,
 	DirectoryLoader,
 	PackageDirectoryLoader,
+	Types,
 } from 'n8n-core';
 import {
 	ICredentialTypeData,
@@ -38,6 +40,12 @@ import {
 } from '@/CommunityNodes/packageModel';
 
 class LoadNodesAndCredentialsClass {
+	icons: Known = { nodes: {}, credentials: {} };
+
+	known: Known = { nodes: {}, credentials: {} };
+
+	types: Types = { allNodes: [], latestNodes: [], credentials: [] };
+
 	nodeTypes: INodeTypeData = {};
 
 	credentialTypes: ICredentialTypeData = {};
@@ -56,63 +64,18 @@ class LoadNodesAndCredentialsClass {
 		// @ts-ignore
 		module.constructor._initPaths();
 
-		const nodeModulesPath = await this.getNodeModulesPath();
-
-		await this.loadNodesFromBasePackages(nodeModulesPath);
+		await this.loadNodesFromBasePackages();
 		await this.loadNodesFromDownloadedPackages();
 		await this.loadNodesFromCustomDirectories();
 	}
 
-	async loadNodesFromBasePackages(nodeModulesPath: string) {
+	async loadNodesFromBasePackages() {
+		const nodeModulesPath = await this.getNodeModulesPath();
 		const nodePackagePaths = await this.getN8nNodePackages(nodeModulesPath);
 
 		for (const packagePath of nodePackagePaths) {
 			await this.runDirectoryLoader(PackageDirectoryLoader, packagePath);
 		}
-	}
-
-	/**
-	 * Run a loader of source files of nodes and credentials in a directory.
-	 */
-	private async runDirectoryLoader<T extends DirectoryLoader>(
-		constructor: new (...args: ConstructorParameters<typeof DirectoryLoader>) => T,
-		dir: string,
-	) {
-		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
-		await loader.loadAll();
-
-		for (const nodeTypeName in loader.nodeTypes) {
-			this.nodeTypes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
-		}
-
-		for (const credentialTypeName in loader.credentialTypes) {
-			this.credentialTypes[credentialTypeName] = loader.credentialTypes[credentialTypeName];
-		}
-
-		return loader;
-	}
-
-	private async getNodeModulesPath(): Promise<string> {
-		// Get the path to the node-modules folder to be later able
-		// to load the credentials and nodes
-		const checkPaths = [
-			// In case "n8n" package is in same node_modules folder.
-			path.join(CLI_DIR, '..', 'n8n-workflow'),
-			// In case "n8n" package is the root and the packages are
-			// in the "node_modules" folder underneath it.
-			path.join(CLI_DIR, 'node_modules', 'n8n-workflow'),
-			// In case "n8n" package is installed using npm/yarn workspaces
-			// the node_modules folder is in the root of the workspace.
-			path.join(CLI_DIR, '..', '..', 'node_modules', 'n8n-workflow'),
-		];
-		for (const checkPath of checkPaths) {
-			try {
-				await fsAccess(checkPath);
-				// Folder exists, so use it.
-				return path.dirname(checkPath);
-			} catch (_) {} // Folder does not exist so get next one
-		}
-		throw new Error('Could not find "node_modules" folder!');
 	}
 
 	async loadNodesFromDownloadedPackages(): Promise<void> {
@@ -318,6 +281,73 @@ class LoadNodesAndCredentialsClass {
 				this.nodeTypes[installedNode.type].sourcePath,
 			);
 		});
+	}
+
+	/**
+	 * Run a loader of source files of nodes and credentials in a directory.
+	 */
+	private async runDirectoryLoader<T extends DirectoryLoader>(
+		constructor: new (...args: ConstructorParameters<typeof DirectoryLoader>) => T,
+		dir: string,
+	) {
+		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
+		await loader.loadAll();
+
+		for (const nodeTypeName in loader.nodeTypes) {
+			this.nodeTypes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
+		}
+
+		for (const credentialTypeName in loader.credentialTypes) {
+			this.credentialTypes[credentialTypeName] = loader.credentialTypes[credentialTypeName];
+		}
+
+		if (loader instanceof PackageDirectoryLoader) {
+			const { packageName, icons, known, types } = loader;
+			for (const node in known.nodes) {
+				this.known.nodes[`${packageName}.${node}`] = path.join(dir, known.nodes[node]);
+			}
+			for (const credential in known.credentials) {
+				// TODO: use `${packageName}.${credential}` instead of `${credential}`
+				this.known.credentials[credential] = path.join(dir, known.credentials[credential]);
+			}
+
+			this.types.allNodes = this.types.allNodes.concat(types.allNodes);
+			this.types.latestNodes = this.types.latestNodes.concat(types.latestNodes);
+			this.types.credentials = this.types.credentials.concat(types.credentials);
+
+			for (const node in icons.nodes) {
+				this.icons.nodes[`${packageName}.${node}`] = path.join(dir, icons.nodes[node]);
+			}
+			for (const credential in icons.credentials) {
+				// TODO: use `${packageName}.${credential}` instead of `${credential}`
+				this.icons.credentials[credential] = path.join(dir, icons.credentials[credential]);
+			}
+		}
+
+		return loader;
+	}
+
+	private async getNodeModulesPath(): Promise<string> {
+		// Get the path to the node-modules folder to be later able
+		// to load the credentials and nodes
+		const checkPaths = [
+			// In case "n8n" package is in same node_modules folder.
+			path.join(CLI_DIR, '..', 'n8n-workflow'),
+			// In case "n8n" package is the root and the packages are
+			// in the "node_modules" folder underneath it.
+			path.join(CLI_DIR, 'node_modules', 'n8n-workflow'),
+			// In case "n8n" package is installed using npm/yarn workspaces
+			// the node_modules folder is in the root of the workspace.
+			path.join(CLI_DIR, '..', '..', 'node_modules', 'n8n-workflow'),
+		];
+		for (const checkPath of checkPaths) {
+			try {
+				await fsAccess(checkPath);
+				// Folder exists, so use it.
+				return path.dirname(checkPath);
+			} catch (_) {} // Folder does not exist so get next one
+		}
+		throw new Error('Could not find "node_modules" folder!');
 	}
 }
 
