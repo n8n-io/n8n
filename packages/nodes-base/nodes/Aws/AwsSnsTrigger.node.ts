@@ -2,7 +2,8 @@ import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {
 	ILoadOptionsFunctions,
-	INodePropertyOptions,
+	INodeListSearchItems,
+	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
@@ -44,55 +45,123 @@ export class AwsSnsTrigger implements INodeType {
 		],
 		properties: [
 			{
-				displayName: 'Topic Name or ID',
+				displayName: 'Topic',
 				name: 'topic',
-				type: 'options',
-				description:
-					'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
 				required: true,
-				typeOptions: {
-					loadOptionsMethod: 'getTopics',
-				},
-				default: '',
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select a topic...',
+						typeOptions: {
+							searchListMethod: 'listTopics',
+							searchable: true,
+						},
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder:
+							'https://us-east-1.console.aws.amazon.com/sns/v3/home?region=us-east-1#/topic/arn:aws:sns:us-east-1:777777777777:your_topic',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex:
+										'https:\\/\\/[0-9a-zA-Z\\-_]+\\.console\\.aws\\.amazon\\.com\\/sns\\/v3\\/home\\?region\\=[0-9a-zA-Z\\-_]+\\#\\/topic\\/arn:aws:sns:[0-9a-zA-Z\\-_]+:[0-9]+:[0-9a-zA-Z\\-_]+(?:\\/.*|)',
+									errorMessage: 'Not a valid AWS SNS Topic URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex:
+								'https:\\/\\/[0-9a-zA-Z\\-_]+\\.console\\.aws\\.amazon\\.com\\/sns\\/v3\\/home\\?region\\=[0-9a-zA-Z\\-_]+\\#\\/topic\\/(arn:aws:sns:[0-9a-zA-Z\\-_]+:[0-9]+:[0-9a-zA-Z\\-_]+)(?:\\/.*|)',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'arn:aws:sns:[0-9a-zA-Z\\-_]+:[0-9]+:[0-9a-zA-Z\\-_]+',
+									errorMessage: 'Not a valid AWS SNS Topic ARN',
+								},
+							},
+						],
+						placeholder: 'arn:aws:sns:your-aws-region:777777777777:your_topic',
+					},
+				],
 			},
 		],
 	};
 
 	methods = {
-		loadOptions: {
-			// Get all the available topics to display them to user so that he can
-			// select them easily
-			async getTopics(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const data = await awsApiRequestSOAP.call(this, 'sns', 'GET', '/?Action=ListTopics');
+		listSearch: {
+			async listTopics(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+				paginationToken?: string,
+			): Promise<INodeListSearchResult> {
+				const returnData: INodeListSearchItems[] = [];
+				const params = paginationToken ? `NextToken=${encodeURIComponent(paginationToken)}` : '';
+
+				const data = await awsApiRequestSOAP.call(
+					this,
+					'sns',
+					'GET',
+					'/?Action=ListTopics&' + params,
+				);
 
 				let topics = data.ListTopicsResponse.ListTopicsResult.Topics.member;
+				const nextToken = data.ListTopicsResponse.ListTopicsResult.NextToken;
+
+				if (nextToken) {
+					paginationToken = nextToken as string;
+				} else {
+					paginationToken = undefined;
+				}
 
 				if (!Array.isArray(topics)) {
-					// If user has only a single topic no array get returned so we make
-					// one manually to be able to process everything identically
 					topics = [topics];
 				}
 
 				for (const topic of topics) {
 					const topicArn = topic.TopicArn as string;
-					const topicName = topicArn.split(':')[5];
+					const arnParsed = topicArn.split(':');
+					const topicName = arnParsed[5];
+					const awsRegion = arnParsed[3];
+
+					if (filter && topicName.includes(filter) === false) {
+						continue;
+					}
 
 					returnData.push({
 						name: topicName,
 						value: topicArn,
+						url: `https://${awsRegion}.console.aws.amazon.com/sns/v3/home?region=${awsRegion}#/topic/${topicArn}`,
 					});
 				}
-				return returnData;
+				return { results: returnData, paginationToken };
 			},
 		},
 	};
-	// @ts-ignore
+	//@ts-expect-error because of webhook
 	webhookMethods = {
 		default: {
 			async checkExists(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
-				const topic = this.getNodeParameter('topic') as string;
+				const topic = this.getNodeParameter('topic', undefined, {
+					extractValue: true,
+				}) as string;
+
 				if (webhookData.webhookId === undefined) {
 					return false;
 				}
@@ -127,7 +196,9 @@ export class AwsSnsTrigger implements INodeType {
 			async create(this: IHookFunctions): Promise<boolean> {
 				const webhookData = this.getWorkflowStaticData('node');
 				const webhookUrl = this.getNodeWebhookUrl('default') as string;
-				const topic = this.getNodeParameter('topic') as string;
+				const topic = this.getNodeParameter('topic', undefined, {
+					extractValue: true,
+				}) as string;
 
 				if (webhookUrl.includes('%20')) {
 					throw new NodeOperationError(
@@ -175,7 +246,9 @@ export class AwsSnsTrigger implements INodeType {
 
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
-		const topic = this.getNodeParameter('topic') as string;
+		const topic = this.getNodeParameter('topic', undefined, {
+			extractValue: true,
+		}) as string;
 
 		const body = jsonParse<{ Type: string; TopicArn: string; Token: string }>(
 			req.rawBody.toString(),
