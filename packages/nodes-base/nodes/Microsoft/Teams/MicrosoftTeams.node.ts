@@ -467,7 +467,7 @@ export class MicrosoftTeams implements INodeType {
 				if (resource === 'chatMessage') {
 					// https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-1.0&tabs=http
 					if (operation === 'create') {
-						const chatId = this.getNodeParameter('chatId', i) as string;
+						const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 						const messageType = this.getNodeParameter('messageType', i) as string;
 						const message = this.getNodeParameter('message', i) as string;
 						const body: IDataObject = {
