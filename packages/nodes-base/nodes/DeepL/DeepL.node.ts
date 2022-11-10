@@ -7,7 +7,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 
 import { deepLApiRequest } from './GenericFunctions';
@@ -132,10 +131,9 @@ export class DeepL implements INodeType {
 						const { translations } = await deepLApiRequest.call(this, 'GET', '/translate', body);
 						const [translation] = translations;
 						const translationJsonArray = this.helpers.returnJsonArray(translation);
-						const executionData = this.helpers.constructExecutionMetaData(
-							translationJsonArray,
-							{ itemData: { item: i } },
-							);
+						const executionData = this.helpers.constructExecutionMetaData(translationJsonArray, {
+							itemData: { item: i },
+						});
 						responseData.push(...executionData);
 					}
 				}

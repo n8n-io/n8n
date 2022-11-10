@@ -128,9 +128,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import { mapStores } from 'pinia';
-import {
-	OnConnectionBindInfo, Connection, Endpoint, N8nPlusEndpoint, jsPlumbInstance,
-} from 'jsplumb';
+import type { OnConnectionBindInfo, Connection, Endpoint, N8nPlusEndpoint, jsPlumbInstance } from 'jsplumb';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import once from 'lodash/once';
 
@@ -213,19 +211,23 @@ import {
 	IUser,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
-import { getAccountAge } from '@/modules/userHelpers';
-import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
+
+import { getAccountAge } from '@/stores/userHelpers';
 import { debounceHelper } from '@/components/mixins/debounce';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { getNodeViewTab } from '@/components/helpers';
-import { Route } from 'vue-router';
+import { Route, RawLocation } from 'vue-router';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
+import { useTagsStore } from '@/stores/tags';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { useCanvasStore } from '@/stores/canvas';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
@@ -354,11 +356,25 @@ export default mixins(
 
 					if (confirmModal === MODAL_CONFIRMED) {
 						const saved = await this.saveCurrentWorkflow({}, false);
-						if (saved) this.settingsStore.fetchPromptsData();
+						if (saved) await this.settingsStore.fetchPromptsData();
 						this.uiStore.stateIsDirty = false;
-						next();
+
+						if(from.name === VIEWS.NEW_WORKFLOW) {
+							// Replace the current route with the new workflow route
+							// before navigating to the new route when saving new workflow.
+							this.$router.replace({ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } }, () => {
+
+							// We can't use next() here since vue-router
+							// would prevent the navigation with an error
+							this.$router.push(to as RawLocation);
+							});
+						} else {
+							next();
+						}
 					} else if (confirmModal === MODAL_CANCEL) {
+						await this.resetWorkspace();
 						this.uiStore.stateIsDirty = false;
+
 						next();
 					} else if (confirmModal === MODAL_CLOSE) {
 						next(false);
@@ -372,6 +388,10 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useCanvasStore,
+				useTagsStore,
+				useCredentialsStore,
+				useNodeCreatorStore,
 				useNodeTypesStore,
 				useNDVStore,
 				useRootStore,
@@ -491,7 +511,6 @@ export default mixins(
 			getNodeViewOffsetPosition(): XYPosition {
 				return this.uiStore.nodeViewOffsetPosition;
 			},
-			...mapStores(useCanvasStore),
 			nodeViewScale(): number {
 				return this.canvasStore.nodeViewScale;
 			},
@@ -821,12 +840,12 @@ export default mixins(
 				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
 				this.workflowsStore.setWorkflowSettings(data.settings || {});
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
-				this.workflowsStore.setWorkflowHash(data.hash || '');
+				this.workflowsStore.setWorkflowHash(data.hash);
 
 				const tags = (data.tags || []) as ITag[];
 				const tagIds = tags.map((tag) => tag.id);
 				this.workflowsStore.setWorkflowTagIds(tagIds || []);
-				this.$store.commit('tags/upsertTags', tags);
+				this.tagsStore.upsertTags(tags);
 
 				await this.addNodes(data.nodes, data.connections);
 
@@ -1143,6 +1162,7 @@ export default mixins(
 				const childNodes = workflow.getChildNodes(sourceNodeName);
 				for (const nodeName of childNodes) {
 					const node = this.workflowsStore.nodesByName[nodeName] as INodeUi;
+
 					if (node.position[0] < sourceNode.position[0]) {
 						continue;
 					}
@@ -1150,7 +1170,7 @@ export default mixins(
 					const updateInformation: INodeUpdatePropertiesInformation = {
 						name: nodeName,
 						properties: {
-							position: { position: [node.position[0] + margin, node.position[1]] },
+							position: [node.position[0] + margin, node.position[1]],
 						},
 					};
 
@@ -1407,7 +1427,7 @@ export default mixins(
 
 					const tagsEnabled = this.settingsStore.areTagsEnabled;
 					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
-						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
+						const allTags = await this.tagsStore.fetchAll();
 						const tagNames = new Set(allTags.map((tag) => tag.name));
 
 						const workflowTags = workflowData.tags as ITag[];
@@ -1415,7 +1435,7 @@ export default mixins(
 
 						const creatingTagPromises: Array<Promise<ITag>> = [];
 						for (const tag of notFound) {
-							const creationPromise = this.$store.dispatch('tags/create', tag.name)
+							const creationPromise = this.tagsStore.create(tag.name)
 								.then((tag: ITag) => {
 									allTags.push(tag);
 									return tag;
@@ -1530,13 +1550,13 @@ export default mixins(
 				};
 
 				const credentialPerType = nodeTypeData.credentials && nodeTypeData.credentials
-					.map(type => this.$store.getters['credentials/getCredentialsByType'](type.name))
+					.map(type => this.credentialsStore.getCredentialsByType(type.name))
 					.flat();
 
 				if (credentialPerType && credentialPerType.length === 1) {
 					const defaultCredential = credentialPerType[0];
 
-					const selectedCredentials = this.$store.getters['credentials/getCredentialById'](defaultCredential.id);
+					const selectedCredentials = this.credentialsStore.getCredentialById(defaultCredential.id);
 					const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
 					const credentials = {
 						[defaultCredential.type]: selected,
@@ -2715,7 +2735,7 @@ export default mixins(
 					return;
 				}
 				Object.entries(node.credentials).forEach(([nodeCredentialType, nodeCredentials]: [string, INodeCredentialsDetails]) => {
-					const credentialOptions = this.$store.getters['credentials/getCredentialsByType'](nodeCredentialType) as ICredentialsResponse[];
+					const credentialOptions = this.credentialsStore.getCredentialsByType(nodeCredentialType);
 
 					// Check if workflows applies old credentials style
 					if (typeof nodeCredentials === 'string') {
@@ -3084,11 +3104,11 @@ export default mixins(
 				await this.nodeTypesStore.getNodeTypes();
 			},
 			async loadCredentialTypes(): Promise<void> {
-				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
+				await this.credentialsStore.fetchCredentialTypes(true);
 			},
 			async loadCredentials(): Promise<void> {
-				await this.$store.dispatch('credentials/fetchAllCredentials');
-				await this.$store.dispatch('credentials/fetchForeignCredentials');
+				await this.credentialsStore.fetchAllCredentials();
+				await this.credentialsStore.fetchForeignCredentials();
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;

@@ -1365,7 +1365,7 @@ const compareItems = (
 	obj2: INodeExecutionData,
 	keys: string[],
 	disableDotNotation: boolean,
-	node: INode,
+	_node: INode,
 ) => {
 	let result = true;
 	for (const key of keys) {

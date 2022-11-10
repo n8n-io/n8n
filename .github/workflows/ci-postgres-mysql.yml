@@ -18,13 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: pnpm/action-setup@v2.2.4
+
       - uses: actions/setup-node@v3
         with:
           node-version: 16.x
-          cache: 'npm'
+          cache: 'pnpm'
 
-      - name: Install npm and dependencies
-        run: npm install -g npm@latest && npm install
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Start MySQL & Postgres
         uses: isbang/compose-action@v1.3.2
@@ -32,16 +34,16 @@ jobs:
           compose-file: ./.github/docker-compose.yml
 
       - name: Build Core & Workflow
-        run: npm run -w packages/workflow -w packages/core build
+        run: pnpm --filter n8n-workflow --filter=n8n-core build
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: npm run test:mysql
+        run: pnpm test:mysql
 
       - name: Test Postgres
         working-directory: packages/cli
-        run: npm run test:postgres
+        run: pnpm test:postgres
 
       - name: Test Postgres (alternate schema)
         working-directory: packages/cli
-        run: npm run test:postgres:alt-schema
+        run: pnpm test:postgres:alt-schema

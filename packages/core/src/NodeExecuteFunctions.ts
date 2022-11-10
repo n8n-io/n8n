@@ -81,7 +81,7 @@ import { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 
 import requestPromise, { RequestPromiseOptions } from 'request-promise-native';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
-
+import { IncomingHttpHeaders } from 'http';
 import axios, {
 	AxiosError,
 	AxiosPromise,
@@ -92,18 +92,16 @@ import axios, {
 } from 'axios';
 import url, { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
-// eslint-disable-next-line import/no-cycle
 import {
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IResponseError,
 	IWorkflowSettings,
-	PLACEHOLDER_EMPTY_EXECUTION_ID,
-} from '.';
+} from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
-import { IncomingHttpHeaders } from 'http';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -1874,7 +1872,12 @@ export function getExecutePollFunctions(
 	return ((workflow: Workflow, node: INode) => {
 		return {
 			__emit: (data: INodeExecutionData[][]): void => {
-				throw new Error('Overwrite NodeExecuteFunctions.getExecutePullFunctions.__emit function!');
+				throw new Error('Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emit function!');
+			},
+			__emitError(error: Error) {
+				throw new Error(
+					'Overwrite NodeExecuteFunctions.getExecutePollFunctions.__emitError function!',
+				);
 			},
 			async getCredentials(type: string): Promise<ICredentialDataDecryptedObject> {
 				return getCredentials(workflow, node, type, additionalData, mode);

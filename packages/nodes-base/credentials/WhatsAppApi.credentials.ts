@@ -1,11 +1,8 @@
 import {
 	IAuthenticateGeneric,
-	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
-	IHttpRequestOptions,
 	INodeProperties,
-	NodePropertyTypes,
 } from 'n8n-workflow';
 
 export class WhatsAppApi implements ICredentialType {

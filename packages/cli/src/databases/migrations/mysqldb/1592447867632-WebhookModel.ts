@@ -3,7 +3,7 @@ import {
 	QueryRunner,
 } from 'typeorm';
 
-import * as config from '../../../../config';
+import config from '@/config';
 
 export class WebhookModel1592447867632 implements MigrationInterface {
 	name = 'WebhookModel1592447867632';

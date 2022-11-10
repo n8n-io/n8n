@@ -34,7 +34,7 @@ export async function egoiApiRequest(
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
-	headers?: object,
+	_headers?: object,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('egoiApi');

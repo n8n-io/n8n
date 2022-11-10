@@ -123,7 +123,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							.then((response) => response.value)) as Array<{ controlScores: object[] }>;
 
 						if (!includeControlScores) {
-							responseData = responseData.map(({ controlScores, ...rest }) => rest);
+							responseData = responseData.map(({ controlScores: _controlScores, ...rest }) => rest);
 						}
 					}
 				} else if (resource === 'secureScoreControlProfile') {

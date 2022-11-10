@@ -978,15 +978,15 @@ export class Gitlab implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
-		let credentials;
+		let _credentials;
 
 		const authenticationMethod = this.getNodeParameter('authentication', 0);
 
 		try {
 			if (authenticationMethod === 'accessToken') {
-				credentials = await this.getCredentials('gitlabApi');
+				_credentials = await this.getCredentials('gitlabApi');
 			} else {
-				credentials = await this.getCredentials('gitlabOAuth2Api');
+				_credentials = await this.getCredentials('gitlabOAuth2Api');
 			}
 		} catch (error) {
 			if (this.continueOnFail()) {

@@ -149,10 +149,10 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	methods: {
-		updateSettings(settingsInStore: IWorkflowSettings): void {
-			this.workflowSaveSettings.saveFailedExecutions = settingsInStore.saveDataErrorExecution !== 'none';
-			this.workflowSaveSettings.saveSuccessfulExecutions = settingsInStore.saveDataSuccessExecution !== 'none';
-			this.workflowSaveSettings.saveManualExecutions = settingsInStore.saveManualExecutions === undefined ? this.defaultValues.saveManualExecutions : settingsInStore.saveManualExecutions as boolean;
+		updateSettings(workflowSettings: IWorkflowSettings): void {
+			this.workflowSaveSettings.saveFailedExecutions = workflowSettings.saveDataErrorExecution === undefined ?  this.defaultValues.saveFailedExecutions === 'all' : workflowSettings.saveDataErrorExecution === 'all';
+			this.workflowSaveSettings.saveSuccessfulExecutions = workflowSettings.saveDataSuccessExecution === undefined ? this.defaultValues.saveSuccessfulExecutions === 'all' : workflowSettings.saveDataSuccessExecution === 'all';
+			this.workflowSaveSettings.saveManualExecutions = workflowSettings.saveManualExecutions === undefined ? this.defaultValues.saveManualExecutions : workflowSettings.saveManualExecutions as boolean;
 		},
 		onAccordionClick(event: MouseEvent): void {
 			if (event.target instanceof HTMLAnchorElement) {

@@ -1,5 +1,3 @@
-import { OptionsWithUri } from 'request';
-
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
@@ -11,7 +9,7 @@ export async function pushoverApiRequest(
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
-	option = {},
+	_option = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: IHttpRequestOptions = {
