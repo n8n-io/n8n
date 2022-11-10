@@ -42,20 +42,14 @@ import {
 	IHttpRequestHelper,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import {
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ICredentialsDb,
-	NodeTypes,
-	WhereClause,
-	WorkflowExecuteAdditionalData,
-} from '.';
-// eslint-disable-next-line import/no-cycle
-import { User } from './databases/entities/User';
-// eslint-disable-next-line import/no-cycle
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
+import * as Db from '@/Db';
+import { ICredentialsDb, WhereClause } from '@/Interfaces';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { User } from '@db/entities/User';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { NodeTypes } from '@/NodeTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,

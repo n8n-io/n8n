@@ -32,28 +32,24 @@ import {
 	WorkflowHooks,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-import {
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	IWorkflowExecuteProcess,
-	IWorkflowExecutionDataProcessWithExecution,
-	NodeTypes,
-	WebhookHelpers,
-	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
-} from '.';
+import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import { IWorkflowExecuteProcess, IWorkflowExecutionDataProcessWithExecution } from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { getLogger } from '@/Logger';
 
-import { getLogger } from './Logger';
-
-import config from '../config';
-import { InternalHooksManager } from './InternalHooksManager';
-import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
-import { loadClassInIsolation } from './CommunityNodes/helpers';
-import { generateFailedExecutionFromError } from './WorkflowHelpers';
-import { initErrorHandling } from './ErrorReporting';
+import config from '@/config';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { checkPermissionsForExecution } from '@/UserManagement/UserManagementHelper';
+import { loadClassInIsolation } from '@/CommunityNodes/helpers';
+import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
+import { initErrorHandling } from '@/ErrorReporting';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;

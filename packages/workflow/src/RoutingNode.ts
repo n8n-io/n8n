@@ -43,7 +43,7 @@ import {
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as NodeHelpers from './NodeHelpers';
 
-import type { Workflow } from '.';
+import type { Workflow } from './Workflow';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;

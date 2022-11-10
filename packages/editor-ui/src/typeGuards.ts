@@ -10,5 +10,5 @@ export function isNotNull<T>(value: T | null): value is T {
 }
 
 export function isValidCredentialResponse(value: unknown): value is ICredentialsResponse {
-	return typeof value === 'object' && value !== null && 'id' in value && 'createdAt' in value && 'updatedAt' in value;
+	return typeof value === 'object' && value !== null && 'id' in value;
 }

@@ -10,24 +10,21 @@ import { Command, flags } from '@oclif/command';
 import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
-import config from '../config';
-import {
-	ActiveExecutions,
-	ActiveWorkflowRunner,
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	InternalHooksManager,
-	LoadNodesAndCredentials,
-	NodeTypes,
-	WebhookServer,
-} from '../src';
-
-import { getLogger } from '../src/Logger';
-import { initErrorHandling } from '../src/ErrorReporting';
-import * as CrashJournal from '../src/CrashJournal';
+import config from '@/config';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as WebhookServer from '@/WebhookServer';
+import { getLogger } from '@/Logger';
+import { initErrorHandling } from '@/ErrorReporting';
+import * as CrashJournal from '@/CrashJournal';
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExitCode = 0;

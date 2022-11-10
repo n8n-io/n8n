@@ -1,14 +1,13 @@
-/* eslint-disable import/no-cycle */
 import express from 'express';
 import { IDataObject } from 'n8n-workflow';
 
-import type { User } from '../databases/entities/User';
+import type { User } from '@db/entities/User';
 
-import type { Role } from '../databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 
-import type { WorkflowEntity } from '../databases/entities/WorkflowEntity';
+import type { WorkflowEntity } from '@db/entities/WorkflowEntity';
 
-import * as UserManagementMailer from '../UserManagement/email/UserManagementMailer';
+import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
 
 export type ExecutionStatus = 'error' | 'running' | 'success' | 'waiting' | null;
 

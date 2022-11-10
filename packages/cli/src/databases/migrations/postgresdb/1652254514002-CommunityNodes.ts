@@ -1,9 +1,9 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config = require('../../../../config');
+import config from '@/config';
 import {
 	logMigrationEnd,
 	logMigrationStart,
-} from '../../utils/migrationHelpers';
+} from '@db/utils/migrationHelpers';
 
 export class CommunityNodes1652254514002 implements MigrationInterface {
 	name = 'CommunityNodes1652254514002';

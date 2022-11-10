@@ -18,13 +18,14 @@ import glob from 'fast-glob';
 import { UserSettings } from 'n8n-core';
 import { EntityManager, getConnection } from 'typeorm';
 import { v4 as uuid } from 'uuid';
-import { getLogger } from '../../src/Logger';
-import { Db, ICredentialsDb, IWorkflowToImport } from '../../src';
-import { SharedWorkflow } from '../../src/databases/entities/SharedWorkflow';
-import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
-import { Role } from '../../src/databases/entities/Role';
-import { User } from '../../src/databases/entities/User';
-import { setTagsForImport } from '../../src/TagHelpers';
+import { getLogger } from '@/Logger';
+import * as Db from '@/Db';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { Role } from '@db/entities/Role';
+import { User } from '@db/entities/User';
+import { setTagsForImport } from '@/TagHelpers';
+import type { ICredentialsDb, IWorkflowToImport } from '@/Interfaces';
 
 const FIX_INSTRUCTION =
 	'Please fix the database by running ./packages/cli/bin/n8n user-management:reset';
