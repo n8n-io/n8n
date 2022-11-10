@@ -1,6 +1,6 @@
 import { INode, NodeOperationError, Workflow } from 'n8n-workflow';
 import { In } from 'typeorm';
-import { Db } from '..';
+import * as Db from '@/Db';
 
 export class PermissionChecker {
 	/**

@@ -18,7 +18,8 @@ import { WorkflowRequest } from '@/requests';
 import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
-import { TestWebhooks, WorkflowExecuteAdditionalData } from '..';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 export interface IGetWorkflowsQueryFilter {

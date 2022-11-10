@@ -16,7 +16,7 @@ import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
 import { WorkflowsService } from './workflows.services';
 import { IExecutionPushResponse } from '@/Interfaces';
-import { GenericHelpers } from '..';
+import * as GenericHelpers from '@/GenericHelpers';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
