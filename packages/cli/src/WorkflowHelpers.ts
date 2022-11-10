@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -18,6 +17,7 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
@@ -25,25 +25,23 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-// eslint-disable-next-line import/no-cycle
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
 import {
-	CredentialTypes,
-	Db,
 	ICredentialsDb,
 	ICredentialsTypeData,
 	ITransferNodeTypes,
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
-	NodeTypes,
 	WhereClause,
-	WorkflowRunner,
-} from '.';
+} from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import { WorkflowRunner } from '@/WorkflowRunner';
 
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { User } from './databases/entities/User';
-import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
+import config from '@/config';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { User } from '@db/entities/User';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -232,6 +230,7 @@ export async function executeErrorWorkflow(
 		const workflowRunner = new WorkflowRunner();
 		await workflowRunner.run(runData);
 	} catch (error) {
+		ErrorReporter.error(error);
 		Logger.error(
 			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 			{ workflowId: workflowErrorData.workflow.id },
@@ -407,9 +406,10 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 				// eslint-disable-next-line @typescript-eslint/no-use-before-define
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
-			} catch (e) {
+			} catch (error) {
+				ErrorReporter.error(error);
 				Logger.error(
-					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`,
+					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 					{ workflowId: workflow.id },
 				);
 			}

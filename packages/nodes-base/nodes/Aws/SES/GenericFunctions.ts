@@ -1,9 +1,3 @@
-import { URL } from 'url';
-
-import { Request, sign } from 'aws4';
-
-import { OptionsWithUri } from 'request';
-
 import { parseString } from 'xml2js';
 
 import {
@@ -13,7 +7,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -96,9 +90,9 @@ export async function awsApiRequestSOAPAllItems(
 	path: string,
 	body?: string,
 	query: IDataObject = {},
-	headers: IDataObject = {},
-	option: IDataObject = {},
-	region?: string,
+	_headers: IDataObject = {},
+	_option: IDataObject = {},
+	_region?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const returnData: IDataObject[] = [];

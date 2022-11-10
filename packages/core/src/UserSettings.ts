@@ -5,21 +5,18 @@
 import fs from 'fs';
 import path from 'path';
 import { createHash, randomBytes } from 'crypto';
-// eslint-disable-next-line import/no-cycle
+import { promisify } from 'util';
+import { deepCopy } from 'n8n-workflow';
 import {
 	ENCRYPTION_KEY_ENV_OVERWRITE,
 	EXTENSIONS_SUBDIRECTORY,
 	DOWNLOADED_NODES_SUBDIRECTORY,
-	IUserSettings,
 	RESPONSE_ERROR_MESSAGES,
 	USER_FOLDER_ENV_OVERWRITE,
 	USER_SETTINGS_FILE_NAME,
 	USER_SETTINGS_SUBFOLDER,
-} from '.';
-import { deepCopy } from 'n8n-workflow';
-
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { promisify } = require('util');
+} from './Constants';
+import type { IUserSettings } from './Interfaces';
 
 const fsAccess = promisify(fs.access);
 const fsReadFile = promisify(fs.readFile);
@@ -256,7 +253,7 @@ export function getUserN8nFolderCustomExtensionPath(): string {
  * have been downloaded
  *
  */
-export function getUserN8nFolderDowloadedNodesPath(): string {
+export function getUserN8nFolderDownloadedNodesPath(): string {
 	return path.join(getUserN8nFolderPath(), DOWNLOADED_NODES_SUBDIRECTORY);
 }
 

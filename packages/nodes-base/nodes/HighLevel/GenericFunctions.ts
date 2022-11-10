@@ -40,7 +40,7 @@ function dateToIsoSupressMillis(dateTime: string) {
 export async function taskPostReceiceAction(
 	this: IExecuteSingleFunctions,
 	items: INodeExecutionData[],
-	response: IN8nHttpFullResponse,
+	_response: IN8nHttpFullResponse,
 ): Promise<INodeExecutionData[]> {
 	const contactId = this.getNodeParameter('contactId');
 	items.forEach((item) => (item.json.contactId = contactId));

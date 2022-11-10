@@ -63,6 +63,8 @@ interface ExecutionBaseErrorOptions {
 export abstract class ExecutionBaseError extends Error {
 	description: string | null | undefined;
 
+	cause: Error | JsonObject | undefined;
+
 	timestamp: number;
 
 	context: IDataObject = {};
@@ -78,6 +80,8 @@ export abstract class ExecutionBaseError extends Error {
 
 		if (cause instanceof ExecutionBaseError) {
 			this.context = cause.context;
+		} else if (cause && !(cause instanceof Error)) {
+			this.cause = cause;
 		}
 	}
 }
@@ -179,7 +183,6 @@ abstract class NodeError extends ExecutionBaseError {
 			value &&
 			typeof value === 'object' &&
 			!Array.isArray(value) &&
-			typeof value.toJSON !== 'function' &&
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 			!!Object.keys(value).length
 		);

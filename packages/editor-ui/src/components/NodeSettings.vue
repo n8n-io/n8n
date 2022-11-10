@@ -66,7 +66,11 @@
 				</template>
 			</i18n>
 		</div>
-		<div class="node-parameters-wrapper" v-if="node && nodeValid">
+		<div
+			class="node-parameters-wrapper"
+			data-test-id="node-parameters"
+			v-if="node && nodeValid"
+		>
 			<div v-show="openPanel === 'params'">
 				<node-webhooks :node="node" :nodeType="nodeType" />
 
@@ -665,7 +669,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				}
 
 				// Update the data in vuex
-				const updateInformation = {
+				const updateInformation: IUpdateInformation = {
 					name: node.name,
 					value: nodeParameters,
 				};

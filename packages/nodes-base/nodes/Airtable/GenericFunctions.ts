@@ -36,8 +36,6 @@ export async function apiRequest(
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
-	const credentials = await this.getCredentials('airtableApi');
-
 	query = query || {};
 
 	// For some reason for some endpoints the bearer auth does not work

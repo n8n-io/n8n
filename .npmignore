@@ -26,3 +26,4 @@ tsconfig.json
 tslint.json
 
 .turbo
+*.tsbuildinfo

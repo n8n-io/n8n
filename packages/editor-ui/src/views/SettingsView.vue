@@ -1,26 +1,48 @@
 <template>
 	<div :class="$style.container">
-		<SettingsSidebar />
+		<SettingsSidebar @return="onReturn" />
 		<div :class="$style.contentContainer">
 			<div :class="$style.content">
-				<slot>
-				</slot>
+				<!--
+					Because we're using nested routes the props are going to be bind to the top level route
+					so we need to pass them down to the child component
+				-->
+				<router-view name="settingsView" v-bind="$attrs" />
 			</div>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
+import { Route } from 'vue-router';
 
-import SettingsSidebar from '../components/SettingsSidebar.vue';
+import { VIEWS } from '@/constants';
+import SettingsSidebar from '@/components/SettingsSidebar.vue';
 
-export default Vue.extend({
+const SettingsView = defineComponent({
 	name: 'SettingsView',
 	components: {
 		SettingsSidebar,
 	},
+	beforeRouteEnter(to, from, next) {
+		next(vm => {
+			(vm as unknown as InstanceType<typeof SettingsView>).previousRoute = from;
+		});
+	},
+	data() {
+		return {
+			previousRoute: null as Route | null,
+		};
+	},
+	methods: {
+		onReturn() {
+			this.$router.push(this.previousRoute ? this.previousRoute.path : { name: VIEWS.HOMEPAGE });
+		},
+	},
 });
+
+export default SettingsView;
 </script>
 
 <style lang="scss" module>

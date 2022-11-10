@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IPollFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IPollFunctions, NodeApiError } from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
