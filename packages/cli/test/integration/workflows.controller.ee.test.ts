@@ -1,20 +1,19 @@
 import express from 'express';
+import { v4 as uuid } from 'uuid';
+import { INode } from 'n8n-workflow';
 
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
 import { createWorkflow } from './shared/testDb';
-import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
-import { v4 as uuid } from 'uuid';
-
-import type { Role } from '../../src/databases/entities/Role';
-import config from '../../config';
+import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
+import type { Role } from '@db/entities/Role';
+import config from '@/config';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import { makeWorkflow } from './shared/utils';
 import { randomCredentialPayload } from './shared/random';
-import { ActiveWorkflowRunner } from '../../src';
-import { INode } from 'n8n-workflow';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
-jest.mock('../../src/telemetry');
+jest.mock('@/telemetry');
 
 let app: express.Application;
 let testDbName = '';
@@ -24,7 +23,7 @@ let globalMemberRole: Role;
 let credentialOwnerRole: Role;
 let authAgent: AuthAgent;
 let saveCredential: SaveCredentialFunction;
-let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+let workflowRunner: ActiveWorkflowRunner;
 let sharingSpy: jest.SpyInstance<boolean>;
 
 beforeAll(async () => {

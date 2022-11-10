@@ -3,7 +3,7 @@ import sseChannel from 'sse-channel';
 import express from 'express';
 
 import { LoggerProxy as Logger } from 'n8n-workflow';
-import { IPushData, IPushDataType } from '.';
+import type { IPushData, IPushDataType } from '@/Interfaces';
 
 interface SSEChannelOptions {
 	cors?: {

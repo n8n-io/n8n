@@ -1,5 +1,3 @@
-import { CredentialsHelper, CredentialTypes } from '../../src';
-import * as Helpers from './Helpers';
 import {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -10,6 +8,9 @@ import {
 	INodeProperties,
 	Workflow,
 } from 'n8n-workflow';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Helpers from './Helpers';
 
 const TEST_ENCRYPTION_KEY = 'test';
 

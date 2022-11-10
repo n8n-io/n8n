@@ -9,7 +9,6 @@
 /* eslint-disable no-return-assign */
 /* eslint-disable no-param-reassign */
 /* eslint-disable consistent-return */
-/* eslint-disable import/no-cycle */
 /* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
@@ -83,20 +82,25 @@ import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
 import bodyParser from 'body-parser';
+import glob from 'fast-glob';
 
-import config from '../config';
-import * as Queue from './Queue';
+import config from '@/config';
+import * as Queue from '@/Queue';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { getCredentialTranslationPath } from '@/TranslationHelpers';
+import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import { getSharedWorkflowIds, whereClause } from '@/WorkflowHelpers';
 
-import { InternalHooksManager } from './InternalHooksManager';
-import { getCredentialTranslationPath } from './TranslationHelpers';
-import { WEBHOOK_METHODS } from './WebhookHelpers';
-import { getSharedWorkflowIds, whereClause } from './WorkflowHelpers';
-
-import { nodesController } from './api/nodes.api';
-import { workflowsController } from './workflows/workflows.controller';
-import { AUTH_COOKIE_NAME, RESPONSE_ERROR_MESSAGES } from './constants';
-import { credentialsController } from './credentials/credentials.controller';
-import { oauth2CredentialController } from './credentials/oauth2Credential.api';
+import { nodesController } from '@/api/nodes.api';
+import { workflowsController } from '@/workflows/workflows.controller';
+import {
+	AUTH_COOKIE_NAME,
+	NODES_BASE_DIR,
+	RESPONSE_ERROR_MESSAGES,
+	TEMPLATES_DIR,
+} from '@/constants';
+import { credentialsController } from '@/credentials/credentials.controller';
+import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
 	CurlHelper,
 	ExecutionRequest,
@@ -104,33 +108,24 @@ import type {
 	NodeParameterOptionsRequest,
 	OAuthRequest,
 	WorkflowRequest,
-} from './requests';
-import { userManagementRouter } from './UserManagement';
-import { resolveJwt } from './UserManagement/auth/jwt';
+} from '@/requests';
+import { userManagementRouter } from '@/UserManagement';
+import { resolveJwt } from '@/UserManagement/auth/jwt';
 
-import { executionsController } from './api/executions.api';
-import { nodeTypesController } from './api/nodeTypes.api';
-import { tagsController } from './api/tags.api';
-import { loadPublicApiVersions } from './PublicApi';
-import * as telemetryScripts from './telemetry/scripts';
+import { executionsController } from '@/api/executions.api';
+import { nodeTypesController } from '@/api/nodeTypes.api';
+import { tagsController } from '@/api/tags.api';
+import { loadPublicApiVersions } from '@/PublicApi';
+import * as telemetryScripts from '@/telemetry/scripts';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
 	isSharingEnabled,
 	isUserManagementEnabled,
-} from './UserManagement/UserManagementHelper';
+} from '@/UserManagement/UserManagementHelper';
+import * as Db from '@/Db';
 import {
-	ActiveExecutions,
-	ActiveWorkflowRunner,
-	CredentialsHelper,
-	CredentialsOverwrites,
-	CredentialTypes,
 	DatabaseType,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	getCredentialForUser,
-	getCredentialWithoutUser,
 	ICredentialsDb,
 	ICredentialsOverwrite,
 	ICustomRequest,
@@ -141,21 +136,29 @@ import {
 	IExternalHooksClass,
 	IN8nUISettings,
 	IPackageVersions,
-	NodeTypes,
-	Push,
-	ResponseHelper,
-	TestWebhooks,
-	WaitTracker,
-	WaitTrackerClass,
-	WebhookHelpers,
-	WebhookServer,
-	WorkflowExecuteAdditionalData,
-} from '.';
-import glob from 'fast-glob';
-import { ResponseError } from './ResponseHelper';
-
-import { toHttpNodeParameters } from './CurlConverterHelper';
-import { setupErrorMiddleware } from './ErrorReporting';
+} from '@/Interfaces';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import {
+	CredentialsHelper,
+	getCredentialForUser,
+	getCredentialWithoutUser,
+} from '@/CredentialsHelper';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import { NodeTypes } from '@/NodeTypes';
+import * as Push from '@/Push';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as TestWebhooks from '@/TestWebhooks';
+import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WebhookServer from '@/WebhookServer';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { ResponseError } from '@/ResponseHelper';
+import { toHttpNodeParameters } from '@/CurlConverterHelper';
+import { setupErrorMiddleware } from '@/ErrorReporting';
 
 require('body-parser-xml')(bodyParser);
 
@@ -955,13 +958,11 @@ class App {
 		);
 
 		// Returns node information based on node names and versions
+		const headersPath = pathJoin(NODES_BASE_DIR, 'dist', 'nodes', 'headers');
 		this.app.get(
 			`/${this.restEndpoint}/node-translation-headers`,
 			ResponseHelper.send(
 				async (req: express.Request, res: express.Response): Promise<object | void> => {
-					const packagesPath = pathJoin(__dirname, '..', '..', '..');
-					const headersPath = pathJoin(packagesPath, 'nodes-base', 'dist', 'nodes', 'headers');
-
 					try {
 						await fsAccess(`${headersPath}.js`);
 					} catch (_) {
@@ -1395,7 +1396,7 @@ class App {
 						userId: req.user?.id,
 						credentialId,
 					});
-					res.sendFile(pathResolve(__dirname, '../../templates/oauth-callback.html'));
+					res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 				} catch (error) {
 					LoggerProxy.error('OAuth1 callback failed because of insufficient user permissions', {
 						userId: req.user?.id,
