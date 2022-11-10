@@ -26,8 +26,6 @@ import type { N8nApp } from '@/UserManagement/Interfaces';
 import superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
-import { v4 as uuid } from 'uuid';
-
 import config from '@/config';
 import * as Db from '@/Db';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
@@ -66,6 +64,10 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+
+import { v4 as uuid } from 'uuid';
+import { handleLdapInit } from '../../../src/Ldap/helpers';
+import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
 
 /**
  * Initialize a test server.
@@ -117,6 +119,7 @@ export async function initTestServer({
 			workflows: { controller: workflowsController, path: 'workflows' },
 			nodes: { controller: nodesController, path: 'nodes' },
 			publicApi: apiRouters,
+			ldap: { controller: ldapController, path: 'ldap' },
 		};
 
 		for (const group of routerEndpoints) {
@@ -162,7 +165,7 @@ const classifyEndpointGroups = (endpointGroups: string[]) => {
 	const routerEndpoints: string[] = [];
 	const functionEndpoints: string[] = [];
 
-	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi'];
+	const ROUTER_GROUP = ['credentials', 'nodes', 'workflows', 'publicApi', 'ldap'];
 
 	endpointGroups.forEach((group) =>
 		(ROUTER_GROUP.includes(group) ? routerEndpoints : functionEndpoints).push(group),
@@ -224,6 +227,13 @@ export async function initCredentialsTypes(): Promise<void> {
 			sourcePath: '',
 		},
 	});
+}
+
+/**
+ * Initialize LDAP manager.
+ */
+export async function initLdapManager(): Promise<void> {
+	await handleLdapInit();
 }
 
 /**

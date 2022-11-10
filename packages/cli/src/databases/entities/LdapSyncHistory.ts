@@ -1,33 +1,15 @@
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
-import * as config from '@/config';
-import { DatabaseType } from '@/Interfaces';
-
-function resolveDataType(dataType: string) {
-	const dbType = config.getEnv('database.type');
-
-	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
-		sqlite: {
-			json: 'simple-json',
-		},
-		postgresdb: {
-			datetime: 'timestamptz',
-		},
-		mysqldb: {},
-		mariadb: {},
-	};
-
-	return typeMap[dbType][dataType] ?? dataType;
-}
+import { datetimeColumnType } from './AbstractEntity';
 
 @Entity({ name: 'ldap_sync_history' })
 export class LdapSyncHistory {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@Column(resolveDataType('datetime'))
+	@Column(datetimeColumnType)
 	startedAt: Date;
 
-	@Column(resolveDataType('datetime'))
+	@Column(datetimeColumnType)
 	endedAt: Date;
 
 	@Column()

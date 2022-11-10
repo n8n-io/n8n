@@ -1,24 +1,7 @@
 import { Column, ColumnOptions, Entity, PrimaryColumn } from 'typeorm';
-import * as config from '@/config';
-import { DatabaseType, IFeatureConfigDb } from '@/Interfaces';
+import { IFeatureConfigDb } from '@/Interfaces';
 import type { LdapConfig } from '@/Ldap/types';
-
-function resolveDataType(dataType: string) {
-	const dbType = config.getEnv('database.type');
-
-	const typeMap: { [key in DatabaseType]: { [key: string]: string } } = {
-		sqlite: {
-			json: 'simple-json',
-		},
-		postgresdb: {
-			datetime: 'timestamptz',
-		},
-		mysqldb: {},
-		mariadb: {},
-	};
-
-	return typeMap[dbType][dataType] ?? dataType;
-}
+import { jsonColumnType } from './AbstractEntity';
 
 @Entity()
 export class FeatureConfig implements IFeatureConfigDb {
@@ -26,7 +9,7 @@ export class FeatureConfig implements IFeatureConfigDb {
 	name: string;
 
 	@Column({
-		type: resolveDataType('json') as ColumnOptions['type'],
+		type: jsonColumnType as ColumnOptions['type'],
 		default: '{}',
 	})
 	data: string | LdapConfig;
