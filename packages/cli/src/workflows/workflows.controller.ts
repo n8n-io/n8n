@@ -1,7 +1,7 @@
 /* eslint-disable no-param-reassign */
 
 import express from 'express';
-import { INode, IPinData, LoggerProxy, Workflow } from 'n8n-workflow';
+import { INode, LoggerProxy, Workflow } from 'n8n-workflow';
 
 import axios from 'axios';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -18,7 +18,6 @@ import {
 	IWorkflowResponse,
 	IExecutionPushResponse,
 	IWorkflowExecutionDataProcess,
-	IWorkflowDb,
 } from '@/Interfaces';
 import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
@@ -48,18 +47,6 @@ workflowsController.use((req, res, next) => {
 });
 
 workflowsController.use('/', EEWorkflowController);
-
-const isTrigger = (nodeType: string) =>
-	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
-
-function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
-	if (!pinData) return;
-
-	// eslint-disable-next-line consistent-return
-	return workflow.nodes.find(
-		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
-	);
-}
 
 /**
  * POST /workflows
@@ -351,11 +338,11 @@ workflowsController.post(
 
 		const sessionId = GenericHelpers.getSessionId(req);
 
-		const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
+		const pinnedTrigger = WorkflowsService.findPinnedTrigger(workflowData, startNodes, pinData);
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (
-			pinnedTrigger === undefined &&
+			pinnedTrigger === null &&
 			(runData === undefined ||
 				startNodes === undefined ||
 				startNodes.length === 0 ||

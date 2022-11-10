@@ -250,16 +250,19 @@ export class Sandbox extends NodeVM {
 }
 
 export function getSandboxContext(this: IExecuteFunctions, index?: number) {
-	const sandboxContext: Record<string, unknown> & { $item: (i: number) => IWorkflowDataProxyData } =
-		{
-			// from NodeExecuteFunctions
-			$getNodeParameter: this.getNodeParameter,
-			$getWorkflowStaticData: this.getWorkflowStaticData,
-			helpers: this.helpers,
+	const sandboxContext: Record<string, unknown> & {
+		$item: (i: number) => IWorkflowDataProxyData;
+		$input: any; // tslint:disable-line: no-any
+	} = {
+		// from NodeExecuteFunctions
+		$getNodeParameter: this.getNodeParameter,
+		$getWorkflowStaticData: this.getWorkflowStaticData,
+		helpers: this.helpers,
 
-			// to bring in all $-prefixed vars and methods from WorkflowDataProxy
-			$item: this.getWorkflowDataProxy,
-		};
+		// to bring in all $-prefixed vars and methods from WorkflowDataProxy
+		$item: this.getWorkflowDataProxy,
+		$input: null,
+	};
 
 	// $node, $items(), $parameter, $json, $env, etc.
 	Object.assign(sandboxContext, sandboxContext.$item(index ?? 0));
