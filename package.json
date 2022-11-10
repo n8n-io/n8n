@@ -3,15 +3,19 @@
   "version": "0.201.0",
   "private": true,
   "homepage": "https://n8n.io",
+  "engines": {
+    "node": ">=16.9",
+    "pnpm": ">=7.5"
+  },
+  "packageManager": "pnpm@7.14.2",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
-    "clean:dist": "npm exec -ws -- rimraf ./dist",
+    "clean": "turbo run clean --parallel",
     "format": "turbo run format && node scripts/format.mjs",
     "lint": "turbo run lint",
     "lintfix": "turbo run lintfix",
     "optimize-svg": "find ./packages -name '*.svg' ! -name 'pipedrive.svg' -print0 | xargs -0 -P16 -L20 npx svgo",
-    "postinstall": "patch-package",
     "start": "run-script-os",
     "start:default": "cd packages/cli/bin && ./n8n",
     "start:tunnel": "./packages/cli/bin/n8n start --tunnel",
@@ -20,39 +24,51 @@
     "watch": "turbo run watch",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
+    "cypress:install": "cypress install",
     "test:e2e:db:clean": "rimraf ~/.n8n/cypress.sqlite ~/.n8n/cypress.sqlite.bak",
     "test:e2e:cypress:run": "cypress run",
-    "test:e2e": "npm run test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:run",
+    "test:e2e": "pnpm test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:run",
     "test:e2e:cypress:dev": "cypress open",
-    "test:e2e:dev": "npm run test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:dev",
+    "test:e2e:dev": "pnpm test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:dev",
     "test:e2e:cypress:ci:smoke": "cypress run --headless --spec \"cypress/e2e/0-smoke.cy.ts\"",
-    "test:e2e:ci:smoke": "npm run test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:ci:smoke"
+    "test:e2e:ci:smoke": "pnpm test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:ci:smoke"
+  },
+  "dependencies": {
+    "n8n": "*"
   },
   "devDependencies": {
+    "@n8n_io/eslint-config": "*",
     "@ngneat/falso": "^6.1.0",
     "@types/jest": "^28.1.8",
+    "@types/node": "^16.11.22",
     "cross-env": "^7.0.3",
     "cypress": "^10.0.3",
     "jest": "^28.1.3",
     "jest-environment-jsdom": "^28.1.3",
     "jest-mock": "^28.1.3",
-    "patch-package": "^6.4.7",
+    "prettier": "^2.3.2",
     "rimraf": "^3.0.2",
     "run-script-os": "^1.0.7",
     "start-server-and-test": "^1.14.0",
+    "supertest": "^6.2.2",
     "ts-jest": "^28.0.8",
-    "turbo": "1.2.15",
+    "ts-node": "^9.1.1",
+    "turbo": "1.5.5",
     "typescript": "^4.8.4"
   },
-  "postcss": {},
-  "workspaces": [
-    "packages/*",
-    "packages/@n8n_io/*"
-  ],
-  "overrides": {
-    "browserslist": "^4.21.3",
-    "ejs": "^3.1.8",
-    "fork-ts-checker-webpack-plugin": "^6.0.4",
-    "globby": "^11.0.2"
+  "pnpm": {
+    "patchedDependencies": {
+      "quill@2.0.0-dev.4": "patches/quill@2.0.0-dev.4.patch"
+    },
+    "onlyBuiltDependencies": [
+      "sqlite3",
+      "vue-demi"
+    ],
+    "overrides": {
+      "browserslist": "^4.21.4",
+      "ejs": "^3.1.8",
+      "fork-ts-checker-webpack-plugin": "^6.0.4",
+      "globby": "^11.1.0"
+    }
   }
 }
