@@ -24,6 +24,12 @@ export const formOperations: INodeProperties[] = [
 				description: 'Get many forms',
 				action: 'Get many forms',
 			},
+			{
+				name: 'Redeploy',
+				value: 'redeploy',
+				description: 'Redeploy Current Form Version',
+				action: 'Redeploy Current Form Version',
+			},
 		],
 		default: 'get',
 	},
@@ -34,18 +40,22 @@ export const formFields: INodeProperties[] = [
 	/*                                form:get                                    */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Form ID',
+		displayName: 'Form Name or ID',
 		name: 'formId',
-		type: 'string',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'loadForms',
+		},
 		required: true,
 		default: '',
 		displayOptions: {
 			show: {
 				resource: ['form'],
-				operation: ['get'],
+				operation: ['get', 'redeploy'],
 			},
 		},
-		description: 'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg)',
+		description:
+			'Form ID (e.g. aSAvYreNzVEkrWg5Gdcvg). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                form:getAll                                 */
