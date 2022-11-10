@@ -73,7 +73,6 @@ export abstract class DirectoryLoader {
 		let nodeVersion = 1;
 
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			tempNode = this.loadClassInIsolation(filePath, nodeName);
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
@@ -132,7 +131,6 @@ export abstract class DirectoryLoader {
 	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
 		let tempCredential: ICredentialType;
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			tempCredential = this.loadClassInIsolation(filePath, credentialName);
 
 			// Add serializer method "toJSON" to the class so that authenticate method (if defined)
@@ -163,7 +161,6 @@ export abstract class DirectoryLoader {
 			filePath = filePath.replace(/\\/g, '/');
 		}
 		const script = new Script(`new (require('${filePath}').${className})()`);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return script.runInContext(this.context) as T;
 	}
 
@@ -251,7 +248,7 @@ export abstract class DirectoryLoader {
 }
 
 /**
- * Loader for source files of nodes and creds located in a custom dir,
+ * Loader for source files of nodes and credentials located in a custom dir,
  * e.g. `~/.n8n/custom`
  */
 export class CustomDirectoryLoader extends DirectoryLoader {
