@@ -26,6 +26,7 @@
     "test:dev": "vitest"
   },
   "dependencies": {
+    "@n8n_io/types": "*",
     "@codemirror/autocomplete": "^6.1.0",
     "@codemirror/commands": "^6.1.0",
     "@codemirror/lang-javascript": "^6.0.2",
