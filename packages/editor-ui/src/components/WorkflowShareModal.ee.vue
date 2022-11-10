@@ -204,14 +204,14 @@ export default mixins(
 			this.sharedWith = this.sharedWith.concat(sharee);
 		},
 		async onRemoveSharee(userId: string) {
-			const user = this.usersStore.getUserById(userId);
+			const user = this.usersStore.getUserById(userId)!;
 			const isNewSharee = !(this.workflow.sharedWith || []).find((sharee) => sharee.id === userId);
 
 			let confirm = true;
 			if (!isNewSharee) {
 				confirm = await this.confirmMessage(
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.message', {
-						interpolate: { name: user.fullName, workflow: this.workflow.name },
+						interpolate: { name: user.fullName as string, workflow: this.workflow.name },
 					}),
 					this.$locale.baseText('workflows.shareModal.list.delete.confirm.title', { interpolate: { name: user.fullName } }),
 					null,

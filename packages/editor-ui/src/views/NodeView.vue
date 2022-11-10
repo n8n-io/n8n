@@ -147,7 +147,7 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
-	TRIGGER_NODE_FILTER,
+	TRIGGER_NODE_FILTER, EnterpriseEditionFeature,
 } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -2399,6 +2399,15 @@ export default mixins(
 						newNodeData.webhookId = uuid();
 					}
 
+					if (newNodeData.credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+						const foreignCredentials = this.credentialsStore.foreignCredentialsById;
+						newNodeData.credentials = Object.fromEntries(
+							Object.entries(newNodeData.credentials).filter(([_, credential]) => {
+								return credential.id && (!foreignCredentials[credential.id] || foreignCredentials[credential.id]?.currentUserHasAccess);
+							}),
+						);
+					}
+
 					await this.addNodes([newNodeData]);
 
 					const pinData = this.workflowsStore.pinDataByNodeName(nodeName);
@@ -3092,6 +3101,7 @@ export default mixins(
 				this.workflowsStore.resetAllNodesIssues();
 				// vm.$forceUpdate();
 
+				this.workflowsStore.$patch({ workflow: {} });
 				this.workflowsStore.setActive(false);
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.workflowsStore.setWorkflowName({ newName: '', setStateDirty: false });
