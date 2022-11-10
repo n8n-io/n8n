@@ -1,4 +1,4 @@
-import { JsonObject, jsonParse, LoggerProxy } from 'n8n-workflow';
+import { IPinData, JsonObject, jsonParse, LoggerProxy } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
@@ -15,6 +15,7 @@ import { validateEntity } from '@/GenericHelpers';
 import { externalHooks } from '@/Server';
 import * as TagHelpers from '@/TagHelpers';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+import { IWorkflowDb } from '..';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;
@@ -59,6 +60,28 @@ export class WorkflowsService {
 		}
 
 		return Db.collections.SharedWorkflow.findOne(options);
+	}
+
+	/**
+	 * Find the pinned trigger to execute the workflow from, if any.
+	 */
+	static findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
+		if (!pinData || !startNodes) return null;
+
+		const isTrigger = (nodeTypeName: string) =>
+			['trigger', 'webhook'].some((suffix) => nodeTypeName.toLowerCase().includes(suffix));
+
+		const pinnedTriggers = workflow.nodes.filter(
+			(node) => !node.disabled && pinData[node.name] && isTrigger(node.type),
+		);
+
+		if (pinnedTriggers.length === 0) return null;
+
+		if (startNodes?.length === 0) return pinnedTriggers[0]; // full execution
+
+		const [startNodeName] = startNodes;
+
+		return pinnedTriggers.find((pt) => pt.name === startNodeName) ?? null; // partial execution
 	}
 
 	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
