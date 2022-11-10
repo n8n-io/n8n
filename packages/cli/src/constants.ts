@@ -43,4 +43,7 @@ export const WORKFLOW_REACTIVATE_INITIAL_TIMEOUT = 1000;
 export const WORKFLOW_REACTIVATE_MAX_TIMEOUT = 180000;
 
 export const SETTINGS_LICENSE_CERT_KEY = 'license.cert';
-export const LICENSE_FEAT_SHARING_KEY = 'feat:sharing';
+
+export enum LICENSE_FEATURES {
+	SHARING = 'feat:sharing',
+}
