@@ -404,6 +404,6 @@ export const getLdapSyncronizations = async (
 };
 
 export const formatUrl = (url: string, port: number, security: ConnectionSecurity) => {
-	const protocol = ['tls', 'startTls'].includes(security) ? 'ldaps' : 'ldap';
+	const protocol = ['tls'].includes(security) ? 'ldaps' : 'ldap';
 	return `${protocol}://${url}:${port}`;
 };
