@@ -2,7 +2,7 @@ import {
 	ICredentialDataDecryptedObject, ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeExecutionData,
+	INodeExecutionData, INodeListSearchItems,
 	INodeListSearchResult, NodeApiError,
 } from 'n8n-workflow';
 
@@ -33,7 +33,15 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 	});
 }
 
-export async function tiDBCloudApiRequest(this: IExecuteFunctions | ILoadOptionsFunctions, uri: string, method: string, keySet?: ICredentialDataDecryptedObject): Promise<IDataObject> {
+export async function tiDBCloudApiRequest(
+	this: IExecuteFunctions | ILoadOptionsFunctions,
+	uri: string,
+	method: string,
+	// tslint:disable-next-line:no-any
+	headers: any = {},
+	// tslint:disable-next-line:no-any
+	body: any = {},
+	keySet?: ICredentialDataDecryptedObject): Promise<IDataObject> {
 	let publicKey;
 	let privateKey;
 
@@ -48,7 +56,7 @@ export async function tiDBCloudApiRequest(this: IExecuteFunctions | ILoadOptions
 
 	const options: OptionsWithUri = {
 		method,
-		headers: {},
+		headers,
 		uri,
 		json: true,
 		auth: {
@@ -56,13 +64,10 @@ export async function tiDBCloudApiRequest(this: IExecuteFunctions | ILoadOptions
 			pass: privateKey as string,
 			sendImmediately: false,
 		},
+		body,
 	};
 
-	try {
-		return await this.helpers.request!(options);
-	} catch (error) {
-		throw new Error(`Failed to send request to TiDB Cloud: ${error.message}`);
-	}
+	return await this.helpers.request!(options);
 }
 
 export async function tiDBCloudAuth(this: ICredentialTestFunctions, credentialForTest: ICredentialDataDecryptedObject) {
@@ -78,109 +83,134 @@ export async function searchProject(this: ILoadOptionsFunctions): Promise<INodeL
 		name: r.name as string,
 		value: r.id as string,
 	}));
-	return {results};
+	return { results };
 }
 
 export async function searchCluster(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 	let projectId;
+
 	try {
 		projectId = (this.getCurrentNodeParameter('project') as IDataObject).value;
+		if (projectId === '') {
+			throw new Error("Please set parameter");
+		}
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
-	if (projectId === '') {
-		throw new Error("Please set project");
-	}
+
 	const getClustersUrl = `https://api.tidbcloud.com/api/v1beta/projects/${projectId}/clusters?page=1&page_size=100`;
 	const response: IDataObject = await tiDBCloudApiRequest.call(this, getClustersUrl, 'GET');
 	const results = (response.items as IDataObject[]).map(r => ({
 		name: r.name as string,
 		value: r.id as string,
 	}));
-	return {results};
+
+	return { results };
+}
+
+export async function searchUser(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
+	let projectId;
+	let clusterId;
+
+	try {
+		projectId = (this.getNodeParameter('project', 0) as IDataObject).value;
+		clusterId = (this.getNodeParameter('cluster', 0) as IDataObject).value;
+		if (projectId === '' || clusterId === '') {
+			throw new Error("Please set parameter");
+		}
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
+
+	const getUserUrl = `https://api.tidbcloud.com/api/v1beta/projects/${projectId}/clusters/${clusterId}`;
+	const response: IDataObject = await tiDBCloudApiRequest.call(this, getUserUrl, 'GET');
+	const default_user = ((response.status as IDataObject).connection_strings as IDataObject).default_user;
+	const results = [{
+		name: default_user as string,
+		value: default_user as string,
+	}];
+	return { results };
 }
 
 async function getConnParaByTiDBCloudApi(this: IExecuteFunctions | ILoadOptionsFunctions): Promise<ICredentialDataDecryptedObject> {
 	let projectId;
 	let clusterId;
+	let user;
 	let password;
 	let database;
-	let addCaCertificate;
-	let caCertificate;
-	let connectionString;
-	let credentials;
 
 	try {
 		projectId = (this.getNodeParameter('project', 0) as IDataObject).value;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
-	if (projectId === '') {
-		throw new Error("Please set project");
-	}
-
-	try {
+		user = (this.getNodeParameter('user', 0) as IDataObject).value;
 		clusterId = (this.getNodeParameter('cluster', 0) as IDataObject).value;
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
-	if (clusterId === '') {
-		throw new Error("Please set project");
-	}
-
-	try {
 		password = this.getNodeParameter('password', 0);
 		database = this.getNodeParameter('database', 0);
-		addCaCertificate = this.getNodeParameter('addCaCertificate', 0);
-		if (addCaCertificate === true) {
-			caCertificate = this.getNodeParameter('caCertificate', 0);
+		if (projectId === '' || user === '' || clusterId === '' || database === '') {
+			throw new Error("Please set parameter");
 		}
+
 	} catch (error) {
 		throw new NodeApiError(this.getNode(), error);
 	}
 
 	const getClusterUrl = `https://api.tidbcloud.com/api/v1beta/projects/${projectId}/clusters/${clusterId}`;
 	const response: IDataObject = await tiDBCloudApiRequest.call(this, getClusterUrl, 'GET');
-
-	try {
-		connectionString = (response.status as IDataObject).connection_strings as IDataObject;
-		credentials = {
-			host: (connectionString.standard as IDataObject).host as string,
-			user: connectionString.default_user as string,
-			port: 4000,
-			password: password as string,
-			database: database as string,
-			enableTls: true,
-			addCaCertificate: addCaCertificate as boolean,
-			caCertificate: caCertificate as string,
-		};
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	const connectionString = (response.status as IDataObject).connection_strings as IDataObject;
+	const credentials = {
+		host: (connectionString.standard as IDataObject).host as string,
+		user: user as string,
+		port: (connectionString.standard as IDataObject).port as number,
+		password: password as string,
+		database: database as string,
+		enableTls: true,
+	};
 
 	return credentials;
 }
 
+export async function createCluster(this: IExecuteFunctions) {
+	let projectId;
+	let clusterName;
+	let region;
+	let password;
+
+	try {
+		projectId = (this.getNodeParameter('project', 0) as IDataObject).value;
+		clusterName  = (this.getNodeParameter('clusterName', 0) as IDataObject);
+		region  = (this.getNodeParameter('region', 0) as IDataObject);
+		password  = (this.getNodeParameter('password', 0) as IDataObject);
+		if (projectId === '') {
+			throw new Error("Please set parameter");
+		}
+	} catch (error) {
+		throw new NodeApiError(this.getNode(), error);
+	}
+
+	// @ts-ignore
+	if (!checkClusterName(clusterName)){
+		throw new Error("Invalid cluster name");
+	}
+
+	const body = {
+		name: clusterName,
+		cluster_type: 'DEVELOPER',
+		cloud_provider: 'AWS',
+		region,
+		config: {
+			root_password: password,
+		},
+	};
+	const createClusterUrl = `https://api.tidbcloud.com/api/v1beta/projects/${projectId}/clusters`;
+	return await tiDBCloudApiRequest.call(this, createClusterUrl, 'POST', {}, body);
+}
+
+function checkClusterName(clusterName: string): boolean {
+	const reg = /^[A-Za-z0-9][-A-Za-z0-9]{2,62}[A-Za-z0-9]$/;
+	return reg.test(clusterName);
+}
+
 export async function getConnectionParameters(this: IExecuteFunctions | ILoadOptionsFunctions): Promise<ICredentialDataDecryptedObject> {
-	let tiDBAuth;
-	let tiDBCloudAuth;
-
-	try {
-		tiDBAuth = await this.getCredentials('tiDBApi');
-	} catch (error) {
-	}
-	try {
-		tiDBCloudAuth = await this.getCredentials('tiDBCloudApi');
-	} catch (error) {
-	}
-
-	if (tiDBAuth) {
-		return tiDBAuth;
-	} else if (tiDBCloudAuth) {
-		return getConnParaByTiDBCloudApi.call(this);
-	} else {
-		throw new Error("Please set credentials first!");
-	}
+	return getConnParaByTiDBCloudApi.call(this);
 }
 
 export async function createConnection(this: IExecuteFunctions | ILoadOptionsFunctions, credentialsForTest?: ICredentialDataDecryptedObject): Promise<mysql2.Connection> {
@@ -188,13 +218,14 @@ export async function createConnection(this: IExecuteFunctions | ILoadOptionsFun
 		? credentialsForTest
 		: await getConnectionParameters.call(this) as ICredentialDataDecryptedObject;
 
-	const {enableTls, addCaCertificate, caCertificate, ...baseCredentials} = credentials;
+	const {enableTls, caCertificate, ...baseCredentials} = credentials;
 
 	if (enableTls) {
 		baseCredentials.ssl = {};
-		if (addCaCertificate) {
+		if (caCertificate) {
 			baseCredentials.ssl.ca = caCertificate;
 		}
+		baseCredentials.ssl.rejectUnauthorized = 'false';
 		baseCredentials.ssl.minVersion = "TLSv1.2";
 	}
 
@@ -205,17 +236,7 @@ export async function searchTables(
 	this: ILoadOptionsFunctions,
 	query?: string,
 ): Promise<INodeListSearchResult> {
-	let database;
-	let credentials;
-	try {
-		credentials = await this.getCredentials('tiDBApi');
-	} catch (error) {
-	}
-	if (credentials) {
-		database = credentials.database;
-	} else {
-		database = await this.getCurrentNodeParameter('database');
-	}
+	const database = await this.getCurrentNodeParameter('database');
 	const connection = await createConnection.call(this);
 	const sql = `
 		SELECT table_name

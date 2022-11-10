@@ -12,62 +12,39 @@ import {
 // @ts-ignore
 import mysql2 from 'mysql2/promise';
 
-import {copyInputItems, createConnection, searchCluster, searchProject, searchTables, tiDBCloudAuth} from './GenericFunctions';
+import {
+	copyInputItems,
+	createCluster,
+	createConnection,
+	searchCluster,
+	searchProject,
+	searchTables,
+	searchUser,
+	tiDBCloudAuth,
+} from './GenericFunctions';
 import { IExecuteFunctions } from 'n8n-core';
 
-export class TiDB implements INodeType {
+export class TiDBCloud implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'TiDB',
-		name: 'tiDB',
-		icon: 'file:tidb.svg',
+		displayName: 'TiDB Cloud',
+		name: 'tiDBCloud',
+		icon: 'file:tidbCloud.svg',
 		group: ['input'],
 		version: 1,
-		description: 'Get, add and update data in TiDB',
+		description: 'Use TiDB Cloud',
 		defaults: {
-			name: 'TiDB',
+			name: 'TiDB Cloud',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
 		credentials: [
 			{
-				name: 'tiDBApi',
-				required: true,
-				testedBy: 'tidbConnectionTest',
-				displayOptions: {
-					show: {
-						authentication: ['TiDB'],
-					},
-				},
-			},
-			{
 				name: 'tiDBCloudApi',
 				required: true,
 				testedBy: 'tidbCloudConnectionTest',
-				displayOptions: {
-					show: {
-						authentication: ['TiDBCloud'],
-					},
-				},
 			},
 		],
 		properties: [
-			{
-				displayName: 'Authentication',
-				name: 'authentication',
-				type: 'options',
-				options: [
-					{
-						name: 'TiDB Auth',
-						value: 'TiDB',
-					},
-					{
-						name: 'TiDB Cloud API Auth',
-						value: 'TiDBCloud',
-					},
-				],
-				default: 'none',
-				description: 'The way to authenticate',
-			},
 			{
 				displayName: 'Project',
 				name: 'project',
@@ -87,11 +64,45 @@ export class TiDB implements INodeType {
 						},
 					},
 				],
-				displayOptions: {
-					show: {
-						authentication: ['TiDBCloud'],
+			},
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Create Serverless Cluster',
+						value: 'createServerlessCluster',
+						description: 'Create a TiDB Serverless cluster',
+						action: 'Create a TiDB Serverless cluster',
 					},
-				},
+					{
+						name: 'Delete',
+						value: 'delete',
+						description: 'Delete rows in database',
+						action: 'Delete rows in database',
+					},
+					{
+						name: 'Execute SQL',
+						value: 'executeSQL',
+						description: 'Execute an SQL',
+						action: 'Execute an SQL',
+					},
+					{
+						name: 'Insert',
+						value: 'insert',
+						description: 'Insert rows in database',
+						action: 'Insert rows in database',
+					},
+					{
+						name: 'Update',
+						value: 'update',
+						description: 'Update rows in database',
+						action: 'Update rows in database',
+					},
+				],
+				default: 'insert',
 			},
 			{
 				displayName: 'Cluster',
@@ -114,7 +125,32 @@ export class TiDB implements INodeType {
 				],
 				displayOptions: {
 					show: {
-						authentication: ['TiDBCloud'],
+						operation: ['executeSQL', 'insert', 'update', 'delete'],
+					},
+				},
+			},
+			{
+				displayName: 'User',
+				name: 'user',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				required: true,
+				modes: [
+					{
+						displayName: 'List',
+						name: 'list',
+						type: 'list',
+						placeholder: '',
+						typeOptions: {
+							searchListMethod: 'searchUser',
+							searchable: true,
+							searchFilterRequired: false,
+						},
+					},
+				],
+				displayOptions: {
+					show: {
+						operation: ['executeSQL', 'insert', 'update', 'delete'],
 					},
 				},
 			},
@@ -126,10 +162,64 @@ export class TiDB implements INodeType {
 				required: true,
 				displayOptions: {
 					show: {
-						authentication: ['TiDBCloud'],
+						operation: ['executeSQL', 'insert', 'update', 'delete'],
 					},
 				},
 			},
+
+			// ----------------------------------
+			//    create serverless cluster
+			// ----------------------------------
+			{
+				displayName: 'Cluster Name',
+				name: 'clusterName',
+				type: 'string',
+				displayOptions: {
+					show: {
+						operation: ['createServerlessCluster'],
+					},
+				},
+				default: 'Cluster0',
+				required: true,
+				// validate: (clusterName: string) => return true,
+				description:
+					'The name of cluster. The name must be 4-64 characters that can only include numbers, letters, and hyphens, and the first and last character must be a letter or number.',
+			},
+			{
+				displayName: 'Region',
+				name: 'region',
+				type: 'options',
+				displayOptions: {
+					show: {
+						operation: ['createServerlessCluster'],
+					},
+				},
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Frankfurt (Eu-Central-1)',
+						value: 'eu-central-1',
+					},
+					{
+						name: 'N.Virginia (Us-East-1)',
+						value: 'us-east-1',
+					},
+					{
+						name: 'Oregon (Us-West-2)',
+						value: 'us-west-2',
+					},
+					{
+						name: 'Singapore (Ap-Southeast-1)',
+						value: 'ap-southeast-1',
+					},
+					{
+						name: 'Tokyo (Ap-Northeast-1)',
+						value: 'ap-northeast-1',
+					},
+				],
+				default: 'us-west-2',
+			},
+
 			{
 				displayName: 'Password',
 				name: 'password',
@@ -139,75 +229,17 @@ export class TiDB implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						authentication: ['TiDBCloud'],
+						operation: ['executeSQL', 'insert', 'update', 'delete', 'createServerlessCluster'],
 					},
 				},
 				default: '',
-			},
-			{
-				displayName: 'Add CA Certificate',
-				name: 'addCaCertificate',
-				type: 'boolean',
-				default: false,
-				displayOptions: {
-					show: {
-						authentication: ['TiDBCloud'],
-					},
-				},
-			},
-			{
-				displayName: 'CA Certifdaficate',
-				name: 'caCertificate',
-				typeOptions: {
-					alwaysOpenEditWindow: true,
-				},
-				displayOptions: {
-					show: {
-						addCaCertificate: [true],
-					},
-				},
-				type: 'string',
-				default: '',
-			},
-			{
-				displayName: 'Operation',
-				name: 'operation',
-				type: 'options',
-				noDataExpression: true,
-				options: [
-					{
-						name: 'Execute Query',
-						value: 'executeQuery',
-						description: 'Execute an SQL query',
-						action: 'Execute a SQL query',
-					},
-					{
-						name: 'Insert',
-						value: 'insert',
-						description: 'Insert rows in database',
-						action: 'Insert rows in database',
-					},
-					{
-						name: 'Update',
-						value: 'update',
-						description: 'Update rows in database',
-						action: 'Update rows in database',
-					},
-					{
-						name: 'Delete',
-						value: 'delete',
-						description: 'Delete rows in database',
-						action: 'Delete rows in database',
-					},
-				],
-				default: 'insert',
 			},
 
 			// ----------------------------------
-			//         executeQuery
+			//         executeSQL
 			// ----------------------------------
 			{
-				displayName: 'Query',
+				displayName: 'SQL',
 				name: 'query',
 				type: 'string',
 				typeOptions: {
@@ -215,7 +247,7 @@ export class TiDB implements INodeType {
 				},
 				displayOptions: {
 					show: {
-						operation: ['executeQuery'],
+						operation: ['executeSQL'],
 					},
 				},
 				default: '',
@@ -365,7 +397,8 @@ export class TiDB implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description: 'Name of the property which decides which rows in the database should be updated',
+				description:
+					'Name of the property which decides which rows in the database should be updated',
 			},
 			{
 				displayName: 'Columns',
@@ -428,33 +461,14 @@ export class TiDB implements INodeType {
 				},
 				default: 'id',
 				required: true,
-				description: 'Name of the propertys which decides which rows in the database should be delete',
+				description:
+					'Name of the propertys which decides which rows in the database should be delete',
 			},
 		],
 	};
 
 	methods = {
 		credentialTest: {
-			async tidbConnectionTest(
-				this: ICredentialTestFunctions,
-				credential: ICredentialsDecrypted,
-			): Promise<INodeCredentialTestResult> {
-				try {
-					const credentialsForTest = credential.data as ICredentialDataDecryptedObject;
-					// @ts-ignore
-					const connection = await createConnection.call(this, credentialsForTest);
-					connection.end();
-				} catch (error) {
-					return {
-						status: 'Error',
-						message: error.message,
-					};
-				}
-				return {
-					status: 'OK',
-					message: 'Connection successful!',
-				};
-			},
 			async tidbCloudConnectionTest(
 				this: ICredentialTestFunctions,
 				credential: ICredentialsDecrypted,
@@ -478,20 +492,21 @@ export class TiDB implements INodeType {
 			searchCluster,
 			searchProject,
 			searchTables,
+			searchUser,
 		},
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-		const connection = await createConnection.call(this);
+		let connection: mysql2.Connection;
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as string;
 		let returnItems: INodeExecutionData[] = [];
 
-		if (operation === 'executeQuery') {
+		if (operation === 'executeSQL') {
 			// ----------------------------------
-			//         executeQuery
+			//         executeSQL
 			// ----------------------------------
-
+			connection = await createConnection.call(this);
 			try {
 				const queryQueue = items.map((item, index) => {
 					const rawQuery = this.getNodeParameter('query', index) as string;
@@ -499,19 +514,21 @@ export class TiDB implements INodeType {
 					return connection.query(rawQuery);
 				});
 
-				returnItems = (await Promise.all(queryQueue) as mysql2.OkPacket[][]).reduce((collection, result, index) => {
-					const [rows] = result;
+				returnItems = ((await Promise.all(queryQueue)) as mysql2.OkPacket[][]).reduce(
+					(collection, result, index) => {
+						const [rows] = result;
 
-					const executionData = this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
-						{ itemData: { item: index } },
-					);
+						const executionData = this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray(rows as unknown as IDataObject[]),
+							{ itemData: { item: index } },
+						);
 
-					collection.push(...executionData);
+						collection.push(...executionData);
 
-					return collection;
-				}, [] as INodeExecutionData[]);
-
+						return collection;
+					},
+					[] as INodeExecutionData[],
+				);
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnItems = this.helpers.returnJsonArray({ error: error.message });
@@ -524,7 +541,7 @@ export class TiDB implements INodeType {
 			// ----------------------------------
 			//         insert
 			// ----------------------------------
-
+			connection = await createConnection.call(this);
 			try {
 				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 				const columnString = this.getNodeParameter('columns', 0) as string;
@@ -535,10 +552,11 @@ export class TiDB implements INodeType {
 				const insertIgnore = options.ignore as boolean;
 				const insertPriority = options.priority as string;
 
-				const insertSQL = `INSERT ${insertPriority || ''} ${insertIgnore ? 'IGNORE' : ''
-					} INTO ${table}(${columnString}) VALUES ${items
-						.map((item) => insertPlaceholder)
-						.join(',')};`;
+				const insertSQL = `INSERT ${insertPriority || ''} ${
+					insertIgnore ? 'IGNORE' : ''
+				} INTO ${table}(${columnString}) VALUES ${items
+					.map((item) => insertPlaceholder)
+					.join(',')};`;
 				const queryItems = insertItems.reduce(
 					(collection, item) => collection.concat(Object.values(item as any)), // tslint:disable-line:no-any
 					[],
@@ -558,7 +576,7 @@ export class TiDB implements INodeType {
 			// ----------------------------------
 			//         update
 			// ----------------------------------
-
+			connection = await createConnection.call(this);
 			try {
 				const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 				const updateKey = this.getNodeParameter('updateKey', 0) as string;
@@ -588,11 +606,11 @@ export class TiDB implements INodeType {
 					throw error;
 				}
 			}
-		} else if (operation === 'delete'){
+		} else if (operation === 'delete') {
 			// ----------------------------------
 			//         delete
 			// ----------------------------------
-
+			connection = await createConnection.call(this);
 			const table = this.getNodeParameter('table', 0, '', { extractValue: true }) as string;
 			const deleteKey = this.getNodeParameter('deleteKey', 0) as string;
 			const deleteItems = copyInputItems(items, [deleteKey]);
@@ -603,13 +621,26 @@ export class TiDB implements INodeType {
 			);
 			const queryResult = await connection.query(deleteSQL, queryItems);
 			returnItems = this.helpers.returnJsonArray(queryResult[0] as unknown as IDataObject);
+		} else if (operation === 'createServerlessCluster') {
+			let result;
+			 try {
+				 await createCluster.call(this);
+				 result = {
+					 result: 'Success to create TiDB Serverless cluster.',
+				 };
+			 } catch (error) {
+				 result = {
+					 result: 'Failed to create TiDB Serverless cluster.',
+					 message: error.message,
+				 };
+			 }
+			returnItems = this.helpers.returnJsonArray(result as IDataObject);
 		} else {
 			if (this.continueOnFail()) {
 				returnItems = this.helpers.returnJsonArray({
 					error: `The operation "${operation}" is not supported!`,
 				});
 			} else {
-				await connection.end();
 				throw new NodeOperationError(
 					this.getNode(),
 					`The operation "${operation}" is not supported!`,
@@ -617,8 +648,10 @@ export class TiDB implements INodeType {
 			}
 		}
 
-		await connection.end();
-
+		// @ts-ignore
+		if (connection) {
+			await connection.end();
+		}
 		return this.prepareOutputData(returnItems);
 	}
 }
