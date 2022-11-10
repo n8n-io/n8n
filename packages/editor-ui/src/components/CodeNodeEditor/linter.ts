@@ -126,19 +126,19 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			/**
 			 * Lint for `.item` unavailable in `runOnceForAllItems` mode
 			 *
-			 * $input.all().item -> <removed>
+			 * $input.item -> <removed>
 			 */
 
 			if (this.mode === 'runOnceForAllItems') {
 				type TargetNode = RangeNode & { property: RangeNode };
 
-				const isUnavailablePropertyinAllItems = (node: Node) =>
+				const isUnavailableItemAccess = (node: Node) =>
 					node.type === 'MemberExpression' &&
 					node.computed === false &&
 					node.property.type === 'Identifier' &&
 					node.property.name === 'item';
 
-				walk<TargetNode>(ast, isUnavailablePropertyinAllItems).forEach((node) => {
+				walk<TargetNode>(ast, isUnavailableItemAccess).forEach((node) => {
 					const [start, end] = this.getRange(node.property);
 
 					lintings.push({
@@ -159,39 +159,74 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			}
 
 			/**
-			 * Lint for `item` (legacy var from Function Item node) being accessed
-			 * in `runOnceForEachItem` mode, unless user-defined `item`.
+			 * Lint for `item` (legacy var from Function Item node) unavailable
+			 * in `runOnceForAllItems` mode, unless user-defined `item`.
 			 *
-			 * item. -> $input.item.json.
+			 * item -> $input.all()
 			 */
-			if (this.mode === 'runOnceForEachItem' && !/(let|const|var) item =/.test(script)) {
+			if (this.mode === 'runOnceForAllItems' && !/(let|const|var) item (=|of)/.test(script)) {
 				type TargetNode = RangeNode & { object: RangeNode & { name: string } };
 
-				const isItemAccess = (node: Node) =>
-					node.type === 'MemberExpression' &&
-					node.computed === false &&
-					node.object.type === 'Identifier' &&
-					node.object.name === 'item';
+				const isUnavailableLegacyItems = (node: Node) =>
+					node.type === 'Identifier' && node.name === 'item';
 
-				walk<TargetNode>(ast, isItemAccess).forEach((node) => {
-					const [start, end] = this.getRange(node.object);
+				walk<TargetNode>(ast, isUnavailableLegacyItems).forEach((node) => {
+					const [start, end] = this.getRange(node);
 
 					lintings.push({
 						from: start,
 						to: end,
 						severity: DEFAULT_LINTER_SEVERITY,
-						message: this.$locale.baseText('codeNodeEditor.linter.eachItem.legacyItemAccess'),
+						message: this.$locale.baseText('codeNodeEditor.linter.allItems.unavailableItem'),
 						actions: [
 							{
 								name: 'Fix',
 								apply(view, from, to) {
 									// prevent second insertion of unknown origin
-									if (view.state.doc.toString().slice(from, to).includes('$input.item.json')) {
+									if (view.state.doc.toString().slice(from, to).includes('$input.all()')) {
 										return;
 									}
 
 									view.dispatch({ changes: { from: start, to: end } });
-									view.dispatch({ changes: { from, insert: '$input.item.json' } });
+									view.dispatch({ changes: { from, insert: '$input.all()' } });
+								},
+							},
+						],
+					});
+				});
+			}
+
+			/**
+			 * Lint for `items` (legacy var from Function node) unavailable
+			 * in `runOnceForEachItem` mode, unless user-defined `items`.
+			 *
+			 * items -> $input.item
+			 */
+			if (this.mode === 'runOnceForEachItem' && !/(let|const|var) items =/.test(script)) {
+				type TargetNode = RangeNode & { object: RangeNode & { name: string } };
+
+				const isUnavailableLegacyItems = (node: Node) =>
+					node.type === 'Identifier' && node.name === 'items';
+
+				walk<TargetNode>(ast, isUnavailableLegacyItems).forEach((node) => {
+					const [start, end] = this.getRange(node);
+
+					lintings.push({
+						from: start,
+						to: end,
+						severity: DEFAULT_LINTER_SEVERITY,
+						message: this.$locale.baseText('codeNodeEditor.linter.eachItem.unavailableItems'),
+						actions: [
+							{
+								name: 'Fix',
+								apply(view, from, to) {
+									// prevent second insertion of unknown origin
+									if (view.state.doc.toString().slice(from, to).includes('$input.item')) {
+										return;
+									}
+
+									view.dispatch({ changes: { from: start, to: end } });
+									view.dispatch({ changes: { from, insert: '$input.item' } });
 								},
 							},
 						],
@@ -285,8 +320,8 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					node.callee.object.type === 'Identifier' &&
 					node.callee.object.name === '$input' &&
 					node.callee.property.type === 'Identifier' &&
-					['first', 'last'].includes(node.callee.property.name)
-					&& node.arguments.length !== 0;
+					['first', 'last'].includes(node.callee.property.name) &&
+					node.arguments.length !== 0;
 
 				walk<TargetNode>(ast, inputFirstOrLastCalledWithArg).forEach((node) => {
 					const [start, end] = this.getRange(node.callee.property);
