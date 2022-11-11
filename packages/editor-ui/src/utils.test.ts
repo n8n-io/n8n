@@ -4,7 +4,7 @@ import { N8nJsonSchema } from "@/Interface";
 
 describe("Utils", () => {
 	describe("isEmpty", () => {
-		it.each([
+		test.each([
 			[undefined, true],
 			[null, true],
 			[{}, true],
