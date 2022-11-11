@@ -9,17 +9,41 @@ anything to everything.
 
 ![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot.png)
 
-## Demo
+## 📺Demo
 
 [:tv: A short video (< 4 min)](https://www.youtube.com/watch?v=RpjQTGKm-ok) that goes over key concepts of
 creating workflows in n8n.
+<br/>
+<br/>
 
-## Available integrations
+<details>
+<summary><b>📺 Latest YouTube Videos</b></summary>
+<div align="center">
+
+[<img src="https://img.shields.io/badge/-Subscribe-red?style=for-the-badge&logo=youtube&logoColor=white"/>](https://www.youtube.com/c/n8n-io?sub_confirmation=1)
+
+</div>
+<!-- YOUTUBE:START -->
+<!-- YOUTUBE:END -->
+</details>
+
+## 📕Latest Blog
+<!-- BLOG-POST-LIST:START -->
+<!-- BLOG-POST-LIST:END -->
+<br/>
+
+## 🐥Latest Twitter Threads
+
+<!-- TWITTER:START -->
+<!-- TWITTER:END -->
+
+
+## ⚒️Available integrations
 
 n8n has 200+ different nodes to automate workflows. The list can be found on:
 [https://n8n.io/integrations](https://n8n.io/integrations)
 
-## Documentation
+## 📖Documentation
 
 The official n8n documentation can be found under: [https://docs.n8n.io](https://docs.n8n.io)
 
@@ -35,7 +59,7 @@ changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-C
 - :whale: Learn
   [how to run n8n in **Docker**](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n/README.md)
 
-## Start
+## 👆Start
 
 Execute: `npx n8n`
 
@@ -49,13 +73,13 @@ While n8n cloud and n8n are the same in terms of features, n8 cloud provides cer
 - Managed OAuth for authentication
 - Easily upgrading to the newer n8n versions
 
-## Support
+## 💁‍♂️Support
 
 If you have problems or questions go to our forum, we will then try to help you asap:
 
 [https://community.n8n.io](https://community.n8n.io)
 
-## Jobs
+## 👷Jobs
 
 If you are interested in working for n8n and so shape the future of the project check out our
 [job posts](https://apply.workable.com/n8n/)
@@ -72,13 +96,21 @@ what the project is supposed to help with. However, I did not like how long the 
 imagine writing something that long every time in the CLI. That is when I then ended up on 'n8n'." - **Jan
 Oberhauser, Founder and CEO, n8n.io**
 
-## Development setup
+## 🧑‍💻Development setup
 
 Have you found a bug :bug: ? Or maybe you have a nice feature :sparkles: to contribute ? The
 [CONTRIBUTING guide](https://github.com/n8n-io/n8n/blob/master/CONTRIBUTING.md) will help you get your
 development environment ready in minutes.
 
-## License
+<br/>
+
+### ⚡ Recent GitHub Activity
+
+<!--START_SECTION:activity-->
+<!--END_SECTION:activity-->
+<br/>
+
+## ⚖️License
 
 n8n is [fair-code](http://faircode.io) distributed under the
 [**Sustainable Use License**](https://github.com/n8n-io/n8n/blob/master/packages/cli/LICENSE.md) and the
