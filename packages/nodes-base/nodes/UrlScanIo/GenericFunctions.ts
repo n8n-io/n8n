@@ -27,11 +27,7 @@ export async function urlScanIoApiRequest(
 		delete options.qs;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi', options);
 }
 
 export async function handleListing(
