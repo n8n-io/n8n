@@ -68,7 +68,6 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 	INodeTypes,
 	ICredentialTypes,
-	NodeHelpers,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -94,6 +93,7 @@ import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	AUTH_COOKIE_NAME,
+	GENERATED_STATIC_DIR,
 	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -149,6 +149,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import * as GenericHelpers from '@/GenericHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as TestWebhooks from '@/TestWebhooks';
 import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
@@ -158,7 +159,6 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
-import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 
 require('body-parser-xml')(bodyParser);
 
@@ -776,11 +776,10 @@ class App {
 		});
 
 		// pre-render all the node and credential types as static json files
-		const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
-		await mkdir(pathJoin(generatedStaticDir, 'types'), { recursive: true });
+		await mkdir(pathJoin(GENERATED_STATIC_DIR, 'types'), { recursive: true });
 
 		const writeStaticJSON = async (name: string, data: any[]) => {
-			const filePath = pathJoin(generatedStaticDir, `types/${name}.json`);
+			const filePath = pathJoin(GENERATED_STATIC_DIR, `types/${name}.json`);
 			const payload = `[\n${data.map((entry) => JSON.stringify(entry)).join(',\n')}\n]`;
 			writeFileSync(filePath, payload, { encoding: 'utf-8' });
 		};
@@ -1691,7 +1690,7 @@ class App {
 					if (filePath.endsWith('index.html')) {
 						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
-					const destFile = pathJoin(generatedStaticDir, fileName);
+					const destFile = pathJoin(GENERATED_STATIC_DIR, fileName);
 					await mkdir(pathDirname(destFile), { recursive: true });
 					await writeFile(destFile, payload, 'utf-8');
 				}
@@ -1701,7 +1700,7 @@ class App {
 			const files = await glob('**/*.{css,js}', { cwd: editorUiDistDir });
 			await Promise.all(files.map(compileFile));
 
-			this.app.use('/', express.static(generatedStaticDir), express.static(editorUiDistDir));
+			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(editorUiDistDir));
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
@@ -1709,7 +1708,7 @@ class App {
 				next();
 			});
 		} else {
-			this.app.use('/', express.static(generatedStaticDir));
+			this.app.use('/', express.static(GENERATED_STATIC_DIR));
 		}
 	}
 }

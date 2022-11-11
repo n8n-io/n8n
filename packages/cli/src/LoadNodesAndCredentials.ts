@@ -27,14 +27,14 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import { access as fsAccess, cp, mkdir, readdir as fsReaddir, stat as fsStat } from 'fs/promises';
+import { access as fsAccess, cp, readdir as fsReaddir, stat as fsStat } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { executeCommand } from '@/CommunityNodes/helpers';
-import { CLI_DIR, RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { CLI_DIR, GENERATED_STATIC_DIR, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
@@ -302,11 +302,12 @@ class LoadNodesAndCredentialsClass {
 
 		if (loader instanceof PackageDirectoryLoader) {
 			const { packageName, known, types } = loader;
+
 			for (const node in known.nodes) {
 				this.known.nodes[`${packageName}.${node}`] = path.join(dir, known.nodes[node]);
 			}
+
 			for (const credential in known.credentials) {
-				// TODO: use `${packageName}.${credential}` instead of `${credential}`
 				this.known.credentials[credential] = path.join(dir, known.credentials[credential]);
 			}
 
@@ -314,12 +315,7 @@ class LoadNodesAndCredentialsClass {
 			this.types.latestNodes = this.types.latestNodes.concat(types.latestNodes);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
-			// TODO: move this code somewhere to avoid duplicating it
-			const generatedStaticDir = path.join(UserSettings.getUserHome(), '.cache/n8n/public');
-			await mkdir(path.join(generatedStaticDir, 'icons/nodes'), { recursive: true });
-			await mkdir(path.join(generatedStaticDir, 'icons/credentials'), { recursive: true });
-
-			await cp(path.resolve(dir, 'dist/icons'), path.join(generatedStaticDir, 'icons'), {
+			await cp(path.resolve(dir, 'dist/icons'), path.join(GENERATED_STATIC_DIR, 'icons'), {
 				recursive: true,
 			});
 		}
