@@ -402,3 +402,7 @@ export const formatUrl = (url: string, port: number, security: ConnectionSecurit
 	const protocol = ['tls'].includes(security) ? 'ldaps' : 'ldap';
 	return `${protocol}://${url}:${port}`;
 };
+
+export const getMappingAttributes = (config: LdapConfig): string[] => {
+	return Object.values(config.attributeMapping);
+};

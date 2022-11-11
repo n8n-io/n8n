@@ -2,7 +2,7 @@
 import { Client, Entry, ClientOptions } from 'ldapts';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { LdapConfig } from './types';
-import { formatUrl } from './helpers';
+import { formatUrl, getMappingAttributes } from './helpers';
 import { ConnectionSecurity } from './constants';
 import { ConnectionOptions } from 'tls';
 
@@ -81,6 +81,7 @@ export class LdapService {
 		await this.bindAdmin();
 		if (this.client) {
 			const { searchEntries } = await this.client.search(this._config.binding.baseDn, {
+				attributes: getMappingAttributes(this._config),
 				filter,
 				timeLimit: this._config.syncronization.searchTimeout,
 				paged: { pageSize: this._config.syncronization.pageSize },
