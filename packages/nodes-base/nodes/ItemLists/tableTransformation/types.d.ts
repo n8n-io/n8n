@@ -1,13 +1,11 @@
 export type OperationType = 'simplify' | 'summarize' | 'reconfigure';
 
-// export type SimplifyOperation =
-// 	| 'combineRows'
-// 	| 'extractCell'
-// 	| 'extractColumn'
-// 	| 'extractRow'
-// 	| 'removeDuplicates';
-
-export type SimplifyOperation = 'combineRows';
+export type SimplifyOperation =
+	| 'combineRows'
+	| 'extractCell'
+	| 'extractColumn'
+	| 'extractRow'
+	| 'removeDuplicates';
 
 export type SummarizeOperation = 'countRowsAndColumns' | 'pivotColumns' | 'unpivotColumns';
 

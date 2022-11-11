@@ -6,7 +6,7 @@ import {
 	ReconfigureOperation,
 	SimplifyOperation,
 	SummarizeOperation,
-} from './resource.type';
+} from './types';
 
 import { simplify } from './simplify/Simplify.operation.type';
 import { summarize } from './summarize/Summarize.operation.type';
@@ -16,10 +16,7 @@ export async function tableTransformationRouter(
 	this: IExecuteFunctions,
 ): Promise<INodeExecutionData[][]> {
 	const operationType = this.getNodeParameter('operationType', 0) as OperationType;
-	const operation = this.getNodeParameter('operation', 0) as
-		| SimplifyOperation
-		| SummarizeOperation
-		| ReconfigureOperation;
+	const operation = this.getNodeParameter('operation', 0);
 
 	let returnData: INodeExecutionData[] = [];
 

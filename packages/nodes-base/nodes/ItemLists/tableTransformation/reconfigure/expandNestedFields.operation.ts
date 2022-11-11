@@ -5,8 +5,6 @@ export const description: INodeProperties[] = [];
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const responseData: IDataObject[] = [];
 
-	console.log('rows to combine', this.getInputData());
-
 	const executionData = this.helpers.constructExecutionMetaData(
 		this.helpers.returnJsonArray(responseData),
 		{ itemData: { item: 0 } },

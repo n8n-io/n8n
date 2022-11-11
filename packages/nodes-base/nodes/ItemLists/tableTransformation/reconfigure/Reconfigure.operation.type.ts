@@ -1,26 +1,67 @@
-import { IExecuteFunctions, INodeExecutionData, NodeOperationError } from 'n8n-workflow';
-import { ReconfigureOperation } from '../resource.type';
+import { IExecuteFunctions, INodeProperties } from 'n8n-workflow';
+import { ReconfigureOperation } from '../types';
+import * as expandNestedFields from './expandNestedFields.operation';
+import * as flipTable from './flipTable.operation';
+import * as splitColumn from './splitColumn.operation';
+import * as sort from './sort.operation';
+import * as updateColumnHeaders from './updateColumnHeaders.operation';
+
+export const description: INodeProperties[] = [
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		type: 'options',
+		noDataExpression: true,
+		options: [
+			{
+				name: 'Expand Nested Fields',
+				value: 'expandNestedFields',
+				action: 'Expand Nested Fields',
+			},
+			{
+				name: 'Flip Table (Transpose)',
+				value: 'flipTable',
+				action: 'Flip Table (Transpose)',
+			},
+			{
+				name: 'Sort',
+				value: 'sort',
+				action: 'Sort',
+			},
+			{
+				name: 'Split Column',
+				value: 'splitColumn',
+				action: 'Split Column',
+			},
+			{
+				name: 'Update Column Headers',
+				value: 'updateColumnHeaders',
+				action: 'Update Column Headers a table transformation',
+			},
+		],
+		default: 'expandNestedFields',
+		displayOptions: {
+			show: {
+				resource: ['tableTransformation'],
+				operationType: ['reconfigure'],
+			},
+		},
+	},
+	...expandNestedFields.description,
+	...flipTable.description,
+	...sort.description,
+	...splitColumn.description,
+	...updateColumnHeaders.description,
+];
+
+const operationMap = {
+	expandNestedFields,
+	flipTable,
+	splitColumn,
+	sort,
+	updateColumnHeaders,
+};
 
 export async function reconfigure(this: IExecuteFunctions, operation: ReconfigureOperation) {
-	const returnData: INodeExecutionData[] = [];
-	switch (operation) {
-		case 'expandNestedFields':
-			returnData.push();
-			break;
-		case 'flipTable':
-			returnData.push();
-			break;
-		case 'sort':
-			returnData.push();
-			break;
-		case 'splitColumn':
-			returnData.push();
-			break;
-		case 'updateColumnHeaders':
-			returnData.push();
-			break;
-		default:
-			throw new NodeOperationError(this.getNode(), `Operation "${operation}" is not supported!`);
-	}
-	return returnData;
+	return operationMap[operation].execute.call(this);
 }
