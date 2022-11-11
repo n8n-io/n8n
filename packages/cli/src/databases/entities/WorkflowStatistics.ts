@@ -1,4 +1,12 @@
-import { Column, Entity, RelationId, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
+import {
+	CreateDateColumn,
+	Column,
+	Entity,
+	RelationId,
+	ManyToOne,
+	PrimaryColumn,
+	UpdateDateColumn,
+} from 'typeorm';
 import config from '@/config';
 import { DatabaseType } from '../..';
 import { WorkflowEntity } from './WorkflowEntity';
@@ -28,6 +36,10 @@ export class WorkflowStatistics {
 	@Column()
 	count: number;
 
+	@CreateDateColumn({
+		precision: 3,
+		default: () => getTimestampSyntax(),
+	})
 	@UpdateDateColumn({
 		precision: 3,
 		default: () => getTimestampSyntax(),
