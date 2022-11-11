@@ -41,7 +41,7 @@ import {
 	ICredentialsTypeData,
 	IExecutionFlattedDb,
 	IProcessMessageDataHook,
-	ITransferNodeTypes,
+	INodesTypeData,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 } from '@/Interfaces';
@@ -628,7 +628,7 @@ export class WorkflowRunner {
 				break;
 			}
 		}
-		let nodeTypeData: ITransferNodeTypes;
+		let nodeTypeData: INodesTypeData;
 		let credentialTypeData: ICredentialsTypeData;
 		// eslint-disable-next-line prefer-destructuring
 		let credentialsOverwrites = this.credentialsOverwrites;

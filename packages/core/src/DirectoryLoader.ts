@@ -2,7 +2,7 @@ import * as path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { createContext, Context, Script } from 'node:vm';
 import glob from 'fast-glob';
-import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
+import { jsonParse, KnownNodesAndCredentials, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
 	CodexData,
 	DocumentationLink,
@@ -25,11 +25,6 @@ function toJSON(this: ICredentialType) {
 	};
 }
 
-export type Known = {
-	nodes: Record<string, string>;
-	credentials: Record<string, string>;
-};
-
 export type Types = {
 	allNodes: INodeTypeBaseDescription[];
 	latestNodes: INodeTypeBaseDescription[];
@@ -45,7 +40,7 @@ export abstract class DirectoryLoader {
 
 	readonly credentialTypes: ICredentialTypeData = {};
 
-	readonly known: Known = { nodes: {}, credentials: {} };
+	readonly known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	readonly types: Types = { allNodes: [], latestNodes: [], credentials: [] };
 

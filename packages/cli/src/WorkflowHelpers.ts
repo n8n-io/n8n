@@ -30,7 +30,7 @@ import * as Db from '@/Db';
 import {
 	ICredentialsDb,
 	ICredentialsTypeData,
-	ITransferNodeTypes,
+	INodesTypeData,
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
 	WhereClause,
@@ -242,20 +242,8 @@ export async function executeErrorWorkflow(
  * Returns all the defined NodeTypes
  *
  */
-export function getAllNodeTypeData(): ITransferNodeTypes {
-	const nodeTypes = NodeTypes();
-
-	// Get the data of all the node types that they
-	// can be loaded again in the process
-	const returnData: ITransferNodeTypes = {};
-	for (const [nodeTypeName, node] of Object.entries(nodeTypes.nodeTypes)) {
-		returnData[nodeTypeName] = {
-			className: node.type.constructor.name,
-			sourcePath: node.sourcePath,
-		};
-	}
-
-	return returnData;
+export function getAllNodeTypeData(): INodesTypeData {
+	return NodeTypes().getAllNodeTypeData();
 }
 
 /**
@@ -263,84 +251,19 @@ export function getAllNodeTypeData(): ITransferNodeTypes {
  *
  */
 export function getAllCredentialsTypeData(): ICredentialsTypeData {
-	const credentialTypes = CredentialTypes();
-
-	// Get the data of all the credential types that they
-	// can be loaded again in the subprocess
-	const returnData: ICredentialsTypeData = {};
-	for (const credentialTypeName of Object.keys(credentialTypes.credentialTypes)) {
-		if (credentialTypes.credentialTypes[credentialTypeName] === undefined) {
-			throw new Error(`The CredentialType "${credentialTypeName}" could not be found!`);
-		}
-
-		returnData[credentialTypeName] = {
-			className: credentialTypes.credentialTypes[credentialTypeName].type.constructor.name,
-			sourcePath: credentialTypes.credentialTypes[credentialTypeName].sourcePath,
-		};
-	}
-
-	return returnData;
+	return CredentialTypes().getAllCredentialsTypeData();
 }
 
 /**
  * Returns the data of the node types that are needed
  * to execute the given nodes
- *
  */
-export function getNodeTypeData(nodes: INode[]): ITransferNodeTypes {
-	const nodeTypes = NodeTypes();
-
-	// Check which node-types have to be loaded
-	// eslint-disable-next-line @typescript-eslint/no-use-before-define
-	const neededNodeTypes = getNeededNodeTypes(nodes);
-
-	// Get all the data of the needed node types that they
-	// can be loaded again in the process
-	const returnData: ITransferNodeTypes = {};
-	for (const { type } of neededNodeTypes) {
-		const nodeType = nodeTypes.getNode(type);
-		returnData[type] = {
-			className: nodeType.type.constructor.name,
-			sourcePath: nodeType.sourcePath,
-		};
-	}
-
-	return returnData;
+export function getNodeTypeData(nodes: INode[]): INodesTypeData {
+	return NodeTypes().getNodeTypeData(nodes);
 }
 
-/**
- * Returns the credentials data of the given type and its parent types
- * it extends
- *
- * @param {string} type The credential type to return data off
- */
 export function getCredentialsDataWithParents(type: string): ICredentialsTypeData {
-	const credentialTypes = CredentialTypes();
-	const credentialType = credentialTypes.getByName(type);
-
-	const credentialTypeData: ICredentialsTypeData = {};
-	credentialTypeData[type] = {
-		className: credentialTypes.credentialTypes[type].type.constructor.name,
-		sourcePath: credentialTypes.credentialTypes[type].sourcePath,
-	};
-
-	if (credentialType === undefined || credentialType.extends === undefined) {
-		return credentialTypeData;
-	}
-
-	for (const typeName of credentialType.extends) {
-		if (credentialTypeData[typeName] !== undefined) {
-			continue;
-		}
-
-		credentialTypeData[typeName] = {
-			className: credentialTypes.credentialTypes[typeName].type.constructor.name,
-			sourcePath: credentialTypes.credentialTypes[typeName].sourcePath,
-		};
-		Object.assign(credentialTypeData, getCredentialsDataWithParents(typeName));
-	}
-
-	return credentialTypeData;
+	return CredentialTypes().getCredentialsDataWithParents(type);
 }
 
 /**
@@ -367,23 +290,6 @@ export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData 
 	}
 
 	return credentialTypeData;
-}
-
-/**
- * Returns the names of the NodeTypes which are are needed
- * to execute the gives nodes
- *
- */
-export function getNeededNodeTypes(nodes: INode[]): Array<{ type: string; version: number }> {
-	// Check which node-types have to be loaded
-	const neededNodeTypes: Array<{ type: string; version: number }> = [];
-	for (const node of nodes) {
-		if (neededNodeTypes.find((neededNodes) => node.type === neededNodes.type) === undefined) {
-			neededNodeTypes.push({ type: node.type, version: node.typeVersion });
-		}
-	}
-
-	return neededNodeTypes;
 }
 
 /**

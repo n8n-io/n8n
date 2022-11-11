@@ -147,10 +147,8 @@ export class Webhook extends Command {
 				await externalHooks.init();
 
 				// Add the found types to an instance other parts of the application can use
-				const nodeTypes = NodeTypes();
-				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
-				const credentialTypes = CredentialTypes();
-				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+				const nodeTypes = NodeTypes(loadNodesAndCredentials);
+				CredentialTypes(loadNodesAndCredentials);
 
 				// Wait till the database is ready
 				await startDbInitPromise;

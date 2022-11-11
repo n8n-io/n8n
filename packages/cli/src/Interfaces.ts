@@ -636,7 +636,7 @@ export interface IResponseCallbackData {
 	responseCode?: number;
 }
 
-export interface ITransferNodeTypes {
+export interface INodesTypeData {
 	[key: string]: {
 		className: string;
 		sourcePath: string;
@@ -687,7 +687,7 @@ export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExe
 	credentialsOverwrite: ICredentialsOverwrite;
 	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
-	nodeTypeData: ITransferNodeTypes;
+	nodeTypeData: INodesTypeData;
 	userId: string;
 }
 

@@ -235,6 +235,7 @@ export function isNpmError(error: unknown): error is { code: number; stdout: str
 	return typeof error === 'object' && error !== null && 'code' in error && 'stdout' in error;
 }
 
+// TODO: move to core, and delete the duplicate implementation
 const context = createContext({ require });
 export const loadClassInIsolation = <T>(filePath: string, className: string) => {
 	if (process.platform === 'win32') {

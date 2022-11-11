@@ -12,7 +12,6 @@
 import {
 	CUSTOM_EXTENSION_ENV,
 	UserSettings,
-	Known,
 	CustomDirectoryLoader,
 	DirectoryLoader,
 	PackageDirectoryLoader,
@@ -23,8 +22,10 @@ import {
 	ICredentialTypeData,
 	ILogger,
 	INodeTypeData,
+	INodesAndCredentials,
 	LoggerProxy,
 	ErrorReporterProxy as ErrorReporter,
+	KnownNodesAndCredentials,
 } from 'n8n-workflow';
 
 import glob from 'fast-glob';
@@ -37,7 +38,6 @@ import {
 } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
-import { NodeTypes } from '@/NodeTypes';
 import { InstalledPackages } from '@db/entities/InstalledPackages';
 import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { executeCommand } from '@/CommunityNodes/helpers';
@@ -47,8 +47,8 @@ import {
 	removePackageFromDatabase,
 } from '@/CommunityNodes/packageModel';
 
-class LoadNodesAndCredentialsClass {
-	known: Known = { nodes: {}, credentials: {} };
+export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
+	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
 	types: Types = { allNodes: [], latestNodes: [], credentials: [] };
 
@@ -271,21 +271,15 @@ class LoadNodesAndCredentialsClass {
 	}
 
 	unloadNodes(installedNodes: InstalledNodes[]): void {
-		const nodeTypes = NodeTypes();
 		installedNodes.forEach((installedNode) => {
-			nodeTypes.removeNodeType(installedNode.type);
 			delete this.nodeTypes[installedNode.type];
 		});
 	}
 
 	attachNodesToNodeTypes(installedNodes: InstalledNodes[]): void {
-		const nodeTypes = NodeTypes();
 		installedNodes.forEach((installedNode) => {
-			nodeTypes.attachNodeType(
-				installedNode.type,
-				this.nodeTypes[installedNode.type].type,
-				this.nodeTypes[installedNode.type].sourcePath,
-			);
+			const { type, sourcePath } = this.nodeTypes[installedNode.type];
+			this.nodeTypes[installedNode.type] = { type, sourcePath };
 		});
 	}
 

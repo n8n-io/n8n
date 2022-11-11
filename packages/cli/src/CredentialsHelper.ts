@@ -25,8 +25,6 @@ import {
 	INodeParameters,
 	INodeProperties,
 	INodeType,
-	INodeTypeData,
-	INodeTypes,
 	IVersionedNodeType,
 	VersionedNodeType,
 	IRequestOptionsSimplified,
@@ -40,6 +38,8 @@ import {
 	LoggerProxy as Logger,
 	ErrorReporterProxy as ErrorReporter,
 	IHttpRequestHelper,
+	INodeTypeData,
+	INodeTypes,
 } from 'n8n-workflow';
 
 import * as Db from '@/Db';
@@ -51,19 +51,16 @@ import { NodeTypes } from '@/NodeTypes';
 import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
 
+const mockNodesData: INodeTypeData = {};
 const mockNodeTypes: INodeTypes = {
-	nodeTypes: {} as INodeTypeData,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
 	getAll(): Array<INodeType | IVersionedNodeType> {
-		// @ts-ignore
-		return Object.values(this.nodeTypes).map((data) => data.type);
+		return Object.values(mockNodesData).map((data) => data.type);
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
+		if (mockNodesData[nodeType] === undefined) {
 			return undefined;
 		}
-		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
+		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
 };
 
@@ -615,21 +612,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 			},
 		};
 
-		const nodeTypes: INodeTypes = {
-			...mockNodeTypes,
-			nodeTypes: {
-				[nodeTypeCopy.description.name]: {
-					sourcePath: '',
-					type: nodeTypeCopy,
-				},
-			},
+		mockNodesData[nodeTypeCopy.description.name] = {
+			sourcePath: '',
+			type: nodeTypeCopy,
 		};
 
 		const workflow = new Workflow({
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			active: false,
-			nodeTypes,
+			nodeTypes: mockNodeTypes,
 		});
 
 		const mode = 'internal';
@@ -711,6 +703,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 				status: 'Error',
 				message: error.message.toString(),
 			};
+		} finally {
+			delete mockNodesData[nodeTypeCopy.description.name];
 		}
 
 		if (

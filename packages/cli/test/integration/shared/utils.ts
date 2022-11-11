@@ -13,8 +13,7 @@ import {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodeTypeData,
-	INodeTypes,
+	INodesAndCredentials,
 	ITriggerFunctions,
 	ITriggerResponse,
 	LoggerProxy,
@@ -66,6 +65,18 @@ import type {
 	InstalledPackagePayload,
 	PostgresSchemaSection,
 } from './types';
+
+const loadNodesAndCredentials: INodesAndCredentials = {
+	nodeTypes: {},
+	credentialTypes: {},
+	known: {
+		nodes: {},
+		credentials: {},
+	},
+};
+
+const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
+CredentialTypes(loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -149,8 +160,6 @@ export async function initTestServer({
  * Pre-requisite: Mock the telemetry module before calling.
  */
 export function initTestTelemetry() {
-	const mockNodeTypes = { nodeTypes: {} } as INodeTypes;
-
 	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
 }
 
@@ -217,20 +226,19 @@ export function gitHubCredentialType(): ICredentialType {
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
-	const credentialTypes = CredentialTypes();
-	await credentialTypes.init({
+	loadNodesAndCredentials.credentialTypes = {
 		githubApi: {
 			type: gitHubCredentialType(),
 			sourcePath: '',
 		},
-	});
+	};
 }
 
 /**
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	const types: INodeTypeData = {
+	loadNodesAndCredentials.nodeTypes = {
 		'n8n-nodes-base.start': {
 			sourcePath: '',
 			type: {
@@ -524,8 +532,6 @@ export async function initNodeTypes() {
 			},
 		},
 	};
-
-	await NodeTypes().init(types);
 }
 
 /**

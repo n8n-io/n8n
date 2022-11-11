@@ -326,8 +326,6 @@ export interface ICredentialType {
 }
 
 export interface ICredentialTypes {
-	credentialTypes?: ICredentialTypeData;
-	init(credentialTypes?: ICredentialTypeData): Promise<void>;
 	getAll(): ICredentialType[];
 	getByName(credentialType: string): ICredentialType;
 }
@@ -1432,9 +1430,18 @@ export interface IWebhookResponseData {
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
 
-export interface INodeTypes {
+export type KnownNodesAndCredentials = {
+	nodes: Record<string, string>;
+	credentials: Record<string, string>;
+};
+
+export interface INodesAndCredentials {
 	nodeTypes: INodeTypeData;
-	init(nodeTypes?: INodeTypeData): Promise<void>;
+	credentialTypes: ICredentialTypeData;
+	known: KnownNodesAndCredentials;
+}
+
+export interface INodeTypes {
 	getAll(): Array<INodeType | IVersionedNodeType>;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }

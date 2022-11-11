@@ -210,12 +210,8 @@ export class Start extends Command {
 				await externalHooks.init();
 
 				// Add the found types to an instance other parts of the application can use
-				const nodeTypes = NodeTypes();
-				nodeTypes.register(loadNodesAndCredentials.known);
-				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
-				const credentialTypes = CredentialTypes();
-				credentialTypes.register(loadNodesAndCredentials.known);
-				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+				const nodeTypes = NodeTypes(loadNodesAndCredentials);
+				CredentialTypes(loadNodesAndCredentials);
 
 				// Load the credentials overwrites if any exist
 				const credentialsOverwrites = CredentialsOverwrites();
@@ -229,13 +225,13 @@ export class Start extends Command {
 					packageName: string;
 					version: string;
 				}>();
-				installedPackages.forEach((installedpackage) => {
-					installedpackage.installedNodes.forEach((installedNode) => {
+				installedPackages.forEach((installedPackage) => {
+					installedPackage.installedNodes.forEach((installedNode) => {
 						if (!loadNodesAndCredentials.nodeTypes[installedNode.type]) {
 							// Leave the list ready for installing in case we need.
 							missingPackages.add({
-								packageName: installedpackage.packageName,
-								version: installedpackage.installedVersion,
+								packageName: installedPackage.packageName,
+								version: installedPackage.installedVersion,
 							});
 						}
 					});

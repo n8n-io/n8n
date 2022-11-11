@@ -23,8 +23,11 @@ beforeAll(async () => {
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
-	mockNodeTypes = MockNodeTypes();
-	await mockNodeTypes.init(MOCK_NODE_TYPES_DATA);
+	mockNodeTypes = MockNodeTypes({
+		nodeTypes: MOCK_NODE_TYPES_DATA,
+		credentialTypes: {},
+		known: { nodes: {}, credentials: {} },
+	});
 
 	credentialOwnerRole = await testDb.getCredentialOwnerRole();
 	workflowOwnerRole = await testDb.getWorkflowOwnerRole();

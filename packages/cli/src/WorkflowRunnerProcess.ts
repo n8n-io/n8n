@@ -99,11 +99,12 @@ export class WorkflowRunnerProcess {
 
 		this.startedAt = new Date();
 
+		// TODO: use LoadNodesAndCredentials instead
 		// Load the required nodes
 		const nodeTypesData: INodeTypeData = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const nodeTypeName of Object.keys(this.data.nodeTypeData)) {
-			// TODO: use NodeTypes.loadNode instead
+			// ======> TODO: use NodeTypes.loadNode instead
 			let tempNode: INodeType;
 			const { className, sourcePath } = this.data.nodeTypeData[nodeTypeName];
 
@@ -118,9 +119,6 @@ export class WorkflowRunnerProcess {
 				sourcePath,
 			};
 		}
-
-		const nodeTypes = NodeTypes();
-		await nodeTypes.init(nodeTypesData);
 
 		// Load the required credentials
 		const credentialsTypeData: ICredentialTypeData = {};
@@ -141,9 +139,16 @@ export class WorkflowRunnerProcess {
 			};
 		}
 
+		const loadNodesAndCredentials = {
+			nodeTypes: nodeTypesData,
+			credentialTypes: credentialsTypeData,
+			known: { nodes: {}, credentials: {} },
+		};
+
+		const nodeTypes = NodeTypes(loadNodesAndCredentials);
+
 		// Init credential types the workflow uses (is needed to apply default values to credentials)
-		const credentialTypes = CredentialTypes();
-		await credentialTypes.init(credentialsTypeData);
+		CredentialTypes(loadNodesAndCredentials);
 
 		// Load the credentials overwrites if any exist
 		const credentialsOverwrites = CredentialsOverwrites();

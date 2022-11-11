@@ -1,29 +1,20 @@
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-import { Known } from 'n8n-core';
-import {
+import type {
+	INode,
+	INodesAndCredentials,
 	INodeType,
 	INodeTypeData,
 	INodeTypeDescription,
 	INodeTypes,
 	IVersionedNodeType,
-	NodeHelpers,
 } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
 import * as path from 'path';
 import { loadClassInIsolation } from './CommunityNodes/helpers';
+import type { INodesTypeData } from './Interfaces';
 
 class NodeTypesClass implements INodeTypes {
-	nodeTypes: INodeTypeData = {};
-
-	private known: Known['nodes'];
-
-	register(known: Known) {
-		this.known = known.nodes;
-	}
-
-	async init(nodeTypes: INodeTypeData): Promise<void> {
+	constructor(private nodesAndCredentials: INodesAndCredentials) {
+		const { nodeTypes } = this.nodesAndCredentials;
 		// Some nodeTypes need to get special parameters applied like the
 		// polling nodes the polling times
 		// eslint-disable-next-line no-restricted-syntax
@@ -35,15 +26,10 @@ class NodeTypesClass implements INodeTypes {
 				nodeType.description.properties.unshift(...applyParameters);
 			}
 		}
-		this.nodeTypes = nodeTypes;
 	}
 
 	getAll(): Array<INodeType | IVersionedNodeType> {
-		return Object.values(this.nodeTypes).map((data) => data.type);
-	}
-
-	getNode(nodeType: string): INodeTypeData[string] {
-		return this.nodeTypes[nodeType] ?? this.loadNode(nodeType);
+		return Object.values(this.nodesAndCredentials.nodeTypes).map(({ type }) => type);
 	}
 
 	/**
@@ -53,7 +39,7 @@ class NodeTypesClass implements INodeTypes {
 		nodeTypeName: string,
 		version: number,
 	): { description: INodeTypeDescription } & { sourcePath: string } {
-		const nodeType = this.nodeTypes[nodeTypeName];
+		const nodeType = this.getNode(nodeTypeName);
 
 		if (!nodeType) {
 			throw new Error(`Unknown node type: ${nodeTypeName}`);
@@ -68,42 +54,92 @@ class NodeTypesClass implements INodeTypes {
 		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
 	}
 
-	attachNodeType(
-		nodeTypeName: string,
-		nodeType: INodeType | IVersionedNodeType,
-		sourcePath: string,
-	): void {
-		this.nodeTypes[nodeTypeName] = {
-			type: nodeType,
-			sourcePath,
-		};
+	// TODO: use the lazy-loading data to return this
+	getAllNodeTypeData(): INodesTypeData {
+		// Get the data of all the node types that they
+		// can be loaded again in the process
+		const returnData: INodesTypeData = {};
+		for (const [nodeTypeName, node] of Object.entries(this.nodesAndCredentials.nodeTypes)) {
+			returnData[nodeTypeName] = {
+				className: node.type.constructor.name,
+				sourcePath: node.sourcePath,
+			};
+		}
+		return returnData;
 	}
 
-	removeNodeType(nodeType: string): void {
-		delete this.nodeTypes[nodeType];
+	/**
+	 * Returns the data of the node types that are needed
+	 * to execute the given nodes
+	 */
+	getNodeTypeData(nodes: INode[]): INodesTypeData {
+		// Check which node-types have to be loaded
+		const neededNodeTypes = this.getNeededNodeTypes(nodes);
+
+		// Get all the data of the needed node types that they
+		// can be loaded again in the process
+		const returnData: INodesTypeData = {};
+		for (const { type } of neededNodeTypes) {
+			const nodeType = this.getNode(type);
+			returnData[type] = {
+				className: nodeType.type.constructor.name,
+				sourcePath: nodeType.sourcePath,
+			};
+		}
+
+		return returnData;
 	}
 
+	private getNode(nodeType: string): INodeTypeData[string] {
+		return this.nodesAndCredentials.nodeTypes[nodeType] ?? this.loadNode(nodeType);
+	}
+
+	// TODO: move this to loaders
 	private loadNode(type: string): INodeTypeData[string] {
-		if (type in this.known) {
-			const sourcePath = this.known[type];
+		const {
+			known: { nodes: knownNodes },
+			nodeTypes,
+		} = this.nodesAndCredentials;
+		if (type in knownNodes) {
+			const sourcePath = knownNodes[type];
 			const [name] = path.parse(sourcePath).name.split('.');
 			const loaded: INodeType = loadClassInIsolation(sourcePath, name);
-			this.nodeTypes[type] = {
+			nodeTypes[type] = {
 				sourcePath,
 				type: loaded,
 			};
-			return this.nodeTypes[type];
+			return nodeTypes[type];
 		}
 		throw new Error(`The node-type "${type}" is not known!`);
+	}
+
+	/**
+	 * Returns the names of the NodeTypes which are are needed
+	 * to execute the gives nodes
+	 *
+	 */
+	private getNeededNodeTypes(nodes: INode[]): Array<{ type: string; version: number }> {
+		// Check which node-types have to be loaded
+		const neededNodeTypes: Array<{ type: string; version: number }> = [];
+		for (const node of nodes) {
+			if (neededNodeTypes.find((neededNodes) => node.type === neededNodes.type) === undefined) {
+				neededNodeTypes.push({ type: node.type, version: node.typeVersion });
+			}
+		}
+		return neededNodeTypes;
 	}
 }
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export function NodeTypes(): NodeTypesClass {
-	if (nodeTypesInstance === undefined) {
-		nodeTypesInstance = new NodeTypesClass();
+export function NodeTypes(nodesAndCredentials?: INodesAndCredentials): NodeTypesClass {
+	if (!nodeTypesInstance) {
+		if (nodesAndCredentials) {
+			nodeTypesInstance = new NodeTypesClass(nodesAndCredentials);
+		} else {
+			throw new Error('NodeTypes not initialized yet');
+		}
 	}
 
 	return nodeTypesInstance;
