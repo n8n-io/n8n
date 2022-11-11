@@ -158,21 +158,17 @@ export class EEWorkflowsService extends WorkflowsService {
 		});
 	}
 
-	static async updateWorkflow(
-		user: User,
-		workflow: WorkflowEntity,
-		workflowId: string,
-		tags?: string[],
-		forceSave?: boolean,
-	): Promise<WorkflowEntity> {
+	static async preventTampering(workflow: WorkflowEntity, workflowId: string, user: User) {
 		const previousVersion = await EEWorkflowsService.get({ id: parseInt(workflowId, 10) });
+
 		if (!previousVersion) {
 			throw new ResponseHelper.ResponseError('Workflow not found', undefined, 404);
 		}
+
 		const allCredentials = await EECredentials.getAll(user);
+
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-			workflow = WorkflowHelpers.validateWorkflowCredentialUsage(
+			return WorkflowHelpers.validateWorkflowCredentialUsage(
 				workflow,
 				previousVersion,
 				allCredentials,
@@ -184,7 +180,5 @@ export class EEWorkflowsService extends WorkflowsService {
 				400,
 			);
 		}
-
-		return super.updateWorkflow(user, workflow, workflowId, tags, forceSave);
 	}
 }
