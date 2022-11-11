@@ -683,6 +683,7 @@ export default mixins(showMessage).extend({
 			try {
 				this.page = 0;
 				this.tableKey += 1;
+				this.dataTable = [];
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.ldap.syncronizationError'));
 			}
