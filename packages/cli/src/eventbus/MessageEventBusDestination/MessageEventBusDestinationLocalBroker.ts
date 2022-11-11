@@ -1,6 +1,6 @@
-import { LocalEventBroker } from '../EventBrokers/LocalEventBroker';
+import { LocalEventBroker } from '../LocalEventBroker/LocalEventBroker';
 import { EventMessage } from '../EventMessageClasses/EventMessage';
-import { MessageEventBusDestination } from './MessageEventBusDestination';
+import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
 import { MessageEventSubscriptionReceiverInterface } from '../MessageEventSubscriptionReceiver/MessageEventSubscriptionReceiverInterface';
@@ -9,20 +9,21 @@ interface MessageEventBusDestinationLocalBrokerOptions {
 	name?: string;
 }
 
-export class MessageEventBusDestinationLocalBroker implements MessageEventBusDestination {
+export class MessageEventBusDestinationLocalBroker extends MessageEventBusDestination {
 	#localBroker: LocalEventBroker;
 
-	#name: string;
+	// #name: string;
 
 	constructor(options?: MessageEventBusDestinationLocalBrokerOptions) {
+		super({ name: options?.name ?? 'LocalBroker' });
 		this.#localBroker = new LocalEventBroker();
-		this.#name = options?.name ?? 'LocalBroker';
+		// this.#name = options?.name ?? 'LocalBroker';
 		console.debug(`MessageForwarderToLocalBroker Broker initialized`);
 	}
 
-	getName(): string {
-		return this.#name;
-	}
+	// getName(): string {
+	// 	return this.#name;
+	// }
 
 	async receiveFromEventBus(msg: EventMessage): Promise<boolean> {
 		const result = await this.#localBroker?.addMessage(msg);
@@ -50,11 +51,12 @@ export class MessageEventBusDestinationLocalBroker implements MessageEventBusDes
 		return this;
 	}
 
-	addSubscription(
-		receiver: MessageEventSubscriptionReceiverInterface,
-		subscriptionSets: EventMessageSubscriptionSet[],
-	) {
-		this.#localBroker.addSubscriptionSets(receiver.name, subscriptionSets);
-		return this;
-	}
+	// TODO: fix for local broker
+	// addSubscription(
+	// 	receiver: MessageEventSubscriptionReceiverInterface,
+	// 	subscriptionSets: EventMessageSubscriptionSet[],
+	// ) {
+	// 	this.#localBroker.addSubscriptionSets(receiver.name, subscriptionSets);
+	// 	return this;
+	// }
 }

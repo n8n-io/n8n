@@ -5,7 +5,7 @@ import { UserSettings } from 'n8n-core';
 import path, { parse } from 'path';
 import { ModuleThread, spawn, Thread, Worker } from 'threads';
 import { MessageEventBusLogWriterWorker } from './MessageEventBusLogWriterWorker';
-import { MessageEventBusWriter } from './MessageEventBusWriter';
+import { MessageEventBusWriter } from '../EventMessageClasses/MessageEventBusWriter';
 import {
 	EventMessageConfirm,
 	isEventMessageConfirmSerialized,
@@ -146,30 +146,5 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 
 	async getMessagesUnsent(): Promise<EventMessage[]> {
 		return this.getMessages('unsent');
-	}
-
-	async flushSentMessages(ageLimitSeconds: number): Promise<void> {
-		// 	if (this.keepSentEventsForSeconds > 0 && this.#db?.data !== undefined) {
-		// 		const clearDate = DateTime.now().minus({ seconds: ageLimitSeconds });
-		// 		Object.keys(this.#dbSent.data).map(function (key) {
-		// 			const eventMessage = this.#dbSent.data[key]
-		// 				? EventMessage.deserialize(this.#dbSent.data[key] as EventMessageSerialized)
-		// 				: undefined;
-		// 			if (eventMessage)
-		// 				console.log(
-		// 					eventMessage.ts.toMillis(),
-		// 					clearDate.toMillis(),
-		// 					eventMessage.ts < clearDate,
-		// 				);
-		// 			if (eventMessage && eventMessage.ts < clearDate) {
-		// 				delete this.#dbSent.data[key];
-		// 			}
-		// 		}, this);
-		// 		if (this.sync) {
-		// 			this.#dbSent.writeSync();
-		// 		} else {
-		// 			await this.#dbSent.write();
-		// 		}
-		// 	}
 	}
 }

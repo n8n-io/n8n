@@ -21,5 +21,13 @@ type EventMessageNamespaces = 'n8n';
 export type EventMessageNames = '*' | `${EventMessageNamespaces}.${EventMessageGroupsWithEvents}`;
 export type EventMessageGroups = '*' | `${EventMessageNamespaces}.${EventMessageGroupNames}`;
 export type EventMessageEventName = string;
-export type EventMessageLevel = 'info' | 'debug' | 'verbose' | 'error';
+export type EventMessageLevel =
+	| 'debug'
+	| 'info'
+	| 'notice'
+	| 'warning'
+	| 'error'
+	| 'crit'
+	| 'alert'
+	| 'emerg';
 export type EventMessageSeverity = 'low' | 'normal' | 'high' | 'highest';

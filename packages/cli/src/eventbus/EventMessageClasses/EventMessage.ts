@@ -6,7 +6,6 @@ import {
 	EventMessageGroups,
 	EventMessageNames,
 	EventMessageLevel,
-	EventMessageSeverity,
 } from '../types/EventMessageTypes';
 import { SerializerImplementation } from 'threads';
 
@@ -18,7 +17,6 @@ export interface EventMessageSerialized {
 	ts?: string | undefined;
 	eventName: EventMessageNames;
 	level?: EventMessageLevel | undefined;
-	severity?: EventMessageSeverity | undefined;
 	payload?: any | undefined;
 }
 
@@ -52,8 +50,6 @@ export class EventMessage {
 
 	readonly level: EventMessageLevel;
 
-	readonly severity: EventMessageSeverity;
-
 	readonly __payloadtype: string;
 
 	payload: any;
@@ -73,7 +69,6 @@ export class EventMessage {
 		this.payload = props.payload;
 		this.__payloadtype = props.__payloadtype ?? '$$EventMessageAny';
 		this.level = props.level ?? 'info';
-		this.severity = props.severity ?? 'normal';
 	}
 
 	getEventGroup(): EventMessageGroups | undefined {
@@ -100,7 +95,6 @@ export class EventMessage {
 			ts: this.ts.toISO(),
 			eventName: this.eventName,
 			level: this.level,
-			severity: this.severity,
 			payload: JSON.stringify(this.payload),
 		};
 	}

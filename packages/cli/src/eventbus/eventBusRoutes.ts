@@ -4,9 +4,12 @@ import { ResponseHelper } from '..';
 import { ResponseError } from '../ResponseHelper';
 import { EventMessage, EventMessageSerialized } from './EventMessageClasses/EventMessage';
 import { isEventMessageSubscriptionSet } from './EventMessageClasses/EventMessageSubscriptionSet';
-import { eventBus } from './MessageEventBus/MessageEventBus';
+import { eventBus, EventMessageSubscribeDestination } from './MessageEventBus/MessageEventBus';
 import { MessageEventBusDestinationLocalBroker } from './MessageEventBusDestination/MessageEventBusDestinationLocalBroker';
-import { MessageEventBusDestinationSyslog } from './MessageEventBusDestination/MessageEventBusDestinationSyslog';
+import {
+	isMessageEventBusDestinationSyslogOptions,
+	MessageEventBusDestinationSyslog,
+} from './MessageEventBusDestination/MessageEventBusDestinationSyslog';
 import {
 	MessageEventBusDestinationWebhook,
 	MessageEventBusDestinationWebhookOptions,
@@ -33,6 +36,14 @@ const isBodyWithName = (candidate: unknown): candidate is { name: string } => {
 	const o = candidate as { name: string };
 	if (!o) return false;
 	return o.name !== undefined;
+};
+
+const isEventMessageSubscribeDestination = (
+	candidate: unknown,
+): candidate is EventMessageSubscribeDestination => {
+	const o = candidate as EventMessageSubscribeDestination;
+	if (!o) return false;
+	return o.subscriptionName !== undefined && o.destinationName !== undefined;
 };
 
 // TODO: add credentials
@@ -137,14 +148,10 @@ eventBusRouter.post(
 eventBusRouter.post(
 	`/destination/add/syslog`,
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-		let destinationName = 'SyslogDestination';
-		if (isBodyWithName(req.body)) {
-			destinationName = req.body.name;
+		if (isMessageEventBusDestinationSyslogOptions(req.body)) {
+			const result = await eventBus.addDestination(new MessageEventBusDestinationSyslog(req.body));
+			return result;
 		}
-		const result = await eventBus.addDestination(
-			new MessageEventBusDestinationSyslog({ ip: '127.0.0.1' }),
-		);
-		return result;
 	}),
 );
 
@@ -168,6 +175,40 @@ eventBusRouter.post(
 			return result;
 		} else {
 			throw new ResponseError('Body is missing name', undefined, 400);
+		}
+	}),
+);
+
+// ----------------------------------------
+// Subscriptions
+// ----------------------------------------
+
+eventBusRouter.post(
+	`/subscription/add`,
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		if (isEventMessageSubscribeDestination(req.body)) {
+			eventBus.addSubscription(req.body);
+		} else {
+			throw new ResponseError(
+				'Body is missing SubscriptionSet name or Destination name',
+				undefined,
+				400,
+			);
+		}
+	}),
+);
+
+eventBusRouter.post(
+	`/subscription/remove`,
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		if (isEventMessageSubscribeDestination(req.body)) {
+			eventBus.removeSubscription(req.body);
+		} else {
+			throw new ResponseError(
+				'Body is missing SubscriptionSet name or Destination name',
+				undefined,
+				400,
+			);
 		}
 	}),
 );

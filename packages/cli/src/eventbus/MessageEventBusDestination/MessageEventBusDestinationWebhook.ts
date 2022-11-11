@@ -1,5 +1,5 @@
 import { EventMessage } from '../EventMessageClasses/EventMessage';
-import { MessageEventBusDestination } from './MessageEventBusDestination';
+import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
 import axios from 'axios';
 
 export interface MessageEventBusDestinationWebhookOptions {
@@ -8,22 +8,16 @@ export interface MessageEventBusDestinationWebhookOptions {
 	expectedStatusCode?: number;
 }
 
-export class MessageEventBusDestinationWebhook implements MessageEventBusDestination {
+export class MessageEventBusDestinationWebhook extends MessageEventBusDestination {
 	readonly url: string;
-
-	readonly name: string;
 
 	readonly expectedStatusCode: number;
 
 	constructor(options: MessageEventBusDestinationWebhookOptions) {
-		this.name = options.name ?? 'WebhookDestination';
+		super({ name: options.name ?? 'WebhookDestination' });
 		this.expectedStatusCode = options.expectedStatusCode ?? 200;
 		this.url = options.url;
 		console.debug(`MessageEventBusDestinationWebhook Broker initialized`);
-	}
-
-	getName(): string {
-		return this.name;
 	}
 
 	async receiveFromEventBus(msg: EventMessage): Promise<boolean> {

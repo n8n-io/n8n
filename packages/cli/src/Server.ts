@@ -168,6 +168,7 @@ import { ConsoleEventSubscriptionReceiver } from './eventbus/MessageEventSubscri
 import { EventMessageNames } from './eventbus/types/EventMessageTypes';
 import { eventMessageConfirmSerializer } from './eventbus/EventMessageClasses/EventMessageConfirm';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
+import { EventMessageSubscriptionSet } from './eventbus/EventMessageClasses/EventMessageSubscriptionSet';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1685,27 +1686,29 @@ class App {
 		registerSerializer(messageEventSerializer);
 		registerSerializer(eventMessageConfirmSerializer);
 
-		// these will have to be made user configurable
-		// const subscriptionSetCore = new EventMessageSubscriptionSet({
-		// 	name: 'core',
-		// 	eventGroups: ['n8n.core'],
-		// 	eventNames: [],
-		// });
-		// const subscriptionSetCustom = new EventMessageSubscriptionSet({
-		// 	name: 'ui',
-		// 	eventGroups: ['n8n.ui'],
-		// 	eventNames: ['n8n.workflow.workflowStarted'],
-		// });
-		// const subscriptionSetAll = new EventMessageSubscriptionSet({
-		// 	name: 'All Events',
-		// 	eventGroups: ['*'],
-		// 	eventNames: ['*'],
-		// });
-
 		// Initialize EventBus
 		await eventBus.initialize();
 		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
+		// these will have to be made user configurable
+		const subscriptionSetCore = new EventMessageSubscriptionSet({
+			name: 'core',
+			eventGroups: ['n8n.core'],
+			eventNames: [],
+		});
+		const subscriptionSetUi = new EventMessageSubscriptionSet({
+			name: 'ui',
+			eventGroups: ['n8n.ui'],
+			eventNames: ['n8n.workflow.workflowStarted'],
+		});
+		const subscriptionSetAll = new EventMessageSubscriptionSet({
+			name: 'all',
+			eventGroups: ['*'],
+			eventNames: ['*'],
+		});
+		eventBus.addSubscriptionSet(subscriptionSetCore);
+		eventBus.addSubscriptionSet(subscriptionSetUi);
+		eventBus.addSubscriptionSet(subscriptionSetAll);
 		// ----------------------------------------
 		// Webhooks
 		// ----------------------------------------

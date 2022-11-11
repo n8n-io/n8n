@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { EventMessage } from '../EventMessageClasses/EventMessage';
+import { EventMessage } from './EventMessage';
 
 export interface MessageEventBusWriter {
 	putMessage(msg: EventMessage): Promise<void>;
@@ -8,6 +8,4 @@ export interface MessageEventBusWriter {
 	getMessagesSent(): Promise<EventMessage[]> | EventMessage[];
 	getMessagesUnsent(): Promise<EventMessage[]> | EventMessage[];
 	close(): void;
-	// recoverUnsentMessages(): Promise<void>;
-	flushSentMessages(ageLimitSeconds: number): Promise<void>;
 }

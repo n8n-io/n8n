@@ -1,5 +1,5 @@
 import { EventMessage } from '../EventMessageClasses/EventMessage';
-import { MessageEventBusDestination } from './MessageEventBusDestination';
+import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
 import { MessageEventSubscriptionReceiverInterface } from '../MessageEventSubscriptionReceiver/MessageEventSubscriptionReceiverInterface';
@@ -13,23 +13,24 @@ interface MessageEventBusDestinationRedisOptions {
 	name?: string;
 }
 
-export class MessageEventBusDestinationRedis implements MessageEventBusDestination {
+export class MessageEventBusDestinationRedis extends MessageEventBusDestination {
 	#client: Redis | undefined;
 
 	#channelName: string;
 
 	#receivers: RedisEventSubscriptionReceiver[] = [];
 
-	#name: string;
+	// #name: string;
 
 	constructor(options: MessageEventBusDestinationRedisOptions) {
+		super({ name: options.name ?? 'RedisForwarder' });
 		options.redisOptions = options?.redisOptions ?? {
 			port: 6379, // Redis port
 			host: '127.0.0.1', // Redis host
 			db: 0, // Defaults to 0
 		};
 		this.#channelName = options.channelName;
-		this.#name = options.name ?? 'RedisForwarder';
+		// this.#name = options.name ?? 'RedisForwarder';
 		this.#client = new Redis(options.redisOptions);
 		this.#client
 			?.monitor((error, monitor) => {
@@ -39,10 +40,6 @@ export class MessageEventBusDestinationRedis implements MessageEventBusDestinati
 			})
 			.catch((error) => console.log(error));
 		console.debug(`MessageEventBusDestinationRedis Broker initialized`);
-	}
-
-	getName(): string {
-		return this.#name;
 	}
 
 	async receiveFromEventBus(msg: EventMessage): Promise<boolean> {
@@ -72,10 +69,11 @@ export class MessageEventBusDestinationRedis implements MessageEventBusDestinati
 		return launchResult;
 	}
 
-	async addSubscription(
-		receiver: MessageEventSubscriptionReceiverInterface,
-		subscriptionSets: EventMessageSubscriptionSet[],
-	) {
-		await receiver.worker?.communicate('subscribe', 'n8n-events');
-	}
+	// TODO: fix to work with EventMessageSubscriptionSetNames
+	// async addSubscription(
+	// 	receiver: MessageEventSubscriptionReceiverInterface,
+	// 	subscriptionSets: EventMessageSubscriptionSet[],
+	// ) {
+	// 	await receiver.worker?.communicate('subscribe', 'n8n-events');
+	// }
 }

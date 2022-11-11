@@ -1,11 +1,24 @@
 import { EventMessage, EventMessageSerialized } from '../EventMessageClasses/EventMessage';
-import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination';
+import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
 import remove from 'lodash.remove';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
 
 interface MessageEventBusInitializationOptions {
 	destinations?: MessageEventBusDestination[];
+}
+
+interface EventMessageSubscriptionSetStore {
+	[key: string]: EventMessageSubscriptionSet;
+}
+
+interface EventMessageDestinationStore {
+	[key: string]: MessageEventBusDestination;
+}
+
+export interface EventMessageSubscribeDestination {
+	subscriptionName: string;
+	destinationName: string;
 }
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
@@ -15,11 +28,11 @@ class MessageEventBus {
 
 	static #instance: MessageEventBus;
 
-	#subscriptionSets: EventMessageSubscriptionSet[];
+	#subscriptionSets: EventMessageSubscriptionSetStore = {};
 
 	#immediateWriter: MessageEventBusLogWriter;
 
-	#destinations: MessageEventBusDestination[];
+	#destinations: EventMessageDestinationStore = {};
 
 	#pushInteralTimer: NodeJS.Timer;
 
@@ -38,7 +51,11 @@ class MessageEventBus {
 			clearInterval(this.#pushInteralTimer);
 		}
 		this.#immediateWriter = await MessageEventBusLogWriter.getInstance();
-		this.#destinations = options?.destinations ?? [];
+		if (options?.destinations) {
+			for (const destination of options?.destinations) {
+				this.#destinations[destination.getName()] = destination;
+			}
+		}
 
 		await this.send(
 			new EventMessage({
@@ -65,38 +82,54 @@ class MessageEventBus {
 
 	async addDestination(destination: MessageEventBusDestination) {
 		await this.removeDestination(destination.getName());
-		this.#destinations.push(destination);
+		this.#destinations[destination.getName()] = destination;
 		return destination.getName();
 	}
 
-	async removeDestination(name: string): Promise<string[]> {
-		const removedDestinations = remove(this.#destinations, (e) => e.getName() === name);
-		for (const destination of removedDestinations) {
-			await destination.close();
+	async removeDestination(name: string): Promise<string> {
+		if (name in Object.keys(this.#destinations)) {
+			await this.#destinations[name].close();
+			delete this.#destinations[name];
 		}
-		return removedDestinations.map((e) => e.getName());
+		return name;
 	}
 
 	addSubscriptionSet(subscriptionSet: EventMessageSubscriptionSet): void {
-		const existingIndex = this.getSubscriptionSetIndex(subscriptionSet.getName());
-		if (existingIndex !== -1) {
-			this.#subscriptionSets[existingIndex].eventGroups = subscriptionSet.eventGroups;
-			this.#subscriptionSets[existingIndex].eventNames = subscriptionSet.eventNames;
+		const subscriptionSetName = subscriptionSet.getName();
+		if (subscriptionSetName in this.#subscriptionSets) {
+			this.#subscriptionSets[subscriptionSetName].eventGroups = subscriptionSet.eventGroups;
+			this.#subscriptionSets[subscriptionSetName].eventNames = subscriptionSet.eventNames;
 		} else {
-			this.#subscriptionSets.push(subscriptionSet);
+			this.#subscriptionSets[subscriptionSetName] = subscriptionSet;
 		}
 	}
 
-	removeSubscriptionSet(name: string) {
-		remove(this.#subscriptionSets, (e) => e.getName() === name);
+	getSubscriptionSet(subscriptionSetName: string) {
+		if (subscriptionSetName in this.#subscriptionSets) {
+			return this.#subscriptionSets[subscriptionSetName];
+		}
+		return undefined;
 	}
 
-	getSubscriptionSet(name: string) {
-		return this.#subscriptionSets.find((e) => e.getName() === name);
+	removeSubscriptionSet(subscriptionSetName: string) {
+		if (subscriptionSetName in this.#subscriptionSets) {
+			delete this.#subscriptionSets[subscriptionSetName];
+		}
 	}
 
-	getSubscriptionSetIndex(name: string) {
-		return this.#subscriptionSets.findIndex((e) => e.getName() === name);
+	addSubscription(options: EventMessageSubscribeDestination): void {
+		if (
+			Object.keys(this.#destinations).includes(options.destinationName) &&
+			Object.keys(this.#subscriptionSets).includes(options.subscriptionName)
+		) {
+			this.#destinations[options.destinationName].addSubscription(options.subscriptionName);
+		}
+	}
+
+	removeSubscription(options: EventMessageSubscribeDestination) {
+		if (Object.keys(this.#destinations).includes(options.destinationName)) {
+			this.#destinations[options.destinationName].removeSubscription(options.subscriptionName);
+		}
 	}
 
 	async #trySendingUnsent() {
@@ -109,13 +142,12 @@ class MessageEventBus {
 
 	async close() {
 		await this.#immediateWriter.close();
-		for (const destination of this.#destinations) {
-			await destination.close();
+		for (const destinationName of Object.keys(this.#destinations)) {
+			await this.#destinations[destinationName].close();
 		}
 	}
 
 	async send(msg: EventMessage) {
-		console.debug(`MessageEventBus Msg received ${msg.eventName} - ${msg.id}`);
 		await this.#writeMessageToLog(msg);
 		await this.#sendToDestinations(msg);
 	}
@@ -133,10 +165,13 @@ class MessageEventBus {
 	}
 
 	async #sendToDestinations(msg: EventMessage) {
-		for (const destination of this.#destinations) {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-			await destination.receiveFromEventBus(msg);
-			console.debug(`MessageEventBus Msg forwarded  ${msg.eventName} - ${msg.id}`);
+		// if there are no destinations, immediately mark the event as sent
+		if (Object.keys(this.#destinations).length === 0) {
+			await this.confirmSent(msg);
+		} else {
+			for (const destinationName of Object.keys(this.#destinations)) {
+				await this.#destinations[destinationName].receiveFromEventBus(msg);
+			}
 		}
 	}
 
