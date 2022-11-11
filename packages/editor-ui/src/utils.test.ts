@@ -43,24 +43,86 @@ describe("Utils", () => {
 
 	describe("getJsonSchema", () => {
 		test.each([
-			[, { type: 'undefined', value: 'undefined', path: '' }],
-			[undefined, { type: 'undefined', value: 'undefined', path: '' }],
-			[null, { type: 'string', value: '[null]', path: '' }],
-			['John', { type: 'string', value: '"John"', path: '' }],
-			['123', { type: 'string', value: '"123"', path: '' }],
-			[123, { type: 'number', value: '123', path: '' }],
-			[true, { type: 'boolean', value: 'true', path: '' }],
-			[false, { type: 'boolean', value: 'false', path: '' }],
-			[() => {}, { type: 'function', value: '', path: '' }],
-			[Symbol('x'), { type: 'symbol', value: 'Symbol(x)', path: '' }],
-			[1n, { type: 'bigint', value: '1', path: '' }],
-			[['John', 1, true], { type: 'list', value: 'string', path: '[*]' }],
-			[{ people: ['Joe', 'John']}, { type: 'object',  value: [{ type: 'list', key: 'people', value: 'string', path: '.people[*]' }], path: '' }],
-			[[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }], { type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }], path: '[*]' }],
-			[[{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }], { type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }, { type: 'list', key: 'hobbies', value: 'string', path: '[*].hobbies[*]' }], path: '[*]' }],
-			[[], { type: 'list', value: 'undefined', path: '[*]' }],
-			[[[1,2]], { type: 'list', value: { type: 'list', value: 'number', path: '[*][*]' }, path: '[*]' }],
-			[[[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }]], { type: 'list', value: { type: 'list', value:  [{ type: 'string', key: 'name', value: 'string', path: '[*][*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*][*].age' }], path: '[*][*]' }, path: '[*]' }],
+			[
+				,
+				{ type: 'undefined', value: 'undefined', path: '' },
+			],
+			[
+				undefined,
+				{ type: 'undefined', value: 'undefined', path: '' },
+			],
+			[
+				null,
+				{ type: 'string', value: '[null]', path: '' },
+			],
+			[
+				'John',
+				{ type: 'string', value: '"John"', path: '' },
+			],
+			[
+				'123',
+				{ type: 'string', value: '"123"', path: '' },
+			],
+			[
+				123,
+				{ type: 'number', value: '123', path: '' },
+			],
+			[
+				true,
+				{ type: 'boolean', value: 'true', path: '' },
+			],
+			[
+				false,
+				{ type: 'boolean', value: 'false', path: '' },
+			],
+			[
+				() => {},
+				{ type: 'function', value: '', path: '' },
+			],
+			[
+				new Date('2022.11.22'),
+				{ type: 'date', value: '2022-11-21T23:00:00.000Z', path: '' },
+			],
+			[
+				Symbol('x'),
+				{ type: 'symbol', value: 'Symbol(x)', path: '' },
+			],
+			[
+				1n,
+				{ type: 'bigint', value: '1', path: '' },
+			],
+			[
+				['John', 1, true],
+				{ type: 'list', value: 'string', path: '[*]' },
+			],
+			[
+				{ people: ['Joe', 'John']},
+				{ type: 'object',  value: [{ type: 'list', key: 'people', value: 'string', path: '.people[*]' }], path: '' },
+			],
+			[
+				[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }],
+				{ type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }], path: '[*]' },
+			],
+			[
+				[{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }],
+				{ type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }, { type: 'list', key: 'hobbies', value: 'string', path: '[*].hobbies[*]' }], path: '[*]' },
+			],
+			[
+				[],
+				{ type: 'list', value: 'undefined', path: '[*]' },
+			],
+			[
+				[[1,2]],
+				{ type: 'list', value: { type: 'list', value: 'number', path: '[*][*]' }, path: '[*]' },
+			],
+			[
+				[[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }]],
+				{ type: 'list', value: { type: 'list', value:  [{ type: 'string', key: 'name', value: 'string', path: '[*][*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*][*].age' }], path: '[*][*]' }, path: '[*]' },
+			],
+			[
+				[{ dates: [[new Date('2022.11.22'), new Date('2022.11.23')], [new Date('2022.12.22'), new Date('2022.12.23')]] }],
+				{ type: 'list', value: [{ type: 'list', key: 'dates', value: { type: 'list', value: 'date', path: '[*].dates[*][*]' }, path: '[*].dates[*]' }], path: '[*]' },
+			],
 		])('should return the correct json schema for %s', (input, schema) => {
 			expect(getJsonSchema(input)).toEqual(schema);
 		});
@@ -91,6 +153,13 @@ describe("Utils", () => {
 			const schema = getJsonSchema(input) as N8nJsonSchema;
 			const pathData = jp.query(input, `$${ ((schema.value as N8nJsonSchema).value as N8nJsonSchema[])[1].path }`);
 			expect(pathData).toEqual([22, 33]);
+		});
+
+		it('should return the correct data when using the generated json path on a list of objects with a list of date tuples', () => {
+			const input = [{ dates: [[new Date('2022.11.22'), new Date('2022.11.23')], [new Date('2022.12.22'), new Date('2022.12.23')]] }];
+			const schema = getJsonSchema(input) as N8nJsonSchema;
+			const pathData = jp.query(input, `$${ ((schema.value as N8nJsonSchema[])[0].value as N8nJsonSchema).path }`);
+			expect(pathData).toEqual([new Date('2022.11.22'), new Date('2022.11.23'),new Date('2022.12.22'), new Date('2022.12.23')]);
 		});
 	});
 });
