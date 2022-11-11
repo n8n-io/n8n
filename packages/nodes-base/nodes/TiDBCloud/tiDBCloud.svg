@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="_图层_2" data-name="图层 2" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 355.75 355.75">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: none;
+      }
+
+      .cls-2 {
+        fill: url(#linear-gradient);
+      }
+
+      .cls-3 {
+        fill: #fff;
+      }
+    </style>
+    <linearGradient id="linear-gradient" x1="-2593.54" y1="-5514.48" x2="-2587.82" y2="-5520.31" gradientTransform="translate(79239.9 -120091.3) scale(30.52 -21.8)" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#e30c34"/>
+      <stop offset="1" stop-color="#b7062c"/>
+    </linearGradient>
+  </defs>
+  <g id="Layer_1" data-name="Layer 1">
+    <g>
+      <rect class="cls-3" width="355.75" height="355.75"/>
+      <g>
+        <rect class="cls-1" x="49.5" y="49.5" width="256.74" height="256.74"/>
+        <g id="Group_1794" data-name="Group 1794">
+          <path id="Path_4369" data-name="Path 4369" class="cls-2" d="M252.01,129.08c-23.51-40.94-75.76-55.07-116.7-31.55-22.03,12.65-37.29,34.44-41.64,59.47-30.69,7.11-49.8,37.75-42.69,68.44,5.99,25.86,29.04,44.17,55.58,44.16,1.93,0,3.86-.1,5.78-.29h116.83c1.91,.15,3.83,.29,5.78,.29,39.37,0,71.29-31.92,71.29-71.29,0-32.8-22.38-61.37-54.23-69.22h0Z"/>
+          <g id="Group_1793" data-name="Group 1793">
+            <path id="Path_4370" data-name="Path 4370" class="cls-3" d="M177.8,130.77l-44.16,25.5v25.49l22.09-12.75v51.32l22.08,12.73h0v-76.81l22.08-12.75-22.08-12.74Z"/>
+            <path id="Path_4371" data-name="Path 4371" class="cls-3" d="M200,169.15v51.17l22.17-12.8v-51.19l-22.17,12.81Z"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
