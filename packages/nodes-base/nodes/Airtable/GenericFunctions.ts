@@ -7,7 +7,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
-	NodeApiError,
 } from 'n8n-workflow';
 
 interface IAttachment {

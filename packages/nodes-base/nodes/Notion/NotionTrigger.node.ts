@@ -1,13 +1,6 @@
 import { IPollFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeExecutionData,
-	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import { notionApiRequest, simplifyObjects } from './GenericFunctions';
 
@@ -89,14 +82,15 @@ export class NotionTrigger implements INodeType {
 								type: 'regex',
 								properties: {
 									regex:
-										'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+										'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
 									errorMessage: 'Not a valid Notion Database URL',
 								},
 							},
 						],
 						extractValue: {
 							type: 'regex',
-							regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+							regex:
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
 						},
 					},
 					{
@@ -108,7 +102,8 @@ export class NotionTrigger implements INodeType {
 							{
 								type: 'regex',
 								properties: {
-									regex: '^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+									regex:
+										'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
 									errorMessage: 'Not a valid Notion Database ID',
 								},
 							},
@@ -125,7 +120,7 @@ export class NotionTrigger implements INodeType {
 						event: ['pageAddedToDatabase', 'pagedUpdatedInDatabase'],
 					},
 				},
-				description: "The Notion Database to operate on",
+				description: 'The Notion Database to operate on',
 			},
 			{
 				displayName: 'Simplify',
