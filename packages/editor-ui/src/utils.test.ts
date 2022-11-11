@@ -58,6 +58,9 @@ describe("Utils", () => {
 			[{ people: ['Joe', 'John']}, { type: 'object',  value: [{ type: 'list', key: 'people', value: 'string', path: '.people[*]' }], path: '' }],
 			[[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }], { type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }], path: '[*]' }],
 			[[{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }], { type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }, { type: 'list', key: 'hobbies', value: 'string', path: '[*].hobbies[*]' }], path: '[*]' }],
+			[[], { type: 'list', value: 'undefined', path: '[*]' }],
+			[[[1,2]], { type: 'list', value: { type: 'list', value: 'number', path: '[*][*]' }, path: '[*]' }],
+			[[[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }]], { type: 'list', value: { type: 'list', value:  [{ type: 'string', key: 'name', value: 'string', path: '[*][*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*][*].age' }], path: '[*][*]' }, path: '[*]' }],
 		])('should return the correct json schema for %s', (input, schema) => {
 			expect(getJsonSchema(input)).toEqual(schema);
 		});
@@ -65,15 +68,29 @@ describe("Utils", () => {
 		it('should return the correct data when using the generated json path on an object', () => {
 			const input = { people: ['Joe', 'John']};
 			const schema = getJsonSchema(input) as N8nJsonSchema;
-			const pathData = jp.query(input, `$${ (schema.value[0] as N8nJsonSchema).path }`);
+			const pathData = jp.query(input, `$${ ((schema.value as N8nJsonSchema[])[0] as N8nJsonSchema).path }`);
 			expect(pathData).toEqual(['Joe', 'John']);
 		});
 
 		it('should return the correct data when using the generated json path on a list', () => {
 			const input = [{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }];
 			const schema = getJsonSchema(input) as N8nJsonSchema;
-			const pathData = jp.query(input, `$${ (schema.value[2] as N8nJsonSchema).path }`);
+			const pathData = jp.query(input, `$${ ((schema.value as N8nJsonSchema[])[2] as N8nJsonSchema).path }`);
 			expect(pathData).toEqual(['surfing', 'traveling', 'skateboarding', 'gaming']);
+		});
+
+		it('should return the correct data when using the generated json path on a list of list', () => {
+			const input = [[1,2]];
+			const schema = getJsonSchema(input) as N8nJsonSchema;
+			const pathData = jp.query(input, `$${ (schema.value as N8nJsonSchema).path }`);
+			expect(pathData).toEqual([1, 2]);
+		});
+
+		it('should return the correct data when using the generated json path on a list of list of objects', () => {
+			const input = [[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }]];
+			const schema = getJsonSchema(input) as N8nJsonSchema;
+			const pathData = jp.query(input, `$${ ((schema.value as N8nJsonSchema).value as N8nJsonSchema[])[1].path }`);
+			expect(pathData).toEqual([22, 33]);
 		});
 	});
 });

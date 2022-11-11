@@ -1287,4 +1287,4 @@ export type N8nJsonSchemaType =
 	| 'function'
 	| 'null'
 	| 'undefined';
-export type N8nJsonSchema = { type: N8nJsonSchemaType, key?: string, value: string | N8nJsonSchema[], path?: string };
+export type N8nJsonSchema = { type: N8nJsonSchemaType, key?: string, value: string | N8nJsonSchema | N8nJsonSchema[], path?: string };
