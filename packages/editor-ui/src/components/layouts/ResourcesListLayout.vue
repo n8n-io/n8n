@@ -8,7 +8,7 @@
 			</div>
 
 			<div class="mt-xs mb-l">
-				<n8n-button size="large" block @click="$emit('click:add', $event)">
+				<n8n-button size="large" block @click="$emit('click:add', $event)" data-test-id="resources-list-add">
 					{{ $locale.baseText(`${resourceKey}.add`) }}
 				</n8n-button>
 			</div>
@@ -53,6 +53,7 @@
 								size="medium"
 								clearable
 								ref="search"
+								data-test-id="resources-list-search"
 							>
 								<n8n-icon icon="search" slot="prefix"/>
 							</n8n-input>

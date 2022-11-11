@@ -40,18 +40,6 @@ const schemaGetWorkflowsQueryFilter = {
 
 const allowedWorkflowsQueryFilterFields = Object.keys(schemaGetWorkflowsQueryFilter.properties);
 
-const isTrigger = (nodeType: string) =>
-	['trigger', 'webhook'].some((suffix) => nodeType.toLowerCase().includes(suffix));
-
-function findFirstPinnedTrigger(workflow: IWorkflowDb, pinData?: IPinData) {
-	if (!pinData) return;
-
-	// eslint-disable-next-line consistent-return
-	return workflow.nodes.find(
-		(node) => !node.disabled && isTrigger(node.type) && pinData[node.name],
-	);
-}
-
 export class WorkflowsService {
 	static async getSharing(
 		user: User,
@@ -77,6 +65,28 @@ export class WorkflowsService {
 		}
 
 		return Db.collections.SharedWorkflow.findOne(options);
+	}
+
+	/**
+	 * Find the pinned trigger to execute the workflow from, if any.
+	 */
+	static findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
+		if (!pinData || !startNodes) return null;
+
+		const isTrigger = (nodeTypeName: string) =>
+			['trigger', 'webhook'].some((suffix) => nodeTypeName.toLowerCase().includes(suffix));
+
+		const pinnedTriggers = workflow.nodes.filter(
+			(node) => !node.disabled && pinData[node.name] && isTrigger(node.type),
+		);
+
+		if (pinnedTriggers.length === 0) return null;
+
+		if (startNodes?.length === 0) return pinnedTriggers[0]; // full execution
+
+		const [startNodeName] = startNodes;
+
+		return pinnedTriggers.find((pt) => pt.name === startNodeName) ?? null; // partial execution
 	}
 
 	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
@@ -318,11 +328,11 @@ export class WorkflowsService {
 		const EXECUTION_MODE = 'manual';
 		const ACTIVATION_MODE = 'manual';
 
-		const pinnedTrigger = findFirstPinnedTrigger(workflowData, pinData);
+		const pinnedTrigger = WorkflowsService.findPinnedTrigger(workflowData, startNodes, pinData);
 
 		// If webhooks nodes exist and are active we have to wait for till we receive a call
 		if (
-			pinnedTrigger === undefined &&
+			pinnedTrigger === null &&
 			(runData === undefined ||
 				startNodes === undefined ||
 				startNodes.length === 0 ||

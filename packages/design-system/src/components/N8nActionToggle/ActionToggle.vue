@@ -14,7 +14,7 @@
 					:size="iconSize"
 				/>
 			</span>
-			<el-dropdown-menu slot="dropdown">
+			<el-dropdown-menu slot="dropdown" data-test-id="action-toggle-dropdown">
 				<el-dropdown-item
 					v-for="action in actions"
 					:key="action.value"
