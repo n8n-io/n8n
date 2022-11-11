@@ -1330,7 +1330,7 @@ export interface ILdapConfig {
 		syncronization: {
 			enabled: boolean;
 			interval: number; // minutes
-			searchTimeout: string;
+			searchTimeout: number;
 			pageSize: number;
 		};
 }

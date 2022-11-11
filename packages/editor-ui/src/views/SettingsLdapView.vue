@@ -229,7 +229,7 @@ export default mixins(showMessage).extend({
 				return;
 			}
 
-			const newConfiguration = {
+			const newConfiguration: ILdapConfig = {
 				login: {
 					enabled: form.loginEnabled === 'true' ? true : false,
 					label: form.loginLabel ?? '',
@@ -663,14 +663,14 @@ export default mixins(showMessage).extend({
 		async getLdapSyncronizations(state: any) {
 			try {
 				this.loadingTable = true;
-				const data = (await this.settingsStore.getLdapSyncronizations({
+				const data = await this.settingsStore.getLdapSyncronizations({
 					page: this.page,
-				})) as ILdapSyncData[];
+				});
 
 				if (data.length !== 0) {
 					this.dataTable.push(...data.map(this.syncDataMapper));
-					state.loaded();
 					this.page += 1;
+					state.loaded();
 				} else {
 					state.complete();
 				}
