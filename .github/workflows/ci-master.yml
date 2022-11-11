@@ -41,4 +41,6 @@ jobs:
           pnpm test:e2e:ci:smoke
 
       - name: Lint
+        env:
+          CI_LINT_MASTER: true
         run: pnpm lint
