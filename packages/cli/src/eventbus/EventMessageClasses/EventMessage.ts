@@ -77,7 +77,7 @@ export class EventMessage {
 	}
 
 	getEventGroup(): EventMessageGroups | undefined {
-		const matches = this.eventName.match(/^[\w\s]+.[\w\s]+/);
+		const matches = this.eventName.match(/^[\w\s]+\.[\w\s]+/);
 		if (matches && matches?.length > 0) {
 			return matches[0] as EventMessageGroups;
 		}

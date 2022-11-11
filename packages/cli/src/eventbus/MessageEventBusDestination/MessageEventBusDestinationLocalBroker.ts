@@ -16,7 +16,7 @@ export class MessageEventBusDestinationLocalBroker implements MessageEventBusDes
 
 	constructor(options?: MessageEventBusDestinationLocalBrokerOptions) {
 		this.#localBroker = new LocalEventBroker();
-		this.#name = options?.name ?? 'LocalBrokerForwarder';
+		this.#name = options?.name ?? 'LocalBroker';
 		console.debug(`MessageForwarderToLocalBroker Broker initialized`);
 	}
 
@@ -24,7 +24,7 @@ export class MessageEventBusDestinationLocalBroker implements MessageEventBusDes
 		return this.#name;
 	}
 
-	async sendToDestination(msg: EventMessage): Promise<boolean> {
+	async receiveFromEventBus(msg: EventMessage): Promise<boolean> {
 		const result = await this.#localBroker?.addMessage(msg);
 		console.debug(`MessageForwarderToLocalBroker forwarded  ${msg.eventName} - ${msg.id}`);
 		console.debug(

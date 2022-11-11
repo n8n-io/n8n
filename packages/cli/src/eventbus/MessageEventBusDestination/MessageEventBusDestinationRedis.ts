@@ -38,18 +38,18 @@ export class MessageEventBusDestinationRedis implements MessageEventBusDestinati
 				});
 			})
 			.catch((error) => console.log(error));
-		console.debug(`MessageForwarderToRedis Broker initialized`);
+		console.debug(`MessageEventBusDestinationRedis Broker initialized`);
 	}
 
 	getName(): string {
 		return this.#name;
 	}
 
-	async sendToDestination(msg: EventMessage): Promise<boolean> {
+	async receiveFromEventBus(msg: EventMessage): Promise<boolean> {
 		if (this.#client?.status === 'ready') {
 			const publishResult = await this.#client?.publish(this.#channelName, msg.toString());
 			console.log(publishResult);
-			console.debug(`MessageForwarderToRedis forwarded  ${msg.eventName} - ${msg.id}`);
+			console.debug(`MessageEventBusDestinationRedis forwarded  ${msg.eventName} - ${msg.id}`);
 			await eventBus.confirmSent(msg);
 			return true;
 		} else {

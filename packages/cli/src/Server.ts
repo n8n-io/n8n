@@ -157,12 +157,17 @@ import { ResponseError } from './ResponseHelper';
 import { toHttpNodeParameters } from './CurlConverterHelper';
 import { initErrorHandling } from './ErrorReporting';
 import { registerSerializer } from 'threads/worker';
-import { EventMessage, messageEventSerializer } from './eventbus/EventMessageClasses/EventMessage';
+import {
+	EventMessage,
+	isEventMessage,
+	messageEventSerializer,
+} from './eventbus/EventMessageClasses/EventMessage';
 import { eventBus } from './eventbus';
 import { MessageEventBusDestinationLocalBroker } from './eventbus/MessageEventBusDestination/MessageEventBusDestinationLocalBroker';
 import { ConsoleEventSubscriptionReceiver } from './eventbus/MessageEventSubscriptionReceiver/ConsoleEventSubscriptionReceiver';
 import { EventMessageNames } from './eventbus/types/EventMessageTypes';
 import { eventMessageConfirmSerializer } from './eventbus/EventMessageClasses/EventMessageConfirm';
+import { eventBusRouter } from './eventbus/eventBusRoutes';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1673,7 +1678,7 @@ class App {
 		);
 
 		// ----------------------------------------
-		// MessageBuffer TESTING
+		// EventBus Setup
 		// ----------------------------------------
 
 		// Register the thread serializer on the main thread
@@ -1697,112 +1702,9 @@ class App {
 		// 	eventNames: ['*'],
 		// });
 
-		// // multiple receivers of the same type can exist, but need to have separate names
-		// const fileReceiverCore = new FileEventSubscriptionReceiver({
-		// 	name: 'coreEventsFileLogger',
-		// 	fileName: 'events_core.txt',
-		// });
-		// const fileReceiverUi = new FileEventSubscriptionReceiver({
-		// 	name: 'uiEventsFileLogger',
-		// 	fileName: 'events_ui.txt',
-		// });
-		const consoleReceiver = new ConsoleEventSubscriptionReceiver();
-
-		// local broker is optional
-		const localBrokerForwarder = new MessageEventBusDestinationLocalBroker();
-		await localBrokerForwarder.addReceiver(consoleReceiver);
-		// localBrokerForwarder.addSubscription(consoleReceiver, [
-		// 	subscriptionSetCore,
-		// 	subscriptionSetCustom,
-		// ]);
-		// await localBrokerForwarder.addReceiver(fileReceiverCore);
-		// localBrokerForwarder.addSubscription(fileReceiverCore, [subscriptionSetCore]);
-		// await localBrokerForwarder.addReceiver(fileReceiverUi);
-		// localBrokerForwarder.addSubscription(fileReceiverUi, [subscriptionSetCustom]);
-
-		// const redisForwarder = new MessageEventBusForwarderToRedis({ channelName: 'n8n-events' });
-		// const redisReceiver = new RedisEventSubscriptionReceiver();
-		// await redisForwarder.addReceiver(redisReceiver);
-		// await redisForwarder.addSubscription(redisReceiver, [subscriptionSetAll]);
-
-		// testrun as thread for memory use check (ca. 20mb)
-		// await MessageEventBusFileWriter.runAsThread();
-
 		// Initialize EventBus
-		await eventBus.initialize({
-			// immediateWriters: [
-			// 	new MessageEventBusFileWriter({ keepSentEventsForSeconds: 10, syncFileAccess: false }),
-			// ],
-			// forwarders: [localBrokerForwarder, redisForwarder],
-			// forwarders: [localBrokerForwarder],
-		});
-
-		// process.on('SIGTERM', () => messageAppendWriter.getThread()?.communicate('SIGTERM'));
-		// process.on('SIGINT', () => messageAppendWriter.getThread()?.communicate('SIGINT'));
-		// process.on('SIGQUIT', () => messageAppendWriter.getThread()?.communicate('SIGQUIT'));
-		// process.on('SIGKILL', () => messageAppendWriter.getThread()?.communicate('SIGKILL'));
-		// process.on('SIGHUP', () => messageAppendWriter.getThread()?.communicate('SIGHUP'));
-
-		// // EventBus shutdown
-		// process.on('SIGTERM', () => eventBus.close());
-		// process.on('SIGINT', () => eventBus.close());
-
-		this.app.post(
-			`/${this.restEndpoint}/messagebuffer/add/msg`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-				const eventName = req.body.eventName as EventMessageNames;
-				if (eventName) {
-					const msg = new EventMessage({
-						eventName,
-						level: 'debug',
-						severity: 'normal',
-					});
-					return eventBus.send(msg);
-				} else {
-					return 'not a valid eventName';
-				}
-			}),
-		);
-
-		this.app.post(
-			`/${this.restEndpoint}/messagebuffer/add/load`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-				const eventName = req.body.eventName as EventMessageNames;
-				if (eventName) {
-					for (let i = 0; i < 1000; i++) {
-						const msg = new EventMessage({
-							eventName,
-							level: 'debug',
-							severity: 'normal',
-							payload: i,
-						});
-						await eventBus.send(msg);
-					}
-					process.exit();
-					return 'sent 1000';
-				} else {
-					return 'not a valid eventName';
-				}
-			}),
-		);
-		// this.app.get(
-		// 	`/${this.restEndpoint}/messagebuffer/get/all`,
-		// 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-		// 		return eventBus.getEvents();
-		// 	}),
-		// );
-		this.app.get(
-			`/${this.restEndpoint}/messagebuffer/get/sent`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-				return eventBus.getEventsSent();
-			}),
-		);
-		this.app.get(
-			`/${this.restEndpoint}/messagebuffer/get/unsent`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-				return eventBus.getEventsUnsent();
-			}),
-		);
+		await eventBus.initialize();
+		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
 		// ----------------------------------------
 		// Webhooks
