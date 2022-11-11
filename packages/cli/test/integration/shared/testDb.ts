@@ -322,6 +322,10 @@ export async function createUser(attributes: Partial<User> = {}): Promise<User> 
 	return Db.collections.User.save(user);
 }
 
+export async function createOwner() {
+	return createUser({ globalRole: await getGlobalOwnerRole() });
+}
+
 export function createUserShell(globalRole: Role): Promise<User> {
 	if (globalRole.scope !== 'global') {
 		throw new Error(`Invalid role received: ${JSON.stringify(globalRole)}`);
