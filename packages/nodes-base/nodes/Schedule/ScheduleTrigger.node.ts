@@ -508,7 +508,7 @@ export class ScheduleTrigger implements INodeType {
 				const week = interval[i].weeksInterval as number;
 				const days = interval[i].triggerAtDay as IDataObject[];
 				const day = days.length === 0 ? '*' : (days.join(',') as string);
-				const cronTimes: ICronExpression = [minute, hour, '*', '*', day];
+				const cronTimes: string[] = [minute, hour, '*', '*', day];
 				const cronExpression = cronTimes.join(' ');
 				if (week === 1) {
 					const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
