@@ -19,26 +19,23 @@ import { diff } from 'json-diff';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { pick } from 'lodash';
-import { getLogger } from '../src/Logger';
+import { getLogger } from '@/Logger';
 
-import {
-	ActiveExecutions,
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	InternalHooksManager,
-	IWorkflowDb,
-	IWorkflowExecutionDataProcess,
-	LoadNodesAndCredentials,
-	NodeTypes,
-	WorkflowRunner,
-} from '../src';
-import config from '../config';
-import { User } from '../src/databases/entities/User';
-import { getInstanceOwner } from '../src/UserManagement/UserManagementHelper';
-import { findCliWorkflowStart } from '../src/utils';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { NodeTypes } from '@/NodeTypes';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { WorkflowRunner } from '@/WorkflowRunner';
+import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import config from '@/config';
+import { User } from '@db/entities/User';
+import { getInstanceOwner } from '@/UserManagement/UserManagementHelper';
+import { findCliWorkflowStart } from '@/utils';
 
 export class ExecuteBatch extends Command {
 	static description = '\nExecutes multiple workflows once';

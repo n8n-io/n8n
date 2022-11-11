@@ -26,29 +26,24 @@ import {
 
 import { FindOneOptions, getConnectionManager } from 'typeorm';
 
-import {
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	InternalHooksManager,
-	LoadNodesAndCredentials,
-	NodeTypes,
-	ResponseHelper,
-	WebhookHelpers,
-	WorkflowExecuteAdditionalData,
-} from '../src';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import { NodeTypes } from '@/NodeTypes';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
+import { getLogger } from '@/Logger';
+import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
-import { getLogger } from '../src/Logger';
-
-import config from '../config';
-import * as Queue from '../src/Queue';
-import {
-	checkPermissionsForExecution,
-	getWorkflowOwner,
-} from '../src/UserManagement/UserManagementHelper';
-import { generateFailedExecutionFromError } from '../src/WorkflowHelpers';
+import config from '@/config';
+import * as Queue from '@/Queue';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 
 export class Worker extends Command {
 	static description = '\nStarts a n8n worker';
@@ -202,7 +197,7 @@ export class Worker extends Command {
 		);
 
 		try {
-			await checkPermissionsForExecution(workflow, workflowOwner.id);
+			await PermissionChecker.check(workflow, workflowOwner.id);
 		} catch (error) {
 			const failedExecution = generateFailedExecutionFromError(
 				currentExecutionDb.mode,

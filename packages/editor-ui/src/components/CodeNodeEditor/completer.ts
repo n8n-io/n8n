@@ -43,6 +43,7 @@ export const completerExtension = mixins(
 					localCompletionSource,
 
 					// core
+					this.itemCompletions,
 					this.baseCompletions,
 					this.requireCompletions,
 					this.nodeSelectorCompletions,

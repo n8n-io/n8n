@@ -81,7 +81,7 @@ import { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 
 import requestPromise, { RequestPromiseOptions } from 'request-promise-native';
 import { fromBuffer } from 'file-type';
 import { lookup } from 'mime-types';
-
+import { IncomingHttpHeaders } from 'http';
 import axios, {
 	AxiosError,
 	AxiosPromise,
@@ -92,18 +92,16 @@ import axios, {
 } from 'axios';
 import url, { URL, URLSearchParams } from 'url';
 import { BinaryDataManager } from './BinaryDataManager';
-// eslint-disable-next-line import/no-cycle
 import {
 	ICredentialTestFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IResponseError,
 	IWorkflowSettings,
-	PLACEHOLDER_EMPTY_EXECUTION_ID,
-} from '.';
+} from './Interfaces';
 import { extractValue } from './ExtractValue';
 import { getClientCredentialsToken } from './OAuth2Helper';
-import { IncomingHttpHeaders } from 'http';
+import { PLACEHOLDER_EMPTY_EXECUTION_ID } from './Constants';
 
 axios.defaults.timeout = 300000;
 // Prevent axios from adding x-form-www-urlencoded headers by default
@@ -2676,6 +2674,7 @@ export function getLoadOptionsFunctions(
 			},
 			getCurrentNodeParameter: (
 				parameterPath: string,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
 
@@ -2683,7 +2682,25 @@ export function getLoadOptionsFunctions(
 					parameterPath = `${path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
 				}
 
-				return get(nodeParameters, parameterPath);
+				let returnData = get(nodeParameters, parameterPath);
+
+				// This is outside the try/catch because it throws errors with proper messages
+				if (options?.extractValue) {
+					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					if (nodeType === undefined) {
+						throw new Error(
+							`Node type "${node.type}" is not known so can not return parameter value!`,
+						);
+					}
+					returnData = extractValue(
+						returnData,
+						parameterPath,
+						node,
+						nodeType,
+					) as NodeParameterValueType;
+				}
+
+				return returnData;
 			},
 			getCurrentNodeParameters: (): INodeParameters | undefined => {
 				return additionalData.currentNodeParameters;

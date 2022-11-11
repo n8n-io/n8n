@@ -1,11 +1,11 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 import { v4 as uuid } from 'uuid';
-import * as config from '../../../../config';
+import config from '@/config';
 import {
 	loadSurveyFromDisk,
 	logMigrationEnd,
 	logMigrationStart,
-} from '../../utils/migrationHelpers';
+} from '@db/utils/migrationHelpers';
 
 export class CreateUserManagement1646992772331 implements MigrationInterface {
 	name = 'CreateUserManagement1646992772331';

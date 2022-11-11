@@ -1,22 +1,26 @@
-import { JsonObject, jsonParse, LoggerProxy } from 'n8n-workflow';
-import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
-import {
-	ActiveWorkflowRunner,
-	Db,
-	InternalHooksManager,
-	ResponseHelper,
-	whereClause,
-	WorkflowHelpers,
-} from '..';
-import config from '../../config';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { User } from '../databases/entities/User';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { validateEntity } from '../GenericHelpers';
-import { externalHooks } from '../Server';
-import * as TagHelpers from '../TagHelpers';
-import { getSharedWorkflowIds } from '../WorkflowHelpers';
 import { validate as jsonSchemaValidate } from 'jsonschema';
+import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
+import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import * as Db from '@/Db';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { whereClause } from '@/CredentialsHelper';
+import config from '@/config';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { User } from '@db/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { validateEntity } from '@/GenericHelpers';
+import { externalHooks } from '@/Server';
+import * as TagHelpers from '@/TagHelpers';
+import { WorkflowRequest } from '@/requests';
+import { IWorkflowDb, IWorkflowExecutionDataProcess } from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import { WorkflowRunner } from '@/WorkflowRunner';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import * as TestWebhooks from '@/TestWebhooks';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;
@@ -61,6 +65,28 @@ export class WorkflowsService {
 		}
 
 		return Db.collections.SharedWorkflow.findOne(options);
+	}
+
+	/**
+	 * Find the pinned trigger to execute the workflow from, if any.
+	 */
+	static findPinnedTrigger(workflow: IWorkflowDb, startNodes?: string[], pinData?: IPinData) {
+		if (!pinData || !startNodes) return null;
+
+		const isTrigger = (nodeTypeName: string) =>
+			['trigger', 'webhook'].some((suffix) => nodeTypeName.toLowerCase().includes(suffix));
+
+		const pinnedTriggers = workflow.nodes.filter(
+			(node) => !node.disabled && pinData[node.name] && isTrigger(node.type),
+		);
+
+		if (pinnedTriggers.length === 0) return null;
+
+		if (startNodes?.length === 0) return pinnedTriggers[0]; // full execution
+
+		const [startNodeName] = startNodes;
+
+		return pinnedTriggers.find((pt) => pt.name === startNodeName) ?? null; // partial execution
 	}
 
 	static async get(workflow: Partial<WorkflowEntity>, options?: { relations: string[] }) {
@@ -141,7 +167,7 @@ export class WorkflowsService {
 		});
 	}
 
-	static async updateWorkflow(
+	static async update(
 		user: User,
 		workflow: WorkflowEntity,
 		workflowId: string,
@@ -286,5 +312,87 @@ export class WorkflowsService {
 		}
 
 		return updatedWorkflow;
+	}
+
+	static async runManually(
+		{
+			workflowData,
+			runData,
+			pinData,
+			startNodes,
+			destinationNode,
+		}: WorkflowRequest.ManualRunPayload,
+		user: User,
+		sessionId?: string,
+	) {
+		const EXECUTION_MODE = 'manual';
+		const ACTIVATION_MODE = 'manual';
+
+		const pinnedTrigger = WorkflowsService.findPinnedTrigger(workflowData, startNodes, pinData);
+
+		// If webhooks nodes exist and are active we have to wait for till we receive a call
+		if (
+			pinnedTrigger === null &&
+			(runData === undefined ||
+				startNodes === undefined ||
+				startNodes.length === 0 ||
+				destinationNode === undefined)
+		) {
+			const workflow = new Workflow({
+				id: workflowData.id?.toString(),
+				name: workflowData.name,
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+				active: false,
+				nodeTypes: NodeTypes(),
+				staticData: undefined,
+				settings: workflowData.settings,
+			});
+
+			const additionalData = await WorkflowExecuteAdditionalData.getBase(user.id);
+
+			const needsWebhook = await TestWebhooks.getInstance().needsWebhookData(
+				workflowData,
+				workflow,
+				additionalData,
+				EXECUTION_MODE,
+				ACTIVATION_MODE,
+				sessionId,
+				destinationNode,
+			);
+			if (needsWebhook) {
+				return {
+					waitingForWebhook: true,
+				};
+			}
+		}
+
+		// For manual testing always set to not active
+		workflowData.active = false;
+
+		// Start the workflow
+		const data: IWorkflowExecutionDataProcess = {
+			destinationNode,
+			executionMode: EXECUTION_MODE,
+			runData,
+			pinData,
+			sessionId,
+			startNodes,
+			workflowData,
+			userId: user.id,
+		};
+
+		const hasRunData = (node: INode) => runData !== undefined && !!runData[node.name];
+
+		if (pinnedTrigger && !hasRunData(pinnedTrigger)) {
+			data.startNodes = [pinnedTrigger.name];
+		}
+
+		const workflowRunner = new WorkflowRunner();
+		const executionId = await workflowRunner.run(data);
+
+		return {
+			executionId,
+		};
 	}
 }

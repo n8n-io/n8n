@@ -2,7 +2,12 @@
 	<div @keydown.stop :class="$style.container" v-if="credentialProperties.length">
 		<form v-for="parameter in credentialProperties" :key="parameter.name" autocomplete="off">
 			<!-- Why form? to break up inputs, to prevent Chrome autofill -->
+			<n8n-notice
+				v-if="parameter.type === 'notice'"
+				:content="parameter.displayName"
+			/>
 			<parameter-input-expanded
+				v-else
 				:parameter="parameter"
 				:value="credentialData[parameter.name]"
 				:documentationUrl="documentationUrl"

@@ -15,11 +15,34 @@ function getAutocompletableNodeNames(nodes: INodeUi[]) {
 
 export const baseCompletions = (Vue as CodeNodeEditorMixin).extend({
 	computed: {
-		...mapStores(
-			useWorkflowsStore,
-		),
+		...mapStores(useWorkflowsStore),
 	},
 	methods: {
+		itemCompletions(context: CompletionContext): CompletionResult | null {
+			const preCursor = context.matchBefore(/i\w*/);
+
+			if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+
+			const options: Completion[] = [];
+
+			if (this.mode === 'runOnceForEachItem') {
+				options.push({
+					label: 'item',
+					info: this.$locale.baseText('codeNodeEditor.completer.$input.item'),
+				});
+			} else if (this.mode === 'runOnceForAllItems') {
+				options.push({
+					label: 'items',
+					info: this.$locale.baseText('codeNodeEditor.completer.$input.all'),
+				});
+			}
+
+			return {
+				from: preCursor.from,
+				options,
+			};
+		},
+
 		/**
 		 * - Complete `$` to `$execution $input $prevNode $runIndex $workflow $now $today
 		 * $jmespath $('nodeName')` in both modes.

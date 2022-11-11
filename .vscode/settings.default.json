@@ -4,7 +4,7 @@
 	"search.exclude": {
 		"node_modules": true,
 		"dist": true,
-		"package-lock.json": true
+		"pnpm-lock.yaml": true
 	},
 	"typescript.tsdk": "node_modules/typescript/lib",
 	"workspace-default-settings.runOnActivation": true
