@@ -1,11 +1,8 @@
 import { EventMessage } from '../EventMessageClasses/EventMessage';
 import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
-import { MessageEventSubscriptionReceiverInterface } from '../MessageEventSubscriptionReceiver/MessageEventSubscriptionReceiverInterface';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis, { RedisOptions } from 'ioredis';
-import { RedisEventSubscriptionReceiver } from '../MessageEventSubscriptionReceiver/RedisEventSubscriptionReceiver';
 
 interface MessageEventBusDestinationRedisOptions {
 	channelName: string;
@@ -17,10 +14,6 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 	#client: Redis | undefined;
 
 	#channelName: string;
-
-	#receivers: RedisEventSubscriptionReceiver[] = [];
-
-	// #name: string;
 
 	constructor(options: MessageEventBusDestinationRedisOptions) {
 		super({ name: options.name ?? 'RedisForwarder' });
@@ -58,15 +51,6 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 	async close() {
 		this.#client?.disconnect();
 		this.#client = undefined;
-	}
-
-	async addReceiver(receiver: RedisEventSubscriptionReceiver) {
-		const launchResult = await receiver.launchThread();
-		if (launchResult) {
-			await receiver.worker?.communicate('connect', undefined);
-			this.#receivers.push(receiver);
-		}
-		return launchResult;
 	}
 
 	// TODO: fix to work with EventMessageSubscriptionSetNames

@@ -5,7 +5,6 @@ import { ResponseError } from '../ResponseHelper';
 import { EventMessage, EventMessageSerialized } from './EventMessageClasses/EventMessage';
 import { isEventMessageSubscriptionSet } from './EventMessageClasses/EventMessageSubscriptionSet';
 import { eventBus, EventMessageSubscribeDestination } from './MessageEventBus/MessageEventBus';
-import { MessageEventBusDestinationLocalBroker } from './MessageEventBusDestination/MessageEventBusDestinationLocalBroker';
 import {
 	isMessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationSyslog,
@@ -130,20 +129,6 @@ eventBusRouter.post(
 // ----------------------------------------
 // Destinations
 // ----------------------------------------
-
-eventBusRouter.post(
-	`/destination/add/localbroker`,
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-		let destinationName = 'LocalBrokerDestination';
-		if (isBodyWithName(req.body)) {
-			destinationName = req.body.name;
-		}
-		const result = await eventBus.addDestination(
-			new MessageEventBusDestinationLocalBroker({ name: destinationName }),
-		);
-		return result;
-	}),
-);
 
 eventBusRouter.post(
 	`/destination/add/syslog`,
