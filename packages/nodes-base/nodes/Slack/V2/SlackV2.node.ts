@@ -894,10 +894,10 @@ export class SlackV2 implements INodeType {
 							select === 'channel'
 								? (this.getNodeParameter('channelId', i, undefined, {
 										extractValue: true,
-								  }) as string)
+								}) as string)
 								: (this.getNodeParameter('user', i, undefined, {
 										extractValue: true,
-								  }) as string);
+							}) as string);
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
 						let content: IDataObject = {};
 						switch (messageType) {
