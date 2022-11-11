@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
@@ -41,26 +40,21 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
 import {
-	GenericHelpers,
 	IExecutionDb,
 	IResponseCallbackData,
 	IWorkflowDb,
 	IWorkflowExecutionDataProcess,
-	ResponseHelper,
-	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
-	WorkflowRunner,
-} from '.';
-
-// eslint-disable-next-line import/no-cycle
-import * as ActiveExecutions from './ActiveExecutions';
-import { User } from './databases/entities/User';
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
-
-const activeExecutions = ActiveExecutions.getInstance();
+} from '@/Interfaces';
+import * as GenericHelpers from '@/GenericHelpers';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { WorkflowRunner } from '@/WorkflowRunner';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import { User } from '@db/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
 export const WEBHOOK_METHODS = ['DELETE', 'GET', 'HEAD', 'PATCH', 'POST', 'PUT'];
 
@@ -459,9 +453,9 @@ export async function executeWebhook(
 		);
 
 		// Get a promise which resolves when the workflow did execute and send then response
-		const executePromise = activeExecutions.getPostExecutePromise(executionId) as Promise<
-			IExecutionDb | undefined
-		>;
+		const executePromise = ActiveExecutions.getInstance().getPostExecutePromise(
+			executionId,
+		) as Promise<IExecutionDb | undefined>;
 		executePromise
 			.then(async (data) => {
 				if (data === undefined) {

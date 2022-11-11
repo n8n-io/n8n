@@ -35,6 +35,7 @@ import TypeSelector from './TypeSelector.vue';
 import { INodeCreateElement } from '@/Interface';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default mixins(externalHooks).extend({
 	name: 'NodeCreateList',
@@ -58,10 +59,11 @@ export default mixins(externalHooks).extend({
 	},
 	computed: {
 		...mapStores(
+			useNodeCreatorStore,
 			useWorkflowsStore,
 		),
 		selectedType(): string {
-			return this.$store.getters['nodeCreator/selectedType'];
+			return this.nodeCreatorStore.selectedType;
 		},
 	},
 	watch: {
@@ -80,10 +82,10 @@ export default mixins(externalHooks).extend({
 	mounted() {
 		this.$externalHooks().run('nodeCreateList.mounted');
 		// Make sure tabs are visible on mount
-		this.$store.commit('nodeCreator/setShowTabs', true);
+		this.nodeCreatorStore.showTabs = true;
 	},
 	destroyed() {
-		this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
+		this.nodeCreatorStore.selectedType = ALL_NODE_FILTER;
 		this.$externalHooks().run('nodeCreateList.destroyed');
 		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.workflowsStore.workflowId });
 	},

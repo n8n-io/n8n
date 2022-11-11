@@ -26,10 +26,27 @@
 
 import { WorkflowsPage, SigninPage, SignupPage } from "../pages";
 import { N8N_AUTH_COOKIE } from "../constants";
-
+import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args)
+})
+
+Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
+	const WorkflowPage = new WorkflowPageClass()
+
+	// We need to force the click because the input is hidden
+	WorkflowPage.get('workflowImportInput').selectFile(`cypress/fixtures/${fixtureKey}`, { force: true});
+	WorkflowPage.get('workflowNameInput').should('be.disabled');
+	WorkflowPage.get('workflowNameInput').parent().click()
+	WorkflowPage.get('workflowNameInput').should('be.enabled');
+	WorkflowPage.get('workflowNameInput').clear().type(workflowName).type('{enter}');
+
+	WorkflowPage.get('saveButton').should('contain', 'Saved');
+})
+
+Cypress.Commands.add('findChildByTestId', { prevSubject: true }, (subject: Cypress.Chainable<JQuery<HTMLElement>>, childTestId) => {
+	return subject.find(`[data-test-id="${childTestId}"]`);
 })
 
 Cypress.Commands.add(

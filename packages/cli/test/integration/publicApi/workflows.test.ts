@@ -1,22 +1,23 @@
 import express from 'express';
 
-import { ActiveWorkflowRunner, Db } from '../../../src';
-import config from '../../../config';
-import { Role } from '../../../src/databases/entities/Role';
-import { randomApiKey } from '../shared/random';
+import * as Db from '@/Db';
+import config from '@/config';
+import { Role } from '@db/entities/Role';
+import { TagEntity } from '@db/entities/TagEntity';
+import { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 
+import { randomApiKey } from '../shared/random';
 import * as utils from '../shared/utils';
 import * as testDb from '../shared/testDb';
-import { TagEntity } from '../../../src/databases/entities/TagEntity';
 
 let app: express.Application;
 let testDbName = '';
 let globalOwnerRole: Role;
 let globalMemberRole: Role;
 let workflowOwnerRole: Role;
-let workflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner;
+let workflowRunner: ActiveWorkflowRunner;
 
-jest.mock('../../../src/telemetry');
+jest.mock('@/telemetry');
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });
