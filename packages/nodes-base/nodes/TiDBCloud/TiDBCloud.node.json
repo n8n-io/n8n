@@ -6,12 +6,12 @@
 	"resources": {
 		"credentialDocumentation": [
 			{
-				"url": ""
+				"url": "https://docs.n8n.io/credentials/tidbcloud/"
 			}
 		],
 		"primaryDocumentation": [
 			{
-				"url": ""
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.tidbcloud/"
 			}
 		]
 	}
