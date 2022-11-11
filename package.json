@@ -10,6 +10,7 @@
   "packageManager": "pnpm@7.14.2",
   "scripts": {
     "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
     "dev": "turbo run dev --parallel",
     "clean": "turbo run clean --parallel",
     "format": "turbo run format && node scripts/format.mjs",
