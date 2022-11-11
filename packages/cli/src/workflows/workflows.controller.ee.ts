@@ -15,6 +15,8 @@ import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
 import { WorkflowsService } from './workflows.services';
+import { IExecutionPushResponse } from '@/Interfaces';
+import * as GenericHelpers from '@/GenericHelpers';
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
 export const EEWorkflowController = express.Router();
@@ -214,9 +216,11 @@ EEWorkflowController.patch(
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		const updatedWorkflow = await EEWorkflows.updateWorkflow(
+		const safeWorkflow = await EEWorkflows.preventTampering(updateData, workflowId, req.user);
+
+		const updatedWorkflow = await WorkflowsService.update(
 			req.user,
-			updateData,
+			safeWorkflow,
 			workflowId,
 			tags,
 			forceSave,
@@ -228,5 +232,26 @@ EEWorkflowController.patch(
 			id: id.toString(),
 			...remainder,
 		};
+	}),
+);
+
+/**
+ * (EE) POST /workflows/run
+ */
+EEWorkflowController.post(
+	'/run',
+	ResponseHelper.send(async (req: WorkflowRequest.ManualRun): Promise<IExecutionPushResponse> => {
+		const workflow = new WorkflowEntity();
+		Object.assign(workflow, req.body.workflowData);
+
+		const safeWorkflow = await EEWorkflows.preventTampering(
+			workflow,
+			workflow.id.toString(),
+			req.user,
+		);
+
+		req.body.workflowData.nodes = safeWorkflow.nodes;
+
+		return WorkflowsService.runManually(req.body, req.user, GenericHelpers.getSessionId(req));
 	}),
 );
