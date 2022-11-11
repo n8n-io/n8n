@@ -31,11 +31,7 @@ export async function beeminderApiRequest(
 		delete options.qs;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'beeminderApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'beeminderApi', options);
 }
 
 export async function beeminderApiRequestAllItems(

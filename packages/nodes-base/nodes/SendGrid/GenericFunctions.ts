@@ -37,11 +37,7 @@ export async function sendGridApiRequest(
 		Object.assign(options, option);
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'sendGridApi', options);
 }
 
 export async function sendGridApiRequestAllItems(
