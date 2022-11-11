@@ -53,7 +53,7 @@ export async function spreadSheetsSearch(
 
 export async function sheetsSearch(
 	this: ILoadOptionsFunctions,
-	filter?: string,
+	_filter?: string,
 ): Promise<INodeListSearchResult> {
 	try {
 		const { mode, value } = this.getNodeParameter('documentId', 0) as IDataObject;

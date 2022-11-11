@@ -7,7 +7,6 @@ import * as del from './delete.operation';
 import * as read from './read.operation';
 import * as remove from './remove.operation';
 import * as update from './update.operation';
-import { untilSheetSelected } from '../../helpers/GoogleSheets.utils';
 
 export { append, appendOrUpdate, clear, create, del as delete, read, remove, update };
 

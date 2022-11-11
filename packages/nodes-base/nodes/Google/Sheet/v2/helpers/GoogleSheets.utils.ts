@@ -12,7 +12,6 @@ import {
 	ResourceLocator,
 	ResourceLocatorUiNames,
 	ROW_NUMBER,
-	SheetDataRow,
 	SheetRangeData,
 	ValueInputOption,
 } from './GoogleSheets.types';
@@ -212,7 +211,7 @@ export async function autoMapInputData(
 	options: IDataObject,
 ) {
 	const returnData: IDataObject[] = [];
-	const [sheetName, sheetRange] = sheetNameWithRange.split('!');
+	const [sheetName, _sheetRange] = sheetNameWithRange.split('!');
 	const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
 	const handlingExtraData = (options.handlingExtraData as string) || 'insertInNewColumn';
 

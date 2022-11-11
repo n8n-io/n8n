@@ -235,7 +235,7 @@ export class GoogleSheet {
 		row: number,
 		rowsLength?: number,
 	) {
-		const [name, sheetRange] = sheetName.split('!');
+		const [name, _sheetRange] = sheetName.split('!');
 		const range = `${name}!${row}:${rowsLength ? row + rowsLength - 1 : row}`;
 
 		const body = {
