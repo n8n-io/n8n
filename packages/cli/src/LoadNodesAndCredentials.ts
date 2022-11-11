@@ -27,7 +27,14 @@ import {
 	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
-import { access as fsAccess, cp, readdir as fsReaddir, stat as fsStat } from 'fs/promises';
+import glob from 'fast-glob';
+import {
+	access as fsAccess,
+	copyFile,
+	mkdir,
+	readdir as fsReaddir,
+	stat as fsStat,
+} from 'fs/promises';
 import path from 'path';
 import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
@@ -315,9 +322,17 @@ class LoadNodesAndCredentialsClass {
 			this.types.latestNodes = this.types.latestNodes.concat(types.latestNodes);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
-			await cp(path.resolve(dir, 'dist/icons'), path.join(GENERATED_STATIC_DIR, 'icons'), {
-				recursive: true,
+			const distDir = path.join(dir, 'dist');
+			const icons = await glob('icons/**/*.{png,svg}', {
+				cwd: distDir,
 			});
+			await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/nodes'), { recursive: true });
+			await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/credentials'), { recursive: true });
+			await Promise.all(
+				icons.map(async (icon) =>
+					copyFile(path.join(distDir, icon), path.join(GENERATED_STATIC_DIR, icon)),
+				),
+			);
 		}
 
 		return loader;
