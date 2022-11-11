@@ -856,6 +856,7 @@ export class SlackV2 implements INodeType {
 					//https://api.slack.com/methods/chat.postMessage
 					if (['post', 'postEphemeral'].includes(operation)) {
 						const select = this.getNodeParameter('select', i) as string;
+						const messageType = this.getNodeParameter('messageType', i) as string;
 						const target =
 							select === 'channel'
 								? (this.getNodeParameter('channelId', i, undefined, {
@@ -865,10 +866,23 @@ export class SlackV2 implements INodeType {
 										extractValue: true,
 								  }) as string);
 						const { sendAsUser } = this.getNodeParameter('otherOptions', i) as IDataObject;
-						const text = this.getNodeParameter('text', i) as string;
+						let content: IDataObject = {};
+						switch (messageType) {
+							case 'text':
+								content = { text: this.getNodeParameter('text', i) as string };
+								break;
+							case 'block':
+								content = JSON.parse(this.getNodeParameter('blocksUi', i) as string);
+								break;
+							case 'attachment':
+								content = { attachments: this.getNodeParameter('attachments', i) } as IDataObject;
+								break;
+							default:
+								throw new Error(`The message type "${messageType}" is not known!`);
+						}
 						const body: IDataObject = {
 							channel: target,
-							text,
+							...content,
 						};
 						let action = 'postMessage';
 
