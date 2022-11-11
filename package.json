@@ -52,7 +52,6 @@
     "start-server-and-test": "^1.14.0",
     "supertest": "^6.2.2",
     "ts-jest": "^28.0.8",
-    "ts-node": "^9.1.1",
     "turbo": "1.5.5",
     "typescript": "^4.8.4"
   },
