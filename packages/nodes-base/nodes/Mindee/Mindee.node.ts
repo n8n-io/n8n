@@ -152,7 +152,6 @@ export class Mindee implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
 		const version = this.getNodeParameter('apiVersion', 0) as number;
 		const resource = this.getNodeParameter('resource', 0) as string;

@@ -1,4 +1,4 @@
-const allCurrencies = [
+export const allCurrencies = [
 	{ name: 'Euro', value: 'eur' },
 	{ name: 'United States Dollar', value: 'usd' },
 	{ name: 'British Pound Sterling', value: 'gbp' },

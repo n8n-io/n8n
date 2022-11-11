@@ -1,6 +1,6 @@
 <template>
 	<div class="workflow-activator">
-		<div :class="$style.activeStatusText">
+		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
 			<n8n-text v-if="workflowActive" :color="couldNotBeStarted ? 'danger' : 'success'" size="small" bold>
 				{{ $locale.baseText('workflowActivator.active') }}
 			</n8n-text>
@@ -94,7 +94,7 @@ export default mixins(
 			},
 			methods: {
 				async activeChanged (newActiveState: boolean) {
-					return this.updateWorkflowActivation(this.workflowId, newActiveState);
+					return await this.updateWorkflowActivation(this.workflowId, newActiveState);
 				},
 				async displayActivationError () {
 					let errorMessage: string;

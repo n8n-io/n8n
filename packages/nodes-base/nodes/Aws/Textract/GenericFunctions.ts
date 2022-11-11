@@ -18,7 +18,6 @@ import {
 	ICredentialTestFunctions,
 	IHttpRequestOptions,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 function getEndpointForService(

@@ -16,24 +16,18 @@ import compression from 'compression';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import parseUrl from 'parseurl';
 import { WebhookHttpMethod } from 'n8n-workflow';
-// eslint-disable-next-line import/no-cycle
-import {
-	ActiveExecutions,
-	ActiveWorkflowRunner,
-	Db,
-	ExternalHooks,
-	GenericHelpers,
-	ICustomRequest,
-	IExternalHooksClass,
-	IPackageVersions,
-	ResponseHelper,
-	WaitingWebhooks,
-} from '.';
 
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import { WEBHOOK_METHODS } from './WebhookHelpers';
-import { initErrorHandling } from './ErrorReporting';
+import * as Db from '@/Db';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
+import { ExternalHooks } from '@/ExternalHooks';
+import * as GenericHelpers from '@/GenericHelpers';
+import * as ResponseHelper from '@/ResponseHelper';
+import { WaitingWebhooks } from '@/WaitingWebhooks';
+import type { ICustomRequest, IExternalHooksClass, IPackageVersions } from '@/Interfaces';
+import config from '@/config';
+import { WEBHOOK_METHODS } from '@/WebhookHelpers';
+import { setupErrorMiddleware } from '@/ErrorReporting';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-unsafe-call
 require('body-parser-xml')(bodyParser);
@@ -219,7 +213,7 @@ class App {
 		this.presetCredentialsLoaded = false;
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
-		initErrorHandling(this.app);
+		setupErrorMiddleware(this.app);
 	}
 
 	/**
