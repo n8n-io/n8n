@@ -2,7 +2,7 @@ import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-co
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
