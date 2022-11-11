@@ -1,7 +1,5 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { JsonObject, NodeApiError } from 'n8n-workflow';
-
 import { OptionsWithUri } from 'request';
 
 /**
