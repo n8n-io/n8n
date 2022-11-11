@@ -5,8 +5,8 @@ import type {
 	ICredentialTypes,
 	INodesAndCredentials,
 } from 'n8n-workflow';
+import { loadClassInIsolation } from 'n8n-core';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
-import { loadClassInIsolation } from './CommunityNodes/helpers';
 import type { ICredentialsTypeData } from './Interfaces';
 
 class CredentialTypesClass implements ICredentialTypes {

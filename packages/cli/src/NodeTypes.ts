@@ -8,8 +8,9 @@ import type {
 	IVersionedNodeType,
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
+import { loadClassInIsolation } from 'n8n-core';
 import * as path from 'path';
-import { loadClassInIsolation } from './CommunityNodes/helpers';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 import type { INodesTypeData } from './Interfaces';
 
 class NodeTypesClass implements INodeTypes {
@@ -104,13 +105,10 @@ class NodeTypesClass implements INodeTypes {
 			const sourcePath = knownNodes[type];
 			const [name] = path.parse(sourcePath).name.split('.');
 			const loaded: INodeType = loadClassInIsolation(sourcePath, name);
-			nodeTypes[type] = {
-				sourcePath,
-				type: loaded,
-			};
+			nodeTypes[type] = { sourcePath, type: loaded };
 			return nodeTypes[type];
 		}
-		throw new Error(`The node-type "${type}" is not known!`);
+		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${type}`);
 	}
 
 	/**

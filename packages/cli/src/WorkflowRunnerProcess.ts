@@ -6,7 +6,13 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
+import {
+	BinaryDataManager,
+	IProcessMessage,
+	UserSettings,
+	WorkflowExecute,
+	loadClassInIsolation,
+} from 'n8n-core';
 
 import {
 	ErrorReporterProxy as ErrorReporter,
@@ -46,7 +52,6 @@ import { getLogger } from '@/Logger';
 
 import config from '@/config';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { loadClassInIsolation } from '@/CommunityNodes/helpers';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';

@@ -15,6 +15,7 @@ export const STARTER_TEMPLATE_NAME = `${NODE_PACKAGE_PREFIX}starter`;
 
 export const RESPONSE_ERROR_MESSAGES = {
 	NO_CREDENTIAL: 'Credential not found',
+	NO_NODE: 'Node not found',
 	NO_ENCRYPTION_KEY: CORE_RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 	PACKAGE_NAME_NOT_PROVIDED: 'Package name is required',
 	PACKAGE_NAME_NOT_VALID: `Package name is not valid - it must start with "${NODE_PACKAGE_PREFIX}"`,

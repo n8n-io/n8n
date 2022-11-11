@@ -270,13 +270,13 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		}
 	}
 
-	unloadNodes(installedNodes: InstalledNodes[]): void {
+	private unloadNodes(installedNodes: InstalledNodes[]): void {
 		installedNodes.forEach((installedNode) => {
 			delete this.nodeTypes[installedNode.type];
 		});
 	}
 
-	attachNodesToNodeTypes(installedNodes: InstalledNodes[]): void {
+	private attachNodesToNodeTypes(installedNodes: InstalledNodes[]): void {
 		installedNodes.forEach((installedNode) => {
 			const { type, sourcePath } = this.nodeTypes[installedNode.type];
 			this.nodeTypes[installedNode.type] = { type, sourcePath };

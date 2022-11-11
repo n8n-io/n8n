@@ -1,6 +1,5 @@
 import * as path from 'node:path';
 import { readFile } from 'node:fs/promises';
-import { createContext, Context, Script } from 'node:vm';
 import glob from 'fast-glob';
 import { jsonParse, KnownNodesAndCredentials, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
@@ -17,6 +16,7 @@ import type {
 } from 'n8n-workflow';
 import { CUSTOM_NODES_CATEGORY } from './Constants';
 import type { n8n } from './Interfaces';
+import { loadClassInIsolation } from './ClassLoader';
 
 function toJSON(this: ICredentialType) {
 	return {
@@ -32,8 +32,6 @@ export type Types = {
 };
 
 export abstract class DirectoryLoader {
-	private context: Context;
-
 	readonly loadedNodes: INodeTypeNameVersion[] = [];
 
 	readonly nodeTypes: INodeTypeData = {};
@@ -48,9 +46,7 @@ export abstract class DirectoryLoader {
 		protected readonly directory: string,
 		private readonly excludeNodes?: string,
 		private readonly includeNodes?: string,
-	) {
-		this.context = createContext({ require });
-	}
+	) {}
 
 	abstract loadAll(): Promise<void>;
 
@@ -63,7 +59,7 @@ export abstract class DirectoryLoader {
 		let nodeVersion = 1;
 
 		try {
-			tempNode = this.loadClassInIsolation(filePath, nodeName);
+			tempNode = loadClassInIsolation(filePath, nodeName);
 			this.addCodex({ node: tempNode, filePath, isCustom: packageName === 'CUSTOM' });
 		} catch (error) {
 			Logger.error(
@@ -121,7 +117,7 @@ export abstract class DirectoryLoader {
 	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
 		let tempCredential: ICredentialType;
 		try {
-			tempCredential = this.loadClassInIsolation(filePath, credentialName);
+			tempCredential = loadClassInIsolation(filePath, credentialName);
 
 			// Add serializer method "toJSON" to the class so that authenticate method (if defined)
 			// gets mapped to the authenticate attribute before it is sent to the client.
@@ -144,14 +140,6 @@ export abstract class DirectoryLoader {
 			type: tempCredential,
 			sourcePath: filePath,
 		};
-	}
-
-	private loadClassInIsolation<T>(filePath: string, className: string) {
-		if (process.platform === 'win32') {
-			filePath = filePath.replace(/\\/g, '/');
-		}
-		const script = new Script(`new (require('${filePath}').${className})()`);
-		return script.runInContext(this.context) as T;
 	}
 
 	/**
@@ -320,6 +308,9 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 	}
 }
 
+/**
+ * This loader extends PackageDirectoryLoader to load node and credentials lazily, if possible
+ */
 export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 	override async loadAll() {
 		await this.readPackageJson();
