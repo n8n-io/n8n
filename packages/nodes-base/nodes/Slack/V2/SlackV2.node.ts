@@ -1016,7 +1016,7 @@ export class SlackV2 implements INodeType {
 								extractValue: true,
 							},
 						) as IDataObject;
-						if (options) {
+						if (options.searchChannel) {
 							const channel = options.searchChannel as IDataObject;
 							query = query + ` in:${channel.value}`;
 						}
@@ -1028,7 +1028,7 @@ export class SlackV2 implements INodeType {
 						if (returnAll === true) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
-								'items',
+								'messages',
 								'GET',
 								'/search.messages',
 								{},
@@ -1037,7 +1037,6 @@ export class SlackV2 implements INodeType {
 						} else {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 							responseData = await slackApiRequest.call(this, 'POST', '/search.messages', {}, qs);
-							responseData = responseData.items;
 						}
 					}
 				}
@@ -1439,7 +1438,6 @@ export class SlackV2 implements INodeType {
 						responseData = responseData.profile;
 					}
 				}
-
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },

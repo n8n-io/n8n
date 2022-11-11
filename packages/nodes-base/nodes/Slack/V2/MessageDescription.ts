@@ -315,7 +315,6 @@ export const messageFields: INodeProperties[] = [
 		},
 		typeOptions: {
 			rows: 3,
-			editor: 'json',
 		},
 		description:
 			"Enter the JSON output from Slack's visual Block Kit Builder here. You can then use expressions to add variable content to your blocks.",
