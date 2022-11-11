@@ -4,6 +4,7 @@
 		"rootDir": ".",
 		"types": ["node", "jest"],
 		"noEmit": true,
+		"preserveSymlinks": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"baseUrl": "src",
