@@ -35,8 +35,7 @@
     "@types/lodash.get": "^4.4.6",
     "@types/mime-types": "^2.1.0",
     "@types/request-promise-native": "~1.0.15",
-    "@types/uuid": "^8.3.2",
-    "source-map-support": "^0.5.9"
+    "@types/uuid": "^8.3.2"
   },
   "dependencies": {
     "axios": "^0.21.1",
