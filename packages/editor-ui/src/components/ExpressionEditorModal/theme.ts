@@ -25,7 +25,7 @@ export const EXPRESSION_EDITOR_THEME = [
 	EditorView.theme({
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
-			height: BASE_STYLING.maxHeight,
+			// height: BASE_STYLING.maxHeight,
 		},
 	}),
 	syntaxHighlighting(

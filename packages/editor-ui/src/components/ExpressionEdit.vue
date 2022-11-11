@@ -30,6 +30,7 @@
 								@keydown.stop="noOp"
 								ref="inputFieldExpression"
 							/>
+							<expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input>
 						</div>
 					</div>
 
