@@ -2,9 +2,10 @@
 	<n8n-card
 		:class="$style.cardLink"
 		@click="onClick"
+		data-test-id="workflow-card"
 	>
 			<template #header>
-				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
+				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading" data-test-id="workflow-card-name">
 					{{ data.name }}
 				</n8n-heading>
 			</template>
@@ -12,12 +13,13 @@
 				<n8n-text color="text-light" size="small">
 					<span v-show="data">{{$locale.baseText('workflows.item.updated')}} <time-ago :date="data.updatedAt" /> | </span>
 					<span v-show="data" class="mr-2xs">{{$locale.baseText('workflows.item.created')}} {{ formattedCreatedAtDate }} </span>
-					<span v-if="areTagsEnabled && data.tags && data.tags.length > 0" v-show="data">
+					<span v-if="settingsStore.areTagsEnabled && data.tags && data.tags.length > 0" v-show="data">
 					<n8n-tags
 						:tags="data.tags"
 						:truncateAt="3"
 						truncate
 						@click="onClickTag"
+						data-test-id="workflow-card-tags"
 					/>
 				</span>
 				</n8n-text>
@@ -40,12 +42,14 @@
 						:workflow-active="data.active"
 						:workflow-id="data.id"
 						ref="activator"
+						data-test-id="workflow-card-activator"
 					/>
 
 					<n8n-action-toggle
 						:actions="actions"
 						theme="dark"
 						@action="onAction"
+						data-test-id="workflow-card-actions"
 					/>
 				</div>
 			</template>
@@ -62,6 +66,11 @@ import dateformat from "dateformat";
 import { restApi } from '@/components/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Vue from "vue";
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export const WORKFLOW_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -95,6 +104,7 @@ export default mixins(
 				name: '',
 				sharedWith: [],
 				ownedBy: {} as IUser,
+				hash: '',
 			}),
 		},
 		readonly: {
@@ -103,14 +113,17 @@ export default mixins(
 		},
 	},
 	computed: {
+		...mapStores(
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+			useWorkflowsStore,
+		),
 		currentUser (): IUser {
-			return this.$store.getters['users/currentUser'];
-		},
-		areTagsEnabled(): boolean {
-			return this.$store.getters['settings/areTagsEnabled'];
+			return this.usersStore.currentUser || {} as IUser;
 		},
 		credentialPermissions(): IPermissions {
-			return getWorkflowPermissions(this.currentUser, this.data, this.$store);
+			return getWorkflowPermissions(this.currentUser, this.data);
 		},
 		actions(): Array<{ label: string; value: string; }> {
 			return [
@@ -162,7 +175,7 @@ export default mixins(
 			if (action === WORKFLOW_LIST_ITEM_ACTIONS.OPEN) {
 				await this.onClick();
 			} else if (action === WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE) {
-				await this.$store.dispatch('ui/openModalWithData', {
+				this.uiStore.openModalWithData({
 					name: DUPLICATE_MODAL_KEY,
 					data: {
 						id: this.data.id,
@@ -188,7 +201,7 @@ export default mixins(
 
 				try {
 					await this.restApi().deleteWorkflow(this.data.id);
-					this.$store.commit('deleteWorkflow', this.data.id);
+					this.workflowsStore.deleteWorkflow(this.data.id);
 				} catch (error) {
 					this.$showError(
 						error,

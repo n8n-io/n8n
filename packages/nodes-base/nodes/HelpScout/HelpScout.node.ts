@@ -114,7 +114,7 @@ export class HelpScout implements INodeType {
 				);
 				for (const tag of tags) {
 					const tagName = tag.name;
-					const tagId = tag.id;
+					const _tagId = tag.id;
 					returnData.push({
 						name: tagName,
 						value: tagName,
@@ -453,7 +453,7 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/threads/chat
 					if (operation === 'create') {
 						const conversationId = this.getNodeParameter('conversationId', i) as string;
-						const type = this.getNodeParameter('type', i) as string;
+						const _type = this.getNodeParameter('type', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const attachments = this.getNodeParameter('attachmentsUi', i) as IDataObject;

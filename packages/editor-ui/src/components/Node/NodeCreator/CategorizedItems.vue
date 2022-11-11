@@ -87,9 +87,16 @@ import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
-import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
+import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
 import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
+import { intersection } from '@/utils';
+import { sublimeSearch } from './sortUtils';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default mixins(externalHooks, globalLinkActions).extend({
 	name: 'CategorizedItems',
@@ -140,24 +147,30 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		this.registerCustomAction('showAllNodeCreatorNodes', this.switchToAllTabAndFilter);
 	},
 	destroyed() {
-		this.$store.commit('nodeCreator/setFilter', '');
+		this.nodeCreatorStore.itemsFilter = '';
 		this.unregisterCustomAction('showAllNodeCreatorNodes');
 	},
 	computed: {
+		...mapStores(
+			useNodeCreatorStore,
+			useNodeTypesStore,
+			useRootStore,
+			useWorkflowsStore,
+		),
 		activeSubcategory(): INodeCreateElement | null {
 			return this.activeSubcategoryHistory[this.activeSubcategoryHistory.length - 1] || null;
 		},
 		nodeFilter(): string {
-			return this.$store.getters['nodeCreator/itemsFilter'];
+			return this.nodeCreatorStore.itemsFilter;
 		},
 		selectedType(): INodeFilterType {
-			return this.$store.getters['nodeCreator/selectedType'];
+			return this.nodeCreatorStore.selectedType;
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
-			return this.$store.getters['nodeTypes/categoriesWithNodes'];
+			return this.nodeTypesStore.categoriesWithNodes;
 		},
 		categorizedItems(): INodeCreateElement[] {
-			return this.$store.getters['nodeTypes/categorizedItems'];
+			return this.nodeTypesStore.categorizedItems;
 		},
 		activeSubcategoryTitle(): string {
 			if(!this.activeSubcategory || !this.activeSubcategory.properties) return '';
@@ -175,22 +188,42 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		searchFilter(): string {
 			return this.nodeFilter.toLowerCase().trim();
 		},
+		defaultLocale (): string {
+			return this.rootStore.defaultLocale;
+		},
 		filteredNodeTypes(): INodeCreateElement[] {
-			const searchableNodes = this.subcategorizedNodes.length > 0 ? this.subcategorizedNodes : this.searchItems;
 			const filter = this.searchFilter;
-			const matchedCategorizedNodes = searchableNodes.filter((el: INodeCreateElement) => {
-				return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
-			});
+
+			const searchableNodes = this.subcategorizedNodes.length > 0 && this.activeSubcategory?.key !== '*'
+				? this.subcategorizedNodes
+				: this.searchItems;
+
+			let returnItems: INodeCreateElement[] = [];
+			if (this.defaultLocale !== 'en') {
+				returnItems = searchableNodes.filter((el: INodeCreateElement) => {
+					return filter && matchesSelectType(el, this.selectedType) && matchesNodeType(el, filter);
+				});
+			}
+			else {
+				const matchingNodes = searchableNodes.filter((el) => matchesSelectType(el, this.selectedType));
+				const matchedCategorizedNodes = sublimeSearch<INodeCreateElement>(filter, matchingNodes, [{key: 'properties.nodeType.displayName', weight: 2}, {key: 'properties.nodeType.codex.alias', weight: 1}]);
+				returnItems = matchedCategorizedNodes.map(({item}) => item);;
+			}
+
+
+			const filteredNodeTypes = this.excludedCategories.length === 0
+				? returnItems
+				: this.filterOutNodexFromExcludedCategories(returnItems);
 
 			setTimeout(() => {
 				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
 					nodeFilter: this.nodeFilter,
-					result: matchedCategorizedNodes,
+					result: filteredNodeTypes,
 					selectedType: this.selectedType,
 				});
 			}, 0);
 
-			return matchedCategorizedNodes;
+			return filteredNodeTypes;
 		},
 		filteredAllNodeTypes(): INodeCreateElement[] {
 			if(this.filteredNodeTypes.length > 0) return [];
@@ -315,21 +348,31 @@ export default mixins(externalHooks, globalLinkActions).extend({
 				newValue,
 				selectedType: this.selectedType,
 				filteredNodes: this.filteredNodeTypes,
-				workflow_id: this.$store.getters.workflowId,
+				workflow_id: this.workflowsStore.workflowId,
 			});
 		},
 	},
 	methods: {
+		filterOutNodexFromExcludedCategories(nodes: INodeCreateElement[]) {
+			return nodes.filter(node => {
+				const excludedCategoriesIntersect = intersection(
+					this.excludedCategories,
+					((node.properties as INodeItemProps)?.nodeType.codex?.categories || []),
+				);
+
+				return excludedCategoriesIntersect.length === 0;
+			});
+		},
 		switchToAllTabAndFilter() {
 			const currentFilter = this.nodeFilter;
-			this.$store.commit('nodeCreator/setShowTabs', true);
-			this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
+			this.nodeCreatorStore.showTabs = true;
+			this.nodeCreatorStore.selectedType = ALL_NODE_FILTER;
 			this.activeSubcategoryHistory = [];
 
-			this.$nextTick(() => this.$store.commit('nodeCreator/setFilter', currentFilter));
+			this.$nextTick(() => this.nodeCreatorStore.itemsFilter = currentFilter);
 		},
 		onNodeFilterChange(filter: string) {
-			this.$store.commit('nodeCreator/setFilter', filter);
+			this.nodeCreatorStore.itemsFilter = filter;
 		},
 		selectWebhook() {
 			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
@@ -412,7 +455,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 				);
 			} else {
 				this.activeCategory = [...this.activeCategory, category];
-				this.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.trackNodesPanel('nodeCreateList.onCategoryExpanded', { category_name: category, workflow_id: this.workflowsStore.workflowId });
 			}
 
 			this.activeIndex = this.categorized.findIndex(
@@ -421,20 +464,20 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		},
 		onSubcategorySelected(selected: INodeCreateElement) {
 			this.$emit('onSubcategorySelected', selected);
-			this.$store.commit('nodeCreator/setShowTabs', false);
+			this.nodeCreatorStore.showTabs = false;
 			this.activeSubcategoryIndex = 0;
 			this.activeSubcategoryHistory.push(selected);
-			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.workflowsStore.workflowId });
 		},
 
 		onSubcategoryClose() {
 			this.$emit('subcategoryClose', this.activeSubcategory);
 			this.activeSubcategoryHistory.pop();
 			this.activeSubcategoryIndex = 0;
-			this.$store.commit('nodeCreator/setFilter', '');
+			this.nodeCreatorStore.itemsFilter = '';
 
-			if(!this.$store.getters['nodeCreator/showScrim']) {
-				this.$store.commit('nodeCreator/setShowTabs', true);
+			if (!this.nodeCreatorStore.showScrim) {
+				this.nodeCreatorStore.showTabs = true;
 			}
 		},
 

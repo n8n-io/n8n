@@ -1,10 +1,4 @@
-import { URL } from 'url';
-
-import { Request, sign } from 'aws4';
-
 import { get } from 'lodash';
-
-import { OptionsWithUri } from 'request';
 
 import { parseString } from 'xml2js';
 
@@ -15,7 +9,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IHttpRequestOptions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestOptions } from 'n8n-workflow';
 
 import { pascalCase } from 'change-case';
 
@@ -25,10 +19,10 @@ export async function awsApiRequest(
 	method: string,
 	path: string,
 	body?: string | Buffer | IDataObject,
-	query: IDataObject = {},
+	_query: IDataObject = {},
 	headers?: object,
 	option: IDataObject = {},
-	region?: string,
+	_region?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('aws');
@@ -48,11 +42,7 @@ export async function awsApiRequest(
 	if (Object.keys(option).length !== 0) {
 		Object.assign(requestOptions, option);
 	}
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'aws', requestOptions);
 }
 
 export async function awsApiRequestREST(
@@ -175,12 +165,6 @@ export async function awsApiRequestSOAPAllItems(
 	);
 
 	return returnData;
-}
-
-function queryToString(params: IDataObject) {
-	return Object.keys(params)
-		.map((key) => key + '=' + params[key])
-		.join('&');
 }
 
 export function keysTPascalCase(object: IDataObject) {

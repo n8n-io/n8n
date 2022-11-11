@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 import * as UserSettings from './UserSettings';
 
@@ -19,3 +18,9 @@ export * from './LoadNodeListSearch';
 export * from './NodeExecuteFunctions';
 export * from './WorkflowExecute';
 export { NodeExecuteFunctions, UserSettings };
+
+declare module 'http' {
+	export interface IncomingMessage {
+		rawBody: Buffer;
+	}
+}

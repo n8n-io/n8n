@@ -1,7 +1,5 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { JsonObject, NodeApiError } from 'n8n-workflow';
-
 import { OptionsWithUri } from 'request';
 
 /**
@@ -54,10 +52,5 @@ export async function nextCloudApiRequest(
 
 	const credentialType =
 		authenticationMethod === 'accessToken' ? 'nextCloudApi' : 'nextCloudOAuth2Api';
-
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }

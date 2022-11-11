@@ -7,13 +7,7 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	JsonObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export async function jiraSoftwareCloudApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -64,11 +58,7 @@ export async function jiraSoftwareCloudApiRequest(
 		delete options.qs;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function jiraSoftwareCloudApiRequestAllItems(

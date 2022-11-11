@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -6,25 +5,26 @@
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-floating-promises */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { IRun, LoggerProxy as Logger, WorkflowOperationError } from 'n8n-workflow';
-
-import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
-
-import { DateUtils } from 'typeorm/util/DateUtils';
 import {
-	ActiveExecutions,
+	ErrorReporterProxy as ErrorReporter,
+	LoggerProxy as Logger,
+	WorkflowOperationError,
+} from 'n8n-workflow';
+import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
+import { DateUtils } from 'typeorm/util/DateUtils';
+
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as GenericHelpers from '@/GenericHelpers';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import {
 	DatabaseType,
-	Db,
-	GenericHelpers,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
-	ResponseHelper,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	WorkflowCredentials,
-	WorkflowRunner,
-} from '.';
-import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
+} from '@/Interfaces';
+import { WorkflowRunner } from '@/WorkflowRunner';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
 export class WaitTrackerClass {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;
@@ -173,7 +173,8 @@ export class WaitTrackerClass {
 			// Start the execution again
 			const workflowRunner = new WorkflowRunner();
 			await workflowRunner.run(data, false, false, executionId);
-		})().catch((error) => {
+		})().catch((error: Error) => {
+			ErrorReporter.error(error);
 			Logger.error(
 				`There was a problem starting the waiting execution with id "${executionId}": "${error.message}"`,
 				{ executionId },

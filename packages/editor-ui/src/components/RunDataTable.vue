@@ -66,6 +66,19 @@
 							</draggable>
 						</n8n-tooltip>
 					</th>
+					<th v-if="columnLimitExceeded" :class="$style.header">
+						<n8n-tooltip placement="bottom-end">
+							<div slot="content">
+								<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
+									<a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+								</i18n>
+							</div>
+							<span>
+								<font-awesome-icon :class="$style['warningTooltip']" icon="exclamation-triangle"></font-awesome-icon>
+								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
+							</span>
+						</n8n-tooltip>
+					</th>
 					<th :class="$style.tableRightMargin"></th>
 				</tr>
 			</thead>
@@ -129,6 +142,7 @@
 								</template>
 							</n8n-tree>
 						</td>
+						<td v-if="columnLimitExceeded"></td>
 						<td :class="$style.tableRightMargin"></td>
 					</tr>
 				</template>
@@ -139,8 +153,7 @@
 
 <script lang="ts">
 /* eslint-disable prefer-spread */
-
-import { INodeUi, IRootState, ITableData, IUiState } from '@/Interface';
+import { INodeUi, ITableData, NDVState } from '@/Interface';
 import { getPairedItemId } from '@/pairedItemUtils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -148,6 +161,11 @@ import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from './helpers';
 import { externalHooks } from './mixins/externalHooks';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+
+const MAX_COLUMNS_LIMIT = 40;
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-table',
@@ -189,6 +207,7 @@ export default mixins(externalHooks).extend({
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
 			activeRow: null as number | null,
+			columnLimitExceeded: false,
 		};
 	},
 	mounted() {
@@ -202,11 +221,15 @@ export default mixins(externalHooks).extend({
 		}
 	},
 	computed: {
-		hoveringItem(): IUiState['ndv']['hoveringItem'] {
-			return this.$store.getters['ui/hoveringItem'];
+		...mapStores(
+			useNDVStore,
+			useWorkflowsStore,
+		),
+		hoveringItem(): NDVState['hoveringItem'] {
+			return this.ndvStore.hoveringItem;
 		},
-		pairedItemMappings(): IRootState['workflowExecutionPairedItemMappings'] {
-			return this.$store.getters['workflowExecutionPairedItemMappings'];
+		pairedItemMappings(): {[itemId: string]: Set<string>} {
+			return this.workflowsStore.workflowExecutionPairedItemMappings;
 		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
@@ -345,8 +368,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragStart() {
 			this.draggedColumn = true;
-
-			this.$store.commit('ui/resetMappingTelemetry');
+			this.ndvStore.resetMappingTelemetry();
 		},
 		onCellDragStart(el: HTMLElement) {
 			if (el && el.dataset.value) {
@@ -369,7 +391,7 @@ export default mixins(externalHooks).extend({
 		},
 		onDragEnd(column: string, src: string, depth = '0') {
 			setTimeout(() => {
-				const mappingTelemetry = this.$store.getters['ui/mappingTelemetry'];
+				const mappingTelemetry = this.ndvStore.mappingTelemetry;
 				const telemetryPayload = {
 					src_node_type: this.node.type,
 					src_field_name: column,
@@ -411,7 +433,14 @@ export default mixins(externalHooks).extend({
 
 				// Go over all keys of entry
 				entryRows = [];
-				leftEntryColumns = Object.keys(entry || {});
+				const entryColumns = Object.keys(entry || {});
+
+				if(entryColumns.length > MAX_COLUMNS_LIMIT) {
+					this.columnLimitExceeded = true;
+					leftEntryColumns = entryColumns.slice(0, MAX_COLUMNS_LIMIT);
+				} else {
+					leftEntryColumns = entryColumns;
+				}
 
 				// Go over all the already existing column-keys
 				tableColumns.forEach((key) => {
@@ -450,8 +479,8 @@ export default mixins(externalHooks).extend({
 			// Make sure that all entry-rows have the same length
 			tableData.forEach((entryRows) => {
 				if (tableColumns.length > entryRows.length) {
-					// Has to less entries so add the missing ones
-					entryRows.push.apply(entryRows, new Array(tableColumns.length - entryRows.length));
+					// Has fewer entries so add the missing ones
+					entryRows.push(...new Array(tableColumns.length - entryRows.length));
 				}
 			});
 
@@ -460,6 +489,9 @@ export default mixins(externalHooks).extend({
 				columns: tableColumns,
 				data: tableData,
 			};
+		},
+		switchToJsonView(){
+			this.$emit('displayModeChange', 'json');
 		},
 	},
 });
@@ -654,4 +686,9 @@ export default mixins(externalHooks).extend({
 		background-color: var(--color-secondary);
 	}
 }
+
+.warningTooltip {
+	color: var(--color-warning);
+}
+
 </style>

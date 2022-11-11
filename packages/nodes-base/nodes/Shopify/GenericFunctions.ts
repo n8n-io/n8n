@@ -1,14 +1,13 @@
 import { OptionsWithUri } from 'request';
 
 import {
-	BINARY_ENCODING,
 	IExecuteFunctions,
 	IExecuteSingleFunctions,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, IOAuth2Options, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IOAuth2Options } from 'n8n-workflow';
 
 import { snakeCase } from 'change-case';
 
@@ -67,13 +66,9 @@ export async function shopifyApiRequest(
 		delete options.qs;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
-			oauth2: oAuth2Options,
-		});
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options, {
+		oauth2: oAuth2Options,
+	});
 }
 
 export async function shopifyApiRequestAllItems(

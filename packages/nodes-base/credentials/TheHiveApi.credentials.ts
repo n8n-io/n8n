@@ -55,14 +55,14 @@ export class TheHiveApi implements ICredentialType {
 		type: 'generic',
 		properties: {
 			headers: {
-				Authorization: '=Bearer {{$credentials.ApiKey}}',
+				Authorization: '=Bearer {{$credentials?.ApiKey}}',
 			},
 		},
 	};
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{$credentials.url}}',
-			url: '/api/alert',
+			baseURL: `={{$credentials?.url}}`,
+			url: '/api/case',
 		},
 	};
 }

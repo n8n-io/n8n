@@ -2,7 +2,7 @@ import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-co
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export async function apiRequest(
 	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
@@ -27,12 +27,5 @@ export async function apiRequest(
 		json: true,
 	};
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'wekanApi', options);
-	} catch (error) {
-		if (error.statusCode === 401) {
-			throw new NodeOperationError(this.getNode(), 'The Wekan credentials are not valid!');
-		}
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'wekanApi', options);
 }

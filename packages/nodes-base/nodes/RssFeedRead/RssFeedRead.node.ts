@@ -88,7 +88,7 @@ export class RssFeedRead implements INodeType {
 
 function validateURL(url: string) {
 	try {
-		const parseUrl = new URL(url);
+		const _parseUrl = new URL(url);
 		return true;
 	} catch (err) {
 		return false;

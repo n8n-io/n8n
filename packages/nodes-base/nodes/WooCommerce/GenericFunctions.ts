@@ -8,12 +8,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import {
-	ICredentialDataDecryptedObject,
-	IDataObject,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 
 import { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 
@@ -53,11 +48,7 @@ export async function woocommerceApiRequest(
 		delete options.form;
 	}
 	options = Object.assign({}, options, option);
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'wooCommerceApi', options);
 }
 
 export async function woocommerceApiRequestAllItems(

@@ -1,7 +1,6 @@
 import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
 
 export async function rocketchatApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
@@ -25,11 +24,7 @@ export async function rocketchatApiRequest(
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
 }
 
 // tslint:disable-next-line:no-any

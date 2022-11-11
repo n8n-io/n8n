@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable no-underscore-dangle */
 /* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable no-prototype-builtins */
@@ -19,8 +18,10 @@ import {
 	INodeType,
 	INodeTypeData,
 	INodeTypeNameVersion,
-	INodeVersionedType,
+	IVersionedNodeType,
 	LoggerProxy,
+	jsonParse,
+	ErrorReporterProxy as ErrorReporter,
 } from 'n8n-workflow';
 
 import {
@@ -32,18 +33,18 @@ import {
 import glob from 'fast-glob';
 import path from 'path';
 import pick from 'lodash.pick';
-import { IN8nNodePackageJson } from './Interfaces';
-import { getLogger } from './Logger';
-import config from '../config';
-import { NodeTypes } from '.';
-import { InstalledPackages } from './databases/entities/InstalledPackages';
-import { InstalledNodes } from './databases/entities/InstalledNodes';
-import { executeCommand, loadClassInIsolation } from './CommunityNodes/helpers';
-import { RESPONSE_ERROR_MESSAGES } from './constants';
+import { IN8nNodePackageJson } from '@/Interfaces';
+import { getLogger } from '@/Logger';
+import config from '@/config';
+import { NodeTypes } from '@/NodeTypes';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
+import { InstalledNodes } from '@db/entities/InstalledNodes';
+import { executeCommand, loadClassInIsolation } from '@/CommunityNodes/helpers';
+import { CLI_DIR, RESPONSE_ERROR_MESSAGES } from '@/constants';
 import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
-} from './CommunityNodes/packageModel';
+} from '@/CommunityNodes/packageModel';
 
 const CUSTOM_NODES_CATEGORY = 'Custom Nodes';
 
@@ -64,8 +65,6 @@ class LoadNodesAndCredentialsClass {
 
 	includeNodes: string | undefined = undefined;
 
-	nodeModulesPath = '';
-
 	logger: ILogger;
 
 	async init() {
@@ -78,13 +77,13 @@ class LoadNodesAndCredentialsClass {
 		// @ts-ignore
 		module.constructor._initPaths();
 
-		this.nodeModulesPath = await this.getNodeModulesFolderLocation();
+		const nodeModulesPath = await this.getNodeModulesFolderLocation();
 
 		this.excludeNodes = config.getEnv('nodes.exclude');
 		this.includeNodes = config.getEnv('nodes.include');
 
 		// Get all the installed packages which contain n8n nodes
-		const nodePackages = await this.getN8nNodePackages(this.nodeModulesPath);
+		const nodePackages = await this.getN8nNodePackages(nodeModulesPath);
 
 		for (const packagePath of nodePackages) {
 			await this.loadDataFromPackage(packagePath);
@@ -100,13 +99,13 @@ class LoadNodesAndCredentialsClass {
 		// to load the credentials and nodes
 		const checkPaths = [
 			// In case "n8n" package is in same node_modules folder.
-			path.join(__dirname, '..', '..', '..', 'n8n-workflow'),
+			path.join(CLI_DIR, '..', 'n8n-workflow'),
 			// In case "n8n" package is the root and the packages are
 			// in the "node_modules" folder underneath it.
-			path.join(__dirname, '..', '..', 'node_modules', 'n8n-workflow'),
+			path.join(CLI_DIR, 'node_modules', 'n8n-workflow'),
 			// In case "n8n" package is installed using npm/yarn workspaces
 			// the node_modules folder is in the root of the workspace.
-			path.join(__dirname, '..', '..', '..', '..', 'node_modules', 'n8n-workflow'),
+			path.join(CLI_DIR, '..', '..', 'node_modules', 'n8n-workflow'),
 		];
 		for (const checkPath of checkPaths) {
 			try {
@@ -124,19 +123,23 @@ class LoadNodesAndCredentialsClass {
 		const nodePackages = [];
 		try {
 			// Read downloaded nodes and credentials
-			const downloadedNodesFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+			const downloadedNodesFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 			const downloadedNodesFolderModules = path.join(downloadedNodesFolder, 'node_modules');
 			await fsAccess(downloadedNodesFolderModules);
 			const downloadedPackages = await this.getN8nNodePackages(downloadedNodesFolderModules);
 			nodePackages.push(...downloadedPackages);
-			// eslint-disable-next-line no-empty
-		} catch (error) {}
+		} catch (error) {
+			// Folder does not exist so ignore and return
+			return;
+		}
 
 		for (const packagePath of nodePackages) {
 			try {
 				await this.loadDataFromPackage(packagePath);
 				// eslint-disable-next-line no-empty
-			} catch (error) {}
+			} catch (error) {
+				ErrorReporter.error(error);
+			}
 		}
 	}
 
@@ -230,7 +233,7 @@ class LoadNodesAndCredentialsClass {
 	}
 
 	async loadNpmModule(packageName: string, version?: string): Promise<InstalledPackages> {
-		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 		const command = `npm install ${packageName}${version ? `@${version}` : ''}`;
 
 		await executeCommand(command);
@@ -284,7 +287,7 @@ class LoadNodesAndCredentialsClass {
 		packageName: string,
 		installedPackage: InstalledPackages,
 	): Promise<InstalledPackages> {
-		const downloadFolder = UserSettings.getUserN8nFolderDowloadedNodesPath();
+		const downloadFolder = UserSettings.getUserN8nFolderDownloadedNodesPath();
 
 		const command = `npm i ${packageName}@latest`;
 
@@ -350,7 +353,7 @@ class LoadNodesAndCredentialsClass {
 		nodeName: string,
 		filePath: string,
 	): INodeTypeNameVersion | undefined {
-		let tempNode: INodeType | INodeVersionedType;
+		let tempNode: INodeType | IVersionedNodeType;
 		let nodeVersion = 1;
 
 		try {
@@ -374,9 +377,9 @@ class LoadNodesAndCredentialsClass {
 		}
 
 		if (tempNode.hasOwnProperty('nodeVersions')) {
-			const versionedNodeType = (tempNode as INodeVersionedType).getNodeType();
+			const versionedNodeType = (tempNode as IVersionedNodeType).getNodeType();
 			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
-			nodeVersion = (tempNode as INodeVersionedType).currentVersion;
+			nodeVersion = (tempNode as IVersionedNodeType).currentVersion;
 
 			if (
 				versionedNodeType.description.icon !== undefined &&
@@ -458,7 +461,7 @@ class LoadNodesAndCredentialsClass {
 		filePath,
 		isCustom,
 	}: {
-		node: INodeType | INodeVersionedType;
+		node: INodeType | IVersionedNodeType;
 		filePath: string;
 		isCustom: boolean;
 	}) {
@@ -509,7 +512,7 @@ class LoadNodesAndCredentialsClass {
 	async readPackageJson(packagePath: string): Promise<IN8nNodePackageJson> {
 		// Get the absolute path of the package
 		const packageFileString = await fsReadFile(path.join(packagePath, 'package.json'), 'utf8');
-		return JSON.parse(packageFileString) as IN8nNodePackageJson;
+		return jsonParse(packageFileString);
 	}
 
 	/**
