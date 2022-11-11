@@ -9,8 +9,8 @@ import mixins from 'vue-typed-mixins';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
-import { bracketMatching } from '@codemirror/language';
 import { autocompletion } from '@codemirror/autocomplete';
+import { syntaxTree } from '@codemirror/language';
 
 import { genericHelpers } from '@/components/mixins/genericHelpers'; // @TODO: Needed?
 import { workflowHelpers } from '@/components/mixins/workflowHelpers'; // @TODO: Needed?
@@ -18,10 +18,9 @@ import { n8nLanguageSupport } from './n8nLanguageSupport';
 import { resolvableCompletions } from './resolvable.completions';
 import { EXPRESSION_EDITOR_THEME } from './theme';
 
-import { syntaxTree } from '@codemirror/language';
-
 import type { PropType } from 'vue';
 import type { INodeProperties } from 'n8n-workflow';
+import type { IVariableItemSelected } from '@/Interface';
 
 export default mixins(genericHelpers, workflowHelpers).extend({
 	name: 'ExpressionEditorModalInput',
@@ -35,59 +34,43 @@ export default mixins(genericHelpers, workflowHelpers).extend({
 		path: {
 			type: String,
 		},
-		resolvedValue: {
-			type: String, // @TODO: Confirm
-		},
 	},
 	data() {
 		return {
 			editor: null as EditorView | null,
 		};
 	},
-	watch: {
-		value() {
-			if (!this.resolvedValue) return;
-
-			console.log('here');
-
-			this.onNewValue();
-		},
-	},
-
 	mounted() {
-		const docValue = this.value.startsWith('=') ? this.value.slice(1) : this.value;
-		const rootElement = this.$refs.expressionEditorModalInput as HTMLDivElement;
-
 		const extensions = [
 			EXPRESSION_EDITOR_THEME,
 			n8nLanguageSupport(),
 			history(),
 			autocompletion({ override: [resolvableCompletions] }),
 			EditorState.transactionFilter.of((tx) => (tx.newDoc.lines > 1 ? [] : tx)),
+			EditorView.updateListener.of((viewUpdate) => {
+				if (!this.editor || !viewUpdate.docChanged) return;
+
+				const payload = '=' + this.editor.state.doc.toString();
+
+				this.$emit('input', payload);
+				this.$emit('change', payload);
+			}),
 		];
 
 		this.editor = new EditorView({
-			parent: rootElement,
-			state: EditorState.create({ doc: docValue, extensions }),
+			parent: this.$refs.expressionEditorModalInput as HTMLDivElement,
+			state: EditorState.create({
+				doc: this.value.startsWith('=') ? this.value.slice(1) : this.value,
+				extensions,
+			}),
 		});
 
-		const segments = this.createSegments();
+		const segments = this.parseSegments();
 
-		// const [first, second] = document.querySelectorAll('.resolvable');
-
-		// console.log(first.classList);
-
-		// first.classList.add('valid');
-
-		// console.log(first.classList);
-
-		console.log(segments);
+		// @TODO: Color resolvable segments based on result
 	},
 	methods: {
-		onNewValue() {
-			// @TODO
-		},
-		createSegments() {
+		parseSegments() {
 			if (!this.editor) return [];
 
 			const rawSegments: string[] = [];
@@ -102,23 +85,25 @@ export default mixins(genericHelpers, workflowHelpers).extend({
 					rawSegments.push(this.editor.state.sliceDoc(node.from, node.to));
 				});
 
-			type ParsedSegment = { plaintext: string } | { resolvable: string; resolved: any }; // @TODO: Improve any
+			type ParsedSegment = { plaintext: string } | { resolvable: string; resolved: any }; // @TODO: Improve typing
 
-			const segmentNodes = rawSegments.reduce<ParsedSegment[]>((acc, segment) => {
+			return rawSegments.reduce<ParsedSegment[]>((acc, segment) => {
 				if (segment.startsWith('{{') && segment.endsWith('}}')) {
-					return acc.push({ resolvable: segment, resolved: this.resolve(segment) }), acc;
+					acc.push({ resolvable: segment, resolved: this.resolve(segment) });
+					return acc;
 				}
 
-				return acc.push({ plaintext: segment }), acc;
+				acc.push({ plaintext: segment });
+				return acc;
 			}, []);
-
-			return segmentNodes;
 		},
 		resolve(resolvable: string) {
 			let returnValue;
 
+			// @TODO: Refine error handling
+
 			try {
-				returnValue = this.resolveExpression(`=${resolvable}`);
+				returnValue = this.resolveExpression('=' + resolvable) as unknown;
 			} catch (error) {
 				return `[failed to resolve due to: ${error.message}]`;
 			}
@@ -127,7 +112,17 @@ export default mixins(genericHelpers, workflowHelpers).extend({
 				return '[resolved to undefined]';
 			}
 
-			return returnValue as any;
+			return returnValue;
+		},
+		itemSelected({ variable }: IVariableItemSelected) {
+			if (!this.editor) return;
+
+			this.editor.dispatch({
+				changes: {
+					from: this.editor.state.selection.main.head,
+					insert: `{{ ${variable} }}`,
+				},
+			});
 		},
 	},
 });
