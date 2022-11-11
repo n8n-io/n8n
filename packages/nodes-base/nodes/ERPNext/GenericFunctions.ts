@@ -50,8 +50,7 @@ export async function erpNextApiRequest(
 				message: 'Please ensure the subdomain is correct.',
 			});
 		}
-
-		throw new NodeApiError(this.getNode(), error);
+		throw error;
 	}
 }
 
