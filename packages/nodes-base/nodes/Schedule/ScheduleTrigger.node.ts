@@ -442,9 +442,14 @@ export class ScheduleTrigger implements INodeType {
 				(moment.tz(timezone).month() - (weeklyExecution.weekInterval as number) ===
 					(weeklyExecution.week as number) ||
 					moment.tz(timezone).month() + 52 - (weeklyExecution.weekInterval as number) ===
-						(weeklyExecution.week as number))
+						(weeklyExecution.week as number) ||
+					weeklyExecution.firstExecution)
 			) {
-				weeklyExecution.week = moment.tz(timezone).week() as number;
+				if (!weeklyExecution.firstExecution) {
+					weeklyExecution.week = moment.tz(timezone).week() as number;
+				} else {
+					weeklyExecution.firstExecution = false;
+				}
 				staticData[i] = weeklyExecution;
 				this.emit([this.helpers.returnJsonArray([resultData])]);
 			} else {
@@ -520,6 +525,7 @@ export class ScheduleTrigger implements INodeType {
 					const weeklyExecution: IDataObject = {
 						week: moment.tz(timezone).week(),
 						weekInterval: week,
+						firstExecution: true,
 					};
 					staticData[i] = weeklyExecution;
 					cronJobs.push(cronJob);
