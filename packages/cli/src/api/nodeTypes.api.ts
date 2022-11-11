@@ -1,7 +1,6 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import express from 'express';
 import { readFile } from 'fs/promises';
-import _ from 'lodash';
+import get from 'lodash.get';
 
 import type { ICredentialType, INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 
@@ -72,7 +71,7 @@ export const nodeTypesController = express.Router();
 nodeTypesController.post(
 	'/',
 	ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
-		const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
+		const nodeInfos = get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 
 		const defaultLocale = config.getEnv('defaultLocale');
 

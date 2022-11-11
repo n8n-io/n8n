@@ -71,9 +71,7 @@ import { stringify } from 'qs';
 import clientOAuth1, { Token } from 'oauth-1.0a';
 import clientOAuth2 from 'client-oauth2';
 import crypto, { createHmac } from 'crypto';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { get } from 'lodash';
-// eslint-disable-next-line import/no-extraneous-dependencies
+import get from 'lodash.get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';

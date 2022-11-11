@@ -1,13 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-return */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable no-continue */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/restrict-template-expressions */
-/* eslint-disable no-restricted-syntax */
-/* eslint-disable no-param-reassign */
 import { In } from 'typeorm';
 import {
 	IDataObject,
@@ -184,6 +174,7 @@ export async function executeErrorWorkflow(
 
 		if (workflowStartNode === undefined) {
 			Logger.error(
+				// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 				`Calling Error Workflow for "${workflowErrorData.workflow.id}". Could not find "${ERROR_TRIGGER_TYPE}" in workflow "${workflowId}"`,
 			);
 			return;
@@ -232,6 +223,7 @@ export async function executeErrorWorkflow(
 	} catch (error) {
 		ErrorReporter.error(error);
 		Logger.error(
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 			{ workflowId: workflowErrorData.workflow.id },
 		);
@@ -302,12 +294,13 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 		if (isWorkflowIdValid(workflow.id)) {
 			// Workflow is saved so update in database
 			try {
-				// eslint-disable-next-line @typescript-eslint/no-use-before-define
+				// eslint-disable-next-line @typescript-eslint/no-use-before-define, @typescript-eslint/no-non-null-assertion
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
 			} catch (error) {
 				ErrorReporter.error(error);
 				Logger.error(
+					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions, @typescript-eslint/no-unsafe-member-access
 					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 					{ workflowId: workflow.id },
 				);

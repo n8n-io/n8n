@@ -17,8 +17,7 @@ import { sep } from 'path';
 
 import { diff } from 'json-diff';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { pick } from 'lodash';
+import pick from 'lodash.pick';
 import { getLogger } from '@/Logger';
 
 import * as ActiveExecutions from '@/ActiveExecutions';

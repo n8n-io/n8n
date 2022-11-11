@@ -26,7 +26,6 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';

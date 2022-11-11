@@ -9,7 +9,6 @@
 /* eslint-disable no-return-assign */
 /* eslint-disable no-param-reassign */
 /* eslint-disable consistent-return */
-/* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable id-denylist */
@@ -29,7 +28,7 @@
 /* eslint-disable no-await-in-loop */
 
 import { exec as callbackExec } from 'child_process';
-import { existsSync, readFileSync, createWriteStream, writeFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
 import os from 'os';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -38,7 +37,6 @@ import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and

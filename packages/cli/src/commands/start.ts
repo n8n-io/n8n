@@ -9,7 +9,6 @@
 import localtunnel from 'localtunnel';
 import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';

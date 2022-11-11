@@ -12,8 +12,8 @@
 /* eslint-disable prefer-spread */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { get, isEqual } from 'lodash';
+import get from 'lodash.get';
+import isEqual from 'lodash.isequal';
 
 import {
 	IContextObject,

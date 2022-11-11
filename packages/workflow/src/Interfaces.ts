@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable import/no-extraneous-dependencies */
-// eslint-disable-next-line import/no-extraneous-dependencies
 // eslint-disable-next-line max-classes-per-file
-import * as express from 'express';
-import * as FormData from 'form-data';
+import type * as express from 'express';
+import type * as FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
 import type { URLSearchParams } from 'url';
 import type { IDeferredPromise } from './DeferredPromise';

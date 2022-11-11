@@ -6,7 +6,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';

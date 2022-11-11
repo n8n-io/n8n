@@ -14,8 +14,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable prefer-destructuring */
 import express from 'express';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { get } from 'lodash';
+import get from 'lodash.get';
 
 import { BINARY_ENCODING, BinaryDataManager, NodeExecuteFunctions } from 'n8n-core';
 

@@ -1,14 +1,3 @@
-/* eslint-disable no-underscore-dangle */
-/* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable no-prototype-builtins */
-/* eslint-disable no-param-reassign */
-/* eslint-disable @typescript-eslint/prefer-optional-chain */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable no-await-in-loop */
-/* eslint-disable no-continue */
-/* eslint-disable no-restricted-syntax */
 import {
 	CUSTOM_EXTENSION_ENV,
 	UserSettings,
@@ -68,6 +57,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		process.env.NODE_PATH = module.paths.join(delimiter);
 
 		// @ts-ignore
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 
 		await this.loadNodesFromBasePackages();
