@@ -99,8 +99,7 @@
     "supertest": "^6.2.2",
     "ts-node": "^9.1.1",
     "tsc-alias": "^1.7.0",
-    "tsconfig-paths": "^3.14.1",
-    "typescript": "~4.8.0"
+    "tsconfig-paths": "^3.14.1"
   },
   "dependencies": {
     "@oclif/command": "^1.8.16",
