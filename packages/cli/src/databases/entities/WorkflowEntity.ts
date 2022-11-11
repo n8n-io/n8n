@@ -93,7 +93,7 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	/**
 	 * Hash of editable workflow state.
 	 */
-	hash: string;
+	hash = '';
 
 	@AfterLoad()
 	@AfterUpdate()
