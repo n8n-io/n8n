@@ -1,5 +1,5 @@
 import { IExecuteFunctions } from 'n8n-core';
-import { INodeExecutionData, NodeOperationError } from 'n8n-workflow';
+import { INodeExecutionData } from 'n8n-workflow';
 
 import {
 	OperationType,
@@ -21,21 +21,14 @@ export async function tableTransformationRouter(
 	let returnData: INodeExecutionData[] = [];
 
 	try {
-		switch (operationType) {
-			case 'simplify':
-				returnData = await simplify.call(this, operation as SimplifyOperation);
-				break;
-			case 'summarize':
-				returnData = await summarize.call(this, operation as SummarizeOperation);
-				break;
-			case 'reconfigure':
-				returnData = await reconfigure.call(this, operation as ReconfigureOperation);
-				break;
-			default:
-				throw new NodeOperationError(
-					this.getNode(),
-					`The operation type "${operationType}" is not known`,
-				);
+		if (operationType === 'simplify') {
+			returnData = await simplify.call(this, operation as SimplifyOperation);
+		}
+		if (operationType === 'summarize') {
+			returnData = await summarize.call(this, operation as SummarizeOperation);
+		}
+		if (operationType === 'reconfigure') {
+			returnData = await reconfigure.call(this, operation as ReconfigureOperation);
 		}
 	} catch (error) {
 		throw error;
