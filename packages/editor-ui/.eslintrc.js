@@ -8,6 +8,8 @@ module.exports = {
 		project: ['./tsconfig.json'],
 	},
 
+	ignorePatterns: ['*.d.cts'],
+
 	rules: {
 		// TODO: Remove these
 		'id-denylist': 'off',
