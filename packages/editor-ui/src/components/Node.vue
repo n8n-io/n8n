@@ -16,7 +16,7 @@
 							<font-awesome-icon icon="clock" />
 						</n8n-tooltip>
 					</div>
-					<span v-else-if="hasPinData" class="node-pin-data-icon">
+					<span v-else-if="showPinnedDataInfo" class="node-pin-data-icon">
 						<font-awesome-icon icon="thumbtack" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
 					</span>
@@ -132,6 +132,12 @@ export default mixins(
 		TitledList,
 		NodeIcon,
 	},
+	props: {
+		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	computed: {
 		...mapStores(
 			useNodeTypesStore,
@@ -139,6 +145,9 @@ export default mixins(
 			useUIStore,
 			useWorkflowsStore,
 		),
+		showPinnedDataInfo(): boolean {
+			return this.hasPinData && !this.isProductionExecutionPreview;
+		},
 		isDuplicatable(): boolean {
 			if(!this.nodeType) return true;
 			return this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes;
@@ -307,7 +316,7 @@ export default mixins(
 			else if (!this.isExecuting) {
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
-				} else if (this.waiting || this.hasPinData) {
+				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = getStyleTokenValue('--color-secondary');
 				} else if (this.workflowDataItems) {
 					borderColor = getStyleTokenValue('--color-success');

@@ -168,6 +168,10 @@ export default mixins(
 		renaming: {
 			type: Boolean,
 		},
+		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {

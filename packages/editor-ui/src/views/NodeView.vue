@@ -49,6 +49,7 @@
 						:instance="instance"
 						:isActive="!!activeNode && activeNode.name === nodeData.name"
 						:hideActions="pullConnActive"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
 					>
 						<span
 							slot="custom-tooltip"
@@ -530,6 +531,7 @@ export default mixins(
 				isExecutionPreview: false,
 				showTriggerMissingTooltip: false,
 				workflowData: null as INewWorkflowData | null,
+				isProductionExecutionPreview: false,
 			};
 		},
 		beforeDestroy() {
@@ -3135,6 +3137,8 @@ export default mixins(
 						}
 					} else if (json && json.command === 'openExecution') {
 						try {
+							this.isProductionExecutionPreview = json.executionMode !== 'manual';
+
 							await this.openExecution(json.executionId);
 							this.isExecutionPreview = true;
 						} catch (e) {
