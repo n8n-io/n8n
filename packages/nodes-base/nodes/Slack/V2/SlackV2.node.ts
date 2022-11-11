@@ -396,6 +396,39 @@ export class SlackV2 implements INodeType {
 
 				return returnData;
 			},
+			// Get all the users to display them to user so that he can
+			// select them easily
+			async getChannelsName(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
+				const returnData: INodePropertyOptions[] = [];
+				const qs = { types: 'public_channel,private_channel', limit: 1000 };
+				const channels = await slackApiRequestAllItems.call(
+					this,
+					'channels',
+					'GET',
+					'/conversations.list',
+					{},
+					qs,
+				);
+				for (const channel of channels) {
+					const channelName = channel.name;
+					returnData.push({
+						name: channelName,
+						value: channelName,
+					});
+				}
+
+				returnData.sort((a, b) => {
+					if (a.name < b.name) {
+						return -1;
+					}
+					if (a.name > b.name) {
+						return 1;
+					}
+					return 0;
+				});
+
+				return returnData;
+			},
 			// Get all the team fields to display them to user so that he can
 			// select them easily
 			async getTeamFields(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
@@ -1017,8 +1050,12 @@ export class SlackV2 implements INodeType {
 							},
 						) as IDataObject;
 						if (options.searchChannel) {
-							const channel = options.searchChannel as IDataObject;
-							query = query + ` in:${channel.value}`;
+							const channel = options.searchChannel as IDataObject[];
+							console.log(channel);
+							for (const channelItem of channel) {
+								query += ` in:${channelItem}`;
+							}
+							console.log(query);
 						}
 						const qs: IDataObject = {
 							query,
