@@ -1,6 +1,6 @@
 <template>
 	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<el-dropdown :placement="placement" :trigger="trigger" @command="onSelect"  ref="elementDropdown">
+		<el-dropdown :placement="placement" :trigger="trigger" @command="onSelect" ref="elementDropdown">
 			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
 				<n8n-icon :icon="activatorIcon"/>
 			</div>
@@ -93,12 +93,10 @@ export default Vue.extend({
 			this.$emit('select', action);
 		},
 		onButtonBlur(event: FocusEvent): void {
-			const elementDropdown = this.$refs.elementDropdown;
+			const elementDropdown = this.$refs.elementDropdown as Vue & { hide: () => void };
 			// Hide dropdown when clicking outside of current document
 			if (elementDropdown && event.relatedTarget === null) {
-				// TODO: Disabling error here since this ref is always ElDropdown instance
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-				(elementDropdown as unknown as InstanceType<typeof ElDropdown>).hide();
+				elementDropdown.hide();
 			}
 		},
 	},
