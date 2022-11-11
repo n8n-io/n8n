@@ -62,7 +62,7 @@ const writeJSON = async (file, data) => {
 	await mkdir(path.resolve(distDir, 'icons/credentials'), { recursive: true });
 
 	const loader = new PackageDirectoryLoader(packageDir);
-	await loader.loadAll(false);
+	await loader.loadAll();
 
 	const credentialTypes = Object.values(loader.credentialTypes).map((data) => data.type);
 	credentialTypes

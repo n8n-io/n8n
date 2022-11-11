@@ -16,6 +16,7 @@ import {
 	CustomDirectoryLoader,
 	DirectoryLoader,
 	PackageDirectoryLoader,
+	LazyPackageDirectoryLoader,
 	Types,
 } from 'n8n-core';
 import {
@@ -72,7 +73,7 @@ class LoadNodesAndCredentialsClass {
 		const nodePackagePaths = await this.getN8nNodePackages(nodeModulesPath);
 
 		for (const packagePath of nodePackagePaths) {
-			await this.runDirectoryLoader(PackageDirectoryLoader, packagePath);
+			await this.runDirectoryLoader(LazyPackageDirectoryLoader, packagePath);
 		}
 	}
 

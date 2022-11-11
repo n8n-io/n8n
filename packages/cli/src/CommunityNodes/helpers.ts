@@ -241,6 +241,5 @@ export const loadClassInIsolation = <T>(filePath: string, className: string) => 
 		filePath = filePath.replace(/\\/g, '/');
 	}
 	const script = new Script(`new (require('${filePath}').${className})()`);
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return script.runInContext(context) as T;
 };

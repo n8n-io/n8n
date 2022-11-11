@@ -2,18 +2,15 @@ import * as path from 'node:path';
 import { readFile } from 'node:fs/promises';
 import { createContext, Context, Script } from 'node:vm';
 import glob from 'fast-glob';
-import {
-	DocumentationLink,
-	INodeTypeBaseDescription,
-	INodeTypeDescription,
-	jsonParse,
-	LoggerProxy as Logger,
-} from 'n8n-workflow';
+import { jsonParse, LoggerProxy as Logger } from 'n8n-workflow';
 import type {
 	CodexData,
+	DocumentationLink,
 	ICredentialType,
 	ICredentialTypeData,
 	INodeType,
+	INodeTypeBaseDescription,
+	INodeTypeDescription,
 	INodeTypeData,
 	INodeTypeNameVersion,
 	IVersionedNodeType,
@@ -279,27 +276,15 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 	packageJson!: n8n.PackageJson;
 
-	override async loadAll(lazy = true) {
-		this.packageJson = await this.readJSON<n8n.PackageJson>('package.json');
+	async readPackageJson() {
+		this.packageJson = await this.readJSON('package.json');
+		this.packageName = this.packageJson.name;
+	}
 
-		const { n8n, name: packageName } = this.packageJson;
-		this.packageName = packageName;
+	override async loadAll() {
+		await this.readPackageJson();
 
-		if (lazy) {
-			try {
-				this.known.nodes = await this.readJSON('dist/known/nodes.json');
-				this.known.credentials = await this.readJSON('dist/known/credentials.json');
-
-				this.types.allNodes = await this.readJSON('dist/types/all-nodes.json');
-				this.types.latestNodes = await this.readJSON('dist/types/latest-nodes.json');
-				this.types.credentials = await this.readJSON('dist/types/credentials.json');
-
-				return; // We can loads nodes and credentials lazily now
-			} catch {
-				Logger.warn("Can't enable lazy-loading");
-			}
-		}
-
+		const { n8n } = this.packageJson;
 		if (!n8n) return;
 
 		const { nodes, credentials } = n8n;
@@ -318,12 +303,17 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 				const filePath = this.resolvePath(node);
 				const [nodeName] = path.parse(node).name.split('.');
 
-				this.loadNodeFromFile(packageName, nodeName, filePath);
+				this.loadNodeFromFile(this.packageName, nodeName, filePath);
 			}
 		}
+
+		Logger.info(`Loaded all credentials and nodes from ${this.packageName}`, {
+			credentials: credentials?.length ?? 0,
+			nodes: nodes?.length ?? 0,
+		});
 	}
 
-	private async readJSON<T>(file: string): Promise<T> {
+	protected async readJSON<T>(file: string): Promise<T> {
 		const filePath = this.resolvePath(file);
 		const fileString = await readFile(filePath, 'utf8');
 
@@ -331,6 +321,31 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 			return jsonParse<T>(fileString);
 		} catch (error) {
 			throw new Error(`Failed to parse JSON from ${filePath}`);
+		}
+	}
+}
+
+export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
+	override async loadAll() {
+		await this.readPackageJson();
+
+		try {
+			this.known.nodes = await this.readJSON('dist/known/nodes.json');
+			this.known.credentials = await this.readJSON('dist/known/credentials.json');
+
+			this.types.allNodes = await this.readJSON('dist/types/all-nodes.json');
+			this.types.latestNodes = await this.readJSON('dist/types/latest-nodes.json');
+			this.types.credentials = await this.readJSON('dist/types/credentials.json');
+
+			Logger.info(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
+				credentials: this.types.credentials?.length ?? 0,
+				nodes: this.types.allNodes?.length ?? 0,
+			});
+
+			return; // We can loads nodes and credentials lazily now
+		} catch {
+			Logger.warn("Can't enable lazy-loading");
+			await super.loadAll();
 		}
 	}
 }
