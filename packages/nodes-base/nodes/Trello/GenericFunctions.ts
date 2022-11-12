@@ -2,7 +2,7 @@ import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-co
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, JsonObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 /**
  * Make an API request to Trello

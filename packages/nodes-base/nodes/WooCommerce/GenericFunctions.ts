@@ -8,7 +8,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { ICredentialDataDecryptedObject, IDataObject, NodeApiError } from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, IDataObject } from 'n8n-workflow';
 
 import { ICouponLine, IFeeLine, ILineItem, IShoppingLine } from './OrderInterface';
 

@@ -8,7 +8,6 @@ import {
 	IDataObject,
 	IHookFunctions,
 	IWebhookFunctions,
-	NodeApiError,
 } from 'n8n-workflow';
 
 export async function calendlyApiRequest(

@@ -8,7 +8,6 @@ import {
 	INodeExecutionData,
 	IPollFunctions,
 	jsonParse,
-	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
