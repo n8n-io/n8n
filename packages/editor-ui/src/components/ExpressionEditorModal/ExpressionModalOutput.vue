@@ -1,29 +1,33 @@
 <template>
-	<div>
-		<div ref="expressionModalOutput" class="ph-no-capture" />
-	</div>
+	<div ref="root" class="ph-no-capture" />
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { EXPRESSION_EDITOR_THEME } from './theme';
+import { addColor, removeColor } from './colorDecorations';
+import type { Plaintext, Resolved, Segment } from './types';
 
 export default Vue.extend({
 	name: 'ExpressionModalOutput',
 	props: {
-		output: {
-			type: String,
+		segments: {
+			type: Array as PropType<Segment[]>,
 		},
 	},
 	watch: {
-		output() {
+		segments() {
 			if (!this.editor) return;
 
 			this.editor.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: this.output },
+				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
 			});
+
+			removeColor(this.editor, this.plaintextSegments);
+
+			addColor(this.editor, this.resolvedSegments);
 		},
 	},
 	data() {
@@ -32,31 +36,58 @@ export default Vue.extend({
 		};
 	},
 	mounted() {
+		const extensions = [
+			EXPRESSION_EDITOR_THEME,
+			EditorView.editable.of(false),
+			EditorView.lineWrapping,
+		];
+
 		this.editor = new EditorView({
-			parent: this.$refs.expressionModalOutput as HTMLDivElement,
+			parent: this.$refs.root as HTMLDivElement,
 			state: EditorState.create({
-				doc: this.output.startsWith('=') ? this.output.slice(1) : this.output,
-				extensions: [EXPRESSION_EDITOR_THEME, EditorState.readOnly.of(true)],
+				doc: this.resolvedExpression,
+				extensions,
 			}),
 		});
 	},
 	destroyed() {
 		this.editor?.destroy();
 	},
+	computed: {
+		resolvedExpression(): string {
+			return this.segments.reduce((acc, segment) => {
+				acc += segment.kind === 'resolvable' ? segment.resolved : segment.plaintext;
+				return acc;
+			}, '');
+		},
+		plaintextSegments(): Plaintext[] {
+			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
+		},
+		resolvedSegments(): Resolved[] {
+			let cursor = 0;
+
+			return this.segments
+				.map((segment) => {
+					segment.from = cursor;
+
+					cursor +=
+						segment.kind === 'plaintext'
+							? segment.plaintext.length
+							: (segment.resolved as any).toString().length; // @TODO: Typing
+
+					segment.to = cursor;
+
+					return segment;
+				})
+				.filter((segment): segment is Resolved => segment.kind === 'resolvable');
+		},
+	},
+	methods: {
+		getValue() {
+			return '=' + this.resolvedExpression;
+		},
+	},
 });
 </script>
 
-<style lang="scss">
-.resolvable {
-	background-color: yellow;
-	color: black;
-
-	&.valid {
-		background-color: green;
-	}
-
-	&.invalid {
-		background-color: red;
-	}
-}
-</style>
+<style lang="scss"></style>

@@ -1,7 +1,5 @@
 <template>
-	<div>
-		<div ref="expressionModalInput" class="ph-no-capture" />
-	</div>
+	<div ref="root" class="ph-no-capture" />
 </template>
 
 <script lang="ts">
@@ -17,12 +15,10 @@ import { n8nLanguageSupport } from './n8nLanguageSupport';
 import { resolvableCompletions } from './resolvable.completions';
 import { braceHandler } from './braceHandler';
 import { EXPRESSION_EDITOR_THEME } from './theme';
+import { addColor, removeColor } from './colorDecorations';
 
 import type { IVariableItemSelected } from '@/Interface';
-
-type ParsedSegment =
-	| { plaintext: string }
-	| { resolvable: string; resolved: unknown; error: boolean };
+import type { RawSegment, Segment, Resolvable, Plaintext } from './types';
 
 export default mixins(workflowHelpers).extend({
 	name: 'ExpressionModalInput',
@@ -43,59 +39,87 @@ export default mixins(workflowHelpers).extend({
 			history(),
 			braceHandler(),
 			autocompletion({ override: [resolvableCompletions] }),
-			EditorState.transactionFilter.of((tx) => (tx.newDoc.lines > 1 ? [] : tx)),
+			EditorView.lineWrapping,
+			EditorState.transactionFilter.of((tx) => (tx.newDoc.lines > 1 ? [] : tx)), // forbid newlines
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
-				this.$emit('change', this.getDisplayOutput());
+				removeColor(this.editor, this.plaintextSegments);
+
+				addColor(this.editor, this.resolvableSegments);
+
+				this.$emit('change', { value: this.unresolvedExpression, segments: this.segments });
 			}),
 		];
 
 		this.editor = new EditorView({
-			parent: this.$refs.expressionModalInput as HTMLDivElement,
+			parent: this.$refs.root as HTMLDivElement,
 			state: EditorState.create({
 				doc: this.value.startsWith('=') ? this.value.slice(1) : this.value,
 				extensions,
 			}),
 		});
+
+		addColor(this.editor, this.resolvableSegments);
+
+		this.$emit('change', { value: this.unresolvedExpression, segments: this.segments });
 	},
 	destroyed() {
 		this.editor?.destroy();
 	},
-	methods: {
-		getDisplayOutput(): string {
-			return this.parseSegments().reduce((acc, segment) => {
-				if ('resolved' in segment) acc += segment.resolved;
-				if ('plaintext' in segment) acc += segment.plaintext;
+	computed: {
+		unresolvedExpression(): string {
+			return this.segments.reduce((acc, segment) => {
+				acc += segment.kind === 'resolvable' ? segment.resolvable : segment.plaintext;
 
 				return acc;
-			}, '');
+			}, '=');
 		},
-		parseSegments() {
+		resolvableSegments(): Resolvable[] {
+			return this.segments.filter((s): s is Resolvable => s.kind === 'resolvable');
+		},
+		plaintextSegments(): Plaintext[] {
+			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
+		},
+		segments(): Segment[] {
 			if (!this.editor) return [];
 
-			const rawSegments: string[] = [];
+			const rawInputSegments: RawSegment[] = [];
 
 			syntaxTree(this.editor.state)
 				.cursor()
 				.iterate((node) => {
 					if (!this.editor || node.type.name === 'Program') return;
 
-					rawSegments.push(this.editor.state.sliceDoc(node.from, node.to));
+					rawInputSegments.push({
+						from: node.from,
+						to: node.to,
+						text: this.editor.state.sliceDoc(node.from, node.to),
+						type: node.type.name,
+					});
 				});
 
-			return rawSegments.reduce<ParsedSegment[]>((acc, segment) => {
-				if (segment.startsWith('{{') && segment.endsWith('}}')) {
-					const { resolved, error } = this.resolve(segment);
-					acc.push({ resolvable: segment, resolved, error });
+			return rawInputSegments.reduce<Segment[]>((acc, segment) => {
+				const { from, to, text, type } = segment;
+
+				if (type === 'Resolvable') {
+					const { resolved, error } = this.resolve(text);
+
+					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error });
+
 					return acc;
 				}
 
-				acc.push({ plaintext: segment });
+				// broken resolvable included in plaintext
+
+				acc.push({ kind: 'plaintext', from, to, plaintext: text });
+
 				return acc;
 			}, []);
 		},
-		// @TODO: Refine error handling
+	},
+	methods: {
+		// @TODO: Temp error handling
 		resolve(resolvable: string) {
 			const result: { resolved: unknown; error: boolean } = { resolved: undefined, error: false };
 
@@ -106,12 +130,21 @@ export default mixins(workflowHelpers).extend({
 				result.error = true;
 			}
 
+			if (result.resolved === '') {
+				result.resolved = '[empty]';
+			}
+
 			if (result.resolved === undefined && /\{\{\s*\}\}/.test(resolvable)) {
 				result.resolved = '[empty]';
 			}
 
 			if (result.resolved === undefined) {
-				result.resolved = '[resolved to undefined]';
+				result.resolved = '[undefined]';
+				result.error = true;
+			}
+
+			if (result.resolved === '[Object: null]') {
+				result.resolved = '[null]';
 				result.error = true;
 			}
 
@@ -131,17 +164,4 @@ export default mixins(workflowHelpers).extend({
 });
 </script>
 
-<style lang="scss">
-.resolvable {
-	background-color: yellow;
-	color: black;
-
-	&.valid {
-		background-color: green;
-	}
-
-	&.invalid {
-		background-color: red;
-	}
-}
-</style>
+<style lang="scss"></style>

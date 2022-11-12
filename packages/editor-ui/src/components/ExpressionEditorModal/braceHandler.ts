@@ -26,9 +26,11 @@ const braceInputHandler = EditorView.inputHandler.of((view, from, to, insert) =>
 
 	const cursor = view.state.selection.main.head;
 
-	const isExpressionOpener = view.state.sliceDoc(cursor - 2, cursor) === '{{';
+	const isSecondBraceForNewExpression =
+		view.state.sliceDoc(cursor - 2, cursor) === '{{' &&
+		view.state.sliceDoc(cursor, cursor + 1) === '}';
 
-	if (isExpressionOpener) {
+	if (isSecondBraceForNewExpression) {
 		view.dispatch({
 			changes: { from: cursor, to: cursor + 2, insert: '  }' },
 			selection: { anchor: cursor + 1 },
@@ -37,11 +39,11 @@ const braceInputHandler = EditorView.inputHandler.of((view, from, to, insert) =>
 		return true;
 	}
 
-	const isExpressionSetup =
+	const isFirstBraceForNewExpression =
 		view.state.sliceDoc(cursor - 1, cursor) === '{' &&
 		view.state.sliceDoc(cursor, cursor + 1) === '}';
 
-	if (isExpressionSetup) {
+	if (isFirstBraceForNewExpression) {
 		view.dispatch({ changes: { from: cursor, insert: ' ' } });
 
 		return true;

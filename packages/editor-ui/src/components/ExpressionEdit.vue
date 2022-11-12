@@ -19,7 +19,21 @@
 				<el-col :span="16" class="right-side">
 					<div class="expression-editor-wrapper">
 						<div class="editor-description">
-							{{ $locale.baseText('expressionEdit.expression') }}
+							<div>
+								{{ $locale.baseText('expressionEdit.expression') }}
+							</div>
+							<div class="hint">
+								<span>
+									{{ $locale.baseText('expressionEdit.anythingInside') }}
+								</span>
+								<div class="expression-syntax-example" v-text="`{{ }}`"></div>
+								<span>
+									{{ $locale.baseText('expressionEdit.isJavaScript') }}
+								</span>
+								<n8n-link size="medium" :to="expressionsDocsUrl">
+									{{ $locale.baseText('expressionEdit.learnMore') }}
+								</n8n-link>
+							</div>
 						</div>
 						<div class="expression-editor ph-no-capture">
 							<expression-modal-input
@@ -36,8 +50,11 @@
 							{{ $locale.baseText('expressionEdit.result') }}
 						</div>
 						<div class="ph-no-capture">
-							<expression-modal-output :output="displayValue" />
-							<expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input>
+							<expression-modal-output
+								:segments="segments"
+								ref="expressionResult"
+							/>
+							<!-- <expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input> -->
 						</div>
 					</div>
 
@@ -59,12 +76,16 @@ import { IVariableItemSelected } from '@/Interface';
 import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
+import { EXPRESSIONS_DOCS_URL } from '@/constants';
+
 import mixins from 'vue-typed-mixins';
 import { hasExpressionMapping } from './helpers';
 import { debounceHelper } from './mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
+
+import type { Segment } from './ExpressionEditorModal/types';
 
 export default mixins(
 	externalHooks,
@@ -89,6 +110,7 @@ export default mixins(
 		return {
 			displayValue: '',
 			latestValue: '',
+			segments: [] as Segment[],
 		};
 	},
 	computed: {
@@ -96,10 +118,14 @@ export default mixins(
 			useNDVStore,
 			useWorkflowsStore,
 		),
+		expressionsDocsUrl(): string {
+			return EXPRESSIONS_DOCS_URL;
+		},
 	},
 	methods: {
-		valueChanged (value: string, forceUpdate = false) {
+		valueChanged ({ value, segments }: { value: string, segments: Segment[] }, forceUpdate = false) {
 			this.latestValue = value;
+			this.segments = segments;
 
 			if (forceUpdate === true) {
 				this.updateDisplayValue();
@@ -210,7 +236,26 @@ export default mixins(
 .editor-description {
 	line-height: 1.5;
 	font-weight: bold;
-	padding: 0 0 0.5em 0.2em;;
+	padding: 0 0 0.5em 0.2em;
+	display: flex;
+  justify-content: space-between;
+
+	.hint {
+		font-weight: normal;
+		display: flex;
+
+		span {
+			margin-right: var(--spacing-4xs);
+		}
+		.expression-syntax-example {
+			display: inline-block;
+			margin-top: 3px;
+			height: 16px;
+			line-height: 1;
+			background-color: yellow;
+			margin-right: var(--spacing-4xs);
+		}
+	}
 }
 
 .expression-result-wrapper,
