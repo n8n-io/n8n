@@ -61,11 +61,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**

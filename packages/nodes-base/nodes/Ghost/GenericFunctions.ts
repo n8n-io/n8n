@@ -44,11 +44,7 @@ export async function ghostApiRequest(
 		json: true,
 	};
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error as JsonObject);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function ghostApiRequestAllItems(

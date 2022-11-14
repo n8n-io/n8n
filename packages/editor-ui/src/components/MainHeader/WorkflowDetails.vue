@@ -17,6 +17,7 @@
 							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
 							class="name"
+							data-test-id="workflow-name-input"
 						/>
 					</template>
 				</ShortenName>
@@ -36,6 +37,7 @@
 					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 					ref="dropdown"
 					class="tags-edit"
+					data-test-id="workflow-tags-dropdown"
 				/>
 			</div>
 			<div
@@ -55,6 +57,7 @@
 				:responsive="true"
 				:key="currentWorkflowId"
 				@click="onTagsEditEnable"
+				data-test-id="workflow-tags"
 			/>
 		</span>
 		<span v-else class="tags"></span>
@@ -71,7 +74,7 @@
 					@click="onSaveButtonClick"
 				/>
 				<div :class="$style.workflowMenuContainer">
-					<input :class="$style.hiddenInput" type="file" ref="importFile" @change="handleFileImport()">
+					<input :class="$style.hiddenInput" type="file" ref="importFile" data-test-id="workflow-import-input" @change="handleFileImport()">
 					<n8n-action-dropdown :items="workflowMenuItems" @select="onWorkflowMenuSelect" />
 				</div>
 			</template>

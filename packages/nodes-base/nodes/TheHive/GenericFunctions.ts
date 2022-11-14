@@ -40,11 +40,7 @@ export async function theHiveApiRequest(
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
 }
 
 // Helpers functions

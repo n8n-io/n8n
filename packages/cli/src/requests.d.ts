@@ -39,7 +39,7 @@ export type AuthenticatedRequest<
 // ----------------------------------
 
 export declare namespace WorkflowRequest {
-	type RequestBody = Partial<{
+	type CreateUpdatePayload = Partial<{
 		id: string; // delete if sent
 		name: string;
 		nodes: INode[];
@@ -50,13 +50,26 @@ export declare namespace WorkflowRequest {
 		hash: string;
 	}>;
 
-	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
+	type ManualRunPayload = {
+		workflowData: IWorkflowDb;
+		runData: IRunData;
+		pinData: IPinData;
+		startNodes?: string[];
+		destinationNode?: string;
+	};
+
+	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
 	type Get = AuthenticatedRequest<{ id: string }>;
 
 	type Delete = Get;
 
-	type Update = AuthenticatedRequest<{ id: string }, {}, RequestBody, { forceSave?: string }>;
+	type Update = AuthenticatedRequest<
+		{ id: string },
+		{},
+		CreateUpdatePayload,
+		{ forceSave?: string }
+	>;
 
 	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
 
@@ -66,17 +79,7 @@ export declare namespace WorkflowRequest {
 
 	type GetAllActivationErrors = Get;
 
-	type ManualRun = AuthenticatedRequest<
-		{},
-		{},
-		{
-			workflowData: IWorkflowDb;
-			runData: IRunData;
-			pinData: IPinData;
-			startNodes?: string[];
-			destinationNode?: string;
-		}
-	>;
+	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }

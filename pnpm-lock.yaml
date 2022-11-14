@@ -168,10 +168,10 @@ importers:
       lodash.split: ^4.4.2
       lodash.unset: ^4.5.2
       mysql2: ~2.3.0
-      n8n-core: ~0.141.0
-      n8n-editor-ui: ~0.167.0
-      n8n-nodes-base: ~0.199.0
-      n8n-workflow: ~0.123.0
+      n8n-core: ~0.142.1
+      n8n-editor-ui: ~0.168.1
+      n8n-nodes-base: ~0.200.1
+      n8n-workflow: ~0.124.1
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
       oauth-1.0a: ^2.2.6
@@ -333,7 +333,7 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.123.0
+      n8n-workflow: ~0.124.1
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
       qs: ^6.10.1
@@ -503,8 +503,8 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
-      n8n-design-system: ~0.41.0
-      n8n-workflow: ~0.123.0
+      n8n-design-system: ~0.42.0
+      n8n-workflow: ~0.124.1
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
       prismjs: ^1.17.1
@@ -630,8 +630,8 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.141.0
-      n8n-workflow: ~0.123.0
+      n8n-core: ~0.142.1
+      n8n-workflow: ~0.124.1
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
       request: ^2.88.2
@@ -721,8 +721,8 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.141.0
-      n8n-workflow: ~0.123.0
+      n8n-core: ~0.142.1
+      n8n-workflow: ~0.124.1
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
