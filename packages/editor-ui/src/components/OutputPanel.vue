@@ -11,6 +11,7 @@
 		:sessionId="sessionId"
 		:isReadOnly="isReadOnly"
 		:blockUI="blockUI"
+		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
@@ -116,6 +117,10 @@ export default mixins(
 			type: String,
 		},
 		blockUI: {
+			type: Boolean,
+			default: false,
+		},
+		isProductionExecutionPreview: {
 			type: Boolean,
 			default: false,
 		},

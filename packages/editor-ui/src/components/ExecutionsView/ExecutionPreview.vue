@@ -55,7 +55,7 @@
 				<n8n-icon-button :title="$locale.baseText('executionDetails.deleteExecution')" icon="trash" size="large" type="tertiary" @click="onDeleteExecution" />
 			</div>
 		</div>
-		<workflow-preview mode="execution" loaderType="spinner" :executionId="executionId"/>
+		<workflow-preview mode="execution" loaderType="spinner" :executionId="executionId" :executionMode="executionMode"/>
 	</div>
 </template>
 
@@ -89,6 +89,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 		sidebarCollapsed(): boolean {
 			return this.uiStore.sidebarMenuCollapsed;
+		},
+		executionMode(): string {
+			return this.activeExecution?.mode || '';
 		},
 	},
 	methods: {
