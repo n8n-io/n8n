@@ -30,6 +30,11 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 			} catch (syntaxError) {
 				let line;
 
+				const lineAtError = editorView.state.doc.line(syntaxError.lineNumber).text;
+
+				// optional chaining operators currently unsupported by esprima-next
+				if (['?.', ']?'].some(operator => lineAtError.includes(operator))) return [];
+
 				try {
 					line = editorView.state.doc.line(syntaxError.lineNumber);
 
