@@ -101,7 +101,7 @@ export const getJsonSchema = (input: Optional<Primitives | object>, key?: string
 			} else if (isObj(input)) {
 				schema = {
 					type: 'object',
-					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getJsonSchema(v, k, path + `.${k}`)})),
+					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getJsonSchema(v, k, path + `["${k}"]`)})),
 					path,
 				};
 			}

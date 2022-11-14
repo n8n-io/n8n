@@ -97,15 +97,15 @@ describe("Utils", () => {
 			],
 			[
 				{ people: ['Joe', 'John']},
-				{ type: 'object',  value: [{ type: 'list', key: 'people', value: 'string', path: '.people[*]' }], path: '' },
+				{ type: 'object',  value: [{ type: 'list', key: 'people', value: 'string', path: '["people"][*]' }], path: '' },
 			],
 			[
 				[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }],
-				{ type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }], path: '[*]' },
+				{ type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*]["name"]'}, { type: 'number', key: 'age', value: 'number', path: '[*]["age"]' }], path: '[*]' },
 			],
 			[
 				[{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }],
-				{ type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*].age' }, { type: 'list', key: 'hobbies', value: 'string', path: '[*].hobbies[*]' }], path: '[*]' },
+				{ type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*]["name"]' }, { type: 'number', key: 'age', value: 'number', path: '[*]["age"]' }, { type: 'list', key: 'hobbies', value: 'string', path: '[*]["hobbies"][*]' }], path: '[*]' },
 			],
 			[
 				[],
@@ -117,11 +117,11 @@ describe("Utils", () => {
 			],
 			[
 				[[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }]],
-				{ type: 'list', value: [{ type: 'list', value:  [{ type: 'string', key: 'name', value: 'string', path: '[*][*].name' }, { type: 'number', key: 'age', value: 'number', path: '[*][*].age' }], path: '[*][*]' }], path: '[*]' },
+				{ type: 'list', value: [{ type: 'list', value:  [{ type: 'string', key: 'name', value: 'string', path: '[*][*]["name"]' }, { type: 'number', key: 'age', value: 'number', path: '[*][*]["age"]' }], path: '[*][*]' }], path: '[*]' },
 			],
 			[
 				[{ dates: [[new Date('2022-11-22T00:00:00.000Z'), new Date('2022-11-23T00:00:00.000Z')], [new Date('2022-12-22T00:00:00.000Z'), new Date('2022-12-23T00:00:00.000Z')]] }],
-				{ type: 'list', value: [{ type: 'list', key: 'dates', value: [{ type: 'list', value: 'date', path: '[*].dates[*][*]' }], path: '[*].dates[*]' }], path: '[*]' },
+				{ type: 'list', value: [{ type: 'list', key: 'dates', value: [{ type: 'list', value: 'date', path: '[*]["dates"][*][*]' }], path: '[*]["dates"][*]' }], path: '[*]' },
 			],
 		])('should return the correct json schema for %s', (input, schema) => {
 			expect(getJsonSchema(input)).toEqual(schema);
