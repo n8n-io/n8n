@@ -10,10 +10,10 @@ import {
 } from 'n8n-workflow';
 
 import { get, isEmpty, isEqual, isObject, lt, merge, pick, reduce, set, unset } from 'lodash';
-import { tableTransformationDescription } from './tableTransformation/description';
-import { tableTransformationRouter } from './tableTransformation/router';
 
 const { NodeVM } = require('vm2');
+
+import * as summarize from './summarize.operation';
 
 export class ItemLists implements INodeType {
 	description: INodeTypeDescription = {
@@ -34,16 +34,11 @@ export class ItemLists implements INodeType {
 			{
 				displayName: 'Resource',
 				name: 'resource',
-				type: 'options',
-				noDataExpression: true,
+				type: 'hidden',
 				options: [
 					{
 						name: 'Item List',
 						value: 'itemList',
-					},
-					{
-						name: 'Table Tranformation',
-						value: 'tableTransformation',
 					},
 				],
 				default: 'itemList',
@@ -84,16 +79,16 @@ export class ItemLists implements INodeType {
 						description: 'Turn a list inside item(s) into separate items',
 						action: 'Turn a list inside item(s) into separate items',
 					},
+					{
+						name: 'Summarize',
+						value: 'summarize',
+						description: 'Summarize items',
+						action: 'Summarize items',
+					},
 				],
 				default: 'splitOutItems',
-				displayOptions: {
-					show: {
-						resource: ['itemList'],
-					},
-				},
 			},
 			// Split out items - Fields
-
 			{
 				displayName: 'Field To Split Out',
 				name: 'fieldToSplitOut',
@@ -741,7 +736,8 @@ return 0;`,
 					},
 				],
 			},
-			...tableTransformationDescription,
+			// Remove duplicates - Fields
+			...summarize.description,
 		],
 	};
 
@@ -1364,11 +1360,11 @@ return 0;`,
 					newItems = items.slice(items.length - maxItems, items.length);
 				}
 				return this.prepareOutputData(newItems);
+			} else if (operation === 'summarize') {
+				return await summarize.execute.call(this, items);
 			} else {
 				throw new NodeOperationError(this.getNode(), `Operation '${operation}' is not recognized`);
 			}
-		} else if (resource === 'tableTransformation') {
-			return await tableTransformationRouter.call(this);
 		} else {
 			throw new NodeOperationError(this.getNode(), `Resource '${resource}' is not recognized`);
 		}
