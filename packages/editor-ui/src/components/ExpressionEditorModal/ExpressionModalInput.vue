@@ -62,6 +62,8 @@ export default mixins(workflowHelpers).extend({
 
 		addColor(this.editor, this.resolvableSegments);
 
+		console.log('this.segments', this.segments);
+
 		this.$emit('change', { value: this.unresolvedExpression, segments: this.segments });
 	},
 	destroyed() {
@@ -119,14 +121,16 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	methods: {
-		// @TODO: Temp error handling
+		isEmptyExpression(resolvable: string) {
+			return /\{\{\s*\}\}/.test(resolvable);
+		},
 		resolve(resolvable: string) {
 			const result: { resolved: unknown; error: boolean } = { resolved: undefined, error: false };
 
 			try {
 				result.resolved = this.resolveExpression('=' + resolvable) as unknown;
 			} catch (error) {
-				result.resolved = `[failed to resolve due to: ${error.message}]`;
+				result.resolved = `[${error.message}]`;
 				result.error = true;
 			}
 
@@ -134,7 +138,7 @@ export default mixins(workflowHelpers).extend({
 				result.resolved = '[empty]';
 			}
 
-			if (result.resolved === undefined && /\{\{\s*\}\}/.test(resolvable)) {
+			if (result.resolved === undefined && this.isEmptyExpression(resolvable)) {
 				result.resolved = '[empty]';
 			}
 
@@ -143,9 +147,12 @@ export default mixins(workflowHelpers).extend({
 				result.error = true;
 			}
 
-			if (result.resolved === '[Object: null]') {
-				result.resolved = '[null]';
-				result.error = true;
+			if (typeof result.resolved === 'string' && /\[Array:\s\[/.test(result.resolved)) {
+				result.resolved = result.resolved.replace(/(\[Array: \[|\])/g, '');
+			}
+
+			if (typeof result.resolved === 'number' && isNaN(result.resolved)) {
+				result.resolved = 'null';
 			}
 
 			return result;
