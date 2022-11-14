@@ -1287,4 +1287,4 @@ export type JsonSchemaType =
 	| 'function'
 	| 'null'
 	| 'undefined';
-export type JsonSchema = { type: JsonSchemaType, key?: string, value: string | JsonSchema[], path?: string };
+export type JsonSchema = { type: JsonSchemaType, key?: string, value: string | JsonSchema[], path: string };

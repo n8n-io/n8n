@@ -77,13 +77,13 @@ export const getTypeof = (value: unknown): JsonSchemaType => value === null
 			: typeof value;
 
 export const getJsonSchema = (input: Optional<Primitives | object>, key?: string, path = ''): JsonSchema => {
-	let schema:JsonSchema = { type: 'undefined', value: 'undefined' };
+	let schema:JsonSchema = { type: 'undefined', value: 'undefined', path };
 	switch (typeof input) {
 		case 'object':
 			if (input === null) {
-				schema = { type: 'string', value: '[null]' };
+				schema = { type: 'string', value: '[null]', path };
 			} else if (input instanceof Date) {
-				schema = { type: 'date', value: input.toISOString() };
+				schema = { type: 'date', value: input.toISOString(), path };
 			} else if (Array.isArray(input)) {
 				schema = {
 					type: 'list',
@@ -107,13 +107,13 @@ export const getJsonSchema = (input: Optional<Primitives | object>, key?: string
 			}
 			break;
 		case 'string':
-			schema = { type: 'string', value: `"${input}"` };
+			schema = { type: 'string', value: `"${input}"`, path };
 			break;
 		case 'function':
-			schema =  { type: 'function', value: `` };
+			schema =  { type: 'function', value: ``, path };
 			break;
 		default:
-			schema =  { type: typeof input, value: String(input) };
+			schema =  { type: typeof input, value: String(input), path };
 	}
 
 	if (!isSchemaTypeObjectOrList(schema.type)) {
