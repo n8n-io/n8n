@@ -96,11 +96,11 @@
     "concurrently": "^5.1.0",
     "nodemon": "^2.0.2",
     "run-script-os": "^1.0.7",
+    "source-map-support": "^0.5.21",
     "supertest": "^6.2.2",
-    "ts-node": "^8.9.1",
+    "ts-node": "^9.1.1",
     "tsc-alias": "^1.7.0",
-    "tsconfig-paths": "^3.14.1",
-    "typescript": "~4.8.0"
+    "tsconfig-paths": "^3.14.1"
   },
   "dependencies": {
     "@oclif/command": "^1.8.16",
@@ -164,6 +164,7 @@
     "posthog-node": "^1.3.0",
     "prom-client": "^13.1.0",
     "psl": "^1.8.0",
+    "semver": "^7.3.8",
     "shelljs": "^0.8.5",
     "sqlite3": "^5.1.2",
     "sse-channel": "^3.1.1",
