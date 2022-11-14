@@ -1,4 +1,4 @@
-import N8nCheckbox from "./Checkbox.vue";
+import N8nCheckbox from './Checkbox.vue';
 import { StoryFn } from '@storybook/vue';
 import { action } from '@storybook/addon-actions';
 

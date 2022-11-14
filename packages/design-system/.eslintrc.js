@@ -15,7 +15,6 @@ module.exports = {
 		'import/no-default-export': 'off',
 		'import/no-extraneous-dependencies': 'off',
 		'import/order': 'off',
-		'prettier/prettier': 'off',
 		'@typescript-eslint/member-delimiter-style': 'off',
 		'@typescript-eslint/naming-convention': 'off',
 		'@typescript-eslint/no-explicit-any': 'warn',
@@ -25,5 +24,5 @@ module.exports = {
 		'@typescript-eslint/no-unused-vars': 'warn',
 		'@typescript-eslint/restrict-template-expressions': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
-	}
+	},
 };

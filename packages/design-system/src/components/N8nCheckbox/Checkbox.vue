@@ -51,20 +51,18 @@ export default Vue.extend({
 		labelSize: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean =>
-				['small', 'medium'].includes(value),
+			validator: (value: string): boolean => ['small', 'medium'].includes(value),
 		},
 	},
 	methods: {
 		onChange(event: Event) {
-			this.$emit("input", event);
+			this.$emit('input', event);
 		},
 	},
 });
 </script>
 
 <style lang="scss" module>
-
 .n8nCheckbox {
 	display: flex !important;
 	white-space: normal !important;
@@ -73,5 +71,4 @@ export default Vue.extend({
 		white-space: normal;
 	}
 }
-
 </style>

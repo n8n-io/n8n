@@ -4,18 +4,13 @@
 			v-if="!loading"
 			ref="editor"
 			class="ph-no-capture"
-			:class="$style[theme]" v-html="htmlContent"
+			:class="$style[theme]"
+			v-html="htmlContent"
 			@click="onClick"
 		/>
 		<div v-else :class="$style.markdown">
-			<div v-for="(block, index) in loadingBlocks"
-				:key="index">
-				<n8n-loading
-					:loading="loading"
-					:rows="loadingRows"
-					animated
-					variant="p"
-				/>
+			<div v-for="(block, index) in loadingBlocks" :key="index">
+				<n8n-loading :loading="loading" :rows="loadingRows" animated variant="p" />
 				<div :class="$style.spacer" />
 			</div>
 		</div>
@@ -106,7 +101,7 @@ export default Vue.extend({
 	computed: {
 		htmlContent(): string {
 			if (!this.content) {
-				 return '';
+				return '';
 			}
 
 			const imageUrls: { [key: string]: string } = {};
@@ -143,7 +138,7 @@ export default Vue.extend({
 					}
 					// Return nothing, means keep the default handling measure
 				},
-				onTag (tag, code) {
+				onTag(tag, code) {
 					if (tag === 'img' && code.includes(`alt="workflow-screenshot"`)) {
 						return '';
 					}
@@ -166,13 +161,13 @@ export default Vue.extend({
 		onClick(event: MouseEvent) {
 			let clickedLink = null;
 
-			if(event.target instanceof HTMLAnchorElement) {
+			if (event.target instanceof HTMLAnchorElement) {
 				clickedLink = event.target;
 			}
 
-			if(event.target instanceof HTMLElement && event.target.matches('a *')) {
+			if (event.target instanceof HTMLElement && event.target.matches('a *')) {
 				const parentLink = event.target.closest('a');
-				if(parentLink) {
+				if (parentLink) {
 					clickedLink = parentLink;
 				}
 			}
@@ -191,13 +186,17 @@ export default Vue.extend({
 		line-height: var(--font-line-height-xloose);
 	}
 
-	h1, h2, h3, h4 {
+	h1,
+	h2,
+	h3,
+	h4 {
 		margin-bottom: var(--spacing-s);
 		font-size: var(--font-size-m);
 		font-weight: var(--font-weight-bold);
 	}
 
-	h3, h4 {
+	h3,
+	h4 {
 		font-weight: var(--font-weight-bold);
 	}
 
@@ -206,7 +205,8 @@ export default Vue.extend({
 		margin-bottom: var(--spacing-s);
 	}
 
-	ul, ol {
+	ul,
+	ol {
 		margin-bottom: var(--spacing-s);
 		padding-left: var(--spacing-m);
 
@@ -257,7 +257,10 @@ export default Vue.extend({
 .sticky {
 	color: var(--color-text-dark);
 
-	h1, h2, h3, h4 {
+	h1,
+	h2,
+	h3,
+	h4 {
 		margin-bottom: var(--spacing-2xs);
 		font-weight: var(--font-weight-bold);
 		line-height: var(--font-line-height-loose);
@@ -271,7 +274,10 @@ export default Vue.extend({
 		font-size: 24px;
 	}
 
-	h3, h4, h5, h6 {
+	h3,
+	h4,
+	h5,
+	h6 {
 		font-size: var(--font-size-m);
 	}
 
@@ -282,7 +288,8 @@ export default Vue.extend({
 		line-height: var(--font-line-height-loose);
 	}
 
-	ul, ol {
+	ul,
+	ol {
 		margin-bottom: var(--spacing-2xs);
 		padding-left: var(--spacing-m);
 
@@ -300,7 +307,9 @@ export default Vue.extend({
 		color: var(--color-secondary);
 	}
 
-	pre > code,li > code, p > code {
+	pre > code,
+	li > code,
+	p > code {
 		color: var(--color-secondary);
 	}
 
@@ -313,7 +322,7 @@ export default Vue.extend({
 	img {
 		object-fit: contain;
 
-		&[src*="#full-width"] {
+		&[src*='#full-width'] {
 			width: 100%;
 		}
 	}

@@ -1,4 +1,4 @@
-import N8nNodeIcon from "./NodeIcon.vue";
+import N8nNodeIcon from './NodeIcon.vue';
 import { StoryFn } from '@storybook/vue';
 
 export default {

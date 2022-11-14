@@ -1,6 +1,5 @@
 dist
 packages/editor-ui
-packages/design-system
 package*.json
 
 !packages/nodes-base/src

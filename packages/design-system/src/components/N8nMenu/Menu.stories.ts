@@ -7,8 +7,7 @@ import { action } from '@storybook/addon-actions';
 export default {
 	title: 'Atoms/Menu',
 	component: N8nMenu,
-	argTypes: {
-	},
+	argTypes: {},
 };
 
 const methods = {

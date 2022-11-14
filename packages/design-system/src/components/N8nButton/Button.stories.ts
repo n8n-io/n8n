@@ -1,7 +1,7 @@
 /* tslint:disable:variable-name */
 import N8nButton from './Button.vue';
 import { action } from '@storybook/addon-actions';
-import { StoryFn } from "@storybook/vue";
+import { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Button',

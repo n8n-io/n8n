@@ -3,16 +3,12 @@
 		<div
 			v-for="(user, i) in sortedUsers"
 			:key="user.id"
-			class='ph-no-capture'
+			class="ph-no-capture"
 			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 			<div :class="$style.badgeContainer">
-				<n8n-badge
-					v-if="user.isOwner"
-					theme="tertiary"
-					bold
-				>
+				<n8n-badge v-if="user.isOwner" theme="tertiary" bold>
 					{{ t('nds.auth.roles.owner') }}
 				</n8n-badge>
 				<n8n-action-toggle
@@ -103,7 +99,7 @@ export default mixins(Locale).extend({
 						return a.lastName > b.lastName ? 1 : -1;
 					}
 					if (a.firstName !== b.firstName) {
-						return a.firstName > b.firstName? 1 : -1;
+						return a.firstName > b.firstName ? 1 : -1;
 					}
 				}
 
@@ -123,19 +119,14 @@ export default mixins(Locale).extend({
 				value: 'reinvite',
 			};
 
-			if (user.isOwner)	{
+			if (user.isOwner) {
 				return [];
 			}
 
 			if (user.firstName) {
-				return [
-					DELETE,
-				];
+				return [DELETE];
 			} else {
-				return [
-					REINVITE,
-					DELETE,
-				];
+				return [REINVITE, DELETE];
 			}
 		},
 		onUserAction(user: IUser, action: string): void {
@@ -146,7 +137,6 @@ export default mixins(Locale).extend({
 	},
 });
 </script>
-
 
 <style lang="scss" module>
 .itemContainer {

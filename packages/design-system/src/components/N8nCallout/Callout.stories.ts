@@ -3,7 +3,6 @@ import N8nLink from '../N8nLink';
 import N8nText from '../N8nText';
 import { StoryFn } from '@storybook/vue';
 
-
 export default {
 	title: 'Atoms/Callout',
 	component: N8nCallout,
@@ -33,7 +32,7 @@ export default {
 	},
 };
 
-const template : StoryFn = (args, { argTypes }) => ({
+const template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nLink,
@@ -78,7 +77,6 @@ customCallout.args = {
 		</n8n-link>
 	`,
 };
-
 
 export const secondaryCallout = template.bind({});
 secondaryCallout.args = {

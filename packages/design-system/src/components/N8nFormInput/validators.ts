@@ -1,5 +1,4 @@
-
-import { IValidator, RuleGroup } from "../../types";
+import { IValidator, RuleGroup } from '../../types';
 
 export const emailRegex =
 	/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
@@ -21,7 +20,10 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 		},
 	},
 	MIN_LENGTH: {
-		validate: (value:  string | number | boolean | null | undefined, config: { minimum: number }) => {
+		validate: (
+			value: string | number | boolean | null | undefined,
+			config: { minimum: number },
+		) => {
 			if (typeof value === 'string' && value.length < config.minimum) {
 				return {
 					messageKey: 'formInput.validator.minCharactersRequired',
@@ -33,7 +35,10 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 		},
 	},
 	MAX_LENGTH: {
-		validate: (value:  string | number | boolean | null | undefined, config: { maximum: number }) => {
+		validate: (
+			value: string | number | boolean | null | undefined,
+			config: { maximum: number },
+		) => {
 			if (typeof value === 'string' && value.length > config.maximum) {
 				return {
 					messageKey: 'formInput.validator.maxCharactersRequired',
@@ -45,7 +50,10 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 		},
 	},
 	CONTAINS_NUMBER: {
-		validate: (value:  string | number | boolean | null | undefined, config: { minimum: number }) => {
+		validate: (
+			value: string | number | boolean | null | undefined,
+			config: { minimum: number },
+		) => {
 			if (typeof value !== 'string') {
 				return false;
 			}
@@ -62,7 +70,7 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 		},
 	},
 	VALID_EMAIL: {
-		validate: (value:  string | number | boolean | null | undefined) => {
+		validate: (value: string | number | boolean | null | undefined) => {
 			if (!emailRegex.test(String(value).trim().toLowerCase())) {
 				return {
 					messageKey: 'formInput.validator.validEmailRequired',
@@ -73,7 +81,10 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 		},
 	},
 	CONTAINS_UPPERCASE: {
-		validate: (value:  string | number | boolean | null | undefined, config: { minimum: number }) => {
+		validate: (
+			value: string | number | boolean | null | undefined,
+			config: { minimum: number },
+		) => {
 			if (typeof value !== 'string') {
 				return false;
 			}
@@ -101,7 +112,7 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 					messageKey: 'formInput.validator.defaultPasswordRequirements',
 				},
 			},
-			{ name: 'MAX_LENGTH', config: {maximum: 64} },
+			{ name: 'MAX_LENGTH', config: { maximum: 64 } },
 		],
 	},
 };
@@ -116,20 +127,15 @@ export const getValidationError = (
 		const rules = (validator as RuleGroup).rules;
 		for (let i = 0; i < rules.length; i++) {
 			if (rules[i].hasOwnProperty('rules')) {
-				const error = getValidationError(
-					value,
-					validators,
-					rules[i] as RuleGroup,
-					config,
-				);
+				const error = getValidationError(value, validators, rules[i] as RuleGroup, config);
 
 				if (error) {
 					return error;
 				}
 			}
 
-			if (rules[i].hasOwnProperty('name') ) {
-				const rule = rules[i] as {name: string, config?: any};
+			if (rules[i].hasOwnProperty('name')) {
+				const rule = rules[i] as { name: string; config?: any };
 				if (!validators[rule.name]) {
 					continue;
 				}
@@ -147,9 +153,7 @@ export const getValidationError = (
 				}
 			}
 		}
-	} else if (
-		validator.hasOwnProperty('validate')
-	) {
+	} else if (validator.hasOwnProperty('validate')) {
 		return (validator as IValidator).validate(value, config);
 	}
 

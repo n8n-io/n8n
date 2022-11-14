@@ -1,11 +1,11 @@
-import {StoryFn} from "@storybook/vue";
-import SpacingPreview from "../components/SpacingPreview.vue";
+import { StoryFn } from '@storybook/vue';
+import SpacingPreview from '../components/SpacingPreview.vue';
 
 export default {
 	title: 'Utilities/Spacing',
 };
 
-const Template: StoryFn = (args, {argTypes}) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		SpacingPreview,

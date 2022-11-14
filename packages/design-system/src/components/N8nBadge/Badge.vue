@@ -1,7 +1,5 @@
 <template>
-	<span
-		:class="['n8n-badge', $style[theme]]"
-	>
+	<span :class="['n8n-badge', $style[theme]]">
 		<n8n-text :size="size" :bold="bold" :compact="true">
 			<slot></slot>
 		</n8n-text>

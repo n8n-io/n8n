@@ -17,11 +17,22 @@ export default Vue.extend({
 		size: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean => ['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'].includes(value),
+			validator: (value: string): boolean =>
+				['xsmall', 'small', 'mini', 'medium', 'large', 'xlarge'].includes(value),
 		},
 		color: {
 			type: String,
-			validator: (value: string): boolean => ['primary', 'text-dark', 'text-base', 'text-light', 'text-xlight', 'danger', 'success', 'warning'].includes(value),
+			validator: (value: string): boolean =>
+				[
+					'primary',
+					'text-dark',
+					'text-base',
+					'text-light',
+					'text-xlight',
+					'danger',
+					'success',
+					'warning',
+				].includes(value),
 		},
 		align: {
 			type: String,
@@ -52,7 +63,7 @@ export default Vue.extend({
 
 			applied.push(`size-${this.size}`);
 
-			applied.push(this.bold? 'bold': 'regular');
+			applied.push(this.bold ? 'bold' : 'regular');
 
 			return applied.map((c) => (this.$style as { [key: string]: string })[c]);
 		},
@@ -141,5 +152,4 @@ export default Vue.extend({
 .align-center {
 	text-align: center;
 }
-
 </style>

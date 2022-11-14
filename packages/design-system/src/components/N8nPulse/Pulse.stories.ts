@@ -1,11 +1,10 @@
 import N8nPulse from './Pulse.vue';
-import { StoryFn } from "@storybook/vue";
+import { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Pulse',
 	component: N8nPulse,
-	argTypes: {
-	},
+	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
 	},

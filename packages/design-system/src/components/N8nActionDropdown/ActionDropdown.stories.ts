@@ -1,4 +1,4 @@
-import N8nActionDropdown from "./ActionDropdown.vue";
+import N8nActionDropdown from './ActionDropdown.vue';
 import { StoryFn } from '@storybook/vue';
 
 export default {

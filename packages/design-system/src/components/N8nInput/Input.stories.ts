@@ -40,7 +40,8 @@ const Template: StoryFn = (args, { argTypes }) => ({
 	components: {
 		N8nInput,
 	},
-	template: '<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" />',
+	template:
+		'<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus" />',
 	data() {
 		return {
 			val: '',
@@ -81,14 +82,14 @@ TextArea.args = {
 	placeholder: 'placeholder...',
 };
 
-
 const WithPrefix: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nIcon,
 		N8nInput,
 	},
-	template: '<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="prefix" /></n8n-input>',
+	template:
+		'<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="prefix" /></n8n-input>',
 	data() {
 		return {
 			val: '',
@@ -108,7 +109,8 @@ const WithSuffix: StoryFn = (args, { argTypes }) => ({
 		N8nIcon,
 		N8nInput,
 	},
-	template: '<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="suffix" /></n8n-input>',
+	template:
+		'<n8n-input v-bind="$props" v-model="val" @input="onInput" @change="onChange" @focus="onFocus"><n8n-icon icon="clock" slot="suffix" /></n8n-input>',
 	data() {
 		return {
 			val: '',
