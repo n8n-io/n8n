@@ -45,17 +45,16 @@
 			</div>
 			<no-results v-else :showRequest="filteredAllNodeTypes.length === 0" :show-icon="filteredAllNodeTypes.length === 0">
 					<!-- There are results in other sub-categories/tabs  -->
-					<template v-if="filteredAllNodeTypes.length > 0">
-						<p
-							v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')"
-							slot="title"
-						/>
+					<template v-if="filteredAllNodeTypes.length > 0" #title>
+						<p v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')" />
 					</template>
 
 					<!-- Regular Search -->
 					<template v-else>
-						<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" slot="title" />
-						<template slot="action">
+						<template #title>
+							<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
+						</template>
+						<template #action>
 							{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
 							<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
 								{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}

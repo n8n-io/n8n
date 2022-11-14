@@ -32,5 +32,9 @@ module.exports = {
 		'comma-dangle': ['error', 'always-multiline'],
 		'no-tabs': 0,
 		'no-labels': 0,
+		'vue/no-deprecated-slot-attribute': 'error',
+		'vue/no-deprecated-slot-scope-attribute': 'error',
+		'vue/no-multiple-template-root': 'error',
+		'vue/v-slot-style': 'error',
 	},
 };

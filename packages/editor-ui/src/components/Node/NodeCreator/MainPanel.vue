@@ -9,7 +9,9 @@
 				:searchItems="searchItems"
 				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
 			>
-				<type-selector slot="header" />
+				<template #header>
+					<type-selector/>
+				</template>
 			</trigger-helper-panel>
 			<categorized-items
 				v-else
@@ -18,7 +20,9 @@
 				:initialActiveCategories="[CORE_NODES_CATEGORY]"
 				@nodeTypeSelected="nodeType => $emit('nodeTypeSelected', nodeType)"
 			>
-				<type-selector slot="header" />
+				<template #header>
+					<type-selector />
+				</template>
 			</categorized-items>
 		</div>
 	</div>

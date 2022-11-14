@@ -7,7 +7,7 @@
 		minWidth="620px"
 		minHeight="420px"
 	>
-		<template v-slot:content>
+		<template #content>
 			<el-row>
 				<TagsView
 					v-if="hasTags || isCreating"
@@ -24,7 +24,7 @@
 					v-else />
 			</el-row>
 		</template>
-		<template v-slot:footer="{ close }">
+		<template #footer="{ close }">
 			<n8n-button :label="$locale.baseText('tagsManager.done')" @click="close" float="right" />
 		</template>
 	</Modal>
