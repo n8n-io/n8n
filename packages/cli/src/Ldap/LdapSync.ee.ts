@@ -33,15 +33,15 @@ export class LdapSync {
 		this._config = config;
 		// If user disabled syncronization in the UI and there a job schedule,
 		// stop it
-		if (this.intervalId && !this._config.syncronization.enabled) {
+		if (this.intervalId && !this._config.syncronizationEnabled) {
 			this.stop();
 			// If instance crashed with a job scheduled, once the server starts
 			// again, reschedule it.
-		} else if (!this.intervalId && this._config.syncronization.enabled) {
+		} else if (!this.intervalId && this._config.syncronizationEnabled) {
 			this.scheduleRun();
 			// If job scheduled and the run interval got updated in the UI
 			// stop the current one and schedule a new one with the new internal
-		} else if (this.intervalId && this._config.syncronization.enabled) {
+		} else if (this.intervalId && this._config.syncronizationEnabled) {
 			this.stop();
 			this.scheduleRun();
 		}
@@ -62,14 +62,14 @@ export class LdapSync {
 	 */
 	scheduleRun(): void {
 		Logger.info(
-			`LDAP - Scheduling a syncronization run in ${this._config.syncronization.interval} minutes`,
+			`LDAP - Scheduling a syncronization run in ${this._config.syncronizationInterval} minutes`,
 		);
-		if (!this._config.syncronization.interval) {
+		if (!this._config.syncronizationInterval) {
 			throw new Error('Interval variable has to be defined');
 		}
 		this.intervalId = setInterval(async () => {
 			await this.run(RunningMode.LIVE);
-		}, this._config.syncronization.interval * 60000);
+		}, this._config.syncronizationInterval * 60000);
 	}
 
 	/**
@@ -88,7 +88,7 @@ export class LdapSync {
 
 		try {
 			adUsers = await this._ldapService.searchWithAdminBinding(
-				createFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
+				createFilter(`(${this._config.loginIdAttribute}=*)`, this._config.userFilter),
 			);
 
 			resolveBinaryAttributes(adUsers);
@@ -188,23 +188,21 @@ export class LdapSync {
 	 */
 	private getUsersToCreate(adUsers: Entry[], localAdUsers: string[], role: Role): User[] {
 		return adUsers
-			.filter(
-				(user) => !localAdUsers.includes(user[this._config.attributeMapping.ldapId] as string),
-			)
-			.map((user: Entry) => mapLdapUserToDbUser(user, this._config.attributeMapping, role));
+			.filter((user) => !localAdUsers.includes(user[this._config.ldapIdAttribute] as string))
+			.map((user: Entry) => mapLdapUserToDbUser(user, this._config, role));
 	}
 
 	/**
 	 * Get users in LDAP that
-	 * are in THE DATABASE
+	 * are in the n8n database
 	 * @param  {Entry[]} adUsers
 	 * @param  {string[]} localAdUsers
 	 * @returns Array
 	 */
 	private getUsersToUpdate(adUsers: Entry[], localAdUsers: string[]) {
 		return adUsers
-			.filter((user) => localAdUsers.includes(user[this._config.attributeMapping.ldapId] as string))
-			.map((user: Entry) => mapLdapUserToDbUser(user, this._config.attributeMapping));
+			.filter((user) => localAdUsers.includes(user[this._config.ldapIdAttribute] as string))
+			.map((user: Entry) => mapLdapUserToDbUser(user, this._config));
 	}
 
 	/**
@@ -215,7 +213,7 @@ export class LdapSync {
 	 * @retuens Array
 	 */
 	private getUsersToDisable(adUsers: Entry[], localAdUsers: string[]): string[] {
-		const filteredAdUsers = adUsers.map((user) => user[this._config.attributeMapping.ldapId]);
+		const filteredAdUsers = adUsers.map((user) => user[this._config.ldapIdAttribute]);
 		return localAdUsers.filter((user) => !filteredAdUsers.includes(user));
 	}
 }

@@ -1302,35 +1302,24 @@ export interface ILdapSyncTable {
 	details: string;
 }
 export interface ILdapConfig {
-		login: {
-			enabled: boolean;
-			label: string;
-		};
-		attributeMapping: {
-			email: string;
-			firstName: string;
-			lastName: string;
-			loginId: string;
-			ldapId: string;
-		};
-		binding: {
-			adminDn: string;
-			adminPassword: string;
-			baseDn: string;
-		};
-		filter: {
-			user: string;
-		};
-		connection: {
-			url: string;
-			allowUnauthorizedCerts: boolean;
-			port: number;
-			security: string;
-		};
-		syncronization: {
-			enabled: boolean;
-			interval: number; // minutes
-			searchTimeout: number;
-			pageSize: number;
-		};
+	loginEnabled: boolean;
+	loginLabel: string;
+	connectionUrl: string;
+	allowUnauthorizedCerts: boolean;
+	connectionSecurity: string;
+	connectionPort: number;
+	baseDn: string;
+	bindingAdminDn: string;
+	bindingAdminPassword: string;
+	firstNameAttribute: string;
+	lastNameAttribute: string;
+	emailAttribute: string;
+	loginIdAttribute: string;
+	ldapIdAttribute: string;
+	userFilter: string;
+	syncronizationEnabled: boolean;
+	syncronizationInterval: number; // minutes
+	searchPageSize: number;
+	searchTimeout: number;
 }
+

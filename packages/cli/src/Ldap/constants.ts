@@ -34,143 +34,109 @@ export enum SyncStatus {
 }
 
 export const LDAP_DEFAULT_CONFIGURATION = {
-	login: {
-		enabled: false,
-		label: '',
-	},
-	connection: {
-		url: '',
-		allowUnauthorizedCerts: false,
-		security: '',
-		port: 389,
-	},
-	binding: {
-		baseDn: '',
-		adminDn: '',
-		adminPassword: '',
-	},
-	attributeMapping: {
-		firstName: '',
-		lastName: '',
-		email: '',
-		loginId: '',
-		ldapId: '',
-	},
-	filter: {
-		user: '',
-	},
-	syncronization: {
-		enabled: false,
-		interval: 60,
-		pageSize: 0,
-		searchTimeout: 60,
-	},
+	loginEnabled: false,
+	loginLabel: '',
+	connectionUrl: '',
+	allowUnauthorizedCerts: false,
+	connectionSecurity: ConnectionSecurity.NONE,
+	connectionPort: 389,
+	baseDn: '',
+	bindingAdminDn: '',
+	bindingAdminPassword: '',
+	firstNameAttribute: '',
+	lastNameAttribute: '',
+	emailAttribute: '',
+	loginIdAttribute: '',
+	ldapIdAttribute: '',
+	userFilter: '',
+	syncronizationEnabled: false,
+	syncronizationInterval: 60,
+	searchPageSize: 0,
+	searchTimeout: 60,
 };
 
 export const LDAP_CONFIG_SCHEMA = {
 	$schema: 'https://json-schema.org/draft/2019-09/schema',
 	type: 'object',
 	properties: {
-		attributeMapping: {
-			type: 'object',
-			properties: {
-				email: {
-					type: 'string',
-				},
-				firstName: {
-					type: 'string',
-				},
-				lastName: {
-					type: 'string',
-				},
-				ldapId: {
-					type: 'string',
-				},
-				loginId: {
-					type: 'string',
-				},
-			},
-			required: ['email', 'firstName', 'lastName', 'ldapId', 'loginId'],
-			additionalProperties: false,
+		emailAttribute: {
+			type: 'string',
 		},
-		binding: {
-			type: 'object',
-			properties: {
-				adminDn: {
-					type: 'string',
-				},
-				adminPassword: {
-					type: 'string',
-				},
-				baseDn: {
-					type: 'string',
-				},
-			},
-			required: ['adminDn', 'adminPassword', 'baseDn'],
-			additionalProperties: false,
+		firstNameAttribute: {
+			type: 'string',
 		},
-		connection: {
-			type: 'object',
-			properties: {
-				url: {
-					type: 'string',
-				},
-				security: {
-					type: 'string',
-				},
-				port: {
-					type: 'number',
-				},
-				allowUnauthorizedCerts: {
-					type: 'boolean',
-				},
-			},
-			required: ['url', 'allowUnauthorizedCerts', 'security', 'port'],
-			additionalProperties: false,
+		lastNameAttribute: {
+			type: 'string',
 		},
-		filter: {
-			type: 'object',
-			properties: {
-				user: {
-					type: 'string',
-				},
-			},
-			required: ['user'],
-			additionalProperties: false,
+		ldapIdAttribute: {
+			type: 'string',
 		},
-		login: {
-			type: 'object',
-			properties: {
-				enabled: {
-					type: 'boolean',
-				},
-				label: {
-					type: 'string',
-				},
-			},
-			required: ['enabled', 'label'],
-			additionalProperties: false,
+		loginIdAttribute: {
+			type: 'string',
 		},
-		syncronization: {
-			type: 'object',
-			properties: {
-				enabled: {
-					type: 'boolean',
-				},
-				interval: {
-					type: 'number',
-				},
-				pageSize: {
-					type: 'number',
-				},
-				searchTimeout: {
-					type: 'number',
-				},
-			},
-			required: ['enabled', 'interval', 'pageSize', 'searchTimeout'],
-			additionalProperties: false,
+		bindingAdminDn: {
+			type: 'string',
+		},
+		bindingAdminPassword: {
+			type: 'string',
+		},
+		baseDn: {
+			type: 'string',
+		},
+		connectionUrl: {
+			type: 'string',
+		},
+		connectionSecurity: {
+			type: 'string',
+		},
+		connectionPort: {
+			type: 'number',
+		},
+		allowUnauthorizedCerts: {
+			type: 'boolean',
+		},
+		userFilter: {
+			type: 'string',
+		},
+		loginEnabled: {
+			type: 'boolean',
+		},
+		loginLabel: {
+			type: 'string',
+		},
+		syncronizationEnabled: {
+			type: 'boolean',
+		},
+		syncronizationInterval: {
+			type: 'number',
+		},
+		searchPageSize: {
+			type: 'number',
+		},
+		searchTimeout: {
+			type: 'number',
 		},
 	},
-	required: ['attributeMapping', 'binding', 'connection', 'filter', 'syncronization', 'login'],
+	required: [
+		'loginEnabled',
+		'loginLabel',
+		'connectionUrl',
+		'allowUnauthorizedCerts',
+		'connectionSecurity',
+		'connectionPort',
+		'baseDn',
+		'bindingAdminDn',
+		'bindingAdminPassword',
+		'firstNameAttribute',
+		'lastNameAttribute',
+		'emailAttribute',
+		'loginIdAttribute',
+		'ldapIdAttribute',
+		'userFilter',
+		'syncronizationEnabled',
+		'syncronizationInterval',
+		'searchPageSize',
+		'searchTimeout',
+	],
 	additionalProperties: false,
 };
