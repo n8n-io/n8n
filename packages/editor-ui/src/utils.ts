@@ -92,7 +92,7 @@ export const getJsonSchema = (input: Optional<Primitives | object>, key?: string
 				};
 				const firstItem = input[0];
 				if(Array.isArray(firstItem)){
-					schema.value = getJsonSchema(firstItem, '', `${path}[*]`);
+					schema.value = [getJsonSchema(firstItem, '', `${path}[*]`)];
 				} else if(isObj(firstItem)){
 					schema.value = getJsonSchema(firstItem, '', `${path}[*]`).value;
 				} else {
