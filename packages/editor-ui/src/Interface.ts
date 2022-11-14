@@ -1275,7 +1275,7 @@ export type Primitives = Basic | bigint | symbol;
 
 export type Optional<T> = T | undefined | null;
 
-export type N8nJsonSchemaType =
+export type JsonSchemaType =
 	| 'string'
 	| 'number'
 	| 'boolean'
@@ -1287,4 +1287,4 @@ export type N8nJsonSchemaType =
 	| 'function'
 	| 'null'
 	| 'undefined';
-export type N8nJsonSchema = { type: N8nJsonSchemaType, key?: string, value: string | N8nJsonSchema[], path?: string };
+export type JsonSchema = { type: JsonSchemaType, key?: string, value: string | JsonSchema[], path?: string };

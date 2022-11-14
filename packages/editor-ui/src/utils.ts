@@ -1,5 +1,5 @@
 import xss, { friendlyAttrValue } from 'xss';
-import { Primitives, Optional, N8nJsonSchema, N8nJsonSchemaType } from "@/Interface";
+import { Primitives, Optional, JsonSchema, JsonSchemaType } from "@/Interface";
 
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 
@@ -68,7 +68,7 @@ export const isObj = (obj: unknown): obj is object => !!obj && Object.getPrototy
 
 export const isSchemaTypeObjectOrList = (type: string) => ['object', 'list'].includes(type);
 
-export const getTypeof = (value: unknown): N8nJsonSchemaType => value === null
+export const getTypeof = (value: unknown): JsonSchemaType => value === null
 	? 'null'
 	: value instanceof Date
 		? 'date'
@@ -76,8 +76,8 @@ export const getTypeof = (value: unknown): N8nJsonSchemaType => value === null
 			? 'list'
 			: typeof value;
 
-export const getJsonSchema = (input: Optional<Primitives | object>, key?: string, path = ''): N8nJsonSchema => {
-	let schema:N8nJsonSchema = { type: 'undefined', value: 'undefined' };
+export const getJsonSchema = (input: Optional<Primitives | object>, key?: string, path = ''): JsonSchema => {
+	let schema:JsonSchema = { type: 'undefined', value: 'undefined' };
 	switch (typeof input) {
 		case 'object':
 			if (input === null) {
