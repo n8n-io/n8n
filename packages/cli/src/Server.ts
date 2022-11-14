@@ -794,7 +794,7 @@ class App {
 		this.app.use(`/${this.restEndpoint}/tags`, tagsController);
 
 		// Returns parameter values which normally get loaded from an external API or
-		// get gene// Call the function with the id that causes insert to fail, ensure update is called *and* metrics aren't sentrated dynamically
+		// get generated dynamically
 		this.app.get(
 			`/${this.restEndpoint}/node-parameter-options`,
 			ResponseHelper.send(

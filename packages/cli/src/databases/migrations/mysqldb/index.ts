@@ -48,8 +48,8 @@ export const mysqlMigrations = [
 	AddNodeIds1658932910559,
 	AddJsonKeyPinData1659895550980,
 	CreateCredentialsUserRole1660062385367,
-	WorkflowStatistics1664196174002,
 	CreateWorkflowsEditorRole1663755770894,
 	CreateCredentialUsageTable1665484192213,
 	RemoveCredentialUsageTable1665754637026,
+	WorkflowStatistics1664196174002,
 ];

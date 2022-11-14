@@ -44,8 +44,8 @@ export const postgresMigrations = [
 	CreateCredentialsUserRole1660062385367,
 	AddNodeIds1658932090381,
 	AddJsonKeyPinData1659902242948,
-	WorkflowStatistics1664196174001,
 	CreateWorkflowsEditorRole1663755770893,
 	CreateCredentialUsageTable1665484192212,
 	RemoveCredentialUsageTable1665754637025,
+	WorkflowStatistics1664196174001,
 ];

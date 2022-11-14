@@ -32,7 +32,12 @@ export async function workflowExecutionCompleted(
 
 	// Try insertion and if it fails due to key conflicts then update the existing entry instead
 	try {
-		await Db.collections.WorkflowStatistics.insert({ count: 1, name, workflowId });
+		await Db.collections.WorkflowStatistics.insert({
+			count: 1,
+			name,
+			workflowId,
+			latestEvent: new Date(),
+		});
 
 		// If we're here we can check if we're sending the first production success metric
 		if (name !== StatisticsNames.productionSuccess) return;
@@ -51,7 +56,7 @@ export async function workflowExecutionCompleted(
 		// Do we just assume it's a conflict error? If there is any other sort of error in the DB it should trigger here too
 		await Db.collections.WorkflowStatistics.update(
 			{ workflowId, name },
-			{ count: () => 'count + 1' },
+			{ count: () => 'count + 1', latestEvent: new Date() },
 		);
 	}
 }
