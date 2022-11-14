@@ -232,13 +232,7 @@ export async function highLevelApiRequest(
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error, {
-			message: error.message,
-		});
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'highLevelApi', options);
 }
 
 export async function getPipelineStages(

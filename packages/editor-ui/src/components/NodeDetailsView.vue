@@ -55,6 +55,7 @@
 						:currentNodeName="inputNodeName"
 						:sessionId="sessionId"
 						:readOnly="readOnly || hasForeignCredential"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToInput"
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
@@ -73,6 +74,7 @@
 						:sessionId="sessionId"
 						:isReadOnly="readOnly || hasForeignCredential"
 						:blockUI="blockUi && isTriggerNode"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -167,6 +169,10 @@ export default mixins(
 		},
 		renaming: {
 			type: Boolean,
+		},
+		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {

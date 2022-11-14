@@ -67,20 +67,73 @@ export const databaseFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
 	/*                                database:get                                */
 	/* -------------------------------------------------------------------------- */
+
 	{
-		displayName: 'Database Link or ID',
+		displayName: 'Database',
 		name: 'databaseId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Database...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database URL. Hint: use the URL of the database itself, not a page containing it.',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['database'],
 				operation: ['get'],
 			},
 		},
-		description:
-			"The Database URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Notion Database to get",
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */

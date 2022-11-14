@@ -24,13 +24,13 @@
 				</n8n-text>
 			</div>
 			<div class="text-center mt-2xl">
-				<n8n-card :class="[$style.emptyStateCard, 'mr-s']" hoverable @click="addWorkflow">
+				<n8n-card :class="[$style.emptyStateCard, 'mr-s']" hoverable @click="addWorkflow" data-test-id="new-workflow-card">
 					<n8n-icon :class="$style.emptyStateCardIcon" icon="file" />
 					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{ $locale.baseText('workflows.empty.startFromScratch') }}
 					</n8n-text>
 				</n8n-card>
-				<n8n-card :class="$style.emptyStateCard" hoverable @click="goToTemplates">
+				<n8n-card :class="$style.emptyStateCard" hoverable @click="goToTemplates" data-test-id="new-workflow-template-card">
 					<n8n-icon :class="$style.emptyStateCardIcon" icon="box-open" />
 					<n8n-text size="large" class="mt-xs" color="text-base">
 						{{ $locale.baseText('workflows.empty.browseTemplates') }}
@@ -85,7 +85,7 @@ export default mixins(
 	showMessage,
 	debounceHelper,
 ).extend({
-	name: 'SettingsPersonalView',
+	name: 'WorkflowsView',
 	components: {
 		ResourcesListLayout,
 		TemplateCard,
