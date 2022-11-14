@@ -77,6 +77,7 @@
 		<node-details-view
 			:readOnly="isReadOnly"
 			:renaming="renamingActive"
+			:isProductionExecutionPreview="isProductionExecutionPreview"
 			@valueChanged="valueChanged"
 			@stopExecution="stopExecution"
 		/>
@@ -3137,6 +3138,8 @@ export default mixins(
 						}
 					} else if (json && json.command === 'openExecution') {
 						try {
+							// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
+							// so everything it needs has to be sent using post messages and passed down to child components
 							this.isProductionExecutionPreview = json.executionMode !== 'manual';
 
 							await this.openExecution(json.executionId);
