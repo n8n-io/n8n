@@ -10,6 +10,8 @@ export const LDAP_LOGIN_LABEL = 'ldap.loginLabel';
 
 export const LDAP_LOGIN_ENABLED = 'ldap.loginEnabled';
 
+export const BINARY_AD_ATTRIBUTES = ['objectGUID', 'objectSid'];
+
 export enum SignInType {
 	LDAP = 'ldap',
 	EMAIL = 'email',

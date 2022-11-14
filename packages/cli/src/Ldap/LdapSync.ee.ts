@@ -11,6 +11,7 @@ import {
 	processUsers,
 	saveLdapSyncronization,
 	createFilter,
+	resolveBinaryAttributes,
 } from './helpers';
 import type { User } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
@@ -89,6 +90,8 @@ export class LdapSync {
 			adUsers = await this._ldapService.searchWithAdminBinding(
 				createFilter(`(${this._config.attributeMapping.loginId}=*)`, this._config.filter.user),
 			);
+
+			resolveBinaryAttributes(adUsers);
 		} catch (e) {
 			if (e instanceof Error) {
 				Logger.error(`LDAP - ${e.message}`);
@@ -206,7 +209,7 @@ export class LdapSync {
 
 	/**
 	 * Get users that are in the database
-	 * but no in the LDAP
+	 * but no in the LDAP server
 	 * @param  {Entry[]} adUsers
 	 * @param  {string[]} localAdUsers
 	 * @retuens Array

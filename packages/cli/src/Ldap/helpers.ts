@@ -14,6 +14,7 @@ import { isUserManagementEnabled } from '../UserManagement/UserManagementHelper'
 import { LdapManager } from './LdapManager.ee';
 
 import {
+	BINARY_AD_ATTRIBUTES,
 	ConnectionSecurity,
 	LDAP_CONFIG_SCHEMA,
 	LDAP_ENABLED,
@@ -151,6 +152,20 @@ export const setGlobalLdapConfigVariables = (config: LdapConfig): void => {
 	setLdapLoginEnabled(config.login.enabled);
 	setLdapLoginLabel(config.login.label);
 };
+
+const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
+	Object.entries(entry)
+		.filter(([k]) => BINARY_AD_ATTRIBUTES.includes(k))
+		.forEach(([k]) => {
+			entry[k] = Buffer.from(entry[k] as string).toString();
+		});
+	return entry;
+};
+
+export const resolveBinaryAttributes = (entries: Entry[]): void => {
+	entries.forEach((entry) => resolveEntryBinaryAttributes(entry));
+};
+
 /**
  * Update the LDAP configuration
  * in the database
@@ -265,6 +280,8 @@ export const findAndAuthenticateLdapUser = async (
 	} catch (_) {
 		return undefined;
 	}
+
+	resolveEntryBinaryAttributes(user);
 
 	return user;
 };
@@ -398,6 +415,11 @@ export const getLdapSyncronizations = async (
 	});
 };
 
+/**
+ * Format the LDAP connection URL
+ * to conform with LDAP client library
+ * @returns String
+ */
 export const formatUrl = (url: string, port: number, security: ConnectionSecurity) => {
 	const protocol = ['tls'].includes(security) ? 'ldaps' : 'ldap';
 	return `${protocol}://${url}:${port}`;
