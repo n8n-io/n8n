@@ -1,12 +1,12 @@
-export type Rule = { name: string; config?: any}; // tslint:disable-line:no-any
+export type Rule = { name: string; config?: any};
 
 export type RuleGroup = {
 	rules: Array<Rule | RuleGroup>;
-	defaultError?: {messageKey: string, options?: any}; // tslint:disable-line:no-any
+	defaultError?: {messageKey: string, options?: any};
 };
 
 export type IValidator = {
-	validate: (value: string | number | boolean | null | undefined, config: any) => false | {messageKey: string, options?: any} | null; // tslint:disable-line:no-any
+	validate: (value: string | number | boolean | null | undefined, config: any) => false | {messageKey: string, options?: any} | null;
 };
 
 

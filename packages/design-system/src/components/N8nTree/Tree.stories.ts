@@ -1,5 +1,3 @@
-/* tslint:disable:variable-name */
-
 import N8nTree from './Tree.vue';
 import {StoryFn} from "@storybook/vue";
 
@@ -54,4 +52,3 @@ Default.args = {
 		},
 	},
 };
-

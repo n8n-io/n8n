@@ -50,7 +50,7 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 				return false;
 			}
 
-			const numberCount = (value.match(/\d/g) || []).length;
+			const numberCount = (value.match(/\d/g) ?? []).length;
 			if (numberCount < config.minimum) {
 				return {
 					messageKey: 'formInput.validator.numbersRequired',
@@ -78,7 +78,7 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 				return false;
 			}
 
-			const uppercaseCount = (value.match(/[A-Z]/g) || []).length;
+			const uppercaseCount = (value.match(/[A-Z]/g) ?? []).length;
 			if (uppercaseCount < config.minimum) {
 				return {
 					messageKey: 'formInput.validator.uppercaseCharsRequired',
@@ -107,10 +107,10 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 };
 
 export const getValidationError = (
-	value: any, // tslint:disable-line:no-any
+	value: any,
 	validators: { [key: string]: IValidator | RuleGroup },
 	validator: IValidator | RuleGroup,
-	config?: any, // tslint:disable-line:no-any
+	config?: any,
 ): ReturnType<IValidator['validate']> => {
 	if (validator.hasOwnProperty('rules')) {
 		const rules = (validator as RuleGroup).rules;
@@ -129,7 +129,7 @@ export const getValidationError = (
 			}
 
 			if (rules[i].hasOwnProperty('name') ) {
-				const rule = rules[i] as {name: string, config?: any}; // tslint:disable-line:no-any
+				const rule = rules[i] as {name: string, config?: any};
 				if (!validators[rule.name]) {
 					continue;
 				}
@@ -140,8 +140,7 @@ export const getValidationError = (
 					validators[rule.name] as IValidator,
 					rule.config,
 				);
-				if (error && (validator as RuleGroup).defaultError !== undefined) {
-					// @ts-ignore
+				if (error && 'defaultError' in validator && validator.defaultError) {
 					return validator.defaultError;
 				} else if (error) {
 					return error;

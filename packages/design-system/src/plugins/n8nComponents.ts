@@ -45,7 +45,7 @@ import N8nUsersList from '../components/N8nUsersList';
 import N8nResizeWrapper from '../components/N8nResizeWrapper';
 
 export default {
-	install: (app: typeof Vue, options?: {}) => {
+	install: (app: typeof Vue) => {
 		app.component('n8n-info-accordion', N8nInfoAccordion);
 		app.component('n8n-action-box', N8nActionBox);
 		app.component('n8n-action-dropdown', N8nActionDropdown);

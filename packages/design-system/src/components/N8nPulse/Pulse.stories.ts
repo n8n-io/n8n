@@ -1,5 +1,3 @@
-/* tslint:disable:variable-name */
-
 import N8nPulse from './Pulse.vue';
 import { StoryFn } from "@storybook/vue";
 
@@ -13,7 +11,7 @@ export default {
 	},
 };
 
-export const Default: StoryFn = (args, {argTypes}) => ({
+export const Default: StoryFn = () => ({
 	components: {
 		N8nPulse,
 	},

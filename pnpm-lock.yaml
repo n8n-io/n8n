@@ -381,6 +381,8 @@ importers:
       '@testing-library/jest-dom': ^5.16.4
       '@testing-library/vue': ^5.8.3
       '@types/markdown-it': ^12.2.3
+      '@types/markdown-it-emoji': ^2.0.2
+      '@types/markdown-it-link-attributes': ^3.0.1
       '@types/sanitize-html': ^2.6.2
       '@vitejs/plugin-vue2': ^1.1.2
       c8: 7.11.0
@@ -426,6 +428,8 @@ importers:
       '@testing-library/jest-dom': 5.16.5
       '@testing-library/vue': 5.8.3_2s2ymob7v2oigx3hqbmnjuqthq
       '@types/markdown-it': 12.2.3
+      '@types/markdown-it-emoji': 2.0.2
+      '@types/markdown-it-link-attributes': 3.0.1
       '@types/sanitize-html': 2.6.2
       '@vitejs/plugin-vue2': 1.1.2_vite@2.9.15+vue@2.7.13
       c8: 7.11.0
@@ -5803,6 +5807,18 @@ packages:
     resolution: {integrity: sha512-JGIV4RtcjBO1jsD0RTDoXOmm1zzHr07rWPmNREBBM1oAjjfy99Ne4Y7s/akVSZoksm/JWQMcFQ42LbsufHRVfg==}
     dependencies:
       '@types/node': 16.11.65
+    dev: true
+
+  /@types/markdown-it-emoji/2.0.2:
+    resolution: {integrity: sha512-2ln8Wjbcj/0oRi/6VnuMeWEHHuK8uapFttvcLmDIe1GKCsFBLOLBX+D+xhDa9oWOQV0IpvxwrSfKKssAqqroog==}
+    dependencies:
+      '@types/markdown-it': 12.2.3
+    dev: true
+
+  /@types/markdown-it-link-attributes/3.0.1:
+    resolution: {integrity: sha512-K8RnNb1q8j7rDOJbMF7AnlhCC/45BjrQ8z3WZWOrvkBIl8u9RXvmBdG/hfpnmK1JhhEZcmFEKWt+ilW1Mly+2Q==}
+    dependencies:
+      '@types/markdown-it': 12.2.3
     dev: true
 
   /@types/markdown-it/12.2.3:

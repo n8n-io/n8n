@@ -1,5 +1,3 @@
-/* tslint:disable:variable-name */
-
 import { StoryFn } from '@storybook/vue';
 import N8nSelect from './Select.vue';
 import N8nOption from '../N8nOption';

@@ -30,8 +30,7 @@
 </template>
 
 <script lang="ts">
-/* tslint:disable: @typescript-eslint/no-unsafe-assignment */
-import Vue from 'vue';
+import 'vue';
 import N8nUserInfo from '../N8nUserInfo';
 import { IUser } from '../../types';
 import ElSelect from 'element-ui/lib/select';
@@ -91,7 +90,7 @@ export default mixins(Locale).extend({
 						return false;
 					}
 
-					if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
+					if (this.ignoreIds?.includes(user.id)) {
 						return false;
 					}
 

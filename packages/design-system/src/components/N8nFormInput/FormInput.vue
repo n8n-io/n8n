@@ -122,10 +122,10 @@ const slots = useSlots();
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
 function getInputValidationError(): ReturnType<IValidator['validate']>  {
-	const rules = props.validationRules || [];
+	const rules = props.validationRules ?? [];
 	const validators = {
 		...VALIDATORS,
-		...(props.validators || {}),
+		...(props.validators ?? {}),
 	} as { [key: string]: IValidator | RuleGroup };
 
 	if (props.required) {

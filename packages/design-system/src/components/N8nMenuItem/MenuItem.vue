@@ -111,7 +111,7 @@ export default Vue.extend({
 				if (item.activateOnRoutePaths) {
 					return Array.isArray(item.activateOnRoutePaths) && item.activateOnRoutePaths.includes(this.$route.path);
 				} else if (item.activateOnRouteNames) {
-					return Array.isArray(item.activateOnRouteNames) && item.activateOnRouteNames.includes(this.$route.name || '');
+					return Array.isArray(item.activateOnRouteNames) && item.activateOnRouteNames.includes(this.$route.name ?? '');
 				}
 				return false;
 			} else {

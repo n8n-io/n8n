@@ -1,5 +1,3 @@
-/* tslint:disable:variable-name */
-
 import N8nActionBox from './ActionBox.vue';
 import { action } from '@storybook/addon-actions';
 import {StoryFn} from "@storybook/vue";

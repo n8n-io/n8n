@@ -21,7 +21,7 @@
 
 
 <script lang="ts">
-import Vue from 'vue';
+import 'vue';
 import N8nText from '../N8nText';
 import N8nAvatar from '../N8nAvatar';
 import N8nBadge from '../N8nBadge';

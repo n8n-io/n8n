@@ -56,8 +56,7 @@ export default Vue.extend({
 			container.addEventListener('scroll', (event: Event) => {
 				const width = container.clientWidth;
 				const scrollWidth = container.scrollWidth;
-				// @ts-ignore
-				this.scrollPosition = event.srcElement.scrollLeft; // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+				this.scrollPosition = (event.target as Element).scrollLeft;
 
 				this.canScrollRight = scrollWidth - width > this.scrollPosition;
 			});

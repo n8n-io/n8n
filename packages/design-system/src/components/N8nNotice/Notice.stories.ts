@@ -1,5 +1,3 @@
-/* tslint:disable:variable-name */
-
 import N8nNotice from './Notice.vue';
 import {StoryFn} from "@storybook/vue";
 

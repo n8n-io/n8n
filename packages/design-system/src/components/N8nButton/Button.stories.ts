@@ -170,4 +170,3 @@ Square.args = {
 	label: '48',
 	square: true,
 };
-

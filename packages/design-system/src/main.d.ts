@@ -14,5 +14,9 @@ declare module 'n8n-design-system' {
 	export { locale };
 }
 
+declare module 'markdown-it-task-lists' {
+
+}
+
 export * from './types';
 export { locale } from './locale';

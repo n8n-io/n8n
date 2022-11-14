@@ -1,5 +1,3 @@
-/* tslint:disable:variable-name */
-
 import {StoryFn} from "@storybook/vue";
 
 export default {

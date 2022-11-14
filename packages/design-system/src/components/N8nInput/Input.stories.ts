@@ -1,4 +1,3 @@
-/* tslint:disable:variable-name */
 import N8nInput from './Input.vue';
 import N8nIcon from '../N8nIcon';
 import { action } from '@storybook/addon-actions';

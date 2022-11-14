@@ -26,9 +26,7 @@
 import N8nLoading from '../N8nLoading';
 import Markdown from 'markdown-it';
 
-// @ts-ignore
 import markdownLink from 'markdown-it-link-attributes';
-// @ts-ignore
 import markdownEmoji from 'markdown-it-emoji';
 // @ts-ignore
 import markdownTasklists from 'markdown-it-task-lists';
@@ -75,7 +73,7 @@ export default Vue.extend({
 			type: Boolean,
 		},
 		images: {
-			type: Array,
+			type: Array<IImage>,
 		},
 		loading: {
 			type: Boolean,
@@ -113,7 +111,6 @@ export default Vue.extend({
 
 			const imageUrls: { [key: string]: string } = {};
 			if (this.images) {
-				// @ts-ignore
 				this.images.forEach((image: IImage) => {
 					if (!image) {
 						// Happens if an image got deleted but the workflow
@@ -125,14 +122,13 @@ export default Vue.extend({
 			}
 
 			const fileIdRegex = new RegExp('fileId:([0-9]+)');
-			const imageFilesRegex = /\.(jpeg|jpg|gif|png|webp|bmp|tif|tiff|apng|svg|avif)$/;
 			let contentToRender = this.content;
 			if (this.withMultiBreaks) {
 				contentToRender = contentToRender.replaceAll('\n\n', '\n&nbsp;\n');
 			}
 			const html = this.md.render(escapeMarkdown(contentToRender));
 			const safeHtml = xss(html, {
-				onTagAttr: (tag, name, value, isWhiteAttr) => {
+				onTagAttr: (tag, name, value) => {
 					if (tag === 'img' && name === 'src') {
 						if (value.match(fileIdRegex)) {
 							const id = value.split('fileId:')[1];
@@ -147,7 +143,7 @@ export default Vue.extend({
 					}
 					// Return nothing, means keep the default handling measure
 				},
-				onTag (tag, code, options) {
+				onTag (tag, code) {
 					if (tag === 'img' && code.includes(`alt="workflow-screenshot"`)) {
 						return '';
 					}

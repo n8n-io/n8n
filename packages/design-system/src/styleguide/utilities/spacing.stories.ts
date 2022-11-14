@@ -1,5 +1,3 @@
-/* tslint:disable:variable-name */
-
 import {StoryFn} from "@storybook/vue";
 import SpacingPreview from "../components/SpacingPreview.vue";
 
@@ -44,4 +42,3 @@ MarginBottom.args = { property: 'margin', side: 'bottom' };
 
 export const MarginLeft = Template.bind({});
 MarginLeft.args = { property: 'margin', side: 'left' };
-

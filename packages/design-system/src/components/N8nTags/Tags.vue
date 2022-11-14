@@ -17,7 +17,7 @@
 import N8nTag from '../N8nTag';
 import N8nLink from '../N8nLink';
 import Locale from "../../mixins/locale";
-import Vue, {PropType} from 'vue';
+import {PropType} from 'vue';
 import mixins from "vue-typed-mixins";
 
 interface ITag {

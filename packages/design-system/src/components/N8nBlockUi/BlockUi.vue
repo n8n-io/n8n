@@ -9,7 +9,7 @@ type BlockUiProps = {
 	show: boolean;
 }
 
-const props = withDefaults(defineProps<BlockUiProps>(), {
+withDefaults(defineProps<BlockUiProps>(), {
 	show: false,
 });
 </script>

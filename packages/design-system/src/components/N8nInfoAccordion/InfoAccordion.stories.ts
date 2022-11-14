@@ -1,5 +1,3 @@
-/* tslint:disable:variable-name */
-
 import N8nInfoAccordion from './InfoAccordion.vue';
 import { StoryFn } from "@storybook/vue";
 import { action } from "@storybook/addon-actions";

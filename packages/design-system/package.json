@@ -22,8 +22,8 @@
     "build:storybook": "build-storybook",
     "storybook": "start-storybook -p 6006",
     "format": "prettier **/**.{ts,vue} --write",
-    "lint": "tslint -p tsconfig.json -c tslint.json && eslint --ext .js,.ts,.vue src",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint --ext .js,.ts,.vue src --fix"
+    "lint": "eslint --ext .js,.ts,.vue src",
+    "lintfix": "eslint --ext .js,.ts,.vue src --fix"
   },
   "peerDependencies": {
     "@fortawesome/fontawesome-svg-core": "1.x",
@@ -43,6 +43,8 @@
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/vue": "^5.8.3",
     "@types/markdown-it": "^12.2.3",
+    "@types/markdown-it-emoji": "^2.0.2",
+    "@types/markdown-it-link-attributes": "^3.0.1",
     "@types/sanitize-html": "^2.6.2",
     "c8": "7.11.0",
     "core-js": "^3.6.5",

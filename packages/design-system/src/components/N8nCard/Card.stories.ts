@@ -1,5 +1,3 @@
-/* tslint:disable:variable-name */
-
 import N8nCard from './Card.vue';
 import {StoryFn} from "@storybook/vue";
 import N8nButton from "../N8nButton/Button.vue";

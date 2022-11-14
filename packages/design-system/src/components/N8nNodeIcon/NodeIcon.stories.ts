@@ -1,4 +1,3 @@
-/* tslint:disable:variable-name */
 import N8nNodeIcon from "./NodeIcon.vue";
 import { StoryFn } from '@storybook/vue';
 
