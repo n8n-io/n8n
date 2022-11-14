@@ -93,7 +93,7 @@ export default Vue.extend({
 			this.$emit('select', action);
 		},
 		onButtonBlur(event: FocusEvent): void {
-			const elementDropdown = this.$refs.elementDropdown as Vue & { hide: () => void };
+			const elementDropdown = this.$refs.elementDropdown as Vue & { hide: () => void }  | undefined;
 			// Hide dropdown when clicking outside of current document
 			if (elementDropdown && event.relatedTarget === null) {
 				elementDropdown.hide();

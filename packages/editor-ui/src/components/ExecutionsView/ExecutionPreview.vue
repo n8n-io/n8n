@@ -110,7 +110,7 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 		onRetryButtonBlur(event: FocusEvent): void {
 			// Hide dropdown when clicking outside of current document
-			const retryDropdown = this.$refs.retryDropdown as Vue & { hide: () => void };
+			const retryDropdown = this.$refs.retryDropdown as Vue & { hide: () => void } | undefined;
 			if (retryDropdown && event.relatedTarget === null) {
 				retryDropdown.hide();
 			}
