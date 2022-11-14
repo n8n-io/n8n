@@ -557,9 +557,7 @@ export default mixins(
 						if (pinData) {
 							const output = this.getNodePinDataOutput(parentNodeName, pinData, filterText, true);
 
-							pinDataOptions[0].options = pinDataOptions[0].options!.concat(
-								output && output[0].options ? output[0].options : [],
-							);
+							pinDataOptions[0].options = pinDataOptions[0].options!.concat(output?.[0]?.options ?? []);
 						}
 					});
 
