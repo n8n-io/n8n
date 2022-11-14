@@ -1,7 +1,7 @@
 <template>
 	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<el-dropdown :placement="placement" :trigger="trigger" @command="onSelect">
-			<div :class="$style.activator" @click.prevent>
+		<el-dropdown :placement="placement" :trigger="trigger" @command="onSelect" ref="elementDropdown">
+			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
 				<n8n-icon :icon="activatorIcon"/>
 			</div>
 			<el-dropdown-menu slot="dropdown" :class="$style.userActionsMenu">
@@ -91,6 +91,13 @@ export default Vue.extend({
 	methods: {
 		onSelect(action: string) : void {
 			this.$emit('select', action);
+		},
+		onButtonBlur(event: FocusEvent): void {
+			const elementDropdown = this.$refs.elementDropdown as Vue & { hide: () => void }  | undefined;
+			// Hide dropdown when clicking outside of current document
+			if (elementDropdown && event.relatedTarget === null) {
+				elementDropdown.hide();
+			}
 		},
 	},
 });

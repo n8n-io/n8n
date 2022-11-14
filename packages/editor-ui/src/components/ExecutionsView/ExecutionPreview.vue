@@ -33,13 +33,14 @@
 				</n8n-text>
 			</div>
 			<div>
-				<el-dropdown v-if="executionUIDetails.name === 'error'" trigger="click" class="mr-xs" @command="handleRetryClick">
+				<el-dropdown v-if="executionUIDetails.name === 'error'" trigger="click" class="mr-xs" @command="handleRetryClick" ref="retryDropdown">
 					<span class="retry-button">
 						<n8n-icon-button
 							size="large"
 							type="tertiary"
 							:title="$locale.baseText('executionsList.retryExecution')"
 							icon="redo"
+							@blur="onRetryButtonBlur"
 						/>
 					</span>
 					<el-dropdown-menu slot="dropdown">
@@ -47,7 +48,7 @@
 							{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
 						</el-dropdown-item>
 						<el-dropdown-item command="original-workflow">
-							{{ $locale.baseText('executionsList.retryWithOriginalworkflow') }}
+							{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
 						</el-dropdown-item>
 					</el-dropdown-menu>
 				</el-dropdown>
@@ -67,6 +68,7 @@ import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers'
 import { VIEWS } from '../../constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import ElDropdown from 'element-ui/lib/dropdown';
 
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
@@ -106,6 +108,13 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		handleRetryClick(command: string): void {
 			this.$emit('retryExecution', { execution: this.activeExecution, command });
 		},
+		onRetryButtonBlur(event: FocusEvent): void {
+			// Hide dropdown when clicking outside of current document
+			const retryDropdown = this.$refs.retryDropdown as Vue & { hide: () => void } | undefined;
+			if (retryDropdown && event.relatedTarget === null) {
+				retryDropdown.hide();
+			}
+		},
 	},
 });
 </script>
@@ -125,6 +134,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 	transition: all 150ms ease-in-out;
+	pointer-events: none;
+
+	& * { pointer-events: all; }
 
 	&.sidebarCollapsed {
 		width: calc(100% - 375px);
