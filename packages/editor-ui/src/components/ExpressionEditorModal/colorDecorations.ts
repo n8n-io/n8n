@@ -47,6 +47,8 @@ const coloringField = StateField.define<DecorationSet>({
 
 				const decoration = txEffect.value.error ? marks.invalid : marks.valid;
 
+				if (txEffect.value.from === 0 && txEffect.value.to === 0) continue;
+
 				colorings = colorings.update({
 					add: [decoration.range(txEffect.value.from, txEffect.value.to)],
 				});
