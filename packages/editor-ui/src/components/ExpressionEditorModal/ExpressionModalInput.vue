@@ -100,7 +100,7 @@ export default mixins(workflowHelpers).extend({
 		 * - `null` (from `NaN`)
 		 *
 		 * Also date shown as `Mon Nov 14 2022 17:26:13 GMT+0100 (CST)` when part of the result
-		 * and as `[Object: "2022-11-14T17:26:13.130Z"]` when the entire the result.
+		 * and as `[Object: "2022-11-14T17:26:13.130Z"]` when the entire result.
 		 * .
 		 */
 		displayableSegments(): Segment[] {
