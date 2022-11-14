@@ -1,5 +1,4 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
-import { NodeApiError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 
