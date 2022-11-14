@@ -730,7 +730,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 	});
 });
 
-describe.skip('PATCH /workflows/:id - validate interim updates', () => {
+describe('PATCH /workflows/:id - validate interim updates', () => {
 	it('should block owner updating workflow nodes on interim update by member', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
