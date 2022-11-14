@@ -99,8 +99,8 @@ export default mixins(workflowHelpers).extend({
 		 * - `[empty]` (for empty string)
 		 * - `null` (from `NaN`)
 		 *
-		 * Also show date as `Mon Nov 14 2022 18:05:06 GMT+0100 (CST)` when only part of
-		 * the result and as `[Object: <serialized>]` when it is the entire the result.
+		 * Also date shown as `Mon Nov 14 2022 17:26:13 GMT+0100 (CST)` when part of the result
+		 * and as `[Object: "2022-11-14T17:26:13.130Z"]` when the entire the result.
 		 * .
 		 */
 		displayableSegments(): Segment[] {
