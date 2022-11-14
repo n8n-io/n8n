@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<n8n-callout
-			v-if="canPinData && hasPinData && !editMode.enabled"
+			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style['pinned-data-callout']"
@@ -448,6 +448,10 @@ export default mixins(
 				type: Boolean,
 				default: false,
 			},
+			isProductionExecutionPreview: {
+				type: Boolean,
+				default: false,
+			},
 		},
 		data () {
 			return {
@@ -630,7 +634,7 @@ export default mixins(
 			inputData (): INodeExecutionData[] {
 				let inputData = this.rawInputData;
 
-				if (this.node && this.pinData) {
+				if (this.node && this.pinData && !this.isProductionExecutionPreview) {
 					inputData = Array.isArray(this.pinData)
 						? this.pinData.map((value) => ({
 							json: value,
