@@ -76,7 +76,7 @@ export const getTypeof = (value: unknown): JsonSchemaType => value === null
 			? 'list'
 			: typeof value;
 
-export const getJsonSchema = (input: Optional<Primitives | object>, key?: string, path = ''): JsonSchema => {
+export const getJsonSchema = (input: Optional<Primitives | object>, path = '', key?: string): JsonSchema => {
 	let schema:JsonSchema = { type: 'undefined', value: 'undefined', path };
 	switch (typeof input) {
 		case 'object':
@@ -92,16 +92,16 @@ export const getJsonSchema = (input: Optional<Primitives | object>, key?: string
 				};
 				const firstItem = input[0];
 				if(Array.isArray(firstItem)){
-					schema.value = [getJsonSchema(firstItem, '', `${path}[*]`)];
+					schema.value = [getJsonSchema(firstItem, `${ path }[*]`)];
 				} else if(isObj(firstItem)){
-					schema.value = getJsonSchema(firstItem, '', `${path}[*]`).value;
+					schema.value = getJsonSchema(firstItem, `${ path }[*]`).value;
 				} else {
 					schema.value = getTypeof(firstItem);
 				}
 			} else if (isObj(input)) {
 				schema = {
 					type: 'object',
-					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getJsonSchema(v, k, path + `["${k}"]`)})),
+					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getJsonSchema(v, path + `["${ k }"]`, k)})),
 					path,
 				};
 			}
