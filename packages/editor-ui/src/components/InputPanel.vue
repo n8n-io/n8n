@@ -13,6 +13,7 @@
 		:mappingEnabled="!readOnly"
 		:showMappingHint="draggableHintShown"
 		:distanceFromActive="currentNodeDepth"
+		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="input"
 		@itemHover="$emit('itemHover', $event)"
 		@linkRun="onLinkRun"
@@ -106,6 +107,10 @@ export default mixins(
 		},
 		readOnly: {
 			type: Boolean,
+		},
+		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
 		},
 	},
 	data() {

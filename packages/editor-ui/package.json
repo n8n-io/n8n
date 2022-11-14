@@ -102,7 +102,6 @@
     "sass": "^1.55.0",
     "sass-loader": "^10.1.1",
     "string-template-parser": "^1.2.6",
-    "tslint": "^6.1.2",
     "vite": "2.9.5",
     "vite-plugin-html": "^3.2.0",
     "vite-plugin-monaco-editor": "^1.0.10",
