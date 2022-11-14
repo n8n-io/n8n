@@ -48,7 +48,10 @@ export default mixins(workflowHelpers).extend({
 
 				addColor(this.editor, this.resolvableSegments);
 
-				this.$emit('change', { value: this.unresolvedExpression, segments: this.segments });
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
 			}),
 		];
 
@@ -62,9 +65,7 @@ export default mixins(workflowHelpers).extend({
 
 		addColor(this.editor, this.resolvableSegments);
 
-		console.log('this.segments', this.segments);
-
-		this.$emit('change', { value: this.unresolvedExpression, segments: this.segments });
+		this.$emit('change', { value: this.unresolvedExpression, segments: this.displayableSegments });
 	},
 	destroyed() {
 		this.editor?.destroy();
@@ -82,6 +83,55 @@ export default mixins(workflowHelpers).extend({
 		},
 		plaintextSegments(): Plaintext[] {
 			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
+		},
+
+		/**
+		 * Segments to display, excluding those not displayed when they are only part of
+		 * the expression result but displayed when they make up all of the result.
+		 *
+		 * Example:
+		 * - Expression `This is a {{ null }} test` is displayed as `This is a test`.
+		 * - Expression `{{ null }}` is displayed as `[Object: null]`.
+		 *
+		 * Applicable to:
+		 * - `[Object: null]`
+		 * - `[Array: []]`
+		 * - `[empty]` (for empty string)
+		 * - `null` (from `NaN`)
+		 *
+		 * Also show date as `Mon Nov 14 2022 18:05:06 GMT+0100 (CST)` when only part of
+		 * the result and as `[Object: <serialized>]` when it is the entire the result.
+		 * .
+		 */
+		displayableSegments(): Segment[] {
+			return this.segments
+				.map((s) => {
+					if (
+						this.segments.length > 1 &&
+						s.kind === 'resolvable' &&
+						typeof s.resolved === 'string' &&
+						/\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)
+					) {
+						const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
+
+						s.resolved = new Date(utcDateString).toString();
+					}
+					return s;
+				})
+				.filter((s) => {
+					if (
+						this.segments.length > 1 &&
+						s.kind === 'resolvable' &&
+						typeof s.resolved === 'string' &&
+						(['[Object: null]', '[Array: []]'].includes(s.resolved) ||
+							s.resolved === '[empty]' ||
+							s.resolved === 'null')
+					) {
+						return false;
+					}
+
+					return true;
+				});
 		},
 		segments(): Segment[] {
 			if (!this.editor) return [];
@@ -147,7 +197,7 @@ export default mixins(workflowHelpers).extend({
 				result.error = true;
 			}
 
-			if (typeof result.resolved === 'string' && /\[Array:\s\[/.test(result.resolved)) {
+			if (typeof result.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(result.resolved)) {
 				result.resolved = result.resolved.replace(/(\[Array: \[|\])/g, '');
 			}
 
