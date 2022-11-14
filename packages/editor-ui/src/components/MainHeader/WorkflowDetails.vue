@@ -67,13 +67,15 @@
 				<span class="activator">
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
-				<n8n-button
-					type="tertiary"
-					class="mr-2xs"
-					@click="onShareButtonClick"
-				>
-					{{ $locale.baseText('workflowDetails.share') }}
-				</n8n-button>
+				<EnterpriseEdition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+					<n8n-button
+						type="tertiary"
+						class="mr-2xs"
+						@click="onShareButtonClick"
+					>
+						{{ $locale.baseText('workflowDetails.share') }}
+					</n8n-button>
+				</EnterpriseEdition>
 				<SaveButton
 					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
@@ -94,6 +96,7 @@ import Vue from "vue";
 import mixins from "vue-typed-mixins";
 import {
 	DUPLICATE_MODAL_KEY,
+	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
@@ -151,6 +154,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			tagsEditBus: new Vue(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
+			EnterpriseEditionFeature,
 		};
 	},
 	computed: {

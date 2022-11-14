@@ -899,6 +899,7 @@ export const schema = {
 		workflowSharingEnabled: {
 			format: Boolean,
 			default: false,
+			env: 'N8N_WORKFLOW_SHARING_ENABLED',
 		},
 	},
 
