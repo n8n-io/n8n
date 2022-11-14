@@ -412,14 +412,19 @@ export const linterExtension = (Vue as CodeNodeEditorMixin).extend({
 					left: { declarations: Array<{ id: { type: string; name: string } }> };
 				};
 
-				const isForOfStatement = (node: Node) =>
+				const isForOfStatementOverN8nVar = (node: Node) =>
 					node.type === 'ForOfStatement' &&
 					node.left.type === 'VariableDeclaration' &&
 					node.left.declarations.length === 1 &&
 					node.left.declarations[0].type === 'VariableDeclarator' &&
-					node.left.declarations[0].id.type === 'Identifier';
+					node.left.declarations[0].id.type === 'Identifier' &&
+					node.right.type === 'CallExpression' &&
+					node.right.callee.type === 'MemberExpression' &&
+					node.right.callee.computed === false &&
+					node.right.callee.object.type === 'Identifier' &&
+					node.right.callee.object.name.startsWith('$'); // n8n var, e.g $input
 
-				const found = walk<TargetNode>(ast, isForOfStatement);
+				const found = walk<TargetNode>(ast, isForOfStatementOverN8nVar);
 
 				if (found.length === 1) {
 					const itemAlias = found[0].left.declarations[0].id.name;
