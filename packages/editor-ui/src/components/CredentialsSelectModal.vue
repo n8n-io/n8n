@@ -22,6 +22,7 @@
 					ref="select"
 					:value="selected"
 					@change="onSelect"
+					data-test-id="new-credential-type-select"
 				>
 					<font-awesome-icon icon="search" slot="prefix" />
 					<n8n-option
@@ -30,6 +31,7 @@
 						:key="credential.name"
 						:label="credential.displayName"
 						filterable
+						data-test-id="new-credential-type-select-option"
 					/>
 				</n8n-select>
 			</div>
@@ -42,6 +44,7 @@
 					size="large"
 					:disabled="!selected"
 					@click="openCredentialType"
+					data-test-id="new-credential-type-button"
 				/>
 			</div>
 		</template>
