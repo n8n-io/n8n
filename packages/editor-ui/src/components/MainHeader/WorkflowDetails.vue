@@ -67,6 +67,15 @@
 				<span class="activator">
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
+				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+					<n8n-button
+						type="tertiary"
+						class="mr-2xs"
+						@click="onShareButtonClick"
+					>
+						{{ $locale.baseText('workflowDetails.share') }}
+					</n8n-button>
+				</enterprise-edition>
 				<SaveButton
 					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
@@ -87,10 +96,12 @@ import Vue from "vue";
 import mixins from "vue-typed-mixins";
 import {
 	DUPLICATE_MODAL_KEY,
+	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
 } from "@/constants";
 
 import ShortenName from "@/components/ShortenName.vue";
@@ -143,6 +154,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			tagsEditBus: new Vue(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
+			EnterpriseEditionFeature,
 		};
 	},
 	computed: {
@@ -227,6 +239,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 			}
 			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
 			if (saved) await this.settingsStore.fetchPromptsData();
+		},
+		onShareButtonClick() {
+			this.uiStore.openModal(WORKFLOW_SHARE_MODAL_KEY);
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;

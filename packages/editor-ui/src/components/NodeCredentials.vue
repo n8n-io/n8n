@@ -15,7 +15,7 @@
 				size="small"
 				color="text-dark"
 			>
-				<div v-if="isReadOnly">
+				<div v-if="readonly || isReadOnly">
 					<n8n-input
 						:value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name"
 						disabled
@@ -94,6 +94,7 @@ export default mixins(
 ).extend({
 	name: 'NodeCredentials',
 	props: [
+		'readonly',
 		'node', // INodeUi
 		'overrideCredType', // cred type
 	],
