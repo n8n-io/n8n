@@ -415,8 +415,13 @@ export class ScheduleTrigger implements INodeType {
 		const timezone = this.getTimezone();
 		const cronJobs: CronJob[] = [];
 		const intervalArr: NodeJS.Timeout[] = [];
-		const staticData = this.getWorkflowStaticData('node');
-		const executeTrigger = (i?: number, week?: number) => {
+		const staticData = this.getWorkflowStaticData('node') as {
+			recurrencyRules: number[];
+		};
+		if (!staticData.recurrencyRules) {
+			staticData.recurrencyRules = [];
+		}
+		const executeTrigger = (recurrencyRuleIndex?: number, weeksInterval?: number) => {
 			const resultData = {
 				timestamp: moment.tz(timezone).toISOString(true),
 				'Readable date': moment.tz(timezone).format('MMMM Do YYYY, h:mm:ss a'),
@@ -430,25 +435,23 @@ export class ScheduleTrigger implements INodeType {
 				Second: moment.tz(timezone).format('ss'),
 				Timezone: moment.tz(timezone).format('z Z'),
 			};
-			const weeklyExecution =
-				i !== undefined ? (staticData[i] as IDataObject) : ({} as IDataObject);
+			const lastExecutionWeekNumber =
+				recurrencyRuleIndex !== undefined
+					? staticData.recurrencyRules[recurrencyRuleIndex]
+					: undefined;
 
-			// Checks if have the right week interval, handels new years as well
-			if (
-				week &&
-				i !== undefined &&
-				weeklyExecution.week &&
-				(moment.tz(timezone).month() - week === (weeklyExecution.week as number) ||
-					moment.tz(timezone).month() + 52 - week === (weeklyExecution.week as number))
-			) {
-				weeklyExecution.week = moment.tz(timezone).week();
-				staticData[i] = weeklyExecution;
-				this.emit([this.helpers.returnJsonArray([resultData])]);
-			} else {
-				if (week && i) {
-					weeklyExecution.week = moment.tz(timezone).week();
-					staticData[i] = weeklyExecution;
+			// Checks if have the right week interval, handles new years as well
+			if (weeksInterval && recurrencyRuleIndex !== undefined) {
+				if (
+					lastExecutionWeekNumber === undefined || // First time executing this rule
+					moment.tz(timezone).week() >= weeksInterval + lastExecutionWeekNumber || // not first time, but minimum interval has passed
+					moment.tz(timezone).week() + 52 >= weeksInterval + lastExecutionWeekNumber // not first time, correct interval but year has passed
+				) {
+					staticData.recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).week();
+					this.emit([this.helpers.returnJsonArray([resultData])]);
 				}
+				// There is no else block here since we don't want to emit anything now
+			} else {
 				this.emit([this.helpers.returnJsonArray([resultData])]);
 			}
 		};
@@ -514,7 +517,7 @@ export class ScheduleTrigger implements INodeType {
 				} else {
 					const cronJob = new CronJob(
 						cronExpression,
-						() => executeTrigger(true, i, week),
+						() => executeTrigger(i, week),
 						undefined,
 						true,
 						timezone,
