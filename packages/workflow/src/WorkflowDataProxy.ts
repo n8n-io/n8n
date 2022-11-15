@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable no-restricted-syntax */
@@ -463,8 +464,11 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
-					if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
-						throw new ExpressionError('Environment variable access got disabled', {
+					// @ts-expect-error Not using module type required for import.meta
+					const _env = typeof process === 'undefined' ? import.meta.env : process.env;
+
+					if (_env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
+						throw new ExpressionError('access to env vars denied', {
 							causeDetailed:
 								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
 							runIndex: that.runIndex,
@@ -472,7 +476,7 @@ export class WorkflowDataProxy {
 							failExecution: true,
 						});
 					}
-					return process.env[name.toString()];
+					return _env[name.toString()];
 				},
 			},
 		);
