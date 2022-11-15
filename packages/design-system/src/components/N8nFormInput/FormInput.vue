@@ -6,7 +6,13 @@
 		@focus="onFocus"
 		ref="inputRef"
 	/>
-	<n8n-input-label v-else :inputName="name" :label="label" :tooltipText="tooltipText" :required="required && showRequiredAsterisk">
+	<n8n-input-label
+		v-else
+		:inputName="name"
+		:label="label"
+		:tooltipText="tooltipText"
+		:required="required && showRequiredAsterisk"
+	>
 		<div :class="showErrors ? $style.errorInput : ''" @keydown.stop @keydown.enter="onEnter">
 			<slot v-if="hasDefaultSlot" />
 			<n8n-select
@@ -21,7 +27,7 @@
 				ref="inputRef"
 			>
 				<n8n-option
-					v-for="option in (options || [])"
+					v-for="option in options || []"
 					:key="option.value"
 					:value="option.value"
 					:label="option.label"
@@ -69,12 +75,12 @@ import N8nInputLabel from '../N8nInputLabel';
 import N8nCheckbox from '../N8nCheckbox';
 
 import { getValidationError, VALIDATORS } from './validators';
-import { Rule, RuleGroup, IValidator } from "../../types";
+import { Rule, RuleGroup, IValidator } from '../../types';
 
 import { t } from '../../locale';
 
 export interface Props {
-  value: any;
+	value: any;
 	label: string;
 	infoText?: string;
 	required?: boolean;
@@ -87,9 +93,9 @@ export interface Props {
 	documentationUrl?: string;
 	documentationText?: string;
 	validationRules?: Array<Rule | RuleGroup>;
-	validators?: {[key: string]: IValidator | RuleGroup};
+	validators?: { [key: string]: IValidator | RuleGroup };
 	maxlength?: number;
-	options?: Array<{value: string | number, label: string}>;
+	options?: Array<{ value: string | number; label: string }>;
 	autocomplete?: string;
 	name?: string;
 	focusInitially?: boolean;
@@ -105,11 +111,11 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	(event: 'validate', shouldValidate: boolean): void,
-	(event: 'input', value: any): void,
-	(event: 'focus'): void,
-	(event: 'blur'): void,
-	(event: 'enter'): void,
+	(event: 'validate', shouldValidate: boolean): void;
+	(event: 'input', value: any): void;
+	(event: 'focus'): void;
+	(event: 'blur'): void;
+	(event: 'enter'): void;
 }>();
 
 const state = reactive({
@@ -121,11 +127,11 @@ const slots = useSlots();
 
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 
-function getInputValidationError(): ReturnType<IValidator['validate']>  {
-	const rules = props.validationRules || [];
+function getInputValidationError(): ReturnType<IValidator['validate']> {
+	const rules = props.validationRules ?? [];
 	const validators = {
 		...VALIDATORS,
-		...(props.validators || {}),
+		...(props.validators ?? {}),
 	} as { [key: string]: IValidator | RuleGroup };
 
 	if (props.required) {
@@ -149,11 +155,7 @@ function getInputValidationError(): ReturnType<IValidator['validate']>  {
 
 		if (rules[i].hasOwnProperty('rules')) {
 			const rule = rules[i] as RuleGroup;
-			const error = getValidationError(
-				props.value,
-				validators,
-				rule,
-			);
+			const error = getValidationError(props.value, validators, rule);
 			if (error) return error;
 		}
 	}
@@ -190,10 +192,11 @@ const validationError = computed<string | null>(() => {
 
 const hasDefaultSlot = computed(() => !!slots.default);
 
-const showErrors = computed(() => (
-	!!validationError.value &&
-		((props.validateOnBlur && state.hasBlurred && !state.isTyping) || props.showValidationWarnings)
-));
+const showErrors = computed(
+	() =>
+		!!validationError.value &&
+		((props.validateOnBlur && state.hasBlurred && !state.isTyping) || props.showValidationWarnings),
+);
 
 onMounted(() => {
 	emit('validate', !validationError.value);
@@ -201,7 +204,10 @@ onMounted(() => {
 	if (props.focusInitially && inputRef.value) inputRef.value.focus();
 });
 
-watch(() => validationError.value, (error) => emit('validate', !error));
+watch(
+	() => validationError.value,
+	(error) => emit('validate', !error),
+);
 
 defineExpose({ inputRef });
 </script>

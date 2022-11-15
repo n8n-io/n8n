@@ -381,6 +381,8 @@ importers:
       '@testing-library/jest-dom': ^5.16.4
       '@testing-library/vue': ^5.8.3
       '@types/markdown-it': ^12.2.3
+      '@types/markdown-it-emoji': ^2.0.2
+      '@types/markdown-it-link-attributes': ^3.0.1
       '@types/sanitize-html': ^2.6.2
       '@vitejs/plugin-vue2': ^1.1.2
       c8: 7.11.0
@@ -412,8 +414,15 @@ importers:
       xss: ^1.0.10
     dependencies:
       element-ui: 2.15.10_vue@2.7.13
+      markdown-it: 12.3.2
+      markdown-it-emoji: 2.0.2
+      markdown-it-link-attributes: 4.0.1
+      markdown-it-task-lists: 2.1.1
       sanitize-html: 2.7.0
+      vue: 2.7.13
+      vue-typed-mixins: 0.2.0
       vue2-boring-avatars: 0.3.4
+      xss: 1.0.14
     devDependencies:
       '@fortawesome/fontawesome-svg-core': 1.2.36
       '@fortawesome/free-solid-svg-icons': 5.15.4
@@ -426,15 +435,13 @@ importers:
       '@testing-library/jest-dom': 5.16.5
       '@testing-library/vue': 5.8.3_2s2ymob7v2oigx3hqbmnjuqthq
       '@types/markdown-it': 12.2.3
+      '@types/markdown-it-emoji': 2.0.2
+      '@types/markdown-it-link-attributes': 3.0.1
       '@types/sanitize-html': 2.6.2
       '@vitejs/plugin-vue2': 1.1.2_vite@2.9.15+vue@2.7.13
       c8: 7.11.0
       core-js: 3.25.5
       jsdom: 19.0.0
-      markdown-it: 12.3.2
-      markdown-it-emoji: 2.0.2
-      markdown-it-link-attributes: 4.0.1
-      markdown-it-task-lists: 2.1.1
       node-notifier: 10.0.1
       sass: 1.55.0
       sass-loader: 10.3.1_sass@1.55.0+webpack@4.46.0
@@ -443,15 +450,12 @@ importers:
       trim: 1.0.1
       vite: 2.9.15_sass@1.55.0
       vitest: 0.9.3_b5ycfd3de3zzpsiaupqrfychby
-      vue: 2.7.13
       vue-class-component: 7.2.6_vue@2.7.13
       vue-loader: 15.10.0_bmmfcdfkgwka5ige2hekgeknby
       vue-property-decorator: 9.1.2_lh5kvfzhejbphpoiiowdoloare
       vue-template-compiler: 2.7.13
       vue-tsc: 0.34.17_typescript@4.8.4
-      vue-typed-mixins: 0.2.0
       webpack: 4.46.0
-      xss: 1.0.14
 
   packages/editor-ui:
     specifiers:
@@ -5805,6 +5809,18 @@ packages:
       '@types/node': 16.11.65
     dev: true
 
+  /@types/markdown-it-emoji/2.0.2:
+    resolution: {integrity: sha512-2ln8Wjbcj/0oRi/6VnuMeWEHHuK8uapFttvcLmDIe1GKCsFBLOLBX+D+xhDa9oWOQV0IpvxwrSfKKssAqqroog==}
+    dependencies:
+      '@types/markdown-it': 12.2.3
+    dev: true
+
+  /@types/markdown-it-link-attributes/3.0.1:
+    resolution: {integrity: sha512-K8RnNb1q8j7rDOJbMF7AnlhCC/45BjrQ8z3WZWOrvkBIl8u9RXvmBdG/hfpnmK1JhhEZcmFEKWt+ilW1Mly+2Q==}
+    dependencies:
+      '@types/markdown-it': 12.2.3
+    dev: true
+
   /@types/markdown-it/12.2.3:
     resolution: {integrity: sha512-GKMHFfv3458yYy+v/N8gjufHO6MSZKCOXpZc5GXIWWy8uldwfmPn98vp81gZ5f9SVw8YYBctgfJ22a2d7AOMeQ==}
     dependencies:
@@ -9694,6 +9710,7 @@ packages:
 
   /cssfilter/0.0.10:
     resolution: {integrity: sha512-FAaLDaplstoRsDR8XGYH51znUN0UY7nMc6Z9/fvE8EXGwvJE9hu7W2vHwx1+bd6gCYnln9nLbzxFTrcO9YQDZw==}
+    dev: false
 
   /cssom/0.3.8:
     resolution: {integrity: sha512-b0tGHbfegbhPJpxpiBPU2sCkigAqtM9O121le6bbOlgyV+NyGyCmVfJ6QW9eRjz8CpNfWEOYBIMIGRYkLwsIYg==}
@@ -10508,7 +10525,6 @@ packages:
 
   /entities/2.1.0:
     resolution: {integrity: sha512-hCx1oky9PFrJ611mf0ifBLBRW8lUUVRlFolb5gWRfIELabBlbp9xZvrqZLZAs+NxFnbfQoeGd8wDkygjg7U85w==}
-    dev: true
 
   /entities/2.2.0:
     resolution: {integrity: sha512-p92if5Nz619I0w+akJrLZH0MX0Pb5DX39XOwQTtXSdQQOaYH03S1uIQp4mhOZtAXrxq4ViO67YTiLBo2638o9A==}
@@ -14881,7 +14897,6 @@ packages:
     resolution: {integrity: sha512-ynTsyrFSdE5oZ/O9GEf00kPngmOfVwazR5GKDq6EYfhlpFug3J2zybX56a2PRRpc9P+FuSoGNAwjlbDs9jJBPQ==}
     dependencies:
       uc.micro: 1.0.6
-    dev: true
 
   /linkify-it/4.0.0:
     resolution: {integrity: sha512-QAxkXyzT/TXgwGyY4rTgC95Ex6/lZ5/lYTV9nug6eJt93BCBQGOE47D/g2+/m5J1MrVLr2ot97OXkBZ9bBpR4A==}
@@ -15378,15 +15393,15 @@ packages:
 
   /markdown-it-emoji/2.0.2:
     resolution: {integrity: sha512-zLftSaNrKuYl0kR5zm4gxXjHaOI3FAOEaloKmRA5hijmJZvSjmxcokOLlzycb/HXlUFWzXqpIEoyEMCE4i9MvQ==}
-    dev: true
+    dev: false
 
   /markdown-it-link-attributes/4.0.1:
     resolution: {integrity: sha512-pg5OK0jPLg62H4k7M9mRJLT61gUp9nvG0XveKYHMOOluASo9OEF13WlXrpAp2aj35LbedAy3QOCgQCw0tkLKAQ==}
-    dev: true
+    dev: false
 
   /markdown-it-task-lists/2.1.1:
     resolution: {integrity: sha512-TxFAc76Jnhb2OUu+n3yz9RMu4CwGfaT788br6HhEDlvWfdeJcLUsxk1Hgw2yJio0OXsxv7pyIPmvECY7bMbluA==}
-    dev: true
+    dev: false
 
   /markdown-it/12.3.2:
     resolution: {integrity: sha512-TchMembfxfNVpHkbtriWltGWc+m3xszaRD0CZup7GFFhzIgQqxIfn3eGj1yZpfuflzPvfkt611B2Q/Bsk1YnGg==}
@@ -15397,7 +15412,7 @@ packages:
       linkify-it: 3.0.3
       mdurl: 1.0.1
       uc.micro: 1.0.6
-    dev: true
+    dev: false
 
   /matchdep/2.0.0:
     resolution: {integrity: sha512-LFgVbaHIHMqCRuCZyfCtUOq9/Lnzhi7Z0KFUE2fhD54+JN2jLh3hC02RLkqauJ3U4soU6H1J3tfj/Byk7GoEjA==}
@@ -15462,7 +15477,6 @@ packages:
 
   /mdurl/1.0.1:
     resolution: {integrity: sha512-/sKlQJCBYVY9Ers9hqzKou4H6V5UWc/M59TH2dvkt+84itfnq7uFOMLpOiOS4ujvHP4etln18fmIxA5R5fll0g==}
-    dev: true
 
   /media-typer/0.3.0:
     resolution: {integrity: sha512-dq+qelQ9akHpcOl/gUVRTxVIOkAJ1wR3QAvb4RsVjS8oVoFjDGTc679wJYmUmknUF5HwMLOgb5O+a3KxfWapPQ==}
@@ -20807,6 +20821,7 @@ packages:
 
   /uc.micro/1.0.6:
     resolution: {integrity: sha512-8Y75pvTYkLJW2hWQHXxoqRgV7qb9B+9vFEtidML+7koHUFapnVJAZ6cKs+Qjz5Aw3aZWHMC6u0wJE3At+nSGwA==}
+    dev: false
 
   /uglify-js/3.17.3:
     resolution: {integrity: sha512-JmMFDME3iufZnBpyKL+uS78LRiC+mK55zWfM5f/pWBJfpOttXAqYfdDGRukYhJuyRinvPVAtUhvy7rlDybNtFg==}
@@ -21779,6 +21794,7 @@ packages:
 
   /vue-typed-mixins/0.2.0:
     resolution: {integrity: sha512-0OxuinandPWv3nm5k/reYkuKtX3jjPZ40Sy9roJz0ih8PUzmI7zSRiXFEJ62LsyRegw9Tqy+qMkajk7ipKP8Vg==}
+    dev: false
 
   /vue/2.7.13:
     resolution: {integrity: sha512-QnM6ULTNnPmn71eUO+4hdjfBIA3H0GLsBnchnI/kS678tjI45GOUZhXd0oP/gX9isikXz1PAzSnkPspp9EUNfQ==}
@@ -22344,6 +22360,7 @@ packages:
     dependencies:
       commander: 2.20.3
       cssfilter: 0.0.10
+    dev: false
 
   /xtend/4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}

@@ -1,5 +1,5 @@
-@use "../common/var";
-@use "../mixins/mixins";
+@use '../common/var';
+@use '../mixins/mixins';
 
 @include mixins.b(time-range-picker) {
 	width: 354px;
