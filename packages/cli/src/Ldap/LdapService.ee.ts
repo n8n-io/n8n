@@ -33,24 +33,24 @@ export class LdapService {
 		if (this.client === undefined) {
 			Logger.info(`LDAP - Creating new LDAP client`);
 			const url = formatUrl(
-				this._config.connection.url,
-				this._config.connection.port,
-				this._config.connection.security,
+				this._config.connectionUrl,
+				this._config.connectionPort,
+				this._config.connectionSecurity,
 			);
 			const ldapOptions: ClientOptions = { url };
 			const tlsOptions: ConnectionOptions = {};
 
-			if (this._config.connection.security !== ConnectionSecurity.NONE) {
+			if (this._config.connectionSecurity !== ConnectionSecurity.NONE) {
 				Object.assign(tlsOptions, {
-					rejectUnauthorized: !this._config.connection.allowUnauthorizedCerts,
+					rejectUnauthorized: !this._config.allowUnauthorizedCerts,
 				});
-				if (this._config.connection.security === ConnectionSecurity.TLS) {
+				if (this._config.connectionSecurity === ConnectionSecurity.TLS) {
 					ldapOptions.tlsOptions = tlsOptions;
 				}
 			}
 
 			this.client = new Client(ldapOptions);
-			if (this._config.connection.security === ConnectionSecurity.STARTTLS) {
+			if (this._config.connectionSecurity === ConnectionSecurity.STARTTLS) {
 				await this.client.startTLS(tlsOptions);
 			}
 		}
@@ -65,7 +65,7 @@ export class LdapService {
 		Logger.info(`LDAP - Binding with admin credentials`);
 		await this.getClient();
 		if (this.client) {
-			await this.client.bind(this._config.binding.adminDn, this._config.binding.adminPassword);
+			await this.client.bind(this._config.bindingAdminDn, this._config.bindingAdminPassword);
 		}
 	}
 
@@ -80,13 +80,13 @@ export class LdapService {
 		Logger.info(`LDAP - Searching with admin credentials`);
 		await this.bindAdmin();
 		if (this.client) {
-			const { searchEntries } = await this.client.search(this._config.binding.baseDn, {
+			const { searchEntries } = await this.client.search(this._config.baseDn, {
 				attributes: getMappingAttributes(this._config),
 				explicitBufferAttributes: BINARY_AD_ATTRIBUTES,
 				filter,
-				timeLimit: this._config.syncronization.searchTimeout,
-				paged: { pageSize: this._config.syncronization.pageSize },
-				...(this._config.syncronization.pageSize === 0 && { paged: true }),
+				timeLimit: this._config.searchTimeout,
+				paged: { pageSize: this._config.searchPageSize },
+				...(this._config.searchPageSize === 0 && { paged: true }),
 			});
 
 			await this.client.unbind();

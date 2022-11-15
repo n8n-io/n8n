@@ -3,22 +3,17 @@ import express from 'express';
 import config from '@/config';
 import * as Db from '@/Db';
 import type { Role } from '@db/entities/Role';
-import {
-	LdapSyncHistory as ADSync,
-} from '@db/entities/LdapSyncHistory';
+import { LdapSyncHistory as ADSync } from '@db/entities/LdapSyncHistory';
 import { randomEmail, randomName, uniqueId } from './../shared/random';
 import * as testDb from './../shared/testDb';
 import type { AuthAgent } from '../shared/types';
 import * as utils from '../shared/utils';
 
-import {
-	LDAP_DEFAULT_CONFIGURATION,
-	RunningMode,
-	SignInType,
-} from '@/Ldap/constants';
+import { LDAP_DEFAULT_CONFIGURATION, RunningMode, SignInType } from '@/Ldap/constants';
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapConfig } from '@/Ldap/types';
 import { LdapService } from '@/Ldap/LdapService.ee';
+import { loadHelpClass } from '@oclif/core';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
@@ -34,10 +29,7 @@ beforeAll(async () => {
 	const initResult = await testDb.init();
 	testDbName = initResult.testDbName;
 
-	const [
-		fetchedGlobalOwnerRole,
-		fetchedGlobalMemberRole,
-	] = await testDb.getAllRoles();
+	const [fetchedGlobalOwnerRole, fetchedGlobalMemberRole] = await testDb.getAllRoles();
 
 	globalOwnerRole = fetchedGlobalOwnerRole;
 	globalMemberRole = fetchedGlobalMemberRole;
@@ -103,10 +95,8 @@ test('PUT /ldap/config route should validate payload', async () => {
 
 	const invalidValuePayload = {
 		...LDAP_DEFAULT_CONFIGURATION,
-		login: {
-			enabled: '', // enabled property only allows boolean
-			label: '',
-		},
+		loginEnabled: '', // enabled property only allows boolean
+		loginLabel: '',
 	};
 
 	const invalidExtraPropertyPayload = {
@@ -115,10 +105,8 @@ test('PUT /ldap/config route should validate payload', async () => {
 	};
 
 	const missingPropertyPayload = {
-		login: {
-			enabled: true,
-			label: '',
-		},
+		loginEnabled: true,
+		loginLabel: '',
 		// missing all other properties defined in the schema
 	};
 
@@ -142,16 +130,15 @@ test('PUT /ldap/config route should update model', async () => {
 
 	const validPayload = {
 		...LDAP_DEFAULT_CONFIGURATION,
-		login: {
-			enabled: true,
-			label: '',
-		},
+		loginEnabled: true,
+		loginLabel: '',
 	};
 
 	const response = await authAgent(owner).put('/ldap/config').send(validPayload);
+
 	expect(response.statusCode).toBe(200);
-	expect(Object.keys(response.body.data).length).toBe(6);
-	expect(response.body.data.login).toMatchObject({ enabled: true, label: '' });
+	expect(response.body.data.loginEnabled).toBe(true);
+	expect(response.body.data.loginLabel).toBe('');
 });
 
 test('GET /ldap/config route should retrieve current configuration', async () => {
@@ -161,10 +148,8 @@ test('GET /ldap/config route should retrieve current configuration', async () =>
 
 	const validPayload = {
 		...LDAP_DEFAULT_CONFIGURATION,
-		login: {
-			enabled: true,
-			label: '',
-		},
+		loginEnabled: true,
+		loginLabel: '',
 	};
 
 	let response = await authAgent(owner).put('/ldap/config').send(validPayload);
@@ -242,7 +227,7 @@ test('POST /ldap/sync?type=dry should detect new user but not persist change in 
 });
 
 test('POST /ldap/sync?type=dry should detect updated user but not persist change in model', async () => {
-	const ldapConfig = await testDb.createLdapDefaultConfig({ attributeMapping: { ldapId: 'uid' } });
+	const ldapConfig = await testDb.createLdapDefaultConfig({ ldapIdAttribute: 'uid' });
 
 	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
 
@@ -299,7 +284,7 @@ test('POST /ldap/sync?type=dry should detect updated user but not persist change
 });
 
 test('POST /ldap/sync?type=dry should detect disabled user but not persist change in model', async () => {
-	const ldapConfig = await testDb.createLdapDefaultConfig({ attributeMapping: { ldapId: 'uid' } });
+	const ldapConfig = await testDb.createLdapDefaultConfig({ ldapIdAttribute: 'uid' });
 
 	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
 
@@ -349,7 +334,10 @@ test('POST /ldap/sync?type=dry should detect disabled user but not persist chang
 
 test('POST /ldap/sync?type=live should detect new user and persist change in model', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
-		attributeMapping: { ldapId: 'uid', firstName: 'givenName', lastName: 'sn', email: 'mail' },
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
 	});
 
 	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
@@ -399,7 +387,10 @@ test('POST /ldap/sync?type=live should detect new user and persist change in mod
 
 test('POST /ldap/sync?type=live should detect updated user and persist change in model', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
-		attributeMapping: { ldapId: 'uid', firstName: 'givenName', lastName: 'sn', email: 'mail' },
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
 	});
 
 	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
@@ -459,7 +450,10 @@ test('POST /ldap/sync?type=live should detect updated user and persist change in
 
 test('POST /ldap/sync?type=live should detect disabled user and persist change in model', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
-		attributeMapping: { ldapId: 'uid', firstName: 'givenName', lastName: 'sn', email: 'mail' },
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
 	});
 
 	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
@@ -549,9 +543,15 @@ test('GET /ldap/sync should return paginated syncronizations', async () => {
 
 test('POST /login should allow new LDAP user to login and syncronize data', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
-		login: { enabled: true, loginLabel: '' },
-		attributeMapping: { ldapId: 'uid', firstName: 'givenName', lastName: 'sn', email: 'mail' },
-		binding: { baseDn: 'baseDn', adminDn: 'adminDn', adminPassword: 'adminPassword' },
+		loginEnabled: true,
+		loginLabel: '',
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
+		baseDn: 'baseDn',
+		bindingAdminDn: 'adminDn',
+		bindingAdminPassword: 'adminPassword',
 	});
 
 	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
@@ -578,6 +578,8 @@ test('POST /login should allow new LDAP user to login and syncronize data', asyn
 		.post('/login')
 		.send({ email: ldapUser.mail, password: 'password' });
 
+	console.log(response.body);
+
 	expect(response.headers['set-cookie']).toBeDefined();
 	expect(response.headers['set-cookie'][0] as string).toContain('n8n-auth=');
 
@@ -596,10 +598,19 @@ test('POST /login should allow new LDAP user to login and syncronize data', asyn
 
 test('POST /login should allow existing LDAP user to login and syncronize data', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
-		login: { enabled: true, loginLabel: '' },
-		attributeMapping: { ldapId: 'uid', firstName: 'givenName', lastName: 'sn', email: 'mail' },
-		binding: { baseDn: 'baseDn', adminDn: 'adminDn', adminPassword: 'adminPassword' },
+		loginEnabled: true,
+		loginLabel: '',
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
+		loginIdAttribute: 'mail',
+		baseDn: 'baseDn',
+		bindingAdminDn: 'adminDn',
+		bindingAdminPassword: 'adminPassword',
 	});
+
+	console.log(ldapConfig.data);
 
 	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
 
@@ -630,9 +641,14 @@ test('POST /login should allow existing LDAP user to login and syncronize data',
 
 	jest.spyOn(LdapService.prototype, 'validUser').mockImplementation(() => Promise.resolve());
 
+	console.log(member);
+
 	const response = await authlessAgent
 		.post('/login')
 		.send({ email: ldapUser.mail, password: 'password' });
+
+	console.log('este es el response');
+	console.log(response.body);
 
 	expect(response.headers['set-cookie']).toBeDefined();
 	expect(response.headers['set-cookie'][0] as string).toContain('n8n-auth=');
@@ -641,6 +657,8 @@ test('POST /login should allow existing LDAP user to login and syncronize data',
 
 	// Make sure the changes in the "LDAP server" were persisted in the database
 	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
+
+	console.log(localLdapUsers);
 
 	expect(localLdapUsers.length).toBe(1);
 	expect(localLdapUsers[0].email).toBe(ldapUser.mail);

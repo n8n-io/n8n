@@ -132,8 +132,8 @@ export const getLdapConfig = async (): Promise<{
 		name: LDAP_FEATURE_NAME,
 	});
 	const configurationData = configuration.data as LdapConfig;
-	configurationData.binding.adminPassword = await decryptPassword(
-		configurationData.binding.adminPassword,
+	configurationData.bindingAdminPassword = await decryptPassword(
+		configurationData.bindingAdminPassword,
 	);
 	return {
 		name: configuration.name,
@@ -145,12 +145,12 @@ export const getLdapConfig = async (): Promise<{
  * Take the LDAP configuration and
  * set login enabled and login label
  * to the config object
- * @param  {ActiveDirectoryConfig} config
+ * @param  {LdapConfig} config
  * @returns void
  */
 export const setGlobalLdapConfigVariables = (config: LdapConfig): void => {
-	setLdapLoginEnabled(config.login.enabled);
-	setLdapLoginLabel(config.login.label);
+	setLdapLoginEnabled(config.loginEnabled);
+	setLdapLoginLabel(config.loginLabel);
 };
 
 const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
@@ -179,10 +179,10 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 		throw new Error(message);
 	}
 
-	config.binding.adminPassword = await encryptPassword(config.binding.adminPassword);
+	config.bindingAdminPassword = await encryptPassword(config.bindingAdminPassword);
 
-	if (!config.login.enabled) {
-		config.syncronization.enabled = false;
+	if (!config.loginEnabled) {
+		config.syncronizationEnabled = false;
 	}
 
 	await Db.collections.FeatureConfig.update({ name: LDAP_FEATURE_NAME }, { data: config });
@@ -311,15 +311,12 @@ export const getUserByLdapId = async (idAttributeValue: string): Promise<User | 
  * @param  {LdapConfig['attributeMapping']} attributes
  * @returns user
  */
-export const mapLdapAttributesToDb = (
-	user: Entry,
-	attributes: LdapConfig['attributeMapping'],
-): Partial<LdapDbColumns> => {
+export const mapLdapAttributesToDb = (user: Entry, config: LdapConfig): Partial<LdapDbColumns> => {
 	return {
-		email: user[attributes.email] as string,
-		firstName: user[attributes.firstName] as string,
-		lastName: user[attributes.lastName] as string,
-		ldapId: user[attributes.ldapId] as string,
+		email: user[config.emailAttribute] as string,
+		firstName: user[config.firstNameAttribute] as string,
+		lastName: user[config.lastNameAttribute] as string,
+		ldapId: user[config.ldapIdAttribute] as string,
 	};
 };
 
@@ -343,16 +340,12 @@ export const getLdapUsers = async (): Promise<string[]> => {
  * @param  {Role} role?
  * @returns User
  */
-export const mapLdapUserToDbUser = (
-	adUser: Entry,
-	attributes: LdapConfig['attributeMapping'],
-	role?: Role,
-): User => {
+export const mapLdapUserToDbUser = (adUser: Entry, config: LdapConfig, role?: Role): User => {
 	return Object.assign(new User(), {
 		...(role && { password: randomPassword() }),
 		...(role && { signInType: SignInType.LDAP }),
 		...(role && { globalRole: role }),
-		...mapLdapAttributesToDb(adUser, attributes),
+		...mapLdapAttributesToDb(adUser, config),
 	});
 };
 /**
@@ -426,5 +419,11 @@ export const formatUrl = (url: string, port: number, security: ConnectionSecurit
 };
 
 export const getMappingAttributes = (config: LdapConfig): string[] => {
-	return Object.values(config.attributeMapping);
+	return [
+		config.emailAttribute,
+		config.ldapIdAttribute,
+		config.firstNameAttribute,
+		config.lastNameAttribute,
+		config.emailAttribute,
+	];
 };

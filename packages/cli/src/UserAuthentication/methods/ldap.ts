@@ -19,22 +19,17 @@ export const handleLdapLogin = async (
 
 	const adConfig = await getLdapConfig();
 
-	if (!adConfig.data.login.enabled) return undefined;
+	if (!adConfig.data.loginEnabled) return undefined;
 
 	const {
-		data: { attributeMapping, filter },
+		data: { loginIdAttribute, userFilter, ldapIdAttribute },
 	} = adConfig;
 
-	const adUser = await findAndAuthenticateLdapUser(
-		email,
-		password,
-		attributeMapping.loginId,
-		filter.user,
-	);
+	const adUser = await findAndAuthenticateLdapUser(email, password, loginIdAttribute, userFilter);
 
 	if (!adUser) return undefined;
 
-	const usernameAttributeValue = adUser[attributeMapping.ldapId] as string | undefined;
+	const usernameAttributeValue = adUser[ldapIdAttribute] as string | undefined;
 
 	if (!usernameAttributeValue) return undefined;
 
@@ -49,7 +44,7 @@ export const handleLdapLogin = async (
 			password: randomPassword(),
 			signInType: SignInType.LDAP,
 			globalRole: role,
-			...mapLdapAttributesToDb(adUser, attributeMapping),
+			...mapLdapAttributesToDb(adUser, adConfig.data),
 		});
 	} else {
 		// @ts-ignore
@@ -57,7 +52,7 @@ export const handleLdapLogin = async (
 		// move this to it's own function
 		await Db.collections.User.update(localUser.id, {
 			...localUser,
-			...mapLdapAttributesToDb(adUser, attributeMapping),
+			...mapLdapAttributesToDb(adUser, adConfig.data),
 		});
 	}
 

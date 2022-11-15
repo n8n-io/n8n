@@ -230,37 +230,25 @@ export default mixins(showMessage).extend({
 			}
 
 			const newConfiguration: ILdapConfig = {
-				login: {
-					enabled: form.loginEnabled === 'true' ? true : false,
-					label: form.loginLabel ?? '',
-				},
-				connection: {
-					url: form.serverAddress,
-					allowUnauthorizedCerts: form.allowUnauthorizedCerts === 'true' ? true : false,
-					port: parseInt(form.port || '389', 10),
-					security: form.connectionSecurity,
-				},
-				binding: {
-					baseDn: form.baseDn,
-					adminDn: form.bindingType === 'admin' ? form.adminDn : '',
-					adminPassword: form.bindingType === 'admin' ? form.adminPassword : '',
-				},
-				attributeMapping: {
-					email: form.email,
-					firstName: form.firstName,
-					lastName: form.lastName,
-					loginId: form.loginId,
-					ldapId: form.ldapId,
-				},
-				filter: {
-					user: form.userFilter ?? '',
-				},
-				syncronization: {
-					enabled: form.syncronizationEnabled === 'true' ? true : false,
-					interval: parseInt(form.syncronizationInterval || '60', 10),
-					pageSize: parseInt(form.pageSize || '0', 10),
-					searchTimeout: parseInt(form.searchTimeout || '60', 10),
-				},
+				loginEnabled: form.loginEnabled === 'true' ? true : false,
+				loginLabel: form.loginLabel ?? '',
+				connectionUrl: form.serverAddress,
+				allowUnauthorizedCerts: form.allowUnauthorizedCerts === 'true' ? true : false,
+				connectionPort: parseInt(form.port || '389', 10),
+				connectionSecurity: form.connectionSecurity,
+				baseDn: form.baseDn,
+				bindingAdminDn: form.bindingType === 'admin' ? form.adminDn : '',
+				bindingAdminPassword: form.bindingType === 'admin' ? form.adminPassword : '',
+				emailAttribute: form.email,
+				firstNameAttribute: form.firstName,
+				lastNameAttribute: form.lastName,
+				loginIdAttribute: form.loginId,
+				ldapIdAttribute: form.ldapId,
+				userFilter: form.userFilter ?? '',
+				syncronizationEnabled: form.syncronizationEnabled === 'true' ? true : false,
+				syncronizationInterval: parseInt(form.syncronizationInterval || '60', 10),
+				searchPageSize: parseInt(form.pageSize || '0', 10),
+				searchTimeout: parseInt(form.searchTimeout || '60', 10),
 			};
 
 			try {
@@ -336,7 +324,7 @@ export default mixins(showMessage).extend({
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
-						initialValue: this.adConfig.login.enabled.toString(),
+						initialValue: this.adConfig.loginEnabled.toString(),
 						properties: {
 							type: 'select',
 							label: 'Enable LDAP Login',
@@ -356,7 +344,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'loginLabel',
-						initialValue: this.adConfig.login.label,
+						initialValue: this.adConfig.loginLabel,
 						properties: {
 							label: 'Login Label',
 							required: false,
@@ -373,7 +361,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'serverAddress',
-						initialValue: this.adConfig.connection.url,
+						initialValue: this.adConfig.connectionUrl,
 						properties: {
 							label: 'LDAP Server Address',
 							required: true,
@@ -383,7 +371,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'port',
-						initialValue: this.adConfig.connection.port,
+						initialValue: this.adConfig.connectionPort,
 						properties: {
 							label: 'LDAP Server Port',
 							capitalize: true,
@@ -392,7 +380,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'connectionSecurity',
-						initialValue: this.adConfig.connection.security,
+						initialValue: this.adConfig.connectionSecurity,
 						properties: {
 							type: 'select',
 							label: 'Connection Security',
@@ -416,7 +404,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'allowUnauthorizedCerts',
-						initialValue: this.adConfig.connection.allowUnauthorizedCerts.toString(),
+						initialValue: this.adConfig.allowUnauthorizedCerts.toString(),
 						properties: {
 							type: 'select',
 							label: 'Ignore SSL/TLS Issues',
@@ -438,7 +426,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'baseDn',
-						initialValue: this.adConfig.binding.baseDn,
+						initialValue: this.adConfig.baseDn,
 						properties: {
 							label: 'Base DN',
 							required: true,
@@ -467,7 +455,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'adminDn',
-						initialValue: this.adConfig.binding.adminDn,
+						initialValue: this.adConfig.bindingAdminDn,
 						properties: {
 							label: 'Binding DN',
 							capitalize: true,
@@ -479,7 +467,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'adminPassword',
-						initialValue: this.adConfig.binding.adminPassword,
+						initialValue: this.adConfig.bindingAdminPassword,
 						properties: {
 							label: 'Binding Password',
 							type: 'password',
@@ -499,7 +487,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'userFilter',
-						initialValue: this.adConfig.filter.user,
+						initialValue: this.adConfig.userFilter,
 						properties: {
 							label: 'User Filter',
 							type: 'text',
@@ -518,7 +506,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'ldapId',
-						initialValue: this.adConfig.attributeMapping.ldapId,
+						initialValue: this.adConfig.ldapIdAttribute,
 						properties: {
 							label: 'ID',
 							type: 'text',
@@ -530,7 +518,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'loginId',
-						initialValue: this.adConfig.attributeMapping.loginId,
+						initialValue: this.adConfig.loginIdAttribute,
 						properties: {
 							label: 'Login ID',
 							type: 'text',
@@ -542,7 +530,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'email',
-						initialValue: this.adConfig.attributeMapping.email,
+						initialValue: this.adConfig.emailAttribute,
 						properties: {
 							label: 'Email',
 							type: 'text',
@@ -554,7 +542,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'firstName',
-						initialValue: this.adConfig.attributeMapping.firstName,
+						initialValue: this.adConfig.firstNameAttribute,
 						properties: {
 							label: 'First Name',
 							type: 'text',
@@ -567,7 +555,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'lastName',
-						initialValue: this.adConfig.attributeMapping.lastName,
+						initialValue: this.adConfig.lastNameAttribute,
 						properties: {
 							label: 'Last Name',
 							type: 'text',
@@ -590,7 +578,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'syncronizationEnabled',
-						initialValue: this.adConfig.syncronization.enabled.toString(),
+						initialValue: this.adConfig.syncronizationEnabled.toString(),
 						properties: {
 							type: 'select',
 							label: 'Enable LDAP Syncronization',
@@ -613,7 +601,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'syncronizationInterval',
-						initialValue: this.adConfig.syncronization.interval,
+						initialValue: this.adConfig.syncronizationInterval,
 						properties: {
 							label: 'Syncronization Interval (Minutes)',
 							type: 'text',
@@ -627,7 +615,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'pageSize',
-						initialValue: this.adConfig.syncronization.pageSize,
+						initialValue: this.adConfig.searchPageSize,
 						properties: {
 							label: 'Page Size',
 							type: 'text',
@@ -642,7 +630,7 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'searchTimeout',
-						initialValue: this.adConfig.syncronization.searchTimeout,
+						initialValue: this.adConfig.searchTimeout,
 						properties: {
 							label: 'Search Timeout (Seconds)',
 							type: 'text',

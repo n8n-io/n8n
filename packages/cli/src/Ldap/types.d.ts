@@ -4,37 +4,25 @@ import type { User } from '@db/entities/User';
 import { ConnectionSecurity, RunningMode, SyncStatus } from './constants';
 
 export interface LdapConfig {
-	login: {
-		enabled: boolean;
-		label: string;
-	};
-	connection: {
-		url: string;
-		allowUnauthorizedCerts: boolean;
-		security: ConnectionSecurity;
-		port: number;
-	};
-	binding: {
-		baseDn: string;
-		adminDn: string;
-		adminPassword: string;
-	};
-	attributeMapping: {
-		firstName: string;
-		lastName: string;
-		email: string;
-		loginId: string;
-		ldapId: string;
-	};
-	filter: {
-		user: string;
-	};
-	syncronization: {
-		enabled: boolean;
-		interval: number; // minutes
-		pageSize: number;
-		searchTimeout: number;
-	};
+	loginEnabled: boolean;
+	loginLabel: string;
+	connectionUrl: string;
+	allowUnauthorizedCerts: boolean;
+	connectionSecurity: ConnectionSecurity;
+	connectionPort: number;
+	baseDn: string;
+	bindingAdminDn: string;
+	bindingAdminPassword: string;
+	firstNameAttribute: string;
+	lastNameAttribute: string;
+	emailAttribute: string;
+	loginIdAttribute: string;
+	ldapIdAttribute: string;
+	userFilter: string;
+	syncronizationEnabled: boolean;
+	syncronizationInterval: number; // minutes
+	searchPageSize: number;
+	searchTimeout: number;
 }
 
 export type AuthenticatedRequest<
@@ -46,7 +34,7 @@ export type AuthenticatedRequest<
 	user: User;
 };
 
-export declare namespace LdapConfig {
+export declare namespace LdapConfiguration {
 	type Update = AuthenticatedRequest<{}, {}, LdapConfig, {}>;
 	type Sync = AuthenticatedRequest<{}, {}, { type: RunningMode }, {}>;
 	type GetSync = AuthenticatedRequest<{}, {}, {}, { page?: string; perPage?: string }>;
