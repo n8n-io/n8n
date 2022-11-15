@@ -42,7 +42,7 @@ const isEventMessageSubscribeDestination = (
 ): candidate is EventMessageSubscribeDestination => {
 	const o = candidate as EventMessageSubscribeDestination;
 	if (!o) return false;
-	return o.subscriptionName !== undefined && o.destinationName !== undefined;
+	return o.subscriptionId !== undefined && o.destinationId !== undefined;
 };
 
 // TODO: add credentials

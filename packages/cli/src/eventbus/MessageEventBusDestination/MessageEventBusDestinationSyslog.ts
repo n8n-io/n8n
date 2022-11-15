@@ -1,10 +1,11 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { EventMessage } from '../EventMessageClasses/EventMessage';
 import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
 import syslog from 'syslog-client';
 import { EventMessageLevel } from '../types/EventMessageTypes';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import remove from 'lodash.remove';
+import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
 
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
@@ -47,7 +48,7 @@ function eventMessageLevelToSyslogSeverity(emLevel: EventMessageLevel) {
 }
 
 export class MessageEventBusDestinationSyslog extends MessageEventBusDestination {
-	readonly expectedStatusCode: number;
+	static readonly type = '$$MessageEventBusDestinationSyslog';
 
 	client: syslog.Client;
 
@@ -55,8 +56,6 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 
 	constructor(options: MessageEventBusDestinationSyslogOptions) {
 		super({ name: options.name ?? 'SyslogDestination' });
-		// this.name = options.name ?? 'SyslogDestination';
-		this.expectedStatusCode = options.expectedStatusCode ?? 200;
 
 		this.sysLogOptions = {
 			host: options.host ?? 'localhost',
@@ -65,6 +64,7 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 			facility: options.facility ?? syslog.Facility.Local0,
 			app_name: options.app_name ?? 'n8n',
 			eol: options.eol ?? '\n',
+			expectedStatusCode: options.expectedStatusCode ?? 200,
 		};
 
 		this.client = syslog.createClient(this.sysLogOptions.host, {
@@ -77,7 +77,9 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 					? syslog.Transport.Tcp
 					: syslog.Transport.Udp,
 		});
-		console.debug(`MessageEventBusDestinationSyslog '${this.getName()}' initialized`);
+		console.debug(
+			`MessageEventBusDestinationSyslog ${this.getName()} with id ${this.getId()} initialized`,
+		);
 		this.client.on('error', function (error) {
 			console.error(error);
 		});
@@ -111,6 +113,43 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 			console.log(error);
 		}
 		return true;
+	}
+
+	serialize(): JsonValue {
+		return {
+			type: MessageEventBusDestinationSyslog.type,
+			options: {
+				name: this.name,
+				expectedStatusCode: this.sysLogOptions.expectedStatusCode!,
+				host: this.sysLogOptions.host,
+				port: this.sysLogOptions.port!,
+				protocol: this.sysLogOptions.protocol!,
+				facility: this.sysLogOptions.facility!,
+				app_name: this.sysLogOptions.app_name!,
+				eol: this.sysLogOptions.eol!,
+			},
+		};
+	}
+
+	static deserialize(data: JsonObject): MessageEventBusDestinationSyslog | undefined {
+		if (
+			'type' in data &&
+			data.type === MessageEventBusDestinationSyslog.type &&
+			'options' in data &&
+			isMessageEventBusDestinationSyslogOptions(data.options)
+		) {
+			return new MessageEventBusDestinationSyslog(data.options);
+		}
+		return undefined;
+	}
+
+	toString() {
+		return JSON.stringify(this.serialize());
+	}
+
+	static fromString(data: string): MessageEventBusDestinationSyslog | undefined {
+		const o = jsonParse<JsonObject>(data);
+		return MessageEventBusDestinationSyslog.deserialize(o);
 	}
 
 	async close() {

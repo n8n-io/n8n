@@ -17,8 +17,8 @@ interface EventMessageDestinationStore {
 }
 
 export interface EventMessageSubscribeDestination {
-	subscriptionName: string;
-	destinationName: string;
+	subscriptionId: string;
+	destinationId: string;
 }
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
@@ -53,7 +53,7 @@ class MessageEventBus {
 		this.#immediateWriter = await MessageEventBusLogWriter.getInstance();
 		if (options?.destinations) {
 			for (const destination of options?.destinations) {
-				this.#destinations[destination.getName()] = destination;
+				this.#destinations[destination.getId()] = destination;
 			}
 		}
 
@@ -81,54 +81,55 @@ class MessageEventBus {
 	}
 
 	async addDestination(destination: MessageEventBusDestination) {
-		await this.removeDestination(destination.getName());
-		this.#destinations[destination.getName()] = destination;
-		return destination.getName();
+		await this.removeDestination(destination.getId());
+		this.#destinations[destination.getId()] = destination;
+		return destination.getId();
 	}
 
-	async removeDestination(name: string): Promise<string> {
-		if (name in Object.keys(this.#destinations)) {
-			await this.#destinations[name].close();
-			delete this.#destinations[name];
+	async removeDestination(id: string): Promise<string> {
+		if (id in Object.keys(this.#destinations)) {
+			await this.#destinations[id].close();
+			delete this.#destinations[id];
 		}
-		return name;
+		return id;
 	}
 
 	addSubscriptionSet(subscriptionSet: EventMessageSubscriptionSet): void {
-		const subscriptionSetName = subscriptionSet.getName();
+		const subscriptionSetName = subscriptionSet.getId();
 		if (subscriptionSetName in this.#subscriptionSets) {
 			this.#subscriptionSets[subscriptionSetName].eventGroups = subscriptionSet.eventGroups;
 			this.#subscriptionSets[subscriptionSetName].eventNames = subscriptionSet.eventNames;
+			this.#subscriptionSets[subscriptionSetName].eventLevels = subscriptionSet.eventLevels;
 		} else {
 			this.#subscriptionSets[subscriptionSetName] = subscriptionSet;
 		}
 	}
 
-	getSubscriptionSet(subscriptionSetName: string) {
-		if (subscriptionSetName in this.#subscriptionSets) {
-			return this.#subscriptionSets[subscriptionSetName];
+	getSubscriptionSet(subscriptionSetId: string) {
+		if (subscriptionSetId in this.#subscriptionSets) {
+			return this.#subscriptionSets[subscriptionSetId];
 		}
 		return undefined;
 	}
 
-	removeSubscriptionSet(subscriptionSetName: string) {
-		if (subscriptionSetName in this.#subscriptionSets) {
-			delete this.#subscriptionSets[subscriptionSetName];
+	removeSubscriptionSet(subscriptionSetId: string) {
+		if (subscriptionSetId in this.#subscriptionSets) {
+			delete this.#subscriptionSets[subscriptionSetId];
 		}
 	}
 
 	addSubscription(options: EventMessageSubscribeDestination): void {
 		if (
-			Object.keys(this.#destinations).includes(options.destinationName) &&
-			Object.keys(this.#subscriptionSets).includes(options.subscriptionName)
+			Object.keys(this.#destinations).includes(options.destinationId) &&
+			Object.keys(this.#subscriptionSets).includes(options.subscriptionId)
 		) {
-			this.#destinations[options.destinationName].addSubscription(options.subscriptionName);
+			this.#destinations[options.destinationId].addSubscription(options.subscriptionId);
 		}
 	}
 
 	removeSubscription(options: EventMessageSubscribeDestination) {
-		if (Object.keys(this.#destinations).includes(options.destinationName)) {
-			this.#destinations[options.destinationName].removeSubscription(options.subscriptionName);
+		if (Object.keys(this.#destinations).includes(options.destinationId)) {
+			this.#destinations[options.destinationId].removeSubscription(options.subscriptionId);
 		}
 	}
 

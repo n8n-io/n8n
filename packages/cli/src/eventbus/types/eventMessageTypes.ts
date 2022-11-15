@@ -30,4 +30,3 @@ export type EventMessageLevel =
 	| 'crit'
 	| 'alert'
 	| 'emerg';
-export type EventMessageSeverity = 'low' | 'normal' | 'high' | 'highest';

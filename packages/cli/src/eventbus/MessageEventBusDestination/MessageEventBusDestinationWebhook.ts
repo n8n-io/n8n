@@ -1,6 +1,15 @@
 import { EventMessage } from '../EventMessageClasses/EventMessage';
 import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
 import axios from 'axios';
+import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
+
+export const isMessageEventBusDestinationWebhookOptions = (
+	candidate: unknown,
+): candidate is MessageEventBusDestinationWebhookOptions => {
+	const o = candidate as MessageEventBusDestinationWebhookOptions;
+	if (!o) return false;
+	return o.url !== undefined;
+};
 
 export interface MessageEventBusDestinationWebhookOptions {
 	url: string;
@@ -9,6 +18,8 @@ export interface MessageEventBusDestinationWebhookOptions {
 }
 
 export class MessageEventBusDestinationWebhook extends MessageEventBusDestination {
+	static readonly type = '$$MessageEventBusDestinationWebhook';
+
 	readonly url: string;
 
 	readonly expectedStatusCode: number;
@@ -33,14 +44,39 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 		return false;
 	}
 
+	serialize(): JsonValue {
+		return {
+			type: MessageEventBusDestinationWebhook.type,
+			options: {
+				name: this.name,
+				expectedStatusCode: this.expectedStatusCode,
+				urls: this.url,
+			},
+		};
+	}
+
+	static deserialize(data: JsonObject): MessageEventBusDestinationWebhook | undefined {
+		if (
+			'type' in data &&
+			data.type === MessageEventBusDestinationWebhook.type &&
+			'options' in data &&
+			isMessageEventBusDestinationWebhookOptions(data.options)
+		) {
+			return new MessageEventBusDestinationWebhook(data.options);
+		}
+		return undefined;
+	}
+
+	toString() {
+		return JSON.stringify(this.serialize());
+	}
+
+	static fromString(data: string): MessageEventBusDestinationWebhook | undefined {
+		const o = jsonParse<JsonObject>(data);
+		return MessageEventBusDestinationWebhook.deserialize(o);
+	}
+
 	async close() {
 		// Nothing to do
 	}
-
-	// async addSubscription(
-	// 	receiver: MessageEventSubscriptionReceiverInterface,
-	// 	subscriptionSets: EventMessageSubscriptionSet[],
-	// ) {
-	// 	await receiver.worker?.communicate('subscribe', 'n8n-events');
-	// }
 }

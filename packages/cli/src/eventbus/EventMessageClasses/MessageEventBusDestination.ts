@@ -1,56 +1,78 @@
 import remove from 'lodash.remove';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessage } from './EventMessage';
+import { v4 as uuid } from 'uuid';
+import { JsonValue } from 'n8n-workflow';
 
 interface MessageEventBusDestinationOptions {
 	name: string;
+	subscriptionSetIds?: string[];
 }
-export abstract class MessageEventBusDestination {
-	readonly #name: string;
 
-	subscriptionSetNames: string[] = [];
+export abstract class MessageEventBusDestination {
+	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
+	// static readonly type: string;
+	// static deserialize(): MessageEventBusDestination;
+	// static fromString(data: string): MessageEventBusDestination;
+
+	readonly #id: string;
+
+	name: string;
+
+	subscriptionSetIds: string[];
 
 	constructor(options: MessageEventBusDestinationOptions) {
-		this.#name = options.name;
+		this.#id = uuid();
+		this.name = options.name;
+		this.subscriptionSetIds = options.subscriptionSetIds ?? [];
 	}
 
 	getName() {
-		return this.#name;
+		return this.name;
 	}
 
-	addSubscription(subscriptionSetName: string) {
-		if (!this.subscriptionSetNames.includes(subscriptionSetName)) {
-			this.subscriptionSetNames.push(subscriptionSetName);
+	getId() {
+		return this.#id;
+	}
+
+	addSubscription(subscriptionSetIds: string) {
+		if (!this.subscriptionSetIds.includes(subscriptionSetIds)) {
+			this.subscriptionSetIds.push(subscriptionSetIds);
 		}
 	}
 
-	removeSubscription(subscriptionSetName: string) {
-		if (this.subscriptionSetNames.includes(subscriptionSetName)) {
-			remove(this.subscriptionSetNames, (e) => e === subscriptionSetName);
+	removeSubscription(subscriptionSetIds: string) {
+		if (this.subscriptionSetIds.includes(subscriptionSetIds)) {
+			remove(this.subscriptionSetIds, (e) => e === subscriptionSetIds);
 		}
 	}
 
 	hasSubscribedToEvent(msg: EventMessage) {
-		if (this.subscriptionSetNames.length === 0) return false;
+		if (this.subscriptionSetIds.length === 0) return false;
 
 		const eventGroup = msg.getEventGroup();
-		const eventName = msg.eventName;
 
-		for (const subscriptionSetName of this.subscriptionSetNames) {
-			const subscriptionSet = eventBus.getSubscriptionSet(subscriptionSetName);
+		for (const subscriptionSetId of this.subscriptionSetIds) {
+			const subscriptionSet = eventBus.getSubscriptionSet(subscriptionSetId);
 			if (subscriptionSet) {
-				if (
-					subscriptionSet.eventGroups.includes('*') ||
-					subscriptionSet.eventNames.includes('*') ||
-					(eventGroup !== undefined && subscriptionSet.eventGroups.includes(eventGroup)) ||
-					subscriptionSet.eventNames.includes(eventName)
-				) {
-					return true;
+				if (subscriptionSet.eventLevels.includes(msg.level)) {
+					if (
+						subscriptionSet.eventGroups.includes('*') ||
+						subscriptionSet.eventNames.includes('*') ||
+						(eventGroup !== undefined && subscriptionSet.eventGroups.includes(eventGroup)) ||
+						subscriptionSet.eventNames.includes(msg.eventName)
+					) {
+						return true;
+					}
 				}
 			}
 		}
 		return false;
 	}
+
+	abstract serialize(): JsonValue;
+
+	abstract toString(): string;
 
 	abstract receiveFromEventBus(msg: EventMessage): Promise<boolean>;
 
