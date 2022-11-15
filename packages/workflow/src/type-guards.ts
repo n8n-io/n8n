@@ -1,4 +1,9 @@
-import { INodeProperties, INodePropertyOptions, INodePropertyCollection, INodeParameterResourceLocator } from './Interfaces';
+import {
+	INodeProperties,
+	INodePropertyOptions,
+	INodePropertyCollection,
+	INodeParameterResourceLocator,
+} from './Interfaces';
 
 export const isINodeProperties = (
 	item: INodePropertyOptions | INodeProperties | INodePropertyCollection,
