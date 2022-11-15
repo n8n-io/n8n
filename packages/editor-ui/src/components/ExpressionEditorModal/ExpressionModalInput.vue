@@ -48,7 +48,10 @@ export default mixins(workflowHelpers).extend({
 
 				addColor(this.editor, this.resolvableSegments);
 
-				this.$emit('change', { value: this.unresolvedExpression, segments: this.segments });
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
 			}),
 		];
 
@@ -62,7 +65,7 @@ export default mixins(workflowHelpers).extend({
 
 		addColor(this.editor, this.resolvableSegments);
 
-		this.$emit('change', { value: this.unresolvedExpression, segments: this.segments });
+		this.$emit('change', { value: this.unresolvedExpression, segments: this.displayableSegments });
 	},
 	destroyed() {
 		this.editor?.destroy();
@@ -80,6 +83,61 @@ export default mixins(workflowHelpers).extend({
 		},
 		plaintextSegments(): Plaintext[] {
 			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
+		},
+
+		/**
+		 * Some segments are conditionally displayed, i.e. not displayed when part of the
+		 * expression result but displayed when the entire result.
+		 *
+		 * Example:
+		 * - Expression `This is a {{ null }} test` is displayed as `This is a test`.
+		 * - Expression `{{ null }}` is displayed as `[Object: null]`.
+		 *
+		 * Conditionally displayed segments:
+		 * - `[Object: null]`
+		 * - `[Array: []]`
+		 * - `[empty]` (from `''`, not from `undefined`)
+		 * - `null` (from `NaN`)
+		 *
+		 * For these two segments, display differs based on context:
+		 * - Date displayed as
+		 *   - `Mon Nov 14 2022 17:26:13 GMT+0100 (CST)` when part of the result
+		 *   - `[Object: "2022-11-14T17:26:13.130Z"]` when the entire result
+		 * - Non-empty array displayed as
+		 *   - `1,2,3` when part of the result
+		 *   - `[Array: [1, 2, 3]]` when the entire result
+		 *
+		 */
+		displayableSegments(): Segment[] {
+			return this.segments
+				.map((s) => {
+					if (this.segments.length <= 1 || s.kind !== 'resolvable') return s;
+
+					if (typeof s.resolved === 'string' && /\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)) {
+						const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
+						s.resolved = new Date(utcDateString).toString();
+					}
+
+					if (typeof s.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(s.resolved)) {
+						s.resolved = s.resolved.replace(/(\[Array: \[|\])/g, '');
+					}
+
+					return s;
+				})
+				.filter((s) => {
+					if (
+						this.segments.length > 1 &&
+						s.kind === 'resolvable' &&
+						typeof s.resolved === 'string' &&
+						(['[Object: null]', '[Array: []]'].includes(s.resolved) ||
+							s.resolved === '[empty]' ||
+							s.resolved === 'null')
+					) {
+						return false;
+					}
+
+					return true;
+				});
 		},
 		segments(): Segment[] {
 			if (!this.editor) return [];
@@ -119,14 +177,16 @@ export default mixins(workflowHelpers).extend({
 		},
 	},
 	methods: {
-		// @TODO: Temp error handling
+		isEmptyExpression(resolvable: string) {
+			return /\{\{\s*\}\}/.test(resolvable);
+		},
 		resolve(resolvable: string) {
 			const result: { resolved: unknown; error: boolean } = { resolved: undefined, error: false };
 
 			try {
 				result.resolved = this.resolveExpression('=' + resolvable) as unknown;
 			} catch (error) {
-				result.resolved = `[failed to resolve due to: ${error.message}]`;
+				result.resolved = `[${error.message}]`;
 				result.error = true;
 			}
 
@@ -134,7 +194,7 @@ export default mixins(workflowHelpers).extend({
 				result.resolved = '[empty]';
 			}
 
-			if (result.resolved === undefined && /\{\{\s*\}\}/.test(resolvable)) {
+			if (result.resolved === undefined && this.isEmptyExpression(resolvable)) {
 				result.resolved = '[empty]';
 			}
 
@@ -143,9 +203,8 @@ export default mixins(workflowHelpers).extend({
 				result.error = true;
 			}
 
-			if (result.resolved === '[Object: null]') {
-				result.resolved = '[null]';
-				result.error = true;
+			if (typeof result.resolved === 'number' && isNaN(result.resolved)) {
+				result.resolved = 'null';
 			}
 
 			return result;

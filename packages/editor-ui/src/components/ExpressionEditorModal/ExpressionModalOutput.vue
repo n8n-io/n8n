@@ -25,9 +25,8 @@ export default Vue.extend({
 				changes: { from: 0, to: this.editor.state.doc.length, insert: this.resolvedExpression },
 			});
 
-			removeColor(this.editor, this.plaintextSegments);
-
 			addColor(this.editor, this.resolvedSegments);
+			removeColor(this.editor, this.plaintextSegments);
 		},
 	},
 	data() {
