@@ -155,7 +155,7 @@ export default mixins(
 						computedValue = this.$locale.baseText('parameterInput.emptyString');
 					}
 				} catch (error) {
-					computedValue = `[${this.$locale.baseText('parameterInput.error')}]: ${error.message}]`;
+					computedValue = `[${this.$locale.baseText('parameterInput.error')}: ${error.message}]`;
 				}
 
 				return typeof computedValue === 'string' ? computedValue : JSON.stringify(computedValue);
