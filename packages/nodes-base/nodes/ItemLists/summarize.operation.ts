@@ -93,11 +93,12 @@ export async function execute(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): Promise<INodeExecutionData[][]> {
-	let newItems = items.map(({ json }) => json);
+	const newItems = items.map(({ json }) => json);
 
 	const fieldsToSplitBy = (this.getNodeParameter('fieldsToSplitBy', 0, '') as string)
 		.split(',')
-		.map((field) => field.trim());
+		.map((field) => field.trim())
+		.filter((field) => field);
 
 	const fieldsToSummarize = this.getNodeParameter('fieldsToSummarize.values', 0, []) as Array<{
 		aggregation: string;
@@ -110,34 +111,69 @@ export async function execute(
 
 	const summarizeField = (items: IDataObject[], field: string, aggregation: string) => {
 		if (aggregation === 'sum') {
-			return items.reduce((acc, item) => acc + (item[field] as number), 0);
+			return items.reduce((acc, item) => {
+				if (typeof item[field] === 'number') {
+					return acc + (item[field] as number);
+				} else {
+					throw new NodeOperationError(this.getNode(), `The field '${field}' is not a number`);
+				}
+			}, 0);
 		} else if (aggregation === 'count') {
-			return items.length;
+			return items.map((item) => item[field]).filter((item) => item).length;
 		} else if (aggregation === 'countUnique') {
 			return new Set(items.map((item) => item[field])).size;
 		} else if (aggregation === 'min') {
-			return Math.min(...(items.map((item) => item[field]) as number[]));
+			return Math.min(
+				...(items.map((item) => {
+					if (typeof item[field] === 'number') {
+						return item[field];
+					} else {
+						throw new NodeOperationError(this.getNode(), `The field '${field}' is not a number`);
+					}
+				}) as number[]),
+			);
 		} else if (aggregation === 'max') {
-			return Math.max(...(items.map((item) => item[field]) as number[]));
+			return Math.max(
+				...(items.map((item) => {
+					if (typeof item[field] === 'number') {
+						return item[field];
+					} else {
+						throw new NodeOperationError(this.getNode(), `The field '${field}' is not a number`);
+					}
+				}) as number[]),
+			);
 		}
 	};
 
 	const getSummaries = (data: IDataObject[]) => {
+		type Aggregation = 'count' | 'countUnique' | 'max' | 'min' | 'sum';
+		const aggregationDisplayNames = {
+			count: 'Count',
+			countUnique: 'Unique count',
+			max: 'Max',
+			min: 'Min',
+			sum: 'Sum',
+		};
 		return fieldsToSummarize.reduce((acc, { field, aggregation }) => {
-			acc[field] = summarizeField(data, field, aggregation);
+			acc[`${aggregationDisplayNames[aggregation as Aggregation]} of ${field}`] = summarizeField(
+				data,
+				field,
+				aggregation,
+			);
 			return acc;
 		}, {} as IDataObject);
 	};
 
-	const groupDataByKeys = (keys: string[], data: IDataObject[]) => {
-		if (!keys || keys.length === 0) {
+	const groupDataByKeys = (splitKeys: string[], data: IDataObject[]) => {
+		if (!splitKeys || splitKeys.length === 0) {
 			return getSummaries(data);
 		}
 
-		const [firstKey, ...restKey] = keys;
+		const [firstSplitKey, ...restSplitKeys] = splitKeys;
 
 		const groupedData = data.reduce((acc, item) => {
-			const keyValuee = item[firstKey] as string;
+			const keyValuee = item[firstSplitKey] as string;
+
 			if (acc[keyValuee] === undefined) {
 				acc[keyValuee] = [item];
 			} else {
@@ -148,33 +184,14 @@ export async function execute(
 
 		return Object.keys(groupedData).reduce((acc, key) => {
 			const value = groupedData[key] as IDataObject[];
-			acc[key] = groupDataByKeys(restKey, value);
+			acc[key] = groupDataByKeys(restSplitKeys, value);
 			return acc;
 		}, {} as IDataObject);
 	};
 
-	const grouped = groupDataByKeys(fieldsToSplitBy, newItems) as IDataObject;
+	const groupedDataAsObject = groupDataByKeys(fieldsToSplitBy, newItems) as IDataObject;
 
-	// const flattenResult = (keys: string[], data: IDataObject) => {
-	// 	if (!keys || keys.length === 0) {
-	// 		return data;
-	// 	}
-
-	// 	const [firstKey, ...restKey] = keys;
-
-	// 	const result = Object.keys(grouped).map((key) => ({
-	// 		[firstKey]: key,
-	// 		...flattenResult(restKey, grouped[key] as IDataObject),
-	// 	}));
-
-	// 	console.log(firstKey, restKey, result);
-	// };
-
-	// flattenResult(fieldsToSplitBy, grouped);
-
-	const executionData = this.prepareOutputData(
-		this.helpers.returnJsonArray(Object.keys(grouped).map((key) => ({ [key]: grouped[key] }))),
-	);
+	const executionData = this.prepareOutputData(this.helpers.returnJsonArray(groupedDataAsObject));
 
 	return executionData;
 }
