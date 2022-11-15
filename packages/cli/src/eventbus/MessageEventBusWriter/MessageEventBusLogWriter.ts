@@ -20,6 +20,7 @@ interface MessageEventBusLogWriterOptions {
 	syncFileAccess?: boolean;
 	logBaseName?: string;
 	keepLogCount?: number;
+	maxFileSizeInKB?: number;
 }
 
 /**
@@ -45,9 +46,11 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 			const n8nFolder = UserSettings.getUserN8nFolderPath();
 			const logFileBasePath = path.join(n8nFolder, options?.logBaseName ?? 'n8nEventLog');
 			const syncFileAccess = options?.syncFileAccess ?? false;
+			const keepLogCount = options?.keepLogCount ?? 10;
+			const maxFileSizeInKB = options?.maxFileSizeInKB ?? 102400;
 			await MessageEventBusLogWriter.#instance
 				.getThread()
-				?.initialize(logFileBasePath, syncFileAccess);
+				?.initialize(logFileBasePath, syncFileAccess, keepLogCount, maxFileSizeInKB);
 		}
 		return MessageEventBusLogWriter.#instance;
 	}

@@ -1,5 +1,5 @@
 import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'node:fs';
-import { appendFile } from 'node:fs/promises';
+import { appendFile, stat } from 'node:fs/promises';
 import { expose, isWorkerRuntime, registerSerializer } from 'threads/worker';
 import { EventMessage, messageEventSerializer } from '../EventMessageClasses/EventMessage';
 import {
@@ -15,6 +15,8 @@ let logFileBasePath = '';
 let loggingPaused = true;
 let syncFileAccess = false;
 let keepFiles = 10;
+let fileStatTimer: NodeJS.Timer;
+let maxLogFileSizeInKB = 102400;
 
 function setLogFileBasePath(basePath: string) {
 	logFileBasePath = basePath;
@@ -22,6 +24,10 @@ function setLogFileBasePath(basePath: string) {
 
 function setUseSyncFileAccess(useSync: boolean) {
 	syncFileAccess = useSync;
+}
+
+function setMaxLogFileSizeInKB(maxSizeInKB: number) {
+	maxLogFileSizeInKB = maxSizeInKB;
 }
 
 function setKeepFiles(keepNumberOfFiles: number) {
@@ -55,6 +61,13 @@ function renameAndCreateLogs() {
 	closeSync(f);
 }
 
+async function checkFileSize(path: string) {
+	const fileStat = await stat(path);
+	if (fileStat.size / 1024 > maxLogFileSizeInKB) {
+		renameAndCreateLogs();
+	}
+}
+
 function appendMessageSync(msg: EventMessage | EventMessageConfirm) {
 	if (loggingPaused) {
 		return;
@@ -86,16 +99,26 @@ const messageEventBusLogWriterWorker = {
 	},
 	pauseLogging() {
 		loggingPaused = true;
+		clearInterval(fileStatTimer);
 	},
-	initialize(basePath: string, useSyncFileAccess = false, keepNumberOfFiles = 10) {
+	initialize(
+		basePath: string,
+		useSyncFileAccess = false,
+		keepNumberOfFiles = 10,
+		maxSizeInKB = 102400,
+	) {
 		setLogFileBasePath(basePath);
 		setUseSyncFileAccess(useSyncFileAccess);
 		setKeepFiles(keepNumberOfFiles);
+		setMaxLogFileSizeInKB(maxSizeInKB);
 	},
 	startLogging() {
 		if (logFileBasePath) {
 			renameAndCreateLogs();
 			loggingPaused = false;
+			fileStatTimer = setInterval(async () => {
+				await checkFileSize(buildLogFileNameWithCounter());
+			}, 5000);
 		}
 	},
 	getLogFileName() {
