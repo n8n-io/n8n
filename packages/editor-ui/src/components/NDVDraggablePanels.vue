@@ -278,7 +278,7 @@ export default mixins(debounceHelper).extend({
 
 			if(isMaxRight) {
 				this.ndvStore.setMainPanelDimensions({
-					panelType: this.currentNodePaneType as NodePanelType,
+					panelType: this.currentNodePaneType,
 					dimensions: {
 						relativeLeft: 1 - this.mainPanelDimensions.relativeWidth - this.maximumRightPosition,
 						relativeRight: this.maximumRightPosition as number,
@@ -288,7 +288,7 @@ export default mixins(debounceHelper).extend({
 			}
 
 			this.ndvStore.setMainPanelDimensions({
-				panelType: this.currentNodePaneType as NodePanelType,
+				panelType: this.currentNodePaneType,
 				dimensions: {
 					relativeLeft: isInputless ? this.minimumLeftPosition : mainPanelRelativeLeft,
 					relativeRight: mainPanelRelativeRight,

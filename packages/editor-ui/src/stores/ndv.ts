@@ -1,5 +1,5 @@
 import { STORES } from "@/constants";
-import {INodeUi, IRunDataDisplayMode, NDVState, NodePanelType, XYPosition} from "@/Interface";
+import { INodeUi, IRunDataDisplayMode, NDVState, NodePanelType, XYPosition } from "@/Interface";
 import { IRunData } from "n8n-workflow";
 import { defineStore } from "pinia";
 import Vue from "vue";
