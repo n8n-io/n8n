@@ -34,10 +34,10 @@ const isEventMessageRequestBody = (candidate: unknown): candidate is EventMessag
 	return false;
 };
 
-const isBodyWithName = (candidate: unknown): candidate is { name: string } => {
-	const o = candidate as { name: string };
+const isBodyWithId = (candidate: unknown): candidate is { id: string } => {
+	const o = candidate as { id: string };
 	if (!o) return false;
-	return o.name !== undefined;
+	return o.id !== undefined;
 };
 
 const isEventMessageDestinationSubscription = (
@@ -108,7 +108,10 @@ eventBusRouter.post(
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (isMessageEventBusDestinationSyslogOptions(req.body)) {
 			const result = await eventBus.addDestination(new MessageEventBusDestinationSyslog(req.body));
-			return result;
+			if (result) {
+				await result.saveToDb();
+				return result;
+			}
 		}
 	}),
 );
@@ -131,7 +134,10 @@ eventBusRouter.post(
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (isMessageEventBusDestinationWebhookOptions(req.body)) {
 			const result = await eventBus.addDestination(new MessageEventBusDestinationWebhook(req.body));
-			return result;
+			if (result) {
+				await result.saveToDb();
+				return result;
+			}
 		} else {
 			throw new ResponseError('Body is missing name', undefined, 400);
 		}
@@ -141,11 +147,13 @@ eventBusRouter.post(
 eventBusRouter.post(
 	`/destination/remove`,
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-		if (isBodyWithName(req.body)) {
-			const result = await eventBus.removeDestination(req.body.name);
-			return result;
+		if (isBodyWithId(req.body)) {
+			const result = await eventBus.removeDestination(req.body.id);
+			if (result) {
+				return result;
+			}
 		} else {
-			throw new ResponseError('Body is missing name', undefined, 400);
+			throw new ResponseError('Body is missing id', undefined, 400);
 		}
 	}),
 );

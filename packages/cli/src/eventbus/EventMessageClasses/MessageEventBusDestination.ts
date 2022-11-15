@@ -115,6 +115,15 @@ export abstract class MessageEventBusDestination {
 		return;
 	}
 
+	async deleteFromDb() {
+		return MessageEventBusDestination.deleteFromDb(this.getId());
+	}
+
+	static async deleteFromDb(id: string) {
+		const dbResult = await Db.collections.EventDestinations.delete({ id });
+		return dbResult;
+	}
+
 	abstract serialize(): JsonValue;
 
 	abstract toString(): string;

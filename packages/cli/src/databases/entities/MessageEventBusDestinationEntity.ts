@@ -1,5 +1,4 @@
 import { IsString, Length } from 'class-validator';
-import { JsonValue } from 'n8n-workflow';
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 import { NoXss } from '../utils/customValidators';
 import { AbstractEntity } from './AbstractEntity';
