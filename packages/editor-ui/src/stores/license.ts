@@ -1,22 +1,48 @@
-import { activateLicense } from "@/api/license.ee";
+import { activateLicense, renewLicense } from "@/api/license.ee";
 import { STORES } from "@/constants";
-import { LicenseState } from "@/Interface";
+import { LicenseFeatureExpanded, LicenseResponse, LicenseState } from "@/Interface";
 import { defineStore } from "pinia";
 import { useRootStore } from "./n8nRootStore";
 
 export const useLicenseStore = defineStore(STORES.LICENSE, {
 	state: (): LicenseState => ({
-		productInfo: undefined,
+		license: undefined,
 	}),
+	getters: {
+		features(): LicenseFeatureExpanded[] {
+			if (!this.license) {
+				return [];
+			}
+			return getLicenseFeatures(this.license);
+		},
+	},
 	actions: {
 		async activateLicense(activationKey: string) {
-			const response = await activateLicense(
+			this.license = await activateLicense(
 				useRootStore().getRestApiContext,
 				{
 					activationKey,
 				},
 			);
-			this.productInfo = response.productInfo;
+		},
+		async renewLicense() {
+			this.license = await renewLicense(
+				useRootStore().getRestApiContext,
+			);
 		},
 	},
 });
+
+function getLicenseFeatures(resp: LicenseResponse): LicenseFeatureExpanded[] {
+	const features = resp.productInfo.features;
+	if (!features) {
+		return [];
+	}
+
+	return Object.keys(features).map((id) => {
+		return {
+			id,
+			...features[id],
+		};
+	});
+}

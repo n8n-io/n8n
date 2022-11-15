@@ -1110,6 +1110,8 @@
 	"settings.subscription.cta.description": "Logging, LDAP, unlimited active workflows...",
 	"settings.subscription.cta.button": "Subscribe",
 	"settings.subscription.activation.error": "Could not activate",
+	"settings.subscription.renew.error": "Could not refresh license",
+	"settings.subscription.plan": "Plan: {name}",
 	"settings.version": "Version",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",
