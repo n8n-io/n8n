@@ -1,9 +1,9 @@
+import { JsonObject, JsonValue } from 'n8n-workflow';
 import {
 	EventMessageGroups,
 	EventMessageLevel,
 	EventMessageNames,
 } from '../types/EventMessageTypes';
-import { v4 as uuid } from 'uuid';
 
 export const isEventMessageSubscriptionSet = (
 	candidate: unknown,
@@ -11,7 +11,6 @@ export const isEventMessageSubscriptionSet = (
 	const o = candidate as EventMessageSubscriptionSet;
 	if (!o) return false;
 	return (
-		o.name !== undefined &&
 		o.eventGroups !== undefined &&
 		Array.isArray(o.eventGroups) &&
 		o.eventNames !== undefined &&
@@ -21,43 +20,64 @@ export const isEventMessageSubscriptionSet = (
 	);
 };
 
-export class EventMessageSubscriptionSet {
-	readonly id: string;
+interface EventMessageSubscriptionSetOptions {
+	eventGroups?: EventMessageGroups[];
+	eventNames?: EventMessageNames[];
+	eventLevels?: EventMessageLevel[];
+}
 
-	name: string;
+export class EventMessageSubscriptionSet {
+	static readonly type: '$$EventMessageSubscriptionSet';
 
 	eventGroups: EventMessageGroups[];
 
 	eventNames: EventMessageNames[];
 
-	eventLevels: EventMessageLevel[] = [
-		'info',
-		'notice',
-		'warning',
-		'error',
-		'crit',
-		'alert',
-		'emerg',
-	];
+	eventLevels: EventMessageLevel[];
 
-	// TODO: add level subscription
-
-	constructor(props: {
-		name: string;
-		eventGroups?: EventMessageGroups[];
-		eventNames?: EventMessageNames[];
-	}) {
-		this.id = uuid();
-		this.name = props.name;
-		this.eventGroups = props.eventGroups ?? [];
-		this.eventNames = props.eventNames ?? [];
+	constructor(options?: EventMessageSubscriptionSetOptions | EventMessageSubscriptionSet) {
+		this.eventGroups = options?.eventGroups ?? ['*'];
+		this.eventNames = options?.eventNames ?? ['*'];
+		this.eventLevels = options?.eventLevels ?? [
+			'info',
+			'notice',
+			'warning',
+			'error',
+			'crit',
+			'alert',
+			'emerg',
+		];
 	}
 
-	getName(): string {
-		return this.name;
+	setEventGroups(groups: EventMessageGroups[]) {
+		this.eventGroups = groups;
 	}
 
-	getId(): string {
-		return this.id;
+	setEventNames(names: EventMessageNames[]) {
+		this.eventNames = names;
+	}
+
+	setEventLevels(levels: EventMessageLevel[]) {
+		this.eventLevels = levels;
+	}
+
+	serialize(): JsonValue {
+		return {
+			type: EventMessageSubscriptionSet.type,
+			eventGroups: this.eventGroups,
+			eventNames: this.eventNames,
+			eventLevels: this.eventLevels,
+		};
+	}
+
+	static deserialize(data: JsonObject): EventMessageSubscriptionSet | undefined {
+		if (
+			'type' in data &&
+			data.type === EventMessageSubscriptionSet.type &&
+			isEventMessageSubscriptionSet(data.options)
+		) {
+			return new EventMessageSubscriptionSet(data);
+		}
+		return undefined;
 	}
 }

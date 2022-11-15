@@ -70,7 +70,9 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 	async #spawnThread(): Promise<boolean> {
 		this.#worker = await spawn(new Worker(`${parse(__filename).name}Worker`));
 		if (this.#worker) {
-			Thread.events(this.#worker).subscribe((event) => console.debug('Thread event:', event));
+			Thread.events(this.#worker).subscribe((event) => {
+				// console.debug('Thread event:', event);
+			});
 			return true;
 		}
 		return false;

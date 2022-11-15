@@ -153,15 +153,10 @@ import {
 } from '.';
 import glob from 'fast-glob';
 import { ResponseError } from './ResponseHelper';
-
 import { toHttpNodeParameters } from './CurlConverterHelper';
 import { initErrorHandling } from './ErrorReporting';
-import { registerSerializer } from 'threads/worker';
-import { messageEventSerializer } from './eventbus/EventMessageClasses/EventMessage';
 import { eventBus } from './eventbus';
-import { eventMessageConfirmSerializer } from './eventbus/EventMessageClasses/EventMessageConfirm';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
-import { EventMessageSubscriptionSet } from './eventbus/EventMessageClasses/EventMessageSubscriptionSet';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1675,33 +1670,10 @@ class App {
 		// EventBus Setup
 		// ----------------------------------------
 
-		// Register the thread serializer on the main thread
-		registerSerializer(messageEventSerializer);
-		registerSerializer(eventMessageConfirmSerializer);
-
 		// Initialize EventBus
 		await eventBus.initialize();
 		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
-		// these will have to be made user configurable
-		const subscriptionSetCore = new EventMessageSubscriptionSet({
-			name: 'core',
-			eventGroups: ['n8n.core'],
-			eventNames: [],
-		});
-		const subscriptionSetUi = new EventMessageSubscriptionSet({
-			name: 'ui',
-			eventGroups: ['n8n.ui'],
-			eventNames: ['n8n.workflow.workflowStarted'],
-		});
-		const subscriptionSetAll = new EventMessageSubscriptionSet({
-			name: 'all',
-			eventGroups: ['*'],
-			eventNames: ['*'],
-		});
-		eventBus.addSubscriptionSet(subscriptionSetCore);
-		eventBus.addSubscriptionSet(subscriptionSetUi);
-		eventBus.addSubscriptionSet(subscriptionSetAll);
 		// ----------------------------------------
 		// Webhooks
 		// ----------------------------------------

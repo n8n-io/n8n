@@ -1,11 +1,15 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { EventMessage } from '../EventMessageClasses/EventMessage';
-import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
+import {
+	MessageEventBusDestination,
+	MessageEventBusDestinationOptions,
+} from '../EventMessageClasses/MessageEventBusDestination';
 import syslog from 'syslog-client';
 import { EventMessageLevel } from '../types/EventMessageTypes';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
+import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
 
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
@@ -15,8 +19,7 @@ export const isMessageEventBusDestinationSyslogOptions = (
 	return o.host !== undefined;
 };
 
-export interface MessageEventBusDestinationSyslogOptions {
-	name?: string;
+export interface MessageEventBusDestinationSyslogOptions extends MessageEventBusDestinationOptions {
 	expectedStatusCode?: number;
 	host: string;
 	port?: number;
@@ -44,6 +47,8 @@ function eventMessageLevelToSyslogSeverity(emLevel: EventMessageLevel) {
 			return syslog.Severity.Alert;
 		case 'emerg':
 			return syslog.Severity.Emergency;
+		default:
+			return syslog.Severity.Informational;
 	}
 }
 
@@ -55,7 +60,7 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 	sysLogOptions: MessageEventBusDestinationSyslogOptions;
 
 	constructor(options: MessageEventBusDestinationSyslogOptions) {
-		super({ name: options.name ?? 'SyslogDestination' });
+		super(options);
 
 		this.sysLogOptions = {
 			host: options.host ?? 'localhost',
@@ -118,8 +123,9 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 	serialize(): JsonValue {
 		return {
 			type: MessageEventBusDestinationSyslog.type,
+			id: this.getId(),
 			options: {
-				name: this.name,
+				name: this.getName(),
 				expectedStatusCode: this.sysLogOptions.expectedStatusCode!,
 				host: this.sysLogOptions.host,
 				port: this.sysLogOptions.port!,
@@ -127,6 +133,7 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 				facility: this.sysLogOptions.facility!,
 				app_name: this.sysLogOptions.app_name!,
 				eol: this.sysLogOptions.eol!,
+				subscriptionSet: this.subscriptionSet.serialize(),
 			},
 		};
 	}

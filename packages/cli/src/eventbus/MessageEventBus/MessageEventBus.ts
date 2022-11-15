@@ -1,15 +1,16 @@
-import { EventMessage, EventMessageSerialized } from '../EventMessageClasses/EventMessage';
-import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
-import remove from 'lodash.remove';
-import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
+import { registerSerializer } from 'threads';
+import {
+	EventMessage,
+	EventMessageSerialized,
+	messageEventSerializer,
+} from '../EventMessageClasses/EventMessage';
+import { eventMessageConfirmSerializer } from '../EventMessageClasses/EventMessageConfirm';
 import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
+import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
+import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 
 interface MessageEventBusInitializationOptions {
 	destinations?: MessageEventBusDestination[];
-}
-
-interface EventMessageSubscriptionSetStore {
-	[key: string]: EventMessageSubscriptionSet;
 }
 
 interface EventMessageDestinationStore {
@@ -17,7 +18,7 @@ interface EventMessageDestinationStore {
 }
 
 export interface EventMessageSubscribeDestination {
-	subscriptionId: string;
+	subscriptionSet: EventMessageSubscriptionSet;
 	destinationId: string;
 }
 
@@ -27,8 +28,6 @@ class MessageEventBus {
 	static #initialized = false;
 
 	static #instance: MessageEventBus;
-
-	#subscriptionSets: EventMessageSubscriptionSetStore = {};
 
 	#immediateWriter: MessageEventBusLogWriter;
 
@@ -47,6 +46,10 @@ class MessageEventBus {
 	}
 
 	async initialize(options?: MessageEventBusInitializationOptions) {
+		// Register the thread serializer on the main thread
+		registerSerializer(messageEventSerializer);
+		registerSerializer(eventMessageConfirmSerializer);
+
 		if (this.#pushInteralTimer) {
 			clearInterval(this.#pushInteralTimer);
 		}
@@ -72,7 +75,7 @@ class MessageEventBus {
 		await this.#immediateWriter.startLogging();
 
 		this.#pushInteralTimer = setInterval(async () => {
-			console.debug('Checking for unsent messages...');
+			// console.debug('Checking for unsent messages...');
 			await this.#trySendingUnsent();
 		}, 5000);
 
@@ -83,7 +86,7 @@ class MessageEventBus {
 	async addDestination(destination: MessageEventBusDestination) {
 		await this.removeDestination(destination.getId());
 		this.#destinations[destination.getId()] = destination;
-		return destination.getId();
+		return destination.serialize();
 	}
 
 	async removeDestination(id: string): Promise<string> {
@@ -94,48 +97,19 @@ class MessageEventBus {
 		return id;
 	}
 
-	addSubscriptionSet(subscriptionSet: EventMessageSubscriptionSet): void {
-		const subscriptionSetName = subscriptionSet.getId();
-		if (subscriptionSetName in this.#subscriptionSets) {
-			this.#subscriptionSets[subscriptionSetName].eventGroups = subscriptionSet.eventGroups;
-			this.#subscriptionSets[subscriptionSetName].eventNames = subscriptionSet.eventNames;
-			this.#subscriptionSets[subscriptionSetName].eventLevels = subscriptionSet.eventLevels;
-		} else {
-			this.#subscriptionSets[subscriptionSetName] = subscriptionSet;
+	setDestinationSubscriptionSet(
+		destinationId: string,
+		subscriptionSet: EventMessageSubscriptionSet,
+	) {
+		if (destinationId in Object.keys(this.#destinations)) {
+			this.#destinations[destinationId].setSubscription(subscriptionSet);
 		}
-	}
-
-	getSubscriptionSet(subscriptionSetId: string) {
-		if (subscriptionSetId in this.#subscriptionSets) {
-			return this.#subscriptionSets[subscriptionSetId];
-		}
-		return undefined;
-	}
-
-	removeSubscriptionSet(subscriptionSetId: string) {
-		if (subscriptionSetId in this.#subscriptionSets) {
-			delete this.#subscriptionSets[subscriptionSetId];
-		}
-	}
-
-	addSubscription(options: EventMessageSubscribeDestination): void {
-		if (
-			Object.keys(this.#destinations).includes(options.destinationId) &&
-			Object.keys(this.#subscriptionSets).includes(options.subscriptionId)
-		) {
-			this.#destinations[options.destinationId].addSubscription(options.subscriptionId);
-		}
-	}
-
-	removeSubscription(options: EventMessageSubscribeDestination) {
-		if (Object.keys(this.#destinations).includes(options.destinationId)) {
-			this.#destinations[options.destinationId].removeSubscription(options.subscriptionId);
-		}
+		return destinationId;
 	}
 
 	async #trySendingUnsent() {
 		const unsentMessages = await this.getEventsUnsent();
-		console.debug(`Found unsent messages: ${unsentMessages.length}`);
+		console.debug(`Found unsent EventMessages: ${unsentMessages.length}`);
 		for (const unsentMsg of unsentMessages) {
 			await this.#sendToDestinations(unsentMsg);
 		}

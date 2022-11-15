@@ -1,7 +1,11 @@
 import { EventMessage } from '../EventMessageClasses/EventMessage';
-import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
+import {
+	MessageEventBusDestination,
+	MessageEventBusDestinationOptions,
+} from '../EventMessageClasses/MessageEventBusDestination';
 import axios from 'axios';
 import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
+import { eventBus } from '../MessageEventBus/MessageEventBus';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -11,9 +15,9 @@ export const isMessageEventBusDestinationWebhookOptions = (
 	return o.url !== undefined;
 };
 
-export interface MessageEventBusDestinationWebhookOptions {
+export interface MessageEventBusDestinationWebhookOptions
+	extends MessageEventBusDestinationOptions {
 	url: string;
-	name?: string;
 	expectedStatusCode?: number;
 }
 
@@ -25,7 +29,7 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 	readonly expectedStatusCode: number;
 
 	constructor(options: MessageEventBusDestinationWebhookOptions) {
-		super({ name: options.name ?? 'WebhookDestination' });
+		super(options);
 		this.expectedStatusCode = options.expectedStatusCode ?? 200;
 		this.url = options.url;
 		console.debug(`MessageEventBusDestinationWebhook Broker initialized`);
@@ -36,6 +40,7 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 		try {
 			const postResult = await axios.post(this.url, msg);
 			if (postResult.status === this.expectedStatusCode) {
+				await eventBus.confirmSent(msg);
 				return true;
 			}
 		} catch (error) {
@@ -47,10 +52,12 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 	serialize(): JsonValue {
 		return {
 			type: MessageEventBusDestinationWebhook.type,
+			id: this.getId(),
 			options: {
-				name: this.name,
+				name: this.getName(),
 				expectedStatusCode: this.expectedStatusCode,
 				urls: this.url,
+				subscriptionSet: this.subscriptionSet.serialize(),
 			},
 		};
 	}

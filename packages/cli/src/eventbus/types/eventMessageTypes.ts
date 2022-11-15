@@ -29,4 +29,5 @@ export type EventMessageLevel =
 	| 'error'
 	| 'crit'
 	| 'alert'
-	| 'emerg';
+	| 'emerg'
+	| '*';

@@ -1,5 +1,8 @@
 import { EventMessage } from '../EventMessageClasses/EventMessage';
-import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
+import {
+	MessageEventBusDestination,
+	MessageEventBusDestinationOptions,
+} from '../EventMessageClasses/MessageEventBusDestination';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis, { RedisOptions } from 'ioredis';
@@ -13,10 +16,9 @@ export const isMessageEventBusDestinationRedisOptions = (
 	return o.channelName !== undefined;
 };
 
-interface MessageEventBusDestinationRedisOptions {
+interface MessageEventBusDestinationRedisOptions extends MessageEventBusDestinationOptions {
 	channelName: string;
 	redisOptions?: RedisOptions;
-	name?: string;
 }
 
 export class MessageEventBusDestinationRedis extends MessageEventBusDestination {
@@ -29,14 +31,13 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 	redisOptions: RedisOptions;
 
 	constructor(options: MessageEventBusDestinationRedisOptions) {
-		super({ name: options.name ?? 'RedisForwarder' });
+		super(options);
 		this.redisOptions = options?.redisOptions ?? {
 			port: 6379, // Redis port
 			host: '127.0.0.1', // Redis host
 			db: 0, // Defaults to 0
 		};
 		this.#channelName = options.channelName;
-		// this.#name = options.name ?? 'RedisForwarder';
 		this.#client = new Redis(this.redisOptions);
 		this.#client
 			?.monitor((error, monitor) => {
@@ -64,10 +65,12 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 	serialize(): JsonValue {
 		return {
 			type: MessageEventBusDestinationRedis.type,
+			id: this.getId(),
 			options: {
-				name: this.name,
+				name: this.getName(),
 				channelName: this.#channelName,
 				redisOptions: this.redisOptions as JsonObject,
+				subscriptionSet: this.subscriptionSet.serialize(),
 			},
 		};
 	}

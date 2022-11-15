@@ -1,12 +1,17 @@
-import remove from 'lodash.remove';
-import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessage } from './EventMessage';
 import { v4 as uuid } from 'uuid';
 import { JsonValue } from 'n8n-workflow';
+import { EventMessageSubscriptionSet } from './EventMessageSubscriptionSet';
+import {
+	EventMessageGroups,
+	EventMessageNames,
+	EventMessageLevel,
+} from '../types/EventMessageTypes';
 
-interface MessageEventBusDestinationOptions {
-	name: string;
-	subscriptionSetIds?: string[];
+export interface MessageEventBusDestinationOptions {
+	id?: string;
+	name?: string;
+	subscriptionSet?: EventMessageSubscriptionSet;
 }
 
 export abstract class MessageEventBusDestination {
@@ -19,12 +24,14 @@ export abstract class MessageEventBusDestination {
 
 	name: string;
 
-	subscriptionSetIds: string[];
+	subscriptionSet: EventMessageSubscriptionSet;
 
 	constructor(options: MessageEventBusDestinationOptions) {
-		this.#id = uuid();
-		this.name = options.name;
-		this.subscriptionSetIds = options.subscriptionSetIds ?? [];
+		this.#id = options.id ?? uuid();
+		this.name = options.name ?? 'MessageEventBusDestination';
+		this.subscriptionSet = options.subscriptionSet
+			? new EventMessageSubscriptionSet(options.subscriptionSet)
+			: new EventMessageSubscriptionSet();
 	}
 
 	getName() {
@@ -35,36 +42,36 @@ export abstract class MessageEventBusDestination {
 		return this.#id;
 	}
 
-	addSubscription(subscriptionSetIds: string) {
-		if (!this.subscriptionSetIds.includes(subscriptionSetIds)) {
-			this.subscriptionSetIds.push(subscriptionSetIds);
-		}
+	setSubscription(subscriptionSet: EventMessageSubscriptionSet) {
+		this.subscriptionSet = subscriptionSet;
 	}
 
-	removeSubscription(subscriptionSetIds: string) {
-		if (this.subscriptionSetIds.includes(subscriptionSetIds)) {
-			remove(this.subscriptionSetIds, (e) => e === subscriptionSetIds);
-		}
+	setEventGroups(groups: EventMessageGroups[]) {
+		this.subscriptionSet.setEventGroups(groups);
+	}
+
+	setEventNames(names: EventMessageNames[]) {
+		this.subscriptionSet.setEventNames(names);
+	}
+
+	setLevels(levels: EventMessageLevel[]) {
+		this.subscriptionSet.setEventLevels(levels);
 	}
 
 	hasSubscribedToEvent(msg: EventMessage) {
-		if (this.subscriptionSetIds.length === 0) return false;
-
 		const eventGroup = msg.getEventGroup();
 
-		for (const subscriptionSetId of this.subscriptionSetIds) {
-			const subscriptionSet = eventBus.getSubscriptionSet(subscriptionSetId);
-			if (subscriptionSet) {
-				if (subscriptionSet.eventLevels.includes(msg.level)) {
-					if (
-						subscriptionSet.eventGroups.includes('*') ||
-						subscriptionSet.eventNames.includes('*') ||
-						(eventGroup !== undefined && subscriptionSet.eventGroups.includes(eventGroup)) ||
-						subscriptionSet.eventNames.includes(msg.eventName)
-					) {
-						return true;
-					}
-				}
+		if (
+			this.subscriptionSet.eventLevels.includes('*') ||
+			this.subscriptionSet.eventLevels.includes(msg.level)
+		) {
+			if (
+				this.subscriptionSet.eventGroups.includes('*') ||
+				this.subscriptionSet.eventNames.includes('*') ||
+				(eventGroup !== undefined && this.subscriptionSet.eventGroups.includes(eventGroup)) ||
+				this.subscriptionSet.eventNames.includes(msg.eventName)
+			) {
+				return true;
 			}
 		}
 		return false;
