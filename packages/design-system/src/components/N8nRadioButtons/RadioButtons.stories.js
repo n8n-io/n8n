@@ -25,8 +25,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nRadioButtons,
 	},
-	template:
-		`<n8n-radio-buttons v-model="val" v-bind="$props" @input="onInput">
+	template: `<n8n-radio-buttons v-model="val" v-bind="$props" @input="onInput">
 		</n8n-radio-buttons>`,
 	methods,
 	data() {
