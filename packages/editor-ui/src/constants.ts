@@ -433,4 +433,5 @@ export enum STORES {
 	VERSIONS = 'versions',
 	NODE_CREATOR = 'nodeCreator',
 	WEBHOOKS = 'webhooks',
+	LICENSE = 'license',
 }

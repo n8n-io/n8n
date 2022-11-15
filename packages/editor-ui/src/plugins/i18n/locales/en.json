@@ -1109,6 +1109,7 @@
 	"settings.subscription.cta.title": "Subscribe to get advanced features",
 	"settings.subscription.cta.description": "Logging, LDAP, unlimited active workflows...",
 	"settings.subscription.cta.button": "Subscribe",
+	"settings.subscription.activation.error": "Could not activate",
 	"settings.version": "Version",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",

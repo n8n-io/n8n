@@ -378,6 +378,15 @@ export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICreden
 	id: string;
 }
 
+export interface ActivateLicensePayload {
+	activationKey: string;
+}
+
+export interface ActivateLicenseResponse {
+
+}
+
+
 export interface IExecutionBase {
 	id?: number | string;
 	finished: boolean;
@@ -1009,6 +1018,10 @@ export interface ITagsState {
 	loading: boolean;
 	fetchedAll: boolean;
 	fetchedUsageCount: boolean;
+}
+
+export interface LicenseState {
+
 }
 
 export interface IModalState {

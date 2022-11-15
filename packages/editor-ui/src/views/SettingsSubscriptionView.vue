@@ -1,10 +1,14 @@
 <script lang="ts">
 import { SUBSCRIPTION_APP_URL, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/n8nRootStore';
-import { defineComponent } from 'vue';
+import { useLicenseStore } from '@/stores/license';
+import { mapStores } from 'pinia';
+import { showMessage } from '@/components/mixins/showMessage';
+import mixins from 'vue-typed-mixins';
 
-export default defineComponent({
+export default mixins(showMessage).extend({
 	name: 'SettingsSubscriptionView',
+	mixins: [showMessage],
 	props: {
 		featureId: {
 			type: String,
@@ -13,18 +17,42 @@ export default defineComponent({
 			type: Boolean,
 		},
 	},
+	data() {
+		return {
+			isActivating: false,
+		};
+	},
 	mounted() {
+		if (this.$route.name !== VIEWS.SUBSCRIPTION_ACTIVATE) {
+			return;
+		}
+		void this.activate();
 	},
 	computed: {
-		isActivating(): boolean {
-			return this.$route.name === VIEWS.SUBSCRIPTION_ACTIVATE;
-		},
+		...mapStores(
+			useRootStore,
+			useLicenseStore,
+		),
 	},
 	methods: {
 		openLinkPage() {
-			const rootStore = useRootStore();
-			const callbackUrl = encodeURIComponent(`${window.location.host}/subscription/activate/${rootStore.instanceId}`);
+			const callbackUrl = encodeURIComponent(`${window.location.host}/subscription/activate/${this.rootStore.instanceId}`);
 			window.open(new URL(`callback=${callbackUrl}`, SUBSCRIPTION_APP_URL), '_blank');
+		},
+		async activate() {
+			const activationKey = this.$route.params.key;
+			this.isActivating = true;
+			try {
+				await this.licenseStore.activateLicense(activationKey);
+			} catch (e: unknown) {
+				if (e instanceof Error) {
+					const errorTitle = this.$locale.baseText('settings.subscription.activation.error');
+					this.$showError(e, errorTitle);
+				}
+			} finally {
+				this.isActivating = false;
+				this.$router.push({ name: VIEWS.SUBSCRIPTION });
+			}
 		},
 	},
 });
