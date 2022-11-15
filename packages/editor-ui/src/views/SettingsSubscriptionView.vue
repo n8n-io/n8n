@@ -7,12 +7,16 @@
 		</div>
 		<div v-if="license && !loading">
 			<n8n-heading size="large" class="mb-l" tag="div">
-				{{ $locale.baseText('settings.subscription.plan', { interpolate: { name: license.productInfo.planName } }) }}
+				{{
+					$locale.baseText('settings.subscription.plan', {
+						interpolate: { name: license.productInfo.planName },
+					})
+				}}
 			</n8n-heading>
 
 			<n8n-info-tip theme="info" type="note" class="mb-l">
 				<template>
-					<span v-html="$locale.baseText('settings.subscription.info')"></span>
+					<span v-html="$locale.baseText('settings.subscription.info', { interpolate: { name: license.productInfo.planName }} )"></span>
 				</template>
 			</n8n-info-tip>
 
@@ -20,13 +24,25 @@
 				<div v-for="(cell, i) in tableData" :key="i">
 					<span v-if="cell.type === 'key'">
 						{{ cell.label }}
+						<n8n-info-tip
+							v-if="cell.description"
+							type="tooltip"
+							theme="info-light"
+							tooltipPlacement="top"
+						>
+							<div>
+								{{ cell.description }}
+							</div>
+						</n8n-info-tip>
 					</span>
-					<span v-else-if="cell.value === true">
-						✅
-					</span>
-					<span v-else-if="cell.value === false">
-						❗
-					</span>
+
+					<WarningTooltip v-else-if="cell.unsupported && cell.minVersion">
+						<template>
+							<span v-html="$locale.baseText('settings.subscription.unsupported', { interpolate: { version: cell.minVersion }} )"></span>
+						</template>
+					</WarningTooltip>
+					<span v-else-if="cell.value === true"> ✅ </span>
+					<span v-else-if="cell.value === false"> ❗ </span>
 					<span v-else-if="cell.value === -1">
 						{{ $locale.baseText('settings.subscription.unlimited') }}
 					</span>
@@ -66,20 +82,26 @@ import { mapStores } from 'pinia';
 import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { LicenseResponse, LicenseFeatureExpanded } from '@/Interface';
+import WarningTooltip from '@/components/WarningTooltip.vue';
 
 type TableCell =
 	| {
 			type: 'key';
 			label: string;
+			description?: string;
 	  }
 	| {
 			type: 'value';
 			value: string | number | boolean;
+			unsupported: boolean;
+			minVersion?: string | null;
 	  };
 
 export default mixins(showMessage).extend({
 	name: 'SettingsSubscriptionView',
-	mixins: [showMessage],
+	components: {
+		WarningTooltip,
+	},
 	props: {
 		featureId: {
 			type: String,
@@ -113,11 +135,14 @@ export default mixins(showMessage).extend({
 					accu.push({
 						type: 'key',
 						label: feature.name,
+						description: feature.description,
 					});
 
 					accu.push({
 						type: 'value',
 						value: feature.value,
+						unsupported: feature.unsupported,
+						minVersion: feature.minVersion,
 					});
 
 					return accu;

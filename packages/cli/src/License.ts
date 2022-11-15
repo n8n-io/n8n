@@ -40,7 +40,7 @@ const MOCK_PRODUCT_INFO = {
 		'feat:advancedExecutionSearch': {
 			name: 'Advanced Execution Search',
 			description: 'Allows searching for past executions by different criteria',
-			supportedVersions: '>=0.200.0',
+			supportedVersions: '>=0.300.0',
 		},
 		'feat:environments': {
 			name: 'Environments',

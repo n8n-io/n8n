@@ -380,13 +380,15 @@ export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICreden
 
 export interface LicenseFeature {
 	name: string;
-	description: string;
-	supportedVersions: string;
+	description?: string;
+	supportedVersions?: string;
 }
 
 export interface LicenseFeatureExpanded extends LicenseFeature {
 	id: string;
 	value: number | string | boolean;
+	unsupported: boolean;
+	minVersion: string | null;
 }
 
 export interface LicenseProductInfo {
