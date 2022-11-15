@@ -39,7 +39,7 @@ import {
 export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
-	types: Types = { allNodes: [], latestNodes: [], credentials: [] };
+	types: Types = { nodes: [], credentials: [] };
 
 	nodeTypes: INodeTypeData = {};
 
@@ -302,8 +302,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 				this.known.credentials[credential] = path.join(dir, known.credentials[credential]);
 			}
 
-			this.types.allNodes = this.types.allNodes.concat(types.allNodes);
-			this.types.latestNodes = this.types.latestNodes.concat(types.latestNodes);
+			this.types.nodes = this.types.nodes.concat(types.nodes);
 			this.types.credentials = this.types.credentials.concat(types.credentials);
 
 			const distDir = path.join(dir, 'dist');

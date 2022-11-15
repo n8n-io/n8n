@@ -784,8 +784,7 @@ class App {
 
 		const loadNodesAndCredentials = LoadNodesAndCredentials();
 		// TODO: re-render these after a new community package is installed
-		await writeStaticJSON('all-nodes', loadNodesAndCredentials.types.allNodes);
-		await writeStaticJSON('latest-nodes', loadNodesAndCredentials.types.latestNodes);
+		await writeStaticJSON('nodes', loadNodesAndCredentials.types.nodes);
 		await writeStaticJSON('credentials', loadNodesAndCredentials.types.credentials);
 
 		// ----------------------------------------

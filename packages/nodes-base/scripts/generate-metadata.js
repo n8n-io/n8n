@@ -89,18 +89,10 @@ const writeJSON = async (file, data) => {
 		});
 
 	await writeJSON(
-		'types/all-nodes.json',
+		'types/nodes.json',
 		nodeTypes.flatMap((nodeData) => {
 			const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
 			return allNodeTypes.map((element) => ({ ...element.description }));
-		}),
-	);
-
-	await writeJSON(
-		'types/latest-nodes.json',
-		nodeTypes.map((nodeData) => {
-			const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-			return { ...nodeType.description };
 		}),
 	);
 })();

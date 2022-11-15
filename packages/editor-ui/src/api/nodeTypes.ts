@@ -16,12 +16,8 @@ import type {
 } from 'n8n-workflow';
 import axios from 'axios';
 
-export async function getNodeTypes(
-	baseUrl: string,
-	{ onlyLatest } = { onlyLatest: false },
-) {
-	const url = onlyLatest ? 'latest-nodes.json' : 'all-nodes.json';
-	const { data } = await axios.get(baseUrl + 'types/' + url);
+export async function getNodeTypes(baseUrl: string) {
+	const { data } = await axios.get(baseUrl + 'types/nodes.json');
 	return data;
 }
 

@@ -26,8 +26,7 @@ function toJSON(this: ICredentialType) {
 }
 
 export type Types = {
-	allNodes: INodeTypeBaseDescription[];
-	latestNodes: INodeTypeBaseDescription[];
+	nodes: INodeTypeBaseDescription[];
 	credentials: ICredentialType[];
 };
 
@@ -40,7 +39,7 @@ export abstract class DirectoryLoader {
 
 	readonly known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
-	readonly types: Types = { allNodes: [], latestNodes: [], credentials: [] };
+	readonly types: Types = { nodes: [], credentials: [] };
 
 	constructor(
 		protected readonly directory: string,
@@ -319,13 +318,12 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 			this.known.nodes = await this.readJSON('dist/known/nodes.json');
 			this.known.credentials = await this.readJSON('dist/known/credentials.json');
 
-			this.types.allNodes = await this.readJSON('dist/types/all-nodes.json');
-			this.types.latestNodes = await this.readJSON('dist/types/latest-nodes.json');
+			this.types.nodes = await this.readJSON('dist/types/nodes.json');
 			this.types.credentials = await this.readJSON('dist/types/credentials.json');
 
 			Logger.info(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
 				credentials: this.types.credentials?.length ?? 0,
-				nodes: this.types.allNodes?.length ?? 0,
+				nodes: this.types.nodes?.length ?? 0,
 			});
 
 			return; // We can loads nodes and credentials lazily now
