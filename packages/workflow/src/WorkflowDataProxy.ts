@@ -464,8 +464,8 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
-					// @ts-expect-error Not using module type required for import.meta
-					const _env = typeof process === 'undefined' ? import.meta.env : process.env;
+					// @TODO: Parameterize to pass in `import.meta.env` and `process.env`
+					const _env = process.env;
 
 					if (_env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
 						throw new ExpressionError('access to env vars denied', {
