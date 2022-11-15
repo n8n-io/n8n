@@ -82,13 +82,15 @@ export abstract class DirectoryLoader {
 		this.fixIconPath(tempNode.description, filePath);
 
 		if ('nodeVersions' in tempNode) {
-			const versionedNodeType = tempNode.nodeVersions[tempNode.currentVersion];
-			this.addCodex({ node: versionedNodeType, filePath, isCustom: packageName === 'CUSTOM' });
+			for (const versionNode of Object.values(tempNode.nodeVersions)) {
+				this.fixIconPath(versionNode.description, filePath);
+			}
+
+			const currentVersionNode = tempNode.nodeVersions[tempNode.currentVersion];
+			this.addCodex({ node: currentVersionNode, filePath, isCustom: packageName === 'CUSTOM' });
 			nodeVersion = tempNode.currentVersion;
 
-			this.fixIconPath(versionedNodeType.description, filePath);
-
-			if (versionedNodeType.hasOwnProperty('executeSingle')) {
+			if (currentVersionNode.hasOwnProperty('executeSingle')) {
 				Logger.warn(
 					`"executeSingle" will get deprecated soon. Please update the code of node "${packageName}.${nodeName}" to use "execute" instead!`,
 					{ filePath },

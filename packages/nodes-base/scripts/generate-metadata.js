@@ -63,35 +63,37 @@ const writeJSON = async (file, data) => {
 	const loader = new PackageDirectoryLoader(packageDir);
 	await loader.loadAll();
 
-	const credentialTypes = Object.values(loader.credentialTypes).map((data) => data.type);
-	credentialTypes
-		.filter(({ icon }) => icon?.startsWith('file:'))
-		.forEach((credential) => {
-			const iconFilePath = path.resolve(packageDir, credential.icon.substring(5));
-			const iconUrl = `icons/credentials/${credential.name}${path.extname(iconFilePath)}`;
-			copyFileSync(iconFilePath, path.resolve(distDir, iconUrl));
-			delete credential.icon;
-			credential.iconUrl = iconUrl;
+	const credentialTypes = Object.values(loader.credentialTypes)
+		.map((data) => data.type)
+		.map((credential) => {
+			if (credential.icon?.startsWith('file:')) {
+				const iconFilePath = path.resolve(packageDir, credential.icon.substring(5));
+				const iconUrl = `icons/credentials/${credential.name}${path.extname(iconFilePath)}`;
+				copyFileSync(iconFilePath, path.resolve(distDir, iconUrl));
+				delete credential.icon;
+				credential.iconUrl = iconUrl;
+			}
+			return credential;
 		});
 	await writeJSON('types/credentials.json', credentialTypes);
 
-	const nodeTypes = Object.values(loader.nodeTypes).map((data) => data.type);
-	nodeTypes
-		.filter(({ description: { icon } }) => icon?.startsWith('file:'))
-		.forEach(({ description }) => {
-			const nodeName = description.name.split('.').slice(1).join('.');
-			const iconFilePath = path.resolve(packageDir, description.icon.substring(5));
-			const iconUrl = `icons/nodes/${packageName}.${nodeName}${path.extname(iconFilePath)}`;
-			copyFileSync(iconFilePath, path.resolve(distDir, iconUrl));
-			delete description.icon;
-			description.iconUrl = iconUrl;
-		});
-
-	await writeJSON(
-		'types/nodes.json',
-		nodeTypes.flatMap((nodeData) => {
+	const nodeTypes = Object.values(loader.nodeTypes)
+		.map((data) => data.type)
+		.flatMap((nodeData) => {
 			const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
 			return allNodeTypes.map((element) => ({ ...element.description }));
-		}),
-	);
+		})
+		.map((description) => {
+			if (description.icon?.startsWith('file:')) {
+				const nodeName = description.name.split('.').slice(1).join('.');
+				const iconFilePath = path.resolve(packageDir, description.icon.substring(5));
+				const iconUrl = `icons/nodes/${packageName}.${nodeName}${path.extname(iconFilePath)}`;
+				copyFileSync(iconFilePath, path.resolve(distDir, iconUrl));
+				delete description.icon;
+				description.iconUrl = iconUrl;
+			}
+			return description;
+		});
+
+	await writeJSON('types/nodes.json', nodeTypes);
 })();
