@@ -48,7 +48,6 @@ export class Onfleet implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Onfleet API',
 		defaults: {
-			color: '#AA81F3',
 			name: 'Onfleet',
 		},
 		inputs: ['main'],

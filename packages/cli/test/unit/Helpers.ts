@@ -36,7 +36,9 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> {}
+	async init(nodeTypes: INodeTypeData): Promise<void> {
+		this.nodeTypes = nodeTypes;
+	}
 
 	getAll(): INodeType[] {
 		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));

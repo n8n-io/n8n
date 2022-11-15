@@ -14,6 +14,7 @@ export class N8nApi implements ICredentialType {
 			displayName: 'API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: 'The API key for the n8n instance',
 		},

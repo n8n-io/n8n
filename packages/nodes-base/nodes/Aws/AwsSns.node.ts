@@ -6,8 +6,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import { awsApiRequestSOAP } from './GenericFunctions';

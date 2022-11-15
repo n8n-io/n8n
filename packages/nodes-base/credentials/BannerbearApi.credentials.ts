@@ -9,6 +9,7 @@ export class BannerbearApi implements ICredentialType {
 			displayName: 'Project API Key',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

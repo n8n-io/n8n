@@ -1,12 +1,16 @@
 <template>
 	<div :class="$style.container">
-		<div v-if="label || $slots.options" :class="{
-				'n8n-input-label': true,
-				[this.$style.heading]: !!label,
-				[this.$style.underline]: underline,
-				[this.$style[this.size]]: true,
+		<label
+			v-if="label || $slots.options"
+			:for="inputName"
+			:class="{
+				[$style.inputLabel]: true,
+				[$style.heading]: !!label,
+				[$style.underline]: underline,
+				[$style[size]]: true,
 				[$style.overflow]: !!$slots.options,
-			}">
+			}"
+		>
 			<div :class="$style.title" v-if="label">
 				<n8n-text :bold="bold" :size="size" :compact="!underline && !$slots.options" :color="color">
 					{{ label }}
@@ -16,15 +20,15 @@
 			<span :class="[$style.infoIcon, showTooltip ? $style.visible: $style.hidden]" v-if="tooltipText && label">
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
-					<div slot="content" v-html="addTargetBlank(tooltipText)"></div>
+					<div slot="content" v-html="addTargetBlank(tooltipText)" />
 				</n8n-tooltip>
 			</span>
-			<div v-if="$slots.options && label" :class="{[$style.overlay]: true, [$style.visible]: showOptions}"><div></div></div>
+			<div v-if="$slots.options && label" :class="{[$style.overlay]: true, [$style.visible]: showOptions}" />
 			<div v-if="$slots.options" :class="{[$style.options]: true, [$style.visible]: showOptions}">
-				<slot name="options"></slot>
+				<slot name="options"/>
 			</div>
-		</div>
-		<slot></slot>
+		</label>
+		<slot />
 	</div>
 </template>
 
@@ -52,6 +56,9 @@ export default Vue.extend({
 			type: String,
 		},
 		tooltipText: {
+			type: String,
+		},
+		inputName: {
 			type: String,
 		},
 		required: {
@@ -88,7 +95,9 @@ export default Vue.extend({
 	display: flex;
 	flex-direction: column;
 }
-
+.inputLabel {
+	display: block;
+}
 .container:hover,.inputLabel:hover {
 	.infoIcon {
 		opacity: 1;

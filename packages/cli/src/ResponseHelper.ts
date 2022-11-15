@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -6,15 +5,15 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
+import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import {
+import type {
 	IExecutionDb,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IWorkflowDb,
-} from '.';
+} from './Interfaces';
 
 /**
  * Special Error which allows to return also an error code and http status code
@@ -154,8 +153,12 @@ export function send<T, R extends Request, S extends Response>(
 
 			sendSuccessResponse(res, data, raw);
 		} catch (error) {
-			if (error instanceof Error && isUniqueConstraintError(error)) {
-				error.message = 'There is already an entry with this name';
+			if (error instanceof Error) {
+				ErrorReporter.error(error);
+
+				if (isUniqueConstraintError(error)) {
+					error.message = 'There is already an entry with this name';
+				}
 			}
 
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument

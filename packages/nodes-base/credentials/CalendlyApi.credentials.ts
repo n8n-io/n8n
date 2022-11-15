@@ -17,6 +17,7 @@ export class CalendlyApi implements ICredentialType {
 			displayName: 'API Key or Personal Access Token',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

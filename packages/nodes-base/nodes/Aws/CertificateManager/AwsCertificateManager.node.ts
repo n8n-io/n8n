@@ -17,7 +17,6 @@ export class AwsCertificateManager implements INodeType {
 		description: 'Sends data to AWS Certificate Manager',
 		defaults: {
 			name: 'AWS Certificate Manager',
-			color: '#7d9a4b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

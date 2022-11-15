@@ -8,7 +8,6 @@ import {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 import { mailchimpApiRequest } from './GenericFunctions';
 

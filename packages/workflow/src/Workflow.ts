@@ -899,6 +899,10 @@ export class Workflow {
 		for (const nodeName of nodeNames) {
 			node = this.nodes[nodeName];
 
+			if (nodeNames.length === 1 && !node.disabled) {
+				return node;
+			}
+
 			nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion) as INodeType;
 
 			if (nodeType && (nodeType.trigger !== undefined || nodeType.poll !== undefined)) {

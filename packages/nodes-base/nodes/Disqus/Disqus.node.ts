@@ -577,12 +577,12 @@ export class Disqus implements INodeType {
 
 		let endpoint = '';
 		let requestMethod = '';
-		let body: IDataObject | Buffer;
+		let _body: IDataObject | Buffer;
 		let qs: IDataObject;
 
 		for (let i = 0; i < items.length; i++) {
 			try {
-				body = {};
+				_body = {};
 				qs = {};
 
 				if (resource === 'forum') {

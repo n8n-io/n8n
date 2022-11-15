@@ -13,7 +13,6 @@ export class GoogleAds implements INodeType {
 		description: 'Use the Google Ads API',
 		defaults: {
 			name: 'Google Ads',
-			color: '#ff0000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

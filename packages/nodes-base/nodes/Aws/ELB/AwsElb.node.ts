@@ -30,7 +30,6 @@ export class AwsElb implements INodeType {
 		description: 'Sends data to AWS ELB API',
 		defaults: {
 			name: 'AWS ELB',
-			color: '#FF9900',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

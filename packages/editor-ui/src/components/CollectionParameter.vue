@@ -5,7 +5,7 @@
 				<n8n-text size="small">{{ $locale.baseText('collectionParameter.noProperties') }}</n8n-text>
 			</div>
 
-			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" @valueChanged="valueChanged" />
+			<parameter-input-list :parameters="getProperties" :nodeValues="nodeValues" :path="path" :hideDelete="hideDelete" :indent="true" :isReadOnly="isReadOnly" @valueChanged="valueChanged" />
 
 			<div v-if="parameterOptions.length > 0 && !isReadOnly" class="param-options">
 				<n8n-button
@@ -43,16 +43,16 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import {Component} from "vue";
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
-	genericHelpers,
 	nodeHelpers,
 )
 	.extend({
@@ -63,6 +63,7 @@ export default mixins(
 			'parameter', // INodeProperties
 			'path', // string
 			'values', // NodeParameters
+			'isReadOnly', // boolean
 		],
 		components: {
 			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
@@ -73,6 +74,9 @@ export default mixins(
 			};
 		},
 		computed: {
+			...mapStores(
+				useNDVStore,
+			),
 			getPlaceholderText (): string {
 				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
 				return placeholder ? placeholder : this.$locale.baseText('collectionParameter.choose');
@@ -94,8 +98,8 @@ export default mixins(
 					return this.displayNodeParameter(option as INodeProperties);
 				});
 			},
-			node (): INodeUi {
-				return this.$store.getters.activeNode;
+			node (): INodeUi | null {
+				return this.ndvStore.activeNode;
 			},
 			// Returns all the options which did not get added already
 			parameterOptions (): Array<INodePropertyOptions | INodeProperties> {

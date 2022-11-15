@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable import/no-cycle */
 import { CredentialsEntity } from './CredentialsEntity';
 import { ExecutionEntity } from './ExecutionEntity';
 import { WorkflowEntity } from './WorkflowEntity';
@@ -12,7 +11,6 @@ import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { InstalledPackages } from './InstalledPackages';
 import { InstalledNodes } from './InstalledNodes';
-import { CredentialUsage } from './CredentialUsage';
 
 export const entities = {
 	CredentialsEntity,
@@ -27,5 +25,4 @@ export const entities = {
 	SharedCredentials,
 	InstalledPackages,
 	InstalledNodes,
-	CredentialUsage,
 };

@@ -2,6 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 import { OptionsWithUri } from 'request';
 
 import {
+	deepCopy,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
 	IDataObject,
@@ -51,7 +52,6 @@ export class Odoo implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'Odoo',
-			color: '#714B67',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -297,7 +297,7 @@ export class Odoo implements INodeType {
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		let items = this.getInputData();
-		items = JSON.parse(JSON.stringify(items));
+		items = deepCopy(items);
 		const returnData: IDataObject[] = [];
 		let responseData;
 

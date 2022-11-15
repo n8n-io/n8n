@@ -6,7 +6,6 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 import { SendInBlueWebhookApi } from './GenericFunctions';
 
@@ -21,7 +20,6 @@ export class SendInBlueTrigger implements INodeType {
 		displayName: 'SendInBlue Trigger',
 		defaults: {
 			name: 'SendInBlue-Trigger',
-			color: '#044a75',
 		},
 		description: 'Starts the workflow when SendInBlue events occur',
 		group: ['trigger'],

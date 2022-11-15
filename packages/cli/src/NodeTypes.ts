@@ -7,7 +7,7 @@ import {
 	INodeTypeData,
 	INodeTypeDescription,
 	INodeTypes,
-	INodeVersionedType,
+	IVersionedNodeType,
 	NodeHelpers,
 } from 'n8n-workflow';
 
@@ -29,7 +29,7 @@ class NodeTypesClass implements INodeTypes {
 		this.nodeTypes = nodeTypes;
 	}
 
-	getAll(): Array<INodeType | INodeVersionedType> {
+	getAll(): Array<INodeType | IVersionedNodeType> {
 		return Object.values(this.nodeTypes).map((data) => data.type);
 	}
 
@@ -60,7 +60,7 @@ class NodeTypesClass implements INodeTypes {
 
 	attachNodeType(
 		nodeTypeName: string,
-		nodeType: INodeType | INodeVersionedType,
+		nodeType: INodeType | IVersionedNodeType,
 		sourcePath: string,
 	): void {
 		this.nodeTypes[nodeTypeName] = {

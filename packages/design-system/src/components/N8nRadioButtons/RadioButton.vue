@@ -65,6 +65,7 @@ export default Vue.extend({
 	color: var(--color-text-base);
 	transition: background-color 0.2s ease;
 	cursor: pointer;
+	user-select: none;
 }
 
 .disabled {

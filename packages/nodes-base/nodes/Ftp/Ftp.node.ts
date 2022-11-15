@@ -414,7 +414,6 @@ export class Ftp implements INodeType {
 		const items = this.getInputData();
 		// const returnData: IDataObject[] = [];
 		const returnItems: INodeExecutionData[] = [];
-		const qs: IDataObject = {};
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
 

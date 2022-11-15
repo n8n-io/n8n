@@ -43,12 +43,14 @@
 <script lang="ts">
 import mixins from "vue-typed-mixins";
 
-import { IExecutionResponse } from "../../../Interface";
+import { IExecutionResponse, IExecutionsSummary } from "../../../Interface";
 
 import { titleChange } from "@/components/mixins/titleChange";
 
 import ShortenName from "@/components/ShortenName.vue";
 import ReadOnly from "@/components/MainHeader/ExecutionDetails/ReadOnly.vue";
+import { mapStores } from "pinia";
+import { useWorkflowsStore } from "@/stores/workflows";
 
 export default mixins(titleChange).extend({
 	name: "ExecutionDetails",
@@ -57,24 +59,27 @@ export default mixins(titleChange).extend({
 		ReadOnly,
 	},
 	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
 		executionId(): string | undefined {
 			return this.$route.params.id;
 		},
 		executionFinished(): boolean {
-			const fullExecution = this.$store.getters.getWorkflowExecution;
+			const fullExecution = this.workflowsStore.getWorkflowExecution;
 
 			return !!fullExecution && fullExecution.finished;
 		},
 		executionWaiting(): boolean {
-			const fullExecution = this.$store.getters.getWorkflowExecution;
+			const fullExecution = this.workflowsStore.getWorkflowExecution as IExecutionsSummary;
 
 			return !!fullExecution && !!fullExecution.waitTill;
 		},
 		workflowExecution(): IExecutionResponse | null {
-			return this.$store.getters.getWorkflowExecution;
+			return this.workflowsStore.getWorkflowExecution;
 		},
 		workflowName(): string {
-			return this.$store.getters.workflowName;
+			return this.workflowsStore.workflowName;
 		},
 	},
 	methods: {

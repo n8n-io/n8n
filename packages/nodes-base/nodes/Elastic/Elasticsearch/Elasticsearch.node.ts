@@ -1,6 +1,12 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	jsonParse,
+} from 'n8n-workflow';
 
 import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from './GenericFunctions';
 
@@ -127,7 +133,12 @@ export class Elasticsearch implements INodeType {
 
 					if (Object.keys(options).length) {
 						const { query, ...rest } = options;
-						if (query) Object.assign(body, JSON.parse(query));
+						if (query) {
+							Object.assign(
+								body,
+								jsonParse(query, { errorMessage: "Invalid JSON in 'Query' option" }),
+							);
+						}
 						Object.assign(qs, rest);
 						qs._source = true;
 					}

@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable import/no-cycle */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -32,6 +31,7 @@ import {
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
+	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	SubworkflowOperationError,
 	Workflow,
@@ -41,34 +41,30 @@ import {
 
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
-import config from '../config';
+import config from '@/config';
+import * as Db from '@/Db';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { ExternalHooks } from '@/ExternalHooks';
 import {
-	ActiveExecutions,
-	CredentialsHelper,
-	Db,
-	ExternalHooks,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
-	InternalHooksManager,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
-	NodeTypes,
-	Push,
-	ResponseHelper,
-	WebhookHelpers,
-	WorkflowHelpers,
-} from '.';
-import {
-	checkPermissionsForExecution,
-	getUserById,
-	getWorkflowOwner,
-} from './UserManagement/UserManagementHelper';
-import { whereClause } from './WorkflowHelpers';
-import { IWorkflowErrorData } from './Interfaces';
-import { findSubworkflowStart } from './utils';
+	IWorkflowErrorData,
+} from '@/Interfaces';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { NodeTypes } from '@/NodeTypes';
+import * as Push from '@/Push';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { getUserById, getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { findSubworkflowStart } from '@/utils';
+import { PermissionChecker } from './UserManagement/PermissionChecker';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -162,7 +158,8 @@ export function executeErrorWorkflow(
 						user,
 					);
 				})
-				.catch((error) => {
+				.catch((error: Error) => {
+					ErrorReporter.error(error);
 					Logger.error(
 						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
 						{
@@ -219,8 +216,9 @@ function pruneExecutionData(this: WorkflowHooks): void {
 				}, timeout * 1000),
 			)
 			.catch((error) => {
-				throttling = false;
+				ErrorReporter.error(error);
 
+				throttling = false;
 				Logger.error(
 					`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
 					{
@@ -451,6 +449,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						flattenedExecutionData as IExecutionFlattedDb,
 					);
 				} catch (err) {
+					ErrorReporter.error(err);
 					// TODO: Improve in the future!
 					// Errors here might happen because of database access
 					// For busy machines, we may get "Database is locked" errors.
@@ -511,6 +510,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
+							ErrorReporter.error(e);
 							Logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave)`,
 								{ executionId: this.executionId, workflowId: this.workflowData.id },
@@ -629,6 +629,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						);
 					}
 				} catch (error) {
+					ErrorReporter.error(error);
 					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
 						executionId: this.executionId,
 						workflowId: this.workflowData.id,
@@ -676,6 +677,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
+							ErrorReporter.error(e);
 							Logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
 								{ sessionId: this.sessionId, workflowId: this.workflowData.id },
@@ -747,8 +749,37 @@ export async function getRunData(
 	workflowData: IWorkflowBase,
 	userId: string,
 	inputData?: INodeExecutionData[],
+	parentWorkflowId?: string,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
+
+	const policy =
+		workflowData.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
+
+	if (policy === 'none') {
+		throw new SubworkflowOperationError(
+			`Target workflow ID ${workflowData.id} may not be called by other workflows.`,
+			'Please update the settings of the target workflow or ask its owner to do so.',
+		);
+	}
+
+	if (
+		policy === 'workflowsFromAList' &&
+		typeof workflowData.settings?.callerIds === 'string' &&
+		parentWorkflowId !== undefined
+	) {
+		const allowedCallerIds = workflowData.settings.callerIds
+			.split(',')
+			.map((id) => id.trim())
+			.filter((id) => id !== '');
+
+		if (!allowedCallerIds.includes(parentWorkflowId)) {
+			throw new SubworkflowOperationError(
+				`Target workflow ID ${workflowData.id} may only be called by a list of workflows, which does not include current workflow ID ${parentWorkflowId}.`,
+				'Please update the settings of the target workflow or ask its owner to do so.',
+			);
+		}
+	}
 
 	const startingNode = findSubworkflowStart(workflowData.nodes);
 
@@ -821,7 +852,7 @@ export async function getWorkflowData(
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations,
-			where: whereClause({
+			where: WorkflowHelpers.whereClause({
 				user,
 				entityType: 'workflow',
 				entityId: workflowInfo.id,
@@ -908,7 +939,7 @@ export async function executeWorkflow(
 
 	let data;
 	try {
-		await checkPermissionsForExecution(workflow, additionalData.userId);
+		await PermissionChecker.check(workflow, additionalData.userId);
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks

@@ -1,7 +1,12 @@
+**/*.md
 **/.env
+.cache
+assets
 node_modules
 packages/node-dev
-packages/*/node_modules
-packages/*/dist
-packages/*/.turbo
+packages/**/node_modules
+packages/**/dist
+packages/**/.turbo
 .git
+.github
+*.tsbuildinfo

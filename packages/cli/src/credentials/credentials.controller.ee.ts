@@ -1,11 +1,12 @@
-/* eslint-disable import/no-cycle */
 import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
-import { Db, InternalHooksManager, ResponseHelper } from '..';
-import type { CredentialsEntity } from '../databases/entities/CredentialsEntity';
+import * as Db from '@/Db';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as ResponseHelper from '@/ResponseHelper';
+import type { CredentialsEntity } from '@db/entities/CredentialsEntity';
 
-import type { CredentialRequest } from '../requests';
-import { isSharingEnabled, rightDiff } from '../UserManagement/UserManagementHelper';
+import type { CredentialRequest } from '@/requests';
+import { isSharingEnabled, rightDiff } from '@/UserManagement/UserManagementHelper';
 import { EECredentialsService as EECredentials } from './credentials.service.ee';
 import type { CredentialWithSharings } from './credentials.types';
 

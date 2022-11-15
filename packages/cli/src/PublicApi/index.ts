@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable import/no-cycle */
 import express, { Router } from 'express';
 import fs from 'fs/promises';
 import path from 'path';
@@ -11,9 +10,10 @@ import swaggerUi from 'swagger-ui-express';
 import validator from 'validator';
 import YAML from 'yamljs';
 
-import config from '../../config';
-import { Db, InternalHooksManager } from '..';
-import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
+import config from '@/config';
+import * as Db from '@/Db';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 
 function createApiRouter(
 	version: string,

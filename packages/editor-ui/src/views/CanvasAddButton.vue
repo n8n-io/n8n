@@ -15,6 +15,8 @@
 <script lang="ts">
 import Vue from 'vue';
 import { XYPosition } from '@/Interface';
+import { mapStores } from 'pinia';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default Vue.extend({
 	name: 'CanvasAddButton',
@@ -27,6 +29,9 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useNodeCreatorStore,
+		),
 		containerCssVars(): Record<string, string> {
 			const position = this.position as XYPosition;
 			return {
@@ -35,7 +40,7 @@ export default Vue.extend({
 			};
 		},
 		isScrimActive(): boolean {
-			return this.$store.getters['nodeCreator/showScrim'];
+			return this.nodeCreatorStore.showScrim;
 		},
 	},
 });

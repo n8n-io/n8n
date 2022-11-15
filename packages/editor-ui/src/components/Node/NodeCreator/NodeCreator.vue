@@ -1,6 +1,6 @@
 <template>
 	<div>
-		<aside :class="{'node-creator-scrim': true, expanded: !sidebarMenuCollapsed, active: showScrim}" />
+		<aside :class="{'node-creator-scrim': true, expanded: !uiStore.sidebarMenuCollapsed, active: showScrim}" />
 
 		<slide-transition>
 			<div
@@ -29,6 +29,10 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import SlideTransition from '../../transitions/SlideTransition.vue';
 
 import MainPanel from './MainPanel.vue';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default Vue.extend({
 	name: 'NodeCreator',
@@ -42,14 +46,16 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useNodeCreatorStore,
+			useNodeTypesStore,
+			useUIStore,
+		),
 		showScrim(): boolean {
-			return this.$store.getters['nodeCreator/showScrim'];
-		},
-		sidebarMenuCollapsed(): boolean {
-			return this.$store.getters['ui/sidebarMenuCollapsed'];
+			return this.nodeCreatorStore.showScrim;
 		},
 		visibleNodeTypes(): INodeTypeDescription[] {
-			return this.$store.getters['nodeTypes/visibleNodeTypes'];
+			return this.nodeTypesStore.visibleNodeTypes;
 		},
 		searchItems(): INodeCreateElement[] {
 			const sorted = [...this.visibleNodeTypes];
@@ -100,7 +106,7 @@ export default Vue.extend({
 	},
 	watch: {
 		active(isActive) {
-			if(isActive === false) this.$store.commit('nodeCreator/setShowScrim', false);
+			if(isActive === false) this.nodeCreatorStore.showScrim = false;
 		},
 	},
 });

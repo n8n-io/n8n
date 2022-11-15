@@ -26,12 +26,14 @@ jobs:
           repository: n8n-io/test-workflows
           path: test-workflows
 
+      - uses: pnpm/action-setup@v2.2.4
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
-          cache-dependency-path: 'n8n/package-lock.json'
+          cache: 'pnpm'
+          cache-dependency-path: 'n8n/pnpm-lock.yaml'
 
       - name: Install dependencies
         run: |
@@ -41,12 +43,11 @@ jobs:
           DEBIAN_FRONTEND="noninteractive" sudo apt-get install -y graphicsmagick
         shell: bash
 
-      - name: npm install and build
+      - name: pnpm install and build
         working-directory: n8n
         run: |
-          npm install -g npm@latest
-          npm install
-          npm run build --if-present
+          pnpm install
+          pnpm build
         shell: bash
 
       - name: Import credentials

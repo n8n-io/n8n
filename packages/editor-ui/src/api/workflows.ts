@@ -1,4 +1,5 @@
 import { IRestApiContext } from '@/Interface';
+import { IDataObject } from 'n8n-workflow';
 import { makeRestApiRequest } from './helpers';
 
 export async function getNewWorkflow(context: IRestApiContext, name?: string) {
@@ -19,3 +20,10 @@ export async function getActiveWorkflows(context: IRestApiContext) {
 	return await makeRestApiRequest(context, 'GET', `/active`);
 }
 
+export async function getCurrentExecutions(context: IRestApiContext, filter: IDataObject) {
+	return await makeRestApiRequest(context, 'GET', '/executions-current', { filter });
+}
+
+export async function getFinishedExecutions(context: IRestApiContext, filter: IDataObject) {
+	return await makeRestApiRequest(context, 'GET', '/executions', { filter });
+}

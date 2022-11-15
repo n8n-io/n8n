@@ -39,7 +39,6 @@ export class Mautic implements INodeType {
 		description: 'Consume Mautic API',
 		defaults: {
 			name: 'Mautic',
-			color: '#52619b',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -1,4 +1,11 @@
-import { ICredentialDataDecryptedObject, IDataObject, ILoadOptionsFunctions, INodeExecutionData, INodeListSearchResult } from 'n8n-workflow';
+import {
+	deepCopy,
+	ICredentialDataDecryptedObject,
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeExecutionData,
+	INodeListSearchResult,
+} from 'n8n-workflow';
 import mysql2 from 'mysql2/promise';
 
 /**
@@ -17,14 +24,16 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 			if (item.json[property] === undefined) {
 				newItem[property] = null;
 			} else {
-				newItem[property] = JSON.parse(JSON.stringify(item.json[property]));
+				newItem[property] = deepCopy(item.json[property]);
 			}
 		}
 		return newItem;
 	});
 }
 
-export function createConnection(credentials: ICredentialDataDecryptedObject): Promise<mysql2.Connection> {
+export function createConnection(
+	credentials: ICredentialDataDecryptedObject,
+): Promise<mysql2.Connection> {
 	const { ssl, caCertificate, clientCertificate, clientPrivateKey, ...baseCredentials } =
 		credentials;
 
@@ -57,7 +66,7 @@ export async function searchTables(
 	ORDER BY table_name
 	`;
 	const [rows] = await connection.query(sql);
-	const results = (rows as IDataObject[]).map(r => ({
+	const results = (rows as IDataObject[]).map((r) => ({
 		name: r.TABLE_NAME as string,
 		value: r.TABLE_NAME as string,
 	}));

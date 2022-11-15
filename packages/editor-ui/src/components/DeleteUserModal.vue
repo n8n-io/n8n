@@ -20,10 +20,10 @@
 					<div :class="$style.optionInput" v-if="operation === 'transfer'">
 						<n8n-input-label :label="$locale.baseText('settings.users.userToTransferTo')">
 							<n8n-user-select
-								:users="allUsers"
+								:users="usersStore.allUsers"
 								:value="transferId"
 								:ignoreIds="ignoreIds"
-								:currentUserId="currentUserId"
+								:currentUserId="usersStore.currentUserId"
 								@input="setTransferId"
 							/>
 						</n8n-input-label>
@@ -53,7 +53,8 @@ import { showMessage } from "@/components/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IUser } from "../Interface";
-import { mapGetters } from "vuex";
+import { mapStores } from "pinia";
+import { useUsersStore } from '@/stores/users';
 
 export default mixins(showMessage).extend({
 	components: {
@@ -79,13 +80,12 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
-		...mapGetters('users', ['allUsers', 'currentUserId']),
-		userToDelete(): IUser {
-			const getUserById = this.$store.getters['users/getUserById'];
-			return getUserById(this.activeId);
+		...mapStores(useUsersStore),
+		userToDelete(): IUser | null {
+			return this.usersStore.getUserById(this.activeId);
 		},
 		isPending(): boolean {
-			return this.userToDelete && !this.userToDelete.firstName;
+			return this.userToDelete ? this.userToDelete && !this.userToDelete.firstName : false;
 		},
 		title(): string {
 			const user = this.userToDelete && (this.userToDelete.fullName || this.userToDelete.email) || '';
@@ -133,16 +133,17 @@ export default mixins(showMessage).extend({
 					params.transferId = this.transferId;
 				}
 
-				await this.$store.dispatch('users/deleteUser', params);
+				await this.usersStore.deleteUser(params);
 
 				let message = '';
 				if (this.transferId) {
-					const getUserById = this.$store.getters['users/getUserById'];
-					const transferUser: IUser = getUserById(this.transferId);
-					message = this.$locale.baseText(
-						'settings.users.transferredToUser',
-						{ interpolate: { user: transferUser.fullName || '' }},
-					);
+					const transferUser: IUser | null = this.usersStore.getUserById(this.transferId);
+					if (transferUser) {
+						message = this.$locale.baseText(
+							'settings.users.transferredToUser',
+							{ interpolate: { user: transferUser.fullName || '' }},
+						);
+					}
 				}
 
 				this.$showMessage({

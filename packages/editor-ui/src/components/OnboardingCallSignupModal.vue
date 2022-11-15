@@ -55,6 +55,8 @@ import Modal from './Modal.vue';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(
 	showMessage,
@@ -75,6 +77,7 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(useUIStore),
 		isEmailValid(): boolean {
 			return VALID_EMAIL_REGEX.test(String(this.email).toLowerCase());
 		},
@@ -90,7 +93,7 @@ export default mixins(
 			this.okToClose = false;
 
 			try {
-				await this.$store.dispatch('ui/applyForOnboardingCall', { email: this.email });
+				await this.uiStore.applyForOnboardingCall(this.email);
 				this.$showMessage({
 					type: 'success',
 					title: this.$locale.baseText('onboardingCallSignupSucess.title'),

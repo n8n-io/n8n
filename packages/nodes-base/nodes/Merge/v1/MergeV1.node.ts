@@ -4,6 +4,7 @@ import { get } from 'lodash';
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	deepCopy,
 	GenericValue,
 	INodeExecutionData,
 	INodeType,
@@ -427,7 +428,7 @@ export class MergeV1 implements INodeType {
 						continue;
 					} else if (mode === 'mergeByKey') {
 						// Copy the entry as the data gets changed
-						entry = JSON.parse(JSON.stringify(entry));
+						entry = deepCopy(entry);
 
 						for (key of Object.keys(copyData[referenceValue as string].json)) {
 							if (key === propertyName2) {

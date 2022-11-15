@@ -1,5 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IBinaryKeyData,
 	IDataObject,
 	INodeExecutionData,
@@ -67,7 +68,7 @@ return items;`,
 		let items = this.getInputData();
 
 		// Copy the items as they may get changed in the functions
-		items = JSON.parse(JSON.stringify(items));
+		items = deepCopy(items);
 
 		// Assign item indexes
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
@@ -82,7 +83,7 @@ return items;`,
 						inputData[key] = cleanupData(inputData[key] as IDataObject);
 					} else {
 						// Is some special object like a Date so stringify
-						inputData[key] = JSON.parse(JSON.stringify(inputData[key]));
+						inputData[key] = deepCopy(inputData[key]);
 					}
 				}
 			});

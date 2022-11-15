@@ -32,7 +32,6 @@ export class Jenkins implements INodeType {
 		description: 'Consume Jenkins API',
 		defaults: {
 			name: 'Jenkins',
-			color: '#04AA51',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

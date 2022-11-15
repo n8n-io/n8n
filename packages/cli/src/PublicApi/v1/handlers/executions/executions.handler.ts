@@ -8,12 +8,12 @@ import {
 	deleteExecution,
 	getExecutionsCount,
 } from './executions.service';
-import { ActiveExecutions } from '../../../..';
+import * as ActiveExecutions from '@/ActiveExecutions';
 import { authorize, validCursor } from '../../shared/middlewares/global.middleware';
 import { ExecutionRequest } from '../../../types';
 import { getSharedWorkflowIds } from '../workflows/workflows.service';
 import { encodeNextCursor } from '../../shared/services/pagination.service';
-import { InternalHooksManager } from '../../../../InternalHooksManager';
+import { InternalHooksManager } from '@/InternalHooksManager';
 
 export = {
 	deleteExecution: [

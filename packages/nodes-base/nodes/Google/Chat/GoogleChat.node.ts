@@ -48,7 +48,6 @@ export class GoogleChat implements INodeType {
 		description: 'Consume Google Chat API',
 		defaults: {
 			name: 'Google Chat',
-			color: '#0aa55c',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

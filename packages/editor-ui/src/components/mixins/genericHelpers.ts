@@ -17,7 +17,7 @@ export const genericHelpers = mixins(showMessage).extend({
 	methods: {
 		displayTimer (msPassed: number, showMs = false): string {
 			if (msPassed < 60000) {
-				if (showMs === false) {
+				if (!showMs) {
 					return `${Math.floor(msPassed / 1000)} ${this.$locale.baseText('genericHelpers.sec')}`;
 				}
 
@@ -36,7 +36,7 @@ export const genericHelpers = mixins(showMessage).extend({
 					// title: 'Workflow can not be changed!',
 					title: this.$locale.baseText('genericHelpers.showMessage.title'),
 					message: this.$locale.baseText('genericHelpers.showMessage.message'),
-					type: 'error',
+					type: 'info',
 					duration: 0,
 				});
 

@@ -16,7 +16,6 @@ export class SendInBlue implements INodeType {
 		description: 'Consume Sendinblue API',
 		defaults: {
 			name: 'SendInBlue',
-			color: '#044a75',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

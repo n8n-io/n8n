@@ -4,11 +4,7 @@
 module.exports = {
 	plugins: ['vue'],
 
-	extends: [
-		'plugin:vue/essential',
-		'@vue/typescript',
-		'@n8n_io/eslint-config/base',
-	],
+	extends: ['plugin:vue/essential', '@vue/typescript', './base'],
 
 	env: {
 		browser: true,
@@ -21,11 +17,7 @@ module.exports = {
 		parser: '@typescript-eslint/parser',
 	},
 
-	ignorePatterns: [
-		'**/*.js',
-		'**/*.d.ts',
-		'vite.config.ts',
-	],
+	ignorePatterns: ['**/*.js', '**/*.d.ts', 'vite.config.ts'],
 
 	rules: {
 		'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',

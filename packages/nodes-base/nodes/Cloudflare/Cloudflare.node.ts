@@ -24,7 +24,6 @@ export class Cloudflare implements INodeType {
 		description: 'Consume Cloudflare API',
 		defaults: {
 			name: 'Cloudflare',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

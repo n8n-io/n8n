@@ -7,7 +7,7 @@ import {
 	IDataObject,
 	INodeExecutionData,
 	IPollFunctions,
-	NodeApiError,
+	jsonParse,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -60,11 +60,7 @@ export async function apiRequest(
 		delete options.body;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, authenticationMethod, options);
 }
 
 /**
@@ -115,7 +111,7 @@ export async function downloadRecordAttachments(
 		for (const fieldName of fieldNames) {
 			if (record[fieldName]) {
 				for (const [index, attachment] of (
-					JSON.parse(record[fieldName] as string) as IAttachment[]
+					jsonParse(record[fieldName] as string) as IAttachment[]
 				).entries()) {
 					const file = await apiRequest.call(this, 'GET', '', {}, {}, attachment.url, {
 						json: false,

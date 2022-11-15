@@ -11,20 +11,20 @@ import {
 	matchMissingPackages,
 	hasPackageLoaded,
 	removePackageFromMissingList,
-} from '../../src/CommunityNodes/helpers';
+} from '@/CommunityNodes/helpers';
 import {
 	NODE_PACKAGE_PREFIX,
 	NPM_COMMAND_TOKENS,
 	NPM_PACKAGE_STATUS_GOOD,
 	RESPONSE_ERROR_MESSAGES,
-} from '../../src/constants';
-import { InstalledPackages } from '../../src/databases/entities/InstalledPackages';
-import { InstalledNodes } from '../../src/databases/entities/InstalledNodes';
+} from '@/constants';
+import { InstalledPackages } from '@db/entities/InstalledPackages';
+import { InstalledNodes } from '@db/entities/InstalledNodes';
 import { randomName } from '../integration/shared/random';
-import config from '../../config';
+import config from '@/config';
 import { installedPackagePayload, installedNodePayload } from '../integration/shared/utils';
 
-import type { CommunityPackages } from '../../src/Interfaces';
+import type { CommunityPackages } from '@/Interfaces';
 
 jest.mock('fs/promises');
 jest.mock('child_process');

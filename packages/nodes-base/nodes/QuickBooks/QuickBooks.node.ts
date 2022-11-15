@@ -50,7 +50,7 @@ import { capitalCase } from 'change-case';
 
 import { isEmpty } from 'lodash';
 
-import { DateFieldsUi, QuickBooksOAuth2Credentials, TransactionFields } from './types';
+import { QuickBooksOAuth2Credentials, TransactionFields } from './types';
 
 export class QuickBooks implements INodeType {
 	description: INodeTypeDescription = {

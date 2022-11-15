@@ -6,7 +6,6 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
 
 import { emeliaApiTest, emeliaGraphqlRequest, loadResource } from './GenericFunctions';

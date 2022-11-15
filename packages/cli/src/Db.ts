@@ -1,10 +1,8 @@
 /* eslint-disable import/no-mutable-exports */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable no-case-declarations */
 /* eslint-disable @typescript-eslint/naming-convention */
-import { UserSettings } from 'n8n-core';
 import {
 	Connection,
 	ConnectionOptions,
@@ -17,18 +15,19 @@ import {
 	Repository,
 } from 'typeorm';
 import { TlsOptions } from 'tls';
-import path from 'path';
-// eslint-disable-next-line import/no-cycle
-import { DatabaseType, GenericHelpers, IDatabaseCollections } from '.';
+import { DatabaseType, IDatabaseCollections } from '@/Interfaces';
+import * as GenericHelpers from '@/GenericHelpers';
 
-import config from '../config';
+import config from '@/config';
 
-// eslint-disable-next-line import/no-cycle
-import { entities } from './databases/entities';
-
-import { postgresMigrations } from './databases/migrations/postgresdb';
-import { mysqlMigrations } from './databases/migrations/mysqldb';
-import { sqliteMigrations } from './databases/migrations/sqlite';
+import { entities } from '@db/entities';
+import {
+	getMariaDBConnectionOptions,
+	getMysqlConnectionOptions,
+	getOptionOverrides,
+	getPostgresConnectionOptions,
+	getSqliteConnectionOptions,
+} from '@db/config';
 
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
@@ -51,7 +50,6 @@ export async function init(
 	if (isInitialized) return collections;
 
 	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
-	const n8nFolder = UserSettings.getUserN8nFolderPath();
 
 	let connectionOptions: ConnectionOptions;
 
@@ -84,17 +82,8 @@ export async function init(
 				}
 
 				connectionOptions = {
-					type: 'postgres',
-					entityPrefix,
-					database: (await GenericHelpers.getConfigValue('database.postgresdb.database')) as string,
-					host: (await GenericHelpers.getConfigValue('database.postgresdb.host')) as string,
-					password: (await GenericHelpers.getConfigValue('database.postgresdb.password')) as string,
-					port: (await GenericHelpers.getConfigValue('database.postgresdb.port')) as number,
-					username: (await GenericHelpers.getConfigValue('database.postgresdb.user')) as string,
-					schema: config.getEnv('database.postgresdb.schema'),
-					migrations: postgresMigrations,
-					migrationsRun: true,
-					migrationsTableName: `${entityPrefix}migrations`,
+					...getPostgresConnectionOptions(),
+					...(await getOptionOverrides('postgresdb')),
 					ssl,
 				};
 
@@ -103,29 +92,14 @@ export async function init(
 			case 'mariadb':
 			case 'mysqldb':
 				connectionOptions = {
-					type: dbType === 'mysqldb' ? 'mysql' : 'mariadb',
-					database: (await GenericHelpers.getConfigValue('database.mysqldb.database')) as string,
-					entityPrefix,
-					host: (await GenericHelpers.getConfigValue('database.mysqldb.host')) as string,
-					password: (await GenericHelpers.getConfigValue('database.mysqldb.password')) as string,
-					port: (await GenericHelpers.getConfigValue('database.mysqldb.port')) as number,
-					username: (await GenericHelpers.getConfigValue('database.mysqldb.user')) as string,
-					migrations: mysqlMigrations,
-					migrationsRun: true,
-					migrationsTableName: `${entityPrefix}migrations`,
+					...(dbType === 'mysqldb' ? getMysqlConnectionOptions() : getMariaDBConnectionOptions()),
+					...(await getOptionOverrides('mysqldb')),
 					timezone: 'Z', // set UTC as default
 				};
 				break;
 
 			case 'sqlite':
-				connectionOptions = {
-					type: 'sqlite',
-					database: path.join(n8nFolder, 'database.sqlite'),
-					entityPrefix,
-					migrations: sqliteMigrations,
-					migrationsRun: false, // migrations for sqlite will be ran manually for now; see below
-					migrationsTableName: `${entityPrefix}migrations`,
-				};
+				connectionOptions = getSqliteConnectionOptions();
 				break;
 
 			default:
@@ -149,13 +123,15 @@ export async function init(
 		}
 	}
 
+	const maxQueryExecutionTime = (await GenericHelpers.getConfigValue(
+		'database.logging.maxQueryExecutionTime',
+	)) as string;
+
 	Object.assign(connectionOptions, {
 		entities: Object.values(entities),
 		synchronize: false,
 		logging: loggingOption,
-		maxQueryExecutionTime: (await GenericHelpers.getConfigValue(
-			'database.logging.maxQueryExecutionTime',
-		)) as string,
+		maxQueryExecutionTime,
 	});
 
 	connection = await createConnection(connectionOptions);
@@ -202,7 +178,6 @@ export async function init(
 	collections.Settings = linkRepository(entities.Settings);
 	collections.InstalledPackages = linkRepository(entities.InstalledPackages);
 	collections.InstalledNodes = linkRepository(entities.InstalledNodes);
-	collections.CredentialUsage = linkRepository(entities.CredentialUsage);
 
 	isInitialized = true;
 

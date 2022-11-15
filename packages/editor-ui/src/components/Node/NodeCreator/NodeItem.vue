@@ -104,19 +104,14 @@ export default Vue.extend({
 			return isCommunityPackageName(this.nodeType.name);
 		},
 	},
-	mounted() {
-		/**
-		 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
-		 * All browsers attach the correct page coordinates to the "dragover" event.
-		 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
-		 */
-		document.body.addEventListener("dragover", this.onDragOver);
-	},
-	destroyed() {
-		document.body.removeEventListener("dragover", this.onDragOver);
-	},
 	methods: {
 		onDragStart(event: DragEvent): void {
+			/**
+			 * Workaround for firefox, that doesn't attach the pageX and pageY coordinates to "ondrag" event.
+			 * All browsers attach the correct page coordinates to the "dragover" event.
+			 * @bug https://bugzilla.mozilla.org/show_bug.cgi?id=505521
+			 */
+			document.body.addEventListener("dragover", this.onDragOver);
 			const { pageX: x, pageY: y } = event;
 
 			this.$emit('dragstart', event);
@@ -141,6 +136,7 @@ export default Vue.extend({
 			this.draggablePosition = { x, y };
 		},
 		onDragEnd(event: DragEvent): void {
+			document.body.removeEventListener("dragover", this.onDragOver);
 			this.$emit('dragend', event);
 
 			this.dragging = false;

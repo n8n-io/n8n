@@ -4,8 +4,8 @@ export const logOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
 		name: 'operation',
-		type: 'options',
 		noDataExpression: true,
+		type: 'options',
 		required: true,
 		default: 'getAll',
 		displayOptions: {

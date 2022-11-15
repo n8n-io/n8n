@@ -8,7 +8,7 @@ import {
 	IWebhookFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
 export async function paddleApiRequest(
 	this:
@@ -21,8 +21,8 @@ export async function paddleApiRequest(
 	method: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
-	query?: IDataObject,
-	uri?: string,
+	_query?: IDataObject,
+	_uri?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('paddleApi');

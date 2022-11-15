@@ -1,5 +1,5 @@
 <template>
-	<span :class="$style.container">
+	<span :class="$style.container" data-test-id="save-button">
 		<span :class="$style.saved" v-if="saved">{{ $locale.baseText('saveButton.saved') }}</span>
 		<n8n-button
 			v-else

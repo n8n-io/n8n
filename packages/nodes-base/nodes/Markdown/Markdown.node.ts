@@ -1,6 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
+	deepCopy,
 	IDataObject,
 	INodeExecutionData,
 	INodeType,
@@ -26,7 +27,6 @@ export class Markdown implements INodeType {
 		description: 'Convert data between Markdown and HTML',
 		defaults: {
 			name: 'Markdown',
-			color: '#000000',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -590,7 +590,7 @@ export class Markdown implements INodeType {
 
 					const markdownFromHTML = NodeHtmlMarkdown.translate(html, markdownOptions);
 
-					const newItem = JSON.parse(JSON.stringify(items[i].json));
+					const newItem = deepCopy(items[i].json);
 					set(newItem, destinationKey, markdownFromHTML);
 					returnData.push(newItem);
 				}
@@ -605,7 +605,7 @@ export class Markdown implements INodeType {
 					Object.keys(options).forEach((key) => converter.setOption(key, options[key]));
 					const htmlFromMarkdown = converter.makeHtml(markdown);
 
-					const newItem = JSON.parse(JSON.stringify(items[i].json));
+					const newItem = deepCopy(items[i].json);
 					set(newItem, destinationKey, htmlFromMarkdown);
 
 					returnData.push(newItem);

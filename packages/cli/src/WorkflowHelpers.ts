@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -18,6 +17,7 @@ import {
 	IRun,
 	IRunExecutionData,
 	ITaskData,
+	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
 	NodeApiError,
 	NodeOperationError,
@@ -25,24 +25,23 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-// eslint-disable-next-line import/no-cycle
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
 import {
-	CredentialTypes,
-	Db,
+	ICredentialsDb,
 	ICredentialsTypeData,
 	ITransferNodeTypes,
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
-	NodeTypes,
 	WhereClause,
-	WorkflowRunner,
-} from '.';
+} from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import { WorkflowRunner } from '@/WorkflowRunner';
 
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { User } from './databases/entities/User';
-import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
+import config from '@/config';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { User } from '@db/entities/User';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -231,6 +230,7 @@ export async function executeErrorWorkflow(
 		const workflowRunner = new WorkflowRunner();
 		await workflowRunner.run(runData);
 	} catch (error) {
+		ErrorReporter.error(error);
 		Logger.error(
 			`Calling Error Workflow for "${workflowErrorData.workflow.id}": "${error.message}"`,
 			{ workflowId: workflowErrorData.workflow.id },
@@ -406,9 +406,10 @@ export async function saveStaticData(workflow: Workflow): Promise<void> {
 				// eslint-disable-next-line @typescript-eslint/no-use-before-define
 				await saveStaticDataById(workflow.id!, workflow.staticData);
 				workflow.staticData.__dataChanged = false;
-			} catch (e) {
+			} catch (error) {
+				ErrorReporter.error(error);
 				Logger.error(
-					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${e.message}"`,
+					`There was a problem saving the workflow with id "${workflow.id}" to save changed staticData: "${error.message}"`,
 					{ workflowId: workflow.id },
 				);
 			}
@@ -597,6 +598,7 @@ export function whereClause({
 
 /**
  * Get the IDs of the workflows that have been shared with the user.
+ * Returns all IDs if user is global owner (see `whereClause`)
  */
 export async function getSharedWorkflowIds(user: User): Promise<number[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
@@ -702,4 +704,84 @@ export function generateFailedExecutionFromError(
 		startedAt: new Date(),
 		stoppedAt: new Date(),
 	};
+}
+
+/** Get all nodes in a workflow where the node credential is not accessible to the user. */
+export function getNodesWithInaccessibleCreds(workflow: WorkflowEntity, userCredIds: string[]) {
+	if (!workflow.nodes) {
+		return [];
+	}
+	return workflow.nodes.filter((node) => {
+		if (!node.credentials) return false;
+
+		const allUsedCredentials = Object.values(node.credentials);
+
+		const allUsedCredentialIds = allUsedCredentials.map((nodeCred) => nodeCred.id?.toString());
+		return allUsedCredentialIds.some(
+			(nodeCredId) => nodeCredId && !userCredIds.includes(nodeCredId),
+		);
+	});
+}
+
+export function validateWorkflowCredentialUsage(
+	newWorkflowVersion: WorkflowEntity,
+	previousWorkflowVersion: WorkflowEntity,
+	credentialsUserHasAccessTo: ICredentialsDb[],
+) {
+	/**
+	 * We only need to check nodes that use credentials the current user cannot access,
+	 * since these can be 2 possibilities:
+	 * - Same ID already exist: it's a read only node and therefore cannot be changed
+	 * - It's a new node which indicates tampering and therefore must fail saving
+	 */
+
+	const allowedCredentialIds = credentialsUserHasAccessTo.map((cred) => cred.id.toString());
+
+	const nodesWithCredentialsUserDoesNotHaveAccessTo = getNodesWithInaccessibleCreds(
+		newWorkflowVersion,
+		allowedCredentialIds,
+	);
+
+	// If there are no nodes with credentials the user does not have access to we can skip the rest
+	if (nodesWithCredentialsUserDoesNotHaveAccessTo.length === 0) {
+		return newWorkflowVersion;
+	}
+
+	const previouslyExistingNodeIds = previousWorkflowVersion.nodes.map((node) => node.id);
+
+	// If it's a new node we can't allow it to be saved
+	// since it uses creds the node doesn't have access
+	const isTamperingAttempt = (inaccessibleCredNodeId: string) =>
+		!previouslyExistingNodeIds.includes(inaccessibleCredNodeId);
+
+	nodesWithCredentialsUserDoesNotHaveAccessTo.forEach((node) => {
+		if (isTamperingAttempt(node.id)) {
+			Logger.info('Blocked workflow update due to tampering attempt', {
+				nodeType: node.type,
+				nodeName: node.name,
+				nodeId: node.id,
+				nodeCredentials: node.credentials,
+			});
+			// Node is new, so this is probably a tampering attempt. Throw an error
+			throw new Error(
+				'Workflow contains new nodes with credentials the user does not have access to',
+			);
+		}
+		// Replace the node with the previous version of the node
+		// Since it cannot be modified (read only node)
+		const nodeIdx = newWorkflowVersion.nodes.findIndex(
+			(newWorkflowNode) => newWorkflowNode.id === node.id,
+		);
+
+		Logger.debug('Replacing node with previous version when saving updated workflow', {
+			nodeType: node.type,
+			nodeName: node.name,
+			nodeId: node.id,
+		});
+		newWorkflowVersion.nodes[nodeIdx] = previousWorkflowVersion.nodes.find(
+			(previousNode) => previousNode.id === node.id,
+		)!;
+	});
+
+	return newWorkflowVersion;
 }

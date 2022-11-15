@@ -6,17 +6,19 @@
 			id="app"
 			:class="{
 				[$style.container]: true,
-				[$style.sidebarCollapsed]: sidebarMenuCollapsed
+				[$style.sidebarCollapsed]: uiStore.sidebarMenuCollapsed
 			}"
 		>
-			<div id="header" :class="$style['header']">
+			<div id="header" :class="$style.header">
 				<router-view name="header"></router-view>
 			</div>
-			<div id="sidebar" :class="$style['sidebar']">
+			<div id="sidebar" :class="$style.sidebar">
 				<router-view name="sidebar"></router-view>
 			</div>
-			<div id="content" :class="$style['content']">
-				<router-view />
+			<div id="content" :class="$style.content">
+				<keep-alive include="NodeView" :max="1">
+					<router-view />
+				</keep-alive>
 			</div>
 			<Modals />
 			<Telemetry />
@@ -28,16 +30,21 @@
 import Modals from './components/Modals.vue';
 import LoadingView from './views/LoadingView.vue';
 import Telemetry from './components/Telemetry.vue';
-import { HIRING_BANNER, VIEWS } from './constants';
+import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
-import { IUser } from './Interface';
-import { mapGetters } from 'vuex';
 import { userHelpers } from './components/mixins/userHelpers';
-import { addHeaders, loadLanguage } from './plugins/i18n';
+import { loadLanguage } from './plugins/i18n';
 import { restApi } from '@/components/mixins/restApi';
 import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import { mapStores } from 'pinia';
+import { useUIStore } from './stores/ui';
+import { useSettingsStore } from './stores/settings';
+import { useUsersStore } from './stores/users';
+import { useRootStore } from './stores/n8nRootStore';
+import { useTemplatesStore } from './stores/templates';
+import { useNodeTypesStore } from './stores/nodeTypes';
 
 export default mixins(
 	showMessage,
@@ -52,11 +59,16 @@ export default mixins(
 		Modals,
 	},
 	computed: {
-		...mapGetters('settings', ['isHiringBannerEnabled', 'isTemplatesEnabled', 'isTemplatesEndpointReachable', 'isUserManagementEnabled', 'showSetupPage']),
-		...mapGetters('users', ['currentUser']),
-		...mapGetters('ui', ['sidebarMenuCollapsed']),
+		...mapStores(
+				useNodeTypesStore,
+				useRootStore,
+				useSettingsStore,
+				useTemplatesStore,
+				useUIStore,
+				useUsersStore,
+			),
 		defaultLocale (): string {
-			return this.$store.getters.defaultLocale;
+			return this.rootStore.defaultLocale;
 		},
 	},
 	data() {
@@ -67,7 +79,7 @@ export default mixins(
 	methods: {
 		async initSettings(): Promise<void> {
 			try {
-				await this.$store.dispatch('settings/getSettings');
+				await this.settingsStore.getSettings();
 			} catch (e) {
 				this.$showToast({
 					title: this.$locale.baseText('startupError'),
@@ -79,23 +91,22 @@ export default mixins(
 				throw e;
 			}
 		},
-		async loginWithCookie(): Promise<void> {
+		loginWithCookie(): void {
 			try {
-				await this.$store.dispatch('users/loginWithCookie');
+				this.usersStore.loginWithCookie();
 			} catch (e) {}
 		},
 		async initTemplates(): Promise<void> {
-			if (!this.isTemplatesEnabled) {
+			if (!this.settingsStore.isTemplatesEnabled) {
 				return;
 			}
-
 			try {
-				await this.$store.dispatch('settings/testTemplatesEndpoint');
-			} catch (e) {
+				await this.settingsStore.testTemplatesEndpoint();
+		} catch (e) {
 			}
 		},
 		logHiringBanner() {
-			if (this.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
+			if (this.settingsStore.isHiringBannerEnabled && this.$route.name !== VIEWS.DEMO) {
 				console.log(HIRING_BANNER); // eslint-disable-line no-console
 			}
 		},
@@ -103,20 +114,20 @@ export default mixins(
 			await this.initSettings();
 			await Promise.all([this.loginWithCookie(), this.initTemplates()]);
 		},
-		trackPage() {
-			this.$store.commit('ui/setCurrentView', this.$route.name);
+		trackPage(): void {
+			this.uiStore.currentView = this.$route.name || '';
 			if (this.$route && this.$route.meta && this.$route.meta.templatesEnabled) {
-				this.$store.commit('templates/setSessionId');
+				this.templatesStore.setSessionId();
 			}
 			else {
-				this.$store.commit('templates/resetSessionId'); // reset telemetry session id when user leaves template pages
+				this.templatesStore.resetSessionId(); // reset telemetry session id when user leaves template pages
 			}
 
 			this.$telemetry.page(this.$route);
 		},
 		authenticate() {
 			// redirect to setup page. user should be redirected to this only once
-			if (this.isUserManagementEnabled && this.showSetupPage) {
+			if (this.settingsStore.isUserManagementEnabled && this.settingsStore.showSetupPage) {
 				if (this.$route.name === VIEWS.SETUP) {
 					return;
 				}
@@ -130,7 +141,7 @@ export default mixins(
 			}
 
 			// if cannot access page and not logged in, ask to sign in
-			const user = this.currentUser as IUser | null;
+			const user = this.usersStore.currentUser;
 			if (!user) {
 				const redirect =
 					this.$route.query.redirect ||
@@ -152,13 +163,20 @@ export default mixins(
 			this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
-			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect(this.$store);
+			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect();
 			if (redirect) {
 				this.$router.replace(redirect);
 			}
 		},
+		setTheme() {
+			const theme = window.localStorage.getItem(LOCAL_STORAGE_THEME);
+			if (theme) {
+				window.document.body.classList.add(`theme-${theme}`);
+			}
+		},
 	},
 	async mounted() {
+		this.setTheme();
 		await this.initialize();
 		this.logHiringBanner();
 		this.authenticate();
@@ -167,10 +185,11 @@ export default mixins(
 		this.loading = false;
 
 		this.trackPage();
+		// TODO: Un-comment once front-end hooks are updated to work with pinia store
 		this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
-			void this.$store.dispatch('nodeTypes/getNodeTranslationHeaders');
+			await this.nodeTypesStore.getNodeTranslationHeaders();
 		}
 	},
 	watch: {

@@ -1,8 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/naming-convention */
-
+import { resolve, join } from 'path';
 import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES } from 'n8n-core';
+
+export const CLI_DIR = resolve(__dirname, '..');
+export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
+export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
