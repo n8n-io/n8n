@@ -773,20 +773,6 @@ class App {
 			ResponseHelper.sendSuccessResponse(res, responseData, true, 200);
 		});
 
-		// pre-render all the node and credential types as static json files
-		await mkdir(pathJoin(GENERATED_STATIC_DIR, 'types'), { recursive: true });
-
-		const writeStaticJSON = async (name: string, data: any[]) => {
-			const filePath = pathJoin(GENERATED_STATIC_DIR, `types/${name}.json`);
-			const payload = `[\n${data.map((entry) => JSON.stringify(entry)).join(',\n')}\n]`;
-			writeFileSync(filePath, payload, { encoding: 'utf-8' });
-		};
-
-		const loadNodesAndCredentials = LoadNodesAndCredentials();
-		// TODO: re-render these after a new community package is installed
-		await writeStaticJSON('nodes', loadNodesAndCredentials.types.nodes);
-		await writeStaticJSON('credentials', loadNodesAndCredentials.types.credentials);
-
 		// ----------------------------------------
 		// Metrics
 		// ----------------------------------------

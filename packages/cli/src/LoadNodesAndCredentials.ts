@@ -15,13 +15,13 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-import glob from 'fast-glob';
 import {
 	access as fsAccess,
 	copyFile,
 	mkdir,
 	readdir as fsReaddir,
 	stat as fsStat,
+	writeFile,
 } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
@@ -62,6 +62,21 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		await this.loadNodesFromBasePackages();
 		await this.loadNodesFromDownloadedPackages();
 		await this.loadNodesFromCustomDirectories();
+		await this.generateTypesForFrontend();
+	}
+
+	async generateTypesForFrontend() {
+		// pre-render all the node and credential types as static json files
+		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
+
+		const writeStaticJSON = async (name: string, data: any[]) => {
+			const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
+			const payload = `[\n${data.map((entry) => JSON.stringify(entry)).join(',\n')}\n]`;
+			await writeFile(filePath, payload, { encoding: 'utf-8' });
+		};
+
+		await writeStaticJSON('nodes', this.types.nodes);
+		await writeStaticJSON('credentials', this.types.credentials);
 	}
 
 	async loadNodesFromBasePackages() {
@@ -170,6 +185,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 					packageJson.author?.email,
 				);
 				this.attachNodesToNodeTypes(installedPackage.installedNodes);
+				await this.generateTypesForFrontend();
 				return installedPackage;
 			} catch (error) {
 				LoggerProxy.error('Failed to save installed packages and nodes', {
@@ -194,7 +210,9 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 
 		await executeCommand(command);
 
-		void (await removePackageFromDatabase(installedPackage));
+		await removePackageFromDatabase(installedPackage);
+
+		await this.generateTypesForFrontend();
 
 		this.unloadNodes(installedPackage.installedNodes);
 	}
@@ -240,6 +258,8 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 				);
 
 				this.attachNodesToNodeTypes(newlyInstalledPackage.installedNodes);
+
+				await this.generateTypesForFrontend();
 
 				return newlyInstalledPackage;
 			} catch (error) {
