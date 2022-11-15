@@ -1115,6 +1115,8 @@
 	"settings.subscription.unlimited": "Unlimited",
 	"settings.subscription.unsupported": "Must upgrade to at least {version}",
 	"settings.subscription.info": "To manage your plan, please send an email to <a href=\"mailto:support@n8n.io\">support</a>.",
+	"settings.subscription.enabled": "Enabled",
+	"settings.subscription.disabled": "Disabled",
 	"settings.version": "Version",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",

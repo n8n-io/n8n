@@ -41,8 +41,8 @@
 							<span v-html="$locale.baseText('settings.subscription.unsupported', { interpolate: { version: cell.minVersion }} )"></span>
 						</template>
 					</WarningTooltip>
-					<span v-else-if="cell.value === true"> ✅ </span>
-					<span v-else-if="cell.value === false"> ❗ </span>
+					<span v-else-if="cell.value === true" :title="$locale.baseText('settings.subscription.enabled')"> ✅ </span>
+					<span v-else-if="cell.value === false" :title="$locale.baseText('settings.subscription.disabled')"> ❗ </span>
 					<span v-else-if="cell.value === -1">
 						{{ $locale.baseText('settings.subscription.unlimited') }}
 					</span>
@@ -113,7 +113,7 @@ export default mixins(showMessage).extend({
 	data() {
 		return {
 			isActivating: false,
-			loading: true,
+			loading: false,
 		};
 	},
 	mounted() {
@@ -121,6 +121,7 @@ export default mixins(showMessage).extend({
 			const activationKey = this.$route.params.key;
 			void this.activate(activationKey);
 		} else {
+			// always renew license to refresh tokens
 			void this.renew();
 		}
 	},

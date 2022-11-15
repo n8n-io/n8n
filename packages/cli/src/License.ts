@@ -167,6 +167,10 @@ export class License {
 	getProductInfo():
 		| undefined
 		| { features: TFeatures | undefined; productInfo: object | undefined } {
+		if (!this.manager?.isValid()) {
+			return;
+		}
+
 		return {
 			features: this.manager?.getFeatures(),
 			productInfo: MOCK_PRODUCT_INFO, // this.manager?.getProductMetadata();
