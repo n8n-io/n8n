@@ -86,36 +86,42 @@ export default mixins(workflowHelpers).extend({
 		},
 
 		/**
-		 * Segments to display, excluding those not displayed when they are only part of
-		 * the expression result but displayed when they make up all of the result.
+		 * Some segments are conditionally displayed, i.e. not displayed when part of the
+		 * expression result but displayed when the entire result.
 		 *
 		 * Example:
 		 * - Expression `This is a {{ null }} test` is displayed as `This is a test`.
 		 * - Expression `{{ null }}` is displayed as `[Object: null]`.
 		 *
-		 * Applicable to:
+		 * Conditionally displayed segments:
 		 * - `[Object: null]`
 		 * - `[Array: []]`
-		 * - `[empty]` (for empty string)
+		 * - `[empty]` (from `''`, not from `undefined`)
 		 * - `null` (from `NaN`)
 		 *
-		 * Also date shown as `Mon Nov 14 2022 17:26:13 GMT+0100 (CST)` when part of the result
-		 * and as `[Object: "2022-11-14T17:26:13.130Z"]` when the entire result.
-		 * .
+		 * For these two segments, display differs based on context:
+		 * - Date displayed as
+		 *   - `Mon Nov 14 2022 17:26:13 GMT+0100 (CST)` when part of the result
+		 *   - `[Object: "2022-11-14T17:26:13.130Z"]` when the entire result
+		 * - Non-empty array displayed as
+		 *   - `1,2,3` when part of the result
+		 *   - `[Array: [1, 2, 3]]` when the entire result
+		 *
 		 */
 		displayableSegments(): Segment[] {
 			return this.segments
 				.map((s) => {
-					if (
-						this.segments.length > 1 &&
-						s.kind === 'resolvable' &&
-						typeof s.resolved === 'string' &&
-						/\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)
-					) {
-						const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
+					if (this.segments.length <= 1 || s.kind !== 'resolvable') return s;
 
+					if (typeof s.resolved === 'string' && /\[Object: "\d{4}-\d{2}-\d{2}T/.test(s.resolved)) {
+						const utcDateString = s.resolved.replace(/(\[Object: "|\"\])/g, '');
 						s.resolved = new Date(utcDateString).toString();
 					}
+
+					if (typeof s.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(s.resolved)) {
+						s.resolved = s.resolved.replace(/(\[Array: \[|\])/g, '');
+					}
+
 					return s;
 				})
 				.filter((s) => {
@@ -195,10 +201,6 @@ export default mixins(workflowHelpers).extend({
 			if (result.resolved === undefined) {
 				result.resolved = '[undefined]';
 				result.error = true;
-			}
-
-			if (typeof result.resolved === 'string' && /\[Array:\s\[.+\]\]/.test(result.resolved)) {
-				result.resolved = result.resolved.replace(/(\[Array: \[|\])/g, '');
 			}
 
 			if (typeof result.resolved === 'number' && isNaN(result.resolved)) {
