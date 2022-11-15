@@ -10,6 +10,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
+	jsonParse,
 } from 'n8n-workflow';
 
 import { set } from 'lodash';
@@ -633,9 +634,10 @@ export class Redis implements INodeType {
 				await clientSet(keyName, value.toString());
 			} else if (type === 'hash') {
 				const clientHset = util.promisify(client.hset).bind(client);
-				for (const key of Object.keys(value)) {
+				const jsonObj = (typeof value === 'string') ? jsonParse(value) as object : value;
+				for (const key of Object.keys(jsonObj)) {
 					// @ts-ignore
-					await clientHset(keyName, key, (value as IDataObject)[key]!.toString());
+					await clientHset(keyName, key, (jsonObj as IDataObject)[key]!.toString());
 				}
 			} else if (type === 'list') {
 				const clientLset = util.promisify(client.lset).bind(client);
