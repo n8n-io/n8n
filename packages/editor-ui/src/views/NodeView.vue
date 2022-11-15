@@ -3236,6 +3236,12 @@ export default mixins(
 								const previouslyAddedNode = this.nodes[this.nodes.length - 2];
 
 								this.$nextTick(() => this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0));
+
+								// Position the added node to the right side of the previsouly added
+								lastAddedNode.position = [
+									previouslyAddedNode.position[0] + (CanvasHelpers.NODE_SIZE * 2),
+									previouslyAddedNode.position[1],
+								];
 							});
 						}
 					});

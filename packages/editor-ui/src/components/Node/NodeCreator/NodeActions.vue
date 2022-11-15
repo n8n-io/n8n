@@ -184,6 +184,7 @@ const { subtractedCategories, search } = toRefs(state);
 	position: absolute;
 	left: 0;
 	right: 0;
+	cursor: default;
 
 	--search-margin: 0;
 }
