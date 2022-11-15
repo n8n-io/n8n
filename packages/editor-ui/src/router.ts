@@ -15,6 +15,7 @@ import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
 import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
+import SettingsSubscriptionView from './views/SettingsSubscriptionView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
@@ -527,6 +528,29 @@ const router = new Router({
 								shouldDeny: () => {
 									const settingsStore = useSettingsStore();
 									return settingsStore.isCommunityNodesFeatureEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
+					path: 'subscription',
+					name: VIEWS.SUBSCRIPTION,
+					components: {
+						settingsView: SettingsSubscriptionView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+						},
+						permissions: {
+							allow: {
+								role: [ROLE.Owner],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return settingsStore.isUserManagementEnabled === false;
 								},
 							},
 						},

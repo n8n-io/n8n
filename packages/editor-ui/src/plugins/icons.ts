@@ -33,6 +33,7 @@ import {
 	faCube,
 	faCut,
 	faDotCircle,
+	faDollarSign,
 	faEdit,
 	faEllipsisV,
 	faEnvelope,
@@ -155,6 +156,7 @@ addIcon(faCloudDownloadAlt);
 addIcon(faCopy);
 addIcon(faCube);
 addIcon(faCut);
+addIcon(faDollarSign);
 addIcon(faDotCircle);
 addIcon(faGripVertical);
 addIcon(faEdit);

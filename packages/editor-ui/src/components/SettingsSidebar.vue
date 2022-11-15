@@ -74,6 +74,14 @@ export default mixins(
 					available: this.canAccessApiSettings(),
 					activateOnRouteNames: [ VIEWS.API_SETTINGS ],
 				},
+				{
+					id: 'settings-subscription',
+					icon: 'dollar-sign',
+					label: this.$locale.baseText('settings.subscription'),
+					position: 'top',
+					available: this.canAccessSubscriptionSettings(),
+					activateOnRouteNames: [ VIEWS.SUBSCRIPTION ],
+				},
 			];
 
 			for (const item of this.settingsFakeDoorFeatures) {
@@ -119,6 +127,9 @@ export default mixins(
 		canAccessApiSettings(): boolean {
 			return this.canUserAccessRouteByName(VIEWS.API_SETTINGS);
 		},
+		canAccessSubscriptionSettings(): boolean {
+			return this.canUserAccessRouteByName(VIEWS.SUBSCRIPTION);
+		},
 		onVersionClick() {
 			this.uiStore.openModal(ABOUT_MODAL_KEY);
 		},
@@ -150,6 +161,9 @@ export default mixins(
 					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
 						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
 					}
+					break;
+				case 'settings-subscription':
+					this.$router.push({ name: VIEWS.SUBSCRIPTION });
 					break;
 				default:
 					break;
