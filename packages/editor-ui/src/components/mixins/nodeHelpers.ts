@@ -245,16 +245,6 @@ export const nodeHelpers = mixins(
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
-				const foreignCredentials = this.credentialsStore.allForeignCredentials;
-
-				// TODO: Check if any of the node credentials is found in foreign credentials
-				if(foreignCredentials?.some(() => true)){
-					return {
-						credentials: {
-							foreign: [],
-						},
-					};
-				}
 
 				const {
 					authentication,
@@ -350,9 +340,7 @@ export const nodeHelpers = mixins(
 						}
 
 						if (nameMatches.length === 0) {
-							if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.notAvailable')];
-							} else {
+							if (!this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
 								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.doNotExist', { interpolate: { name: selectedCredentials.name, type: credentialDisplayName } }), this.$locale.baseText('nodeIssues.credentials.doNotExist.hint')];
 							}
 						}
