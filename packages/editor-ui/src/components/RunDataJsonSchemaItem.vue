@@ -3,10 +3,9 @@
 		<div v-if="level > 0 || (level === 0 && !isSchemaValueArray && schema.type !== 'list')">
 			<span>
 				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" />
-				{{ schema.type }}
+				<span v-if="schema.key">{{ schema.key }}</span>
 			</span>
-			<span v-if="schema.key">{{ schema.key }}</span>
-			<span v-if="!isSchemaValueArray">{{ schema.value }}</span>
+			<font-awesome-icon v-if="!isSchemaValueArray && schema.type === 'list'" :icon="getIconBySchemaType(schema.value)" />
 		</div>
 		<div v-if="isSchemaValueArray">
 			<run-data-json-schema-item v-for="(s, i) in schema.value"
@@ -20,11 +19,11 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { JsonSchema } from "@/Interface";
-import {checkExhaustive} from "@/utils";
+import { checkExhaustive } from "@/utils";
 
 type Props = {
-	schema: JsonSchema;
-	level: number;
+	schema: JsonSchema
+	level: number
 }
 
 const props = defineProps<Props>();

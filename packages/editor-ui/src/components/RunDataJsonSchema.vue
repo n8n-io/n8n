@@ -1,17 +1,30 @@
 <template>
 	<div :class="$style.jsonSchema">
-		<run-data-json-schema-item :schema="schema" :level="0" />
+		<draggable
+			type="mapping"
+			targetDataKey="mappable"
+			:disabled="!mappingEnabled"
+			@dragstart="onDragStart"
+			@dragend="onDragEnd"
+		>
+		  <run-data-json-schema-item :schema="schema" :level="0" />
+		</draggable>
 	</div>
 </template>
 <script lang="ts" setup>
 import { JsonSchema } from "@/Interface";
 import RunDataJsonSchemaItem from "@/components/RunDataJsonSchemaItem.vue";
+import Draggable from '@/components/Draggable.vue';
 
 type Props = {
 	schema: JsonSchema
+	mappingEnabled: boolean
 }
 
 const props = defineProps<Props>();
+
+const onDragStart = (el: HTMLElement) =>{};
+const onDragEnd = (el: HTMLElement) =>{};
 
 </script>
 

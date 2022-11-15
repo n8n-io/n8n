@@ -16,7 +16,6 @@
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
-			ref="draggable"
 		>
 			<template #preview="{ canDrop, el }">
 				<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
