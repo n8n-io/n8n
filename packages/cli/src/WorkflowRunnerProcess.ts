@@ -46,10 +46,10 @@ import { getLogger } from '@/Logger';
 
 import config from '@/config';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { checkPermissionsForExecution } from '@/UserManagement/UserManagementHelper';
 import { loadClassInIsolation } from '@/CommunityNodes/helpers';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
+import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 export class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
@@ -225,7 +225,7 @@ export class WorkflowRunnerProcess {
 			pinData: this.data.pinData,
 		});
 		try {
-			await checkPermissionsForExecution(this.workflow, userId);
+			await PermissionChecker.check(this.workflow, userId);
 		} catch (error) {
 			const caughtError = error as NodeOperationError;
 			const failedExecutionData = generateFailedExecutionFromError(

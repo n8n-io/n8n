@@ -2,9 +2,10 @@
 	<n8n-card
 		:class="$style.cardLink"
 		@click="onClick"
+		data-test-id="workflow-card"
 	>
 			<template #header>
-				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading">
+				<n8n-heading tag="h2" bold class="ph-no-capture" :class="$style.cardHeading" data-test-id="workflow-card-name">
 					{{ data.name }}
 				</n8n-heading>
 			</template>
@@ -18,6 +19,7 @@
 						:truncateAt="3"
 						truncate
 						@click="onClickTag"
+						data-test-id="workflow-card-tags"
 					/>
 				</span>
 				</n8n-text>
@@ -40,12 +42,14 @@
 						:workflow-active="data.active"
 						:workflow-id="data.id"
 						ref="activator"
+						data-test-id="workflow-card-activator"
 					/>
 
 					<n8n-action-toggle
 						:actions="actions"
 						theme="dark"
 						@action="onAction"
+						data-test-id="workflow-card-actions"
 					/>
 				</div>
 			</template>

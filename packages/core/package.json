@@ -1,6 +1,6 @@
 {
   "name": "n8n-core",
-  "version": "0.141.0",
+  "version": "0.142.1",
   "description": "Core functionality of n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -35,8 +35,7 @@
     "@types/lodash.get": "^4.4.6",
     "@types/mime-types": "^2.1.0",
     "@types/request-promise-native": "~1.0.15",
-    "@types/uuid": "^8.3.2",
-    "source-map-support": "^0.5.9"
+    "@types/uuid": "^8.3.2"
   },
   "dependencies": {
     "axios": "^0.21.1",
@@ -48,7 +47,7 @@
     "form-data": "^4.0.0",
     "lodash.get": "^4.4.2",
     "mime-types": "^2.1.27",
-    "n8n-workflow": "~0.123.0",
+    "n8n-workflow": "~0.124.1",
     "oauth-1.0a": "^2.2.6",
     "p-cancelable": "^2.0.0",
     "qs": "^6.10.1",

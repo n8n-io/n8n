@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, ILoadOptionsFunctions, IPollFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject } from 'n8n-workflow';
 
 export async function clockifyApiRequest(
 	this: ILoadOptionsFunctions | IPollFunctions | IExecuteFunctions,
@@ -28,12 +28,7 @@ export async function clockifyApiRequest(
 		json: true,
 		useQuerystring: true,
 	};
-
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
 }
 
 export async function clockifyApiRequestAllItems(

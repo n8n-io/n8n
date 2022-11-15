@@ -86,22 +86,71 @@ export const databasePageFields: INodeProperties[] = [
 	/*                                databasePage:create                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database Name or ID',
+		displayName: 'Database',
 		name: 'databaseId',
-		type: 'options',
-		default: '',
-		typeOptions: {
-			loadOptionsMethod: 'getDatabases',
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Database...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['databasePage'],
 				operation: ['create'],
 			},
 		},
-		description:
-			"The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL). Choose from the list, or specify an ID using an <a href=\"https://docs.n8n.io/code-examples/expressions/\">expression</a>.",
+		description: "The Notion Database to operate on",
 	},
 	{
 		displayName: 'Title',
@@ -246,6 +295,22 @@ export const databasePageFields: INodeProperties[] = [
 						displayOptions: {
 							show: {
 								type: ['select'],
+							},
+						},
+						default: '',
+						description:
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+					},
+					{
+						displayName: 'Status Name or ID',
+						name: 'statusValue',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getPropertySelectValues',
+						},
+						displayOptions: {
+							show: {
+								type: ['status'],
 							},
 						},
 						default: '',
@@ -471,19 +536,61 @@ export const databasePageFields: INodeProperties[] = [
 	/*                      databasePage:update                                   */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database Page Link or ID',
+		displayName: 'Database Page',
 		name: 'pageId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'url', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database Page URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database Page ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['databasePage'],
 				operation: ['update'],
 			},
 		},
-		description:
-			"The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Notion Database Page to update",
 	},
 	{
 		displayName: 'Simplify',
@@ -619,6 +726,22 @@ export const databasePageFields: INodeProperties[] = [
 							},
 						},
 						default: '',
+					},
+					{
+						displayName: 'Status Name or ID',
+						name: 'statusValue',
+						type: 'options',
+						typeOptions: {
+							loadOptionsMethod: 'getDatabaseOptionsFromPage',
+						},
+						displayOptions: {
+							show: {
+								type: ['status'],
+							},
+						},
+						default: '',
+						description:
+							'Name of the option you want to set. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 					},
 					{
 						displayName: 'Email',
@@ -837,11 +960,54 @@ export const databasePageFields: INodeProperties[] = [
 	/*                                databasePage:get                            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database Page Link or ID',
+		displayName: 'Database Page',
 		name: 'pageId',
-		type: 'string',
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'url', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/My-Database-Page-b4eeb113e118403ba450af65ac25f0b9',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database Page URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?(?:[a-zA-Z0-9\-]{2,}-)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database Page ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				version: [2],
@@ -849,8 +1015,7 @@ export const databasePageFields: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
-		description:
-			"The Database Page URL from Notion's 'copy link' functionality (or just the ID contained within the URL)",
+		description: "The Notion Database Page to get",
 	},
 	{
 		displayName: 'Simplify',
@@ -870,22 +1035,71 @@ export const databasePageFields: INodeProperties[] = [
 	/*                                databasePage:getAll                         */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Database Name or ID',
+		displayName: 'Database',
 		name: 'databaseId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getDatabases',
-		},
-		default: '',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
+		modes: [
+			{
+				displayName: 'Database',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Database...',
+				typeOptions: {
+					searchListMethod: 'getDatabases',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'Link',
+				name: 'url',
+				type: 'string',
+				placeholder:
+					'https://www.notion.so/0fe2f7de558b471eab07e9d871cdf4a9?v=f2d424ba0c404733a3f500c78c881610',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex:
+								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage: 'Not a valid Notion Database URL',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'ab1545b247fb49fa92d6f4b49f4d8116',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							errorMessage: 'Not a valid Notion Database ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-?[0-9a-f]{4}-?4[0-9a-f]{3}-?[89ab][0-9a-f]{3}-?[0-9a-f]{12})',
+				},
+				url: '=https://www.notion.so/{{$value.replace(/-/g, "")}}',
+			},
+		],
 		displayOptions: {
 			show: {
 				resource: ['databasePage'],
 				operation: ['getAll'],
 			},
 		},
+		description: "The Notion Database to operate on",
 	},
 	{
 		displayName: 'Return All',

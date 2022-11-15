@@ -1,6 +1,6 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, IHttpRequestMethods, IHttpRequestOptions, NodeApiError } from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -32,11 +32,7 @@ export async function customerIoApiRequest(
 		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
 }
 
 export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {

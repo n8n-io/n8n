@@ -559,7 +559,6 @@ function digestAuthAxiosConfig(
 async function proxyRequestToAxios(
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	// Check if there's a better way of getting this config here
 	if (process.env.N8N_USE_DEPRECATED_REQUEST_LIB) {
@@ -2674,6 +2673,7 @@ export function getLoadOptionsFunctions(
 			},
 			getCurrentNodeParameter: (
 				parameterPath: string,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
 
@@ -2681,7 +2681,25 @@ export function getLoadOptionsFunctions(
 					parameterPath = `${path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
 				}
 
-				return get(nodeParameters, parameterPath);
+				let returnData = get(nodeParameters, parameterPath);
+
+				// This is outside the try/catch because it throws errors with proper messages
+				if (options?.extractValue) {
+					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					if (nodeType === undefined) {
+						throw new Error(
+							`Node type "${node.type}" is not known so can not return parameter value!`,
+						);
+					}
+					returnData = extractValue(
+						returnData,
+						parameterPath,
+						node,
+						nodeType,
+					) as NodeParameterValueType;
+				}
+
+				return returnData;
 			},
 			getCurrentNodeParameters: (): INodeParameters | undefined => {
 				return additionalData.currentNodeParameters;

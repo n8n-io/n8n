@@ -198,19 +198,23 @@ export default mixins(
 			this.credentialsStore.$subscribe((mutation, state) => {
 				// This data pro stores credential type that the component is currently interested in
 				const credentialType = this.subscribedToCredentialType;
-				const credentialsOfType = this.credentialsStore.allCredentialsByType[credentialType].sort((a, b) => (a.id < b.id ? -1 : 1));
-				if (credentialsOfType.length > 0) {
-					// If nothing has been selected previously, select the first one (newly added)
-					if (!this.selected[credentialType]) {
-						this.onCredentialSelected(credentialType, credentialsOfType[0].id);
-					} else {
-						// Else, check id currently selected cred has been updated
-						const newSelected = credentialsOfType.find(cred => cred.id === this.selected[credentialType].id);
-						// If it has changed, select it
-						if (newSelected && newSelected.name !== this.selected[credentialType].name) {
-							this.onCredentialSelected(credentialType, newSelected.id);
-						} else { // Else select the last cred with that type since selected has been deleted or a new one has been added
-							this.onCredentialSelected(credentialType, credentialsOfType[credentialsOfType.length - 1].id);
+				let credentialsOfType = this.credentialsStore.allCredentialsByType[credentialType];
+
+				if (credentialsOfType) {
+					credentialsOfType = credentialsOfType.sort((a, b) => (a.id < b.id ? -1 : 1));
+					if (credentialsOfType.length > 0) {
+						// If nothing has been selected previously, select the first one (newly added)
+						if (!this.selected[credentialType]) {
+							this.onCredentialSelected(credentialType, credentialsOfType[0].id);
+						} else {
+							// Else, check id currently selected cred has been updated
+							const newSelected = credentialsOfType.find(cred => cred.id === this.selected[credentialType].id);
+							// If it has changed, select it
+							if (newSelected && newSelected.name !== this.selected[credentialType].name) {
+								this.onCredentialSelected(credentialType, newSelected.id);
+							} else { // Else select the last cred with that type since selected has been deleted or a new one has been added
+								this.onCredentialSelected(credentialType, credentialsOfType[credentialsOfType.length - 1].id);
+							}
 						}
 					}
 				}
