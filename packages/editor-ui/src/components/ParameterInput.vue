@@ -1013,7 +1013,14 @@ export default mixins(
 					if (this.isResourceLocatorParameter && isResourceLocatorValue(this.value)) {
 						this.valueChanged({ __rl: true, value, mode: this.value.mode });
 					} else {
-						this.valueChanged(typeof value !== 'undefined' ? value : null);
+						let newValue = typeof value !== 'undefined' ? value : null;
+
+						if (this.parameter.type === 'string') {
+							// Strip the '=' from the beginning
+							newValue = this.value ? this.value.toString().substring(1) : null;
+						}
+
+						this.valueChanged(newValue);
 					}
 				} else if (command === 'refreshOptions') {
 					if (this.isResourceLocatorParameter) {
