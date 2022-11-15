@@ -10,6 +10,12 @@
 				{{ $locale.baseText('settings.subscription.plan', { interpolate: { name: license.productInfo.planName } }) }}
 			</n8n-heading>
 
+			<n8n-info-tip theme="info" type="note" class="mb-l">
+				<template>
+					<span v-html="$locale.baseText('settings.subscription.info')"></span>
+				</template>
+			</n8n-info-tip>
+
 			<div :class="$style.grid">
 				<div v-for="(cell, i) in tableData" :key="i">
 					<span v-if="cell.type === 'key'">

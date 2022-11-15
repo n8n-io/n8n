@@ -1113,6 +1113,7 @@
 	"settings.subscription.renew.error": "Could not refresh license",
 	"settings.subscription.plan": "Plan: {name}",
 	"settings.subscription.unlimited": "Unlimited",
+	"settings.subscription.info": "To manage your plan, please send an email to <a href=\"mailto:support@n8n.io\">support</a>.",
 	"settings.version": "Version",
 	"showMessage.cancel": "@:_reusableBaseText.cancel",
 	"showMessage.ok": "OK",
