@@ -1,12 +1,18 @@
 import { EventMessage } from './EventMessage';
 import { v4 as uuid } from 'uuid';
-import { JsonValue } from 'n8n-workflow';
+import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
 import { EventMessageSubscriptionSet } from './EventMessageSubscriptionSet';
 import {
 	EventMessageGroups,
 	EventMessageNames,
 	EventMessageLevel,
 } from '../types/EventMessageTypes';
+import { EventDestinations } from '../../databases/entities/MessageEventBusDestinationEntity';
+import { Db } from '../..';
+import { MessageEventBusDestinationSentry } from '../MessageEventBusDestination/MessageEventBusDestinationSentry';
+import { MessageEventBusDestinationRedis } from '../MessageEventBusDestination/MessageEventBusDestinationRedis';
+import { MessageEventBusDestinationSyslog } from '../MessageEventBusDestination/MessageEventBusDestinationSyslog';
+import { MessageEventBusDestinationWebhook } from '../MessageEventBusDestination/MessageEventBusDestinationWebhook';
 
 export interface MessageEventBusDestinationOptions {
 	id?: string;
@@ -75,6 +81,38 @@ export abstract class MessageEventBusDestination {
 			}
 		}
 		return false;
+	}
+
+	async saveToDb() {
+		const dbResult = await Db.collections.EventDestinations.upsert(
+			{
+				id: this.getId(),
+				name: this.getName(),
+				destination: this.toString(),
+			},
+			{
+				skipUpdateIfNoValuesChanged: true,
+				conflictPaths: ['id'],
+			},
+		);
+		return dbResult;
+	}
+
+	static fromDb(dbData: EventDestinations) {
+		const destinationData = jsonParse<JsonObject>(dbData.destination);
+		if ('type' in destinationData) {
+			switch (destinationData.type) {
+				case MessageEventBusDestinationSentry.type:
+					return MessageEventBusDestinationSentry.deserialize(destinationData);
+				case MessageEventBusDestinationSyslog.type:
+					return MessageEventBusDestinationSyslog.deserialize(destinationData);
+				case MessageEventBusDestinationRedis.type:
+					return MessageEventBusDestinationRedis.deserialize(destinationData);
+				case MessageEventBusDestinationWebhook.type:
+					return MessageEventBusDestinationWebhook.deserialize(destinationData);
+			}
+		}
+		return;
 	}
 
 	abstract serialize(): JsonValue;

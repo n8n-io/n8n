@@ -118,7 +118,10 @@ eventBusRouter.post(
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (isMessageEventBusDestinationSentryOptions(req.body)) {
 			const result = await eventBus.addDestination(new MessageEventBusDestinationSentry(req.body));
-			return result;
+			if (result) {
+				await result.saveToDb();
+				return result;
+			}
 		}
 	}),
 );

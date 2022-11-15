@@ -46,6 +46,10 @@ class MessageEventBus {
 	}
 
 	async initialize(options?: MessageEventBusInitializationOptions) {
+		if (MessageEventBus.#initialized) {
+			return;
+		}
+
 		// Register the thread serializer on the main thread
 		registerSerializer(messageEventSerializer);
 		registerSerializer(eventMessageConfirmSerializer);
@@ -86,7 +90,7 @@ class MessageEventBus {
 	async addDestination(destination: MessageEventBusDestination) {
 		await this.removeDestination(destination.getId());
 		this.#destinations[destination.getId()] = destination;
-		return destination.serialize();
+		return destination;
 	}
 
 	async removeDestination(id: string): Promise<string> {

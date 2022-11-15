@@ -1,11 +1,11 @@
 import { IsString, Length } from 'class-validator';
-import { JsonObject } from 'n8n-workflow';
+import { JsonValue } from 'n8n-workflow';
 import { Column, Entity, PrimaryColumn } from 'typeorm';
 import { NoXss } from '../utils/customValidators';
 import { AbstractEntity } from './AbstractEntity';
 
-@Entity()
-export class MessageEventBusDestinationEntity extends AbstractEntity {
+@Entity({ name: 'eventdestinations_entity' })
+export class EventDestinations extends AbstractEntity {
 	@PrimaryColumn('uuid')
 	id: string;
 
@@ -18,5 +18,5 @@ export class MessageEventBusDestinationEntity extends AbstractEntity {
 	name: string;
 
 	@Column('simple-json')
-	destination: JsonObject;
+	destination: string;
 }

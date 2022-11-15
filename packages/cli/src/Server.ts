@@ -157,6 +157,7 @@ import { toHttpNodeParameters } from './CurlConverterHelper';
 import { initErrorHandling } from './ErrorReporting';
 import { eventBus } from './eventbus';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
+import { MessageEventBusDestination } from './eventbus/EventMessageClasses/MessageEventBusDestination';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1670,8 +1671,25 @@ class App {
 		// EventBus Setup
 		// ----------------------------------------
 
-		// Initialize EventBus
-		await eventBus.initialize();
+		// Load stored destinations from Db
+		const savedEventDestinations = await Db.collections.EventDestinations.find({});
+		if (savedEventDestinations.length > 0) {
+			for (const destinationData of savedEventDestinations) {
+				try {
+					const destination = MessageEventBusDestination.fromDb(destinationData);
+					if (destination) {
+						await eventBus.addDestination(destination);
+					}
+				} catch (error) {
+					console.log(error);
+				}
+			}
+		} else {
+			// adding destinations automatically triggers initialization intrinsically, so this manual
+			// call is only required if there are none in the db
+			await eventBus.initialize();
+		}
+		// add Event Bus REST endpoints
 		this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 
 		// ----------------------------------------
