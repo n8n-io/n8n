@@ -252,7 +252,7 @@ export default mixins(
 			margin-top: 3px;
 			height: 16px;
 			line-height: 1;
-			background-color: yellow;
+			background-color: #f0f0f0;
 			margin-right: var(--spacing-4xs);
 		}
 	}

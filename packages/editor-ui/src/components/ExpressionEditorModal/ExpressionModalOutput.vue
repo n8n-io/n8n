@@ -89,4 +89,9 @@ export default Vue.extend({
 });
 </script>
 
-<style lang="scss"></style>
+<style lang="scss">
+.expression-result-wrapper .cm-content {
+	border: 1px solid var(--color-secondary);
+	background-color: var(--color-background-lighter);
+}
+</style>
