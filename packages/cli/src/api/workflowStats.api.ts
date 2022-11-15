@@ -1,3 +1,4 @@
+import { User } from '@/databases/entities/User';
 import express from 'express';
 import { LoggerProxy } from 'n8n-workflow';
 import {
@@ -6,6 +7,7 @@ import {
 	IWorkflowStatisticsDataLoaded,
 	IWorkflowStatisticsTimestamps,
 	ResponseHelper,
+	whereClause,
 } from '..';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
@@ -27,13 +29,35 @@ workflowStatsController.use((req, res, next) => {
 });
 
 // Helper function that validates the ID, throws an error if not valud
-async function checkWorkflowId(workflowId: string): Promise<WorkflowEntity> {
+async function checkWorkflowId(workflowId: string, user: User): Promise<WorkflowEntity> {
 	const workflow = await Db.collections.Workflow.findOne(workflowId);
 	if (!workflow) {
 		throw new ResponseHelper.ResponseError(
-			`The workflow with the ID "${workflowId}" does not exist.`,
+			`Workflow with ID "${workflowId}" could not be found..`,
 			404,
 			404,
+		);
+	}
+
+	// Check permissions
+	const shared = await Db.collections.SharedWorkflow.findOne({
+		relations: ['workflow'],
+		where: whereClause({
+			user,
+			entityType: 'workflow',
+			entityId: workflowId,
+		}),
+	});
+
+	if (!shared) {
+		LoggerProxy.info('User attempted to read a workflow without permissions', {
+			workflowId,
+			userId: user.id,
+		});
+		throw new ResponseHelper.ResponseError(
+			`Workflow with ID "${workflowId}" could not be found.`,
+			undefined,
+			400,
 		);
 	}
 	return workflow;
@@ -49,7 +73,7 @@ workflowStatsController.get(
 		const workflowId = req.params.id;
 
 		// Check that the id is valid
-		await checkWorkflowId(workflowId);
+		await checkWorkflowId(workflowId, req.user);
 
 		// Find the stats for this workflow
 		const stats = await Db.collections.WorkflowStatistics.find({
@@ -100,7 +124,7 @@ workflowStatsController.get(
 		const workflowId = req.params.id;
 
 		// Check that the id is valid
-		await checkWorkflowId(workflowId);
+		await checkWorkflowId(workflowId, req.user);
 
 		// Find the stats for this workflow
 		const stats = await Db.collections.WorkflowStatistics.find({
@@ -151,7 +175,7 @@ workflowStatsController.get(
 		const workflowId = req.params.id;
 
 		// Get the corresponding workflow
-		const workflow = await checkWorkflowId(workflowId);
+		const workflow = await checkWorkflowId(workflowId, req.user);
 
 		const data: IWorkflowStatisticsDataLoaded = {
 			dataLoaded: workflow.dataLoaded,

@@ -1,20 +1,6 @@
-import { Column, Entity, RelationId, ManyToOne, PrimaryColumn, UpdateDateColumn } from 'typeorm';
-import config from '@/config';
-import { DatabaseType } from '../..';
+import { Column, Entity, RelationId, ManyToOne, PrimaryColumn } from 'typeorm';
+import { datetimeColumnType } from './AbstractEntity';
 import { WorkflowEntity } from './WorkflowEntity';
-
-function getTimestampSyntax() {
-	const dbType = config.getEnv('database.type') as DatabaseType;
-
-	const map: { [key in DatabaseType]: string } = {
-		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
-		postgresdb: 'CURRENT_TIMESTAMP(3)',
-		mysqldb: 'CURRENT_TIMESTAMP(3)',
-		mariadb: 'CURRENT_TIMESTAMP(3)',
-	};
-
-	return map[dbType];
-}
 
 export enum StatisticsNames {
 	productionSuccess = 'production_success',
@@ -28,11 +14,7 @@ export class WorkflowStatistics {
 	@Column()
 	count: number;
 
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
-	})
+	@Column(datetimeColumnType)
 	latestEvent: Date;
 
 	@PrimaryColumn({ length: 128 })

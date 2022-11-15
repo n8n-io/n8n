@@ -42,10 +42,10 @@ const sqliteMigrations = [
 	AddNodeIds1658930531669,
 	AddJsonKeyPinData1659888469333,
 	CreateCredentialsUserRole1660062385367,
-	WorkflowStatistics1664196174000,
 	CreateWorkflowsEditorRole1663755770892,
 	CreateCredentialUsageTable1665484192211,
 	RemoveCredentialUsageTable1665754637024,
+	WorkflowStatistics1664196174000,
 ];
 
 export { sqliteMigrations };
