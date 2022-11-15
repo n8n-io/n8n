@@ -39,9 +39,10 @@ function getLicenseFeatures(resp: LicenseResponse): LicenseFeatureExpanded[] {
 		return [];
 	}
 
-	return Object.keys(features).map((id) => {
+	return Object.keys(features).map((id): LicenseFeatureExpanded => {
 		return {
 			id,
+			value: resp.features[id],
 			...features[id],
 		};
 	});

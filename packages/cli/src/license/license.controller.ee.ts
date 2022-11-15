@@ -39,9 +39,7 @@ licenseController.post(
 			const license = getLicense();
 
 			await license.activate(activationKey);
-			return {
-				productInfo: license.getProductInfo(),
-			};
+			return license.getProductInfo();
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new ResponseHelper.ResponseError(e.message, undefined, 500);
@@ -58,16 +56,13 @@ licenseController.post(
 	 '/renew',
 	 ResponseHelper.send(async (req: LicenseRequest.Activate): Promise<object | undefined> => {
 		 try {
-			 const license = getLicense();
-
-			 await license.renew();
-			 return {
-				 productInfo: license.getProductInfo(),
-			 };
+			const license = getLicense();
+			await license.renew();
+			return license.getProductInfo();
 		 } catch (e: unknown) {
-			 if (e instanceof Error) {
-				 throw new ResponseHelper.ResponseError(e.message, undefined, 500);
-			 }
+			if (e instanceof Error) {
+				throw new ResponseHelper.ResponseError(e.message, undefined, 500);
+			}
 
 			 return;
 		 }

@@ -386,6 +386,7 @@ export interface LicenseFeature {
 
 export interface LicenseFeatureExpanded extends LicenseFeature {
 	id: string;
+	value: number | string | boolean;
 }
 
 export interface LicenseProductInfo {
@@ -401,6 +402,7 @@ export interface ActivateLicensePayload {
 }
 
 export interface LicenseResponse {
+	features: { [key: string]: boolean | string | number}
 	productInfo: LicenseProductInfo;
 }
 

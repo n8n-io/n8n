@@ -12,7 +12,21 @@
 
 			<div :class="$style.grid">
 				<div v-for="(cell, i) in tableData" :key="i">
-					{{ cell.type === 'key' ? cell.label : cell.value }}
+					<span v-if="cell.type === 'key'">
+						{{ cell.label }}
+					</span>
+					<span v-else-if="cell.value === true">
+						✅
+					</span>
+					<span v-else-if="cell.value === false">
+						❗
+					</span>
+					<span v-else-if="cell.value === -1">
+						{{ $locale.baseText('settings.subscription.unlimited') }}
+					</span>
+					<span v-else>
+						{{ cell.value }}
+					</span>
 				</div>
 			</div>
 		</div>
@@ -97,7 +111,7 @@ export default mixins(showMessage).extend({
 
 					accu.push({
 						type: 'value',
-						value: 0,
+						value: feature.value,
 					});
 
 					return accu;
