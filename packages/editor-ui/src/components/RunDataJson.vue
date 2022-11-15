@@ -82,9 +82,6 @@ export default mixins(externalHooks).extend({
 		editMode: {
 			type: Object as () => { enabled?: boolean; value?: string; },
 		},
-		currentOutputIndex: {
-			type: Number,
-		},
 		sessionId: {
 			type: String,
 		},

@@ -64,11 +64,15 @@ export const intersection = <T>(...arrays: T[][]): T[] => {
 	return [...new Set(rest.length ? intersection(ab, ...rest) : ab)];
 };
 
+export const checkExhaustive = (value: never): never => {
+	throw new Error(`Unhandled value: ${value}`);
+};
+
 export const isObj = (obj: unknown): obj is object => !!obj && Object.getPrototypeOf(obj) === Object.prototype;
 
 export const isSchemaTypeObjectOrList = (type: string) => ['object', 'list'].includes(type);
 
-export const getTypeof = (value: unknown): JsonSchemaType => value === null
+export const getTypeof = (value: unknown): JsonSchema['type'] => value === null
 	? 'null'
 	: value instanceof Date
 		? 'date'
