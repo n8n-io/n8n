@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 /* eslint-disable @typescript-eslint/naming-convention */
@@ -12,20 +11,20 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 import { FindManyOptions, LessThanOrEqual, ObjectLiteral } from 'typeorm';
-
 import { DateUtils } from 'typeorm/util/DateUtils';
+
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as GenericHelpers from '@/GenericHelpers';
+import * as ActiveExecutions from '@/ActiveExecutions';
 import {
-	ActiveExecutions,
 	DatabaseType,
-	Db,
-	GenericHelpers,
 	IExecutionFlattedDb,
 	IExecutionsStopData,
 	IWorkflowExecutionDataProcess,
-	ResponseHelper,
-	WorkflowRunner,
-} from '.';
-import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
+} from '@/Interfaces';
+import { WorkflowRunner } from '@/WorkflowRunner';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
 export class WaitTrackerClass {
 	activeExecutionsInstance: ActiveExecutions.ActiveExecutions;

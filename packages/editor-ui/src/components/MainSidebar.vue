@@ -55,6 +55,7 @@
 import {
 	IExecutionResponse,
 	IMenuItem,
+	IVersion,
 } from '../Interface';
 
 import ExecutionsList from '@/components/ExecutionsList.vue';
@@ -69,7 +70,6 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -89,6 +89,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
+import { useVersionsStore } from '@/stores/versions';
 
 export default mixins(
 	genericHelpers,
@@ -120,12 +121,15 @@ export default mixins(
 				useSettingsStore,
 				useUIStore,
 				useUsersStore,
+				useVersionsStore,
 				useWorkflowsStore,
 			),
-			...mapGetters('versions', [
-				'hasVersionUpdates',
-				'nextVersions',
-			]),
+			hasVersionUpdates(): boolean {
+				return this.versionsStore.hasVersionUpdates;
+			},
+			nextVersions(): IVersion[] {
+				return this.versionsStore.nextVersions;
+			},
 			isCollapsed(): boolean {
 				return this.uiStore.sidebarMenuCollapsed;
 			},

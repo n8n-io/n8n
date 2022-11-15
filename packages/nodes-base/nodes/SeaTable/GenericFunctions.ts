@@ -243,10 +243,6 @@ export function rowDeleteInternalColumns(row: IRow): IRow {
 	return row;
 }
 
-export function rowsDeleteInternalColumns(rows: IRow[]) {
-	rows = rows.map(rowDeleteInternalColumns);
-}
-
 function rowFormatColumn(input: unknown): boolean | number | string | string[] | null {
 	if (null === input || undefined === input) {
 		return null;

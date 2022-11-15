@@ -10,7 +10,6 @@
 /* eslint-disable @typescript-eslint/prefer-optional-chain */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { BinaryDataManager, IProcessMessage, WorkflowExecute } from 'n8n-core';
 
@@ -32,13 +31,12 @@ import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
+import * as ActiveExecutions from '@/ActiveExecutions';
+import config from '@/config';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
 import {
-	ActiveExecutions,
-	CredentialsOverwrites,
-	Db,
-	ExternalHooks,
 	ICredentialsOverwrite,
 	ICredentialsTypeData,
 	IExecutionFlattedDb,
@@ -46,18 +44,18 @@ import {
 	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
-	NodeTypes,
-	Push,
-	ResponseHelper,
-	WebhookHelpers,
-	WorkflowExecuteAdditionalData,
-	WorkflowHelpers,
-} from '.';
-import * as Queue from './Queue';
-import { InternalHooksManager } from './InternalHooksManager';
-import { checkPermissionsForExecution } from './UserManagement/UserManagementHelper';
-import { generateFailedExecutionFromError } from './WorkflowHelpers';
-import { initErrorHandling } from './ErrorReporting';
+} from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import * as Push from '@/Push';
+import * as Queue from '@/Queue';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
+import { initErrorHandling } from '@/ErrorReporting';
+import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
@@ -269,7 +267,7 @@ export class WorkflowRunner {
 			);
 
 			try {
-				await checkPermissionsForExecution(workflow, data.userId);
+				await PermissionChecker.check(workflow, data.userId);
 			} catch (error) {
 				ErrorReporter.error(error);
 				// Create a failed execution with the data for the node
@@ -318,11 +316,19 @@ export class WorkflowRunner {
 				Logger.debug(`Execution ID ${executionId} will run executing all nodes.`, { executionId });
 				// Execute all nodes
 
+				let startNode;
+				if (
+					data.startNodes?.length === 1 &&
+					Object.keys(data.pinData ?? {}).includes(data.startNodes[0])
+				) {
+					startNode = workflow.getNode(data.startNodes[0]) ?? undefined;
+				}
+
 				// Can execute without webhook so go on
 				const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 				workflowExecution = workflowExecute.run(
 					workflow,
-					undefined,
+					startNode,
 					data.destinationNode,
 					data.pinData,
 				);

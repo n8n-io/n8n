@@ -1,13 +1,14 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import express from 'express';
 import validator from 'validator';
 import { LoggerProxy as Logger } from 'n8n-workflow';
 
-import { Db, InternalHooksManager, ResponseHelper } from '../..';
-import * as config from '../../../config';
-import { validateEntity } from '../../GenericHelpers';
-import { AuthenticatedRequest, OwnerRequest } from '../../requests';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import config from '@/config';
+import { validateEntity } from '@/GenericHelpers';
+import { AuthenticatedRequest, OwnerRequest } from '@/requests';
 import { issueCookie } from '../auth/jwt';
 import { N8nApp } from '../Interfaces';
 import { hashPassword, sanitizeUser, validatePassword } from '../UserManagementHelper';

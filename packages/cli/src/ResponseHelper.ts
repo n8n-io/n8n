@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -8,14 +7,13 @@ import { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
 import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import {
+import type {
 	IExecutionDb,
 	IExecutionFlatted,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 	IWorkflowDb,
-} from '.';
+} from './Interfaces';
 
 /**
  * Special Error which allows to return also an error code and http status code

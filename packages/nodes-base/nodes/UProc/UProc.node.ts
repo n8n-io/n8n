@@ -101,7 +101,7 @@ export class UProc implements INodeType {
 				return field.name;
 			});
 
-		const requestPromises = [];
+		const _requestPromises = [];
 		for (let i = 0; i < length; i++) {
 			try {
 				const toolKey = tool.replace(/([A-Z]+)/g, '-$1').toLowerCase();

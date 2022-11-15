@@ -15,8 +15,13 @@
 				>
 					{{ t('nds.auth.roles.owner') }}
 				</n8n-badge>
+				<slot
+					v-if="!user.isOwner && !readonly"
+					name="actions"
+					:user="user"
+				/>
 				<n8n-action-toggle
-					v-if="!user.isOwner && !readonly && getActions(user).length > 0"
+					v-if="!user.isOwner && !readonly && getActions(user).length > 0 && actions.length > 0"
 					placement="bottom"
 					:actions="getActions(user)"
 					theme="dark"
@@ -35,6 +40,7 @@ import N8nUserInfo from '../N8nUserInfo';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
 import { t } from '../../locale';
+import {PropType} from "vue";
 
 export interface IUserListAction {
 	label: string;
@@ -70,6 +76,10 @@ export default mixins(Locale).extend({
 		reinviteLabel: {
 			type: String,
 			default: () => t('nds.usersList.reinviteUser'),
+		},
+		actions: {
+			type: Array as PropType<string[]>,
+			default: () => ['delete', 'reinvite'],
 		},
 	},
 	computed: {
@@ -113,6 +123,7 @@ export default mixins(Locale).extend({
 	},
 	methods: {
 		getActions(user: IUser): IUserListAction[] {
+			const actions = [];
 			const DELETE: IUserListAction = {
 				label: this.deleteLabel as string,
 				value: 'delete',
@@ -127,16 +138,17 @@ export default mixins(Locale).extend({
 				return [];
 			}
 
-			if (user.firstName) {
-				return [
-					DELETE,
-				];
-			} else {
-				return [
-					REINVITE,
-					DELETE,
-				];
+			if (!user.firstName) {
+				if (this.actions.includes('reinvite')) {
+					actions.push(REINVITE);
+				}
 			}
+
+			if (this.actions.includes('delete')) {
+				actions.push(DELETE);
+			}
+
+			return actions;
 		},
 		onUserAction(user: IUser, action: string): void {
 			if (action === 'delete' || action === 'reinvite') {

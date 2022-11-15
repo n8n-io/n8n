@@ -77,7 +77,7 @@ export async function apiRequestAllItems(
 	endpoint: string,
 	body: IDataObject,
 	query?: IDataObject,
-	dataKey?: string,
+	_dataKey?: string,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	if (query === undefined) {

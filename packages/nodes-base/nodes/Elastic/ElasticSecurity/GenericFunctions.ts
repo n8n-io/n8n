@@ -61,7 +61,7 @@ export async function elasticSecurityApiRequestAllItems(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	let page = 1;
+	let _page = 1;
 	const returnData: IDataObject[] = [];
 	let responseData: any; // tslint:disable-line
 
@@ -69,7 +69,7 @@ export async function elasticSecurityApiRequestAllItems(
 
 	do {
 		responseData = await elasticSecurityApiRequest.call(this, method, endpoint, body, qs);
-		page++;
+		_page++;
 
 		const items = resource === 'case' ? responseData.cases : responseData;
 

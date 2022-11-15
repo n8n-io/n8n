@@ -1,7 +1,7 @@
 import { changePassword, deleteUser, getCurrentUser, getUsers, inviteUsers, login, loginCurrentUser, logout, reinvite, sendForgotPasswordEmail, setupOwner, signup, skipOwnerSetup, submitPersonalizationSurvey, updateCurrentUser, updateCurrentUserPassword, validatePasswordToken, validateSignupToken } from "@/api/users";
 import { PERSONALIZATION_MODAL_KEY, STORES } from "@/constants";
 import { IInviteResponse, IPersonalizationLatestVersion, IUser, IUserResponse, IUsersState } from "@/Interface";
-import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from "@/modules/userHelpers";
+import { getPersonalizedNodeTypes, isAuthorized, PERMISSIONS, ROLE } from "@/stores/userHelpers";
 import { defineStore } from "pinia";
 import Vue from "vue";
 import { useRootStore } from "./n8nRootStore";
@@ -23,8 +23,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		currentUser(): IUser | null {
 			return this.currentUserId ? this.users[this.currentUserId] : null;
 		},
-		getUserById(): (userId: string) => IUser | null {
-			return (userId: string): IUser | null => this.users[userId];
+		getUserById(state) {
+			return (userId: string): IUser | null => state.users[userId];
 		},
 		globalRoleName(): string {
 			return this.currentUser?.globalRole?.name || '';

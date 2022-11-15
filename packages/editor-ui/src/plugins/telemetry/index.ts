@@ -7,9 +7,9 @@ import {
 import { Route } from "vue-router";
 
 import type { INodeCreateElement, IRootState } from "@/Interface";
-import type { Store } from "vuex";
 import type { IUserNodesPanelSession } from "./telemetry.types";
 import { useSettingsStore } from "@/stores/settings";
+import { useRootStore } from "@/stores/n8nRootStore";
 
 export function TelemetryPlugin(vue: typeof _Vue): void {
 	const telemetry = new Telemetry();
@@ -26,7 +26,6 @@ export class Telemetry {
 
 	private pageEventQueue: Array<{route: Route}>;
 	private previousPath: string;
-	private store: Store<IRootState> | null;
 
 	private get rudderStack() {
 		return window.rudderanalytics;
@@ -44,15 +43,13 @@ export class Telemetry {
 	constructor() {
 		this.pageEventQueue = [];
 		this.previousPath = '';
-		this.store = null;
 	}
 
 	init(
 		telemetrySettings: ITelemetrySettings,
-		{ instanceId, userId, store, versionCli }: {
+		{ instanceId, userId, versionCli }: {
 			instanceId: string;
 			userId?: string;
-			store: Store<IRootState>;
 			versionCli: string
 	 },
 	) {
@@ -60,9 +57,8 @@ export class Telemetry {
 
 		const { config: { key, url } } = telemetrySettings;
 
-		// TODO: Remove this once migration to pinia is done
-		this.store = store;
 		const settingsStore = useSettingsStore();
+		const rootStore = useRootStore();
 
 		const logLevel = settingsStore.logLevel;
 
@@ -81,7 +77,7 @@ export class Telemetry {
 		this.identify(instanceId, userId, versionCli);
 
 		this.flushPageEvents();
-		this.track('Session started', { session_id: store.getters.sessionId });
+		this.track('Session started', { session_id: rootStore.sessionId });
 	}
 
 	identify(instanceId: string, userId?: string, versionCli?: string) {
@@ -100,7 +96,7 @@ export class Telemetry {
 
 		const updatedProperties = {
 			...properties,
-			version_cli: this.store && this.store.getters.versionCli,
+			version_cli: useRootStore().versionCli,
 		};
 
 		this.rudderStack.track(event, updatedProperties);
@@ -115,7 +111,7 @@ export class Telemetry {
 
 			const pageName = route.name;
 			let properties: {[key: string]: string} = {};
-			if (this.store && route.meta && route.meta.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
+			if (route.meta && route.meta.telemetry && typeof route.meta.telemetry.getProperties === 'function') {
 				properties = route.meta.telemetry.getProperties(route);
 			}
 

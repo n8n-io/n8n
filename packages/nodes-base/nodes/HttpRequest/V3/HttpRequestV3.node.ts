@@ -9,6 +9,7 @@ import {
 	jsonParse,
 	NodeApiError,
 	NodeOperationError,
+	sleep,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request-promise-native';
@@ -1002,7 +1003,7 @@ export class HttpRequestV3 implements INodeType {
 
 			if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 				if (itemIndex % batchSize === 0) {
-					await new Promise((resolve) => setTimeout(resolve, batchInterval));
+					await sleep(batchInterval);
 				}
 			}
 

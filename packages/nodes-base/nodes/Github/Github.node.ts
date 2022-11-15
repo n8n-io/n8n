@@ -5,7 +5,6 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	IPairedItemData,
 	NodeOperationError,
 } from 'n8n-workflow';
 

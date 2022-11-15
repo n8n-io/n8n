@@ -26,7 +26,7 @@
 import ExecutionsSidebar from '@/components/ExecutionsView/ExecutionsSidebar.vue';
 import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS, WEBHOOK_NODE_TYPE } from '@/constants';
 import { IExecutionsListResponse, IExecutionsSummary, INodeUi, ITag, IWorkflowDb } from '@/Interface';
-import { IConnection, IConnections, IDataObject, INodeTypeDescription, INodeTypeNameVersion, IWorkflowSettings, NodeHelpers } from 'n8n-workflow';
+import { IConnection, IConnections, IDataObject, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
 import { restApi } from '../mixins/restApi';
 import { showMessage } from '../mixins/showMessage';
@@ -42,6 +42,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useTagsStore } from '@/stores/tags';
 
 export default mixins(restApi, showMessage, executionHelpers, debounceHelper, workflowHelpers).extend({
 	name: 'executions-page',
@@ -57,6 +58,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 	},
 	computed: {
 		...mapStores(
+			useTagsStore,
 			useNodeTypesStore,
 			useSettingsStore,
 			useUIStore,
@@ -374,7 +376,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				this.workflowsStore.setWorkflowTagIds(tagIds || []);
 				this.workflowsStore.setWorkflowHash(data.hash);
 
-				this.$store.commit('tags/upsertTags', tags);
+				this.tagsStore.upsertTags(tags);
 
 				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 				this.uiStore.stateIsDirty = false;

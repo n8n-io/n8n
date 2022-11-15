@@ -7,7 +7,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
 
 import { discourseApiRequest } from './GenericFunctions';

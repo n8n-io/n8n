@@ -17,7 +17,7 @@
 			<div slot="content" :class="$style.triggerWarning">
 				{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
 			</div>
-			<div :class="$style.backToCanvas" @click="close">
+			<div :class="$style.backToCanvas" @click="close" data-test-id="back-to-canvas">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
 				<n8n-text color="text-xlight" size="medium" :bold="true">
 					{{ $locale.baseText('ndv.backToCanvas') }}
@@ -55,6 +55,7 @@
 						:currentNodeName="inputNodeName"
 						:sessionId="sessionId"
 						:readOnly="readOnly || hasForeignCredential"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToInput"
 						@unlinkRun="() => onUnlinkRun('input')"
 						@runChange="onRunInputIndexChange"
@@ -73,6 +74,7 @@
 						:sessionId="sessionId"
 						:isReadOnly="readOnly || hasForeignCredential"
 						:blockUI="blockUi && isTriggerNode"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
 						@linkRun="onLinkRunToOutput"
 						@unlinkRun="() => onUnlinkRun('output')"
 						@runChange="onRunOutputIndexChange"
@@ -89,6 +91,7 @@
 						:nodeType="activeNodeType"
 						:isReadOnly="readOnly || hasForeignCredential"
 						:blockUI="blockUi && showTriggerPanel"
+						:executable="!readOnly || hasForeignCredential"
 						@valueChanged="valueChanged"
 						@execute="onNodeExecute"
 						@stopExecution="onStopExecution"
@@ -132,9 +135,9 @@ import Vue from 'vue';
 import OutputPanel from './OutputPanel.vue';
 import InputPanel from './InputPanel.vue';
 import TriggerPanel from './TriggerPanel.vue';
-import { mapGetters } from 'vuex';
 import {
 	BASE_NODE_SURVEY_URL,
+	EnterpriseEditionFeature,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 } from '@/constants';
@@ -146,6 +149,7 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
+import {useSettingsStore} from "@/stores/settings";
 
 export default mixins(
 	externalHooks,
@@ -169,6 +173,10 @@ export default mixins(
 		renaming: {
 			type: Boolean,
 		},
+		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
@@ -183,7 +191,6 @@ export default mixins(
 			pinDataDiscoveryTooltipVisible: false,
 			avgInputRowHeight: 0,
 			avgOutputRowHeight: 0,
-			hasForeignCredential: false,
 		};
 	},
 	mounted() {
@@ -201,6 +208,7 @@ export default mixins(
 			useNDVStore,
 			useUIStore,
 			useWorkflowsStore,
+			useSettingsStore,
 		),
 		sessionId(): string {
 			return this.ndvStore.sessionId;
@@ -360,6 +368,21 @@ export default mixins(
 		blockUi(): boolean {
 			return this.isWorkflowRunning || this.isExecutionWaitingForWebhook;
 		},
+		hasForeignCredential(): boolean {
+			const credentials = (this.activeNode || {}).credentials;
+			const foreignCredentials = this.credentialsStore.foreignCredentialsById;
+
+			let hasForeignCredential = false;
+			if (credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+				Object.values(credentials).forEach((credential) => {
+					if (credential.id && foreignCredentials[credential.id] && !foreignCredentials[credential.id].currentUserHasAccess) {
+						hasForeignCredential = true;
+					}
+				});
+			}
+
+			return hasForeignCredential;
+		},
 	},
 	watch: {
 		activeNode(node: INodeUi | null) {
@@ -378,8 +401,6 @@ export default mixins(
 				this.$externalHooks().run('dataDisplay.nodeTypeChanged', {
 					nodeSubtitle: this.getNodeSubtitle(node, this.activeNodeType, this.getCurrentWorkflow()),
 				});
-
-				this.checkForeignCredentials();
 
 				setTimeout(() => {
 					if (this.activeNode) {
@@ -625,12 +646,6 @@ export default mixins(
 				selection_value: index,
 				input_node_type: this.inputNode ? this.inputNode.type : '',
 			});
-		},
-		checkForeignCredentials() {
-			if(this.activeNode){
-				const issues = this.getNodeCredentialIssues(this.activeNode);
-				this.hasForeignCredential = !!issues?.credentials?.foreign;
-			}
 		},
 		onStopExecution(){
 			this.$emit('stopExecution');

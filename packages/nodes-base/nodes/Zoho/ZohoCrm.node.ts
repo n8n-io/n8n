@@ -23,7 +23,6 @@ import {
 	adjustSalesOrderPayload,
 	adjustVendorPayload,
 	getFields,
-	getModuleName,
 	getPicklistOptions,
 	handleListing,
 	throwOnEmptyUpdate,
@@ -66,7 +65,6 @@ import {
 	vendorFields,
 	vendorOperations,
 } from './descriptions';
-import { exchangeFields } from '../Marketstack/descriptions';
 
 export class ZohoCrm implements INodeType {
 	description: INodeTypeDescription = {
@@ -336,7 +334,6 @@ export class ZohoCrm implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as CamelCaseResource;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const resolveData = this.getNodeParameter('resolveData', 0, false) as boolean;
 
 		let responseData;
 

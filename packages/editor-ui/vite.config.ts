@@ -7,7 +7,7 @@ import {defineConfig, mergeConfig, PluginOption} from "vite";
 import { defineConfig as defineVitestConfig } from 'vitest/config';
 import packageJSON from './package.json';
 
-const vendorChunks = ['vue', 'vue-router', 'vuex'];
+const vendorChunks = ['vue', 'vue-router'];
 const ignoreChunks = ['vue2-boring-avatars', 'vue-template-compiler', 'jquery', '@fontsource/open-sans'];
 
 const isScopedPackageToIgnore = (str: string) => /@codemirror\//.test(str);

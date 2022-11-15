@@ -39,6 +39,7 @@ import mixins from "vue-typed-mixins";
 import {showMessage} from "@/components/mixins/showMessage";
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
+import { useCredentialsStore } from "@/stores/credentials";
 
 export default mixins(
 	showMessage,
@@ -46,7 +47,10 @@ export default mixins(
 	name: 'CredentialSharing',
 	props: ['credential', 'credentialId', 'credentialData', 'sharedWith', 'credentialPermissions'],
 	computed: {
-		...mapStores(useUsersStore),
+		...mapStores(
+			useCredentialsStore,
+			useUsersStore,
+		),
 		usersList(): IUser[] {
 			return this.usersStore.allUsers.filter((user: IUser) => {
 				const isCurrentUser = user.id === this.usersStore.currentUser?.id;
@@ -64,12 +68,12 @@ export default mixins(
 			].concat(this.credentialData.sharedWith || []);
 		},
 		credentialOwnerName(): string {
-			return this.$store.getters['credentials/getCredentialOwnerName'](this.credentialId);
+			return this.credentialsStore.getCredentialOwnerName(this.credentialId);
 		},
 	},
 	methods: {
 		async onAddSharee(userId: string) {
-			const sharee =  this.usersStore.getUserById(userId);
+			const sharee = { ...this.usersStore.getUserById(userId), isOwner: false };
 			this.$emit('change', (this.credentialData.sharedWith || []).concat(sharee));
 		},
 		async onRemoveSharee(userId: string) {

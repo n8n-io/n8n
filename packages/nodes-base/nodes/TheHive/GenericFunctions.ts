@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, jsonParse } from 'n8n-workflow';
 
 import moment from 'moment';
 import { Eq } from './QueryFunctions';
@@ -40,11 +40,7 @@ export async function theHiveApiRequest(
 	if (Object.keys(query).length === 0) {
 		delete options.qs;
 	}
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'theHiveApi', options);
 }
 
 // Helpers functions

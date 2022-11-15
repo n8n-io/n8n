@@ -96,6 +96,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 export default mixins(externalHooks, globalLinkActions).extend({
 	name: 'CategorizedItems',
@@ -146,11 +147,12 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		this.registerCustomAction('showAllNodeCreatorNodes', this.switchToAllTabAndFilter);
 	},
 	destroyed() {
-		this.$store.commit('nodeCreator/setFilter', '');
+		this.nodeCreatorStore.itemsFilter = '';
 		this.unregisterCustomAction('showAllNodeCreatorNodes');
 	},
 	computed: {
 		...mapStores(
+			useNodeCreatorStore,
 			useNodeTypesStore,
 			useRootStore,
 			useWorkflowsStore,
@@ -159,10 +161,10 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			return this.activeSubcategoryHistory[this.activeSubcategoryHistory.length - 1] || null;
 		},
 		nodeFilter(): string {
-			return this.$store.getters['nodeCreator/itemsFilter'];
+			return this.nodeCreatorStore.itemsFilter;
 		},
 		selectedType(): INodeFilterType {
-			return this.$store.getters['nodeCreator/selectedType'];
+			return this.nodeCreatorStore.selectedType;
 		},
 		categoriesWithNodes(): ICategoriesWithNodes {
 			return this.nodeTypesStore.categoriesWithNodes;
@@ -363,14 +365,14 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		},
 		switchToAllTabAndFilter() {
 			const currentFilter = this.nodeFilter;
-			this.$store.commit('nodeCreator/setShowTabs', true);
-			this.$store.commit('nodeCreator/setSelectedType', ALL_NODE_FILTER);
+			this.nodeCreatorStore.showTabs = true;
+			this.nodeCreatorStore.selectedType = ALL_NODE_FILTER;
 			this.activeSubcategoryHistory = [];
 
-			this.$nextTick(() => this.$store.commit('nodeCreator/setFilter', currentFilter));
+			this.$nextTick(() => this.nodeCreatorStore.itemsFilter = currentFilter);
 		},
 		onNodeFilterChange(filter: string) {
-			this.$store.commit('nodeCreator/setFilter', filter);
+			this.nodeCreatorStore.itemsFilter = filter;
 		},
 		selectWebhook() {
 			this.$emit('nodeTypeSelected', WEBHOOK_NODE_TYPE);
@@ -462,7 +464,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 		},
 		onSubcategorySelected(selected: INodeCreateElement) {
 			this.$emit('onSubcategorySelected', selected);
-			this.$store.commit('nodeCreator/setShowTabs', false);
+			this.nodeCreatorStore.showTabs = false;
 			this.activeSubcategoryIndex = 0;
 			this.activeSubcategoryHistory.push(selected);
 			this.$telemetry.trackNodesPanel('nodeCreateList.onSubcategorySelected', { selected, workflow_id: this.workflowsStore.workflowId });
@@ -472,10 +474,10 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			this.$emit('subcategoryClose', this.activeSubcategory);
 			this.activeSubcategoryHistory.pop();
 			this.activeSubcategoryIndex = 0;
-			this.$store.commit('nodeCreator/setFilter', '');
+			this.nodeCreatorStore.itemsFilter = '';
 
-			if(!this.$store.getters['nodeCreator/showScrim']) {
-				this.$store.commit('nodeCreator/setShowTabs', true);
+			if (!this.nodeCreatorStore.showScrim) {
+				this.nodeCreatorStore.showTabs = true;
 			}
 		},
 

@@ -49,6 +49,7 @@
 						:instance="instance"
 						:isActive="!!activeNode && activeNode.name === nodeData.name"
 						:hideActions="pullConnActive"
+						:isProductionExecutionPreview="isProductionExecutionPreview"
 					>
 						<span
 							slot="custom-tooltip"
@@ -76,6 +77,7 @@
 		<node-details-view
 			:readOnly="isReadOnly"
 			:renaming="renamingActive"
+			:isProductionExecutionPreview="isProductionExecutionPreview"
 			@valueChanged="valueChanged"
 			@stopExecution="stopExecution"
 		/>
@@ -128,9 +130,7 @@
 <script lang="ts">
 import Vue from 'vue';
 import { mapStores } from 'pinia';
-import {
-	OnConnectionBindInfo, Connection, Endpoint, N8nPlusEndpoint, jsPlumbInstance,
-} from 'jsplumb';
+import type { OnConnectionBindInfo, Connection, Endpoint, N8nPlusEndpoint, jsPlumbInstance } from 'jsplumb';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import once from 'lodash/once';
 
@@ -149,7 +149,7 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
-	TRIGGER_NODE_FILTER,
+	TRIGGER_NODE_FILTER, EnterpriseEditionFeature,
 } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -213,20 +213,26 @@ import {
 	IUser,
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
-import { getAccountAge } from '@/modules/userHelpers';
-import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
+
+import { getAccountAge } from '@/stores/userHelpers';
 import { debounceHelper } from '@/components/mixins/debounce';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { getNodeViewTab } from '@/components/helpers';
-import { Route } from 'vue-router';
+import { Route, RawLocation } from 'vue-router';
+import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
 import { useTemplatesStore } from '@/stores/templates';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
+import { useTagsStore } from '@/stores/tags';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { useCanvasStore } from '@/stores/canvas';
+import useWorkflowsEEStore from "@/stores/workflows.ee";
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -347,11 +353,25 @@ export default mixins(
 
 					if (confirmModal === MODAL_CONFIRMED) {
 						const saved = await this.saveCurrentWorkflow({}, false);
-						if (saved) this.settingsStore.fetchPromptsData();
+						if (saved) await this.settingsStore.fetchPromptsData();
 						this.uiStore.stateIsDirty = false;
-						next();
+
+						if(from.name === VIEWS.NEW_WORKFLOW) {
+							// Replace the current route with the new workflow route
+							// before navigating to the new route when saving new workflow.
+							this.$router.replace({ name: VIEWS.WORKFLOW, params: { name: this.currentWorkflow } }, () => {
+
+							// We can't use next() here since vue-router
+							// would prevent the navigation with an error
+							this.$router.push(to as RawLocation);
+							});
+						} else {
+							next();
+						}
 					} else if (confirmModal === MODAL_CANCEL) {
+						await this.resetWorkspace();
 						this.uiStore.stateIsDirty = false;
+
 						next();
 					} else if (confirmModal === MODAL_CLOSE) {
 						next(false);
@@ -365,6 +385,10 @@ export default mixins(
 		},
 		computed: {
 			...mapStores(
+				useCanvasStore,
+				useTagsStore,
+				useCredentialsStore,
+				useNodeCreatorStore,
 				useNodeTypesStore,
 				useNDVStore,
 				useRootStore,
@@ -373,6 +397,7 @@ export default mixins(
 				useUIStore,
 				useUsersStore,
 				useWorkflowsStore,
+				useWorkflowsEEStore,
 			),
 			nativelyNumberSuffixedDefaults(): string[] {
 				return this.rootStore.nativelyNumberSuffixedDefaults;
@@ -483,7 +508,6 @@ export default mixins(
 			getNodeViewOffsetPosition(): XYPosition {
 				return this.uiStore.nodeViewOffsetPosition;
 			},
-			...mapStores(useCanvasStore),
 			nodeViewScale(): number {
 				return this.canvasStore.nodeViewScale;
 			},
@@ -511,6 +535,7 @@ export default mixins(
 				isExecutionPreview: false,
 				showTriggerMissingTooltip: false,
 				workflowData: null as INewWorkflowData | null,
+				isProductionExecutionPreview: false,
 			};
 		},
 		beforeDestroy() {
@@ -648,10 +673,10 @@ export default mixins(
 			},
 			showTriggerCreator(source: string) {
 				if(this.createNodeActive) return;
-				this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
-				this.$store.commit('nodeCreator/setShowScrim', true);
+				this.nodeCreatorStore.selectedType = TRIGGER_NODE_FILTER;
+				this.nodeCreatorStore.showScrim = true;
 				this.onToggleNodeCreator({ source, createNodeActive: true });
-				this.$nextTick(() => this.$store.commit('nodeCreator/setShowTabs', false));
+				this.nodeCreatorStore.showTabs = false;
 			},
 			async openExecution(executionId: string) {
 				this.startLoading();
@@ -808,17 +833,44 @@ export default mixins(
 						),
 					);
 				}
+
 				this.workflowsStore.setActive(data.active || false);
 				this.workflowsStore.setWorkflowId(workflowId);
 				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
 				this.workflowsStore.setWorkflowSettings(data.settings || {});
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
-				this.workflowsStore.setWorkflowHash(data.hash || '');
+				this.workflowsStore.setWorkflowHash(data.hash);
+
+				// @TODO
+				this.workflowsStore.addWorkflow({
+					id: data.id,
+					name: data.name,
+					ownedBy: data.ownedBy,
+					sharedWith: data.sharedWith,
+					tags: data.tags || [],
+					active: data.active,
+					createdAt: data.createdAt,
+					updatedAt: data.updatedAt,
+					nodes: data.nodes,
+					connections: data.connections,
+				});
+				this.workflowsEEStore.setWorkflowOwnedBy({
+					workflowId: data.id,
+					ownedBy: data.ownedBy,
+				});
+				this.workflowsEEStore.setWorkflowSharedWith({
+					workflowId: data.id,
+					sharedWith: data.sharedWith,
+				});
+
+				if (data.usedCredentials) {
+					this.credentialsStore.addCredentials(data.usedCredentials);
+				}
 
 				const tags = (data.tags || []) as ITag[];
 				const tagIds = tags.map((tag) => tag.id);
 				this.workflowsStore.setWorkflowTagIds(tagIds || []);
-				this.$store.commit('tags/upsertTags', tags);
+				this.tagsStore.upsertTags(tags);
 
 				await this.addNodes(data.nodes, data.connections);
 
@@ -1135,6 +1187,7 @@ export default mixins(
 				const childNodes = workflow.getChildNodes(sourceNodeName);
 				for (const nodeName of childNodes) {
 					const node = this.workflowsStore.nodesByName[nodeName] as INodeUi;
+
 					if (node.position[0] < sourceNode.position[0]) {
 						continue;
 					}
@@ -1142,7 +1195,7 @@ export default mixins(
 					const updateInformation: INodeUpdatePropertiesInformation = {
 						name: nodeName,
 						properties: {
-							position: { position: [node.position[0] + margin, node.position[1]] },
+							position: [node.position[0] + margin, node.position[1]],
 						},
 					};
 
@@ -1399,7 +1452,7 @@ export default mixins(
 
 					const tagsEnabled = this.settingsStore.areTagsEnabled;
 					if (importTags && tagsEnabled && Array.isArray(workflowData.tags)) {
-						const allTags: ITag[] = await this.$store.dispatch('tags/fetchAll');
+						const allTags = await this.tagsStore.fetchAll();
 						const tagNames = new Set(allTags.map((tag) => tag.name));
 
 						const workflowTags = workflowData.tags as ITag[];
@@ -1407,7 +1460,7 @@ export default mixins(
 
 						const creatingTagPromises: Array<Promise<ITag>> = [];
 						for (const tag of notFound) {
-							const creationPromise = this.$store.dispatch('tags/create', tag.name)
+							const creationPromise = this.tagsStore.create(tag.name)
 								.then((tag: ITag) => {
 									allTags.push(tag);
 									return tag;
@@ -1514,13 +1567,13 @@ export default mixins(
 				};
 
 				const credentialPerType = nodeTypeData.credentials && nodeTypeData.credentials
-					.map(type => this.$store.getters['credentials/getCredentialsByType'](type.name))
+					.map(type => this.credentialsStore.getCredentialsByType(type.name))
 					.flat();
 
 				if (credentialPerType && credentialPerType.length === 1) {
 					const defaultCredential = credentialPerType[0];
 
-					const selectedCredentials = this.$store.getters['credentials/getCredentialById'](defaultCredential.id);
+					const selectedCredentials = this.credentialsStore.getCredentialById(defaultCredential.id);
 					const selected = { id: selectedCredentials.id, name: selectedCredentials.name };
 					const credentials = {
 						[defaultCredential.type]: selected,
@@ -2349,6 +2402,15 @@ export default mixins(
 						newNodeData.webhookId = uuid();
 					}
 
+					if (newNodeData.credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+						const foreignCredentials = this.credentialsStore.foreignCredentialsById;
+						newNodeData.credentials = Object.fromEntries(
+							Object.entries(newNodeData.credentials).filter(([_, credential]) => {
+								return credential.id && (!foreignCredentials[credential.id] || foreignCredentials[credential.id]?.currentUserHasAccess);
+							}),
+						);
+					}
+
 					await this.addNodes([newNodeData]);
 
 					const pinData = this.workflowsStore.pinDataByNodeName(nodeName);
@@ -2698,7 +2760,7 @@ export default mixins(
 					return;
 				}
 				Object.entries(node.credentials).forEach(([nodeCredentialType, nodeCredentials]: [string, INodeCredentialsDetails]) => {
-					const credentialOptions = this.$store.getters['credentials/getCredentialsByType'](nodeCredentialType) as ICredentialsResponse[];
+					const credentialOptions = this.credentialsStore.getCredentialsByType(nodeCredentialType);
 
 					// Check if workflows applies old credentials style
 					if (typeof nodeCredentials === 'string') {
@@ -3042,6 +3104,7 @@ export default mixins(
 				this.workflowsStore.resetAllNodesIssues();
 				// vm.$forceUpdate();
 
+				this.workflowsStore.$patch({ workflow: {} });
 				this.workflowsStore.setActive(false);
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.workflowsStore.setWorkflowName({ newName: '', setStateDirty: false });
@@ -3067,11 +3130,10 @@ export default mixins(
 				await this.nodeTypesStore.getNodeTypes();
 			},
 			async loadCredentialTypes(): Promise<void> {
-				await this.$store.dispatch('credentials/fetchCredentialTypes', true);
+				await this.credentialsStore.fetchCredentialTypes(true);
 			},
 			async loadCredentials(): Promise<void> {
-				await this.$store.dispatch('credentials/fetchAllCredentials');
-				await this.$store.dispatch('credentials/fetchForeignCredentials');
+				await this.credentialsStore.fetchAllCredentials();
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
@@ -3115,6 +3177,10 @@ export default mixins(
 						}
 					} else if (json && json.command === 'openExecution') {
 						try {
+							// If this NodeView is used in preview mode (in iframe) it will not have access to the main app store
+							// so everything it needs has to be sent using post messages and passed down to child components
+							this.isProductionExecutionPreview = json.executionMode !== 'manual';
+
 							await this.openExecution(json.executionId);
 							this.isExecutionPreview = true;
 						} catch (e) {
@@ -3179,7 +3245,9 @@ export default mixins(
 				if (createNodeActive === this.createNodeActive) return;
 
 				// Default to the trigger tab in node creator if there's no trigger node yet
-				if (!this.containsTrigger) this.$store.commit('nodeCreator/setSelectedType', TRIGGER_NODE_FILTER);
+				if (!this.containsTrigger) {
+					this.nodeCreatorStore.selectedType = TRIGGER_NODE_FILTER;
+				}
 
 				this.createNodeActive = createNodeActive;
 				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
@@ -3187,6 +3255,10 @@ export default mixins(
 			},
 			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
 				this.addNode(nodeTypeName, { position });
+			},
+			async saveCurrentWorkflowExternal(callback: () => void) {
+				await this.saveCurrentWorkflow();
+				callback?.();
 			},
 		},
 		async mounted() {
@@ -3275,8 +3347,6 @@ export default mixins(
 					}, promptTimeout);
 				}
 			}
-			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
-			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},
 		activated() {
 			const openSideMenu = this.uiStore.addFirstStepOnLoad;
@@ -3288,23 +3358,29 @@ export default mixins(
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 			window.addEventListener('message', this.onPostMessageReceived);
+
 			this.$root.$on('newWorkflow', this.newWorkflow);
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
+			nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
+
 			this.canvasStore.isDemo = this.isDemo;
 		},
 		deactivated () {
 			document.removeEventListener('keydown', this.keyDown);
 			document.removeEventListener('keyup', this.keyUp);
 			window.removeEventListener('message', this.onPostMessageReceived);
+
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
+			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
 		},
 		destroyed() {
 			this.resetWorkspace();
@@ -3313,9 +3389,6 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-
-			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
-			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 		},
 	});
 </script>

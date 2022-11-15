@@ -1,62 +1,60 @@
 <template>
-	<SettingsView>
-		<div :class="$style.container">
-			<div :class="$style.headingContainer">
-				<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
-				<n8n-button
-					v-if="!settingsStore.isQueueModeEnabled && communityNodesStore.getInstalledPackages.length > 0 && !loading"
-					:label="$locale.baseText('settings.communityNodes.installModal.installButton.label')"
-					size="large"
-					@click="openInstallModal"
-				/>
-			</div>
-			<div v-if="settingsStore.isQueueModeEnabled" :class="$style.actionBoxContainer">
-				<n8n-action-box
-					:heading="$locale.baseText('settings.communityNodes.empty.title')"
-					:description="getEmptyStateDescription"
-					:calloutText="actionBoxConfig.calloutText"
-					:calloutTheme="actionBoxConfig.calloutTheme"
-				/>
-			</div>
-			<div
-				:class="$style.cardsContainer"
-				v-else-if="loading"
-			>
-				<community-package-card
-					v-for="n in 2"
-					:key="'index-' + n"
-					:loading="true"
-				></community-package-card>
-			</div>
-			<div
-				v-else-if="communityNodesStore.getInstalledPackages.length === 0"
-				:class="$style.actionBoxContainer"
-			>
-				<n8n-action-box
-					:heading="$locale.baseText('settings.communityNodes.empty.title')"
-					:description="getEmptyStateDescription"
-					:buttonText="
-						shouldShowInstallButton
-							? $locale.baseText('settings.communityNodes.empty.installPackageLabel')
-							: ''
-					"
-					:calloutText="actionBoxConfig.calloutText"
-					:calloutTheme="actionBoxConfig.calloutTheme"
-					@click="openInstallModal"
-				/>
-			</div>
-			<div
-				:class="$style.cardsContainer"
-				v-else
-			>
-				<community-package-card
-					v-for="communityPackage in communityNodesStore.getInstalledPackages"
-					:key="communityPackage.packageName"
-					:communityPackage="communityPackage"
-				></community-package-card>
-			</div>
+	<div :class="$style.container">
+		<div :class="$style.headingContainer">
+			<n8n-heading size="2xlarge">{{ $locale.baseText('settings.communityNodes') }}</n8n-heading>
+			<n8n-button
+				v-if="!settingsStore.isQueueModeEnabled && communityNodesStore.getInstalledPackages.length > 0 && !loading"
+				:label="$locale.baseText('settings.communityNodes.installModal.installButton.label')"
+				size="large"
+				@click="openInstallModal"
+			/>
 		</div>
-	</SettingsView>
+		<div v-if="settingsStore.isQueueModeEnabled" :class="$style.actionBoxContainer">
+			<n8n-action-box
+				:heading="$locale.baseText('settings.communityNodes.empty.title')"
+				:description="getEmptyStateDescription"
+				:calloutText="actionBoxConfig.calloutText"
+				:calloutTheme="actionBoxConfig.calloutTheme"
+			/>
+		</div>
+		<div
+			:class="$style.cardsContainer"
+			v-else-if="loading"
+		>
+			<community-package-card
+				v-for="n in 2"
+				:key="'index-' + n"
+				:loading="true"
+			></community-package-card>
+		</div>
+		<div
+			v-else-if="communityNodesStore.getInstalledPackages.length === 0"
+			:class="$style.actionBoxContainer"
+		>
+			<n8n-action-box
+				:heading="$locale.baseText('settings.communityNodes.empty.title')"
+				:description="getEmptyStateDescription"
+				:buttonText="
+					shouldShowInstallButton
+						? $locale.baseText('settings.communityNodes.empty.installPackageLabel')
+						: ''
+				"
+				:calloutText="actionBoxConfig.calloutText"
+				:calloutTheme="actionBoxConfig.calloutTheme"
+				@click="openInstallModal"
+			/>
+		</div>
+		<div
+			:class="$style.cardsContainer"
+			v-else
+		>
+			<community-package-card
+				v-for="communityPackage in communityNodesStore.getInstalledPackages"
+				:key="communityPackage.packageName"
+				:communityPackage="communityPackage"
+			></community-package-card>
+		</div>
+	</div>
 </template>
 
 <script lang="ts">
@@ -64,10 +62,8 @@ import {
 	COMMUNITY_PACKAGE_INSTALL_MODAL_KEY,
 	COMMUNITY_NODES_INSTALLATION_DOCS_URL,
 	COMMUNITY_NODES_NPM_INSTALLATION_URL,
-} from '../constants';
-import { mapGetters } from 'vuex';
-import SettingsView from './SettingsView.vue';
-import CommunityPackageCard from '../components/CommunityPackageCard.vue';
+} from '@/constants';
+import CommunityPackageCard from '@/components/CommunityPackageCard.vue';
 import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { PublicInstalledPackage } from 'n8n-workflow';
@@ -84,7 +80,6 @@ export default mixins(
 ).extend({
 	name: 'SettingsCommunityNodesView',
 	components: {
-		SettingsView,
 		CommunityPackageCard,
 	},
 	data () {

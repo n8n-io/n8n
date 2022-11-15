@@ -33,7 +33,6 @@
 <script lang="ts">
 import Vue from "vue";
 import mixins from "vue-typed-mixins";
-import { mapGetters } from "vuex";
 
 import { ITag } from "@/Interface";
 
@@ -42,16 +41,16 @@ import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
 import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
 import Modal from "@/components/Modal.vue";
 import { TAGS_MANAGER_MODAL_KEY } from '../../constants';
+import { mapStores } from "pinia";
+import { useTagsStore } from "@/stores/tags";
 
 export default mixins(showMessage).extend({
 	name: "TagsManager",
 	created() {
-		this.$store.dispatch("tags/fetchAll", {force: true, withUsageCount: true});
+		this.tagsStore.fetchAll({force: true, withUsageCount: true});
 	},
 	data() {
-		const tagIds = (this.$store.getters['tags/allTags'] as ITag[])
-			.map((tag) => tag.id);
-
+		const tagIds = useTagsStore().allTags.map((tag) => tag.id);
 		return {
 			tagIds,
 			isCreating: false,
@@ -65,9 +64,14 @@ export default mixins(showMessage).extend({
 		Modal,
 	},
 	computed: {
-		...mapGetters("tags", ["isLoading"]),
+		...mapStores(
+			useTagsStore,
+		),
+		isLoading(): boolean {
+			return this.tagsStore.isLoading;
+		},
 		tags(): ITag[] {
-			return this.$data.tagIds.map((tagId: string) => this.$store.getters['tags/getTagById'](tagId))
+			return this.$data.tagIds.map((tagId: string) => this.tagsStore.getTagById(tagId))
 				.filter(Boolean); // if tag is deleted from store
 		},
 		hasTags(): boolean {
@@ -91,7 +95,7 @@ export default mixins(showMessage).extend({
 					);
 				}
 
-				const newTag = await this.$store.dispatch("tags/create", name);
+				const newTag = await this.tagsStore.create(name);
 				this.$data.tagIds = [newTag.id].concat(this.$data.tagIds);
 				cb(newTag);
 			} catch (error) {
@@ -109,7 +113,7 @@ export default mixins(showMessage).extend({
 		},
 
 		async onUpdate(id: string, name: string, cb: (tag: boolean, error?: Error) => void) {
-			const tag = this.$store.getters['tags/getTagById'](id);
+			const tag = this.tagsStore.getTagById(id);
 			const oldName = tag.name;
 
 			try {
@@ -124,7 +128,7 @@ export default mixins(showMessage).extend({
 					return;
 				}
 
-				const updatedTag = await this.$store.dispatch("tags/rename", { id, name });
+				const updatedTag = await this.tagsStore.rename({ id, name });
 				cb(!!updatedTag);
 
 				this.$showMessage({
@@ -146,11 +150,11 @@ export default mixins(showMessage).extend({
 		},
 
 		async onDelete(id: string, cb: (deleted: boolean, error?: Error) => void) {
-			const tag = this.$store.getters['tags/getTagById'](id);
+			const tag = this.tagsStore.getTagById(id);
 			const name = tag.name;
 
 			try {
-				const deleted = await this.$store.dispatch("tags/delete", id);
+				const deleted = await this.tagsStore.delete(id);
 				if (!deleted) {
 					throw new Error(
 						this.$locale.baseText('tagsManager.couldNotDeleteTag'),

@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -26,25 +25,23 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-// eslint-disable-next-line import/no-cycle
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
 import {
-	CredentialTypes,
-	Db,
 	ICredentialsDb,
 	ICredentialsTypeData,
 	ITransferNodeTypes,
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
-	NodeTypes,
 	WhereClause,
-	WorkflowRunner,
-} from '.';
+} from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import { WorkflowRunner } from '@/WorkflowRunner';
 
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { User } from './databases/entities/User';
-import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
+import config from '@/config';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { User } from '@db/entities/User';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 

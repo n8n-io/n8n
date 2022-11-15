@@ -13,6 +13,7 @@
 		:closeOnClickModal="false"
 		:closeOnPressEscape="false"
 		width="460px"
+		data-test-id="personalization-form"
 		@enter="onSave"
 	>
 		<template v-slot:content>
@@ -117,7 +118,7 @@ import { showMessage } from '@/components/mixins/showMessage';
 import Modal from './Modal.vue';
 import { IFormInputs, IPersonalizationLatestVersion, IPersonalizationSurveyAnswersV3, IUser } from '@/Interface';
 import Vue from 'vue';
-import { getAccountAge } from '@/modules/userHelpers';
+import { getAccountAge } from '@/stores/userHelpers';
 import { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

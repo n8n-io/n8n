@@ -18,7 +18,7 @@ import { SharedCredentials } from './SharedCredentials';
 import { NoXss } from '../utils/customValidators';
 import { objectRetriever, lowerCaser } from '../utils/transformers';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
-import type { IPersonalizationSurveyAnswers, IUserSettings } from '../../Interfaces';
+import type { IPersonalizationSurveyAnswers, IUserSettings } from '@/Interfaces';
 
 export const MIN_PASSWORD_LENGTH = 8;
 

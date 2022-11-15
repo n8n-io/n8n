@@ -1,6 +1,5 @@
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable import/no-extraneous-dependencies */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -22,26 +21,26 @@ import {
 } from 'n8n-workflow';
 import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 
+import * as ActiveExecutions from '@/ActiveExecutions';
+import * as Db from '@/Db';
+import * as GenericHelpers from '@/GenericHelpers';
 import {
-	ActiveExecutions,
 	DatabaseType,
-	Db,
-	GenericHelpers,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
 	IWorkflowExecutionDataProcess,
-	NodeTypes,
-	WorkflowRunner,
-	ResponseHelper,
-} from '..';
-import * as config from '../../config';
-import { User } from '../databases/entities/User';
-import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '../GenericHelpers';
-import { getLogger } from '../Logger';
-import * as Queue from '../Queue';
-import type { ExecutionRequest } from '../requests';
-import { getSharedWorkflowIds } from '../WorkflowHelpers';
+} from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import * as ResponseHelper from '@/ResponseHelper';
+import { WorkflowRunner } from '@/WorkflowRunner';
+import config from '@/config';
+import { User } from '@db/entities/User';
+import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '@/GenericHelpers';
+import { getLogger } from '@/Logger';
+import * as Queue from '@/Queue';
+import type { ExecutionRequest } from '@/requests';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 export const executionsController = express.Router();
 

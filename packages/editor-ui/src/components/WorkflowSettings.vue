@@ -220,7 +220,6 @@ import { restApi } from '@/components/mixins/restApi';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import {
-	IN8nUISettings,
 	ITimeoutHMS,
 	IWorkflowDataUpdate,
 	IWorkflowSettings,
@@ -232,7 +231,6 @@ import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '../c
 
 import mixins from 'vue-typed-mixins';
 
-import { mapGetters } from "vuex";
 import { deepCopy } from "n8n-workflow";
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -611,7 +609,7 @@ export default mixins(
 
 			try {
 				const workflow = await this.restApi().updateWorkflow(this.$route.params.name, data);
-				this.workflowsStore.setWorkflowHash(workflow.hash || '');
+				this.workflowsStore.setWorkflowHash(workflow.hash);
 			} catch (error) {
 				this.$showError(
 					error,

@@ -1,17 +1,18 @@
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable import/no-cycle */
 import express from 'express';
 import { INodeCredentialTestResult, LoggerProxy } from 'n8n-workflow';
 
-import { GenericHelpers, InternalHooksManager, ResponseHelper } from '..';
-import config from '../../config';
-import { getLogger } from '../Logger';
+import * as GenericHelpers from '@/GenericHelpers';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import * as ResponseHelper from '@/ResponseHelper';
+import config from '@/config';
+import { getLogger } from '@/Logger';
 import { EECredentialsController } from './credentials.controller.ee';
 import { CredentialsService } from './credentials.service';
 
-import type { ICredentialsResponse } from '..';
-import type { CredentialRequest } from '../requests';
+import type { ICredentialsResponse } from '@/Interfaces';
+import type { CredentialRequest } from '@/requests';
 
 export const credentialsController = express.Router();
 

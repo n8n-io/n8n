@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import ClientOAuth2 from 'client-oauth2';
 import Csrf from 'csrf';
 import express from 'express';
@@ -17,18 +16,20 @@ import {
 } from 'n8n-workflow';
 import { resolve as pathResolve } from 'path';
 
-import { Db, ICredentialsDb, ResponseHelper } from '..';
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { ICredentialsDb } from '@/Interfaces';
+import { RESPONSE_ERROR_MESSAGES, TEMPLATES_DIR } from '@/constants';
 import {
 	CredentialsHelper,
 	getCredentialForUser,
 	getCredentialWithoutUser,
-} from '../CredentialsHelper';
-import { getLogger } from '../Logger';
-import { OAuthRequest } from '../requests';
-import { externalHooks } from '../Server';
-import config from '../../config';
-import { getInstanceBaseUrl } from '../UserManagement/UserManagementHelper';
+} from '@/CredentialsHelper';
+import { getLogger } from '@/Logger';
+import { OAuthRequest } from '@/requests';
+import { externalHooks } from '@/Server';
+import config from '@/config';
+import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
 
 export const oauth2CredentialController = express.Router();
 
@@ -334,7 +335,7 @@ oauth2CredentialController.get(
 				credentialId: state.cid,
 			});
 
-			return res.sendFile(pathResolve(__dirname, '../../../templates/oauth-callback.html'));
+			return res.sendFile(pathResolve(TEMPLATES_DIR, 'oauth-callback.html'));
 		} catch (error) {
 			// Error response
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument

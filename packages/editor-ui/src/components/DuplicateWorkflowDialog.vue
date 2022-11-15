@@ -41,7 +41,7 @@
 import Vue from "vue";
 import mixins from "vue-typed-mixins";
 
-import { MAX_WORKFLOW_NAME_LENGTH } from "@/constants";
+import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from "@/constants";
 import { workflowHelpers } from "@/components/mixins/workflowHelpers";
 import { showMessage } from "@/components/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
@@ -50,6 +50,7 @@ import {restApi} from "@/components/mixins/restApi";
 import { mapStores } from "pinia";
 import { useSettingsStore } from "@/stores/settings";
 import { useWorkflowsStore } from "@/stores/workflows";
+import { IWorkflowDataUpdate } from "@/Interface";
 
 export default mixins(showMessage, workflowHelpers, restApi).extend({
 	components: { TagsDropdown, Modal },
@@ -121,10 +122,15 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 
 			this.isSaving = true;
 
-			const { createdAt, updatedAt, ...workflow } = await this.restApi().getWorkflow(this.data.id);
+			let workflowToUpdate: IWorkflowDataUpdate | undefined;
+			if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				const { createdAt, updatedAt, ...workflow } = await this.restApi().getWorkflow(this.data.id);
+				workflowToUpdate = workflow;
+			}
+
 			const saved = await this.saveAsNewWorkflow({
 				name,
-				data: workflow,
+				data: workflowToUpdate,
 				tags: this.currentTagIds,
 				resetWebhookUrls: true,
 				openInNewWindow: true,

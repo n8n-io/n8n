@@ -681,7 +681,7 @@ export const workflowHelpers = mixins(
 					data = await this.getWorkflowDataToSave();
 				} else {
 					const { hash } = await this.restApi().getWorkflow(workflowId);
-					data.hash = hash as string;
+					data.hash = hash;
 				}
 
 				if (active !== undefined) {
@@ -689,7 +689,7 @@ export const workflowHelpers = mixins(
 				}
 
 				const workflow = await this.restApi().updateWorkflow(workflowId, data);
-				this.workflowsStore.setWorkflowHash(workflow.hash || '');
+				this.workflowsStore.setWorkflowHash(workflow.hash);
 
 				if (isCurrentWorkflow) {
 					this.workflowsStore.setActive(!!workflow.active);
@@ -727,7 +727,7 @@ export const workflowHelpers = mixins(
 					workflowDataRequest.hash = this.workflowsStore.workflowHash;
 
 					const workflowData = await this.restApi().updateWorkflow(currentWorkflow, workflowDataRequest);
-					this.workflowsStore.setWorkflowHash(workflowData.hash || '');
+					this.workflowsStore.setWorkflowHash(workflowData.hash);
 
 					if (name) {
 						this.workflowsStore.setWorkflowName({newName: workflowData.name, setStateDirty:  false});
@@ -794,7 +794,7 @@ export const workflowHelpers = mixins(
 					const workflowData = await this.restApi().createNewWorkflow(workflowDataRequest);
 
 					this.workflowsStore.addWorkflow(workflowData);
-					this.workflowsStore.setWorkflowHash(workflowData.hash || '');
+					this.workflowsStore.setWorkflowHash(workflowData.hash);
 
 					if (openInNewWindow) {
 						const routeData = this.$router.resolve({name: VIEWS.WORKFLOW, params: {name: workflowData.id}});
@@ -831,7 +831,7 @@ export const workflowHelpers = mixins(
 					}
 
 					if (redirect) {
-						this.$router.push({
+						this.$router.replace({
 							name: VIEWS.WORKFLOW,
 							params: { name: workflowData.id as string, action: 'workflowSave' },
 						});
