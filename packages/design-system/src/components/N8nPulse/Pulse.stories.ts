@@ -1,5 +1,5 @@
 import N8nPulse from './Pulse.vue';
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Pulse',

@@ -23,6 +23,7 @@ import Markdown from 'markdown-it';
 
 import markdownLink from 'markdown-it-link-attributes';
 import markdownEmoji from 'markdown-it-emoji';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore
 import markdownTasklists from 'markdown-it-task-lists';
 
@@ -34,26 +35,32 @@ const DEFAULT_OPTIONS_MARKDOWN = {
 	linkify: true,
 	typographer: true,
 	breaks: true,
-};
+} as const;
 
 const DEFAULT_OPTIONS_LINK_ATTRIBUTES = {
 	attrs: {
 		target: '_blank',
 		rel: 'noopener',
 	},
-};
+} as const;
 
 const DEFAULT_OPTIONS_TASKLISTS = {
 	label: true,
 	labelAfter: true,
-};
+} as const;
 
 interface IImage {
 	id: string;
 	url: string;
 }
 
-import Vue from 'vue';
+interface Options {
+	markdown: typeof DEFAULT_OPTIONS_MARKDOWN;
+	linkAttributes: typeof DEFAULT_OPTIONS_LINK_ATTRIBUTES;
+	tasklists: typeof DEFAULT_OPTIONS_TASKLISTS;
+}
+
+import Vue, { PropType } from 'vue';
 
 export default Vue.extend({
 	components: {
@@ -79,16 +86,14 @@ export default Vue.extend({
 		},
 		loadingRows: {
 			type: Number,
-			default: () => {
-				return 3;
-			},
+			default: () => 3,
 		},
 		theme: {
 			type: String,
 			default: 'markdown',
 		},
 		options: {
-			type: Object,
+			type: Object as PropType<Options>,
 			default() {
 				return {
 					markdown: DEFAULT_OPTIONS_MARKDOWN,

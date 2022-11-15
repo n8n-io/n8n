@@ -1,6 +1,6 @@
 import N8nActionBox from './ActionBox.vue';
 import { action } from '@storybook/addon-actions';
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/ActionBox',

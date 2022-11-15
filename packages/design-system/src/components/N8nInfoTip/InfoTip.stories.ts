@@ -1,4 +1,4 @@
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 import N8nInfoTip from './InfoTip.vue';
 
 export default {

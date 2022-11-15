@@ -1,4 +1,4 @@
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 import SpacingPreview from '../components/SpacingPreview.vue';
 
 export default {

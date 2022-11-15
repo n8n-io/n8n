@@ -110,12 +110,12 @@ export default mixins(Locale).extend({
 	methods: {
 		getActions(user: IUser): IUserListAction[] {
 			const DELETE: IUserListAction = {
-				label: this.deleteLabel as string,
+				label: this.deleteLabel,
 				value: 'delete',
 			};
 
 			const REINVITE: IUserListAction = {
-				label: this.reinviteLabel as string,
+				label: this.reinviteLabel,
 				value: 'reinvite',
 			};
 

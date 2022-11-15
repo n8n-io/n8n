@@ -14,7 +14,7 @@ let i18nHandler;
 export const t = function (path, options) {
 	if (typeof i18nHandler === 'function') {
 		const value = i18nHandler.apply(this, arguments);
-		if (value !== null && value !== undefined && value !== path) return value;
+		if (value !== null && value !== undefined && value !== path) return String(value);
 	}
 
 	// only support flat keys

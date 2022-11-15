@@ -74,7 +74,7 @@ import ElMenuItem from 'element-ui/lib/menu-item';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import { IMenuItem } from '../../types';
-import Vue from 'vue';
+import Vue, { PropType } from 'vue';
 
 export default Vue.extend({
 	name: 'n8n-menu-item',
@@ -86,7 +86,7 @@ export default Vue.extend({
 	},
 	props: {
 		item: {
-			type: Object as () => IMenuItem,
+			type: Object as PropType<IMenuItem>,
 			required: true,
 		},
 		compact: {

@@ -1,5 +1,5 @@
 import N8nCheckbox from './Checkbox.vue';
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 import { action } from '@storybook/addon-actions';
 
 export default {

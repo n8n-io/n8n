@@ -1,4 +1,4 @@
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 import N8nSelect from './Select.vue';
 import N8nOption from '../N8nOption';
 import N8nIcon from '../N8nIcon';

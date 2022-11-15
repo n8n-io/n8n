@@ -1,4 +1,4 @@
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Utilities/Lists',

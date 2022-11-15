@@ -75,7 +75,7 @@ export default Vue.extend({
 			default: false,
 		},
 		headerIcon: {
-			type: Object as () => { icon: string; color: string },
+			type: Object as PropType<{ icon: string; color: string }>,
 			required: false,
 		},
 	},

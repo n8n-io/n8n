@@ -1,5 +1,5 @@
 import N8nCard from './Card.vue';
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 import N8nButton from '../N8nButton/Button.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
 import N8nText from '../N8nText/Text.vue';

@@ -13,16 +13,43 @@ module.exports = {
 	rules: {
 		// TODO: Remove these
 		'import/no-default-export': 'off',
-		'import/no-extraneous-dependencies': 'off',
 		'import/order': 'off',
-		'@typescript-eslint/member-delimiter-style': 'off',
-		'@typescript-eslint/naming-convention': 'off',
 		'@typescript-eslint/no-explicit-any': 'warn',
 		'@typescript-eslint/no-unsafe-argument': 'warn',
 		'@typescript-eslint/no-unsafe-return': 'warn',
 		'@typescript-eslint/no-unsafe-member-access': 'warn',
-		'@typescript-eslint/no-unused-vars': 'warn',
-		'@typescript-eslint/restrict-template-expressions': 'off',
-		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
+
+	overrides: [
+		{
+			files: ['src/**/*.stories.{js,ts}'],
+			rules: {
+				'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
+			},
+		},
+		{
+			files: ['src/**/*.stories.{js,ts}', 'src/**/*.vue', 'src/**/*.spec.ts'],
+			rules: {
+				'@typescript-eslint/naming-convention': [
+					'warn',
+					{
+						selector: ['variable', 'property'],
+						format: ['PascalCase', 'camelCase', 'UPPER_CASE'],
+					},
+				],
+			},
+		},
+		{
+			files: ['src/components/N8nFormInput/validators.ts'],
+			rules: {
+				'@typescript-eslint/naming-convention': [
+					'error',
+					{
+						selector: ['property'],
+						format: ['camelCase', 'UPPER_CASE'],
+					},
+				],
+			},
+		},
+	],
 };

@@ -5,9 +5,11 @@ export type RuleGroup = {
 	defaultError?: { messageKey: string; options?: any };
 };
 
+export type Validatable = string | number | boolean | null | undefined;
+
 export type IValidator = {
 	validate: (
-		value: string | number | boolean | null | undefined,
+		value: Validatable,
 		config: any,
 	) => false | { messageKey: string; options?: any } | null;
 };

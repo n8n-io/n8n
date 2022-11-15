@@ -137,6 +137,7 @@ export default mixins(Locale).extend({
 				return user.email;
 			}
 
+			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			return `${user.fullName} (${user.email})`;
 		},
 	},
