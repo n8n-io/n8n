@@ -20,7 +20,7 @@ class CredentialTypesClass implements ICredentialTypes {
 	}
 
 	getAllCredentialsTypeData(): ICredentialsTypeData {
-		return this.knowCredentials;
+		return this.knownCredentials;
 	}
 
 	/**
@@ -61,9 +61,9 @@ class CredentialTypesClass implements ICredentialTypes {
 			return loadedCredentials[type];
 		}
 
-		const knowCredentials = this.knowCredentials;
-		if (type in knowCredentials) {
-			const { className, sourcePath } = knowCredentials[type];
+		const knownCredentials = this.knownCredentials;
+		if (type in knownCredentials) {
+			const { className, sourcePath } = knownCredentials[type];
 			const loaded: ICredentialType = loadClassInIsolation(sourcePath, className);
 			loadedCredentials[type] = { sourcePath, type: loaded };
 			return loadedCredentials[type];
@@ -75,7 +75,7 @@ class CredentialTypesClass implements ICredentialTypes {
 		return this.nodesAndCredentials.loaded.credentials;
 	}
 
-	private get knowCredentials() {
+	private get knownCredentials() {
 		return this.nodesAndCredentials.known.credentials;
 	}
 }

@@ -54,7 +54,7 @@ class NodeTypesClass implements INodeTypes {
 	}
 
 	getAllNodeTypeData(): INodesTypeData {
-		return this.knowNodes;
+		return this.knownNodes;
 	}
 
 	/**
@@ -85,7 +85,7 @@ class NodeTypesClass implements INodeTypes {
 			return loadedNodes[type];
 		}
 
-		const knownNodes = this.knowNodes;
+		const knownNodes = this.knownNodes;
 		if (type in knownNodes) {
 			const { className, sourcePath } = knownNodes[type];
 			const loaded: INodeType = loadClassInIsolation(sourcePath, className);
@@ -115,7 +115,7 @@ class NodeTypesClass implements INodeTypes {
 		return this.nodesAndCredentials.loaded.nodes;
 	}
 
-	private get knowNodes() {
+	private get knownNodes() {
 		return this.nodesAndCredentials.known.nodes;
 	}
 }
