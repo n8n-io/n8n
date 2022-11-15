@@ -1,6 +1,6 @@
-import N8nMenuItem from ".";
+import N8nMenuItem from '.';
 import ElMenu from 'element-ui/lib/menu';
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/MenuItem',
@@ -11,7 +11,7 @@ const template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		ElMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		N8nMenuItem ,
+		N8nMenuItem,
 	},
 	template: `
 		<div style="width: 200px">

@@ -1,5 +1,5 @@
 import { render } from '@testing-library/vue';
-import N8nNotice from "../Notice.vue";
+import N8nNotice from '../Notice.vue';
 
 describe('components', () => {
 	describe('N8nNotice', () => {

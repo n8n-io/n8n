@@ -99,7 +99,7 @@ import {
 	EnterpriseEditionFeature,
 	FAKE_DOOR_FEATURES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WORKFLOW_SHARE_MODAL_KEY
+	WORKFLOW_SHARE_MODAL_KEY,
 } from '../constants';
 import {IFakeDoor, IUser, IWorkflowDb} from "@/Interface";
 import { getWorkflowPermissions, IPermissions } from "@/permissions";

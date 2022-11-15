@@ -28,7 +28,8 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nActionToggle,
 	},
-	template: '<div style="height:300px;width:300px;display:flex;align-items:center;justify-content:center"><n8n-action-toggle v-bind="$props" @action="onAction" /></div>',
+	template:
+		'<div style="height:300px;width:300px;display:flex;align-items:center;justify-content:center"><n8n-action-toggle v-bind="$props" @action="onAction" /></div>',
 	methods,
 });
 

@@ -118,5 +118,4 @@ export default Vue.extend({
 	width: 100%;
 	text-align: left;
 }
-
 </style>
