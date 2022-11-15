@@ -29,7 +29,7 @@ licenseController.use((req, res, next) => {
  */
 licenseController.post(
 	'/activate',
-	ResponseHelper.send(async (req: LicenseRequest.Activate): Promise<void> => {
+	ResponseHelper.send(async (req: LicenseRequest.Activate): Promise<object | undefined> => {
 		const activationKey = req.body.activationKey;
 		if (!activationKey) {
 			throw new ResponseHelper.ResponseError(`Activation key required`, undefined, 400);
@@ -39,10 +39,15 @@ licenseController.post(
 			const license = getLicense();
 
 			await license.activate(activationKey);
+			return {
+				productInfo: license.getProductInfo(),
+			};
 		} catch (e: unknown) {
 			if (e instanceof Error) {
 				throw new ResponseHelper.ResponseError(e.message, undefined, 500);
 			}
+
+			return;
 		}
 	}),
 );

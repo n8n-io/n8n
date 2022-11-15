@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/naming-convention */
 import { LicenseManager, TLicenseContainerStr } from '@n8n_io/license-sdk';
 import { ILogger } from 'n8n-workflow';
 import { getLogger } from './Logger';
@@ -97,6 +98,73 @@ export class License {
 				this.logger.error('Could not renew license', e);
 			}
 		}
+	}
+
+	getProductInfo(): object | undefined {
+		// const info = this.manager?.getProductMetadata();
+		return {
+			planType: 'on-prem',
+			planName: 'Individual',
+			features: {
+				'feat:2fa': {
+					name: '2FA',
+					description:
+						'Provides additional security for user accounts by requiring a second factor when authenticating',
+					supportedVersions: '>=0.200.0',
+				},
+				'feat:advancedExecutionSearch': {
+					name: 'Advanced Execution Search',
+					description: 'Allows searching for past executions by different criteria',
+					supportedVersions: '>=0.200.0',
+				},
+				'feat:environments': {
+					name: 'Environments',
+					description: 'Provides the ability to deploy a workflow to different environments',
+					supportedVersions: '>=0.200.0',
+				},
+				'feat:logStreaming': {
+					name: 'Log Streaming',
+					description: 'Provides the ability to export relevant n8n events to 3rd party systems',
+					supportedVersions: '>=0.200.0',
+				},
+				'feat:githubSync': {
+					name: 'GitHub Sync',
+					description: 'Provides the ability to backup workflow data to a GitHub repository',
+					supportedVersions: '>=0.200.0',
+				},
+				'feat:ldap': {
+					name: 'LDAP',
+					description:
+						'Provides the ability to manage n8n user accounts in an external LDAP, e.g. Active Directory',
+					supportedVersions: '>=0.200.0',
+				},
+				'feat:sharing': {
+					name: 'Workflow and Credential Sharing',
+					description: 'Allows sharing workflows and credentials with other users',
+					supportedVersions: '>=0.200.0',
+				},
+				'quota:users': {
+					name: 'Users',
+					description: 'Allowed number of users',
+					supportedVersions: '>=0.200.0',
+				},
+				'quota:workflowExecutions': {
+					name: 'Workflow executions',
+					description: 'Allows number of workflow executions',
+					supportedVersions: '>=0.200.0',
+				},
+				'quota:activeWorkflows': {
+					name: 'Active workflows',
+					description: 'Allowed number of active workflows',
+					supportedVersions: '>=0.200.0',
+				},
+				'quota:testWorkflows': {
+					name: 'Test workflows',
+					description: 'Allowed number of test workflows',
+					supportedVersions: '>=0.200.0',
+				},
+			},
+		};
 	}
 
 	isFeatureEnabled(feature: string): boolean {

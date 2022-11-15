@@ -378,12 +378,24 @@ export interface ICredentialsDecryptedResponse extends ICredentialsBase, ICreden
 	id: string;
 }
 
+export interface LicenseProductInfo {
+	planType: string;
+	planName: string;
+	features: {
+		[key: string]: {
+			name: string;
+			description: string;
+			supportedVersions: string;
+		}
+	}
+}
+
 export interface ActivateLicensePayload {
 	activationKey: string;
 }
 
 export interface ActivateLicenseResponse {
-
+	productInfo: LicenseProductInfo;
 }
 
 
@@ -1021,7 +1033,7 @@ export interface ITagsState {
 }
 
 export interface LicenseState {
-
+	productInfo: LicenseProductInfo | undefined;
 }
 
 export interface IModalState {

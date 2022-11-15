@@ -5,6 +5,7 @@ import { useLicenseStore } from '@/stores/license';
 import { mapStores } from 'pinia';
 import { showMessage } from '@/components/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
+import { LicenseProductInfo } from '@/Interface';
 
 export default mixins(showMessage).extend({
 	name: 'SettingsSubscriptionView',
@@ -29,14 +30,16 @@ export default mixins(showMessage).extend({
 		void this.activate();
 	},
 	computed: {
-		...mapStores(
-			useRootStore,
-			useLicenseStore,
-		),
+		...mapStores(useRootStore, useLicenseStore),
+		license(): LicenseProductInfo | undefined {
+			return this.licenseStore.productInfo;
+		},
 	},
 	methods: {
 		openLinkPage() {
-			const callbackUrl = encodeURIComponent(`${window.location.host}/subscription/activate/${this.rootStore.instanceId}`);
+			const callbackUrl = encodeURIComponent(
+				`${window.location.host}/subscription/activate/${this.rootStore.instanceId}`,
+			);
 			window.open(new URL(`callback=${callbackUrl}`, SUBSCRIPTION_APP_URL), '_blank');
 		},
 		async activate() {
@@ -56,39 +59,39 @@ export default mixins(showMessage).extend({
 		},
 	},
 });
-
 </script>
 
 <template>
 	<div :class="[$style.container]">
 		<div class="mb-2xl">
 			<n8n-heading size="2xlarge">
-				{{$locale.baseText('settings.subscription')}}
+				{{ $locale.baseText('settings.subscription') }}
 			</n8n-heading>
 		</div>
-		<div :class="$style.actionBoxContainer">
-			<div v-if="isActivating">
-				<div :class="$style.loader">
-					<n8n-spinner size="large" />
-				</div>
-				<div>
-					{{ $locale.baseText('settings.subscription.activating') }}
-				</div>
+		<div v-if="license">
+			{{ license.planName }}
+		</div>
+		<div v-else-if="isActivating" :class="$style.actionBoxContainer">
+			<div :class="$style.loader">
+				<n8n-spinner size="large" />
 			</div>
+			<div>
+				{{ $locale.baseText('settings.subscription.activating') }}
+			</div>
+		</div>
+		<div v-else :class="$style.actionBoxContainer">
 			<n8n-action-box
-				v-else
 				:description="$locale.baseText('settings.subscription.cta.description')"
 				:buttonText="$locale.baseText('settings.subscription.cta.button')"
 				@click="openLinkPage"
 			>
 				<template #heading>
-					<span v-html="$locale.baseText('settings.subscription.cta.title')"/>
+					<span v-html="$locale.baseText('settings.subscription.cta.title')" />
 				</template>
 			</n8n-action-box>
 		</div>
 	</div>
 </template>
-
 
 <style lang="scss" module>
 .actionBoxContainer {
