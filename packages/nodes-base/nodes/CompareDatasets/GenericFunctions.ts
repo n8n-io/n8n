@@ -104,15 +104,6 @@ function findAllMatches(
 				entry2FieldValue = get(entry2.json, key);
 			}
 
-			if (
-				(typeof excpectedValue === 'string' && typeof entry2FieldValue === 'number') ||
-				(typeof excpectedValue === 'number' && typeof entry2FieldValue === 'string')
-			) {
-				throw new Error(
-					`The field '${key}' in 'Input B' is of type '${typeof entry2FieldValue}' but the field '${key}' in 'Input A' is of type '${typeof excpectedValue}'.`,
-				);
-			}
-
 			if (!isEqual(excpectedValue, entry2FieldValue)) {
 				return acc;
 			}
@@ -141,18 +132,6 @@ function findFirstMatch(
 				entry2FieldValue = entry2.json[key];
 			} else {
 				entry2FieldValue = get(entry2.json, key);
-			}
-
-			if (
-				(typeof excpectedValue === 'string' && typeof entry2FieldValue === 'number') ||
-				(typeof excpectedValue === 'number' && typeof entry2FieldValue === 'string')
-			) {
-				// throw new Error(
-				// 	`The field '${key}' in 'Input B' is of type '${typeof entry2FieldValue}' but the field '${key}' in 'Input A' is of type '${typeof excpectedValue}'.`,
-				// );
-				if (isEqual(excpectedValue.toString(), entry2FieldValue.toString())) {
-					return true;
-				}
 			}
 
 			if (!isEqual(excpectedValue, entry2FieldValue)) {
