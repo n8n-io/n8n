@@ -4,8 +4,7 @@ import { action } from '@storybook/addon-actions';
 export default {
 	title: 'Modules/UserSelect',
 	component: N8nUserSelect,
-	argTypes: {
-	},
+	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
 	},
@@ -36,34 +35,34 @@ export const UserSelect = Template.bind({});
 UserSelect.args = {
 	users: [
 		{
-			id: "1",
+			id: '1',
 			firstName: 'Sunny',
 			lastName: 'Side',
-			email: "sunny@n8n.io",
+			email: 'sunny@n8n.io',
 			globalRole: {
 				name: 'owner',
-				id: "1",
+				id: '1',
 			},
 		},
 		{
-			id: "2",
+			id: '2',
 			firstName: 'Kobi',
 			lastName: 'Dog',
-			email: "kobi@n8n.io",
+			email: 'kobi@n8n.io',
 			globalRole: {
 				name: 'member',
-				id: "2",
+				id: '2',
 			},
 		},
 		{
-			id: "3",
-			email: "invited@n8n.io",
+			id: '3',
+			email: 'invited@n8n.io',
 			globalRole: {
 				name: 'member',
-				id: "2",
+				id: '2',
 			},
 		},
 	],
 	placeholder: 'Select user to transfer to',
-	currentUserId: "1",
+	currentUserId: '1',
 };

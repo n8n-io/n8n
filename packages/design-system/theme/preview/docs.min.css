@@ -20,8 +20,7 @@
 	transition: 0.2s;
 }
 .demo-block.hover {
-	box-shadow: 0 0 8px 0 rgba(232, 237, 250, 0.6),
-		0 2px 4px 0 rgba(232, 237, 250, 0.5);
+	box-shadow: 0 0 8px 0 rgba(232, 237, 250, 0.6), 0 2px 4px 0 rgba(232, 237, 250, 0.5);
 }
 .demo-block code {
 	font-family: Menlo, Monaco, Consolas, Courier, monospace;
@@ -976,23 +975,11 @@
 #chang-jian-ye-mian-bu-ju + .demo-container > .source > .el-container {
 	margin-bottom: 40px;
 }
-#chang-jian-ye-mian-bu-ju
-	+ .demo-container
-	> .source
-	> .el-container:nth-child(5)
-	.el-aside,
-#chang-jian-ye-mian-bu-ju
-	+ .demo-container
-	> .source
-	> .el-container:nth-child(6)
-	.el-aside {
+#chang-jian-ye-mian-bu-ju + .demo-container > .source > .el-container:nth-child(5) .el-aside,
+#chang-jian-ye-mian-bu-ju + .demo-container > .source > .el-container:nth-child(6) .el-aside {
 	line-height: 260px;
 }
-#chang-jian-ye-mian-bu-ju
-	+ .demo-container
-	> .source
-	> .el-container:nth-child(7)
-	.el-aside {
+#chang-jian-ye-mian-bu-ju + .demo-container > .source > .el-container:nth-child(7) .el-aside {
 	line-height: 320px;
 }
 .demo-block.demo-date-picker .source > div {
@@ -1202,8 +1189,8 @@ ul.language-list li {
 }
 .icon-list li span {
 	line-height: normal;
-	font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB,
-		Microsoft YaHei, SimSun, sans-serif;
+	font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, SimSun,
+		sans-serif;
 	color: #99a9bf;
 	transition: color 0.15s linear;
 }
@@ -1824,8 +1811,8 @@ html {
 	margin: 0;
 	padding: 0;
 	height: 100%;
-	font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB,
-		Microsoft YaHei, SimSun, sans-serif;
+	font-family: Helvetica Neue, Helvetica, PingFang SC, Hiragino Sans GB, Microsoft YaHei, SimSun,
+		sans-serif;
 	font-weight: 400;
 	-webkit-font-smoothing: antialiased;
 	-webkit-tap-highlight-color: transparent;

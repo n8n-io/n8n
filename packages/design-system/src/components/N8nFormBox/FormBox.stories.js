@@ -4,8 +4,7 @@ import { action } from '@storybook/addon-actions';
 export default {
 	title: 'Modules/FormBox',
 	component: N8nFormBox,
-	argTypes: {
-	},
+	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
 	},
@@ -35,7 +34,7 @@ FormBox.args = {
 				label: 'Your Email',
 				type: 'email',
 				required: true,
-				validationRules: [{name: 'VALID_EMAIL'}],
+				validationRules: [{ name: 'VALID_EMAIL' }],
 			},
 		},
 		{
@@ -51,7 +50,7 @@ FormBox.args = {
 				label: 'Your Password',
 				type: 'password',
 				required: true,
-				validationRules: [{name: 'DEFAULT_PASSWORD_RULES'}],
+				validationRules: [{ name: 'DEFAULT_PASSWORD_RULES' }],
 			},
 		},
 		{
@@ -66,4 +65,3 @@ FormBox.args = {
 	redirectText: 'Go somewhere',
 	redirectLink: 'https://n8n.io',
 };
-

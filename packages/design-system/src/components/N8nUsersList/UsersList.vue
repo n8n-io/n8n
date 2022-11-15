@@ -3,23 +3,15 @@
 		<div
 			v-for="(user, i) in sortedUsers"
 			:key="user.id"
-			class='ph-no-capture'
+			class="ph-no-capture"
 			:class="i === sortedUsers.length - 1 ? $style.itemContainer : $style.itemWithBorder"
 		>
 			<n8n-user-info v-bind="user" :isCurrentUser="currentUserId === user.id" />
 			<div :class="$style.badgeContainer">
-				<n8n-badge
-					v-if="user.isOwner"
-					theme="tertiary"
-					bold
-				>
+				<n8n-badge v-if="user.isOwner" theme="tertiary" bold>
 					{{ t('nds.auth.roles.owner') }}
 				</n8n-badge>
-				<slot
-					v-if="!user.isOwner && !readonly"
-					name="actions"
-					:user="user"
-				/>
+				<slot v-if="!user.isOwner && !readonly" name="actions" :user="user" />
 				<n8n-action-toggle
 					v-if="!user.isOwner && !readonly && getActions(user).length > 0 && actions.length > 0"
 					placement="bottom"
@@ -40,7 +32,7 @@ import N8nUserInfo from '../N8nUserInfo';
 import Locale from '../../mixins/locale';
 import mixins from 'vue-typed-mixins';
 import { t } from '../../locale';
-import {PropType} from "vue";
+import { PropType } from 'vue';
 
 export interface IUserListAction {
 	label: string;
@@ -113,7 +105,7 @@ export default mixins(Locale).extend({
 						return a.lastName > b.lastName ? 1 : -1;
 					}
 					if (a.firstName !== b.firstName) {
-						return a.firstName > b.firstName? 1 : -1;
+						return a.firstName > b.firstName ? 1 : -1;
 					}
 				}
 
@@ -125,16 +117,16 @@ export default mixins(Locale).extend({
 		getActions(user: IUser): IUserListAction[] {
 			const actions = [];
 			const DELETE: IUserListAction = {
-				label: this.deleteLabel as string,
+				label: this.deleteLabel,
 				value: 'delete',
 			};
 
 			const REINVITE: IUserListAction = {
-				label: this.reinviteLabel as string,
+				label: this.reinviteLabel,
 				value: 'reinvite',
 			};
 
-			if (user.isOwner)	{
+			if (user.isOwner) {
 				return [];
 			}
 
@@ -158,7 +150,6 @@ export default mixins(Locale).extend({
 	},
 });
 </script>
-
 
 <style lang="scss" module>
 .itemContainer {

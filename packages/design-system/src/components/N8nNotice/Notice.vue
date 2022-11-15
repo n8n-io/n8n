@@ -1,5 +1,5 @@
 <template>
-	<div :id="id" :class="classes" role="alert" @click=onClick>
+	<div :id="id" :class="classes" role="alert" @click="onClick">
 		<div class="notice-content">
 			<n8n-text size="small" :compact="true">
 				<slot>
@@ -18,16 +18,14 @@
 <script lang="ts">
 import Vue from 'vue';
 import sanitizeHtml from 'sanitize-html';
-import N8nText from "../../components/N8nText";
-import Locale from "../../mixins/locale";
-import { uid } from "../../utils";
+import N8nText from '../../components/N8nText';
+import Locale from '../../mixins/locale';
+import { uid } from '../../utils';
 
 export default Vue.extend({
 	name: 'n8n-notice',
 	directives: {},
-	mixins: [
-		Locale,
-	],
+	mixins: [Locale],
 	props: {
 		id: {
 			type: String,
@@ -56,11 +54,7 @@ export default Vue.extend({
 	},
 	computed: {
 		classes(): string[] {
-			return [
-				'notice',
-				this.$style.notice,
-				this.$style[this.theme],
-			];
+			return ['notice', this.$style.notice, this.$style[this.theme]];
 		},
 		canTruncate(): boolean {
 			return this.fullContent !== undefined;
@@ -71,18 +65,16 @@ export default Vue.extend({
 			this.showFullContent = !this.showFullContent;
 		},
 		sanitizeHtml(text: string): string {
-			return sanitizeHtml(
-				text, {
-					allowedAttributes: { a: ['data-key', 'href', 'target'] },
-				},
-			);
+			return sanitizeHtml(text, {
+				allowedAttributes: { a: ['data-key', 'href', 'target'] },
+			});
 		},
 		onClick(event: MouseEvent) {
 			if (!(event.target instanceof HTMLElement)) return;
 
 			if (event.target.localName !== 'a') return;
 
-			if (event.target.dataset && event.target.dataset.key) {
+			if (event.target.dataset?.key) {
 				event.stopPropagation();
 				event.preventDefault();
 
@@ -97,7 +89,6 @@ export default Vue.extend({
 		},
 	},
 });
-
 </script>
 
 <style lang="scss" module>
