@@ -96,7 +96,7 @@ export class MqttTrigger implements INodeType {
 		const cert = credentials.cert as string;
 		const key = credentials.key as string;
 		const rejectUnauthorized = credentials.rejectUnauthorized as boolean;
-
+		let closeGotCalled = false;
 		let client: mqtt.MqttClient;
 
 		if (ssl === false) {
@@ -163,7 +163,11 @@ export class MqttTrigger implements INodeType {
 						});
 					});
 				});
-
+				client.on('close', () => {
+					if (!closeGotCalled) {
+						self.emitError(new Error('Connection got close unexpectedly'));
+					}
+				});
 				client.on('error', (error) => {
 					reject(error);
 				});
@@ -175,6 +179,7 @@ export class MqttTrigger implements INodeType {
 		}
 
 		async function closeFunction() {
+			closeGotCalled = true;
 			client.end();
 		}
 

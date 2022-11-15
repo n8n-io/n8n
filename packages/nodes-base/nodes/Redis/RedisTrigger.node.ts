@@ -67,7 +67,7 @@ export class RedisTrigger implements INodeType {
 
 	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
 		const credentials = await this.getCredentials('redis');
-
+		let closeGotCalled = false;
 		const redisOptions: redis.ClientOpts = {
 			host: credentials.host as string,
 			port: credentials.port as number,
@@ -117,6 +117,12 @@ export class RedisTrigger implements INodeType {
 				client.on('error', (error) => {
 					reject(error);
 				});
+
+				client.on('close', () => {
+					if (!closeGotCalled) {
+						self.emitError(new Error('Connection got closed unexpectedly!'));
+					}
+				});
 			});
 		}
 
@@ -125,6 +131,7 @@ export class RedisTrigger implements INodeType {
 		}
 
 		async function closeFunction() {
+			closeGotCalled = true;
 			client.quit();
 		}
 
