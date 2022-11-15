@@ -73,7 +73,7 @@ export default mixins(
 	},
 	methods: {
 		async onAddSharee(userId: string) {
-			const sharee =  this.usersStore.getUserById(userId);
+			const sharee = { ...this.usersStore.getUserById(userId), isOwner: false };
 			this.$emit('change', (this.credentialData.sharedWith || []).concat(sharee));
 		},
 		async onRemoveSharee(userId: string) {
