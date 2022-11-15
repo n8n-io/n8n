@@ -1,3 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventMessage } from '../EventMessageClasses/EventMessage';
 import {
 	MessageEventBusDestination,
@@ -22,7 +26,7 @@ interface MessageEventBusDestinationRedisOptions extends MessageEventBusDestinat
 }
 
 export class MessageEventBusDestinationRedis extends MessageEventBusDestination {
-	static readonly type = '$$MessageEventBusDestinationRedis';
+	static readonly serializedName = '$$MessageEventBusDestinationRedis';
 
 	#client: Redis | undefined;
 
@@ -39,13 +43,11 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 		};
 		this.#channelName = options.channelName;
 		this.#client = new Redis(this.redisOptions);
-		this.#client
-			?.monitor((error, monitor) => {
-				monitor?.on('monitor', (time, args, source, database) => {
-					console.log(time, args, source, database);
-				});
-			})
-			.catch((error) => console.log(error));
+		this.#client?.monitor((error, monitor) => {
+			monitor?.on('monitor', (time, args, source, database) => {
+				console.log(time, args, source, database);
+			});
+		});
 		console.debug(`MessageEventBusDestinationRedis Broker initialized`);
 	}
 
@@ -64,7 +66,7 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 
 	serialize(): JsonValue {
 		return {
-			type: MessageEventBusDestinationRedis.type,
+			serializedName: MessageEventBusDestinationRedis.serializedName,
 			id: this.getId(),
 			options: {
 				name: this.getName(),
@@ -75,23 +77,23 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 		};
 	}
 
-	static deserialize(data: JsonObject): MessageEventBusDestinationRedis | undefined {
+	static deserialize(data: JsonObject): MessageEventBusDestinationRedis | null {
 		if (
-			'type' in data &&
-			data.type === MessageEventBusDestinationRedis.type &&
+			'serializedName' in data &&
+			data.serializedName === MessageEventBusDestinationRedis.serializedName &&
 			'options' in data &&
 			isMessageEventBusDestinationRedisOptions(data.options)
 		) {
 			return new MessageEventBusDestinationRedis(data.options);
 		}
-		return undefined;
+		return null;
 	}
 
 	toString() {
 		return JSON.stringify(this.serialize());
 	}
 
-	static fromString(data: string): MessageEventBusDestinationRedis | undefined {
+	static fromString(data: string): MessageEventBusDestinationRedis | null {
 		const o = jsonParse<JsonObject>(data);
 		return MessageEventBusDestinationRedis.deserialize(o);
 	}

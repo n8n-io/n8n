@@ -105,11 +105,12 @@ eventBusRouter.post(
 
 eventBusRouter.post(
 	`/destination/add/syslog`,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (isMessageEventBusDestinationSyslogOptions(req.body)) {
 			const result = await eventBus.addDestination(new MessageEventBusDestinationSyslog(req.body));
 			if (result) {
-				await result.saveToDb();
+				// await result.saveToDb();
 				return result;
 			}
 		}
@@ -118,11 +119,12 @@ eventBusRouter.post(
 
 eventBusRouter.post(
 	`/destination/add/sentry`,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (isMessageEventBusDestinationSentryOptions(req.body)) {
 			const result = await eventBus.addDestination(new MessageEventBusDestinationSentry(req.body));
 			if (result) {
-				await result.saveToDb();
+				// await result.saveToDb();
 				return result;
 			}
 		}
@@ -131,11 +133,12 @@ eventBusRouter.post(
 
 eventBusRouter.post(
 	`/destination/add/webhook`,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (isMessageEventBusDestinationWebhookOptions(req.body)) {
 			const result = await eventBus.addDestination(new MessageEventBusDestinationWebhook(req.body));
 			if (result) {
-				await result.saveToDb();
+				// await result.saveToDb();
 				return result;
 			}
 		} else {
@@ -146,6 +149,7 @@ eventBusRouter.post(
 
 eventBusRouter.post(
 	`/destination/remove`,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (isBodyWithId(req.body)) {
 			const result = await eventBus.removeDestination(req.body.id);

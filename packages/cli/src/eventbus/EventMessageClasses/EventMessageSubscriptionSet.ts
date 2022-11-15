@@ -27,7 +27,7 @@ interface EventMessageSubscriptionSetOptions {
 }
 
 export class EventMessageSubscriptionSet {
-	static readonly type: '$$EventMessageSubscriptionSet';
+	static readonly serializedName: '$$EventMessageSubscriptionSet';
 
 	eventGroups: EventMessageGroups[];
 
@@ -63,7 +63,7 @@ export class EventMessageSubscriptionSet {
 
 	serialize(): JsonValue {
 		return {
-			type: EventMessageSubscriptionSet.type,
+			serializedName: EventMessageSubscriptionSet.serializedName,
 			eventGroups: this.eventGroups,
 			eventNames: this.eventNames,
 			eventLevels: this.eventLevels,
@@ -72,8 +72,8 @@ export class EventMessageSubscriptionSet {
 
 	static deserialize(data: JsonObject): EventMessageSubscriptionSet | undefined {
 		if (
-			'type' in data &&
-			data.type === EventMessageSubscriptionSet.type &&
+			'serializedName' in data &&
+			data.serializedName === EventMessageSubscriptionSet.serializedName &&
 			isEventMessageSubscriptionSet(data.options)
 		) {
 			return new EventMessageSubscriptionSet(data);

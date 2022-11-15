@@ -96,7 +96,7 @@ class MessageEventBus {
 	async removeDestination(id: string): Promise<string> {
 		if (id in Object.keys(this.#destinations)) {
 			await this.#destinations[id].close();
-			await this.#destinations[id].deleteFromDb();
+			// await this.#destinations[id].deleteFromDb();
 			delete this.#destinations[id];
 		}
 		return id;

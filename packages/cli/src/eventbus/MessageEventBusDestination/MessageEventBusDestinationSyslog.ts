@@ -9,7 +9,6 @@ import syslog from 'syslog-client';
 import { EventMessageLevel } from '../types/EventMessageTypes';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
-import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
 
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
@@ -53,7 +52,7 @@ function eventMessageLevelToSyslogSeverity(emLevel: EventMessageLevel) {
 }
 
 export class MessageEventBusDestinationSyslog extends MessageEventBusDestination {
-	static readonly type = '$$MessageEventBusDestinationSyslog';
+	static readonly serializedName = '$$MessageEventBusDestinationSyslog';
 
 	client: syslog.Client;
 
@@ -122,7 +121,7 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 
 	serialize(): JsonValue {
 		return {
-			type: MessageEventBusDestinationSyslog.type,
+			serializedName: MessageEventBusDestinationSyslog.serializedName,
 			id: this.getId(),
 			options: {
 				name: this.getName(),
@@ -138,23 +137,23 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 		};
 	}
 
-	static deserialize(data: JsonObject): MessageEventBusDestinationSyslog | undefined {
+	static deserialize(data: JsonObject): MessageEventBusDestinationSyslog | null {
 		if (
-			'type' in data &&
-			data.type === MessageEventBusDestinationSyslog.type &&
+			'serializedName' in data &&
+			data.serializedName === MessageEventBusDestinationSyslog.serializedName &&
 			'options' in data &&
 			isMessageEventBusDestinationSyslogOptions(data.options)
 		) {
 			return new MessageEventBusDestinationSyslog(data.options);
 		}
-		return undefined;
+		return null;
 	}
 
 	toString() {
 		return JSON.stringify(this.serialize());
 	}
 
-	static fromString(data: string): MessageEventBusDestinationSyslog | undefined {
+	static fromString(data: string): MessageEventBusDestinationSyslog | null {
 		const o = jsonParse<JsonObject>(data);
 		return MessageEventBusDestinationSyslog.deserialize(o);
 	}

@@ -46,7 +46,7 @@ export interface MessageEventBusDestinationSentryOptions extends MessageEventBus
 }
 
 export class MessageEventBusDestinationSentry extends MessageEventBusDestination {
-	static readonly type = '$$MessageEventBusDestinationSentry';
+	static readonly serializedName = '$$MessageEventBusDestinationSentry';
 
 	readonly dsn: string;
 
@@ -99,7 +99,7 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 
 	serialize(): JsonValue {
 		return {
-			type: MessageEventBusDestinationSentry.type,
+			serializedName: MessageEventBusDestinationSentry.serializedName,
 			id: this.getId(),
 			options: {
 				name: this.getName(),
@@ -110,23 +110,23 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 		};
 	}
 
-	static deserialize(data: JsonObject): MessageEventBusDestinationSentry | undefined {
+	static deserialize(data: JsonObject): MessageEventBusDestinationSentry | null {
 		if (
-			'type' in data &&
-			data.type === MessageEventBusDestinationSentry.type &&
+			'serializedName' in data &&
+			data.serializedName === MessageEventBusDestinationSentry.serializedName &&
 			'options' in data &&
 			isMessageEventBusDestinationSentryOptions(data.options)
 		) {
 			return new MessageEventBusDestinationSentry(data.options);
 		}
-		return undefined;
+		return null;
 	}
 
 	toString() {
 		return JSON.stringify(this.serialize());
 	}
 
-	static fromString(data: string): MessageEventBusDestinationSentry | undefined {
+	static fromString(data: string): MessageEventBusDestinationSentry | null {
 		const o = jsonParse<JsonObject>(data);
 		return MessageEventBusDestinationSentry.deserialize(o);
 	}

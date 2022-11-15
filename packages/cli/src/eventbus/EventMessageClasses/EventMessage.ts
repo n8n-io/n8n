@@ -2,11 +2,7 @@
 import { DateTime } from 'luxon';
 import { jsonParse } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import {
-	EventMessageGroups,
-	EventMessageNames,
-	EventMessageLevel,
-} from '../types/EventMessageTypes';
+import * as EventMessageTypes from '../types/EventMessageTypes';
 import { SerializerImplementation } from 'threads';
 
 export interface EventMessageSerialized {
@@ -15,8 +11,8 @@ export interface EventMessageSerialized {
 	__payloadtype?: string;
 	id?: string | undefined;
 	ts?: string | undefined;
-	eventName: EventMessageNames;
-	level?: EventMessageLevel | undefined;
+	eventName: EventMessageTypes.EventMessageNames;
+	level?: EventMessageTypes.EventMessageLevel | undefined;
 	payload?: any | undefined;
 }
 
@@ -46,9 +42,9 @@ export class EventMessage {
 
 	readonly ts: DateTime;
 
-	readonly eventName: EventMessageNames;
+	readonly eventName: EventMessageTypes.EventMessageNames;
 
-	readonly level: EventMessageLevel;
+	readonly level: EventMessageTypes.EventMessageLevel;
 
 	readonly __payloadtype: string;
 
@@ -71,15 +67,15 @@ export class EventMessage {
 		this.level = props.level ?? 'info';
 	}
 
-	getEventGroup(): EventMessageGroups | undefined {
+	getEventGroup(): EventMessageTypes.EventMessageGroups | undefined {
 		const matches = this.eventName.match(/^[\w\s]+\.[\w\s]+/);
 		if (matches && matches?.length > 0) {
-			return matches[0] as EventMessageGroups;
+			return matches[0] as EventMessageTypes.EventMessageGroups;
 		}
 		return;
 	}
 
-	getEventName(): EventMessageNames {
+	getEventName(): EventMessageTypes.EventMessageNames {
 		return this.eventName;
 	}
 

@@ -159,6 +159,10 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
+import { eventBus } from './eventbus';
+import { MessageEventBusDestination } from './eventbus/EventMessageClasses/MessageEventBusDestination';
+import { eventBusRouter } from './eventbus/eventBusRoutes';
+import { messageEventBusDestinationFromDb } from './eventbus/MessageEventBusDestination/Helpers';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1675,7 +1679,7 @@ class App {
 		if (savedEventDestinations.length > 0) {
 			for (const destinationData of savedEventDestinations) {
 				try {
-					const destination = MessageEventBusDestination.fromDb(destinationData);
+					const destination = messageEventBusDestinationFromDb(destinationData);
 					if (destination) {
 						await eventBus.addDestination(destination);
 					}
