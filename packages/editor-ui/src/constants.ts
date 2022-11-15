@@ -313,6 +313,7 @@ export enum VIEWS {
 	COMMUNITY_NODES = "CommunityNodes",
 	WORKFLOWS = "WorkflowsView",
 	SUBSCRIPTION = 'Subscription',
+	SUBSCRIPTION_ACTIVATE = 'SubscriptionActivation',
 }
 
 export enum FAKE_DOOR_FEATURES {

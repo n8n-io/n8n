@@ -1,5 +1,5 @@
 <script lang="ts">
-import { SUBSCRIPTION_APP_URL } from '@/constants';
+import { SUBSCRIPTION_APP_URL, VIEWS } from '@/constants';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { defineComponent } from 'vue';
 
@@ -11,6 +11,13 @@ export default defineComponent({
 		},
 		showTitle: {
 			type: Boolean,
+		},
+	},
+	mounted() {
+	},
+	computed: {
+		isActivating(): boolean {
+			return this.$route.name === VIEWS.SUBSCRIPTION_ACTIVATE;
 		},
 	},
 	methods: {
@@ -32,7 +39,16 @@ export default defineComponent({
 			</n8n-heading>
 		</div>
 		<div :class="$style.actionBoxContainer">
+			<div v-if="isActivating">
+				<div :class="$style.loader">
+					<n8n-spinner size="large" />
+				</div>
+				<div>
+					{{ $locale.baseText('settings.subscription.activating') }}
+				</div>
+			</div>
 			<n8n-action-box
+				v-else
 				:description="$locale.baseText('settings.subscription.cta.description')"
 				:buttonText="$locale.baseText('settings.subscription.cta.button')"
 				@click="openLinkPage"
@@ -49,5 +65,14 @@ export default defineComponent({
 <style lang="scss" module>
 .actionBoxContainer {
 	text-align: center;
+}
+
+.loader {
+	margin-bottom: var(--spacing-s);
+
+	svg {
+		min-width: 40px;
+		min-height: 40px;
+	}
 }
 </style>

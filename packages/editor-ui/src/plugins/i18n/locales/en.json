@@ -1105,6 +1105,7 @@
 	"settings.api.view.tryapi": "Try it out using the",
 	"settings.api.view.error": "Could not check if an api key already exists.",
 	"settings.subscription": "Subscription",
+	"settings.subscription.activating": "Activating your license",
 	"settings.subscription.cta.title": "Subscribe to get advanced features",
 	"settings.subscription.cta.description": "Logging, LDAP, unlimited active workflows...",
 	"settings.subscription.cta.button": "Subscribe",

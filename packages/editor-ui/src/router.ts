@@ -557,6 +557,29 @@ const router = new Router({
 					},
 				},
 				{
+					path: 'subscription/activate/:key',
+					name: VIEWS.SUBSCRIPTION_ACTIVATE,
+					components: {
+						settingsView: SettingsSubscriptionView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+						},
+						permissions: {
+							allow: {
+								role: [ROLE.Owner],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore = useSettingsStore();
+									return settingsStore.isUserManagementEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
 					path: 'coming-soon/:featureId',
 					name: VIEWS.FAKE_DOOR,
 					components: {
