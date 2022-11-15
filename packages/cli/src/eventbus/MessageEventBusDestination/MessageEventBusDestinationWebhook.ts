@@ -52,8 +52,8 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 	serialize(): JsonValue {
 		return {
 			serializedName: MessageEventBusDestinationWebhook.serializedName,
-			id: this.getId(),
 			options: {
+				id: this.getId(),
 				name: this.getName(),
 				expectedStatusCode: this.expectedStatusCode,
 				urls: this.url,

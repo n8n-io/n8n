@@ -122,8 +122,8 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 	serialize(): JsonValue {
 		return {
 			serializedName: MessageEventBusDestinationSyslog.serializedName,
-			id: this.getId(),
 			options: {
+				id: this.getId(),
 				name: this.getName(),
 				expectedStatusCode: this.sysLogOptions.expectedStatusCode!,
 				host: this.sysLogOptions.host,

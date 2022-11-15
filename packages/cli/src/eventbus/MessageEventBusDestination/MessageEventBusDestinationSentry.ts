@@ -100,8 +100,8 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 	serialize(): JsonValue {
 		return {
 			serializedName: MessageEventBusDestinationSentry.serializedName,
-			id: this.getId(),
 			options: {
+				id: this.getId(),
 				name: this.getName(),
 				dsn: this.dsn,
 				tracesSampleRate: this.tracesSampleRate,

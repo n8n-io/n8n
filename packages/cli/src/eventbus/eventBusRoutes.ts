@@ -110,7 +110,7 @@ eventBusRouter.post(
 		if (isMessageEventBusDestinationSyslogOptions(req.body)) {
 			const result = await eventBus.addDestination(new MessageEventBusDestinationSyslog(req.body));
 			if (result) {
-				// await result.saveToDb();
+				await result.saveToDb();
 				return result;
 			}
 		}
@@ -124,7 +124,7 @@ eventBusRouter.post(
 		if (isMessageEventBusDestinationSentryOptions(req.body)) {
 			const result = await eventBus.addDestination(new MessageEventBusDestinationSentry(req.body));
 			if (result) {
-				// await result.saveToDb();
+				await result.saveToDb();
 				return result;
 			}
 		}
@@ -138,12 +138,26 @@ eventBusRouter.post(
 		if (isMessageEventBusDestinationWebhookOptions(req.body)) {
 			const result = await eventBus.addDestination(new MessageEventBusDestinationWebhook(req.body));
 			if (result) {
-				// await result.saveToDb();
+				await result.saveToDb();
 				return result;
 			}
 		} else {
 			throw new ResponseError('Body is missing name', undefined, 400);
 		}
+	}),
+);
+
+eventBusRouter.post(
+	`/destination/find`,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+		let result = [];
+		if (isBodyWithId(req.body)) {
+			result = await eventBus.findDestination(req.body.id);
+		} else {
+			result = await eventBus.findDestination();
+		}
+		return result;
 	}),
 );
 

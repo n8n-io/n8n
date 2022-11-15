@@ -67,8 +67,8 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 	serialize(): JsonValue {
 		return {
 			serializedName: MessageEventBusDestinationRedis.serializedName,
-			id: this.getId(),
 			options: {
+				id: this.getId(),
 				name: this.getName(),
 				channelName: this.#channelName,
 				redisOptions: this.redisOptions as JsonObject,

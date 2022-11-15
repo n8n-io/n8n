@@ -1,3 +1,4 @@
+import { JsonValue } from 'n8n-workflow';
 import { registerSerializer } from 'threads';
 import {
 	EventMessage,
@@ -31,7 +32,7 @@ class MessageEventBus {
 
 	#immediateWriter: MessageEventBusLogWriter;
 
-	#destinations: EventMessageDestinationStore = {};
+	destinations: EventMessageDestinationStore = {};
 
 	#pushInteralTimer: NodeJS.Timer;
 
@@ -60,7 +61,7 @@ class MessageEventBus {
 		this.#immediateWriter = await MessageEventBusLogWriter.getInstance();
 		if (options?.destinations) {
 			for (const destination of options?.destinations) {
-				this.#destinations[destination.getId()] = destination;
+				this.destinations[destination.getId()] = destination;
 			}
 		}
 
@@ -89,15 +90,23 @@ class MessageEventBus {
 
 	async addDestination(destination: MessageEventBusDestination) {
 		await this.removeDestination(destination.getId());
-		this.#destinations[destination.getId()] = destination;
+		this.destinations[destination.getId()] = destination;
 		return destination;
 	}
 
+	async findDestination(id?: string): Promise<JsonValue[]> {
+		if (id && Object.keys(this.destinations).includes(id)) {
+			return [this.destinations[id].serialize()];
+		} else {
+			return Object.keys(this.destinations).map((e) => this.destinations[e].serialize());
+		}
+	}
+
 	async removeDestination(id: string): Promise<string> {
-		if (id in Object.keys(this.#destinations)) {
-			await this.#destinations[id].close();
-			// await this.#destinations[id].deleteFromDb();
-			delete this.#destinations[id];
+		if (Object.keys(this.destinations).includes(id)) {
+			await this.destinations[id].close();
+			await this.destinations[id].deleteFromDb();
+			delete this.destinations[id];
 		}
 		return id;
 	}
@@ -106,8 +115,8 @@ class MessageEventBus {
 		destinationId: string,
 		subscriptionSet: EventMessageSubscriptionSet,
 	) {
-		if (destinationId in Object.keys(this.#destinations)) {
-			this.#destinations[destinationId].setSubscription(subscriptionSet);
+		if (Object.keys(this.destinations).includes(destinationId)) {
+			this.destinations[destinationId].setSubscription(subscriptionSet);
 		}
 		return destinationId;
 	}
@@ -122,8 +131,8 @@ class MessageEventBus {
 
 	async close() {
 		await this.#immediateWriter.close();
-		for (const destinationName of Object.keys(this.#destinations)) {
-			await this.#destinations[destinationName].close();
+		for (const destinationName of Object.keys(this.destinations)) {
+			await this.destinations[destinationName].close();
 		}
 	}
 
@@ -146,11 +155,11 @@ class MessageEventBus {
 
 	async #sendToDestinations(msg: EventMessage) {
 		// if there are no destinations, immediately mark the event as sent
-		if (Object.keys(this.#destinations).length === 0) {
+		if (Object.keys(this.destinations).length === 0) {
 			await this.confirmSent(msg);
 		} else {
-			for (const destinationName of Object.keys(this.#destinations)) {
-				await this.#destinations[destinationName].receiveFromEventBus(msg);
+			for (const destinationName of Object.keys(this.destinations)) {
+				await this.destinations[destinationName].receiveFromEventBus(msg);
 			}
 		}
 	}
