@@ -24,8 +24,10 @@ beforeAll(async () => {
 	testDbName = initResult.testDbName;
 
 	mockNodeTypes = MockNodeTypes({
-		nodeTypes: MOCK_NODE_TYPES_DATA,
-		credentialTypes: {},
+		loaded: {
+			nodes: MOCK_NODE_TYPES_DATA,
+			credentials: {},
+		},
 		known: { nodes: {}, credentials: {} },
 	});
 

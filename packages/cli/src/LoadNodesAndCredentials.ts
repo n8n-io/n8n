@@ -7,15 +7,13 @@ import {
 	LazyPackageDirectoryLoader,
 	Types,
 } from 'n8n-core';
-import {
-	ICredentialTypeData,
+import type {
 	ILogger,
-	INodeTypeData,
 	INodesAndCredentials,
-	LoggerProxy,
-	ErrorReporterProxy as ErrorReporter,
 	KnownNodesAndCredentials,
+	LoadedNodesAndCredentials,
 } from 'n8n-workflow';
+import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
 import glob from 'fast-glob';
 import {
@@ -39,11 +37,9 @@ import {
 export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
 
+	loaded: LoadedNodesAndCredentials = { nodes: {}, credentials: {} };
+
 	types: Types = { nodes: [], credentials: [] };
-
-	nodeTypes: INodeTypeData = {};
-
-	credentialTypes: ICredentialTypeData = {};
 
 	excludeNodes = config.getEnv('nodes.exclude');
 
@@ -166,7 +162,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 					packageJson.name,
 					packageJson.version,
 					loadedNodes,
-					this.nodeTypes,
+					this.loaded.nodes,
 					packageJson.author?.name,
 					packageJson.author?.email,
 				);
@@ -235,7 +231,7 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 					packageJson.name,
 					packageJson.version,
 					loadedNodes,
-					this.nodeTypes,
+					this.loaded.nodes,
 					packageJson.author?.name,
 					packageJson.author?.email,
 				);
@@ -262,14 +258,15 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 
 	private unloadNodes(installedNodes: InstalledNodes[]): void {
 		installedNodes.forEach((installedNode) => {
-			delete this.nodeTypes[installedNode.type];
+			delete this.loaded.nodes[installedNode.type];
 		});
 	}
 
 	private attachNodesToNodeTypes(installedNodes: InstalledNodes[]): void {
+		const loadedNodes = this.loaded.nodes;
 		installedNodes.forEach((installedNode) => {
-			const { type, sourcePath } = this.nodeTypes[installedNode.type];
-			this.nodeTypes[installedNode.type] = { type, sourcePath };
+			const { type, sourcePath } = loadedNodes[installedNode.type];
+			loadedNodes[installedNode.type] = { type, sourcePath };
 		});
 	}
 
@@ -284,22 +281,27 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		await loader.loadAll();
 
 		for (const nodeTypeName in loader.nodeTypes) {
-			this.nodeTypes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
+			this.loaded.nodes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
 		}
 
 		for (const credentialTypeName in loader.credentialTypes) {
-			this.credentialTypes[credentialTypeName] = loader.credentialTypes[credentialTypeName];
+			this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
 		}
 
 		if (loader instanceof PackageDirectoryLoader) {
 			const { packageName, known, types } = loader;
 
-			for (const node in known.nodes) {
-				this.known.nodes[`${packageName}.${node}`] = path.join(dir, known.nodes[node]);
+			for (const type in known.nodes) {
+				const { className, sourcePath } = known.nodes[type];
+				this.known.nodes[`${packageName}.${type}`] = {
+					className,
+					sourcePath: path.join(dir, sourcePath),
+				};
 			}
 
-			for (const credential in known.credentials) {
-				this.known.credentials[credential] = path.join(dir, known.credentials[credential]);
+			for (const type in known.credentials) {
+				const { className, sourcePath } = known.credentials[type];
+				this.known.credentials[type] = { className, sourcePath: path.join(dir, sourcePath) };
 			}
 
 			this.types.nodes = this.types.nodes.concat(types.nodes);
@@ -316,6 +318,8 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 					copyFile(path.join(distDir, icon), path.join(GENERATED_STATIC_DIR, icon)),
 				),
 			);
+		} else {
+			// TODO: register custom packages here
 		}
 
 		return loader;

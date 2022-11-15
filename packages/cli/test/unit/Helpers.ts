@@ -43,8 +43,8 @@ class NodeTypesClass implements INodeTypes {
 	};
 
 	constructor(nodesAndCredentials?: INodesAndCredentials) {
-		if (nodesAndCredentials?.nodeTypes) {
-			this.nodeTypes = nodesAndCredentials?.nodeTypes;
+		if (nodesAndCredentials?.loaded?.nodes) {
+			this.nodeTypes = nodesAndCredentials?.loaded?.nodes;
 		}
 	}
 

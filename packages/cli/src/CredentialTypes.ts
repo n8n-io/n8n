@@ -1,49 +1,35 @@
-import * as path from 'path';
+import { loadClassInIsolation } from 'n8n-core';
 import type {
 	ICredentialType,
-	ICredentialTypeData,
 	ICredentialTypes,
 	INodesAndCredentials,
+	LoadedClass,
 } from 'n8n-workflow';
-import { loadClassInIsolation } from 'n8n-core';
-import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 import type { ICredentialsTypeData } from './Interfaces';
 
 class CredentialTypesClass implements ICredentialTypes {
 	constructor(private nodesAndCredentials: INodesAndCredentials) {}
 
 	getAll(): ICredentialType[] {
-		return Object.values(this.nodesAndCredentials.credentialTypes).map(({ type }) => type);
+		return Object.values(this.loadedCredentials).map(({ type }) => type);
 	}
 
 	getByName(credentialType: string): ICredentialType {
 		return this.getCredential(credentialType).type;
 	}
 
-	// TODO: use the lazy-loading data to return this
 	getAllCredentialsTypeData(): ICredentialsTypeData {
-		const { credentialTypes } = this.nodesAndCredentials;
-		// Get the data of all the credential types that they
-		// can be loaded again in the subprocess
-		const returnData: ICredentialsTypeData = {};
-		for (const credentialTypeName of Object.keys(credentialTypes)) {
-			const credentialType = this.getCredential(credentialTypeName);
-			returnData[credentialTypeName] = {
-				className: credentialType.type.constructor.name,
-				sourcePath: credentialType.sourcePath,
-			};
-		}
-
-		return returnData;
+		return this.knowCredentials;
 	}
 
 	/**
 	 * Returns the credentials data of the given type and its parent types it extends
 	 */
 	getCredentialsDataWithParents(type: string): ICredentialsTypeData {
-		const { credentialTypes } = this.nodesAndCredentials;
 		const credentialType = this.getByName(type);
 
+		const credentialTypes = this.loadedCredentials;
 		const credentialTypeData: ICredentialsTypeData = {};
 		credentialTypeData[type] = {
 			className: credentialTypes[type].type.constructor.name,
@@ -69,23 +55,28 @@ class CredentialTypesClass implements ICredentialTypes {
 		return credentialTypeData;
 	}
 
-	private getCredential(type: string): ICredentialTypeData[string] {
-		return this.nodesAndCredentials.credentialTypes[type] ?? this.loadCredential(type);
-	}
+	private getCredential(type: string): LoadedClass<ICredentialType> {
+		const loadedCredentials = this.loadedCredentials;
+		if (type in loadedCredentials) {
+			return loadedCredentials[type];
+		}
 
-	private loadCredential(type: string): ICredentialTypeData[string] {
-		const {
-			known: { credentials: knownCredentials },
-			credentialTypes,
-		} = this.nodesAndCredentials;
-		if (type in knownCredentials) {
-			const sourcePath = knownCredentials[type];
-			const [name] = path.parse(sourcePath).name.split('.');
-			const loaded: ICredentialType = loadClassInIsolation(sourcePath, name);
-			credentialTypes[type] = { sourcePath, type: loaded };
-			return credentialTypes[type];
+		const knowCredentials = this.knowCredentials;
+		if (type in knowCredentials) {
+			const { className, sourcePath } = knowCredentials[type];
+			const loaded: ICredentialType = loadClassInIsolation(sourcePath, className);
+			loadedCredentials[type] = { sourcePath, type: loaded };
+			return loadedCredentials[type];
 		}
 		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL}: ${type}`);
+	}
+
+	private get loadedCredentials() {
+		return this.nodesAndCredentials.loaded.credentials;
+	}
+
+	private get knowCredentials() {
+		return this.nodesAndCredentials.known.credentials;
 	}
 }
 

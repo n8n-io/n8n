@@ -226,7 +226,7 @@ export class Start extends Command {
 				}>();
 				installedPackages.forEach((installedPackage) => {
 					installedPackage.installedNodes.forEach((installedNode) => {
-						if (!loadNodesAndCredentials.nodeTypes[installedNode.type]) {
+						if (!loadNodesAndCredentials.known.nodes[installedNode.type]) {
 							// Leave the list ready for installing in case we need.
 							missingPackages.add({
 								packageName: installedPackage.packageName,

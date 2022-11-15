@@ -13,7 +13,7 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should return all credential types', () => {
-		const mockedCredentialTypes = mockNodesAndCredentials().credentialTypes;
+		const mockedCredentialTypes = mockNodesAndCredentials().loaded.credentials;
 		expect(credentialTypes.getAll()).toStrictEqual([
 			mockedCredentialTypes.fakeFirstCredential.type,
 			mockedCredentialTypes.fakeSecondCredential.type,
@@ -25,7 +25,7 @@ describe('ActiveExecutions', () => {
 	});
 
 	test('Should return correct credential type for valid name', () => {
-		const mockedCredentialTypes = mockNodesAndCredentials().credentialTypes;
+		const mockedCredentialTypes = mockNodesAndCredentials().loaded.credentials;
 		expect(credentialTypes.getByName('fakeFirstCredential')).toStrictEqual(
 			mockedCredentialTypes.fakeFirstCredential.type,
 		);
@@ -33,23 +33,25 @@ describe('ActiveExecutions', () => {
 });
 
 const mockNodesAndCredentials = (): INodesAndCredentials => ({
-	nodeTypes: {},
-	credentialTypes: {
-		fakeFirstCredential: {
-			type: {
-				name: 'fakeFirstCredential',
-				displayName: 'Fake First Credential',
-				properties: [],
+	loaded: {
+		nodes: {},
+		credentials: {
+			fakeFirstCredential: {
+				type: {
+					name: 'fakeFirstCredential',
+					displayName: 'Fake First Credential',
+					properties: [],
+				},
+				sourcePath: '',
 			},
-			sourcePath: '',
-		},
-		fakeSecondCredential: {
-			type: {
-				name: 'fakeSecondCredential',
-				displayName: 'Fake Second Credential',
-				properties: [],
+			fakeSecondCredential: {
+				type: {
+					name: 'fakeSecondCredential',
+					displayName: 'Fake Second Credential',
+					properties: [],
+				},
+				sourcePath: '',
 			},
-			sourcePath: '',
 		},
 	},
 	known: { nodes: {}, credentials: {} },

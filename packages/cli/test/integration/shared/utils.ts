@@ -67,12 +67,8 @@ import type {
 } from './types';
 
 const loadNodesAndCredentials: INodesAndCredentials = {
-	nodeTypes: {},
-	credentialTypes: {},
-	known: {
-		nodes: {},
-		credentials: {},
-	},
+	loaded: { nodes: {}, credentials: {} },
+	known: { nodes: {}, credentials: {} },
 };
 
 const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
@@ -226,7 +222,7 @@ export function gitHubCredentialType(): ICredentialType {
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
-	loadNodesAndCredentials.credentialTypes = {
+	loadNodesAndCredentials.loaded.credentials = {
 		githubApi: {
 			type: gitHubCredentialType(),
 			sourcePath: '',
@@ -238,7 +234,7 @@ export async function initCredentialsTypes(): Promise<void> {
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	loadNodesAndCredentials.nodeTypes = {
+	loadNodesAndCredentials.loaded.nodes = {
 		'n8n-nodes-base.start': {
 			sourcePath: '',
 			type: {

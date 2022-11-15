@@ -1428,34 +1428,38 @@ export interface IWebhookResponseData {
 export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryBinary' | 'noData';
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
 
-export type KnownNodesAndCredentials = {
-	nodes: Record<string, string>;
-	credentials: Record<string, string>;
-};
-
-export interface INodesAndCredentials {
-	nodeTypes: INodeTypeData;
-	credentialTypes: ICredentialTypeData;
-	known: KnownNodesAndCredentials;
-}
-
 export interface INodeTypes {
 	getAll(): Array<INodeType | IVersionedNodeType>;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
-export interface ICredentialTypeData {
-	[key: string]: {
-		type: ICredentialType;
-		sourcePath: string;
-	};
+export type KnownData = {
+	className: string;
+	sourcePath: string;
+};
+
+export type KnownNodesAndCredentials = {
+	nodes: Record<string, KnownData>;
+	credentials: Record<string, KnownData>;
+};
+
+export interface LoadedClass<T> {
+	sourcePath: string;
+	type: T;
 }
 
-export interface INodeTypeData {
-	[key: string]: {
-		type: INodeType | IVersionedNodeType;
-		sourcePath: string;
-	};
+type LoadedData<T> = Record<string, LoadedClass<T>>;
+export type ICredentialTypeData = LoadedData<ICredentialType>;
+export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
+
+export type LoadedNodesAndCredentials = {
+	nodes: INodeTypeData;
+	credentials: ICredentialTypeData;
+};
+
+export interface INodesAndCredentials {
+	known: KnownNodesAndCredentials;
+	loaded: LoadedNodesAndCredentials;
 }
 
 export interface IRun {

@@ -15,8 +15,7 @@ import * as Helpers from './Helpers';
 
 const TEST_ENCRYPTION_KEY = 'test';
 const mockNodesAndCredentials: INodesAndCredentials = {
-	nodeTypes: {},
-	credentialTypes: {},
+	loaded: { nodes: {}, credentials: {} },
 	known: { nodes: {}, credentials: {} },
 };
 
@@ -228,7 +227,7 @@ describe('CredentialsHelper', () => {
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
-				mockNodesAndCredentials.credentialTypes = {
+				mockNodesAndCredentials.loaded.credentials = {
 					[testData.input.credentialType.name]: {
 						type: testData.input.credentialType,
 						sourcePath: '',

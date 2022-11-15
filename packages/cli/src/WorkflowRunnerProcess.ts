@@ -145,9 +145,10 @@ export class WorkflowRunnerProcess {
 		}
 
 		const loadNodesAndCredentials = {
-			nodeTypes: nodeTypesData,
-			credentialTypes: credentialsTypeData,
 			known: { nodes: {}, credentials: {} },
+			loaded: { nodes: nodeTypesData, credentials: credentialsTypeData },
+			getNode: (type: string) => nodeTypesData[type],
+			getCredential: (type: string) => credentialsTypeData[type],
 		};
 
 		const nodeTypes = NodeTypes(loadNodesAndCredentials);

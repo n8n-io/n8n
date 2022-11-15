@@ -31,7 +31,7 @@
     "format": "prettier **/**.ts --write",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
-    "watch": "tsc --watch",
+    "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
     "test:dev": "jest --watch"
   },

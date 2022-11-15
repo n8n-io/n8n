@@ -16,15 +16,15 @@ const { name: packageName } = require(path.join(packageDir, 'package.json'));
 const distDir = path.join(packageDir, 'dist');
 
 const context = Object.freeze(createContext({ require }));
-const loadClass = (filePath) => {
+const loadClass = (sourcePath) => {
 	try {
-		const [className] = path.parse(filePath).name.split('.');
-		const absolutePath = path.resolve(packageDir, filePath);
+		const [className] = path.parse(sourcePath).name.split('.');
+		const absolutePath = path.resolve(packageDir, sourcePath);
 		const script = new Script(`new (require('${absolutePath}').${className})()`);
 		const instance = script.runInContext(context);
-		return { instance, filePath };
+		return { instance, sourcePath, className };
 	} catch (e) {
-		LoggerProxy.warn('Failed to load %s: %s', filePath, e.message);
+		LoggerProxy.warn('Failed to load %s: %s', sourcePath, e.message);
 	}
 };
 
@@ -46,12 +46,11 @@ const writeJSON = async (file, data) => {
 			})
 			.filter((filePath) => !/[vV]\d.node.js$/.test(filePath))
 			.map(loadClass)
-			.reduce((obj, d) => {
-				if (d) {
-					const name = kind === 'nodes' ? d.instance.description.name : d.instance.name;
-					if (name in obj) console.error('already loaded', kind, name, d.filePath);
-					else obj[name] = d.filePath;
-				}
+			.filter((data) => !!data)
+			.reduce((obj, { className, sourcePath, instance }) => {
+				const name = kind === 'nodes' ? instance.description.name : instance.name;
+				if (name in obj) console.error('already loaded', kind, name, sourcePath);
+				else obj[name] = { className, sourcePath };
 				return obj;
 			}, {});
 
