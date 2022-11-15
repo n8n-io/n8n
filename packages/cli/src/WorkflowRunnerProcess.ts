@@ -6,26 +6,16 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable @typescript-eslint/unbound-method */
-import {
-	BinaryDataManager,
-	IProcessMessage,
-	UserSettings,
-	WorkflowExecute,
-	loadClassInIsolation,
-} from 'n8n-core';
+import { BinaryDataManager, IProcessMessage, UserSettings, WorkflowExecute } from 'n8n-core';
 
 import {
 	ErrorReporterProxy as ErrorReporter,
 	ExecutionError,
-	ICredentialType,
-	ICredentialTypeData,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	IExecuteWorkflowInfo,
 	ILogger,
 	INodeExecutionData,
-	INodeType,
-	INodeTypeData,
 	IRun,
 	ITaskData,
 	IWorkflowExecuteAdditionalData,
@@ -45,6 +35,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import * as GenericHelpers from '@/GenericHelpers';
 import { IWorkflowExecuteProcess, IWorkflowExecutionDataProcessWithExecution } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
@@ -104,56 +95,10 @@ export class WorkflowRunnerProcess {
 
 		this.startedAt = new Date();
 
-		// TODO: use LoadNodesAndCredentials instead
-		// Load the required nodes
-		const nodeTypesData: INodeTypeData = {};
-		// eslint-disable-next-line no-restricted-syntax
-		for (const nodeTypeName of Object.keys(this.data.nodeTypeData)) {
-			// ======> TODO: use NodeTypes.loadNode instead
-			let tempNode: INodeType;
-			const { className, sourcePath } = this.data.nodeTypeData[nodeTypeName];
-
-			try {
-				tempNode = loadClassInIsolation(sourcePath, className);
-			} catch (error) {
-				throw new Error(`Error loading node "${nodeTypeName}" from: "${sourcePath}"`);
-			}
-
-			nodeTypesData[nodeTypeName] = {
-				type: tempNode,
-				sourcePath,
-			};
-		}
-
-		// Load the required credentials
-		const credentialsTypeData: ICredentialTypeData = {};
-		// eslint-disable-next-line no-restricted-syntax
-		for (const credentialTypeName of Object.keys(this.data.credentialsTypeData)) {
-			let tempCredential: ICredentialType;
-			const { className, sourcePath } = this.data.credentialsTypeData[credentialTypeName];
-
-			try {
-				tempCredential = loadClassInIsolation(sourcePath, className);
-			} catch (error) {
-				throw new Error(`Error loading credential "${credentialTypeName}" from: "${sourcePath}"`);
-			}
-
-			credentialsTypeData[credentialTypeName] = {
-				type: tempCredential,
-				sourcePath,
-			};
-		}
-
-		const loadNodesAndCredentials = {
-			known: { nodes: {}, credentials: {} },
-			loaded: { nodes: nodeTypesData, credentials: credentialsTypeData },
-			getNode: (type: string) => nodeTypesData[type],
-			getCredential: (type: string) => credentialsTypeData[type],
-		};
+		const loadNodesAndCredentials = LoadNodesAndCredentials();
+		await loadNodesAndCredentials.init();
 
 		const nodeTypes = NodeTypes(loadNodesAndCredentials);
-
-		// Init credential types the workflow uses (is needed to apply default values to credentials)
 		CredentialTypes(loadNodesAndCredentials);
 
 		// Load the credentials overwrites if any exist
