@@ -157,7 +157,7 @@ const resolveEntryBinaryAttributes = (entry: Entry): Entry => {
 	Object.entries(entry)
 		.filter(([k]) => BINARY_AD_ATTRIBUTES.includes(k))
 		.forEach(([k]) => {
-			entry[k] = Buffer.from(entry[k] as string).toString();
+			entry[k] = (entry[k] as Buffer).toString('hex');
 		});
 	return entry;
 };
