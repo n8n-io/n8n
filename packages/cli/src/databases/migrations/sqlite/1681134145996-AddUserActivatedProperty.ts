@@ -15,7 +15,7 @@ export class AddUserActivatedProperty1681134145996 implements ReversibleMigratio
 							ON u.id = sw.userId
 			WHERE ws.name = 'production_success'
 						AND r.name = 'owner'
-						AND r.scope = "workflow"`,
+						AND r.scope = 'workflow'`,
 		)) as UserSettings[];
 
 		const updatedUsers = activatedUsers.map(async (user) =>

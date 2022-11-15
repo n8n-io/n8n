@@ -74,6 +74,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "better-sqlite3",
       "sqlite3"
     ],
     "overrides": {

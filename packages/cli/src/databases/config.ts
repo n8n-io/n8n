@@ -1,6 +1,6 @@
 import path from 'path';
 import { Container } from 'typedi';
-import type { SqliteConnectionOptions } from 'typeorm/driver/sqlite/SqliteConnectionOptions';
+import type { BetterSqlite3ConnectionOptions } from 'typeorm/driver/better-sqlite3/BetterSqlite3ConnectionOptions';
 import type { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions';
 import type { MysqlConnectionOptions } from 'typeorm/driver/mysql/MysqlConnectionOptions';
 import { InstanceSettings } from 'n8n-core';
@@ -51,8 +51,8 @@ export const getOptionOverrides = (dbType: 'postgresdb' | 'mysqldb') => ({
 	password: config.getEnv(`database.${dbType}.password`),
 });
 
-export const getSqliteConnectionOptions = (): SqliteConnectionOptions => ({
-	type: 'sqlite',
+export const getSqliteConnectionOptions = (): BetterSqlite3ConnectionOptions => ({
+	type: 'better-sqlite3',
 	...getDBConnectionOptions('sqlite'),
 	migrations: sqliteMigrations,
 });

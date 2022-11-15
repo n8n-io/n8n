@@ -4,7 +4,7 @@ export class CreateWorkflowsEditorRole1663755770892 implements ReversibleMigrati
 	async up({ queryRunner, tablePrefix }: MigrationContext) {
 		await queryRunner.query(`
 			INSERT INTO "${tablePrefix}role" (name, scope)
-			VALUES ("editor", "workflow")
+			VALUES ('editor', 'workflow')
 			ON CONFLICT DO NOTHING;
 		`);
 	}
