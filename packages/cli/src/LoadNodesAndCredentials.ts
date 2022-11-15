@@ -56,6 +56,9 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		module.constructor._initPaths();
 
+		await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/nodes'), { recursive: true });
+		await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/credentials'), { recursive: true });
+
 		await this.loadNodesFromBasePackages();
 		await this.loadNodesFromDownloadedPackages();
 		await this.loadNodesFromCustomDirectories();
@@ -280,6 +283,34 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		const loader = new constructor(dir, this.excludeNodes, this.includeNodes);
 		await loader.loadAll();
 
+		// list of node & credential types that will be sent to the frontend
+		const { types } = loader;
+		this.types.nodes = this.types.nodes.concat(types.nodes);
+		this.types.credentials = this.types.credentials.concat(types.credentials);
+
+		// Copy over all icons and set `iconUrl` for the frontend
+		const iconPromises: Array<Promise<void>> = [];
+		for (const node of types.nodes) {
+			if (node.icon?.startsWith('file:')) {
+				const icon = node.icon.substring(5);
+				const iconUrl = `icons/nodes/${node.name}${path.extname(icon)}`;
+				delete node.icon;
+				node.iconUrl = iconUrl;
+				iconPromises.push(copyFile(path.join(dir, icon), path.join(GENERATED_STATIC_DIR, iconUrl)));
+			}
+		}
+		for (const credential of types.credentials) {
+			if (credential.icon?.startsWith('file:')) {
+				const icon = credential.icon.substring(5);
+				const iconUrl = `icons/credentials/${credential.name}${path.extname(icon)}`;
+				delete credential.icon;
+				credential.iconUrl = iconUrl;
+				iconPromises.push(copyFile(path.join(dir, icon), path.join(GENERATED_STATIC_DIR, iconUrl)));
+			}
+		}
+		await Promise.all(iconPromises);
+
+		// Nodes and credentials that have been loaded immediately
 		for (const nodeTypeName in loader.nodeTypes) {
 			this.loaded.nodes[nodeTypeName] = loader.nodeTypes[nodeTypeName];
 		}
@@ -288,8 +319,9 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 			this.loaded.credentials[credentialTypeName] = loader.credentialTypes[credentialTypeName];
 		}
 
-		if (loader instanceof PackageDirectoryLoader) {
-			const { packageName, known, types } = loader;
+		// Nodes and credentials that will be lazy loaded
+		if (loader instanceof LazyPackageDirectoryLoader) {
+			const { packageName, known } = loader;
 
 			for (const type in known.nodes) {
 				const { className, sourcePath } = known.nodes[type];
@@ -303,23 +335,6 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 				const { className, sourcePath } = known.credentials[type];
 				this.known.credentials[type] = { className, sourcePath: path.join(dir, sourcePath) };
 			}
-
-			this.types.nodes = this.types.nodes.concat(types.nodes);
-			this.types.credentials = this.types.credentials.concat(types.credentials);
-
-			const distDir = path.join(dir, 'dist');
-			const icons = await glob('icons/**/*.{png,svg}', {
-				cwd: distDir,
-			});
-			await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/nodes'), { recursive: true });
-			await mkdir(path.join(GENERATED_STATIC_DIR, 'icons/credentials'), { recursive: true });
-			await Promise.all(
-				icons.map(async (icon) =>
-					copyFile(path.join(distDir, icon), path.join(GENERATED_STATIC_DIR, icon)),
-				),
-			);
-		} else {
-			// TODO: register custom packages here
 		}
 
 		return loader;

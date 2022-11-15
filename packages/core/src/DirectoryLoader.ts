@@ -113,6 +113,8 @@ export abstract class DirectoryLoader {
 			name: fullNodeName,
 			version: nodeVersion,
 		});
+
+		this.types.nodes.push(tempNode.description);
 	}
 
 	protected loadCredentialFromFile(credentialName: string, filePath: string): void {
@@ -141,6 +143,8 @@ export abstract class DirectoryLoader {
 			type: tempCredential,
 			sourcePath: filePath,
 		};
+
+		this.types.credentials.push(tempCredential);
 	}
 
 	/**
@@ -246,8 +250,6 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 				this.loadCredentialFromFile(fileName, filePath);
 			}
 		}
-
-		// TODO: add these to this.types
 	}
 }
 
