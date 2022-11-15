@@ -100,6 +100,7 @@ import {
 	TEMPLATES_DIR,
 } from '@/constants';
 import { credentialsController } from '@/credentials/credentials.controller';
+import { licenseController } from '@/license/license.controller.ee';
 import { oauth2CredentialController } from '@/credentials/oauth2Credential.api';
 import type {
 	CurlHelper,
@@ -385,13 +386,15 @@ class App {
 	}
 
 	async initLicense(): Promise<void> {
-		const license = getLicense();
-		await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
+		try {
+			const license = getLicense();
+			await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
 
-		const activationKey = config.getEnv('license.activationKey');
-		if (activationKey) {
-			await license.activate(activationKey);
-		}
+			const activationKey = config.getEnv('license.activationKey');
+			if (activationKey) {
+				await license.activate(activationKey);
+			}
+		} catch (e) {}
 	}
 
 	async config(): Promise<void> {
@@ -737,6 +740,8 @@ class App {
 		await userManagementRouter.addRoutes.apply(this, [ignoredEndpoints, this.restEndpoint]);
 
 		this.app.use(`/${this.restEndpoint}/credentials`, credentialsController);
+
+		this.app.use(`/${this.restEndpoint}/license`, licenseController);
 
 		// ----------------------------------------
 		// Packages and nodes management

@@ -115,6 +115,19 @@ export declare namespace CredentialRequest {
 }
 
 // ----------------------------------
+//           /license
+// ----------------------------------
+export declare namespace LicenseRequest {
+	namespace QueryParam {
+		type Activate = {
+			activationKey: string | undefined;
+		};
+	}
+
+	type Activate = AuthenticatedRequest<{}, {}, QueryParam.Activate>;
+}
+
+// ----------------------------------
 //           /executions
 // ----------------------------------
 

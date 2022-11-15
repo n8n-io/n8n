@@ -80,6 +80,8 @@ export class License {
 			if (e instanceof Error) {
 				this.logger.error('Could not activate license', e);
 			}
+
+			throw e;
 		}
 	}
 
