@@ -32,6 +32,8 @@ export const EXPRESSION_EDITOR_THEME = [
 	EditorView.theme({
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
+			backgroundColor: '#f0f0f0',
+			height: '220px',
 		},
 	}),
 	syntaxHighlighting(
@@ -53,6 +55,12 @@ export const EXPRESSION_EDITOR_THEME = [
 ];
 
 export const DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME = EditorView.theme({
-	['.' + SYNTAX_HIGHLIGHTING_CLASSES.validResolvable]: { backgroundColor: '#90EE90' },
-	['.' + SYNTAX_HIGHLIGHTING_CLASSES.invalidResolvable]: { backgroundColor: '#FFCCCB' },
+	['.' + SYNTAX_HIGHLIGHTING_CLASSES.validResolvable]: {
+		color: '#29a568',
+		backgroundColor: '#e1f3d8',
+	},
+	['.' + SYNTAX_HIGHLIGHTING_CLASSES.invalidResolvable]: {
+		color: '#f45959',
+		backgroundColor: '#fef0f0',
+	},
 });
