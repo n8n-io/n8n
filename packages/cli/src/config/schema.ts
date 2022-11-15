@@ -892,7 +892,6 @@ export const schema = {
 			sharing: {
 				format: Boolean,
 				default: false,
-				env: 'N8N_SHARING_ENABLED',
 			},
 		},
 		// This is a temporary flag (acting as feature toggle)
@@ -900,7 +899,6 @@ export const schema = {
 		workflowSharingEnabled: {
 			format: Boolean,
 			default: false,
-			env: 'N8N_WORKFLOW_SHARING_ENABLED',
 		},
 	},
 
