@@ -2921,7 +2921,7 @@ export class HubspotV2 implements INodeType {
 							error.cause.error.validationResults[0].message,
 						);
 					}
-					if (error.cause.error.message === 'Deal does not exist') {
+					if (error.cause.error.message !== 'The resource you are requesting could not be found') {
 						throw new NodeOperationError(this.getNode(), error.cause.error.message);
 					}
 					if (this.continueOnFail()) {
