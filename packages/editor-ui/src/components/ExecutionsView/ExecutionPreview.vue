@@ -6,6 +6,9 @@
 		<n8n-text :class="$style.runningMessage">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
+		<n8n-button class="mt-l" type="tertiary" size="large" icon="stop" @click="handleStopClick">
+			{{ $locale.baseText('executionsList.stopExecution') }}
+		</n8n-button>
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div :class="{[$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }" v-if="activeExecution">
@@ -110,6 +113,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 		handleRetryClick(command: string): void {
 			this.$emit('retryExecution', { execution: this.activeExecution, command });
+		},
+		handleStopClick(): void {
+			this.$emit('stopExecution');
 		},
 		onRetryButtonBlur(event: FocusEvent): void {
 			// Hide dropdown when clicking outside of current document
