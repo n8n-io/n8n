@@ -4,6 +4,9 @@ on:
   schedule:
     - cron: '0 2 * * *'
   workflow_dispatch:
+  push:
+    branches:
+      - fix-test-workflows
 
 jobs:
   run-test-workflows:
@@ -25,8 +28,11 @@ jobs:
         with:
           repository: n8n-io/test-workflows
           path: test-workflows
+          ref: fix-test-workflows
 
       - uses: pnpm/action-setup@v2.2.4
+        with:
+          version: 7.14.2
 
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
