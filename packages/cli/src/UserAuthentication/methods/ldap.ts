@@ -1,13 +1,14 @@
-import * as Db from '@/Db';
-import { SignInType } from '@/Ldap/constants';
 import {
+	createLdapUserOnLocalDb,
 	findAndAuthenticateLdapUser,
 	getLdapConfig,
 	getLdapUserRole,
+	getUserByEmail,
 	getUserByLdapId,
 	isLdapDisabled,
 	mapLdapAttributesToDb,
-	randomPassword,
+	transformEmailUserToLdapUser,
+	updateLdapUserOnLocalDb,
 } from '@/Ldap/helpers';
 import type { User } from '@db/entities/User';
 
@@ -17,47 +18,42 @@ export const handleLdapLogin = async (
 ): Promise<User | undefined> => {
 	if (isLdapDisabled()) return undefined;
 
-	const adConfig = await getLdapConfig();
+	const ldapConfig = await getLdapConfig();
 
-	if (!adConfig.data.loginEnabled) return undefined;
+	if (!ldapConfig.loginEnabled) return undefined;
 
-	const {
-		data: { loginIdAttribute, userFilter, ldapIdAttribute },
-	} = adConfig;
+	const { loginIdAttribute, userFilter } = ldapConfig;
 
-	const adUser = await findAndAuthenticateLdapUser(email, password, loginIdAttribute, userFilter);
+	const ldapUser = await findAndAuthenticateLdapUser(email, password, loginIdAttribute, userFilter);
 
-	if (!adUser) return undefined;
+	if (!ldapUser) return undefined;
 
-	const usernameAttributeValue = adUser[ldapIdAttribute] as string | undefined;
+	const ldapAttributesValues = mapLdapAttributesToDb(ldapUser, ldapConfig);
 
-	if (!usernameAttributeValue) return undefined;
+	const { ldapId: ldapIdAttributeValue, email: emailAttributeValue } = ldapAttributesValues;
 
-	const localUser = await getUserByLdapId(usernameAttributeValue);
+	if (!ldapIdAttributeValue || !emailAttributeValue) return undefined;
 
-	if (localUser?.disabled) return undefined;
+	const localLdapUser = await getUserByLdapId(ldapIdAttributeValue);
 
-	if (!localUser) {
-		const role = await getLdapUserRole();
+	if (localLdapUser?.disabled) return undefined;
 
-		await Db.collections.User.save({
-			password: randomPassword(),
-			signInType: SignInType.LDAP,
-			globalRole: role,
-			...mapLdapAttributesToDb(adUser, adConfig.data),
-		});
+	if (localLdapUser) {
+		await updateLdapUserOnLocalDb(ldapIdAttributeValue, ldapAttributesValues);
 	} else {
-		// @ts-ignore
-		delete localUser.isPending;
-		// move this to it's own function
-		await Db.collections.User.update(localUser.id, {
-			...localUser,
-			...mapLdapAttributesToDb(adUser, adConfig.data),
-		});
+		const emailUser = await getUserByEmail(emailAttributeValue);
+
+		//check if there is an email user with the same email as the authenticated LDAP user trying to log-in
+		if (emailUser && emailUser.email === emailAttributeValue) {
+			await transformEmailUserToLdapUser(emailUser.email, ldapAttributesValues);
+		} else {
+			const role = await getLdapUserRole();
+			await createLdapUserOnLocalDb(role, ldapAttributesValues);
+		}
 	}
 
 	// Retrieve the user again as user's data might have been updated
-	const updatedUser = await getUserByLdapId(usernameAttributeValue);
+	const updatedUser = await getUserByLdapId(ldapIdAttributeValue);
 
 	return updatedUser;
 };

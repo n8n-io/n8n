@@ -104,7 +104,7 @@ export class User extends AbstractEntity implements IUser {
 	ldapId?: string | null;
 
 	@Column({ type: Boolean, default: false })
-	disabled?: boolean;
+	disabled: boolean;
 
 	/**
 	 * Whether the user is pending setup completion.

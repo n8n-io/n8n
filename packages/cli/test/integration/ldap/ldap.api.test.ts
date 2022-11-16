@@ -13,7 +13,6 @@ import { LDAP_DEFAULT_CONFIGURATION, RunningMode, SignInType } from '@/Ldap/cons
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapConfig } from '@/Ldap/types';
 import { LdapService } from '@/Ldap/LdapService.ee';
-import { loadHelpClass } from '@oclif/core';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
@@ -578,8 +577,6 @@ test('POST /login should allow new LDAP user to login and syncronize data', asyn
 		.post('/login')
 		.send({ email: ldapUser.mail, password: 'password' });
 
-	console.log(response.body);
-
 	expect(response.headers['set-cookie']).toBeDefined();
 	expect(response.headers['set-cookie'][0] as string).toContain('n8n-auth=');
 
@@ -610,8 +607,6 @@ test('POST /login should allow existing LDAP user to login and syncronize data',
 		bindingAdminPassword: 'adminPassword',
 	});
 
-	console.log(ldapConfig.data);
-
 	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
 
 	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
@@ -622,14 +617,14 @@ test('POST /login should allow existing LDAP user to login and syncronize data',
 		mail: randomEmail(),
 		dn: '',
 		sn: 'updated',
-		givenName: randomName(),
+		givenName: 'updated',
 		uid: uniqueId(),
 	};
 
 	const member = await testDb.createUser({
 		globalRole: globalMemberRole,
 		email: ldapUser.mail,
-		firstName: ldapUser.givenName,
+		firstName: 'firstname',
 		lastName: 'lastname',
 		ldapId: ldapUser.uid,
 		signInType: SignInType.LDAP,
@@ -641,14 +636,9 @@ test('POST /login should allow existing LDAP user to login and syncronize data',
 
 	jest.spyOn(LdapService.prototype, 'validUser').mockImplementation(() => Promise.resolve());
 
-	console.log(member);
-
 	const response = await authlessAgent
 		.post('/login')
 		.send({ email: ldapUser.mail, password: 'password' });
-
-	console.log('este es el response');
-	console.log(response.body);
 
 	expect(response.headers['set-cookie']).toBeDefined();
 	expect(response.headers['set-cookie'][0] as string).toContain('n8n-auth=');
@@ -658,7 +648,67 @@ test('POST /login should allow existing LDAP user to login and syncronize data',
 	// Make sure the changes in the "LDAP server" were persisted in the database
 	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
 
-	console.log(localLdapUsers);
+	expect(localLdapUsers.length).toBe(1);
+	expect(localLdapUsers[0].email).toBe(ldapUser.mail);
+	expect(localLdapUsers[0].lastName).toBe(ldapUser.sn);
+	expect(localLdapUsers[0].firstName).toBe(ldapUser.givenName);
+	expect(localLdapUsers[0].ldapId).toBe(ldapUser.uid);
+	expect(localLdapUsers[0].disabled).toBe(false);
+});
+
+test('POST /login should transform email user into LDAP user when macthed found', async () => {
+	const ldapConfig = await testDb.createLdapDefaultConfig({
+		loginEnabled: true,
+		loginLabel: '',
+		ldapIdAttribute: 'uid',
+		firstNameAttribute: 'givenName',
+		lastNameAttribute: 'sn',
+		emailAttribute: 'mail',
+		loginIdAttribute: 'mail',
+		baseDn: 'baseDn',
+		bindingAdminDn: 'adminDn',
+		bindingAdminPassword: 'adminPassword',
+	});
+
+	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
+
+	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
+
+	const authlessAgent = utils.createAgent(app);
+
+	const ldapUser = {
+		mail: randomEmail(),
+		dn: '',
+		sn: randomName(),
+		givenName: randomName(),
+		uid: uniqueId(),
+	};
+
+	const member = await testDb.createUser({
+		globalRole: globalMemberRole,
+		email: ldapUser.mail,
+		firstName: ldapUser.givenName,
+		lastName: 'lastname',
+		signInType: SignInType.EMAIL,
+	});
+
+	jest
+		.spyOn(LdapService.prototype, 'searchWithAdminBinding')
+		.mockImplementation(() => Promise.resolve([ldapUser]));
+
+	jest.spyOn(LdapService.prototype, 'validUser').mockImplementation(() => Promise.resolve());
+
+	const response = await authlessAgent
+		.post('/login')
+		.send({ email: ldapUser.mail, password: 'password' });
+
+	expect(response.headers['set-cookie']).toBeDefined();
+	expect(response.headers['set-cookie'][0] as string).toContain('n8n-auth=');
+
+	expect(response.statusCode).toBe(200);
+
+	// Make sure the changes in the "LDAP server" were persisted in the database
+	const localLdapUsers = await Db.collections.User.find({ signInType: SignInType.LDAP });
 
 	expect(localLdapUsers.length).toBe(1);
 	expect(localLdapUsers[0].email).toBe(ldapUser.mail);
