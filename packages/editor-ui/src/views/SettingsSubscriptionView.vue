@@ -20,37 +20,38 @@
 				</template>
 			</n8n-info-tip>
 
-			<div :class="$style.grid">
-				<div v-for="(cell, i) in tableData" :key="i">
-					<span v-if="cell.type === 'key'">
-						{{ cell.label }}
+			<table :class="$style.features">
+				<tr v-for="feature in licenseStore.features" :key="feature.id">
+					<th>
+						{{ feature.name }}
 						<n8n-info-tip
-							v-if="cell.description"
+							v-if="feature.description"
 							type="tooltip"
 							theme="info-light"
 							tooltipPlacement="top"
 						>
 							<div>
-								{{ cell.description }}
+								{{ feature.description }}
 							</div>
 						</n8n-info-tip>
-					</span>
-
-					<WarningTooltip v-else-if="cell.unsupported && cell.minVersion">
-						<template>
-							<span v-html="$locale.baseText('settings.subscription.unsupported', { interpolate: { version: cell.minVersion }} )"></span>
-						</template>
-					</WarningTooltip>
-					<span v-else-if="cell.value === true" :title="$locale.baseText('settings.subscription.enabled')"> ✅ </span>
-					<span v-else-if="cell.value === false" :title="$locale.baseText('settings.subscription.disabled')"> ❗ </span>
-					<span v-else-if="cell.value === -1">
-						{{ $locale.baseText('settings.subscription.unlimited') }}
-					</span>
-					<span v-else>
-						{{ cell.value }}
-					</span>
-				</div>
-			</div>
+					</th>
+					<th>
+						<WarningTooltip v-if="feature.unsupported && feature.minVersion">
+							<template>
+								<span v-html="$locale.baseText('settings.subscription.unsupported', { interpolate: { version: feature.minVersion }} )"></span>
+							</template>
+						</WarningTooltip>
+						<span v-else-if="feature.value === true" :title="$locale.baseText('settings.subscription.enabled')"> ✅ </span>
+						<span v-else-if="feature.value === false" :title="$locale.baseText('settings.subscription.disabled')"> ❗ </span>
+						<span v-else-if="feature.value === -1">
+							{{ $locale.baseText('settings.subscription.unlimited') }}
+						</span>
+						<span v-else>
+							{{ feature.value }}
+						</span>
+					</th>
+				</tr>
+			</table>
 		</div>
 		<div v-else-if="isActivating" :class="$style.actionBoxContainer">
 			<div :class="$style.loader">
@@ -84,19 +85,6 @@ import mixins from 'vue-typed-mixins';
 import { LicenseResponse, LicenseFeatureExpanded } from '@/Interface';
 import WarningTooltip from '@/components/WarningTooltip.vue';
 
-type TableCell =
-	| {
-			type: 'key';
-			label: string;
-			description?: string;
-	  }
-	| {
-			type: 'value';
-			value: string | number | boolean;
-			unsupported: boolean;
-			minVersion?: string | null;
-	  };
-
 export default mixins(showMessage).extend({
 	name: 'SettingsSubscriptionView',
 	components: {
@@ -129,27 +117,6 @@ export default mixins(showMessage).extend({
 		...mapStores(useRootStore, useLicenseStore),
 		license(): LicenseResponse | undefined {
 			return this.licenseStore.license;
-		},
-		tableData(): TableCell[] {
-			return this.licenseStore.features.reduce(
-				(accu: TableCell[], feature: LicenseFeatureExpanded) => {
-					accu.push({
-						type: 'key',
-						label: feature.name,
-						description: feature.description,
-					});
-
-					accu.push({
-						type: 'value',
-						value: feature.value,
-						unsupported: feature.unsupported,
-						minVersion: feature.minVersion,
-					});
-
-					return accu;
-				},
-				[] as TableCell[],
-			);
 		},
 	},
 	methods: {
@@ -209,5 +176,16 @@ export default mixins(showMessage).extend({
 	display: grid;
 	grid-template-columns: auto auto;
 	row-gap: var(--spacing-s);
+}
+
+.features {
+	text-align: left;
+	border-spacing: 0 var(--spacing-s);
+	border-collapse: separate;
+
+	th {
+		font-weight: var(--font-weight-regular);
+		padding-right: var(--spacing-xl);
+	}
 }
 </style>
