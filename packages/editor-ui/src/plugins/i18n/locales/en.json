@@ -481,7 +481,7 @@
 	"expressionEdit.learnMore": "Learn more",
 	"expressionEdit.editExpression": "Edit Expression",
 	"expressionEdit.expression": "Expression",
-	"expressionEdit.result": "Result",
+	"expressionEdit.result": "Result of item 1",
 	"expressionEdit.variableSelector": "Variable Selector",
 	"fakeDoor.credentialEdit.sharing.name": "Sharing",
 	"fakeDoor.credentialEdit.sharing.actionBox.title": "Sharing is only available on <a href=\"https://n8n.io/cloud/\" target=\"_blank\">n8n Cloud</a> right now",
