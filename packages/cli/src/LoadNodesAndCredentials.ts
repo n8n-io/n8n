@@ -33,6 +33,7 @@ import {
 	persistInstalledPackageData,
 	removePackageFromDatabase,
 } from '@/CommunityNodes/packageModel';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 
 export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 	known: KnownNodesAndCredentials = { nodes: {}, credentials: {} };
@@ -62,10 +63,16 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		await this.loadNodesFromBasePackages();
 		await this.loadNodesFromDownloadedPackages();
 		await this.loadNodesFromCustomDirectories();
-		await this.generateTypesForFrontend();
 	}
 
 	async generateTypesForFrontend() {
+		const credentialsOverwrites = CredentialsOverwrites().getAll();
+		for (const credential of this.types.credentials) {
+			if (credential.name in credentialsOverwrites) {
+				credential.__overwrittenProperties = Object.keys(credentialsOverwrites[credential.name]);
+			}
+		}
+
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
 

@@ -216,6 +216,8 @@ export class Start extends Command {
 				const credentialsOverwrites = CredentialsOverwrites();
 				await credentialsOverwrites.init();
 
+				await loadNodesAndCredentials.generateTypesForFrontend();
+
 				// Wait till the database is ready
 				await startDbInitPromise;
 

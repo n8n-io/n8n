@@ -8,18 +8,6 @@ describe('ActiveExecutions', () => {
 		credentialTypes = CredentialTypes(mockNodesAndCredentials());
 	});
 
-	test('Should initialize credential types', () => {
-		expect(credentialTypes.getAll()).toHaveLength(2);
-	});
-
-	test('Should return all credential types', () => {
-		const mockedCredentialTypes = mockNodesAndCredentials().loaded.credentials;
-		expect(credentialTypes.getAll()).toStrictEqual([
-			mockedCredentialTypes.fakeFirstCredential.type,
-			mockedCredentialTypes.fakeSecondCredential.type,
-		]);
-	});
-
 	test('Should throw error when calling invalid credential name', () => {
 		expect(() => credentialTypes.getByName('fakeThirdCredential')).toThrowError();
 	});

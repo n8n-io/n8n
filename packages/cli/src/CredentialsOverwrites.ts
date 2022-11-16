@@ -19,7 +19,7 @@ class CredentialsOverwritesClass {
 		if (overwriteData !== undefined) {
 			// If data is already given it can directly be set instead of
 			// loaded from environment
-			this.__setData(deepCopy(overwriteData));
+			this.setData(deepCopy(overwriteData));
 			return;
 		}
 
@@ -28,24 +28,20 @@ class CredentialsOverwritesClass {
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-shadow
 			const overwriteData = JSON.parse(data);
-			this.__setData(overwriteData);
+			this.setData(overwriteData);
 		} catch (error) {
 			throw new Error(`The credentials-overwrite is not valid JSON.`);
 		}
 	}
 
-	__setData(overwriteData: ICredentialsOverwrite) {
+	private setData(overwriteData: ICredentialsOverwrite) {
 		this.overwriteData = overwriteData;
 
-		// eslint-disable-next-line no-restricted-syntax
-		for (const credentialTypeData of this.credentialTypes.getAll()) {
-			const type = credentialTypeData.name;
-
-			const overwrites = this.__getExtended(type);
+		for (const type in overwriteData) {
+			const overwrites = this.getOverwrites(type);
 
 			if (overwrites && Object.keys(overwrites).length) {
 				this.overwriteData[type] = overwrites;
-				credentialTypeData.__overwrittenProperties = Object.keys(overwrites);
 			}
 		}
 	}
@@ -70,17 +66,13 @@ class CredentialsOverwritesClass {
 		return returnData;
 	}
 
-	__getExtended(type: string): ICredentialDataDecryptedObject | undefined {
+	private getOverwrites(type: string): ICredentialDataDecryptedObject | undefined {
 		if (this.resolvedTypes.includes(type)) {
 			// Type got already resolved and can so returned directly
 			return this.overwriteData[type];
 		}
 
 		const credentialTypeData = this.credentialTypes.getByName(type);
-
-		if (credentialTypeData === undefined) {
-			throw new Error(`The credentials of type "${type}" are not known.`);
-		}
 
 		if (credentialTypeData.extends === undefined) {
 			this.resolvedTypes.push(type);
@@ -90,7 +82,7 @@ class CredentialsOverwritesClass {
 		const overwrites: ICredentialDataDecryptedObject = {};
 		// eslint-disable-next-line no-restricted-syntax
 		for (const credentialsTypeName of credentialTypeData.extends) {
-			Object.assign(overwrites, this.__getExtended(credentialsTypeName));
+			Object.assign(overwrites, this.getOverwrites(credentialsTypeName));
 		}
 
 		if (this.overwriteData[type] !== undefined) {

@@ -324,7 +324,6 @@ export interface ICredentialType {
 }
 
 export interface ICredentialTypes {
-	getAll(): ICredentialType[];
 	getByName(credentialType: string): ICredentialType;
 }
 

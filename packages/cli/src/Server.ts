@@ -1623,6 +1623,8 @@ class App {
 
 						await credentialsOverwrites.init(body);
 
+						await LoadNodesAndCredentials().generateTypesForFrontend();
+
 						this.presetCredentialsLoaded = true;
 
 						ResponseHelper.sendSuccessResponse(res, { success: true }, true, 200);
