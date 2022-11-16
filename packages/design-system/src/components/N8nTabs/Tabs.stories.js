@@ -5,8 +5,7 @@ import { action } from '@storybook/addon-actions';
 export default {
 	title: 'Atoms/Tabs',
 	component: N8nTabs,
-	argTypes: {
-	},
+	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-xlight' },
 	},
@@ -21,8 +20,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nTabs,
 	},
-	template:
-		`<n8n-tabs v-model="val" v-bind="$props" @input="onInput">
+	template: `<n8n-tabs v-model="val" v-bind="$props" @input="onInput">
 		</n8n-tabs>`,
 	methods,
 	data() {

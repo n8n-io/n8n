@@ -33,8 +33,7 @@ export default Vue.extend({
 		ElInput, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
-		value: {
-		},
+		value: {},
 		type: {
 			type: String,
 			validator: (value: string): boolean =>

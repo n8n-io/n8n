@@ -1,5 +1,11 @@
 <template>
-	<div :class="{'n8n-select': true, [$style.container]: true, [$style.withPrepend]: !!$slots.prepend}">
+	<div
+		:class="{
+			'n8n-select': true,
+			[$style.container]: true,
+			[$style.withPrepend]: !!$slots.prepend,
+		}"
+	>
 		<div v-if="$slots.prepend" :class="$style.prepend">
 			<slot name="prepend" />
 		</div>
@@ -41,8 +47,7 @@ export default Vue.extend({
 		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	props: {
-		value: {
-		},
+		value: {},
 		size: {
 			type: String,
 			default: 'large',
@@ -112,21 +117,21 @@ export default Vue.extend({
 	},
 	methods: {
 		focus() {
-			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
+			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
 			if (select) {
 				select.focus();
 			}
 		},
 		blur() {
-			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
+			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
 			if (select) {
 				select.blur();
 			}
 		},
 		focusOnInput() {
-			const select = this.$refs.innerSelect as Vue & HTMLElement | undefined;
+			const select = this.$refs.innerSelect as (Vue & HTMLElement) | undefined;
 			if (select) {
-				const input = select.$refs.input as Vue & HTMLElement | undefined;
+				const input = select.$refs.input as (Vue & HTMLElement) | undefined;
 				if (input) {
 					input.focus();
 				}

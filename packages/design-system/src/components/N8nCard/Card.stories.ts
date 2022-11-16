@@ -1,17 +1,15 @@
-/* tslint:disable:variable-name */
-
 import N8nCard from './Card.vue';
-import {StoryFn} from "@storybook/vue";
-import N8nButton from "../N8nButton/Button.vue";
-import N8nIcon from "../N8nIcon/Icon.vue";
-import N8nText from "../N8nText/Text.vue";
+import type { StoryFn } from '@storybook/vue';
+import N8nButton from '../N8nButton/Button.vue';
+import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nText from '../N8nText/Text.vue';
 
 export default {
 	title: 'Atoms/Card',
 	component: N8nCard,
 };
 
-export const Default: StoryFn = (args, {argTypes}) => ({
+export const Default: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nCard,
@@ -19,7 +17,7 @@ export const Default: StoryFn = (args, {argTypes}) => ({
 	template: `<n8n-card v-bind="$props">This is a card.</n8n-card>`,
 });
 
-export const Hoverable: StoryFn = (args, {argTypes}) => ({
+export const Hoverable: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nCard,
@@ -38,8 +36,7 @@ Hoverable.args = {
 	hoverable: true,
 };
 
-
-export const WithSlots: StoryFn = (args, {argTypes}) => ({
+export const WithSlots: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nCard,

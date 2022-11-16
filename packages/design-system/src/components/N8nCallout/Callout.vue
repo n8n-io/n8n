@@ -1,12 +1,8 @@
 <template>
 	<div :class="classes" role="alert">
-
 		<div :class="$style['message-section']">
 			<div :class="$style.icon">
-				<n8n-icon
-					:icon="getIcon"
-					:size="theme === 'secondary' ? 'medium' : 'large'"
-				/>
+				<n8n-icon :icon="getIcon" :size="theme === 'secondary' ? 'medium' : 'large'" />
 			</div>
 			<slot />&nbsp;
 			<slot name="actions" />
@@ -46,11 +42,7 @@ export default Vue.extend({
 	},
 	computed: {
 		classes(): string[] {
-			return [
-				'n8n-callout',
-				this.$style.callout,
-				this.$style[this.theme],
-			];
+			return ['n8n-callout', this.$style.callout, this.$style[this.theme]];
 		},
 		getIcon(): string {
 			if (Object.keys(CALLOUT_DEFAULT_ICONS).includes(this.theme)) {
@@ -79,7 +71,8 @@ export default Vue.extend({
 	display: flex;
 }
 
-.info, .custom {
+.info,
+.custom {
 	border-color: var(--color-foreground-base);
 	background-color: var(--color-background-light);
 	color: var(--color-info);
