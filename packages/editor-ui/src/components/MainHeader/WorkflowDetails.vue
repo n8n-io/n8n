@@ -17,6 +17,7 @@
 							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
 							class="name"
+							data-test-id="workflow-name-input"
 						/>
 					</template>
 				</ShortenName>
@@ -36,6 +37,7 @@
 					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 					ref="dropdown"
 					class="tags-edit"
+					data-test-id="workflow-tags-dropdown"
 				/>
 			</div>
 			<div
@@ -55,6 +57,7 @@
 				:responsive="true"
 				:key="currentWorkflowId"
 				@click="onTagsEditEnable"
+				data-test-id="workflow-tags"
 			/>
 		</span>
 		<span v-else class="tags"></span>
@@ -64,6 +67,15 @@
 				<span class="activator">
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
+				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+					<n8n-button
+						type="tertiary"
+						class="mr-2xs"
+						@click="onShareButtonClick"
+					>
+						{{ $locale.baseText('workflowDetails.share') }}
+					</n8n-button>
+				</enterprise-edition>
 				<SaveButton
 					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
@@ -71,7 +83,7 @@
 					@click="onSaveButtonClick"
 				/>
 				<div :class="$style.workflowMenuContainer">
-					<input :class="$style.hiddenInput" type="file" ref="importFile" @change="handleFileImport()">
+					<input :class="$style.hiddenInput" type="file" ref="importFile" data-test-id="workflow-import-input" @change="handleFileImport()">
 					<n8n-action-dropdown :items="workflowMenuItems" @select="onWorkflowMenuSelect" />
 				</div>
 			</template>
@@ -84,10 +96,12 @@ import Vue from "vue";
 import mixins from "vue-typed-mixins";
 import {
 	DUPLICATE_MODAL_KEY,
+	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
 } from "@/constants";
 
 import ShortenName from "@/components/ShortenName.vue";
@@ -140,6 +154,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			tagsEditBus: new Vue(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
+			EnterpriseEditionFeature,
 		};
 	},
 	computed: {
@@ -224,6 +239,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 			}
 			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
 			if (saved) await this.settingsStore.fetchPromptsData();
+		},
+		onShareButtonClick() {
+			this.uiStore.openModal(WORKFLOW_SHARE_MODAL_KEY);
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;

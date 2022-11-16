@@ -1,6 +1,6 @@
 <template>
 	<div class="workflow-activator">
-		<div :class="$style.activeStatusText">
+		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
 			<n8n-text v-if="workflowActive" :color="couldNotBeStarted ? 'danger' : 'success'" size="small" bold>
 				{{ $locale.baseText('workflowActivator.active') }}
 			</n8n-text>

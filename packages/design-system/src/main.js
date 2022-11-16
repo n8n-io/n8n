@@ -14,5 +14,5 @@ export {
 	Notification,
 	locale,
 	designSystemComponents,
-	elementUIComponents
+	elementUIComponents,
 };

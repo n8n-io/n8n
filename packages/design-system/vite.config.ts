@@ -5,9 +5,7 @@ import { defineConfig as defineVitestConfig } from 'vitest/config';
 
 export default mergeConfig(
 	defineConfig({
-		plugins: [
-			vue(),
-		],
+		plugins: [vue()],
 		resolve: {
 			alias: {
 				'@': resolve(__dirname, 'src'),

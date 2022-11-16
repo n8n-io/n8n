@@ -583,8 +583,8 @@ export interface IExecuteFunctions {
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
 	putExecutionToWait(waitTill: Date): Promise<void>;
-	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
-	sendResponse(response: IExecuteResponsePromiseData): void; // tslint:disable-line:no-any
+	sendMessageToUI(message: any): void;
+	sendResponse(response: IExecuteResponsePromiseData): void;
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
@@ -595,7 +595,7 @@ export interface IExecuteFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -629,7 +629,7 @@ export interface IExecuteSingleFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -679,7 +679,7 @@ export interface ILoadOptionsFunctions {
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: any, // tslint:disable-line:no-any
+			requestOptions: any,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<any>;
 		httpRequestWithAuthentication(
@@ -688,7 +688,7 @@ export interface ILoadOptionsFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: ((...args: any[]) => any) | undefined; // tslint:disable-line:no-any
+		[key: string]: ((...args: any[]) => any) | undefined;
 	};
 }
 
@@ -718,7 +718,7 @@ export interface IHookFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -752,7 +752,7 @@ export interface IPollFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -786,7 +786,7 @@ export interface ITriggerFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -824,7 +824,7 @@ export interface IWebhookFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 

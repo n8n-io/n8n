@@ -9,11 +9,12 @@ const config = (module.exports = {
 	},
 
 	ignorePatterns: [
-		'.eslintrc.js', // TODO: remove this
 		'node_modules/**',
 		'dist/**',
-		'test/**', // TODO: remove this
-		'jest.config.js', // TODO: remove this
+		// TODO: remove these
+		'test/**',
+		'.eslintrc.js',
+		'jest.config.js',
 	],
 
 	plugins: [
@@ -359,12 +360,10 @@ const config = (module.exports = {
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 *
-		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
 		 */
 		'no-unused-vars': 'off',
 		'@typescript-eslint/no-unused-vars': [
-			'error',
+			process.env.CI_LINT_MASTER ? 'warn' : 'error',
 			{
 				argsIgnorePattern: '^_',
 				destructuredArrayIgnorePattern: '^_',

@@ -118,7 +118,6 @@ import {
 	ICredentialsDecrypted,
 	ICredentialType,
 	INode,
-	INodeCredentialTestResult,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,

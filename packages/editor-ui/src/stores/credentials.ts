@@ -1,4 +1,4 @@
-import { createNewCredential, deleteCredential, getAllCredentials, getCredentialData, getCredentialsNewName, getCredentialTypes, getForeignCredentials, oAuth1CredentialAuthorize, oAuth2CredentialAuthorize, testCredential, updateCredential } from "@/api/credentials";
+import { createNewCredential, deleteCredential, getAllCredentials, getCredentialData, getCredentialsNewName, getCredentialTypes, oAuth1CredentialAuthorize, oAuth2CredentialAuthorize, testCredential, updateCredential } from "@/api/credentials";
 import { setCredentialSharedWith } from "@/api/credentials.ee";
 import { getAppNameFromCredType } from "@/components/helpers";
 import { EnterpriseEditionFeature, STORES } from "@/constants";
@@ -33,10 +33,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			return Object.values(this.credentials)
 				.sort((a, b) => a.name.localeCompare(b.name));
 		},
-		allForeignCredentials(): ICredentialsResponse[] {
-			return Object.values(this.foreignCredentials || {})
-				.sort((a, b) => a.name.localeCompare(b.name));
-		},
 		allCredentialsByType(): {[type: string]: ICredentialsResponse[]} {
 			const credentials = this.allCredentials;
 			const types = this.allCredentialTypes;
@@ -52,6 +48,9 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		getCredentialById() {
 			return (id: string): ICredentialsResponse => this.credentials[id];
+		},
+		foreignCredentialsById(): ICredentialMap {
+			return Object.fromEntries(Object.entries(this.credentials).filter(([_, credential]) => credential.hasOwnProperty('currentUserHasAccess')));
 		},
 		getCredentialByIdAndType() {
 			return (id: string, type: string): ICredentialsResponse | undefined => {
@@ -138,13 +137,12 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				return accu;
 			}, {});
 		},
-		setForeignCredentials(credentials: ICredentialsResponse[]): void {
-			this.foreignCredentials = credentials.reduce((accu: ICredentialMap, cred: ICredentialsResponse) => {
+		addCredentials(credentials: ICredentialsResponse[]): void {
+			credentials.forEach((cred: ICredentialsResponse) => {
 				if (cred.id) {
-					accu[cred.id] = cred;
+					this.credentials[cred.id] = { ...this.credentials[cred.id], ...cred };
 				}
-				return accu;
-			}, {});
+			});
 		},
 		upsertCredential(credential: ICredentialsResponse): void {
 			if (credential.id) {
@@ -166,12 +164,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 			const rootStore = useRootStore();
 			const credentials = await getAllCredentials(rootStore.getRestApiContext);
 			this.setCredentials(credentials);
-			return credentials;
-		},
-		async fetchForeignCredentials(): Promise<ICredentialsResponse[]> {
-			const rootStore = useRootStore();
-			const credentials = await getForeignCredentials(rootStore.getRestApiContext);
-			this.setForeignCredentials(credentials);
 			return credentials;
 		},
 		async getCredentialData({ id }: {id: string}): Promise<ICredentialsResponse | ICredentialsDecryptedResponse | undefined> {
