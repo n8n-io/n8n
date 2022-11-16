@@ -107,7 +107,7 @@ export class CompareDatasets implements INodeType {
 				type: 'string',
 				default: '',
 				// eslint-disable-next-line n8n-nodes-base/node-param-placeholder-miscased-id
-				placeholder: 'e.d. id, country',
+				placeholder: 'e.g. id, country',
 				hint: 'Enter the names of the input fields as text, separated by commas',
 				displayOptions: {
 					show: {
