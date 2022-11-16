@@ -311,8 +311,11 @@ export class ExecuteBatch extends Command {
 		// Wait till the n8n-packages have been read
 		await loadNodesAndCredentialsPromise;
 
+		NodeTypes(loadNodesAndCredentials);
+		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
+
 		// Load the credentials overwrites if any exist
-		await CredentialsOverwrites().init();
+		await CredentialsOverwrites(credentialTypes).init();
 
 		// Load all external hooks
 		const externalHooks = ExternalHooks();

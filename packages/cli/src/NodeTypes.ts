@@ -10,7 +10,6 @@ import type {
 } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import type { INodesTypeData } from './Interfaces';
 
 class NodeTypesClass implements INodeTypes {
 	constructor(private nodesAndCredentials: INodesAndCredentials) {
@@ -51,32 +50,6 @@ class NodeTypesClass implements INodeTypes {
 
 	getByNameAndVersion(nodeType: string, version?: number): INodeType {
 		return NodeHelpers.getVersionedNodeType(this.getNode(nodeType).type, version);
-	}
-
-	getAllNodeTypeData(): INodesTypeData {
-		return this.knownNodes;
-	}
-
-	/**
-	 * Returns the data of the node types that are needed
-	 * to execute the given nodes
-	 */
-	getNodeTypeData(nodes: INode[]): INodesTypeData {
-		// Check which node-types have to be loaded
-		const neededNodeTypes = this.getNeededNodeTypes(nodes);
-
-		// Get all the data of the needed node types that they
-		// can be loaded again in the process
-		const returnData: INodesTypeData = {};
-		for (const { type } of neededNodeTypes) {
-			const nodeType = this.getNode(type);
-			returnData[type] = {
-				className: nodeType.type.constructor.name,
-				sourcePath: nodeType.sourcePath,
-			};
-		}
-
-		return returnData;
 	}
 
 	private getNode(type: string): LoadedClass<INodeType | IVersionedNodeType> {

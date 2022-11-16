@@ -1,40 +1,30 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable no-underscore-dangle */
-import { deepCopy, ICredentialDataDecryptedObject } from 'n8n-workflow';
-import { CredentialTypes } from '@/CredentialTypes';
+import type { ICredentialDataDecryptedObject, ICredentialTypes } from 'n8n-workflow';
+import { deepCopy, jsonParse } from 'n8n-workflow';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 
 class CredentialsOverwritesClass {
-	private credentialTypes = CredentialTypes();
-
 	private overwriteData: ICredentialsOverwrite = {};
 
 	private resolvedTypes: string[] = [];
 
-	async init(overwriteData?: ICredentialsOverwrite) {
-		// If data gets reinitialized reset the resolved types cache
-		this.resolvedTypes.length = 0;
+	constructor(private credentialTypes: ICredentialTypes) {}
 
-		if (overwriteData !== undefined) {
-			// If data is already given it can directly be set instead of
-			// loaded from environment
-			this.setData(deepCopy(overwriteData));
-			return;
-		}
-
+	async init() {
 		const data = (await GenericHelpers.getConfigValue('credentials.overwrite.data')) as string;
 
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-shadow
-			const overwriteData = JSON.parse(data);
+			const overwriteData = jsonParse<ICredentialsOverwrite>(data);
 			this.setData(overwriteData);
 		} catch (error) {
 			throw new Error(`The credentials-overwrite is not valid JSON.`);
 		}
 	}
 
-	private setData(overwriteData: ICredentialsOverwrite) {
+	setData(overwriteData: ICredentialsOverwrite) {
+		// If data gets reinitialized reset the resolved types cache
+		this.resolvedTypes.length = 0;
+
 		this.overwriteData = overwriteData;
 
 		for (const type in overwriteData) {
@@ -94,7 +84,7 @@ class CredentialsOverwritesClass {
 		return overwrites;
 	}
 
-	get(type: string): ICredentialDataDecryptedObject | undefined {
+	private get(type: string): ICredentialDataDecryptedObject | undefined {
 		return this.overwriteData[type];
 	}
 
@@ -106,9 +96,15 @@ class CredentialsOverwritesClass {
 let credentialsOverwritesInstance: CredentialsOverwritesClass | undefined;
 
 // eslint-disable-next-line @typescript-eslint/naming-convention
-export function CredentialsOverwrites(): CredentialsOverwritesClass {
-	if (credentialsOverwritesInstance === undefined) {
-		credentialsOverwritesInstance = new CredentialsOverwritesClass();
+export function CredentialsOverwrites(
+	credentialTypes?: ICredentialTypes,
+): CredentialsOverwritesClass {
+	if (!credentialsOverwritesInstance) {
+		if (credentialTypes) {
+			credentialsOverwritesInstance = new CredentialsOverwritesClass(credentialTypes);
+		} else {
+			throw new Error('CredentialsOverwrites not initialized yet');
+		}
 	}
 
 	return credentialsOverwritesInstance;

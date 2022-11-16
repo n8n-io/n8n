@@ -15,10 +15,6 @@ class CredentialTypesClass implements ICredentialTypes {
 		return this.getCredential(credentialType).type;
 	}
 
-	getAllCredentialsTypeData(): ICredentialsTypeData {
-		return this.knownCredentials;
-	}
-
 	/**
 	 * Returns the credentials data of the given type and its parent types it extends
 	 */

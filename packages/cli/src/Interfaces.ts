@@ -683,10 +683,7 @@ export interface IWorkflowExecutionDataProcess {
 }
 
 export interface IWorkflowExecutionDataProcessWithExecution extends IWorkflowExecutionDataProcess {
-	credentialsOverwrite: ICredentialsOverwrite;
-	credentialsTypeData: ICredentialsTypeData;
 	executionId: string;
-	nodeTypeData: INodesTypeData;
 	userId: string;
 }
 

@@ -123,9 +123,11 @@ export class Execute extends Command {
 		// Wait till the n8n-packages have been read
 		await loadNodesAndCredentialsPromise;
 
+		NodeTypes(loadNodesAndCredentials);
+		const credentialTypes = CredentialTypes(loadNodesAndCredentials);
+
 		// Load the credentials overwrites if any exist
-		const credentialsOverwrites = CredentialsOverwrites();
-		await credentialsOverwrites.init();
+		await CredentialsOverwrites(credentialTypes).init();
 
 		// Load all external hooks
 		const externalHooks = ExternalHooks();

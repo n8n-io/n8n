@@ -1619,9 +1619,7 @@ class App {
 							return;
 						}
 
-						const credentialsOverwrites = CredentialsOverwrites();
-
-						await credentialsOverwrites.init(body);
+						CredentialsOverwrites().setData(body);
 
 						await LoadNodesAndCredentials().generateTypesForFrontend();
 

@@ -15,12 +15,9 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { CredentialTypes } from '@/CredentialTypes';
 import * as Db from '@/Db';
 import {
 	ICredentialsDb,
-	ICredentialsTypeData,
-	INodesTypeData,
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
 	WhereClause,
@@ -231,62 +228,7 @@ export async function executeErrorWorkflow(
 }
 
 /**
- * Returns all the defined NodeTypes
- *
- */
-export function getAllNodeTypeData(): INodesTypeData {
-	return NodeTypes().getAllNodeTypeData();
-}
-
-/**
- * Returns all the defined CredentialTypes
- *
- */
-export function getAllCredentialsTypeData(): ICredentialsTypeData {
-	return CredentialTypes().getAllCredentialsTypeData();
-}
-
-/**
- * Returns the data of the node types that are needed
- * to execute the given nodes
- */
-export function getNodeTypeData(nodes: INode[]): INodesTypeData {
-	return NodeTypes().getNodeTypeData(nodes);
-}
-
-export function getCredentialsDataWithParents(type: string): ICredentialsTypeData {
-	return CredentialTypes().getCredentialsDataWithParents(type);
-}
-
-/**
- * Returns all the credentialTypes which are needed to resolve
- * the given workflow credentials
- *
- * @param {IWorkflowCredentials} credentials The credentials which have to be able to be resolved
- */
-export function getCredentialsDataByNodes(nodes: INode[]): ICredentialsTypeData {
-	const credentialTypeData: ICredentialsTypeData = {};
-
-	for (const node of nodes) {
-		const credentialsUsedByThisNode = node.credentials;
-		if (credentialsUsedByThisNode) {
-			// const credentialTypesUsedByThisNode = Object.keys(credentialsUsedByThisNode!);
-			for (const credentialType of Object.keys(credentialsUsedByThisNode)) {
-				if (credentialTypeData[credentialType] !== undefined) {
-					continue;
-				}
-
-				Object.assign(credentialTypeData, getCredentialsDataWithParents(credentialType));
-			}
-		}
-	}
-
-	return credentialTypeData;
-}
-
-/**
  * Saves the static data if it changed
- *
  */
 export async function saveStaticData(workflow: Workflow): Promise<void> {
 	if (workflow.staticData.__dataChanged === true) {
@@ -345,7 +287,6 @@ export async function getStaticDataById(workflowId: string | number) {
 
 /**
  * Set node ids if not already set
- *
  */
 export function addNodeIds(workflow: WorkflowEntity) {
 	const { nodes } = workflow;
