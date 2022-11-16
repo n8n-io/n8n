@@ -123,6 +123,16 @@ export class CompareDatasets implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Fields to Skip Comparing',
+						name: 'skipFields',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. updated_at, updated_by',
+						hint: 'Enter the field names as text, separated by commas',
+						description:
+							"Fields that shouldn't be included when checking whether two items are the same",
+					},
+					{
 						displayName: 'Disable Dot Notation',
 						name: 'disableDotNotation',
 						type: 'boolean',
