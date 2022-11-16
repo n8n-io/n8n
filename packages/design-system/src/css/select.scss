@@ -1,12 +1,12 @@
-@use "mixins/mixins";
-@use "mixins/utils";
-@use "./common/var";
-@use "select-dropdown";
-@use "input";
-@use "tag";
-@use "option";
-@use "option-group";
-@use "scrollbar";
+@use 'mixins/mixins';
+@use 'mixins/utils';
+@use './common/var';
+@use 'select-dropdown';
+@use 'input';
+@use 'tag';
+@use 'option';
+@use 'option-group';
+@use 'scrollbar';
 
 @include mixins.b(select) {
 	display: inline-block;
@@ -161,9 +161,9 @@
 		}
 	}
 
-  	&--large {
+	&--large {
 		.el-input__inner {
-		  height: 42px;
+			height: 42px;
 		}
-  	}
+	}
 }

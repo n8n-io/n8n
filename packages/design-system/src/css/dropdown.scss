@@ -1,6 +1,6 @@
-@use "mixins/mixins";
-@use "./common/var";
-@use "./popper";
+@use 'mixins/mixins';
+@use './common/var';
+@use './popper';
 
 @include mixins.b(dropdown) {
 	display: inline-block;

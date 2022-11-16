@@ -37,6 +37,7 @@ import {
 	NodeParameterValueType,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
+import {ICredentialsDb} from "n8n";
 
 export * from 'n8n-design-system/src/types';
 
@@ -320,6 +321,7 @@ export interface IWorkflowDb {
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
 	hash: string;
+	usedCredentials?: Array<Partial<ICredentialsDb>>;
 }
 
 // Identical to cli.Interfaces.ts
@@ -330,6 +332,14 @@ export interface IWorkflowShortResponse {
 	createdAt: number | string;
 	updatedAt: number | string;
 	tags: ITag[];
+}
+
+export interface IWorkflowsShareResponse {
+	id: string;
+	createdAt: number | string;
+	updatedAt: number | string;
+	sharedWith?: Array<Partial<IUser>>;
+	ownedBy?: Partial<IUser>;
 }
 
 
@@ -346,12 +356,17 @@ export interface IShareCredentialsPayload {
 	shareWithIds: string[];
 }
 
+export interface IShareWorkflowsPayload {
+	shareWithIds: string[];
+}
+
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
+	currentUserHasAccess?: boolean;
 }
 
 export interface ICredentialsBase {
@@ -987,7 +1002,6 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
-	foreignCredentials?: ICredentialMap;
 }
 
 export interface ITagsState {
@@ -1112,7 +1126,7 @@ export type IFakeDoor = {
 	uiLocations: IFakeDoorLocation[],
 };
 
-export type IFakeDoorLocation = 'settings' | 'credentialsModal';
+export type IFakeDoorLocation = 'settings' | 'credentialsModal' | 'workflowShareModal';
 
 export type INodeFilterType = "Regular" | "Trigger" | "All";
 

@@ -149,7 +149,7 @@ import {
 	STICKY_NODE_TYPE,
 	VIEWS,
 	WEBHOOK_NODE_TYPE,
-	TRIGGER_NODE_FILTER,
+	TRIGGER_NODE_FILTER, EnterpriseEditionFeature,
 } from '@/constants';
 import { copyPaste } from '@/components/mixins/copyPaste';
 import { externalHooks } from '@/components/mixins/externalHooks';
@@ -221,6 +221,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { getNodeViewTab } from '@/components/helpers';
 import { Route, RawLocation } from 'vue-router';
+import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
 import { useNDVStore } from '@/stores/ndv';
@@ -231,6 +232,7 @@ import { useTagsStore } from '@/stores/tags';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { useCanvasStore } from '@/stores/canvas';
+import useWorkflowsEEStore from "@/stores/workflows.ee";
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -395,6 +397,7 @@ export default mixins(
 				useUIStore,
 				useUsersStore,
 				useWorkflowsStore,
+				useWorkflowsEEStore,
 			),
 			nativelyNumberSuffixedDefaults(): string[] {
 				return this.rootStore.nativelyNumberSuffixedDefaults;
@@ -830,12 +833,39 @@ export default mixins(
 						),
 					);
 				}
+
 				this.workflowsStore.setActive(data.active || false);
 				this.workflowsStore.setWorkflowId(workflowId);
 				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
 				this.workflowsStore.setWorkflowSettings(data.settings || {});
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
 				this.workflowsStore.setWorkflowHash(data.hash);
+
+				// @TODO
+				this.workflowsStore.addWorkflow({
+					id: data.id,
+					name: data.name,
+					ownedBy: data.ownedBy,
+					sharedWith: data.sharedWith,
+					tags: data.tags || [],
+					active: data.active,
+					createdAt: data.createdAt,
+					updatedAt: data.updatedAt,
+					nodes: data.nodes,
+					connections: data.connections,
+				});
+				this.workflowsEEStore.setWorkflowOwnedBy({
+					workflowId: data.id,
+					ownedBy: data.ownedBy,
+				});
+				this.workflowsEEStore.setWorkflowSharedWith({
+					workflowId: data.id,
+					sharedWith: data.sharedWith,
+				});
+
+				if (data.usedCredentials) {
+					this.credentialsStore.addCredentials(data.usedCredentials);
+				}
 
 				const tags = (data.tags || []) as ITag[];
 				const tagIds = tags.map((tag) => tag.id);
@@ -2372,6 +2402,15 @@ export default mixins(
 						newNodeData.webhookId = uuid();
 					}
 
+					if (newNodeData.credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+						const foreignCredentials = this.credentialsStore.foreignCredentialsById;
+						newNodeData.credentials = Object.fromEntries(
+							Object.entries(newNodeData.credentials).filter(([_, credential]) => {
+								return credential.id && (!foreignCredentials[credential.id] || foreignCredentials[credential.id]?.currentUserHasAccess);
+							}),
+						);
+					}
+
 					await this.addNodes([newNodeData]);
 
 					const pinData = this.workflowsStore.pinDataByNodeName(nodeName);
@@ -3065,6 +3104,7 @@ export default mixins(
 				this.workflowsStore.resetAllNodesIssues();
 				// vm.$forceUpdate();
 
+				this.workflowsStore.$patch({ workflow: {} });
 				this.workflowsStore.setActive(false);
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.workflowsStore.setWorkflowName({ newName: '', setStateDirty: false });
@@ -3094,7 +3134,6 @@ export default mixins(
 			},
 			async loadCredentials(): Promise<void> {
 				await this.credentialsStore.fetchAllCredentials();
-				await this.credentialsStore.fetchForeignCredentials();
 			},
 			async loadNodesProperties(nodeInfos: INodeTypeNameVersion[]): Promise<void> {
 				const allNodes: INodeTypeDescription[] = this.nodeTypesStore.allNodeTypes;
@@ -3217,6 +3256,10 @@ export default mixins(
 			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
 				this.addNode(nodeTypeName, { position });
 			},
+			async saveCurrentWorkflowExternal(callback: () => void) {
+				await this.saveCurrentWorkflow();
+				callback?.();
+			},
 		},
 		async mounted() {
 			this.$titleReset();
@@ -3304,8 +3347,6 @@ export default mixins(
 					}, promptTimeout);
 				}
 			}
-			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
-			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
 		},
 		activated() {
 			const openSideMenu = this.uiStore.addFirstStepOnLoad;
@@ -3317,23 +3358,29 @@ export default mixins(
 			document.addEventListener('keydown', this.keyDown);
 			document.addEventListener('keyup', this.keyUp);
 			window.addEventListener('message', this.onPostMessageReceived);
+
 			this.$root.$on('newWorkflow', this.newWorkflow);
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
+			nodeViewEventBus.$on('saveWorkflow', this.saveCurrentWorkflowExternal);
+
 			this.canvasStore.isDemo = this.isDemo;
 		},
 		deactivated () {
 			document.removeEventListener('keydown', this.keyDown);
 			document.removeEventListener('keyup', this.keyUp);
 			window.removeEventListener('message', this.onPostMessageReceived);
+
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
+			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
 		},
 		destroyed() {
 			this.resetWorkspace();
@@ -3342,9 +3389,6 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
-
-			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
-			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);
 		},
 	});
 </script>

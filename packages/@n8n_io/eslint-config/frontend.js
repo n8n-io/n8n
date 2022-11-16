@@ -14,10 +14,15 @@ module.exports = {
 
 	parser: 'vue-eslint-parser',
 	parserOptions: {
-		parser: '@typescript-eslint/parser',
+		parser: {
+			ts: '@typescript-eslint/parser',
+			js: '@typescript-eslint/parser',
+			vue: 'vue-eslint-parser',
+			template: 'vue-eslint-parser',
+		},
 	},
 
-	ignorePatterns: ['**/*.js', '**/*.d.ts', 'vite.config.ts'],
+	ignorePatterns: ['**/*.js', '**/*.d.ts', 'vite.config.ts', '**/*.ts.snap'],
 
 	rules: {
 		'no-console': process.env.NODE_ENV === 'production' ? 'error' : 'off',
