@@ -290,15 +290,12 @@ export class WorkflowDataProxy {
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
 				if (that.workflow.getNode(nodeName)) {
-					throw new ExpressionError(
-						`The node "${nodeName}" hasn't been executed yet, so you can't reference its output data`,
-						{
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						},
-					);
+					throw new ExpressionError(`no data, execute "${nodeName}" first`, {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					});
 				}
-				throw new ExpressionError(`No node called "${nodeName}" in this workflow`, {
+				throw new ExpressionError(`"${nodeName}" node doesn't exist`, {
 					runIndex: that.runIndex,
 					itemIndex: that.itemIndex,
 				});
@@ -336,13 +333,10 @@ export class WorkflowDataProxy {
 				);
 
 				if (nodeConnection === undefined) {
-					throw new ExpressionError(
-						`The node "${that.activeNodeName}" is not connected with node "${nodeName}" so no data can get returned from it.`,
-						{
-							runIndex: that.runIndex,
-							itemIndex: that.itemIndex,
-						},
-					);
+					throw new ExpressionError(`connect ${that.activeNodeName} to ${nodeName}`, {
+						runIndex: that.runIndex,
+						itemIndex: that.itemIndex,
+					});
 				}
 				outputIndex = nodeConnection.sourceIndex;
 			}
@@ -910,7 +904,7 @@ export class WorkflowDataProxy {
 
 				const referencedNode = that.workflow.getNode(nodeName);
 				if (referencedNode === null) {
-					throw createExpressionError(`No node called ‘${nodeName}‘`);
+					throw createExpressionError(`"${nodeName}" node doesn't exist`);
 				}
 
 				return new Proxy(
