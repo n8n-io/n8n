@@ -121,7 +121,6 @@ export class Amqp implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		try {
 			const credentials = await this.getCredentials('amqp');
-			debugger;
 			const sink = this.getNodeParameter('sink', 0, '') as string;
 			const applicationProperties = this.getNodeParameter('headerParametersJson', 0, {}) as
 				| string
