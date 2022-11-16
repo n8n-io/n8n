@@ -126,13 +126,15 @@ export class MessageEventBusLogWriter {
 
 	async putMessage(msg: EventMessageTypes): Promise<void> {
 		if (this.#worker) {
-			await this.#worker.appendMessageToLog(msg);
+			await this.#worker.appendMessageToLog(msg.serialize());
 		}
 	}
 
 	async confirmMessageSent(msgId: string): Promise<void> {
 		if (this.#worker) {
-			await this.#worker.confirmMessageSent(new EventMessageConfirm({ confirm: msgId }));
+			await this.#worker.confirmMessageSent(
+				new EventMessageConfirm({ confirm: msgId }).serialize(),
+			);
 		}
 	}
 

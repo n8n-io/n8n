@@ -66,14 +66,14 @@ async function checkFileSize(path: string) {
 	}
 }
 
-function appendMessageSync(msg: any | unknown) {
+function appendMessageSync(msg: any) {
 	if (loggingPaused) {
 		return;
 	}
 	appendFileSync(buildLogFileNameWithCounter(), JSON.stringify(msg) + '\n');
 }
 
-async function appendMessage(msg: any | unknown) {
+async function appendMessage(msg: any) {
 	if (loggingPaused) {
 		return;
 	}
