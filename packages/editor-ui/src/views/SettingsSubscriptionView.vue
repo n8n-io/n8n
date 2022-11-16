@@ -124,7 +124,8 @@ export default mixins(showMessage).extend({
 			const callbackUrl = encodeURIComponent(
 				`${window.location.host}/subscription/activate/${this.rootStore.instanceId}`,
 			);
-			window.open(new URL(`callback=${callbackUrl}`, SUBSCRIPTION_APP_URL), '_blank');
+			const instanceId = this.rootStore.instanceId;
+			window.open(new URL(`instanceid=${instanceId}&callback=${callbackUrl}`, SUBSCRIPTION_APP_URL), '_blank');
 		},
 		async renew() {
 			this.loading = true;
