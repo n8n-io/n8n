@@ -173,7 +173,7 @@ export class License {
 
 		return {
 			features: this.manager?.getFeatures(),
-			productInfo: MOCK_PRODUCT_INFO, // this.manager?.getProductMetadata();
+			productInfo: this.manager?.getProductMetadata(),
 		};
 	}
 
