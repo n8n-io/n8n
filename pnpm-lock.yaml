@@ -482,6 +482,7 @@ importers:
       '@types/lodash.set': ^4.3.6
       '@types/luxon': ^2.0.9
       '@types/quill': ^2.0.1
+      '@types/semver': ^7.3.13
       '@types/uuid': ^8.3.2
       '@vitejs/plugin-legacy': ^1.8.2
       '@vitejs/plugin-vue2': ^1.1.2
@@ -514,6 +515,7 @@ importers:
       quill-autoformat: ^0.1.1
       sass: ^1.55.0
       sass-loader: ^10.1.1
+      semver: ^7.3.8
       string-template-parser: ^1.2.6
       timeago.js: ^4.0.2
       uuid: ^8.3.2
@@ -573,6 +575,7 @@ importers:
       prismjs: 1.29.0
       quill: 2.0.0-dev.4_wzpqp2wkmsfkgdbvlakyt3wndy
       quill-autoformat: 0.1.2
+      semver: 7.3.8
       timeago.js: 4.0.2
       uuid: 8.3.2
       v-click-outside: 3.2.0
@@ -603,6 +606,7 @@ importers:
       '@types/lodash.set': 4.3.7
       '@types/luxon': 2.4.0
       '@types/quill': 2.0.9
+      '@types/semver': 7.3.13
       '@types/uuid': 8.3.4
       '@vitejs/plugin-legacy': 1.8.2_vite@2.9.5
       '@vitejs/plugin-vue2': 1.1.2_vite@2.9.5+vue@2.7.13
@@ -5989,6 +5993,10 @@ packages:
     resolution: {integrity: sha512-7Lu2zMQnmHHQGKXVvCOhSziQMpa+R2hMHFefzbYoYMHeaXR0uXqNeOc3JeQQQ8/6Xa2Br/P1IQTLzV09xxAiUQ==}
     dependencies:
       htmlparser2: 6.1.0
+    dev: true
+
+  /@types/semver/7.3.13:
+    resolution: {integrity: sha512-21cFJr9z3g5dW8B0CVI9g2O9beqaThGQ6ZFBqHfwhzLDKUxaqTIy3vnfah/UPkfOiF2pLq+tGz+W8RyCskuslw==}
     dev: true
 
   /@types/send/0.17.1:
