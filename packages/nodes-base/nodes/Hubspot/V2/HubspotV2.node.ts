@@ -1539,6 +1539,8 @@ export class HubspotV2 implements INodeType {
 							}) as string;
 							const endpoint = `/contacts/v1/contact/vid/${contactId}`;
 							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+							responseData =
+								responseData === undefined ? { vid: contactId, deleted: true } : responseData;
 						}
 						//https://developers.hubspot.com/docs/api/crm/search
 						if (operation === 'search') {
@@ -2160,6 +2162,8 @@ export class HubspotV2 implements INodeType {
 							}) as string;
 							const endpoint = `/companies/v2/companies/${companyId}`;
 							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+							responseData =
+								responseData === undefined ? { vid: companyId, deleted: true } : responseData;
 						}
 					}
 					//https://developers.hubspot.com/docs/methods/deals/deals_overview
@@ -2394,6 +2398,8 @@ export class HubspotV2 implements INodeType {
 							) as string;
 							const endpoint = `/deals/v1/deal/${dealId}`;
 							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint);
+							responseData =
+								responseData === undefined ? { vid: dealId, deleted: true } : responseData;
 						}
 						//https://developers.hubspot.com/docs/api/crm/search
 						if (operation === 'search') {
@@ -2510,7 +2516,8 @@ export class HubspotV2 implements INodeType {
 							}) as string;
 							const endpoint = `/engagements/v1/engagements/${engagementId}`;
 							responseData = await hubspotApiRequest.call(this, 'DELETE', endpoint, {}, qs);
-							responseData = { success: true };
+							responseData =
+								responseData === undefined ? { vid: engagementId, deleted: true } : responseData;
 						}
 						//https://legacydocs.hubspot.com/docs/methods/engagements/get_engagement
 						if (operation === 'get') {
@@ -2783,7 +2790,8 @@ export class HubspotV2 implements INodeType {
 							}) as string;
 							const endpoint = `/crm-objects/v1/objects/tickets/${ticketId}`;
 							await hubspotApiRequest.call(this, 'DELETE', endpoint);
-							responseData = { success: true };
+							responseData =
+								responseData === undefined ? { vid: ticketId, deleted: true } : responseData;
 						}
 						//https://developers.hubspot.com/docs/methods/tickets/update-ticket
 						if (operation === 'update') {
