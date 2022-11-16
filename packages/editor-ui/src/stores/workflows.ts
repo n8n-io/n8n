@@ -4,7 +4,7 @@ import {
 	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	STORES
+	STORES,
 } from "@/constants";
 import {
 	IExecutionResponse,
@@ -34,7 +34,7 @@ import {
 	IPinData,
 	IRunData,
 	ITaskData,
-	IWorkflowSettings
+	IWorkflowSettings,
 } from 'n8n-workflow';
 import Vue from "vue";
 import {useRootStore} from "./n8nRootStore";
@@ -43,7 +43,7 @@ import {
 	getCurrentExecutions,
 	getFinishedExecutions,
 	getNewWorkflow,
-	getWorkflows
+	getWorkflows,
 } from "@/api/workflows";
 import {useUIStore} from "./ui";
 import {getPairedItemsMapping} from "@/pairedItemUtils";
