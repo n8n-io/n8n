@@ -1,6 +1,34 @@
 import xss, { friendlyAttrValue } from 'xss';
 import { Primitives, Optional, JsonSchema, JsonSchemaType } from "@/Interface";
 
+// Holds weird date formats that we encounter when working with strings
+// Should be extended as new cases are found
+const CUSTOM_DATE_FORMATS = [
+  /\d{1,2}-\d{1,2}-\d{4}/, // Should handle dash separated dates with year at the end
+  /\d{1,2}\.\d{1,2}\.\d{4}/, // Should handle comma separated dates
+];
+
+export const isValidDate = (input: any): boolean => {
+  try {
+		// Try to construct date object using input
+    const date = new Date(input);
+		// This will not fail for wrong dates so have to check like this:
+    if (date.toString() !== 'Invalid Date') {
+      return true;
+    } else {
+			// Try to cover edge cases with regex
+      for (const regex of CUSTOM_DATE_FORMATS) {
+        if (input.match(regex)) {
+          return true;
+        }
+      }
+      return false;
+    }
+  } catch (e) {
+    return false;
+  }
+};
+
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 
 export function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
