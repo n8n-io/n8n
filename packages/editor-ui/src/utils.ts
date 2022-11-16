@@ -1,4 +1,5 @@
 import xss, { friendlyAttrValue } from 'xss';
+import { Primitives, Optional, JsonSchema, JsonSchemaType } from "@/Interface";
 
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 
@@ -61,4 +62,66 @@ export const intersection = <T>(...arrays: T[][]): T[] => {
 	const [a, b, ...rest] = arrays;
 	const ab = a.filter(v => b.includes(v));
 	return [...new Set(rest.length ? intersection(ab, ...rest) : ab)];
+};
+
+export const isObj = (obj: unknown): obj is object => !!obj && Object.getPrototypeOf(obj) === Object.prototype;
+
+export const isSchemaTypeObjectOrList = (type: string) => ['object', 'list'].includes(type);
+
+export const getTypeof = (value: unknown): JsonSchemaType => value === null
+	? 'null'
+	: value instanceof Date
+		? 'date'
+		: Array.isArray(value)
+			? 'list'
+			: typeof value;
+
+export const getJsonSchema = (input: Optional<Primitives | object>, path = '', key?: string): JsonSchema => {
+	let schema:JsonSchema = { type: 'undefined', value: 'undefined', path };
+	switch (typeof input) {
+		case 'object':
+			if (input === null) {
+				schema = { type: 'string', value: '[null]', path };
+			} else if (input instanceof Date) {
+				schema = { type: 'date', value: input.toISOString(), path };
+			} else if (Array.isArray(input)) {
+				schema = {
+					type: 'list',
+					value: '',
+					path: `${path}[*]`,
+				};
+				const firstItem = input[0];
+				if(Array.isArray(firstItem)){
+					schema.value = [getJsonSchema(firstItem, `${ path }[*]`)];
+				} else if(isObj(firstItem)){
+					schema.value = getJsonSchema(firstItem, `${ path }[*]`).value;
+				} else {
+					schema.value = getTypeof(firstItem);
+				}
+			} else if (isObj(input)) {
+				schema = {
+					type: 'object',
+					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getJsonSchema(v, path + `["${ k }"]`, k)})),
+					path,
+				};
+			}
+			break;
+		case 'string':
+			schema = { type: 'string', value: `"${input}"`, path };
+			break;
+		case 'function':
+			schema =  { type: 'function', value: ``, path };
+			break;
+		default:
+			schema =  { type: typeof input, value: String(input), path };
+	}
+
+	if (!isSchemaTypeObjectOrList(schema.type)) {
+		schema.path = path;
+		if(key){
+			schema.value = schema.type;
+		}
+	}
+
+	return schema;
 };

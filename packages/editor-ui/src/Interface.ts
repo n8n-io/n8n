@@ -1283,3 +1283,22 @@ export interface CurlToJSONResponse {
 	"parameters.sendQuery": boolean;
 	"parameters.sendBody": boolean;
 }
+
+export type Basic = string | number | boolean;
+export type Primitives = Basic | bigint | symbol;
+
+export type Optional<T> = T | undefined | null;
+
+export type JsonSchemaType =
+	| 'string'
+	| 'number'
+	| 'boolean'
+	| 'bigint'
+	| 'symbol'
+	| 'date'
+	| 'list'
+	| 'object'
+	| 'function'
+	| 'null'
+	| 'undefined';
+export type JsonSchema = { type: JsonSchemaType, key?: string, value: string | JsonSchema[], path: string };
