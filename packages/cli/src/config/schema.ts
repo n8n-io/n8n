@@ -987,4 +987,47 @@ export const schema = {
 			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
 		},
 	},
+
+	eventBus: {
+		enabled: {
+			doc: 'Whether event logging is enabled.',
+			format: Boolean,
+			default: true,
+			env: 'N8N_EVENTBUS_ENABLED',
+		},
+		destinations: {
+			loadAtStart: {
+				doc: 'Whether destinations are loaded from Db and initialized at startup.',
+				format: Boolean,
+				default: true,
+				env: 'N8N_EVENTBUS_DESTINATIONS_LOADATSTART',
+			},
+		},
+		logWriter: {
+			syncFileAccess: {
+				doc: 'Whether all file access happens synchronously within the thread.',
+				format: Boolean,
+				default: false,
+				env: 'N8N_EVENTBUS_LOGWRITER_SYNCFILEACCESS',
+			},
+			keepLogCount: {
+				doc: 'How many event log files to keep.',
+				format: Number,
+				default: 10,
+				env: 'N8N_EVENTBUS_LOGWRITER_KEEPLOGCOUNT',
+			},
+			maxFileSizeInKB: {
+				doc: 'Maximum size of an event log file before a new one is started.',
+				format: Number,
+				default: 102400,
+				env: 'N8N_EVENTBUS_LOGWRITER_MAXFILESIZEINKB',
+			},
+			logBaseName: {
+				doc: 'Basename of the event log file.',
+				format: String,
+				default: 'n8nEventLog',
+				env: 'N8N_EVENTBUS_LOGWRITER_LOGBASENAME',
+			},
+		},
+	},
 };

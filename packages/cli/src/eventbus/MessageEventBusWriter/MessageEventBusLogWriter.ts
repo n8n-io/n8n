@@ -15,10 +15,12 @@ import readline from 'readline';
 import events from 'events';
 import { jsonParse } from 'n8n-workflow';
 import remove from 'lodash.remove';
+import config from '../../config';
 
 interface MessageEventBusLogWriterOptions {
 	syncFileAccess?: boolean;
 	logBaseName?: string;
+	logBasePath?: string;
 	keepLogCount?: number;
 	maxFileSizeInKB?: number;
 }
@@ -29,7 +31,9 @@ interface MessageEventBusLogWriterOptions {
 export class MessageEventBusLogWriter implements MessageEventBusWriter {
 	static #instance: MessageEventBusLogWriter;
 
-	#worker: ModuleThread<MessageEventBusLogWriterWorker>;
+	static options: Required<MessageEventBusLogWriterOptions>;
+
+	#worker: ModuleThread<MessageEventBusLogWriterWorker> | null;
 
 	/**
 	 * Instantiates the Writer and the corresponding worker thread.
@@ -42,15 +46,16 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 	): Promise<MessageEventBusLogWriter> {
 		if (!MessageEventBusLogWriter.#instance) {
 			MessageEventBusLogWriter.#instance = new MessageEventBusLogWriter();
-			await MessageEventBusLogWriter.#instance.#spawnThread();
-			const n8nFolder = UserSettings.getUserN8nFolderPath();
-			const logFileBasePath = path.join(n8nFolder, options?.logBaseName ?? 'n8nEventLog');
-			const syncFileAccess = options?.syncFileAccess ?? false;
-			const keepLogCount = options?.keepLogCount ?? 10;
-			const maxFileSizeInKB = options?.maxFileSizeInKB ?? 102400;
-			await MessageEventBusLogWriter.#instance
-				.getThread()
-				?.initialize(logFileBasePath, syncFileAccess, keepLogCount, maxFileSizeInKB);
+			MessageEventBusLogWriter.options = {
+				logBaseName: options?.logBaseName ?? config.getEnv('eventBus.logWriter.logBaseName'),
+				logBasePath: options?.logBasePath ?? UserSettings.getUserN8nFolderPath(),
+				syncFileAccess:
+					options?.syncFileAccess ?? config.getEnv('eventBus.logWriter.syncFileAccess'),
+				keepLogCount: options?.keepLogCount ?? config.getEnv('eventBus.logWriter.keepLogCount'),
+				maxFileSizeInKB:
+					options?.maxFileSizeInKB ?? config.getEnv('eventBus.logWriter.maxFileSizeInKB'),
+			};
+			await MessageEventBusLogWriter.#instance.#startThread();
 		}
 		return MessageEventBusLogWriter.#instance;
 	}
@@ -70,12 +75,34 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 		await MessageEventBusLogWriter.#instance.getThread()?.pauseLogging();
 	}
 
-	async #spawnThread(): Promise<boolean> {
-		this.#worker = await spawn(new Worker(`${parse(__filename).name}Worker`));
+	async #startThread() {
 		if (this.#worker) {
-			// Thread.events(this.#worker).subscribe((event) => {
-			// console.debug('Thread event:', event);
-			// });
+			await this.close();
+		}
+		await MessageEventBusLogWriter.#instance.#spawnThread();
+		await MessageEventBusLogWriter.#instance
+			.getThread()
+			?.initialize(
+				path.join(
+					MessageEventBusLogWriter.options.logBasePath,
+					MessageEventBusLogWriter.options.logBaseName,
+				),
+				MessageEventBusLogWriter.options.syncFileAccess,
+				MessageEventBusLogWriter.options.keepLogCount,
+				MessageEventBusLogWriter.options.maxFileSizeInKB,
+			);
+	}
+
+	async #spawnThread(): Promise<boolean> {
+		this.#worker = await spawn<MessageEventBusLogWriterWorker>(
+			new Worker(`${parse(__filename).name}Worker`),
+		);
+		if (this.#worker) {
+			// Thread.events(this.#worker).subscribe((event) => {});
+			Thread.errors(this.#worker).subscribe(async (error) => {
+				console.debug('Thread errors:', error);
+				await MessageEventBusLogWriter.#instance.#startThread();
+			});
 			return true;
 		}
 		return false;
@@ -91,6 +118,7 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 	async close(): Promise<void> {
 		if (this.#worker) {
 			await Thread.terminate(this.#worker);
+			this.#worker = null;
 		}
 	}
 

@@ -46,6 +46,10 @@ class MessageEventBus {
 		return MessageEventBus.#instance;
 	}
 
+	isInitialized(): boolean {
+		return MessageEventBus.#initialized;
+	}
+
 	async initialize(options?: MessageEventBusInitializationOptions) {
 		if (MessageEventBus.#initialized) {
 			return;

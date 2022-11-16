@@ -81,7 +81,7 @@ eventBusRouter.post(
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (isEventMessageRequestBody(req.body)) {
 			const count =
-				req.body.count !== undefined && parseInt(req.body.count as string) !== NaN
+				req.body.count !== undefined && !isNaN(parseInt(req.body.count as string))
 					? parseInt(req.body.count as string)
 					: 100;
 			const msg = EventMessage.deserialize(req.body);
