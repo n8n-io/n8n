@@ -565,7 +565,7 @@ export const contactFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid HubSpot Company ID',
+							errorMessage: 'Not a valid HubSpot Contact ID',
 						},
 					},
 				],
@@ -830,7 +830,7 @@ export const contactFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid HubSpot Company ID',
+							errorMessage: 'Not a valid HubSpot Contact ID',
 						},
 					},
 				],
