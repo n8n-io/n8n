@@ -122,30 +122,46 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 
 			this.isSaving = true;
 
-			let workflowToUpdate: IWorkflowDataUpdate | undefined;
-			if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-				const { createdAt, updatedAt, ...workflow } = await this.restApi().getWorkflow(this.data.id);
-				workflowToUpdate = workflow;
-			}
+			try {
+				let workflowToUpdate: IWorkflowDataUpdate | undefined;
+				if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+					const { createdAt, updatedAt, ...workflow } = await this.restApi().getWorkflow(this.data.id);
+					workflowToUpdate = workflow;
+				}
 
-			const saved = await this.saveAsNewWorkflow({
-				name,
-				data: workflowToUpdate,
-				tags: this.currentTagIds,
-				resetWebhookUrls: true,
-				openInNewWindow: true,
-				resetNodeIds: true,
-			});
-
-			if (saved) {
-				this.closeDialog();
-				this.$telemetry.track('User duplicated workflow', {
-					old_workflow_id: currentWorkflowId,
-					workflow_id: this.data.id,
+				const saved = await this.saveAsNewWorkflow({
+					name,
+					data: workflowToUpdate,
+					tags: this.currentTagIds,
+					resetWebhookUrls: true,
+					openInNewWindow: true,
+					resetNodeIds: true,
 				});
-			}
 
-			this.isSaving = false;
+				if (saved) {
+					this.closeDialog();
+					this.$telemetry.track('User duplicated workflow', {
+						old_workflow_id: currentWorkflowId,
+						workflow_id: this.data.id,
+					});
+				}
+			} catch (error) {
+				if (error.httpStatusCode === 403) {
+					error.message = this.$locale.baseText('duplicateWorkflowDialog.errors.forbidden.message');
+
+					this.$showError(
+						error,
+						this.$locale.baseText('duplicateWorkflowDialog.errors.forbidden.title'),
+					);
+				} else {
+					this.$showError(
+						error,
+						this.$locale.baseText('duplicateWorkflowDialog.errors.generic.title'),
+					);
+				}
+			} finally {
+				this.isSaving = false;
+			}
 		},
 		closeDialog(): void {
 			this.modalBus.$emit("close");
