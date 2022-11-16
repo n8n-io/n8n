@@ -42,7 +42,7 @@
 							</template>
 						</WarningTooltip>
 						<span v-else-if="feature.value === true" :title="$locale.baseText('settings.subscription.enabled')"> ✅ </span>
-						<span v-else-if="feature.value === false" :title="$locale.baseText('settings.subscription.disabled')"> ❗ </span>
+						<span v-else-if="feature.value === false" :title="$locale.baseText('settings.subscription.disabled')"> ❌ </span>
 						<span v-else-if="feature.value === -1">
 							{{ $locale.baseText('settings.subscription.unlimited') }}
 						</span>
