@@ -56,9 +56,6 @@
     "typescript": "^4.8.4"
   },
   "pnpm": {
-    "patchedDependencies": {
-      "quill@2.0.0-dev.4": "patches/quill@2.0.0-dev.4.patch"
-    },
     "onlyBuiltDependencies": [
       "sqlite3",
       "vue-demi"
