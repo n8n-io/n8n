@@ -46,7 +46,7 @@
 
 					<div class="expression-result-wrapper">
 						<div class="editor-description">
-							{{ $locale.baseText('expressionEdit.result') }}
+							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
 						<div class="ph-no-capture">
 							<expression-modal-output
