@@ -217,7 +217,7 @@ export const dealFields: INodeProperties[] = [
 						],
 					},
 				],
-				description: 'The Unique identifier in which to operate on',
+				description: 'The HubSpot user to be assigned to the deal',
 			},
 			{
 				displayName: 'Deal Type',
@@ -360,6 +360,39 @@ export const dealFields: INodeProperties[] = [
 				name: 'dealName',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Deal Owner',
+				name: 'dealOwner',
+				type: 'resourceLocator',
+				default: { mode: 'list', value: '' },
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						placeholder: 'Select from the list',
+						typeOptions: {
+							searchListMethod: 'searchOwners',
+						},
+					},
+					{
+						displayName: 'By Id',
+						name: 'id',
+						type: 'string',
+						placeholder: '58539222',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[0-9]+',
+									errorMessage: 'Not a valid HubSpot Owner ID',
+								},
+							},
+						],
+					},
+				],
+				description: 'The HubSpot user to be assigned to the deal',
 			},
 			{
 				displayName: 'Deal Stage',
