@@ -3,7 +3,10 @@ import { STORES } from "@/constants";
 import { LicenseFeatureExpanded, LicenseResponse, LicenseState } from "@/Interface";
 import { defineStore } from "pinia";
 import { useRootStore } from "./n8nRootStore";
-import semver from 'semver';
+
+// must be imported seperately to avoid circular dependency issue in semver
+import lt from 'semver/functions/lt';
+import minVersion from 'semver/ranges/min-version';
 import { useSettingsStore } from "./settings";
 
 export const useLicenseStore = defineStore(STORES.LICENSE, {
@@ -44,13 +47,13 @@ function getLicenseFeatures(resp: LicenseResponse): LicenseFeatureExpanded[] {
 
 	return Object.keys(features).map((id): LicenseFeatureExpanded => {
 		const supported = features[id].supportedVersions;
-		const minVersion = supported ? semver.minVersion(supported): null;
+		const min = supported ? minVersion(supported): null;
 
 		return {
 			id,
 			value: resp.features[id],
-			unsupported: minVersion? semver.lt(settings.versionCli, minVersion): false,
-			minVersion: minVersion && typeof minVersion === 'object'? minVersion.raw: null,
+			unsupported: min? lt(settings.versionCli, min): false,
+			minVersion: min && typeof min === 'object'? min.raw: null,
 			...features[id],
 		};
 	});
