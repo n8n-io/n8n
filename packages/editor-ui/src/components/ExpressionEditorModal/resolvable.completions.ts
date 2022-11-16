@@ -11,14 +11,23 @@ export function resolvableCompletions(context: CompletionContext): CompletionRes
 
 	if (nodeBefore.name !== 'Resolvable') return null;
 
-	const textBefore = context.state.sliceDoc(nodeBefore.from, context.pos);
+	const pattern = /(?<quotedString>('|")\w*('|"))\./;
 
-	const tagBefore = /a/.exec(textBefore);
+	const preCursor = context.matchBefore(pattern);
 
-	if (!tagBefore) return null;
+	if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+
+	const match = preCursor.text.match(pattern);
+
+	if (!match?.groups?.quotedString) return null;
+
+	const { quotedString } = match.groups;
 
 	return {
-		from: nodeBefore.from + tagBefore.index,
-		options: [{ label: 'autocompletion', info: 'Description of autocompletion' }],
+		from: preCursor.from,
+		options: [
+			{ label: `${quotedString}.replace()`, info: 'Replace part of a string with another' },
+			{ label: `${quotedString}.slice()`, info: 'Extract part of a string' },
+		],
 	};
 }
