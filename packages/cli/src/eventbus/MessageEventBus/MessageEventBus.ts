@@ -1,12 +1,11 @@
 import { JsonValue } from 'n8n-workflow';
-import { registerSerializer } from 'threads';
+import { DeleteResult } from 'typeorm';
+import { EventMessage } from '../EventMessageClasses/EventMessage';
 import {
-	EventMessage,
-	EventMessageSerialized,
-	messageEventSerializer,
-} from '../EventMessageClasses/EventMessage';
-import { eventMessageConfirmSerializer } from '../EventMessageClasses/EventMessageConfirm';
-import { EventMessageSubscriptionSet } from '../EventMessageClasses/EventMessageSubscriptionSet';
+	EventMessageSubscriptionSet,
+	EventMessageSubscriptionSetOptions,
+} from '../EventMessageClasses/EventMessageSubscriptionSet';
+import { EventMessageTypes } from '../EventMessageClasses/Helpers';
 import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 
@@ -19,50 +18,49 @@ interface EventMessageDestinationStore {
 }
 
 export interface EventMessageSubscribeDestination {
-	subscriptionSet: EventMessageSubscriptionSet;
+	subscriptionSet: EventMessageSubscriptionSetOptions;
 	destinationId: string;
 }
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
 class MessageEventBus {
-	static #initialized = false;
-
 	static #instance: MessageEventBus;
 
-	#immediateWriter: MessageEventBusLogWriter;
+	isInitialized: boolean;
+
+	logWriter: MessageEventBusLogWriter;
 
 	destinations: EventMessageDestinationStore = {};
 
 	#pushInteralTimer: NodeJS.Timer;
 
+	constructor() {
+		this.isInitialized = false;
+	}
+
 	static getInstance(): MessageEventBus {
 		if (!MessageEventBus.#instance) {
 			MessageEventBus.#instance = new MessageEventBus();
 		}
-		if (!MessageEventBus.#initialized) {
+		if (!MessageEventBus.#instance.isInitialized) {
 			MessageEventBus.#instance.initialize().catch((error) => console.log(error));
 		}
 		return MessageEventBus.#instance;
 	}
 
-	isInitialized(): boolean {
-		return MessageEventBus.#initialized;
-	}
-
 	async initialize(options?: MessageEventBusInitializationOptions) {
-		if (MessageEventBus.#initialized) {
+		if (this.isInitialized) {
 			return;
 		}
 
 		// Register the thread serializer on the main thread
-		registerSerializer(messageEventSerializer);
-		registerSerializer(eventMessageConfirmSerializer);
+		// registerSerializer(messageEventSerializer);
 
 		if (this.#pushInteralTimer) {
 			clearInterval(this.#pushInteralTimer);
 		}
-		this.#immediateWriter = await MessageEventBusLogWriter.getInstance();
+		this.logWriter = await MessageEventBusLogWriter.getInstance();
 		if (options?.destinations) {
 			for (const destination of options?.destinations) {
 				this.destinations[destination.getId()] = destination;
@@ -73,15 +71,14 @@ class MessageEventBus {
 			new EventMessage({
 				eventName: 'n8n.core.eventBusInitialized',
 				level: 'debug',
-				severity: 'normal',
-			} as EventMessageSerialized),
+			}),
 		);
 
 		// check for unsent messages
 		await this.#trySendingUnsent();
 
 		// now start the logging to a fresh event log
-		await this.#immediateWriter.startLogging();
+		await this.logWriter.startLogging();
 
 		this.#pushInteralTimer = setInterval(async () => {
 			// console.debug('Checking for unsent messages...');
@@ -89,7 +86,7 @@ class MessageEventBus {
 		}, 5000);
 
 		console.debug('MessageEventBus initialized');
-		MessageEventBus.#initialized = true;
+		this.isInitialized = true;
 	}
 
 	async addDestination(destination: MessageEventBusDestination) {
@@ -106,58 +103,96 @@ class MessageEventBus {
 		}
 	}
 
-	async removeDestination(id: string): Promise<string> {
+	async removeDestination(id: string): Promise<DeleteResult | undefined> {
+		let result;
 		if (Object.keys(this.destinations).includes(id)) {
 			await this.destinations[id].close();
-			await this.destinations[id].deleteFromDb();
+			result = await this.destinations[id].deleteFromDb();
 			delete this.destinations[id];
 		}
-		return id;
+		return result;
 	}
 
+	/**
+	 * Resets SubscriptionsSet to empty values on the selected destination
+	 * @param destinationId the destination id
+	 * @returns serialized destination after reset
+	 */
+	getDestinationSubscriptionSet(destinationId: string): JsonValue {
+		if (Object.keys(this.destinations).includes(destinationId)) {
+			return this.destinations[destinationId].subscriptionSet.serialize();
+		}
+		return {};
+	}
+
+	/**
+	 * Sets SubscriptionsSet on the selected destination
+	 * @param destinationId the destination id
+	 * @param subscriptionSetOptions EventMessageSubscriptionSet object containing event subscriptions
+	 * @returns serialized destination after change
+	 */
 	setDestinationSubscriptionSet(
 		destinationId: string,
-		subscriptionSet: EventMessageSubscriptionSet,
-	) {
+		subscriptionSetOptions: EventMessageSubscriptionSetOptions,
+	): MessageEventBusDestination {
 		if (Object.keys(this.destinations).includes(destinationId)) {
-			this.destinations[destinationId].setSubscription(subscriptionSet);
+			this.destinations[destinationId].setSubscription(subscriptionSetOptions);
 		}
-		return destinationId;
+		return this.destinations[destinationId];
+	}
+
+	/**
+	 * Resets SubscriptionsSet to empty values on the selected destination
+	 * @param destinationId the destination id
+	 * @returns serialized destination after reset
+	 */
+	resetDestinationSubscriptionSet(destinationId: string): MessageEventBusDestination {
+		if (Object.keys(this.destinations).includes(destinationId)) {
+			this.destinations[destinationId].setSubscription(
+				new EventMessageSubscriptionSet({
+					eventGroups: [],
+					eventNames: [],
+					eventLevels: [],
+				}),
+			);
+		}
+		return this.destinations[destinationId];
 	}
 
 	async #trySendingUnsent() {
 		const unsentMessages = await this.getEventsUnsent();
 		console.debug(`Found unsent EventMessages: ${unsentMessages.length}`);
 		for (const unsentMsg of unsentMessages) {
+			console.debug(`${unsentMsg.id} ${unsentMsg.__type}`);
 			await this.#sendToDestinations(unsentMsg);
 		}
 	}
 
 	async close() {
-		await this.#immediateWriter.close();
+		await this.logWriter.close();
 		for (const destinationName of Object.keys(this.destinations)) {
 			await this.destinations[destinationName].close();
 		}
 	}
 
-	async send(msg: EventMessage) {
+	async send(msg: EventMessageTypes) {
 		await this.#writeMessageToLog(msg);
 		await this.#sendToDestinations(msg);
 	}
 
-	async confirmSent(msg: EventMessage) {
+	async confirmSent(msg: EventMessageTypes) {
 		await this.#writeConfirmationToLog(msg.id);
 	}
 
-	async #writeMessageToLog(msg: EventMessage) {
-		await this.#immediateWriter.putMessage(msg);
+	async #writeMessageToLog(msg: EventMessageTypes) {
+		await this.logWriter.putMessage(msg);
 	}
 
 	async #writeConfirmationToLog(id: string) {
-		await this.#immediateWriter.confirmMessageSent(id);
+		await this.logWriter.confirmMessageSent(id);
 	}
 
-	async #sendToDestinations(msg: EventMessage) {
+	async #sendToDestinations(msg: EventMessageTypes) {
 		// if there are no destinations, immediately mark the event as sent
 		if (Object.keys(this.destinations).length === 0) {
 			await this.confirmSent(msg);
@@ -168,17 +203,17 @@ class MessageEventBus {
 		}
 	}
 
-	async getEvents(mode: EventMessageReturnMode = 'all'): Promise<EventMessage[]> {
-		let queryResult: EventMessage[];
+	async getEvents(mode: EventMessageReturnMode = 'all'): Promise<EventMessageTypes[]> {
+		let queryResult: EventMessageTypes[];
 		switch (mode) {
 			case 'all':
-				queryResult = await this.#immediateWriter.getMessages();
+				queryResult = await this.logWriter.getMessages();
 				break;
 			case 'sent':
-				queryResult = await this.#immediateWriter.getMessagesSent();
+				queryResult = await this.logWriter.getMessagesSent();
 				break;
 			case 'unsent':
-				queryResult = await this.#immediateWriter.getMessagesUnsent();
+				queryResult = await this.logWriter.getMessagesUnsent();
 		}
 		return queryResult;
 	}

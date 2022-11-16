@@ -1,22 +1,22 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { JsonObject } from 'n8n-workflow';
 import {
 	AbstractEventMessage,
+	AbstractEventPayload,
 	EventMessageSerialized,
 	isEventMessageSerialized,
 } from './AbstractEventMessage';
+import { JsonObject } from 'n8n-workflow';
 import { EventMessageTypeNames } from './Helpers';
 
-export class EventPayload {
-	msg?: string;
+export class EventPayloadWorkflow extends AbstractEventPayload {
+	id: number;
 }
 
-export class EventMessage extends AbstractEventMessage {
-	readonly __type: string = EventMessageTypeNames.eventMessage;
+export class EventMessageWorkflow extends AbstractEventMessage {
+	readonly __type: string = EventMessageTypeNames.eventMessageWorkflow;
 
-	payload: EventPayload;
+	payload: EventPayloadWorkflow;
 
-	setPayload(payload: EventPayload): this {
+	setPayload(payload: EventPayloadWorkflow): this {
 		this.payload = payload;
 		return this;
 	}
@@ -29,14 +29,14 @@ export class EventMessage extends AbstractEventMessage {
 			ts: this.ts.toISO(),
 			eventName: this.eventName,
 			level: this.level,
-			payload: this.payload ?? new EventPayload(),
+			payload: this.payload ?? new EventPayloadWorkflow(),
 		};
 	}
 
 	deserialize(data: JsonObject): this {
 		if (isEventMessageSerialized(data, this.__type)) {
 			this.setOptionsOrDefault(data);
-			if (data.payload) this.setPayload(data.payload as EventPayload);
+			if (data.payload) this.setPayload(data.payload as EventPayloadWorkflow);
 		}
 		return this;
 	}

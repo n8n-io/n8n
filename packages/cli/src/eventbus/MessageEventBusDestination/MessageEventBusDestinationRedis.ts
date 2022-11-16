@@ -26,7 +26,7 @@ interface MessageEventBusDestinationRedisOptions extends MessageEventBusDestinat
 }
 
 export class MessageEventBusDestinationRedis extends MessageEventBusDestination {
-	static readonly serializedName = '$$MessageEventBusDestinationRedis';
+	static readonly __type = '$$MessageEventBusDestinationRedis';
 
 	#client: Redis | undefined;
 
@@ -66,7 +66,7 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 
 	serialize(): JsonValue {
 		return {
-			serializedName: MessageEventBusDestinationRedis.serializedName,
+			__type: MessageEventBusDestinationRedis.__type,
 			options: {
 				id: this.getId(),
 				name: this.getName(),
@@ -79,8 +79,8 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 
 	static deserialize(data: JsonObject): MessageEventBusDestinationRedis | null {
 		if (
-			'serializedName' in data &&
-			data.serializedName === MessageEventBusDestinationRedis.serializedName &&
+			'__type' in data &&
+			data.__type === MessageEventBusDestinationRedis.__type &&
 			'options' in data &&
 			isMessageEventBusDestinationRedisOptions(data.options)
 		) {

@@ -10,18 +10,18 @@ export function messageEventBusDestinationFromDb(
 	dbData: EventDestinations,
 ): MessageEventBusDestination | null {
 	const destinationData = jsonParse<JsonObject>(dbData.destination);
-	if ('serializedName' in destinationData) {
-		switch (destinationData.serializedName) {
-			case MessageEventBusDestinationSentry.serializedName:
+	if ('__type' in destinationData) {
+		switch (destinationData.__type) {
+			case MessageEventBusDestinationSentry.__type:
 				return MessageEventBusDestinationSentry.deserialize(destinationData);
-			case MessageEventBusDestinationSyslog.serializedName:
+			case MessageEventBusDestinationSyslog.__type:
 				return MessageEventBusDestinationSyslog.deserialize(destinationData);
-			case MessageEventBusDestinationRedis.serializedName:
+			case MessageEventBusDestinationRedis.__type:
 				return MessageEventBusDestinationRedis.deserialize(destinationData);
-			case MessageEventBusDestinationWebhook.serializedName:
+			case MessageEventBusDestinationWebhook.__type:
 				return MessageEventBusDestinationWebhook.deserialize(destinationData);
 			default:
-				console.log('MessageEventBusDestination serializedName unknown');
+				console.log('MessageEventBusDestination __type unknown');
 		}
 	}
 	return null;

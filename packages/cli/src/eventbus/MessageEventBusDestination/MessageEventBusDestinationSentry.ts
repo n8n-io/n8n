@@ -46,7 +46,7 @@ export interface MessageEventBusDestinationSentryOptions extends MessageEventBus
 }
 
 export class MessageEventBusDestinationSentry extends MessageEventBusDestination {
-	static readonly serializedName = '$$MessageEventBusDestinationSentry';
+	static readonly __type = '$$MessageEventBusDestinationSentry';
 
 	readonly dsn: string;
 
@@ -99,7 +99,7 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 
 	serialize(): JsonValue {
 		return {
-			serializedName: MessageEventBusDestinationSentry.serializedName,
+			__type: MessageEventBusDestinationSentry.__type,
 			options: {
 				id: this.getId(),
 				name: this.getName(),
@@ -112,8 +112,8 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 
 	static deserialize(data: JsonObject): MessageEventBusDestinationSentry | null {
 		if (
-			'serializedName' in data &&
-			data.serializedName === MessageEventBusDestinationSentry.serializedName &&
+			'__type' in data &&
+			data.__type === MessageEventBusDestinationSentry.__type &&
 			'options' in data &&
 			isMessageEventBusDestinationSentryOptions(data.options)
 		) {

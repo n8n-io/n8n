@@ -163,6 +163,7 @@ import { eventBus } from './eventbus';
 import { MessageEventBusDestination } from './eventbus/EventMessageClasses/MessageEventBusDestination';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
 import { messageEventBusDestinationFromDb } from './eventbus/MessageEventBusDestination/Helpers';
+import { EventMessage } from './eventbus/EventMessageClasses/EventMessage';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1691,13 +1692,19 @@ class App {
 					}
 				}
 			}
-			if (!eventBus.isInitialized()) {
+			if (!eventBus.isInitialized) {
 				// adding destinations automatically triggers initialization intrinsically, so this manual
 				// call is only required if there are none in the db
 				await eventBus.initialize();
 			}
 			// add Event Bus REST endpoints
 			this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
+			// subscribe to emitters and generate eventMessages from them
+			// something.subscribe('event', (event)=>eventBus.send(new EventMessage({
+			// 	eventName: event.name,
+			// 	level: 'debug',
+			// 	payload: event,
+			// }) ))
 		}
 
 		// ----------------------------------------

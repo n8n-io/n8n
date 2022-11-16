@@ -52,7 +52,7 @@ function eventMessageLevelToSyslogSeverity(emLevel: EventMessageLevel) {
 }
 
 export class MessageEventBusDestinationSyslog extends MessageEventBusDestination {
-	static readonly serializedName = '$$MessageEventBusDestinationSyslog';
+	static readonly __type = '$$MessageEventBusDestinationSyslog';
 
 	client: syslog.Client;
 
@@ -121,7 +121,7 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 
 	serialize(): JsonValue {
 		return {
-			serializedName: MessageEventBusDestinationSyslog.serializedName,
+			__type: MessageEventBusDestinationSyslog.__type,
 			options: {
 				id: this.getId(),
 				name: this.getName(),
@@ -139,8 +139,8 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 
 	static deserialize(data: JsonObject): MessageEventBusDestinationSyslog | null {
 		if (
-			'serializedName' in data &&
-			data.serializedName === MessageEventBusDestinationSyslog.serializedName &&
+			'__type' in data &&
+			data.__type === MessageEventBusDestinationSyslog.__type &&
 			'options' in data &&
 			isMessageEventBusDestinationSyslogOptions(data.options)
 		) {

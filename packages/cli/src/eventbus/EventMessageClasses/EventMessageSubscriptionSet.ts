@@ -5,10 +5,10 @@ import {
 	EventMessageNames,
 } from '../types/EventMessageTypes';
 
-export const isEventMessageSubscriptionSet = (
+export const isEventMessageSubscriptionSetOptions = (
 	candidate: unknown,
-): candidate is EventMessageSubscriptionSet => {
-	const o = candidate as EventMessageSubscriptionSet;
+): candidate is EventMessageSubscriptionSetOptions => {
+	const o = candidate as EventMessageSubscriptionSetOptions;
 	if (!o) return false;
 	return (
 		o.eventGroups !== undefined &&
@@ -20,14 +20,14 @@ export const isEventMessageSubscriptionSet = (
 	);
 };
 
-interface EventMessageSubscriptionSetOptions {
+export interface EventMessageSubscriptionSetOptions {
 	eventGroups?: EventMessageGroups[];
 	eventNames?: EventMessageNames[];
 	eventLevels?: EventMessageLevel[];
 }
 
 export class EventMessageSubscriptionSet {
-	static readonly serializedName: '$$EventMessageSubscriptionSet';
+	static readonly __type: '$$EventMessageSubscriptionSet';
 
 	eventGroups: EventMessageGroups[];
 
@@ -63,21 +63,19 @@ export class EventMessageSubscriptionSet {
 
 	serialize(): JsonValue {
 		return {
-			serializedName: EventMessageSubscriptionSet.serializedName,
+			__type: EventMessageSubscriptionSet.__type,
 			eventGroups: this.eventGroups,
 			eventNames: this.eventNames,
 			eventLevels: this.eventLevels,
 		};
 	}
 
-	static deserialize(data: JsonObject): EventMessageSubscriptionSet | undefined {
-		if (
-			'serializedName' in data &&
-			data.serializedName === EventMessageSubscriptionSet.serializedName &&
-			isEventMessageSubscriptionSet(data.options)
-		) {
+	static deserialize(
+		data: JsonObject | EventMessageSubscriptionSetOptions,
+	): EventMessageSubscriptionSet {
+		if (isEventMessageSubscriptionSetOptions(data)) {
 			return new EventMessageSubscriptionSet(data);
 		}
-		return undefined;
+		return new EventMessageSubscriptionSet();
 	}
 }

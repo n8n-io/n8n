@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { EventMessage, isEventMessageSerialized } from '../EventMessageClasses/EventMessage';
+import { isEventMessageSerialized } from '../EventMessageClasses/AbstractEventMessage';
 import { UserSettings } from 'n8n-core';
 import path, { parse } from 'path';
 import { ModuleThread, spawn, Thread, Worker } from 'threads';
 import { MessageEventBusLogWriterWorker } from './MessageEventBusLogWriterWorker';
-import { MessageEventBusWriter } from '../EventMessageClasses/MessageEventBusWriter';
+// import { MessageEventBusWriter } from '../EventMessageClasses/MessageEventBusWriter';
 import {
 	EventMessageConfirm,
 	isEventMessageConfirmSerialized,
@@ -16,6 +16,8 @@ import events from 'events';
 import { jsonParse } from 'n8n-workflow';
 import remove from 'lodash.remove';
 import config from '../../config';
+import { EventMessageTypes, getEventMessageByType } from '../EventMessageClasses/Helpers';
+import { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
 
 interface MessageEventBusLogWriterOptions {
 	syncFileAccess?: boolean;
@@ -28,7 +30,7 @@ interface MessageEventBusLogWriterOptions {
 /**
  * MessageEventBusWriter for Files
  */
-export class MessageEventBusLogWriter implements MessageEventBusWriter {
+export class MessageEventBusLogWriter {
 	static #instance: MessageEventBusLogWriter;
 
 	static options: Required<MessageEventBusLogWriterOptions>;
@@ -122,7 +124,7 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 		}
 	}
 
-	async putMessage(msg: EventMessage): Promise<void> {
+	async putMessage(msg: EventMessageTypes): Promise<void> {
 		if (this.#worker) {
 			await this.#worker.appendMessageToLog(msg);
 		}
@@ -134,11 +136,49 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 		}
 	}
 
-	async getMessages(mode: 'sent' | 'unsent' | 'all' = 'all'): Promise<EventMessage[]> {
-		const logFileName = await MessageEventBusLogWriter.#instance.getThread()?.getLogFileName();
+	async getMessages(
+		mode: EventMessageReturnMode = 'all',
+		includePreviousLog = true,
+	): Promise<EventMessageTypes[]> {
+		const logFileName0 = await MessageEventBusLogWriter.#instance.getThread()?.getLogFileName();
+		const logFileName1 = includePreviousLog
+			? await MessageEventBusLogWriter.#instance.getThread()?.getLogFileName(1)
+			: undefined;
+		const results: {
+			loggedMessages: EventMessageTypes[];
+			sentMessages: EventMessageTypes[];
+		} = {
+			loggedMessages: [],
+			sentMessages: [],
+		};
+		if (logFileName0) {
+			await this.readLoggedMessagesFromFile(results, mode, logFileName0);
+		}
+		if (logFileName1) {
+			await this.readLoggedMessagesFromFile(results, mode, logFileName1);
+		}
+		switch (mode) {
+			case 'all':
+			case 'unsent':
+				return results.loggedMessages;
+			case 'sent':
+				return results.sentMessages;
+		}
+		return [];
+	}
+
+	async readLoggedMessagesFromFile(
+		results: {
+			loggedMessages: EventMessageTypes[];
+			sentMessages: EventMessageTypes[];
+		},
+		mode: EventMessageReturnMode,
+		logFileName: string,
+	): Promise<{
+		loggedMessages: EventMessageTypes[];
+		sentMessages: EventMessageTypes[];
+	}> {
 		if (logFileName && existsSync(logFileName)) {
-			const loggedMessages: EventMessage[] = [];
-			const sentMessages: EventMessage[] = [];
 			try {
 				const rl = readline.createInterface({
 					input: createReadStream(logFileName),
@@ -147,13 +187,13 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 				rl.on('line', (line) => {
 					const json = jsonParse(line);
 					if (isEventMessageSerialized(json)) {
-						const msg = EventMessage.deserialize(json);
-						loggedMessages.push(msg);
+						const msg = getEventMessageByType(json);
+						if (msg !== null) results.loggedMessages.push(msg);
 					}
 					if (isEventMessageConfirmSerialized(json) && mode !== 'all') {
-						const removedMessage = remove(loggedMessages, (e) => e.id === json.confirm);
+						const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
 						if (mode === 'sent') {
-							sentMessages.push(...removedMessage);
+							results.sentMessages.push(...removedMessage);
 						}
 					}
 				});
@@ -162,22 +202,15 @@ export class MessageEventBusLogWriter implements MessageEventBusWriter {
 			} catch (error) {
 				console.log(error);
 			}
-			switch (mode) {
-				case 'all':
-				case 'unsent':
-					return loggedMessages;
-				case 'sent':
-					return sentMessages;
-			}
 		}
-		return [];
+		return results;
 	}
 
-	async getMessagesSent(): Promise<EventMessage[]> {
+	async getMessagesSent(): Promise<EventMessageTypes[]> {
 		return this.getMessages('sent');
 	}
 
-	async getMessagesUnsent(): Promise<EventMessage[]> {
+	async getMessagesUnsent(): Promise<EventMessageTypes[]> {
 		return this.getMessages('unsent');
 	}
 }

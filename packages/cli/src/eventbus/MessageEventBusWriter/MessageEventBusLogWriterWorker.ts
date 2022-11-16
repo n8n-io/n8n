@@ -1,15 +1,13 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { appendFileSync, existsSync, rmSync, renameSync, openSync, closeSync } from 'node:fs';
 import { appendFile, stat } from 'node:fs/promises';
-import { expose, isWorkerRuntime, registerSerializer } from 'threads/worker';
-import { EventMessage, messageEventSerializer } from '../EventMessageClasses/EventMessage';
-import {
-	EventMessageConfirm,
-	eventMessageConfirmSerializer,
-} from '../EventMessageClasses/EventMessageConfirm';
+import { expose, isWorkerRuntime } from 'threads/worker';
 
 // -----------------------------------------
 // * This part runs in the Worker Thread ! *
 // -----------------------------------------
+
+// all references to and imports from classes have been remove to keep memory usage low
 
 let logFileBasePath = '';
 let loggingPaused = true;
@@ -68,14 +66,14 @@ async function checkFileSize(path: string) {
 	}
 }
 
-function appendMessageSync(msg: EventMessage | EventMessageConfirm) {
+function appendMessageSync(msg: any | unknown) {
 	if (loggingPaused) {
 		return;
 	}
 	appendFileSync(buildLogFileNameWithCounter(), JSON.stringify(msg) + '\n');
 }
 
-async function appendMessage(msg: EventMessage | EventMessageConfirm) {
+async function appendMessage(msg: any | unknown) {
 	if (loggingPaused) {
 		return;
 	}
@@ -83,14 +81,14 @@ async function appendMessage(msg: EventMessage | EventMessageConfirm) {
 }
 
 const messageEventBusLogWriterWorker = {
-	async appendMessageToLog(msg: EventMessage) {
+	async appendMessageToLog(msg: any) {
 		if (syncFileAccess) {
 			appendMessageSync(msg);
 		} else {
 			await appendMessage(msg);
 		}
 	},
-	async confirmMessageSent(confirm: EventMessageConfirm) {
+	async confirmMessageSent(confirm: unknown) {
 		if (syncFileAccess) {
 			appendMessageSync(confirm);
 		} else {
@@ -121,9 +119,9 @@ const messageEventBusLogWriterWorker = {
 			}, 5000);
 		}
 	},
-	getLogFileName() {
+	getLogFileName(counter?: number) {
 		if (logFileBasePath) {
-			return buildLogFileNameWithCounter();
+			return buildLogFileNameWithCounter(counter);
 		} else {
 			return undefined;
 		}
@@ -131,8 +129,6 @@ const messageEventBusLogWriterWorker = {
 };
 if (isWorkerRuntime()) {
 	// Register the serializer on the worker thread
-	registerSerializer(messageEventSerializer);
-	registerSerializer(eventMessageConfirmSerializer);
 	expose(messageEventBusLogWriterWorker);
 }
 export type MessageEventBusLogWriterWorker = typeof messageEventBusLogWriterWorker;

@@ -3,7 +3,7 @@
  */
 
 //TODO: totally random...
-type EventsWorkflow = 'workflowStarted' | 'workflowEnded';
+export type EventMessageNamesWorkflow = 'workflowStarted' | 'workflowEnded';
 type EventsUi = 'clicki' | 'bunti';
 type EventsCore = 'melting' | 'burning' | 'eventBusInitialized';
 type EventsNodes = 'created' | 'removed';
@@ -12,7 +12,7 @@ type EventMessageGroupNames = `ui` | `workflow` | `core` | `nodes`;
 
 type EventMessageGroupsWithEvents =
 	| `ui.${EventsUi}`
-	| `workflow.${EventsWorkflow}`
+	| `workflow.${EventMessageNamesWorkflow}`
 	| `core.${EventsCore}`
 	| `nodes.${EventsNodes}`;
 

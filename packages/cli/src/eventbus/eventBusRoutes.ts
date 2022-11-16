@@ -2,15 +2,27 @@
 import express from 'express';
 import { ResponseHelper } from '..';
 import { ResponseError } from '../ResponseHelper';
-import { EventMessage, EventMessageSerialized } from './EventMessageClasses/EventMessage';
-import { eventBus, EventMessageSubscribeDestination } from './MessageEventBus/MessageEventBus';
+import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
+import { EventMessage } from './EventMessageClasses/EventMessage';
+import {
+	EventMessageSubscriptionSet,
+	isEventMessageSubscriptionSetOptions,
+} from './EventMessageClasses/EventMessageSubscriptionSet';
+import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
+import {
+	eventBus,
+	EventMessageReturnMode,
+	EventMessageSubscribeDestination,
+} from './MessageEventBus/MessageEventBus';
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
+	MessageEventBusDestinationSentryOptions,
 } from './MessageEventBusDestination/MessageEventBusDestinationSentry';
 import {
 	isMessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationSyslog,
+	MessageEventBusDestinationSyslogOptions,
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog';
 import {
 	MessageEventBusDestinationWebhook,
@@ -23,21 +35,22 @@ export const eventBusRouter = express.Router();
 // TypeGuards
 // ----------------------------------------
 
-const isEventMessageRequestBody = (candidate: unknown): candidate is EventMessageSerialized => {
-	const o = candidate as EventMessageSerialized;
-	if (!o) return false;
-	if (o.eventName !== undefined) {
-		if (o.eventName.match(/^[\w\s]+\.[\w\s]+\.[\w\s]+/)) {
-			return true;
-		}
-	}
-	return false;
-};
-
-const isBodyWithId = (candidate: unknown): candidate is { id: string } => {
+const isWithIdString = (candidate: unknown): candidate is { id: string } => {
 	const o = candidate as { id: string };
 	if (!o) return false;
 	return o.id !== undefined;
+};
+
+const isWithQueryString = (candidate: unknown): candidate is { query: string } => {
+	const o = candidate as { query: string };
+	if (!o) return false;
+	return o.query !== undefined;
+};
+
+const isWithDestinationIdString = (candidate: unknown): candidate is { destinationId: string } => {
+	const o = candidate as { destinationId: string };
+	if (!o) return false;
+	return o.destinationId !== undefined;
 };
 
 const isEventMessageDestinationSubscription = (
@@ -45,7 +58,11 @@ const isEventMessageDestinationSubscription = (
 ): candidate is EventMessageSubscribeDestination => {
 	const o = candidate as EventMessageSubscribeDestination;
 	if (!o) return false;
-	return o.subscriptionSet !== undefined && o.destinationId !== undefined;
+	return (
+		o.subscriptionSet !== undefined &&
+		o.destinationId !== undefined &&
+		isEventMessageSubscriptionSetOptions(o.subscriptionSet)
+	);
 };
 
 // TODO: add credentials
@@ -57,15 +74,47 @@ const isMessageEventBusDestinationWebhookOptions = (
 	return o.name !== undefined && o.url !== undefined;
 };
 
+interface MessageEventBusDestinationOptions {
+	type: 'sentry' | 'syslog' | 'webhook' | 'redis';
+	options:
+		| MessageEventBusDestinationWebhookOptions
+		| MessageEventBusDestinationSentryOptions
+		| MessageEventBusDestinationSyslogOptions;
+}
+
+const isMessageEventBusDestinationOptions = (
+	candidate: unknown,
+): candidate is MessageEventBusDestinationOptions => {
+	const o = candidate as MessageEventBusDestinationOptions;
+	if (!o) return false;
+	return o.type !== undefined && o.options !== undefined;
+};
+
 // ----------------------------------------
 // Events
 // ----------------------------------------
+eventBusRouter.get(
+	`/event`,
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		if (isWithQueryString(req.query)) {
+			switch (req.query.query as EventMessageReturnMode) {
+				case 'sent':
+					return eventBus.getEventsSent();
+				case 'unsent':
+					return eventBus.getEventsUnsent();
+				case 'all':
+				default:
+			}
+		}
+		return eventBus.getEvents();
+	}),
+);
 
 eventBusRouter.post(
-	`/event/add`,
+	`/event`,
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
-		if (isEventMessageRequestBody(req.body)) {
-			await eventBus.send(EventMessage.deserialize(req.body));
+		if (isEventMessageOptions(req.body)) {
+			await eventBus.send(new EventMessage(req.body));
 		} else {
 			throw new ResponseError(
 				'Body is not a serialized EventMessage or eventName does not match format {namespace}.{domain}.{event}',
@@ -77,16 +126,16 @@ eventBusRouter.post(
 );
 
 eventBusRouter.post(
-	`/event/addmany`,
+	`/event/addmany/:count`,
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
-		if (isEventMessageRequestBody(req.body)) {
-			const count =
-				req.body.count !== undefined && !isNaN(parseInt(req.body.count as string))
-					? parseInt(req.body.count as string)
-					: 100;
-			const msg = EventMessage.deserialize(req.body);
+		if (isEventMessageOptions(req.body)) {
+			const count: number = parseInt(req.params.count) ?? 100;
+			const msg = new EventMessageWorkflow(req.body);
 			for (let i = 0; i < count; i++) {
-				msg.payload = i;
+				msg.setPayload({
+					id: i,
+					msg: 'REST test',
+				});
 				await eventBus.send(msg);
 			}
 		} else {
@@ -103,57 +152,13 @@ eventBusRouter.post(
 // Destinations
 // ----------------------------------------
 
-eventBusRouter.post(
-	`/destination/add/syslog`,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-		if (isMessageEventBusDestinationSyslogOptions(req.body)) {
-			const result = await eventBus.addDestination(new MessageEventBusDestinationSyslog(req.body));
-			if (result) {
-				await result.saveToDb();
-				return result;
-			}
-		}
-	}),
-);
-
-eventBusRouter.post(
-	`/destination/add/sentry`,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-		if (isMessageEventBusDestinationSentryOptions(req.body)) {
-			const result = await eventBus.addDestination(new MessageEventBusDestinationSentry(req.body));
-			if (result) {
-				await result.saveToDb();
-				return result;
-			}
-		}
-	}),
-);
-
-eventBusRouter.post(
-	`/destination/add/webhook`,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-		if (isMessageEventBusDestinationWebhookOptions(req.body)) {
-			const result = await eventBus.addDestination(new MessageEventBusDestinationWebhook(req.body));
-			if (result) {
-				await result.saveToDb();
-				return result;
-			}
-		} else {
-			throw new ResponseError('Body is missing name', undefined, 400);
-		}
-	}),
-);
-
-eventBusRouter.post(
-	`/destination/find`,
+eventBusRouter.get(
+	`/destination`,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		let result = [];
-		if (isBodyWithId(req.body)) {
-			result = await eventBus.findDestination(req.body.id);
+		if (isWithIdString(req.query)) {
+			result = await eventBus.findDestination(req.query.id);
 		} else {
 			result = await eventBus.findDestination();
 		}
@@ -162,16 +167,59 @@ eventBusRouter.post(
 );
 
 eventBusRouter.post(
-	`/destination/remove`,
+	`/destination`,
 	// eslint-disable-next-line @typescript-eslint/no-unused-vars
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
-		if (isBodyWithId(req.body)) {
-			const result = await eventBus.removeDestination(req.body.id);
+		if (isMessageEventBusDestinationOptions(req.body)) {
+			let result;
+			switch (req.body.type) {
+				case 'sentry':
+					if (isMessageEventBusDestinationSentryOptions(req.body.options)) {
+						result = await eventBus.addDestination(
+							new MessageEventBusDestinationSentry(req.body.options),
+						);
+					}
+					break;
+				case 'webhook':
+					if (isMessageEventBusDestinationWebhookOptions(req.body.options)) {
+						result = await eventBus.addDestination(
+							new MessageEventBusDestinationWebhook(req.body.options),
+						);
+					}
+					break;
+				case 'syslog':
+					if (isMessageEventBusDestinationSyslogOptions(req.body.options)) {
+						result = await eventBus.addDestination(
+							new MessageEventBusDestinationSyslog(req.body.options),
+						);
+					}
+					break;
+				default:
+					throw new ResponseError(
+						`Body is missing ${req.body.type} options or type ${req.body.type} is unknown`,
+						undefined,
+						400,
+					);
+			}
+			if (result) {
+				await result.saveToDb();
+			}
+			return result;
+		}
+	}),
+);
+
+eventBusRouter.delete(
+	`/destination`,
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
+		if (isWithIdString(req.query)) {
+			const result = await eventBus.removeDestination(req.query.id);
 			if (result) {
 				return result;
 			}
 		} else {
-			throw new ResponseError('Body is missing id', undefined, 400);
+			throw new ResponseError('Query is missing id', undefined, 400);
 		}
 	}),
 );
@@ -180,38 +228,44 @@ eventBusRouter.post(
 // Subscriptions
 // ----------------------------------------
 
+eventBusRouter.get(
+	`/subscription`,
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		if (isWithDestinationIdString(req.query)) {
+			return eventBus.getDestinationSubscriptionSet(req.query.destinationId);
+		} else {
+			throw new ResponseError('Query is missing destination id', undefined, 400);
+		}
+	}),
+);
+
 eventBusRouter.post(
-	`/subscription/set`,
+	`/subscription`,
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (isEventMessageDestinationSubscription(req.body)) {
-			eventBus.setDestinationSubscriptionSet(req.body.destinationId, req.body.subscriptionSet);
+			const result = eventBus.setDestinationSubscriptionSet(
+				req.body.destinationId,
+				EventMessageSubscriptionSet.deserialize(req.body.subscriptionSet),
+			);
+			if (result) {
+				await result.saveToDb();
+			}
 		} else {
 			throw new ResponseError('Body is missing subscriptionSet or destinationId', undefined, 400);
 		}
 	}),
 );
 
-// ----------------------------------------
-// Get EventMessages
-// ----------------------------------------
-
-eventBusRouter.get(
-	`/get/all`,
-	ResponseHelper.send(async (): Promise<any> => {
-		return eventBus.getEvents();
-	}),
-);
-
-eventBusRouter.get(
-	`/get/sent`,
-	ResponseHelper.send(async (): Promise<any> => {
-		return eventBus.getEventsSent();
-	}),
-);
-
-eventBusRouter.get(
-	`/get/unsent`,
-	ResponseHelper.send(async (): Promise<any> => {
-		return eventBus.getEventsUnsent();
+eventBusRouter.delete(
+	`/subscription`,
+	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		if (isWithDestinationIdString(req.query)) {
+			const result = eventBus.resetDestinationSubscriptionSet(req.query.destinationId);
+			if (result) {
+				await result.saveToDb();
+			}
+		} else {
+			throw new ResponseError('Query is missing destination id', undefined, 400);
+		}
 	}),
 );

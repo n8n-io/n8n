@@ -1,13 +1,16 @@
-import { EventMessage } from './EventMessage';
 import { v4 as uuid } from 'uuid';
 import { JsonValue } from 'n8n-workflow';
-import { EventMessageSubscriptionSet } from './EventMessageSubscriptionSet';
+import {
+	EventMessageSubscriptionSet,
+	EventMessageSubscriptionSetOptions,
+} from './EventMessageSubscriptionSet';
 import {
 	EventMessageGroups,
 	EventMessageNames,
 	EventMessageLevel,
 } from '../types/EventMessageTypes';
 import { Db } from '../..';
+import { AbstractEventMessage } from './AbstractEventMessage';
 
 export interface MessageEventBusDestinationOptions {
 	id?: string;
@@ -17,7 +20,7 @@ export interface MessageEventBusDestinationOptions {
 
 export abstract class MessageEventBusDestination {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
-	// static readonly serializedName: string;
+	// static readonly __type: string;
 	// static deserialize(): MessageEventBusDestination;
 	// static fromString(data: string): MessageEventBusDestination;
 
@@ -43,8 +46,8 @@ export abstract class MessageEventBusDestination {
 		return this.id;
 	}
 
-	setSubscription(subscriptionSet: EventMessageSubscriptionSet) {
-		this.subscriptionSet = subscriptionSet;
+	setSubscription(subscriptionSetOptions: EventMessageSubscriptionSetOptions) {
+		this.subscriptionSet = EventMessageSubscriptionSet.deserialize(subscriptionSetOptions);
 	}
 
 	setEventGroups(groups: EventMessageGroups[]) {
@@ -59,7 +62,7 @@ export abstract class MessageEventBusDestination {
 		this.subscriptionSet.setEventLevels(levels);
 	}
 
-	hasSubscribedToEvent(msg: EventMessage) {
+	hasSubscribedToEvent(msg: AbstractEventMessage) {
 		const eventGroup = msg.getEventGroup();
 
 		if (
@@ -106,7 +109,7 @@ export abstract class MessageEventBusDestination {
 
 	abstract toString(): string;
 
-	abstract receiveFromEventBus(msg: EventMessage): Promise<boolean>;
+	abstract receiveFromEventBus(msg: AbstractEventMessage): Promise<boolean>;
 
 	abstract close(): Promise<void>;
 }

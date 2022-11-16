@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DateTime } from 'luxon';
 import { jsonParse } from 'n8n-workflow';
-import { SerializerImplementation } from 'threads';
 
 export interface EventMessageConfirmSerialized {
 	[key: string]: any | undefined;
@@ -9,12 +8,6 @@ export interface EventMessageConfirmSerialized {
 	confirm: string;
 	ts?: string | undefined;
 }
-
-// export const isEventMessageConfirm = (candidate: unknown): candidate is EventMessageConfirm => {
-// 	const o = candidate as EventMessageConfirm;
-// 	if (!o) return false;
-// 	return o.__type === '$$EventMessageConfirm' && o.id !== undefined && o.ts !== undefined;
-// };
 
 export const isEventMessageConfirmSerialized = (
 	candidate: unknown,
@@ -67,20 +60,20 @@ export class EventMessageConfirm {
 	}
 }
 
-export const eventMessageConfirmSerializer: SerializerImplementation = {
-	deserialize(message, defaultHandler) {
-		if (isEventMessageConfirmSerialized(message)) {
-			return EventMessageConfirm.deserialize(message);
-		} else {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-			return defaultHandler(message);
-		}
-	},
-	serialize(thing, defaultHandler) {
-		if (thing instanceof EventMessageConfirm) {
-			return thing.serialize();
-		} else {
-			return defaultHandler(thing);
-		}
-	},
-};
+// export const eventMessageConfirmSerializer: SerializerImplementation = {
+// 	deserialize(message, defaultHandler) {
+// 		if (isEventMessageConfirmSerialized(message)) {
+// 			return EventMessageConfirm.deserialize(message);
+// 		} else {
+// 			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+// 			return defaultHandler(message);
+// 		}
+// 	},
+// 	serialize(thing, defaultHandler) {
+// 		if (thing instanceof EventMessageConfirm) {
+// 			return thing.serialize();
+// 		} else {
+// 			return defaultHandler(thing);
+// 		}
+// 	},
+// };

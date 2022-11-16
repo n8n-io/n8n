@@ -22,7 +22,7 @@ export interface MessageEventBusDestinationWebhookOptions
 }
 
 export class MessageEventBusDestinationWebhook extends MessageEventBusDestination {
-	static readonly serializedName = '$$MessageEventBusDestinationWebhook';
+	static readonly __type = '$$MessageEventBusDestinationWebhook';
 
 	readonly url: string;
 
@@ -51,7 +51,7 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 
 	serialize(): JsonValue {
 		return {
-			serializedName: MessageEventBusDestinationWebhook.serializedName,
+			__type: MessageEventBusDestinationWebhook.__type,
 			options: {
 				id: this.getId(),
 				name: this.getName(),
@@ -64,8 +64,8 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 
 	static deserialize(data: JsonObject): MessageEventBusDestinationWebhook | null {
 		if (
-			'serializedName' in data &&
-			data.serializedName === MessageEventBusDestinationWebhook.serializedName &&
+			'__type' in data &&
+			data.__type === MessageEventBusDestinationWebhook.__type &&
 			'options' in data &&
 			isMessageEventBusDestinationWebhookOptions(data.options)
 		) {

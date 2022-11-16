@@ -1000,7 +1000,7 @@ export const schema = {
 				doc: 'Whether destinations are loaded from Db and initialized at startup.',
 				format: Boolean,
 				default: true,
-				env: 'N8N_EVENTBUS_DESTINATIONS_LOADATSTART',
+				env: 'N8N_EVENTBUS_DESTINATIONS_STARTUP',
 			},
 		},
 		logWriter: {
