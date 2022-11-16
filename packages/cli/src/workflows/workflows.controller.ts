@@ -38,11 +38,6 @@ workflowsController.use((req, res, next) => {
 	next();
 });
 
-workflowsController.use((req, res, next) => {
-	res.setHeader('Content-Type', 'application/json');
-	next();
-});
-
 workflowsController.use('/', EEWorkflowController);
 
 /**

@@ -31,51 +31,52 @@ EEWorkflowController.use((req, res, next) => {
 	next();
 });
 
-EEWorkflowController.use((req, res, next) => {
-	res.setHeader('Content-Type', 'application/json');
-	next();
-});
-
 /**
  * (EE) PUT /workflows/:id/share
  *
  * Grant or remove users' access to a workflow.
  */
 
-EEWorkflowController.put('/:workflowId/share', async (req: WorkflowRequest.Share, res) => {
-	const { workflowId } = req.params;
-	const { shareWithIds } = req.body;
+EEWorkflowController.put(
+	'/:workflowId/share',
+	ResponseHelper.send(async (req: WorkflowRequest.Share, res) => {
+		const { workflowId } = req.params;
+		const { shareWithIds } = req.body;
 
-	if (!Array.isArray(shareWithIds) || !shareWithIds.every((userId) => typeof userId === 'string')) {
-		return res.status(400).send('Bad Request');
-	}
-
-	const { ownsWorkflow, workflow } = await EEWorkflows.isOwned(req.user, workflowId);
-
-	if (!ownsWorkflow || !workflow) {
-		return res.status(403).send();
-	}
-
-	let newShareeIds: string[] = [];
-	await Db.transaction(async (trx) => {
-		// remove all sharings that are not supposed to exist anymore
-		await EEWorkflows.pruneSharings(trx, workflowId, [req.user.id, ...shareWithIds]);
-
-		const sharings = await EEWorkflows.getSharings(trx, workflowId);
-
-		// extract the new sharings that need to be added
-		newShareeIds = rightDiff(
-			[sharings, (sharing) => sharing.userId],
-			[shareWithIds, (shareeId) => shareeId],
-		);
-
-		if (newShareeIds.length) {
-			await EEWorkflows.share(trx, workflow, newShareeIds);
+		if (
+			!Array.isArray(shareWithIds) ||
+			!shareWithIds.every((userId) => typeof userId === 'string')
+		) {
+			return res.status(400).send('Bad Request');
 		}
-	});
 
-	return res.status(200).send();
-});
+		const { ownsWorkflow, workflow } = await EEWorkflows.isOwned(req.user, workflowId);
+
+		if (!ownsWorkflow || !workflow) {
+			return res.status(403).send();
+		}
+
+		let newShareeIds: string[] = [];
+		await Db.transaction(async (trx) => {
+			// remove all sharings that are not supposed to exist anymore
+			await EEWorkflows.pruneSharings(trx, workflowId, [req.user.id, ...shareWithIds]);
+
+			const sharings = await EEWorkflows.getSharings(trx, workflowId);
+
+			// extract the new sharings that need to be added
+			newShareeIds = rightDiff(
+				[sharings, (sharing) => sharing.userId],
+				[shareWithIds, (shareeId) => shareeId],
+			);
+
+			if (newShareeIds.length) {
+				await EEWorkflows.share(trx, workflow, newShareeIds);
+			}
+		});
+
+		return res.status(200).send();
+	}),
+);
 
 EEWorkflowController.get(
 	'/:id(\\d+)',
