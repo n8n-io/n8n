@@ -13,8 +13,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nUserInfo,
 	},
-	template:
-		'<n8n-user-info v-bind="$props" />',
+	template: '<n8n-user-info v-bind="$props" />',
 });
 
 export const Member = Template.bind({});

@@ -1,7 +1,7 @@
-@use "mixins/mixins";
-@use "progress";
-@use "./common/var";
-@use "mixins/utils";
+@use 'mixins/mixins';
+@use 'progress';
+@use './common/var';
+@use 'mixins/utils';
 
 @include mixins.b(upload) {
 	display: inline-block;

@@ -1,8 +1,13 @@
 <template>
 	<div :class="['action-dropdown-container', $style.actionDropdownContainer]">
-		<el-dropdown :placement="placement" :trigger="trigger" @command="onSelect" ref="elementDropdown">
+		<el-dropdown
+			:placement="placement"
+			:trigger="trigger"
+			@command="onSelect"
+			ref="elementDropdown"
+		>
 			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
-				<n8n-icon :icon="activatorIcon"/>
+				<n8n-icon :icon="activatorIcon" />
 			</div>
 			<el-dropdown-menu slot="dropdown" :class="$style.userActionsMenu">
 				<el-dropdown-item
@@ -12,13 +17,15 @@
 					:disabled="item.disabled"
 					:divided="item.divided"
 				>
-					<div :class="{
-						[$style.itemContainer]: true,
-						[$style.hasCustomStyling]: item.customClass !== undefined,
-						[item.customClass]: item.customClass !== undefined,
-					}">
+					<div
+						:class="{
+							[$style.itemContainer]: true,
+							[$style.hasCustomStyling]: item.customClass !== undefined,
+							[item.customClass]: item.customClass !== undefined,
+						}"
+					>
 						<span v-if="item.icon" :class="$style.icon">
-							<n8n-icon :icon="item.icon" :size="item.iconSize"/>
+							<n8n-icon :icon="item.icon" :size="item.iconSize" />
 						</span>
 						<span :class="$style.label">
 							{{ item.label }}
@@ -31,7 +38,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from "vue";
+import Vue, { PropType } from 'vue';
 import ElDropdown from 'element-ui/lib/dropdown';
 import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
 import ElDropdownItem from 'element-ui/lib/dropdown-item';
@@ -56,8 +63,8 @@ export default Vue.extend({
 	name: 'n8n-action-dropdown',
 	components: {
 		ElDropdownMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdown,		// eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdownItem,	// eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdown, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdownItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		N8nIcon,
 	},
 	props: {
@@ -78,22 +85,22 @@ export default Vue.extend({
 		iconSize: {
 			type: String,
 			default: 'medium',
-			validator: (value: string): boolean =>
-				['small', 'medium', 'large'].includes(value),
+			validator: (value: string): boolean => ['small', 'medium', 'large'].includes(value),
 		},
 		trigger: {
 			type: String,
 			default: 'click',
-			validator: (value: string): boolean =>
-				['click', 'hover'].includes(value),
+			validator: (value: string): boolean => ['click', 'hover'].includes(value),
 		},
 	},
 	methods: {
-		onSelect(action: string) : void {
+		onSelect(action: string): void {
 			this.$emit('select', action);
 		},
 		onButtonBlur(event: FocusEvent): void {
-			const elementDropdown = this.$refs.elementDropdown as Vue & { hide: () => void }  | undefined;
+			const elementDropdown = this.$refs.elementDropdown as
+				| (Vue & { hide: () => void })
+				| undefined;
 			// Hide dropdown when clicking outside of current document
 			if (elementDropdown && event.relatedTarget === null) {
 				elementDropdown.hide();
@@ -101,11 +108,9 @@ export default Vue.extend({
 		},
 	},
 });
-
 </script>
 
 <style lang="scss" module>
-
 .activator {
 	cursor: pointer;
 	padding: var(--spacing-2xs);
@@ -131,7 +136,9 @@ export default Vue.extend({
 	text-align: center;
 	margin-right: var(--spacing-2xs);
 
-	svg { width: 1.2em !important; }
+	svg {
+		width: 1.2em !important;
+	}
 }
 
 :global(li.is-disabled) {
@@ -139,5 +146,4 @@ export default Vue.extend({
 		color: inherit !important;
 	}
 }
-
 </style>

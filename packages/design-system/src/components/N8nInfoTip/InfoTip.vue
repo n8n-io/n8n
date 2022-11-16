@@ -1,20 +1,27 @@
 <template>
-	<div :class="{'n8n-info-tip': true, [$style[theme]]: true, [$style[type]]: true, [$style.bold]: bold}">
+	<div
+		:class="{
+			'n8n-info-tip': true,
+			[$style[theme]]: true,
+			[$style[type]]: true,
+			[$style.bold]: bold,
+		}"
+	>
 		<n8n-tooltip
-				v-if="type === 'tooltip'"
-				:placement="tooltipPlacement"
-				:popper-class="$style.tooltipPopper"
-				:disabled="type !== 'tooltip'"
+			v-if="type === 'tooltip'"
+			:placement="tooltipPlacement"
+			:popper-class="$style.tooltipPopper"
+			:disabled="type !== 'tooltip'"
 		>
 			<span :class="$style.iconText">
-				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
+				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle' : 'exclamation-triangle'" />
 			</span>
 			<span slot="content">
 				<slot />
 			</span>
 		</n8n-tooltip>
 		<span :class="$style.iconText" v-else>
-			<n8n-icon :icon="theme.startsWith('info') ? 'info-circle': 'exclamation-triangle'" />
+			<n8n-icon :icon="theme.startsWith('info') ? 'info-circle' : 'exclamation-triangle'" />
 			<span>
 				<slot />
 			</span>
@@ -44,8 +51,7 @@ export default Vue.extend({
 		type: {
 			type: String,
 			default: 'note',
-			validator: (value: string): boolean =>
-				['note', 'tooltip'].includes(value),
+			validator: (value: string): boolean => ['note', 'tooltip'].includes(value),
 		},
 		bold: {
 			type: Boolean,
@@ -91,7 +97,7 @@ export default Vue.extend({
 
 .iconText {
 	display: inline-flex;
-  	align-items: flex-start;
+	align-items: flex-start;
 }
 
 .info-light {
