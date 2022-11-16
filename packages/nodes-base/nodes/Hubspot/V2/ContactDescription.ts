@@ -875,7 +875,7 @@ export const contactFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Filters',
+		displayName: 'Options',
 		name: 'filters',
 		type: 'collection',
 		placeholder: 'Add Filter',

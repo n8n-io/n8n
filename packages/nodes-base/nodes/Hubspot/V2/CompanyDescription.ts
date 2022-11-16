@@ -49,9 +49,9 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get a recently modified company',
 			},
 			{
-				name: 'Search By Domain',
+				name: 'Search',
 				value: 'searchByDomain',
-				description: 'Search companies by domain',
+				description: 'Search companies by their website domain',
 				action: 'Search for a company by Domain',
 			},
 			{
@@ -1091,6 +1091,7 @@ export const companyFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
+		description: "The company's website domain to search for, like n8n.io",
 	},
 	{
 		displayName: 'Return All',
