@@ -38,6 +38,7 @@ import {
 	NodeParameterValue,
 	WebhookHttpMethod,
 } from './Interfaces';
+import { isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
@@ -1150,7 +1151,7 @@ export function addToIssuesIfMissing(
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'resourceLocator' &&
-			(!value || (typeof value === 'object' && !value.value)))
+			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
 	) {
 		// Parameter is required but empty
 		if (foundIssues.parameters === undefined) {
