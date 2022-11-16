@@ -20,6 +20,8 @@ import { addColor, removeColor } from './colorDecorations';
 import type { IVariableItemSelected } from '@/Interface';
 import type { RawSegment, Segment, Resolvable, Plaintext } from './types';
 
+const EVALUATION_DELAY = 150; // ms
+
 export default mixins(workflowHelpers).extend({
 	name: 'ExpressionModalInput',
 	props: {
@@ -30,6 +32,7 @@ export default mixins(workflowHelpers).extend({
 	data() {
 		return {
 			editor: null as EditorView | null,
+			errorsInSuccession: 0,
 		};
 	},
 	mounted() {
@@ -48,10 +51,33 @@ export default mixins(workflowHelpers).extend({
 
 				addColor(this.editor, this.resolvableSegments);
 
-				this.$emit('change', {
-					value: this.unresolvedExpression,
-					segments: this.displayableSegments,
-				});
+				const prevErrorsInSuccession = this.errorsInSuccession;
+
+				if (this.erroringSegments.length > 0) {
+					this.errorsInSuccession += 1;
+				} else {
+					this.errorsInSuccession = 0;
+				}
+
+				const addsNewError = this.errorsInSuccession > prevErrorsInSuccession;
+
+				let delay = EVALUATION_DELAY;
+
+				if (addsNewError && this.errorsInSuccession > 1 && this.errorsInSuccession < 5) {
+					delay = EVALUATION_DELAY * this.errorsInSuccession;
+				} else if (addsNewError && this.errorsInSuccession >= 5) {
+					delay = 0;
+				}
+
+				// @TODO: Remove logging after review
+				// console.log(`content: ${this.unresolvedExpression} // delay: ${delay} // errorsInSuccession: ${this.errorsInSuccession}`);
+
+				setTimeout(() => {
+					this.$emit('change', {
+						value: this.unresolvedExpression,
+						segments: this.displayableSegments,
+					});
+				}, delay);
 			}),
 		];
 
@@ -80,6 +106,9 @@ export default mixins(workflowHelpers).extend({
 		},
 		resolvableSegments(): Resolvable[] {
 			return this.segments.filter((s): s is Resolvable => s.kind === 'resolvable');
+		},
+		erroringSegments(): Resolvable[] {
+			return this.resolvableSegments.filter((s) => s.error);
 		},
 		plaintextSegments(): Plaintext[] {
 			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
