@@ -23,6 +23,11 @@ EECredentialsController.use((req, res, next) => {
 	next();
 });
 
+EECredentialsController.use((req, res, next) => {
+	res.setHeader('Content-Type', 'application/json');
+	next();
+});
+
 /**
  * GET /credentials
  */
@@ -139,7 +144,7 @@ EECredentialsController.put('/:credentialId/share', async (req: CredentialReques
 	const { shareWithIds } = req.body;
 
 	if (!Array.isArray(shareWithIds) || !shareWithIds.every((userId) => typeof userId === 'string')) {
-		return res.status(400).send('Bad Request');
+		return res.status(400).send({ message: 'Bad request' });
 	}
 
 	const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);

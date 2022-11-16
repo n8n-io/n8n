@@ -31,6 +31,11 @@ EEWorkflowController.use((req, res, next) => {
 	next();
 });
 
+EEWorkflowController.use((req, res, next) => {
+	res.setHeader('Content-Type', 'application/json');
+	next();
+});
+
 /**
  * (EE) PUT /workflows/:id/share
  *

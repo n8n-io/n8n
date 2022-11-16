@@ -30,6 +30,11 @@ credentialsController.use((req, res, next) => {
 
 credentialsController.use('/', EECredentialsController);
 
+credentialsController.use((req, res, next) => {
+	res.setHeader('Content-Type', 'application/json');
+	next();
+});
+
 /**
  * GET /credentials
  */
