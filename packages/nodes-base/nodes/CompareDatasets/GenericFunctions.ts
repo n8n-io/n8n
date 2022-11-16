@@ -274,7 +274,10 @@ export function checkInput(
 	disableDotNotation: boolean,
 	inputLabel: string,
 ) {
-	if (input.length === 0 || input.every((item) => isEmpty(item.json))) {
+	if (input.some((item) => isEmpty(item.json))) {
+		input = input.filter((item) => !isEmpty(item.json));
+	}
+	if (input.length === 0) {
 		return input;
 	}
 	for (const field of fields) {
