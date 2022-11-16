@@ -211,7 +211,7 @@ export const dealFields: INodeProperties[] = [
 								type: 'regex',
 								properties: {
 									regex: '[0-9]+',
-									errorMessage: 'Not a valid Hubspot Owner ID',
+									errorMessage: 'Not a valid HubSpot Owner ID',
 								},
 							},
 						],
@@ -246,7 +246,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                 deal:update                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Deal ID',
+		displayName: 'Deal to Update',
 		name: 'dealId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -277,7 +277,7 @@ export const dealFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Deal ID',
+							errorMessage: 'Not a valid HubSpot Deal ID',
 						},
 					},
 				],
@@ -396,7 +396,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                  deal:get                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Deal ID',
+		displayName: 'Deal to Get',
 		name: 'dealId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -427,7 +427,7 @@ export const dealFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Deal ID',
+							errorMessage: 'Not a valid HubSpot Deal ID',
 						},
 					},
 				],
@@ -567,7 +567,7 @@ export const dealFields: INodeProperties[] = [
 	/*                                 deal:delete                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Deal ID',
+		displayName: 'Deal to Delete',
 		name: 'dealId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -598,7 +598,7 @@ export const dealFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Deal ID',
+							errorMessage: 'Not a valid HubSpot Deal ID',
 						},
 					},
 				],

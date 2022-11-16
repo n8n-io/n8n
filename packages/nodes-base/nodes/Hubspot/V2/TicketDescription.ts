@@ -224,7 +224,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                 ticket:update                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket ID',
+		displayName: 'Ticket to Update',
 		name: 'ticketId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -255,7 +255,7 @@ export const ticketFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Ticket ID',
+							errorMessage: 'Not a valid HubSpot Ticket ID',
 						},
 					},
 				],
@@ -416,7 +416,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                  ticket:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket ID',
+		displayName: 'Ticket to Get',
 		name: 'ticketId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -447,7 +447,7 @@ export const ticketFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Ticket ID',
+							errorMessage: 'Not a valid HubSpot Ticket ID',
 						},
 					},
 				],
@@ -569,7 +569,7 @@ export const ticketFields: INodeProperties[] = [
 	/*                                 ticket:delete                              */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Ticket ID',
+		displayName: 'Ticket to Delete',
 		name: 'ticketId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -600,7 +600,7 @@ export const ticketFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Ticket ID',
+							errorMessage: 'Not a valid HubSpot Ticket ID',
 						},
 					},
 				],

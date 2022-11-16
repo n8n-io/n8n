@@ -533,7 +533,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                  contact:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Contact ID',
+		displayName: 'Contact to Get',
 		name: 'contactId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -565,7 +565,7 @@ export const contactFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Company ID',
+							errorMessage: 'Not a valid HubSpot Company ID',
 						},
 					},
 				],
@@ -798,7 +798,7 @@ export const contactFields: INodeProperties[] = [
 	/*                                 contact:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Contact ID',
+		displayName: 'Contact to Delete',
 		name: 'contactId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -830,7 +830,7 @@ export const contactFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Company ID',
+							errorMessage: 'Not a valid HubSpot Company ID',
 						},
 					},
 				],

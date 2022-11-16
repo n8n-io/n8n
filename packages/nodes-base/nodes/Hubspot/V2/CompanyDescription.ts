@@ -431,7 +431,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                 company:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Company ID',
+		displayName: 'Company to Update',
 		name: 'companyId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -462,7 +462,7 @@ export const companyFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Company ID',
+							errorMessage: 'Not a valid HubSpot Company ID',
 						},
 					},
 				],
@@ -825,7 +825,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                  company:get                               */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Company ID',
+		displayName: 'Company to Get',
 		name: 'companyId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -856,7 +856,7 @@ export const companyFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Company ID',
+							errorMessage: 'Not a valid HubSpot Company ID',
 						},
 					},
 				],
@@ -969,7 +969,7 @@ export const companyFields: INodeProperties[] = [
 	/*                                 company:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Company ID',
+		displayName: 'Company to Delete',
 		name: 'companyId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -1000,7 +1000,7 @@ export const companyFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Company ID',
+							errorMessage: 'Not a valid HubSpot Company ID',
 						},
 					},
 				],

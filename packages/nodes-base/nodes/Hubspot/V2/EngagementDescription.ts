@@ -427,7 +427,7 @@ export const engagementFields: INodeProperties[] = [
 	/*                                  engagement:get/delete                     */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Engagement ID',
+		displayName: 'Engagement to Get',
 		name: 'engagementId',
 		type: 'resourceLocator',
 		default: { mode: 'list', value: '' },
@@ -435,7 +435,7 @@ export const engagementFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['engagement'],
-				operation: ['get', 'delete'],
+				operation: ['get'],
 			},
 		},
 		modes: [
@@ -458,7 +458,48 @@ export const engagementFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex: '[0-9]+',
-							errorMessage: 'Not a valid Hubspot Engagement ID',
+							errorMessage: 'Not a valid HubSpot Engagement ID',
+						},
+					},
+				],
+			},
+		],
+		description: 'The Unique identifier in which to operate on',
+	},
+
+	{
+		displayName: 'Engagement to Delete',
+		name: 'engagementId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['engagement'],
+				operation: ['delete'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'From List',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select from the list',
+				typeOptions: {
+					searchListMethod: 'searchEngagements',
+				},
+			},
+			{
+				displayName: 'By Id',
+				name: 'id',
+				type: 'string',
+				placeholder: '58539222',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '[0-9]+',
+							errorMessage: 'Not a valid HubSpot Engagement ID',
 						},
 					},
 				],
