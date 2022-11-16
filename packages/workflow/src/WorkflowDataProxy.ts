@@ -458,10 +458,10 @@ export class WorkflowDataProxy {
 			{},
 			{
 				get(target, name, receiver) {
-					// @TODO: Parameterize to pass in `import.meta.env` and `process.env`
-					const _env = process.env;
-
-					if (_env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true') {
+					if (
+						typeof process === 'undefined' || // env vars are inaccessible to frontend
+						process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true'
+					) {
 						throw new ExpressionError('access to env vars denied', {
 							causeDetailed:
 								'If you need access please contact the administrator to remove the environment variable ‘N8N_BLOCK_ENV_ACCESS_IN_NODE‘',
@@ -470,7 +470,7 @@ export class WorkflowDataProxy {
 							failExecution: true,
 						});
 					}
-					return _env[name.toString()];
+					return process.env[name.toString()];
 				},
 			},
 		);
