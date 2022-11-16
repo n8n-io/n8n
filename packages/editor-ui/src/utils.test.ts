@@ -1,3 +1,4 @@
+import { isValidDate } from './utils';
 import jp from "jsonpath";
 import { isEmpty, intersection, getJsonSchema } from "@/utils";
 import { JsonSchema } from "@/Interface";
@@ -160,6 +161,32 @@ describe("Utils", () => {
 			const schema = getJsonSchema(input) as JsonSchema;
 			const pathData = jp.query(input, `$${ ((schema.value as JsonSchema[])[0].value as JsonSchema[])[0].path }`);
 			expect(pathData).toEqual([new Date('2022-11-22T00:00:00.000Z'), new Date('2022-11-23T00:00:00.000Z'), new Date('2022-12-22T00:00:00.000Z'), new Date('2022-12-23T00:00:00.000Z')]);
+		});
+	});
+
+	describe("dateTests", () => {
+		test.each([
+			'04-08-2021',
+			'15.11.2022 12:34h',
+			'15.11.2022. 12:34h',
+			'21-03-1988 12:34h',
+			'2022-11-15',
+			'11/11/2022',
+			1668470400000,
+			'2021-1-01',
+			'2021-01-1',
+			'2021/11/24',
+			'2021/04/08',
+			'Mar 25 2015',
+			'25 Mar 2015',
+			'2019-06-11T00:00',
+			'2022-11-15T19:21:13.932Z',
+			'Tue Jan 01 2019 02:07:00 GMT+0530',
+			new Date(),
+			'4/08/2021',
+			'2021/04/04',
+		])('should correctly recognize dates', (input) => {
+			expect(isValidDate(input)).toBeTruthy();
 		});
 	});
 });
