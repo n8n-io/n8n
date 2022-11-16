@@ -182,6 +182,9 @@ describe("Utils", () => {
 			'2019-06-11T00:00',
 			'2022-11-15T19:21:13.932Z',
 			'Tue Jan 01 2019 02:07:00 GMT+0530',
+			new Date(),
+			'4/08/2021',
+			'2021/04/04',
 		])('should correctly recognize dates', (input) => {
 			expect(isValidDate(input)).toBeTruthy();
 		});
