@@ -9,11 +9,12 @@ const config = (module.exports = {
 	},
 
 	ignorePatterns: [
-		'.eslintrc.js', // TODO: remove this
 		'node_modules/**',
 		'dist/**',
-		'test/**', // TODO: remove this
-		'jest.config.js', // TODO: remove this
+		// TODO: remove these
+		'test/**',
+		'.eslintrc.js',
+		'jest.config.js',
 	],
 
 	plugins: [

@@ -7,7 +7,7 @@
 		:filters="filters"
 		:additional-filters-handler="onFilter"
 		:show-aside="allWorkflows.length > 0"
-		:shareable="false"
+		:shareable="isShareable"
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
@@ -69,7 +69,7 @@ import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import WorkflowCard from "@/components/WorkflowCard.vue";
 import TemplateCard from "@/components/TemplateCard.vue";
 import { debounceHelper } from '@/components/mixins/debounce';
-import {VIEWS} from '@/constants';
+import {EnterpriseEditionFeature, VIEWS} from '@/constants';
 import Vue from "vue";
 import {ITag, IUser, IWorkflowDb} from "@/Interface";
 import TagsDropdown from "@/components/TagsDropdown.vue";
@@ -117,6 +117,9 @@ export default mixins(
 		},
 		allWorkflows(): IWorkflowDb[] {
 			return this.workflowsStore.allWorkflows;
+		},
+		isShareable(): boolean {
+			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing);
 		},
 	},
 	methods: {
@@ -188,8 +191,7 @@ export default mixins(
 	svg {
 		width: 48px!important;
 		color: var(--color-foreground-dark);
-		transition: color 0.3s ease;
-	}
+		transition: color 0.3s ease;}
 }
 </style>
 

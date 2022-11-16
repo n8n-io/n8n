@@ -1,5 +1,5 @@
-@use "./var.scss";
-@use "../mixins/mixins";
+@use './var.scss';
+@use '../mixins/mixins';
 
 .v-modal-enter {
 	animation: v-modal-in 0.2s ease;

@@ -16,5 +16,5 @@ const Template = (args, { argTypes }) => ({
 
 export const BlockUi = Template.bind({});
 BlockUi.args = {
-	show: false
+	show: false,
 };
