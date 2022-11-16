@@ -1303,6 +1303,7 @@ export interface ILdapSyncTable {
 }
 export interface ILdapConfig {
 	loginEnabled: boolean;
+	loginDisabledStrategy: string;
 	loginLabel: string;
 	connectionUrl: string;
 	allowUnauthorizedCerts: boolean;
