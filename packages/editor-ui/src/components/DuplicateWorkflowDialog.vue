@@ -110,8 +110,8 @@ export default mixins(showMessage, workflowHelpers, restApi).extend({
 			const name = this.name.trim();
 			if (!name) {
 				this.$showMessage({
-					title: this.$locale.baseText('duplicateWorkflowDialog.showMessage.title'),
-					message: this.$locale.baseText('duplicateWorkflowDialog.showMessage.message'),
+					title: this.$locale.baseText('duplicateWorkflowDialog.errors.missingName.title'),
+					message: this.$locale.baseText('duplicateWorkflowDialog.errors.missingName.message'),
 					type: "error",
 				});
 
