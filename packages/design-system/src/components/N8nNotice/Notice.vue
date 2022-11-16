@@ -74,7 +74,7 @@ export default Vue.extend({
 
 			if (event.target.localName !== 'a') return;
 
-			if (event.target.dataset?.key) {
+			if (event.target.dataset && event.target.dataset.key) {
 				event.stopPropagation();
 				event.preventDefault();
 
