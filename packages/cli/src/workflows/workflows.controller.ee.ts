@@ -39,7 +39,7 @@ EEWorkflowController.use((req, res, next) => {
 
 EEWorkflowController.put(
 	'/:workflowId/share',
-	ResponseHelper.send(async (req: WorkflowRequest.Share, res) => {
+	ResponseHelper.send(async (req: WorkflowRequest.Share) => {
 		const { workflowId } = req.params;
 		const { shareWithIds } = req.body;
 
@@ -47,13 +47,13 @@ EEWorkflowController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			return res.status(400).send('Bad Request');
+			throw new ResponseHelper.ResponseError('Bad request', undefined, 400);
 		}
 
 		const { ownsWorkflow, workflow } = await EEWorkflows.isOwned(req.user, workflowId);
 
 		if (!ownsWorkflow || !workflow) {
-			return res.status(403).send();
+			throw new ResponseHelper.ResponseError('Forbidden', undefined, 403);
 		}
 
 		let newShareeIds: string[] = [];
@@ -73,8 +73,6 @@ EEWorkflowController.put(
 				await EEWorkflows.share(trx, workflow, newShareeIds);
 			}
 		});
-
-		return res.status(200).send();
 	}),
 );
 

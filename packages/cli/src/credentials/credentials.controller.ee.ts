@@ -136,7 +136,7 @@ EECredentialsController.post(
 
 EECredentialsController.put(
 	'/:credentialId/share',
-	ResponseHelper.send(async (req: CredentialRequest.Share, res) => {
+	ResponseHelper.send(async (req: CredentialRequest.Share) => {
 		const { credentialId } = req.params;
 		const { shareWithIds } = req.body;
 
@@ -144,13 +144,13 @@ EECredentialsController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			return res.status(400).send({ message: 'Bad request' });
+			throw new ResponseHelper.ResponseError('Bad request', undefined, 400);
 		}
 
 		const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
 
 		if (!ownsCredential || !credential) {
-			return res.status(403).send();
+			throw new ResponseHelper.ResponseError('Forbidden', undefined, 403);
 		}
 
 		let amountRemoved: number | null = null;
@@ -183,7 +183,5 @@ EECredentialsController.put(
 			user_ids_sharees_added: newShareeIds,
 			sharees_removed: amountRemoved,
 		});
-
-		return res.status(200).send();
 	}),
 );
