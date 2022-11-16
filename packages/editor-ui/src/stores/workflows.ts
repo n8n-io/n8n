@@ -1,5 +1,6 @@
 import { DEFAULT_NEW_WORKFLOW_NAME, DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID, STORES } from "@/constants";
 import {
+	ICredentialMap,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsSummary,
@@ -8,7 +9,7 @@ import {
 	INodeUpdatePropertiesInformation,
 	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
-	IUpdateInformation,
+	IUpdateInformation, IUsedCredential,
 	IWorkflowDb,
 	IWorkflowsMap,
 	WorkflowsState,
@@ -25,6 +26,7 @@ import { isJsonKeyObject } from "@/utils";
 import { stringSizeInBytes } from "@/components/helpers";
 import { useNDVStore } from "./ndv";
 import { useNodeTypesStore } from "./nodeTypes";
+import {ICredentialsDb} from "n8n";
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
@@ -41,6 +43,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			pinData: {},
 			hash: '',
 		},
+		usedCredentials: {},
 		activeWorkflows: [],
 		activeExecutions: [],
 		currentWorkflowExecutions: [],
@@ -218,6 +221,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		setWorkflowId (id: string): void {
 			this.workflow.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+		},
+
+		setUsedCredentials(data: IUsedCredential[]) {
+			this.usedCredentials = data.reduce<{ [name: string]: IUsedCredential }>((accu, credential) => {
+				accu[credential.id!] = credential;
+				return accu;
+			}, {});
 		},
 
 		setWorkflowName(data: { newName: string, setStateDirty: boolean }): void {
