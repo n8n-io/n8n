@@ -841,9 +841,6 @@ export default mixins(
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
 				this.workflowsStore.setWorkflowHash(data.hash);
 
-				console.log({data});
-
-				// @TODO
 				this.workflowsStore.addWorkflow({
 					id: data.id,
 					name: data.name,
