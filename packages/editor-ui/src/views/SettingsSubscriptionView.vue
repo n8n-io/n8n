@@ -138,7 +138,6 @@ export default mixins(showMessage).extend({
 				}
 			} finally {
 				this.loading = false;
-				this.$router.push({ name: VIEWS.SUBSCRIPTION });
 			}
 		},
 		async activate(activationKey: string) {
