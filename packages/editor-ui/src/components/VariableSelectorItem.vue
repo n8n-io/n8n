@@ -20,7 +20,7 @@
 
 				</div>
 			</div>
-			<div v-if="item.options && (extended === true || extendAll === true || shouldAutoExpand)">
+			<div v-if="item.options && (extended === true || extendAll === true)">
 				<variable-selector-item v-for="option in item.options" :item="option" :key="option.key" :extendAll="extendAll" :allowParentSelect="option.allowParentSelect" class="sub-level" @itemSelected="forwardItemSelected"></variable-selector-item>
 			</div>
 		</div>
@@ -51,17 +51,21 @@ export default mixins(externalHooks).extend({
 		'extendAll',
 		'item',
 	],
-	computed: {
-		shouldAutoExpand() {
-			const ITEMS_TO_AUTOEXPAND = [
-				this.$locale.baseText('variableSelectorItem.currentNode'),
-				this.$locale.baseText('variableSelectorItem.inputData'),
-				this.$locale.baseText('variableSelectorItem.binary'),
-				this.$locale.baseText('variableSelectorItem.json'),
-			];
+	mounted() {
+		if (this.extended) return;
 
-			return ITEMS_TO_AUTOEXPAND.includes(this.item.name) && this.item.key === undefined;
-		},
+		const shouldAutoExtend = [
+			this.$locale.baseText('variableSelectorItem.currentNode'),
+			this.$locale.baseText('variableSelectorItem.inputData'),
+			this.$locale.baseText('variableSelectorItem.binary'),
+			this.$locale.baseText('variableSelectorItem.json'),
+		].includes(this.item.name) && this.item.key === undefined;
+
+		if (shouldAutoExtend) {
+			this.extended = true;
+		}
+	},
+	computed: {
 		itemAddOperations () {
 			const returnOptions = [
 				{
