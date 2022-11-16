@@ -53,7 +53,7 @@ export default mixins(workflowHelpers).extend({
 
 				const prevErrorsInSuccession = this.errorsInSuccession;
 
-				if (this.erroringSegments.length > 0) {
+				if (this.resolvableSegments.filter((s) => s.error).length > 0) {
 					this.errorsInSuccession += 1;
 				} else {
 					this.errorsInSuccession = 0;
@@ -106,9 +106,6 @@ export default mixins(workflowHelpers).extend({
 		},
 		resolvableSegments(): Resolvable[] {
 			return this.segments.filter((s): s is Resolvable => s.kind === 'resolvable');
-		},
-		erroringSegments(): Resolvable[] {
-			return this.resolvableSegments.filter((s) => s.error);
 		},
 		plaintextSegments(): Plaintext[] {
 			return this.segments.filter((s): s is Plaintext => s.kind === 'plaintext');
