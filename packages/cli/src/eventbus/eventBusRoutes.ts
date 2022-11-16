@@ -7,7 +7,7 @@ import { EventMessage } from './EventMessageClasses/EventMessage';
 import {
 	EventMessageSubscriptionSet,
 	isEventMessageSubscriptionSetOptions,
-} from './EventMessageClasses/EventMessageSubscriptionSet';
+} from './MessageEventBusDestination/EventMessageSubscriptionSet';
 import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
 import {
 	eventBus,

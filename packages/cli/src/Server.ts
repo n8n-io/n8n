@@ -160,7 +160,7 @@ import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { eventBus } from './eventbus';
-import { MessageEventBusDestination } from './eventbus/EventMessageClasses/MessageEventBusDestination';
+import { MessageEventBusDestination } from './eventbus/MessageEventBusDestination/MessageEventBusDestination';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
 import { messageEventBusDestinationFromDb } from './eventbus/MessageEventBusDestination/Helpers';
 import { EventMessage } from './eventbus/EventMessageClasses/EventMessage';

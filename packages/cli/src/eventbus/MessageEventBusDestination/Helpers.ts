@@ -1,6 +1,6 @@
 import { jsonParse, JsonObject } from 'n8n-workflow';
 import { EventDestinations } from '../../databases/entities/MessageEventBusDestinationEntity';
-import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
+import { MessageEventBusDestination } from './MessageEventBusDestination';
 import { MessageEventBusDestinationRedis } from './MessageEventBusDestinationRedis';
 import { MessageEventBusDestinationSentry } from './MessageEventBusDestinationSentry';
 import { MessageEventBusDestinationSyslog } from './MessageEventBusDestinationSyslog';

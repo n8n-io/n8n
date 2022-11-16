@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
@@ -6,7 +7,7 @@ import { EventMessage } from '../EventMessageClasses/EventMessage';
 import {
 	MessageEventBusDestination,
 	MessageEventBusDestinationOptions,
-} from '../EventMessageClasses/MessageEventBusDestination';
+} from './MessageEventBusDestination';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis, { RedisOptions } from 'ioredis';

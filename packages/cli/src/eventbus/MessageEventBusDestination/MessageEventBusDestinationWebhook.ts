@@ -2,7 +2,7 @@ import { EventMessage } from '../EventMessageClasses/EventMessage';
 import {
 	MessageEventBusDestination,
 	MessageEventBusDestinationOptions,
-} from '../EventMessageClasses/MessageEventBusDestination';
+} from './MessageEventBusDestination';
 import axios from 'axios';
 import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
@@ -57,6 +57,7 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 				name: this.getName(),
 				expectedStatusCode: this.expectedStatusCode,
 				urls: this.url,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				subscriptionSet: this.subscriptionSet.serialize(),
 			},
 		};

@@ -4,7 +4,7 @@ import { EventMessage } from '../EventMessageClasses/EventMessage';
 import {
 	MessageEventBusDestination,
 	MessageEventBusDestinationOptions,
-} from '../EventMessageClasses/MessageEventBusDestination';
+} from './MessageEventBusDestination';
 import syslog from 'syslog-client';
 import { EventMessageLevel } from '../types/EventMessageTypes';
 import { eventBus } from '../MessageEventBus/MessageEventBus';

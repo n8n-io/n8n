@@ -10,7 +10,7 @@ import {
 	EventMessageLevel,
 } from '../types/EventMessageTypes';
 import { Db } from '../..';
-import { AbstractEventMessage } from './AbstractEventMessage';
+import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 
 export interface MessageEventBusDestinationOptions {
 	id?: string;

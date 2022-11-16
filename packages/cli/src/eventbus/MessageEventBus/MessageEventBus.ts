@@ -4,9 +4,9 @@ import { EventMessage } from '../EventMessageClasses/EventMessage';
 import {
 	EventMessageSubscriptionSet,
 	EventMessageSubscriptionSetOptions,
-} from '../EventMessageClasses/EventMessageSubscriptionSet';
+} from '../MessageEventBusDestination/EventMessageSubscriptionSet';
 import { EventMessageTypes } from '../EventMessageClasses/Helpers';
-import { MessageEventBusDestination } from '../EventMessageClasses/MessageEventBusDestination';
+import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 
 interface MessageEventBusInitializationOptions {

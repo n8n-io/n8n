@@ -2,7 +2,7 @@ import { EventMessage } from '../EventMessageClasses/EventMessage';
 import {
 	MessageEventBusDestination,
 	MessageEventBusDestinationOptions,
-} from '../EventMessageClasses/MessageEventBusDestination';
+} from './MessageEventBusDestination';
 import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
 import * as Sentry from '@sentry/node';
 import { EventMessageLevel } from '../types/EventMessageTypes';
@@ -105,6 +105,7 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 				name: this.getName(),
 				dsn: this.dsn,
 				tracesSampleRate: this.tracesSampleRate,
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				subscriptionSet: this.subscriptionSet.serialize(),
 			},
 		};
