@@ -1,9 +1,15 @@
 const path = require('path');
+const { mergeConfig } = require('vite');
 
 /**
  * @type {import('@storybook/core-common').StorybookConfig}
  */
 module.exports = {
+	framework: '@storybook/vue',
+	core: {
+		builder: '@storybook/builder-vite',
+		disableTelemetry: true,
+	},
 	stories: ['../src/**/*.stories.mdx', '../src/**/*.stories.@(js|ts)'],
 	addons: [
 		'@storybook/addon-links',
@@ -19,38 +25,13 @@ module.exports = {
 		'storybook-addon-designs',
 		'storybook-addon-themes',
 	],
-	webpackFinal: async (config) => {
-		config.module.rules.push({
-			test: /\.scss$/,
-			oneOf: [
-				{
-					resourceQuery: /module/,
-					use: [
-						'vue-style-loader',
-						{
-							loader: 'css-loader',
-							options: {
-								modules: {
-									localIdentName: '[path][name]__[local]--[hash:base64:5]',
-								},
-							},
-						},
-						'sass-loader',
-					],
-					include: path.resolve(__dirname, '../'),
+	viteFinal: async (config) =>
+		mergeConfig(config, {
+			resolve: {
+				alias: {
+					'@': path.resolve(__dirname, '../src'),
+					'vue2-boring-avatars': require.resolve('vue2-boring-avatars'),
 				},
-				{
-					use: ['vue-style-loader', 'css-loader', 'sass-loader'],
-					include: path.resolve(__dirname, '../'),
-				},
-			],
-		});
-
-		config.resolve.alias = {
-			...config.resolve.alias,
-			'@/': path.resolve(__dirname, '../src/'),
-		};
-
-		return config;
-	},
+			},
+		}),
 };

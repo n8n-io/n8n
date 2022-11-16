@@ -1,9 +1,9 @@
 // Vitest Snapshot v1
 
 exports[`components > N8nSelect > should render correctly 1`] = `
-"<div class=\\"n8n-select _container_l5iac_16\\">
+"<div class=\\"n8n-select _container_960236\\">
   <!---->
-  <div class=\\"el-select el-select--large\\">
+  <div class=\\"el-select el-select--large __960236\\">
     <!---->
     <div class=\\"el-input el-input--large el-input--suffix\\">
       <!----><input type=\\"text\\" readonly=\\"readonly\\" autocomplete=\\"off\\" placeholder=\\"请选择\\" class=\\"el-input__inner\\">
