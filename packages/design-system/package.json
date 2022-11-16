@@ -21,15 +21,22 @@
     "test:dev": "vitest",
     "build:storybook": "build-storybook",
     "storybook": "start-storybook -p 6006",
-    "format": "prettier **/**.{ts,vue} --write",
-    "lint": "tslint -p tsconfig.json -c tslint.json && eslint .",
-    "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint . --fix"
+    "format": "prettier **/**.{js,ts,vue,css,scss,mdx,html} --write .",
+    "lint": "eslint --ext .js,.ts,.vue src",
+    "lintfix": "eslint --ext .js,.ts,.vue src --fix"
   },
   "peerDependencies": {
     "@fortawesome/fontawesome-svg-core": "1.x",
     "@fortawesome/free-solid-svg-icons": "5.x",
     "@fortawesome/vue-fontawesome": "2.x",
-    "core-js": "3.x"
+    "core-js": "3.x",
+    "markdown-it": "^12.3.2",
+    "markdown-it-emoji": "^2.0.0",
+    "markdown-it-link-attributes": "^4.0.0",
+    "markdown-it-task-lists": "^2.1.1",
+    "vue": "^2.7",
+    "vue-typed-mixins": "^0.2.0",
+    "xss": "^1.0.10"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.35",
@@ -43,14 +50,12 @@
     "@testing-library/jest-dom": "^5.16.4",
     "@testing-library/vue": "^5.8.3",
     "@types/markdown-it": "^12.2.3",
+    "@types/markdown-it-emoji": "^2.0.2",
+    "@types/markdown-it-link-attributes": "^3.0.1",
     "@types/sanitize-html": "^2.6.2",
     "c8": "7.11.0",
     "core-js": "^3.6.5",
     "jsdom": "19.0.0",
-    "markdown-it": "^12.3.2",
-    "markdown-it-emoji": "^2.0.0",
-    "markdown-it-link-attributes": "^4.0.0",
-    "markdown-it-task-lists": "^2.1.1",
     "node-notifier": ">=8.0.1",
     "sass": "^1.55.0",
     "sass-loader": "^10.1.1",
@@ -60,16 +65,13 @@
     "vite": "^2.9.5",
     "@vitejs/plugin-vue2": "^1.1.2",
     "vitest": "^0.9.3",
-    "vue": "^2.7",
     "vue-class-component": "^7.2.3",
     "vue-loader": "^15.9.7",
     "vue-property-decorator": "^9.1.2",
     "vue-template-compiler": "^2.7",
     "vue-tsc": "^0.34.8",
-    "vue-typed-mixins": "^0.2.0",
     "vue2-boring-avatars": "0.3.4",
-    "webpack": "^4.46.0",
-    "xss": "^1.0.10"
+    "webpack": "^4.46.0"
   },
   "dependencies": {
     "element-ui": "~2.15.7",
