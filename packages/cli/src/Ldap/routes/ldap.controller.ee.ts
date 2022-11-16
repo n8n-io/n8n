@@ -9,7 +9,7 @@ export const ldapController = express.Router();
  * GET /ldap/config
  */
 ldapController.get('/config', async (req: express.Request, res: express.Response) => {
-	const { data } = await getLdapConfig();
+	const data = await getLdapConfig();
 	return res.status(200).json({ data });
 });
 /**
@@ -37,7 +37,7 @@ ldapController.put('/config', async (req: LdapConfiguration.Update, res: express
 		}
 	}
 
-	const { data } = await getLdapConfig();
+	const data = await getLdapConfig();
 
 	LdapManager.updateConfig(data);
 

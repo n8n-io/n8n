@@ -124,10 +124,7 @@ export const decryptPassword = async (password: string): Promise<string> => {
  * Retrieve the LDAP configuration (decrypted)
  * form the database
  */
-export const getLdapConfig = async (): Promise<{
-	name: string;
-	data: LdapConfig;
-}> => {
+export const getLdapConfig = async (): Promise<LdapConfig> => {
 	const configuration = await Db.collections.FeatureConfig.findOneOrFail({
 		name: LDAP_FEATURE_NAME,
 	});
@@ -135,10 +132,7 @@ export const getLdapConfig = async (): Promise<{
 	configurationData.bindingAdminPassword = await decryptPassword(
 		configurationData.bindingAdminPassword,
 	);
-	return {
-		name: configuration.name,
-		data: configurationData,
-	};
+	return configurationData;
 };
 
 /**
@@ -202,11 +196,11 @@ export const handleLdapInit = async (): Promise<void> => {
 
 	const adConfig = await getLdapConfig();
 
-	setGlobalLdapConfigVariables(adConfig.data);
+	setGlobalLdapConfigVariables(adConfig);
 
 	// init LDAP manager with the current
 	// configuration
-	LdapManager.init(adConfig.data);
+	LdapManager.init(adConfig);
 };
 
 /**
@@ -296,6 +290,17 @@ export const getUserByLdapId = async (idAttributeValue: string): Promise<User | 
 		{
 			ldapId: idAttributeValue,
 			signInType: SignInType.LDAP,
+		},
+		{
+			relations: ['globalRole'],
+		},
+	);
+};
+
+export const getUserByEmail = async (email: string): Promise<User | undefined> => {
+	return Db.collections.User.findOne(
+		{
+			email,
 		},
 		{
 			relations: ['globalRole'],
@@ -426,4 +431,21 @@ export const getMappingAttributes = (config: LdapConfig): string[] => {
 		config.lastNameAttribute,
 		config.emailAttribute,
 	];
+};
+
+export const createLdapUserOnLocalDb = async (role: Role, data: Partial<User>) => {
+	return Db.collections.User.save({
+		password: randomPassword(),
+		signInType: SignInType.LDAP,
+		globalRole: role,
+		...data,
+	});
+};
+
+export const updateLdapUserOnLocalDb = async (ldapUserId: string, data: Partial<User>) => {
+	await Db.collections.User.update({ ldapId: ldapUserId }, data);
+};
+
+export const transformEmailUserToLdapUser = async (email: string, data: Partial<User>) => {
+	await Db.collections.User.update({ email }, { signInType: SignInType.LDAP, ...data });
 };
