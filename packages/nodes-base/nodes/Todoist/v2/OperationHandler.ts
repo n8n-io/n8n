@@ -19,7 +19,7 @@ export class CreateHandler implements OperationHandler {
 		const projectId = ctx.getNodeParameter('project', itemIndex, undefined, {
 			extractValue: true,
 		}) as number;
-		const labels = ctx.getNodeParameter('labels', itemIndex) as number[];
+		const labels = ctx.getNodeParameter('labels', itemIndex) as string[];
 		const options = ctx.getNodeParameter('options', itemIndex) as IDataObject;
 
 		const body: CreateTaskRequest = {
@@ -192,7 +192,7 @@ export class UpdateHandler implements OperationHandler {
 			Array.isArray(updateFields.labels) &&
 			updateFields.labels.length !== 0
 		) {
-			body.labels = updateFields.labels as number[];
+			body.labels = updateFields.labels as string[];
 		}
 
 		if (updateFields.dueLang) {
@@ -310,7 +310,7 @@ export interface CreateTaskRequest {
 	section_id?: number;
 	parent_id?: string;
 	order?: number;
-	labels?: number[];
+	labels?: string[];
 	priority?: number;
 	due_string?: string;
 	due_datetime?: string;

@@ -32,7 +32,7 @@ import { OperationType, TodoistService } from './Service';
 // }
 
 const versionDescription: INodeTypeDescription = {
-	displayName: 'Todoist V2',
+	displayName: 'Todoist',
 	name: 'todoist',
 	icon: 'file:todoist.svg',
 	group: ['output'],
@@ -581,7 +581,7 @@ export class TodoistV2 implements INodeType {
 				return {
 					results: labels.map((label: any) => ({
 						name: label.name,
-						value: label.id,
+						value: label.name,
 					})),
 				};
 			},
@@ -684,10 +684,9 @@ export class TodoistV2 implements INodeType {
 
 				for (const label of labels) {
 					const labelName = label.name;
-					const labelId = label.id;
 					returnData.push({
 						name: labelName,
-						value: labelId,
+						value: labelName,
 					});
 				}
 
