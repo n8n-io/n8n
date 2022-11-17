@@ -39,7 +39,7 @@ export async function actionNetworkApiRequest(
 		delete options.qs;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'actionNetworkApi', options);
 }
 
 export async function handleListing(
