@@ -725,21 +725,11 @@ export default mixins(
 						}
 					}
 
-					if (!nodeErrorFound) {
-						const resultError = data.data.resultData.error;
-						const errorMessage = this.$getExecutionError(data.data);
-						const shouldTrack = resultError && 'node' in resultError && resultError.node!.type.startsWith('n8n-nodes-base');
-						this.$showMessage({
-							title: 'Failed execution',
-							message: errorMessage,
-							type: 'error',
-						}, shouldTrack);
-						if (data.data.resultData.error.stack) {
-							// Display some more information for now in console to make debugging easier
-							// TODO: Improve this in the future by displaying in UI
-							console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
-							console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
-						}
+					if (!nodeErrorFound && data.data.resultData.error.stack) {
+						// Display some more information for now in console to make debugging easier
+						// TODO: Improve this in the future by displaying in UI
+						console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
+						console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
 					}
 				}
 				if ((data as IExecutionsSummary).waitTill) {
