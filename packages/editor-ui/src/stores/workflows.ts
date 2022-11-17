@@ -7,6 +7,7 @@ import {
 	STORES,
 } from "@/constants";
 import {
+	ICredentialMap,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsSummary,
@@ -16,6 +17,7 @@ import {
 	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
 	IUpdateInformation,
+	IUsedCredential,
 	IWorkflowDb,
 	IWorkflowsMap,
 	WorkflowsState,
@@ -37,6 +39,7 @@ import {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 import Vue from "vue";
+
 import {useRootStore} from "./n8nRootStore";
 import {
 	getActiveWorkflows,
@@ -73,6 +76,7 @@ const createEmptyWorkflow = (): IWorkflowDb => ({
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
 		workflow: createEmptyWorkflow(),
+		usedCredentials: {},
 		activeWorkflows: [],
 		activeExecutions: [],
 		currentWorkflowExecutions: [],
@@ -264,6 +268,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 
 		setWorkflowId (id: string): void {
 			this.workflow.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+		},
+
+		setUsedCredentials(data: IUsedCredential[]) {
+			this.usedCredentials = data.reduce<{ [name: string]: IUsedCredential }>((accu, credential) => {
+				accu[credential.id!] = credential;
+				return accu;
+			}, {});
 		},
 
 		setWorkflowName(data: { newName: string, setStateDirty: boolean }): void {
