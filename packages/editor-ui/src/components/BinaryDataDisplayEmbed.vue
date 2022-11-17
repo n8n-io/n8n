@@ -7,7 +7,7 @@
 			Error loading binary data
 		</div>
 		<span v-else>
-			<video v-if="binaryData.mimeType && binaryData.mimeType.startsWith('video/')" controls autoplay>
+			<video v-if="binaryData.fileType === 'video'" controls autoplay>
 				<source :src="embedSource" :type="binaryData.mimeType">
 				{{ $locale.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
 			</video>
@@ -17,10 +17,9 @@
 </template>
 
 <script lang="ts">
-
-
 import mixins from 'vue-typed-mixins';
 import { restApi } from '@/mixins/restApi';
+import type { IBinaryData } from 'n8n-workflow';
 
 export default mixins(
 	restApi,
@@ -28,7 +27,7 @@ export default mixins(
 	.extend({
 		name: 'BinaryDataDisplayEmbed',
 		props: [
-			'binaryData', // IBinaryDisplayData
+			'binaryData', // IBinaryData
 		],
 		data() {
 			return {
@@ -38,15 +37,15 @@ export default mixins(
 			};
 		},
 		async mounted() {
-			if(!this.binaryData.id) {
+			const id = this.binaryData?.id;
+			if(!id) {
 				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + this.binaryData.data;
 				this.isLoading = false;
 				return;
 			}
 
 			try {
-				const bufferString = await this.restApi().getBinaryBufferString(this.binaryData!.id!);
-				this.embedSource = 'data:' + this.binaryData.mimeType + ';base64,' + bufferString;
+				this.embedSource = this.restApi().getBinaryUrl(id);
 				this.isLoading = false;
 			} catch (e) {
 				this.isLoading = false;
@@ -55,11 +54,8 @@ export default mixins(
 		},
 		methods: {
 			embedClass(): string[] {
-				// @ts-ignore
-				if (this.binaryData! !== null && this.binaryData!.mimeType! !== undefined && (this.binaryData!.mimeType! as string).startsWith('image')) {
-					return ['image'];
-				}
-				return ['other'];
+				const { fileType } = (this.binaryData || {}) as IBinaryData;
+				return [fileType ?? 'other'];
 			},
 		},
 	});

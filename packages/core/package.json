@@ -50,6 +50,7 @@
     "n8n-workflow": "~0.125.0",
     "oauth-1.0a": "^2.2.6",
     "p-cancelable": "^2.0.0",
+    "pretty-bytes": "^5.6.0",
     "qs": "^6.10.1",
     "request": "^2.88.2",
     "request-promise-native": "^1.0.7",
