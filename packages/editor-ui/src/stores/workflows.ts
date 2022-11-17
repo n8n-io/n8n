@@ -24,6 +24,7 @@ import {
 } from "@/Interface";
 import {defineStore} from "pinia";
 import {
+	deepCopy,
 	IConnection,
 	IConnections,
 	IDataObject,
@@ -334,7 +335,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		addWorkflow(workflow: IWorkflowDb) : void {
-			Vue.set(this.workflowsById, workflow.id, workflow);
+			Vue.set(this.workflowsById, workflow.id, {
+				...this.workflowsById[workflow.id],
+				...deepCopy(workflow),
+			});
 		},
 
 		setWorkflowActive(workflowId: string): void {
