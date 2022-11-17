@@ -34,7 +34,7 @@ export default mixins(externalHooks).extend({
 			return this.settingsStore.telemetry;
 		},
 		isTelemetryEnabled(): boolean {
-			return this.telemetry && this.telemetry.enabled;
+			return !!this.telemetry?.enabled;
 		},
 	},
 	mounted() {
