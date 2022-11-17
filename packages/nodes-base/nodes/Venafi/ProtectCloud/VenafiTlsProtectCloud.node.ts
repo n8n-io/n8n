@@ -34,9 +34,9 @@ export class VenafiTlsProtectCloud implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Venafi TLS Protect Cloud​ API',
+		description: 'Consume Venafi TLS Protect Cloud API',
 		defaults: {
-			name: 'Venafi TLS Protect Cloud​',
+			name: 'Venafi TLS Protect Cloud',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

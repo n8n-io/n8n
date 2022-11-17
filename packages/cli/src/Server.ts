@@ -896,52 +896,6 @@ class App {
 			),
 		);
 
-		// Returns all the node-types
-		this.app.get(
-			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const returnData: INodeTypeDescription[] = [];
-					const onlyLatest = req.query.onlyLatest === 'true';
-					const withActions = req.query.withActions === 'true';
-
-					const nodeTypes = NodeTypes();
-					const nodeTypeActions = NodeTypeActions();
-					const allNodes = nodeTypes.getAll();
-
-					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-						const nodeInfo = withActions
-							? nodeTypeActions.extendWithActions({ ...nodeType.description })
-							: { ...nodeType.description };
-
-						if (req.query.includeProperties !== 'true') {
-							// @ts-ignore
-							delete nodeInfo.properties;
-						}
-						return nodeInfo;
-					};
-
-					if (onlyLatest) {
-						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-							returnData.push(nodeInfo);
-						});
-					} else {
-						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-							allNodeTypes.forEach((element) => {
-								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-								returnData.push(nodeInfo);
-							});
-						});
-					}
-
-					return returnData;
-				},
-			),
-		);
-
 		this.app.get(
 			`/${this.restEndpoint}/credential-translation`,
 			ResponseHelper.send(

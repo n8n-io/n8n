@@ -16,9 +16,9 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 		group: ['input'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
-		description: 'Consume Venafi TLS Protect Datacenter​',
+		description: 'Consume Venafi TLS Protect Datacenter',
 		defaults: {
-			name: 'Venafi TLS Protect Datacenter​',
+			name: 'Venafi TLS Protect Datacenter',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

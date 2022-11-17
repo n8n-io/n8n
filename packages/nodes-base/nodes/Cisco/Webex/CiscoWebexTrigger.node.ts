@@ -23,7 +23,7 @@ export class CiscoWebexTrigger implements INodeType {
 		subtitle: '={{$parameter["resource"] + ":" + $parameter["event"]}}',
 		description: 'Starts the workflow when Cisco Webex events occur.',
 		defaults: {
-			name: 'Webex Trigger',
+			name: 'Webex by Cisco Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],

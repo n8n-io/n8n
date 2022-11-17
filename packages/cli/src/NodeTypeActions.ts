@@ -6,27 +6,66 @@ import {
 	INodePropertyCollection,
 } from 'n8n-workflow';
 import { capitalCase } from 'change-case';
-
-const customNodeActionsParsers: {
-	[key: string]: (matchedProperty: INodeProperties) => INodeAction[] | undefined;
-} = {
-	['n8n-nodes-base.hubspotTrigger']: (matchedProperty) => {
-		const collection = matchedProperty?.options?.[0] as INodePropertyCollection;
-		return collection?.values[0]?.options?.map((categoryItem: INodePropertyOptions) => ({
-			nodeName: 'n8n-nodes-base.hubspotTrigger',
-			key: categoryItem.value as string,
-			title: `When ${capitalCase(categoryItem.name)}`,
-			description: categoryItem.description,
-			displayOptions: matchedProperty.displayOptions,
-			values: { eventsUi: { eventValues: [{ name: categoryItem.value }] } },
-		}));
-	},
-};
+import { NodeTypes } from '@/NodeTypes';
 
 class NodeTypeActionsClass {
-	#recommendedCategory(properties: INodeProperties[], name: string): INodeAction | null {
+	customNodeActionsParsers: {
+		[key: string]: (matchedProperty: INodeProperties) => INodeAction[] | undefined;
+	} = {
+		['n8n-nodes-base.hubspotTrigger']: (matchedProperty) => {
+			const collection = matchedProperty?.options?.[0] as INodePropertyCollection;
+			return collection?.values[0]?.options?.map((categoryItem: INodePropertyOptions) => ({
+				nodeName: 'n8n-nodes-base.hubspotTrigger',
+				key: categoryItem.value as string,
+				title: `On ${capitalCase(categoryItem.name)}`,
+				description: categoryItem.description,
+				displayOptions: matchedProperty.displayOptions,
+				values: { eventsUi: { eventValues: [{ name: categoryItem.value }] } },
+			}));
+		},
+	};
+
+	#operationsCategory(nodeTypeDescription: INodeTypeDescription): INodeAction | null {
+		const matchingKeys = ['operation'];
+		const excludedKeys = ['resource'];
+		if (!!nodeTypeDescription.properties.find((property) => excludedKeys.includes(property.name)))
+			return null;
+
+		const matchedProperty = nodeTypeDescription.properties.find((property) =>
+			matchingKeys.includes(property.name?.toLowerCase()),
+		);
+
+		if (!matchedProperty || !matchedProperty.options) return null;
+
+		const filteredOutItems = matchedProperty.options.filter(
+			(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
+		);
+
+		const items = filteredOutItems.map((item: INodePropertyOptions) => ({
+			nodeName: nodeTypeDescription.name,
+			key: item.value as string,
+			title: item.action ?? capitalCase(item.name),
+			description: item.description,
+			displayOptions: matchedProperty.displayOptions,
+			values: {
+				[matchedProperty.name]: matchedProperty.type === 'multiOptions' ? [item.value] : item.value,
+			},
+		}));
+
+		// Do not return empty category
+		if (items.length === 0) return null;
+
+		return {
+			key: matchedProperty.name,
+			title: 'Operations',
+			type: 'category',
+			items,
+		};
+	}
+
+	#recommendedCategory(nodeTypeDescription: INodeTypeDescription): INodeAction | null {
 		const matchingKeys = ['event', 'events', 'trigger on'];
-		const matchedProperty = properties.find((property) =>
+		const matchedProperty = nodeTypeDescription.properties.find((property) =>
 			matchingKeys.includes(property.displayName?.toLowerCase()),
 		);
 
@@ -36,14 +75,15 @@ class NodeTypeActionsClass {
 			(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),
 		);
 
-		const customParsedItem = customNodeActionsParsers[name]?.(matchedProperty);
+		const customParsedItem =
+			this.customNodeActionsParsers[nodeTypeDescription.name]?.(matchedProperty);
 
 		const items =
 			customParsedItem ??
 			filteredOutItems.map((categoryItem: INodePropertyOptions) => ({
-				nodeName: name,
+				nodeName: nodeTypeDescription.name,
 				key: categoryItem.value as string,
-				title: `When ${capitalCase(categoryItem.name)}`,
+				title: `On ${capitalCase(categoryItem.name)}`,
 				description: categoryItem.description,
 				displayOptions: matchedProperty.displayOptions,
 				values: {
@@ -63,10 +103,10 @@ class NodeTypeActionsClass {
 		};
 	}
 
-	#resourceCategories(properties: INodeProperties[], name: string): INodeAction[] {
+	#resourceCategories(nodeTypeDescription: INodeTypeDescription): INodeAction[] {
 		const categories: INodeAction[] = [];
 		const matchingKeys = ['resource'];
-		const matchedProperties = properties?.filter((property) =>
+		const matchedProperties = nodeTypeDescription.properties?.filter((property) =>
 			matchingKeys.includes(property.displayName?.toLowerCase()),
 		);
 
@@ -79,7 +119,7 @@ class NodeTypeActionsClass {
 					items: [],
 				};
 
-				const operations = properties.find(
+				const operations = nodeTypeDescription.properties.find(
 					(operation) =>
 						operation.name === 'operation' &&
 						operation.displayOptions?.show?.resource?.includes(resourceOption.value),
@@ -89,7 +129,7 @@ class NodeTypeActionsClass {
 
 				resourceCategory.items = operations.options.map(
 					(operationOption: INodePropertyOptions) => ({
-						nodeName: name,
+						nodeName: nodeTypeDescription.name,
 						key: operationOption.value as string,
 						title:
 							operationOption.action ??
@@ -115,9 +155,10 @@ class NodeTypeActionsClass {
 	extendWithActions(nodeTypeDescription: INodeTypeDescription): INodeTypeDescription {
 		return Object.assign(nodeTypeDescription, {
 			actions: [
-				this.#recommendedCategory(nodeTypeDescription.properties, nodeTypeDescription.name),
-				...this.#resourceCategories(nodeTypeDescription.properties, nodeTypeDescription.name),
-			].filter((action): action is INodeAction => action !== null),
+				this.#recommendedCategory(NodeTypes().injectCustomApiCallOption(nodeTypeDescription)),
+				...this.#resourceCategories(NodeTypes().injectCustomApiCallOption(nodeTypeDescription)),
+				this.#operationsCategory(NodeTypes().injectCustomApiCallOption(nodeTypeDescription)),
+			].filter((action: INodeAction) => action !== null),
 		});
 	}
 }

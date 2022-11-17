@@ -23,7 +23,7 @@ export class HubspotTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when HubSpot events occur',
 		defaults: {
-			name: 'Hubspot Trigger',
+			name: 'HubSpot Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],

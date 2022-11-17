@@ -1,6 +1,7 @@
 <template>
+	<!-- Node Item is draggable only if it doesn't contain actions -->
 	<div
-		draggable
+		:draggable="!(allowActions && nodeType.actions && nodeType.actions.length > 0)"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		@click.stop="onClick"
@@ -49,11 +50,11 @@
 		</div>
 		<node-actions
 			:class="$style.actions"
-			v-if="allowActions && nodeType.actions && showActions"
+			v-if="allowActions && nodeType.actions && showActionsPanel"
 			:nodeType="nodeType"
 			:actions="nodeType.actions"
 			@actionSelected="onActionSelected"
-			@back="showActions = false"
+			@back="showActionsPanel = false"
 
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
@@ -105,7 +106,7 @@ const { workflowTriggerNodes, $onAction: onWorkflowStoreAction } = useWorkflowsS
 
 const state = reactive({
 	dragging: false,
-	showActions: false,
+	showActionsPanel: false,
 	draggablePosition: {
 		x: -100,
 		y: -100,
@@ -127,7 +128,7 @@ const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nod
 const isTriggerNode = computed<boolean>(() => props.nodeType.displayName.toLowerCase().includes('trigger'));
 
 function onClick() {
-	if(hasActions.value && props.allowActions) state.showActions = true;
+	if(hasActions.value && props.allowActions) state.showActionsPanel = true;
 	else emit('nodeTypeSelected', [props.nodeType.name]);
 }
 
@@ -219,7 +220,7 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 	}
 }
 
-const { showActions, dragging, draggableDataTransfer } = toRefs(state);
+const { showActionsPanel, dragging, draggableDataTransfer } = toRefs(state);
 </script>
 
 <style lang="scss" module>
@@ -254,7 +255,6 @@ const { showActions, dragging, draggableDataTransfer } = toRefs(state);
 	margin-left: 15px;
 	margin-right: 12px;
 	display: flex;
-	cursor: grab;
 	align-items: center;
 }
 
@@ -272,11 +272,6 @@ const { showActions, dragging, draggableDataTransfer } = toRefs(state);
 	font-weight: var(--font-weight-bold);
 	font-size: 14px;
 	line-height: 18px;
-	margin-right: 5px;
-}
-
-.packageName {
-	margin-right: 5px;
 }
 
 .description {
@@ -288,11 +283,7 @@ const { showActions, dragging, draggableDataTransfer } = toRefs(state);
 }
 
 .triggerIcon {
-	height: 16px;
-	width: 16px;
-	display: inline-block;
-	margin-right: var(--spacing-3xs);
-	vertical-align: middle;
+	margin-left: var(--spacing-3xs);
 }
 
 .communityNodeIcon {

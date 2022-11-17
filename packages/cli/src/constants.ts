@@ -8,6 +8,9 @@ export const CLI_DIR = resolve(__dirname, '..');
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
 
+export const CUSTOM_API_CALL_NAME = 'Custom API Call';
+export const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
 export const STARTER_TEMPLATE_NAME = `${NODE_PACKAGE_PREFIX}starter`;

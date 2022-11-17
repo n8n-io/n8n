@@ -25,7 +25,7 @@ export class AsanaTrigger implements INodeType {
 		version: 1,
 		description: 'Starts the workflow when Asana events occur.',
 		defaults: {
-			name: 'Asana-Trigger',
+			name: 'Asana Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],

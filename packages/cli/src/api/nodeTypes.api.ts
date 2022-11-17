@@ -2,75 +2,21 @@
 import express from 'express';
 import { readFile } from 'fs/promises';
 import _ from 'lodash';
+import { NodeTypeActions } from '@/NodeTypeActions';
+// import { CUSTOM_API_CALL_NAME, CUSTOM_API_CALL_KEY } from '@/constants';
 
 import {
-	ICredentialType,
+	// ICredentialType,
 	INodeType,
 	INodeTypeDescription,
 	INodeTypeNameVersion,
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/CredentialTypes';
 import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getNodeTranslationPath } from '@/TranslationHelpers';
-
-function isOAuth(credType: ICredentialType) {
-	return (
-		Array.isArray(credType.extends) &&
-		credType.extends.some((parentType) =>
-			['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
-		)
-	);
-}
-
-/**
- * Whether any of the node's credential types may be used to
- * make a request from a node other than itself.
- */
-function supportsProxyAuth(description: INodeTypeDescription) {
-	if (!description.credentials) return false;
-
-	const credentialTypes = CredentialTypes();
-
-	return description.credentials.some(({ name }) => {
-		const credType = credentialTypes.getByName(name);
-
-		if (credType.authenticate !== undefined) return true;
-
-		return isOAuth(credType);
-	});
-}
-
-const CUSTOM_API_CALL_NAME = 'Custom API Call';
-const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
-
-/**
- * Inject a `Custom API Call` option into `resource` and `operation`
- * parameters in a node that supports proxy auth.
- */
-function injectCustomApiCallOption(description: INodeTypeDescription) {
-	if (!supportsProxyAuth(description)) return description;
-
-	description.properties.forEach((p) => {
-		if (
-			['resource', 'operation'].includes(p.name) &&
-			Array.isArray(p.options) &&
-			p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
-		) {
-			p.options.push({
-				name: CUSTOM_API_CALL_NAME,
-				value: CUSTOM_API_CALL_KEY,
-			});
-		}
-
-		return p;
-	});
-
-	return description;
-}
 
 export const nodeTypesController = express.Router();
 
@@ -80,12 +26,17 @@ nodeTypesController.get(
 	ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
 		const returnData: INodeTypeDescription[] = [];
 		const onlyLatest = req.query.onlyLatest === 'true';
+		const withActions = req.query.withActions === 'true';
 
 		const nodeTypes = NodeTypes();
+		const nodeTypeActions = NodeTypeActions();
 		const allNodes = nodeTypes.getAll();
 
 		const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-			const nodeInfo: INodeTypeDescription = { ...nodeType.description };
+			const nodeInfo = withActions
+				? nodeTypeActions.extendWithActions({ ...nodeType.description })
+				: { ...nodeType.description };
+
 			if (req.query.includeProperties !== 'true') {
 				// @ts-ignore
 				delete nodeInfo.properties;
@@ -118,13 +69,12 @@ nodeTypesController.post(
 	'/',
 	ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
 		const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
-
 		const defaultLocale = config.getEnv('defaultLocale');
 
 		if (defaultLocale === 'en') {
 			return nodeInfos.reduce<INodeTypeDescription[]>((acc, { name, version }) => {
 				const { description } = NodeTypes().getByNameAndVersion(name, version);
-				acc.push(injectCustomApiCallOption(description));
+				acc.push(NodeTypes().injectCustomApiCallOption(description));
 				return acc;
 			}, []);
 		}
@@ -149,7 +99,7 @@ nodeTypesController.post(
 				// ignore - no translation exists at path
 			}
 
-			nodeTypes.push(injectCustomApiCallOption(description));
+			nodeTypes.push(NodeTypes().injectCustomApiCallOption(description));
 		}
 
 		const nodeTypes: INodeTypeDescription[] = [];

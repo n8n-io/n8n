@@ -87,7 +87,7 @@ export class GitlabTrigger implements INodeType {
 			'={{$parameter["owner"] + "/" + $parameter["repository"] + ": " + $parameter["events"].join(", ")}}',
 		description: 'Starts the workflow when GitLab events occur',
 		defaults: {
-			name: 'Gitlab Trigger',
+			name: 'GitLab Trigger',
 		},
 		inputs: [],
 		outputs: ['main'],

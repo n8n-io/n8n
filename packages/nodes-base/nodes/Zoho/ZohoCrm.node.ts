@@ -76,7 +76,7 @@ export class ZohoCrm implements INodeType {
 		version: 1,
 		description: 'Consume Zoho CRM API',
 		defaults: {
-			name: 'Zoho',
+			name: 'Zoho CRM',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

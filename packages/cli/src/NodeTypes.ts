@@ -9,7 +9,10 @@ import {
 	INodeTypes,
 	IVersionedNodeType,
 	NodeHelpers,
+	ICredentialType,
 } from 'n8n-workflow';
+import { CredentialTypes } from '@/CredentialTypes';
+import { CUSTOM_API_CALL_KEY, CUSTOM_API_CALL_NAME } from '@/constants';
 
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {};
@@ -71,6 +74,58 @@ class NodeTypesClass implements INodeTypes {
 
 	removeNodeType(nodeType: string): void {
 		delete this.nodeTypes[nodeType];
+	}
+
+	/**
+	 * Whether any of the node's credential types may be used to
+	 * make a request from a node other than itself.
+	 */
+	supportsProxyAuth(description: INodeTypeDescription) {
+		if (!description.credentials) return false;
+
+		const credentialTypes = CredentialTypes();
+
+		return description.credentials.some(({ name }) => {
+			const credType = credentialTypes.getByName(name);
+
+			if (credType.authenticate !== undefined) return true;
+
+			return this.#isOAuth(credType);
+		});
+	}
+
+	#isOAuth(credType: ICredentialType) {
+		return (
+			Array.isArray(credType.extends) &&
+			credType.extends.some((parentType) =>
+				['oAuth2Api', 'googleOAuth2Api', 'oAuth1Api'].includes(parentType),
+			)
+		);
+	}
+
+	/**
+	 * Inject a `Custom API Call` option into `resource` and `operation`
+	 * parameters in a node that supports proxy auth.
+	 */
+	injectCustomApiCallOption(description: INodeTypeDescription) {
+		if (!this.supportsProxyAuth(description)) return description;
+
+		description.properties.forEach((p) => {
+			if (
+				['resource', 'operation'].includes(p.name) &&
+				Array.isArray(p.options) &&
+				p.options[p.options.length - 1].name !== CUSTOM_API_CALL_NAME
+			) {
+				p.options.push({
+					name: CUSTOM_API_CALL_NAME,
+					value: CUSTOM_API_CALL_KEY,
+				});
+			}
+
+			return p;
+		});
+
+		return description;
 	}
 }
 

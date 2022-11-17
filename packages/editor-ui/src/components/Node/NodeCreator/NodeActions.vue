@@ -29,6 +29,7 @@
 					<ul :class="$style.categoryActions" v-show="!subtractedCategories.includes(action.key)">
 						<node-action
 							v-for="item in action.items"
+							v-show="item.key !== CUSTOM_API_CALL_KEY"
 							:key="`${action.key}_${item.key}`"
 							:action="item"
 							:nodeType="nodeType"
@@ -43,6 +44,7 @@
 				<!-- Flat actions -->
 				<node-action
 					v-else
+					v-show="action.key !== CUSTOM_API_CALL_KEY"
 					:key="`${action.key}__${action.title}`"
 					:action="action"
 					:nodeType="nodeType"

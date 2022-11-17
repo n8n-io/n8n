@@ -22,7 +22,7 @@ export class CustomerIo implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Customer.io API',
 		defaults: {
-			name: 'CustomerIo',
+			name: 'Customer.io',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

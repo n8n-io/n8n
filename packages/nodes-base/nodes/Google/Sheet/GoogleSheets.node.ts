@@ -31,7 +31,7 @@ import {
 
 export class GoogleSheets implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Google Sheets ',
+		displayName: 'Google Sheets',
 		name: 'googleSheets',
 		icon: 'file:googleSheets.svg',
 		group: ['input', 'output'],

@@ -20,7 +20,7 @@ export class Gitlab implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Retrieve data from GitLab API',
 		defaults: {
-			name: 'Gitlab',
+			name: 'GitLab',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

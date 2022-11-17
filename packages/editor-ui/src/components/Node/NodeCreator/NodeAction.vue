@@ -34,7 +34,6 @@ const isTriggerAction = (action: INodeAction) => action.nodeName?.toLowerCase().
 	list-style: none;
 	cursor: pointer;
 	font-weight: var(--font-weight-bold);
-	font-size: var(--font-size-s);
 	line-height: var(--font-line-height-compact);
 	color: var(--color-text-dark);
 	display: flex;
@@ -51,6 +50,7 @@ const isTriggerAction = (action: INodeAction) => action.nodeName?.toLowerCase().
 	align-items: center;
 	text-align: left;
 	position: relative;
+	font-size: var(--font-size-s);
 	cursor: pointer;
 	padding: 0;
 	color: var(--color-text-dark);
@@ -66,9 +66,7 @@ const isTriggerAction = (action: INodeAction) => action.nodeName?.toLowerCase().
 	}
 }
 .triggerIcon {
-	border: none;
-	width: 20px;
-	height: 20px;
+	margin-left: var(--spacing-3xs);
 }
 .nodeIcon {
 	margin-right: var(--spacing-s);

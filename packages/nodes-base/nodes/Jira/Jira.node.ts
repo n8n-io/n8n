@@ -47,7 +47,7 @@ export class Jira implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Jira Software API',
 		defaults: {
-			name: 'Jira',
+			name: 'Jira Software',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

@@ -31,7 +31,10 @@ export default {
 	background-color: $trigger-icon-background-color;
 	border: 1px solid $trigger-icon-border-color;
 	border-radius: 4px;
-	display: inline-flex;
+	height: 16px;
+	width: 16px;
+	display: inline-block;
+	vertical-align: middle;
 
 	> svg {
 		width: 100%;
