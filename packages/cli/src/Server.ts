@@ -160,10 +160,8 @@ import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { eventBus } from './eventbus';
-import { MessageEventBusDestination } from './eventbus/MessageEventBusDestination/MessageEventBusDestination';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
 import { messageEventBusDestinationFromDb } from './eventbus/MessageEventBusDestination/Helpers';
-import { EventMessage } from './eventbus/EventMessageClasses/EventMessage';
 
 require('body-parser-xml')(bodyParser);
 
@@ -1697,6 +1695,9 @@ class App {
 				// call is only required if there are none in the db
 				await eventBus.initialize();
 			}
+			// process.once('SIGINT', async () => eventBus.close());
+			// process.once('SIGTERM', async () => eventBus.close());
+
 			// add Event Bus REST endpoints
 			this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 			// subscribe to emitters and generate eventMessages from them

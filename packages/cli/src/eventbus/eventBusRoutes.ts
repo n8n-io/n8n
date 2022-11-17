@@ -3,7 +3,7 @@ import express from 'express';
 import { ResponseHelper } from '..';
 import { ResponseError } from '../ResponseHelper';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
-import { EventMessage } from './EventMessageClasses/EventMessage';
+import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
 import {
 	EventMessageSubscriptionSet,
 	isEventMessageSubscriptionSetOptions,
@@ -114,7 +114,7 @@ eventBusRouter.post(
 	`/event`,
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (isEventMessageOptions(req.body)) {
-			await eventBus.send(new EventMessage(req.body));
+			await eventBus.send(new EventMessageGeneric(req.body));
 		} else {
 			throw new ResponseError(
 				'Body is not a serialized EventMessage or eventName does not match format {namespace}.{domain}.{event}',
@@ -130,8 +130,8 @@ eventBusRouter.post(
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (isEventMessageOptions(req.body)) {
 			const count: number = parseInt(req.params.count) ?? 100;
-			const msg = new EventMessageWorkflow(req.body);
 			for (let i = 0; i < count; i++) {
+				const msg = new EventMessageWorkflow(req.body);
 				msg.setPayload({
 					id: i,
 					msg: 'REST test',

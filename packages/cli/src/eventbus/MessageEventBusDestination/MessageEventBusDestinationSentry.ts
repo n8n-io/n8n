@@ -1,13 +1,14 @@
-import { EventMessage } from '../EventMessageClasses/EventMessage';
+import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
 import {
 	MessageEventBusDestination,
 	MessageEventBusDestinationOptions,
 } from './MessageEventBusDestination';
-import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
+import { JsonObject, JsonValue } from 'n8n-workflow';
 import * as Sentry from '@sentry/node';
-import { EventMessageLevel } from '../types/EventMessageTypes';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { getInstanceOwner } from '../../UserManagement/UserManagementHelper';
+import { EventMessageLevel } from '../EventMessageClasses';
+import { MessageEventBusDestinationTypeNames } from '.';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,
@@ -19,22 +20,18 @@ export const isMessageEventBusDestinationSentryOptions = (
 
 function eventMessageLevelToSentrySeverity(emLevel: EventMessageLevel): Sentry.SeverityLevel {
 	switch (emLevel) {
-		case 'debug':
-			return 'debug';
-		case 'info':
-			return 'info';
-		case 'notice':
+		case EventMessageLevel.log:
 			return 'log';
-		case 'warning':
-			return 'warning';
-		case 'error':
+		case EventMessageLevel.debug:
+			return 'debug';
+		case EventMessageLevel.info:
+			return 'info';
+		case EventMessageLevel.error:
 			return 'error';
-		case 'crit':
-			return 'fatal';
-		case 'alert':
-			return 'fatal';
-		case 'emerg':
-			return 'fatal';
+		case EventMessageLevel.verbose:
+			return 'debug';
+		case EventMessageLevel.warn:
+			return 'warning';
 		default:
 			return 'log';
 	}
@@ -46,7 +43,7 @@ export interface MessageEventBusDestinationSentryOptions extends MessageEventBus
 }
 
 export class MessageEventBusDestinationSentry extends MessageEventBusDestination {
-	static readonly __type = '$$MessageEventBusDestinationSentry';
+	static readonly __type = MessageEventBusDestinationTypeNames.sentry;
 
 	readonly dsn: string;
 
@@ -68,7 +65,7 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 	}
 
 	//TODO: fill all event fields
-	async receiveFromEventBus(msg: EventMessage): Promise<boolean> {
+	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
 		try {
 			const user = await getInstanceOwner();
 			const context = {
@@ -127,12 +124,8 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 		return JSON.stringify(this.serialize());
 	}
 
-	static fromString(data: string): MessageEventBusDestinationSentry | null {
-		const o = jsonParse<JsonObject>(data);
-		return MessageEventBusDestinationSentry.deserialize(o);
-	}
-
 	async close() {
+		await super.close();
 		await Sentry.close();
 	}
 }

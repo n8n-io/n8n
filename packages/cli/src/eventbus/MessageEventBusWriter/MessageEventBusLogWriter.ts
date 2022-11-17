@@ -5,19 +5,16 @@ import { UserSettings } from 'n8n-core';
 import path, { parse } from 'path';
 import { ModuleThread, spawn, Thread, Worker } from 'threads';
 import { MessageEventBusLogWriterWorker } from './MessageEventBusLogWriterWorker';
-// import { MessageEventBusWriter } from '../EventMessageClasses/MessageEventBusWriter';
-import {
-	EventMessageConfirm,
-	isEventMessageConfirmSerialized,
-} from '../EventMessageClasses/EventMessageConfirm';
 import { createReadStream, existsSync } from 'fs';
 import readline from 'readline';
 import events from 'events';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, JsonValue } from 'n8n-workflow';
 import remove from 'lodash.remove';
 import config from '../../config';
-import { EventMessageTypes, getEventMessageByType } from '../EventMessageClasses/Helpers';
+import { getEventMessageByType } from '../EventMessageClasses/Helpers';
 import { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
+import { EventMessageTypeNames, EventMessageTypes } from '../EventMessageClasses';
+import { DateTime } from 'luxon';
 
 interface MessageEventBusLogWriterOptions {
 	syncFileAccess?: boolean;
@@ -26,6 +23,34 @@ interface MessageEventBusLogWriterOptions {
 	keepLogCount?: number;
 	maxFileSizeInKB?: number;
 }
+
+class EventMessageConfirm {
+	readonly __type = EventMessageTypeNames.eventMessageConfirm;
+
+	readonly confirm: string;
+
+	readonly ts: DateTime;
+
+	constructor(confirm: string) {
+		this.confirm = confirm;
+		this.ts = DateTime.now();
+	}
+
+	serialize(): JsonValue {
+		// TODO: filter payload for sensitive info here?
+		return {
+			__type: this.__type,
+			confirm: this.confirm,
+			ts: this.ts.toISO(),
+		};
+	}
+}
+
+const isEventMessageConfirm = (candidate: unknown): candidate is EventMessageConfirm => {
+	const o = candidate as EventMessageConfirm;
+	if (!o) return false;
+	return o.confirm !== undefined && o.ts !== undefined;
+};
 
 /**
  * MessageEventBusWriter for Files
@@ -132,9 +157,7 @@ export class MessageEventBusLogWriter {
 
 	async confirmMessageSent(msgId: string): Promise<void> {
 		if (this.#worker) {
-			await this.#worker.confirmMessageSent(
-				new EventMessageConfirm({ confirm: msgId }).serialize(),
-			);
+			await this.#worker.confirmMessageSent(new EventMessageConfirm(msgId).serialize());
 		}
 	}
 
@@ -192,7 +215,7 @@ export class MessageEventBusLogWriter {
 						const msg = getEventMessageByType(json);
 						if (msg !== null) results.loggedMessages.push(msg);
 					}
-					if (isEventMessageConfirmSerialized(json) && mode !== 'all') {
+					if (isEventMessageConfirm(json) && mode !== 'all') {
 						const removedMessage = remove(results.loggedMessages, (e) => e.id === json.confirm);
 						if (mode === 'sent') {
 							results.sentMessages.push(...removedMessage);

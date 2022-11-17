@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DateTime } from 'luxon';
-import { JsonObject } from 'n8n-workflow';
+import { JsonObject, JsonValue } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import * as EventMessageTypes from '../types/EventMessageTypes';
+import { EventMessageLevel } from '.';
 
 export interface EventMessageOptions {
 	id?: string;
 	ts?: DateTime;
-	eventName: EventMessageTypes.EventMessageNames;
-	level?: EventMessageTypes.EventMessageLevel;
+	eventName: string;
+	message?: string;
+	level?: EventMessageLevel;
 	payload?: AbstractEventPayload;
 }
 
@@ -56,7 +57,7 @@ export const isEventMessageSerialized = (
 };
 
 export abstract class AbstractEventPayload {
-	msg?: string;
+	[key: string]: JsonValue;
 }
 
 export abstract class AbstractEventMessage {
@@ -66,9 +67,11 @@ export abstract class AbstractEventMessage {
 
 	ts: DateTime;
 
-	eventName: EventMessageTypes.EventMessageNames;
+	eventName: string;
 
-	level: EventMessageTypes.EventMessageLevel;
+	level: EventMessageLevel;
+
+	message: string;
 
 	abstract payload: AbstractEventPayload;
 
@@ -83,10 +86,28 @@ export abstract class AbstractEventMessage {
 		this.setOptionsOrDefault(options);
 	}
 
+	// abstract serialize(): EventMessageSerialized;
+	abstract deserialize(data: JsonObject): this;
+	abstract setPayload(payload: AbstractEventPayload): this;
+	abstract anonymize(): this;
+
+	serialize(): EventMessageSerialized {
+		return {
+			__type: this.__type,
+			id: this.id,
+			ts: this.ts.toISO(),
+			eventName: this.eventName,
+			message: this.message,
+			level: this.level,
+			payload: this.payload,
+		};
+	}
+
 	setOptionsOrDefault(options: EventMessageOptions | EventMessageSerialized) {
 		this.id = options.id ?? uuid();
 		this.eventName = options.eventName;
-		this.level = options.level ?? 'info';
+		this.message = options.message ?? options.eventName;
+		this.level = options.level ?? EventMessageLevel.log;
 		if (typeof options.ts === 'string') {
 			this.ts = DateTime.fromISO(options.ts) ?? DateTime.now();
 		} else {
@@ -94,25 +115,19 @@ export abstract class AbstractEventMessage {
 		}
 	}
 
-	getEventGroup(): EventMessageTypes.EventMessageGroups | undefined {
+	getEventGroup(): string | undefined {
 		const matches = this.eventName.match(/^[\w\s]+\.[\w\s]+/);
 		if (matches && matches?.length > 0) {
-			return matches[0] as EventMessageTypes.EventMessageGroups;
+			return matches[0];
 		}
 		return;
 	}
 
-	getEventName(): EventMessageTypes.EventMessageNames {
+	getEventName(): string {
 		return this.eventName;
 	}
 
 	toString() {
 		return JSON.stringify(this.serialize());
 	}
-
-	abstract serialize(): EventMessageSerialized;
-
-	abstract deserialize(data: JsonObject): this;
-
-	abstract setPayload(payload: AbstractEventPayload): this;
 }

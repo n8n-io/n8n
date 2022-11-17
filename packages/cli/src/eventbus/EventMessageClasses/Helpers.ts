@@ -1,20 +1,14 @@
+import { EventMessageTypeNames, EventMessageTypes } from '.';
 import { EventMessageSerialized } from './AbstractEventMessage';
-import { EventMessage } from './EventMessage';
+import { EventMessageGeneric } from './EventMessageGeneric';
 import { EventMessageWorkflow } from './EventMessageWorkflow';
-
-export type EventMessageTypes = EventMessage | EventMessageWorkflow;
-
-export enum EventMessageTypeNames {
-	eventMessage = '$$EventMessage',
-	eventMessageWorkflow = '$$EventMessageWorkflow',
-}
 
 export const getEventMessageByType = (
 	message: EventMessageSerialized,
 ): EventMessageTypes | null => {
 	switch (message.__type as EventMessageTypeNames) {
 		case EventMessageTypeNames.eventMessage:
-			return new EventMessage(message);
+			return new EventMessageGeneric(message);
 		case EventMessageTypeNames.eventMessageWorkflow:
 			return new EventMessageWorkflow(message);
 		default:

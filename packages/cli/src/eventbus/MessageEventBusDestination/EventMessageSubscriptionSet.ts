@@ -1,9 +1,5 @@
 import { JsonObject, JsonValue } from 'n8n-workflow';
-import {
-	EventMessageGroups,
-	EventMessageLevel,
-	EventMessageNames,
-} from '../types/EventMessageTypes';
+import { EventMessageLevel } from '../EventMessageClasses';
 
 export const isEventMessageSubscriptionSetOptions = (
 	candidate: unknown,
@@ -21,39 +17,31 @@ export const isEventMessageSubscriptionSetOptions = (
 };
 
 export interface EventMessageSubscriptionSetOptions {
-	eventGroups?: EventMessageGroups[];
-	eventNames?: EventMessageNames[];
+	eventGroups?: string[];
+	eventNames?: string[];
 	eventLevels?: EventMessageLevel[];
 }
 
 export class EventMessageSubscriptionSet {
 	static readonly __type: '$$EventMessageSubscriptionSet';
 
-	eventGroups: EventMessageGroups[];
+	eventGroups: string[];
 
-	eventNames: EventMessageNames[];
+	eventNames: string[];
 
 	eventLevels: EventMessageLevel[];
 
 	constructor(options?: EventMessageSubscriptionSetOptions | EventMessageSubscriptionSet) {
 		this.eventGroups = options?.eventGroups ?? ['*'];
 		this.eventNames = options?.eventNames ?? ['*'];
-		this.eventLevels = options?.eventLevels ?? [
-			'info',
-			'notice',
-			'warning',
-			'error',
-			'crit',
-			'alert',
-			'emerg',
-		];
+		this.eventLevels = options?.eventLevels ?? [EventMessageLevel.log];
 	}
 
-	setEventGroups(groups: EventMessageGroups[]) {
+	setEventGroups(groups: string[]) {
 		this.eventGroups = groups;
 	}
 
-	setEventNames(names: EventMessageNames[]) {
+	setEventNames(names: string[]) {
 		this.eventNames = names;
 	}
 

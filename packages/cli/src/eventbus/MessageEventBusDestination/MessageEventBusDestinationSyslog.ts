@@ -1,14 +1,15 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { EventMessage } from '../EventMessageClasses/EventMessage';
+import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
 import {
 	MessageEventBusDestination,
 	MessageEventBusDestinationOptions,
 } from './MessageEventBusDestination';
 import syslog from 'syslog-client';
-import { EventMessageLevel } from '../types/EventMessageTypes';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
+import { JsonObject, JsonValue } from 'n8n-workflow';
+import { EventMessageLevel } from '../EventMessageClasses';
+import { MessageEventBusDestinationTypeNames } from '.';
 
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
@@ -30,29 +31,25 @@ export interface MessageEventBusDestinationSyslogOptions extends MessageEventBus
 
 function eventMessageLevelToSyslogSeverity(emLevel: EventMessageLevel) {
 	switch (emLevel) {
-		case 'debug':
+		case EventMessageLevel.log:
 			return syslog.Severity.Debug;
-		case 'info':
+		case EventMessageLevel.debug:
+			return syslog.Severity.Debug;
+		case EventMessageLevel.info:
 			return syslog.Severity.Informational;
-		case 'notice':
-			return syslog.Severity.Notice;
-		case 'warning':
-			return syslog.Severity.Warning;
-		case 'error':
+		case EventMessageLevel.error:
 			return syslog.Severity.Error;
-		case 'crit':
-			return syslog.Severity.Critical;
-		case 'alert':
-			return syslog.Severity.Alert;
-		case 'emerg':
-			return syslog.Severity.Emergency;
+		case EventMessageLevel.verbose:
+			return syslog.Severity.Debug;
+		case EventMessageLevel.warn:
+			return syslog.Severity.Warning;
 		default:
-			return syslog.Severity.Informational;
+			return syslog.Severity.Debug;
 	}
 }
 
 export class MessageEventBusDestinationSyslog extends MessageEventBusDestination {
-	static readonly __type = '$$MessageEventBusDestinationSyslog';
+	static readonly __type = MessageEventBusDestinationTypeNames.syslog;
 
 	client: syslog.Client;
 
@@ -93,7 +90,7 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 		return this.sysLogOptions;
 	}
 
-	async receiveFromEventBus(msg: EventMessage): Promise<boolean> {
+	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
 		if (!this.hasSubscribedToEvent(msg)) return false;
 		try {
 			this.client.log(
@@ -153,12 +150,8 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 		return JSON.stringify(this.serialize());
 	}
 
-	static fromString(data: string): MessageEventBusDestinationSyslog | null {
-		const o = jsonParse<JsonObject>(data);
-		return MessageEventBusDestinationSyslog.deserialize(o);
-	}
-
 	async close() {
+		await super.close();
 		this.client.close();
 	}
 }

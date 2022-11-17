@@ -1,18 +1,29 @@
 import {
 	AbstractEventMessage,
 	AbstractEventPayload,
-	EventMessageSerialized,
+	// EventMessageSerialized,
 	isEventMessageSerialized,
 } from './AbstractEventMessage';
 import { JsonObject } from 'n8n-workflow';
-import { EventMessageTypeNames } from './Helpers';
+import { EventMessageNamespaceN8n, EventMessageTypeNames } from '.';
 
+type EventNames = 'workflowStarted' | 'workflowEnded';
+type EventGroup = 'workflow';
+export type FullEventNamesWorkflow = `${EventMessageNamespaceN8n}.${EventGroup}.${EventNames}`;
+
+// --------------------------------------
+// EventMessage class for Workflow events
+// --------------------------------------
 export class EventPayloadWorkflow extends AbstractEventPayload {
 	id: number;
+
+	msg: string;
 }
 
 export class EventMessageWorkflow extends AbstractEventMessage {
 	readonly __type: string = EventMessageTypeNames.eventMessageWorkflow;
+
+	eventName: FullEventNamesWorkflow;
 
 	payload: EventPayloadWorkflow;
 
@@ -21,17 +32,13 @@ export class EventMessageWorkflow extends AbstractEventMessage {
 		return this;
 	}
 
-	serialize(): EventMessageSerialized {
-		// TODO: filter payload for sensitive info here?
-		return {
-			__type: this.__type,
-			id: this.id,
-			ts: this.ts.toISO(),
-			eventName: this.eventName,
-			level: this.level,
-			payload: this.payload ?? new EventPayloadWorkflow(),
-		};
+	anonymize(): this {
+		return this;
 	}
+
+	// serialize(): EventMessageSerialized {
+	// 	const baseSerialized = super.serialize();
+	// }
 
 	deserialize(data: JsonObject): this {
 		if (isEventMessageSerialized(data, this.__type)) {

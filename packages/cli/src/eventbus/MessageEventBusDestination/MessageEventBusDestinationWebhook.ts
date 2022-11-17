@@ -1,11 +1,12 @@
-import { EventMessage } from '../EventMessageClasses/EventMessage';
 import {
 	MessageEventBusDestination,
 	MessageEventBusDestinationOptions,
 } from './MessageEventBusDestination';
 import axios from 'axios';
-import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
+import { JsonObject, JsonValue } from 'n8n-workflow';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
+import { EventMessageTypes } from '../EventMessageClasses';
+import { MessageEventBusDestinationTypeNames } from '.';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -18,31 +19,39 @@ export const isMessageEventBusDestinationWebhookOptions = (
 export interface MessageEventBusDestinationWebhookOptions
 	extends MessageEventBusDestinationOptions {
 	url: string;
+	responseCodeMustMatch?: boolean;
 	expectedStatusCode?: number;
 }
 
 export class MessageEventBusDestinationWebhook extends MessageEventBusDestination {
-	static readonly __type = '$$MessageEventBusDestinationWebhook';
+	static readonly __type = MessageEventBusDestinationTypeNames.webhook;
 
-	readonly url: string;
+	url: string;
 
-	readonly expectedStatusCode: number;
+	responseCodeMustMatch: boolean;
+
+	expectedStatusCode: number;
 
 	constructor(options: MessageEventBusDestinationWebhookOptions) {
 		super(options);
+		this.responseCodeMustMatch = options.responseCodeMustMatch ?? false;
 		this.expectedStatusCode = options.expectedStatusCode ?? 200;
 		this.url = options.url;
-		console.debug(`MessageEventBusDestinationWebhook Broker initialized`);
 	}
 
-	async receiveFromEventBus(msg: EventMessage): Promise<boolean> {
+	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
 		console.log('URL', this.url);
 		try {
-			const postResult = await axios.post(this.url, msg);
-			if (postResult.status === this.expectedStatusCode) {
+			if (this.responseCodeMustMatch) {
+				const postResult = await axios.post(this.url, msg);
+				if (postResult.status === this.expectedStatusCode) {
+					await eventBus.confirmSent(msg);
+				}
+			} else {
+				await axios.post(this.url, msg);
 				await eventBus.confirmSent(msg);
-				return true;
 			}
+			return true;
 		} catch (error) {
 			console.log(error);
 		}
@@ -56,7 +65,7 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 				id: this.getId(),
 				name: this.getName(),
 				expectedStatusCode: this.expectedStatusCode,
-				urls: this.url,
+				url: this.url,
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				subscriptionSet: this.subscriptionSet.serialize(),
 			},
@@ -73,18 +82,5 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 			return new MessageEventBusDestinationWebhook(data.options);
 		}
 		return null;
-	}
-
-	toString() {
-		return JSON.stringify(this.serialize());
-	}
-
-	static fromString(data: string): MessageEventBusDestinationWebhook | null {
-		const o = jsonParse<JsonObject>(data);
-		return MessageEventBusDestinationWebhook.deserialize(o);
-	}
-
-	async close() {
-		// Nothing to do
 	}
 }

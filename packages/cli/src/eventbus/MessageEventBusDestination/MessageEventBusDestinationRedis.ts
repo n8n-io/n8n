@@ -3,7 +3,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { EventMessage } from '../EventMessageClasses/EventMessage';
+import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
 import {
 	MessageEventBusDestination,
 	MessageEventBusDestinationOptions,
@@ -12,6 +12,7 @@ import { eventBus } from '../MessageEventBus/MessageEventBus';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis, { RedisOptions } from 'ioredis';
 import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from '.';
 
 export const isMessageEventBusDestinationRedisOptions = (
 	candidate: unknown,
@@ -27,7 +28,7 @@ interface MessageEventBusDestinationRedisOptions extends MessageEventBusDestinat
 }
 
 export class MessageEventBusDestinationRedis extends MessageEventBusDestination {
-	static readonly __type = '$$MessageEventBusDestinationRedis';
+	static readonly __type = MessageEventBusDestinationTypeNames.redis;
 
 	#client: Redis | undefined;
 
@@ -52,7 +53,7 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 		console.debug(`MessageEventBusDestinationRedis Broker initialized`);
 	}
 
-	async receiveFromEventBus(msg: EventMessage): Promise<boolean> {
+	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
 		if (this.#client?.status === 'ready') {
 			const publishResult = await this.#client?.publish(this.#channelName, msg.toString());
 			console.log(publishResult);

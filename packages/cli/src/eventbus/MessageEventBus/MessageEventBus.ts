@@ -1,13 +1,14 @@
-import { JsonValue } from 'n8n-workflow';
+import { JsonValue, LoggerProxy } from 'n8n-workflow';
 import { DeleteResult } from 'typeorm';
-import { EventMessage } from '../EventMessageClasses/EventMessage';
 import {
 	EventMessageSubscriptionSet,
 	EventMessageSubscriptionSetOptions,
 } from '../MessageEventBusDestination/EventMessageSubscriptionSet';
-import { EventMessageTypes } from '../EventMessageClasses/Helpers';
+import { EventMessageTypes } from '../EventMessageClasses/';
 import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
+import EventEmitter from 'node:events';
+import config from '../../config';
 
 interface MessageEventBusInitializationOptions {
 	destinations?: MessageEventBusDestination[];
@@ -24,7 +25,7 @@ export interface EventMessageSubscribeDestination {
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
-class MessageEventBus {
+class MessageEventBus extends EventEmitter {
 	static #instance: MessageEventBus;
 
 	isInitialized: boolean;
@@ -36,6 +37,7 @@ class MessageEventBus {
 	#pushInteralTimer: NodeJS.Timer;
 
 	constructor() {
+		super();
 		this.isInitialized = false;
 	}
 
@@ -54,12 +56,6 @@ class MessageEventBus {
 			return;
 		}
 
-		// Register the thread serializer on the main thread
-		// registerSerializer(messageEventSerializer);
-
-		if (this.#pushInteralTimer) {
-			clearInterval(this.#pushInteralTimer);
-		}
 		this.logWriter = await MessageEventBusLogWriter.getInstance();
 		if (options?.destinations) {
 			for (const destination of options?.destinations) {
@@ -67,23 +63,22 @@ class MessageEventBus {
 			}
 		}
 
-		await this.send(
-			new EventMessage({
-				eventName: 'n8n.core.eventBusInitialized',
-				level: 'debug',
-			}),
-		);
-
-		// check for unsent messages
+		// check for unsent messages once on startup
+		LoggerProxy.debug('Checking for unsent event messages...');
 		await this.#trySendingUnsent();
 
+		LoggerProxy.debug('Starting event writer');
 		// now start the logging to a fresh event log
 		await this.logWriter.startLogging();
 
-		this.#pushInteralTimer = setInterval(async () => {
-			// console.debug('Checking for unsent messages...');
-			await this.#trySendingUnsent();
-		}, 5000);
+		if (config.getEnv('eventBus.checkUnsentInterval') > 0) {
+			if (this.#pushInteralTimer) {
+				clearInterval(this.#pushInteralTimer);
+			}
+			this.#pushInteralTimer = setInterval(async () => {
+				await this.#trySendingUnsent();
+			}, config.getEnv('eventBus.checkUnsentInterval'));
+		}
 
 		console.debug('MessageEventBus initialized');
 		this.isInitialized = true;
@@ -161,44 +156,48 @@ class MessageEventBus {
 
 	async #trySendingUnsent() {
 		const unsentMessages = await this.getEventsUnsent();
-		console.debug(`Found unsent EventMessages: ${unsentMessages.length}`);
-		for (const unsentMsg of unsentMessages) {
-			console.debug(`${unsentMsg.id} ${unsentMsg.__type}`);
-			await this.#sendToDestinations(unsentMsg);
+		if (unsentMessages.length > 0) {
+			LoggerProxy.debug(`Found unsent event messages: ${unsentMessages.length}`);
+			for (const unsentMsg of unsentMessages) {
+				LoggerProxy.debug(`Retrying: ${unsentMsg.id} ${unsentMsg.__type}`);
+				await this.#emitMessage(unsentMsg);
+			}
 		}
 	}
 
 	async close() {
+		LoggerProxy.debug('Shutting down event writer...');
 		await this.logWriter.close();
 		for (const destinationName of Object.keys(this.destinations)) {
+			LoggerProxy.debug(
+				`Shutting down event destination ${this.destinations[destinationName].getName()}...`,
+			);
 			await this.destinations[destinationName].close();
 		}
+		LoggerProxy.debug('EventBus shut down.');
 	}
 
 	async send(msg: EventMessageTypes) {
-		await this.#writeMessageToLog(msg);
-		await this.#sendToDestinations(msg);
+		console.log(new Date().getMilliseconds());
+		await this.logWriter.putMessage(msg);
+		await this.#emitMessage(msg);
 	}
 
 	async confirmSent(msg: EventMessageTypes) {
-		await this.#writeConfirmationToLog(msg.id);
+		await this.logWriter.confirmMessageSent(msg.id);
 	}
 
-	async #writeMessageToLog(msg: EventMessageTypes) {
-		await this.logWriter.putMessage(msg);
-	}
+	async #emitMessage(msg: EventMessageTypes) {
+		// generic emit for external modules to capture events
+		this.emit('message', msg);
+		console.log(this.eventNames());
 
-	async #writeConfirmationToLog(id: string) {
-		await this.logWriter.confirmMessageSent(id);
-	}
-
-	async #sendToDestinations(msg: EventMessageTypes) {
-		// if there are no destinations, immediately mark the event as sent
+		// if there are no set up destinations, immediately mark the event as sent
 		if (Object.keys(this.destinations).length === 0) {
 			await this.confirmSent(msg);
 		} else {
 			for (const destinationName of Object.keys(this.destinations)) {
-				await this.destinations[destinationName].receiveFromEventBus(msg);
+				this.emit(this.destinations[destinationName].getName(), msg);
 			}
 		}
 	}

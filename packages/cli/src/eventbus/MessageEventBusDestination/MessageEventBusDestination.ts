@@ -1,16 +1,13 @@
 import { v4 as uuid } from 'uuid';
-import { JsonValue } from 'n8n-workflow';
+import { JsonValue, LoggerProxy } from 'n8n-workflow';
 import {
 	EventMessageSubscriptionSet,
 	EventMessageSubscriptionSetOptions,
 } from './EventMessageSubscriptionSet';
-import {
-	EventMessageGroups,
-	EventMessageNames,
-	EventMessageLevel,
-} from '../types/EventMessageTypes';
 import { Db } from '../..';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
+import { EventMessageLevel, EventMessageTypes } from '../EventMessageClasses';
+import { eventBus } from '..';
 
 export interface MessageEventBusDestinationOptions {
 	id?: string;
@@ -36,6 +33,10 @@ export abstract class MessageEventBusDestination {
 		this.subscriptionSet = options.subscriptionSet
 			? new EventMessageSubscriptionSet(options.subscriptionSet)
 			: new EventMessageSubscriptionSet();
+		eventBus.on(this.getName(), async (msg: EventMessageTypes) => {
+			await this.receiveFromEventBus(msg);
+		});
+		LoggerProxy.debug(`${this.name} event destination initialized`);
 	}
 
 	getName() {
@@ -50,11 +51,11 @@ export abstract class MessageEventBusDestination {
 		this.subscriptionSet = EventMessageSubscriptionSet.deserialize(subscriptionSetOptions);
 	}
 
-	setEventGroups(groups: EventMessageGroups[]) {
+	setEventGroups(groups: string[]) {
 		this.subscriptionSet.setEventGroups(groups);
 	}
 
-	setEventNames(names: EventMessageNames[]) {
+	setEventNames(names: string[]) {
 		this.subscriptionSet.setEventNames(names);
 	}
 
@@ -66,7 +67,7 @@ export abstract class MessageEventBusDestination {
 		const eventGroup = msg.getEventGroup();
 
 		if (
-			this.subscriptionSet.eventLevels.includes('*') ||
+			this.subscriptionSet.eventLevels.includes(EventMessageLevel.allLevels) ||
 			this.subscriptionSet.eventLevels.includes(msg.level)
 		) {
 			if (
@@ -107,9 +108,13 @@ export abstract class MessageEventBusDestination {
 
 	abstract serialize(): JsonValue;
 
-	abstract toString(): string;
-
 	abstract receiveFromEventBus(msg: AbstractEventMessage): Promise<boolean>;
 
-	abstract close(): Promise<void>;
+	toString() {
+		return JSON.stringify(this.serialize());
+	}
+
+	close(): void | Promise<void> {
+		eventBus.removeAllListeners(this.getName());
+	}
 }
