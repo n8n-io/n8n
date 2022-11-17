@@ -10,7 +10,7 @@ import {
 	UpdateHandler,
 } from './OperationHandler';
 
-import { Context } from './GenericFunctions';
+import { Context } from '../GenericFunctions';
 import { IDataObject } from 'n8n-workflow';
 
 export class TodoistService implements Service {

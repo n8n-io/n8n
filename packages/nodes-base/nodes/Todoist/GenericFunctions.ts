@@ -36,8 +36,6 @@ export async function todoistApiRequest(
 		options.body = body;
 	}
 
-	console.log(JSON.stringify(options, null, 2));
-
 	try {
 		const credentialType = authentication === 'apiKey' ? 'todoistApi' : 'todoistOAuth2Api';
 		return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
@@ -58,7 +56,7 @@ export async function todoistSyncRequest(
 		headers: {},
 		method: 'POST',
 		qs,
-		uri: `https://api.todoist.com/sync/v8/sync`,
+		uri: `https://api.todoist.com/sync/v9/sync`,
 		json: true,
 	};
 
