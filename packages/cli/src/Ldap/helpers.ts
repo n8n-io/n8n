@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-use-before-define */
 /* eslint-disable no-param-reassign */
 /* eslint-disable @typescript-eslint/no-shadow */
 import { AES, enc } from 'crypto-js';
@@ -21,6 +22,7 @@ import {
 	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
+	loginDisabledStrategy,
 	SignInType,
 } from './constants';
 import type { LdapConfig, LdapDbColumns } from './types';
@@ -179,6 +181,15 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 		config.syncronizationEnabled = false;
 	}
 
+	// TODO: WRAP this in a transaction
+	if (config.loginDisabledStrategy === loginDisabledStrategy.convertoEmailUsers) {
+		await transformAllLdapUsersToEmailUsers();
+	}
+
+	if (config.loginDisabledStrategy === loginDisabledStrategy.disableAllUsers) {
+		await disableAllLdapUsers();
+	}
+
 	await Db.collections.FeatureConfig.update({ name: LDAP_FEATURE_NAME }, { data: config });
 	setGlobalLdapConfigVariables(config);
 };
@@ -190,17 +201,21 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
  * @returns Promise
  */
 export const handleLdapInit = async (): Promise<void> => {
-	// Do nothing if UM is disabled, as UM
-	// is required for LDAP to work
-	if (!isLdapEnabled()) return;
+	if (!isLdapEnabled()) {
+		// In case the user's is downgrading
+		// convert all LDAP users to email users so they do not
+		// lose access to the instance
+		await transformAllLdapUsersToEmailUsers();
+		return;
+	}
 
-	const adConfig = await getLdapConfig();
+	const ldapConfig = await getLdapConfig();
 
-	setGlobalLdapConfigVariables(adConfig);
+	setGlobalLdapConfigVariables(ldapConfig);
 
 	// init LDAP manager with the current
 	// configuration
-	LdapManager.init(adConfig);
+	LdapManager.init(ldapConfig);
 };
 
 /**
@@ -448,4 +463,15 @@ export const updateLdapUserOnLocalDb = async (ldapUserId: string, data: Partial<
 
 export const transformEmailUserToLdapUser = async (email: string, data: Partial<User>) => {
 	await Db.collections.User.update({ email }, { signInType: SignInType.LDAP, ...data });
+};
+
+export const transformAllLdapUsersToEmailUsers = async () => {
+	return Db.collections.User.update(
+		{ signInType: SignInType.LDAP },
+		{ signInType: SignInType.EMAIL },
+	);
+};
+
+export const disableAllLdapUsers = async () => {
+	return Db.collections.User.update({ signInType: SignInType.LDAP }, { disabled: true });
 };

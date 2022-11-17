@@ -23,6 +23,11 @@ export enum ConnectionSecurity {
 	STARTTLS = 'startTls',
 }
 
+export enum loginDisabledStrategy {
+	convertoEmailUsers = 'convertoToEmailUsers',
+	disableAllUsers = 'disableAllUsers',
+}
+
 export enum RunningMode {
 	DRY = 'dry',
 	LIVE = 'live',
@@ -60,6 +65,9 @@ export const LDAP_CONFIG_SCHEMA = {
 	type: 'object',
 	properties: {
 		emailAttribute: {
+			type: 'string',
+		},
+		loginDisabledStrategy: {
 			type: 'string',
 		},
 		firstNameAttribute: {
