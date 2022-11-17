@@ -841,7 +841,6 @@ export default mixins(
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
 				this.workflowsStore.setWorkflowHash(data.hash);
 
-				// @TODO
 				this.workflowsStore.addWorkflow({
 					id: data.id,
 					name: data.name,
@@ -853,15 +852,22 @@ export default mixins(
 					updatedAt: data.updatedAt,
 					nodes: data.nodes,
 					connections: data.connections,
+					hash: '',
 				});
-				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: data.id,
-					ownedBy: data.ownedBy,
-				});
-				this.workflowsEEStore.setWorkflowSharedWith({
-					workflowId: data.id,
-					sharedWith: data.sharedWith,
-				});
+
+				if (data.ownedBy) {
+					this.workflowsEEStore.setWorkflowOwnedBy({
+						workflowId: data.id,
+						ownedBy: data.ownedBy,
+					});
+				}
+
+				if (data.sharedWith) {
+					this.workflowsEEStore.setWorkflowSharedWith({
+						workflowId: data.id,
+						sharedWith: data.sharedWith,
+					});
+				}
 
 				if (data.usedCredentials) {
 					this.credentialsStore.addCredentials(data.usedCredentials);
@@ -3084,6 +3090,8 @@ export default mixins(
 				return Promise.resolve(data);
 			},
 			resetWorkspace() {
+				this.workflowsStore.resetWorkflow();
+
 				// Reset nodes
 				this.deleteEveryEndpoint();
 
@@ -3104,7 +3112,6 @@ export default mixins(
 				this.workflowsStore.resetAllNodesIssues();
 				// vm.$forceUpdate();
 
-				this.workflowsStore.$patch({ workflow: {} });
 				this.workflowsStore.setActive(false);
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.workflowsStore.setWorkflowName({ newName: '', setStateDirty: false });
