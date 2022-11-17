@@ -134,50 +134,54 @@ EECredentialsController.post(
  * Grant or remove users' access to a credential.
  */
 
-EECredentialsController.put('/:credentialId/share', async (req: CredentialRequest.Share, res) => {
-	const { credentialId } = req.params;
-	const { shareWithIds } = req.body;
+EECredentialsController.put(
+	'/:credentialId/share',
+	ResponseHelper.send(async (req: CredentialRequest.Share) => {
+		const { credentialId } = req.params;
+		const { shareWithIds } = req.body;
 
-	if (!Array.isArray(shareWithIds) || !shareWithIds.every((userId) => typeof userId === 'string')) {
-		return res.status(400).send('Bad Request');
-	}
-
-	const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
-
-	if (!ownsCredential || !credential) {
-		return res.status(403).send();
-	}
-
-	let amountRemoved: number | null = null;
-	let newShareeIds: string[] = [];
-	await Db.transaction(async (trx) => {
-		// remove all sharings that are not supposed to exist anymore
-		const { affected } = await EECredentials.pruneSharings(trx, credentialId, [
-			req.user.id,
-			...shareWithIds,
-		]);
-		if (affected) amountRemoved = affected;
-
-		const sharings = await EECredentials.getSharings(trx, credentialId);
-
-		// extract the new sharings that need to be added
-		newShareeIds = rightDiff(
-			[sharings, (sharing) => sharing.userId],
-			[shareWithIds, (shareeId) => shareeId],
-		);
-
-		if (newShareeIds.length) {
-			await EECredentials.share(trx, credential, newShareeIds);
+		if (
+			!Array.isArray(shareWithIds) ||
+			!shareWithIds.every((userId) => typeof userId === 'string')
+		) {
+			throw new ResponseHelper.ResponseError('Bad request', undefined, 400);
 		}
-	});
 
-	void InternalHooksManager.getInstance().onUserSharedCredentials({
-		credential_type: credential.type,
-		credential_id: credential.id.toString(),
-		user_id_sharer: req.user.id,
-		user_ids_sharees_added: newShareeIds,
-		sharees_removed: amountRemoved,
-	});
+		const { ownsCredential, credential } = await EECredentials.isOwned(req.user, credentialId);
 
-	return res.status(200).send();
-});
+		if (!ownsCredential || !credential) {
+			throw new ResponseHelper.ResponseError('Forbidden', undefined, 403);
+		}
+
+		let amountRemoved: number | null = null;
+		let newShareeIds: string[] = [];
+		await Db.transaction(async (trx) => {
+			// remove all sharings that are not supposed to exist anymore
+			const { affected } = await EECredentials.pruneSharings(trx, credentialId, [
+				req.user.id,
+				...shareWithIds,
+			]);
+			if (affected) amountRemoved = affected;
+
+			const sharings = await EECredentials.getSharings(trx, credentialId);
+
+			// extract the new sharings that need to be added
+			newShareeIds = rightDiff(
+				[sharings, (sharing) => sharing.userId],
+				[shareWithIds, (shareeId) => shareeId],
+			);
+
+			if (newShareeIds.length) {
+				await EECredentials.share(trx, credential, newShareeIds);
+			}
+		});
+
+		void InternalHooksManager.getInstance().onUserSharedCredentials({
+			credential_type: credential.type,
+			credential_id: credential.id.toString(),
+			user_id_sharer: req.user.id,
+			user_ids_sharees_added: newShareeIds,
+			sharees_removed: amountRemoved,
+		});
+	}),
+);

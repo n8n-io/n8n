@@ -104,7 +104,7 @@ export default Vue.extend({
 			const found = this.items.find((item) => {
 				return (
 					(Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.$route.name ?? '')) ||
+						item.activateOnRouteNames.includes(this.$route.name || '')) ||
 					(Array.isArray(item.activateOnRoutePaths) &&
 						item.activateOnRoutePaths.includes(this.$route.path))
 				);
