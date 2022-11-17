@@ -870,7 +870,7 @@ export default mixins(
 				}
 
 				if (data.usedCredentials) {
-					this.credentialsStore.addCredentials(data.usedCredentials);
+					this.workflowsStore.setUsedCredentials(data.usedCredentials);
 				}
 
 				const tags = (data.tags || []) as ITag[];
@@ -2409,10 +2409,10 @@ export default mixins(
 					}
 
 					if (newNodeData.credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
-						const foreignCredentials = this.credentialsStore.foreignCredentialsById;
+						const usedCredentials = this.workflowsStore.usedCredentials;
 						newNodeData.credentials = Object.fromEntries(
 							Object.entries(newNodeData.credentials).filter(([_, credential]) => {
-								return credential.id && (!foreignCredentials[credential.id] || foreignCredentials[credential.id]?.currentUserHasAccess);
+								return credential.id && (!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess);
 							}),
 						);
 					}
