@@ -1,5 +1,5 @@
 import { IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { difference, get, intersection, isEmpty, isEqual, set, union } from 'lodash';
+import { difference, get, intersection, isEmpty, isEqual, omit, set, union } from 'lodash';
 
 type PairToMatch = {
 	field1: string;
@@ -15,7 +15,8 @@ function compareItems(
 	item1: INodeExecutionData,
 	item2: INodeExecutionData,
 	fieldsToMatch: PairToMatch[],
-	resolve?: string,
+	resolve: string,
+	skipFields: string[],
 ) {
 	const keys = {} as IDataObject;
 	fieldsToMatch.forEach((field) => {
@@ -38,6 +39,7 @@ function compareItems(
 	const differentKeys = difference(allUniqueKeys, sameKeys);
 
 	const different: IDataObject = {};
+	const skipped: IDataObject = {};
 
 	differentKeys.forEach((key) => {
 		switch (resolve) {
@@ -50,11 +52,17 @@ function compareItems(
 			default:
 				const input1 = item1.json[key] || null;
 				const input2 = item2.json[key] || null;
-				different[key] = { input1, input2 };
+				if (skipFields.includes(key)) {
+					skipped[key] = { input1, input2 };
+				} else {
+					different[key] = { input1, input2 };
+				}
 		}
 	});
 
-	return { json: { keys, same, different } } as INodeExecutionData;
+	return {
+		json: { keys, same, different, ...(!isEmpty(skipped) && { skipped }) },
+	} as INodeExecutionData;
 }
 
 function combineItems(
@@ -157,6 +165,7 @@ export function findMatches(
 
 	const disableDotNotation = (options.disableDotNotation as boolean) || false;
 	const multipleMatches = (options.multipleMatches as string) || 'first';
+	const skipFields = ((options.skipFields as string) || '').split(',').map((field) => field.trim());
 
 	const filteredData = {
 		matched: [] as EntryMatches[],
@@ -214,7 +223,14 @@ export function findMatches(
 		let entryCopy: INodeExecutionData | undefined;
 
 		entryMatches.matches.forEach((match) => {
-			if (isEqual(entryMatches.entry.json, match.json)) {
+			let entryFromInput1 = entryMatches.entry.json;
+			let entryFromInput2 = match.json;
+
+			if (skipFields.length) {
+				entryFromInput1 = omit(entryFromInput1, skipFields);
+				entryFromInput2 = omit(entryFromInput2, skipFields);
+			}
+			if (isEqual(entryFromInput1, entryFromInput2)) {
 				if (!entryCopy) entryCopy = match;
 			} else {
 				switch (options.resolve) {
@@ -237,7 +253,13 @@ export function findMatches(
 						break;
 					default:
 						different.push(
-							compareItems(entryMatches.entry, match, fieldsToMatch, options.resolve as string),
+							compareItems(
+								entryMatches.entry,
+								match,
+								fieldsToMatch,
+								options.resolve as string,
+								skipFields,
+							),
 						);
 				}
 			}
@@ -274,6 +296,12 @@ export function checkInput(
 	disableDotNotation: boolean,
 	inputLabel: string,
 ) {
+	if (input.some((item) => isEmpty(item.json))) {
+		input = input.filter((item) => !isEmpty(item.json));
+	}
+	if (input.length === 0) {
+		return input;
+	}
 	for (const field of fields) {
 		const isPresent = (input || []).some((entry) => {
 			if (disableDotNotation) {

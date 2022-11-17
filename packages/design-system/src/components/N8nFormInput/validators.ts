@@ -49,7 +49,7 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 				return false;
 			}
 
-			const numberCount = (value.match(/\d/g) ?? []).length;
+			const numberCount = (value.match(/\d/g) || []).length;
 			if (numberCount < config.minimum) {
 				return {
 					messageKey: 'formInput.validator.numbersRequired',
@@ -77,7 +77,7 @@ export const VALIDATORS: { [key: string]: IValidator | RuleGroup } = {
 				return false;
 			}
 
-			const uppercaseCount = (value.match(/[A-Z]/g) ?? []).length;
+			const uppercaseCount = (value.match(/[A-Z]/g) || []).length;
 			if (uppercaseCount < config.minimum) {
 				return {
 					messageKey: 'formInput.validator.uppercaseCharsRequired',
