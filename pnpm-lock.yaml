@@ -251,7 +251,7 @@ importers:
       n8n-core: link:../core
       n8n-editor-ui: link:../editor-ui
       n8n-nodes-base: link:../nodes-base
-      n8n-workflow: link:../workflow
+      n8n-workflow: 0.124.1
       nodemailer: 6.8.0
       oauth-1.0a: 2.2.6
       open: 7.4.2
@@ -352,7 +352,7 @@ importers:
       form-data: 4.0.0
       lodash.get: 4.4.2
       mime-types: 2.1.35
-      n8n-workflow: link:../workflow
+      n8n-workflow: 0.124.1
       oauth-1.0a: 2.2.6
       p-cancelable: 2.1.1
       qs: 6.11.0
@@ -569,7 +569,7 @@ importers:
       luxon: 2.3.2
       monaco-editor: 0.33.0
       n8n-design-system: link:../design-system
-      n8n-workflow: link:../workflow
+      n8n-workflow: 0.124.1
       normalize-wheel: 1.0.1
       pinia: 2.0.23_xjcbg5znturqejtkpd33hx726m
       prismjs: 1.29.0
@@ -645,7 +645,7 @@ importers:
       fast-glob: 3.2.12
       inquirer: 7.3.3
       n8n-core: link:../core
-      n8n-workflow: link:../workflow
+      n8n-workflow: 0.124.1
       oauth-1.0a: 2.2.6
       replace-in-file: 6.3.5
       request: 2.88.2
@@ -832,7 +832,7 @@ importers:
       '@types/xml2js': 0.4.11
       eslint-plugin-n8n-nodes-base: 1.11.0_wyqvi574yv7oiwfeinomdzmc3m
       gulp: 4.0.2
-      n8n-workflow: link:../workflow
+      n8n-workflow: 0.124.1
 
   packages/workflow:
     specifiers:
@@ -3328,7 +3328,6 @@ packages:
     resolution: {integrity: sha512-+ig7/rafN3LGthGEi8fs1N5XxPndmRq5YAX92DWOar9mrMDrYyIjK5XAQaTnTMDQgmKKllrAl+bVRmQXKcLFuw==}
     dependencies:
       eslint-config-riot: 1.0.0
-    dev: false
 
   /@ngneat/falso/6.1.0:
     resolution: {integrity: sha512-eka5OxW65B1RphpLJ04Pd4PEkrmTab/Ut50K0OceAdM+O+MZA7YF9xo51uZgkxbhg8bJ5zEh5vucDRMSofcqsw==}
@@ -10525,6 +10524,7 @@ packages:
 
   /entities/2.1.0:
     resolution: {integrity: sha512-hCx1oky9PFrJ611mf0ifBLBRW8lUUVRlFolb5gWRfIELabBlbp9xZvrqZLZAs+NxFnbfQoeGd8wDkygjg7U85w==}
+    dev: false
 
   /entities/2.2.0:
     resolution: {integrity: sha512-p92if5Nz619I0w+akJrLZH0MX0Pb5DX39XOwQTtXSdQQOaYH03S1uIQp4mhOZtAXrxq4ViO67YTiLBo2638o9A==}
@@ -10958,7 +10958,6 @@ packages:
 
   /eslint-config-riot/1.0.0:
     resolution: {integrity: sha512-NB/L/1Y30qyJcG5xZxCJKW/+bqyj+llbcCwo9DEz8bESIP0SLTOQ8T1DWCCFc+wJ61AMEstj4511PSScqMMfCw==}
-    dev: false
 
   /eslint-import-resolver-node/0.3.6:
     resolution: {integrity: sha512-0En0w03NRVMn9Uiyn8YRPDKvWjxCWkslUEhGNTdGx15RvPJYQ+lbOlqrlNI2vEAs4pDYK4f/HN2TbDmk5TP0iw==}
@@ -14328,7 +14327,6 @@ packages:
   /jmespath/0.16.0:
     resolution: {integrity: sha512-9FzQjJ7MATs1tSpnco1K6ayiYE3figslrXA72G2HQ/n76RzvYlofyi5QM+iX4YRs/pu3yzxlVQSST23+dMDknw==}
     engines: {node: '>= 0.6.0'}
-    dev: false
 
   /joi/17.7.0:
     resolution: {integrity: sha512-1/ugc8djfn93rTE3WRKdCzGGt/EtiYKxITMO4Wiv6q5JL1gl9ePt4kBsl1S499nbosspfctIQTpYIhSmHA3WAg==}
@@ -14897,6 +14895,7 @@ packages:
     resolution: {integrity: sha512-ynTsyrFSdE5oZ/O9GEf00kPngmOfVwazR5GKDq6EYfhlpFug3J2zybX56a2PRRpc9P+FuSoGNAwjlbDs9jJBPQ==}
     dependencies:
       uc.micro: 1.0.6
+    dev: false
 
   /linkify-it/4.0.0:
     resolution: {integrity: sha512-QAxkXyzT/TXgwGyY4rTgC95Ex6/lZ5/lYTV9nug6eJt93BCBQGOE47D/g2+/m5J1MrVLr2ot97OXkBZ9bBpR4A==}
@@ -15124,7 +15123,6 @@ packages:
 
   /lodash.set/4.3.2:
     resolution: {integrity: sha512-4hNPN5jlm/N/HLMCO43v8BXKq9Z7QdAGc/VGrRD61w8gN9g/6jF9A4L1pbUgBLCffi0w9VsXfTOij5x8iTyFvg==}
-    dev: false
 
   /lodash.split/4.4.2:
     resolution: {integrity: sha512-kn1IDX0aHfg0FsnPIyxCHTamZXt3YK3aExRH1LW8YhzP6+sCldTm8+E4aIg+nSmM6R4eqdWGrXWtfYI961bwIw==}
@@ -15253,7 +15251,6 @@ packages:
   /luxon/2.3.2:
     resolution: {integrity: sha512-MlAQQVMFhGk4WUA6gpfsy0QycnKP0+NlCBJRVRNPxxSIbjrCbQ65nrpJD3FVyJNZLuJ0uoqL57ye6BmDYgHaSw==}
     engines: {node: '>=12'}
-    dev: false
 
   /lz-string/1.4.4:
     resolution: {integrity: sha512-0ckx7ZHRPqb0oUm8zNr+90mtf9DQB60H1wMCjBtfi62Kl3a7JbHob6gA2bC+xRvZoOL+1hzUK8jeuEIQE8svEQ==}
@@ -15915,6 +15912,18 @@ packages:
       object-assign: 4.1.1
       thenify-all: 1.6.0
     dev: false
+
+  /n8n-workflow/0.124.1:
+    resolution: {integrity: sha512-OGmvsyqhXuWNAL2BahAAodPhSJjgvSG6Kh5WR94KDnYjTogVX8tHUmgdOQHxdh3yam2EED9wLhmwH35BCxHWfQ==}
+    dependencies:
+      '@n8n_io/riot-tmpl': 1.0.1
+      jmespath: 0.16.0
+      lodash.get: 4.4.2
+      lodash.isequal: 4.5.0
+      lodash.merge: 4.6.2
+      lodash.set: 4.3.2
+      luxon: 2.3.2
+      xml2js: 0.4.23
 
   /named-placeholders/1.1.2:
     resolution: {integrity: sha512-wiFWqxoLL3PGVReSZpjLVxyJ1bRqe+KKJVbr4hGs1KWfTZTQyezHFBbuKj9hsizHyGV2ne7EMjHdxEGAybD5SA==}
@@ -18812,7 +18821,6 @@ packages:
 
   /sax/1.2.4:
     resolution: {integrity: sha512-NqVDv9TpANUjFm0N8uM5GxL36UgKi9/atZw+x7YFnQ8ckwFGKrl4xX4yWtrey3UJm5nP1kUbnYgLopqWNSRhWw==}
-    dev: false
 
   /saxes/5.0.1:
     resolution: {integrity: sha512-5LBh1Tls8c9xgGjw3QrMwETmTMVk0oFgvrFSvWx62llR2hcEInrKNZ2GZCCuuy2lvWrdl5jhbpeqc5hRYKFOcw==}
@@ -22333,12 +22341,10 @@ packages:
     dependencies:
       sax: 1.2.4
       xmlbuilder: 11.0.1
-    dev: false
 
   /xmlbuilder/11.0.1:
     resolution: {integrity: sha512-fDlsI/kFEx7gLvbecc0/ohLG50fugQp8ryHzMTuW9vSa1GJ0XYWKnhsUx7oie3G98+r56aTQIUB4kht42R3JvA==}
     engines: {node: '>=4.0'}
-    dev: false
 
   /xmlbuilder/9.0.7:
     resolution: {integrity: sha512-7YXTQc3P2l9+0rjaUbLwMKRhtmwg1M1eDf6nag7urC7pIPYLD9W/jmzQ4ptRSUbodw5S0jfoGTflLemQibSpeQ==}
