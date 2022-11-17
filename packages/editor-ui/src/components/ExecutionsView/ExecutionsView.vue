@@ -332,9 +332,12 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				const activeNotInTheList = existingExecutions.find(ex => ex.id === this.activeExecution.id) === undefined;
 				if (activeNotInTheList && this.executions.length > 0) {
 					this.$router.push({
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
-				}).catch(()=>{});;
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+					}).catch(()=>{});
+				} else if (this.executions.length === 0) {
+					this.$router.push({ name: VIEWS.EXECUTION_HOME }).catch(()=>{});
+					this.workflowsStore.activeWorkflowExecution = null;
 				}
 			}
 		},
