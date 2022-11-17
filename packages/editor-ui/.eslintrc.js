@@ -52,5 +52,6 @@ module.exports = {
 		'@typescript-eslint/return-await': 'off',
 		'@typescript-eslint/unbound-method': 'off',
 		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
+		// 'vue/valid-v-slot': 'off',
 	},
 };

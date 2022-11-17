@@ -32,7 +32,7 @@
 						<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
 							<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
 								<n8n-avatar :firstName="usersStore.currentUser.firstName" :lastName="usersStore.currentUser.lastName" size="small" />
-								<template #dropdown>
+								<template slot="dropdown">
 									<el-dropdown-menu>
 										<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
 										<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>

@@ -6,7 +6,7 @@
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
-					<template #title>
+					<template slot="title">
 						<n8n-heading size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
 					</template>
 				</div>
