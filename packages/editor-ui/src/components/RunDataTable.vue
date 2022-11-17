@@ -53,7 +53,7 @@
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]: i === activeColumn && mappingEnabled,
+											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
@@ -202,6 +202,7 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			activeColumn: -1,
+			forceShowGrip: false,
 			draggedColumn: false,
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
@@ -233,6 +234,9 @@ export default mixins(externalHooks).extend({
 		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
+		},
+		focusedMappableInput(): string {
+			return this.ndvStore.focusedMappableInput;
 		},
 	},
 	methods: {
@@ -492,6 +496,16 @@ export default mixins(externalHooks).extend({
 		},
 		switchToJsonView(){
 			this.$emit('displayModeChange', 'json');
+		},
+	},
+	watch: {
+		focusedMappableInput(curr: boolean) {
+			setTimeout(
+				() => {
+					this.forceShowGrip = !!this.focusedMappableInput;
+				},
+				curr ? 300 : 150,
+			);
 		},
 	},
 });
