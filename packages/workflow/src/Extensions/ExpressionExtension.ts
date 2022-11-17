@@ -7,6 +7,7 @@ import { arrayExtensions } from './ArrayExtensions';
 import { dateExtensions } from './DateExtensions';
 import { numberExtensions } from './NumberExtensions';
 import { stringExtensions } from './StringExtensions';
+import { objectExtensions } from './ObjectExtensions';
 
 const EXPRESSION_EXTENDER = 'extend';
 
@@ -18,7 +19,13 @@ function isPresent(value: unknown) {
 	return !isBlank(value);
 }
 
-const EXTENSION_OBJECTS = [arrayExtensions, dateExtensions, numberExtensions, stringExtensions];
+const EXTENSION_OBJECTS = [
+	arrayExtensions,
+	dateExtensions,
+	numberExtensions,
+	objectExtensions,
+	stringExtensions,
+];
 
 // eslint-disable-next-line @typescript-eslint/ban-types
 const genericExtensions: Record<string, Function> = {
@@ -32,6 +39,7 @@ const EXPRESSION_EXTENSION_METHODS = Array.from(
 		...Object.keys(numberExtensions.functions),
 		...Object.keys(dateExtensions.functions),
 		...Object.keys(arrayExtensions.functions),
+		...Object.keys(objectExtensions.functions),
 		...Object.keys(genericExtensions),
 	]),
 );
@@ -137,10 +145,14 @@ export const extendTransform = (expression: string): { code: string } | undefine
 };
 
 function isDate(input: unknown): boolean {
-	if (typeof input !== 'string') {
+	if (typeof input !== 'string' || !input.length) {
 		return false;
 	}
-	return DateTime.fromISO(input).isValid;
+	if (!/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}.\d{3}Z/.test(input)) {
+		return false;
+	}
+	const d = new Date(input);
+	return d instanceof Date && !isNaN(d.valueOf()) && d.toISOString() === input;
 }
 
 /**
@@ -155,8 +167,10 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 	let foundFunction: Function | undefined;
 	if (Array.isArray(input)) {
 		foundFunction = arrayExtensions.functions[functionName];
-	} else if (isDate(input)) {
-		// If it's a string date (from $json), convert it to a Date object
+	} else if (isDate(input) && functionName !== 'toDate') {
+		// If it's a string date (from $json), convert it to a Date object,
+		// unless that function is `toDate`, since `toDate` does something
+		// very different on date objects
 		input = new Date(input as string);
 		foundFunction = dateExtensions.functions[functionName];
 	} else if (typeof input === 'string') {
@@ -165,6 +179,8 @@ export function extend(input: unknown, functionName: string, args: unknown[]) {
 		foundFunction = numberExtensions.functions[functionName];
 	} else if (input && (DateTime.isDateTime(input) || input instanceof Date)) {
 		foundFunction = dateExtensions.functions[functionName];
+	} else if (input !== null && typeof input === 'object') {
+		foundFunction = objectExtensions.functions[functionName];
 	}
 
 	// Look for generic or builtin

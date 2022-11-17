@@ -1,9 +1,10 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 // import { createHash } from 'crypto';
 import * as ExpressionError from '../ExpressionError';
-import { ExtensionMap } from './Extensions';
+import type { ExtensionMap } from './Extensions';
 import CryptoJS from 'crypto-js';
 import { encode } from 'js-base64';
+import { transliterate } from 'transliteration';
 
 const hashFunctions: Record<string, typeof CryptoJS.MD5> = {
 	md5: CryptoJS.MD5,
@@ -15,6 +16,23 @@ const hashFunctions: Record<string, typeof CryptoJS.MD5> = {
 	sha3: CryptoJS.SHA3,
 	ripemd160: CryptoJS.RIPEMD160,
 };
+
+// All symbols from https://www.xe.com/symbols/ as for 2022/11/09
+const CURRENCY_REGEXP =
+	/(\u004c\u0065\u006b|\u060b|\u0024|\u0192|\u20bc|\u0042\u0072|\u0042\u005a\u0024|\u0024\u0062|\u004b\u004d|\u0050|\u043b\u0432|\u0052\u0024|\u17db|\u00a5|\u20a1|\u006b\u006e|\u20b1|\u004b\u010d|\u006b\u0072|\u0052\u0044\u0024|\u00a3|\u20ac|\u00a2|\u0051|\u004c|\u0046\u0074|\u20b9|\u0052\u0070|\ufdfc|\u20aa|\u004a\u0024|\u20a9|\u20ad|\u0434\u0435\u043d|\u0052\u004d|\u20a8|\u20ae|\u004d\u0054|\u0043\u0024|\u20a6|\u0042\u002f\u002e|\u0047\u0073|\u0053\u002f\u002e|\u007a\u0142|\u006c\u0065\u0069|\u20bd|\u0414\u0438\u043d\u002e|\u0053|\u0052|\u0043\u0048\u0046|\u004e\u0054\u0024|\u0e3f|\u0054\u0054\u0024|\u20ba|\u20b4|\u0024\u0055|\u0042\u0073|\u20ab|\u005a\u0024)/gu;
+const DOMAIN_REGEXP = /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9](?:\.[a-zA-Z]{2,})+$/;
+
+// This won't validate or catch literally valid email address, just what most people
+// would expect
+const EMAIL_REGEXP =
+	/(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@(?<domain>(\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))/;
+
+// This also might not catch every possible URL
+const URL_REGEXP =
+	/https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{2,}\b([-a-zA-Z0-9()\[\]@:%_\+.~#?&//=]*)/;
+
+const TRUE_VALUES = ['true', '1', 't', 'yes', 'y'];
+const FALSE_VALUES = ['false', '0', 'f', 'no', 'n'];
 
 function encrypt(value: string, extraArgs?: unknown): string {
 	const [format = 'MD5'] = extraArgs as string[];
@@ -129,6 +147,103 @@ function urlEncode(value: string, extraArgs: boolean[]): string {
 	return encodeURIComponent(value.toString());
 }
 
+function toInt(value: string, extraArgs: Array<number | undefined>) {
+	const [radix] = extraArgs;
+	return parseInt(value.replace(CURRENCY_REGEXP, ''), radix);
+}
+
+function toFloat(value: string) {
+	return parseFloat(value.replace(CURRENCY_REGEXP, ''));
+}
+
+function quote(value: string, extraArgs: string[]) {
+	const [quoteChar = '"'] = extraArgs;
+	return `${quoteChar}${value
+		.replace(/\\/g, '\\\\')
+		.replace(new RegExp(`\\${quoteChar}`, 'g'), `\\${quoteChar}`)}${quoteChar}`;
+}
+
+function isTrue(value: string) {
+	return TRUE_VALUES.includes(value.toLowerCase());
+}
+
+function isFalse(value: string) {
+	return FALSE_VALUES.includes(value.toLowerCase());
+}
+
+function isNumeric(value: string) {
+	return !isNaN(value as unknown as number) && !isNaN(parseFloat(value));
+}
+
+function isUrl(value: string) {
+	let url: URL;
+	try {
+		url = new URL(value);
+	} catch (_error) {
+		return false;
+	}
+	return url.protocol === 'http:' || url.protocol === 'https:';
+}
+
+function isDomain(value: string) {
+	return DOMAIN_REGEXP.test(value);
+}
+
+function isEmail(value: string) {
+	return EMAIL_REGEXP.test(value);
+}
+
+function stripSpecialChars(value: string) {
+	return transliterate(value, { unknown: '?' });
+}
+
+function toTitleCase(value: string) {
+	return value.replace(/\w\S*/g, (v) => v.charAt(0).toLocaleUpperCase() + v.slice(1));
+}
+
+function toSentenceCase(value: string) {
+	return value
+		.split('. ')
+		.map((v) => v.charAt(0).toLocaleUpperCase() + v.slice(1).toLocaleLowerCase());
+}
+
+function toSnakeCase(value: string) {
+	return value
+		.toLocaleLowerCase()
+		.replace(/[ \-]/g, '_')
+		.replace(/[\u2000-\u206F\u2E00-\u2E7F\\'!"#$%&()*+,.\/:;<=>?@\[\]^`{|}~]/g, '');
+}
+
+function extractEmail(value: string) {
+	const matched = EMAIL_REGEXP.exec(value);
+	if (!matched) {
+		return undefined;
+	}
+	return matched[0];
+}
+
+function extractDomain(value: string) {
+	if (isEmail(value)) {
+		const matched = EMAIL_REGEXP.exec(value);
+		// This shouldn't happen
+		if (!matched) {
+			return undefined;
+		}
+		return matched.groups?.domain;
+	} else if (isUrl(value)) {
+		return new URL(value).hostname;
+	}
+	return undefined;
+}
+
+function extractUrl(value: string) {
+	const matched = URL_REGEXP.exec(value);
+	if (!matched) {
+		return undefined;
+	}
+	return matched[0];
+}
+
 export const stringExtensions: ExtensionMap = {
 	typeName: 'String',
 	functions: {
@@ -138,11 +253,32 @@ export const stringExtensions: ExtensionMap = {
 		removeMarkdown,
 		sayHi,
 		stripTags,
+		toBoolean: isTrue,
 		toDate,
+		toDecimalNumber: toFloat,
+		toFloat,
+		toInt,
+		toWholeNumber: toInt,
+		toSentenceCase,
+		toSnakeCase,
+		toTitleCase,
 		urlDecode,
 		urlEncode,
+		quote,
+		stripSpecialChars,
 		length,
+		isDomain,
+		isEmail,
+		isTrue,
+		isFalse,
+		isNotTrue: isFalse,
+		isNumeric,
+		isUrl,
+		isURL: isUrl,
 		isBlank,
 		isPresent,
+		extractEmail,
+		extractDomain,
+		extractUrl,
 	},
 };

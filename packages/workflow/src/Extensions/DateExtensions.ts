@@ -8,7 +8,7 @@ import {
 	DurationObjectUnits,
 	LocaleOptions,
 } from 'luxon';
-import { ExtensionMap } from './Extensions';
+import type { ExtensionMap } from './Extensions';
 
 type DurationUnit =
 	| 'milliseconds'
@@ -236,12 +236,15 @@ function timeTo(date: Date | DateTime, extraArgs: unknown[]): Duration {
 	return DateTime.fromJSDate(date).diff(DateTime.fromJSDate(diffDate), DURATION_MAP[unit] || unit);
 }
 
-// Small hack since we parse all ISO strings to dates
 function toDate(date: Date | DateTime) {
 	if (isDateTime(date)) {
-		return date.toJSDate();
+		return date.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).toJSDate();
 	}
-	return date;
+	let datetime = DateTime.fromJSDate(date);
+	if (date.getTimezoneOffset() === 0) {
+		datetime = datetime.setZone('UTC');
+	}
+	return datetime.set({ hour: 0, minute: 0, second: 0, millisecond: 0 }).toJSDate();
 }
 
 export const dateExtensions: ExtensionMap = {
