@@ -91,7 +91,10 @@ export default Vue.extend({
 
 <style lang="scss">
 .expression-result-wrapper .cm-content {
-	border: 1px solid var(--color-secondary);
 	background-color: var(--color-background-lighter);
+}
+
+.expression-result-wrapper .cm-scroller {
+	border: 1px solid var(--color-secondary);
 }
 </style>

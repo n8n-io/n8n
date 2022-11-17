@@ -41,20 +41,18 @@
 								@change="valueChanged"
 								ref="inputFieldExpression"
 							/>
-							<!-- <expression-input :parameter="parameter" ref="inputFieldExpression" rows="8" :value="value" :path="path" @change="valueChanged" @keydown.stop="noOp"></expression-input> -->
 						</div>
 					</div>
 
 					<div class="expression-result-wrapper">
 						<div class="editor-description">
-							{{ $locale.baseText('expressionEdit.result') }}
+							{{ $locale.baseText('expressionEdit.resultOfItem1') }}
 						</div>
 						<div class="ph-no-capture">
 							<expression-modal-output
 								:segments="segments"
 								ref="expressionResult"
 							/>
-							<!-- <expression-input :parameter="parameter" resolvedValue="true" ref="expressionResult" rows="8" :value="displayValue" :path="path"></expression-input> -->
 						</div>
 					</div>
 
@@ -66,7 +64,6 @@
 </template>
 
 <script lang="ts">
-import ExpressionInput from '@/components/ExpressionInput.vue';
 import ExpressionModalInput from '@/components/ExpressionEditorModal/ExpressionModalInput.vue';
 import ExpressionModalOutput from '@/components/ExpressionEditorModal/ExpressionModalOutput.vue';
 import VariableSelector from '@/components/VariableSelector.vue';
@@ -101,7 +98,6 @@ export default mixins(
 		'eventSource',
 	],
 	components: {
-		ExpressionInput,
 		ExpressionModalInput,
 		ExpressionModalOutput,
 		VariableSelector,
