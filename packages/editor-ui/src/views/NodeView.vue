@@ -834,26 +834,13 @@ export default mixins(
 					);
 				}
 
+				this.workflowsStore.addWorkflow(data);
 				this.workflowsStore.setActive(data.active || false);
 				this.workflowsStore.setWorkflowId(workflowId);
 				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
 				this.workflowsStore.setWorkflowSettings(data.settings || {});
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
 				this.workflowsStore.setWorkflowHash(data.hash);
-
-				this.workflowsStore.addWorkflow({
-					id: data.id,
-					name: data.name,
-					ownedBy: data.ownedBy,
-					sharedWith: data.sharedWith,
-					tags: data.tags || [],
-					active: data.active,
-					createdAt: data.createdAt,
-					updatedAt: data.updatedAt,
-					nodes: data.nodes,
-					connections: data.connections,
-					hash: '',
-				});
 
 				if (data.ownedBy) {
 					this.workflowsEEStore.setWorkflowOwnedBy({
