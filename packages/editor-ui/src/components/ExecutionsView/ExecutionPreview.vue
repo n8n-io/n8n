@@ -6,7 +6,7 @@
 		<n8n-text :class="$style.runningMessage">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
-		<n8n-button class="mt-l" type="tertiary" size="large" icon="stop" @click="handleStopClick">
+		<n8n-button class="mt-l" type="tertiary" size="medium" icon="stop" @click="handleStopClick">
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
