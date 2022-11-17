@@ -14,7 +14,6 @@ import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { LoggerProxy } from 'n8n-workflow';
 import * as TagHelpers from '@/TagHelpers';
 import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
-import { WorkflowsService } from './workflows.services';
 import { IExecutionPushResponse } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 
@@ -197,7 +196,7 @@ EEWorkflowController.post(
 EEWorkflowController.get(
 	'/',
 	ResponseHelper.send(async (req: WorkflowRequest.GetAll) => {
-		const workflows = (await WorkflowsService.getMany(
+		const workflows = (await EEWorkflows.getMany(
 			req.user,
 			req.query.filter,
 		)) as unknown as WorkflowEntity[];
@@ -222,7 +221,7 @@ EEWorkflowController.patch(
 
 		const safeWorkflow = await EEWorkflows.preventTampering(updateData, workflowId, req.user);
 
-		const updatedWorkflow = await WorkflowsService.update(
+		const updatedWorkflow = await EEWorkflows.update(
 			req.user,
 			safeWorkflow,
 			workflowId,
@@ -256,6 +255,6 @@ EEWorkflowController.post(
 
 		req.body.workflowData.nodes = safeWorkflow.nodes;
 
-		return WorkflowsService.runManually(req.body, req.user, GenericHelpers.getSessionId(req));
+		return EEWorkflows.runManually(req.body, req.user, GenericHelpers.getSessionId(req));
 	}),
 );
