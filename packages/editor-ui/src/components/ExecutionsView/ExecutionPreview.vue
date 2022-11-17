@@ -1,12 +1,12 @@
 <template>
 	<div v-if="executionUIDetails && executionUIDetails.name === 'running'" :class="$style.runningInfo">
 		<div :class="$style.spinner">
-			<font-awesome-icon icon="spinner" spin />
+			<n8n-spinner type="ring" />
 		</div>
-		<n8n-text :class="$style.runningMessage">
+		<n8n-text :class="$style.runningMessage" color="text-light">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
-		<n8n-button class="mt-l" type="tertiary" size="medium" icon="stop" @click="handleStopClick">
+		<n8n-button class="mt-l" type="tertiary" size="medium" @click="handleStopClick">
 			{{ $locale.baseText('executionsList.stopExecution') }}
 		</n8n-button>
 	</div>
@@ -152,6 +152,14 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	}
 }
 
+.spinner {
+	div div {
+		width: 30px;
+		height: 30px;
+		border-width: 2px;
+	}
+}
+
 .running, .spinner { color: var(--color-warning); }
 .waiting { color: var(--color-secondary); }
 .success { color: var(--color-success); }
@@ -162,11 +170,6 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	flex-direction: column;
 	align-items: center;
 	margin-top: var(--spacing-4xl);
-}
-
-.spinner {
-	font-size: var(--font-size-2xl);
-	color: var(--color-primary);
 }
 
 .runningMessage {
