@@ -120,6 +120,7 @@ importers:
       '@types/lodash.set': ^4.3.6
       '@types/lodash.split': ^4.4.7
       '@types/lodash.unionby': ^4.8.7
+      '@types/lodash.uniqby': ^4.7.7
       '@types/lodash.unset': ^4.5.7
       '@types/parseurl': ^1.3.1
       '@types/passport-jwt': ^3.0.6
@@ -174,6 +175,7 @@ importers:
       lodash.set: ^4.3.2
       lodash.split: ^4.4.2
       lodash.unionby: ^4.8.0
+      lodash.uniqby: ^4.7.0
       lodash.unset: ^4.5.2
       luxon: ^3.1.0
       mysql2: ~2.3.0
@@ -260,6 +262,7 @@ importers:
       lodash.set: 4.3.2
       lodash.split: 4.4.2
       lodash.unionby: 4.8.0
+      lodash.uniqby: 4.7.0
       lodash.unset: 4.5.2
       luxon: 3.1.0
       mysql2: 2.3.3
@@ -317,6 +320,7 @@ importers:
       '@types/lodash.set': 4.3.7
       '@types/lodash.split': 4.4.7
       '@types/lodash.unionby': 4.8.7
+      '@types/lodash.uniqby': 4.7.7
       '@types/lodash.unset': 4.5.7
       '@types/parseurl': 1.3.1
       '@types/passport-jwt': 3.0.7
@@ -5827,6 +5831,12 @@ packages:
 
   /@types/lodash.unionby/4.8.7:
     resolution: {integrity: sha512-Hf8IGRLQlcsxo1JpFWSoefjedUVM1Kp6W7RAk2WKitYj4dt/oHfOXi9wkLPAlIzjvTH3oPJizcey2SLSBW4TwQ==}
+    dependencies:
+      '@types/lodash': 4.14.186
+    dev: true
+
+  /@types/lodash.uniqby/4.7.7:
+    resolution: {integrity: sha512-sv2g6vkCIvEUsK5/Vq17haoZaisfj2EWW8mP7QWlnKi6dByoNmeuHDDXHR7sabuDqwO4gvU7ModIL22MmnOocg==}
     dependencies:
       '@types/lodash': 4.14.186
     dev: true

@@ -9,19 +9,9 @@ import { MessageEventBusDestination } from '../MessageEventBusDestination/Messag
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'node:events';
 import config from '../../config';
-
-interface MessageEventBusInitializationOptions {
-	destinations?: MessageEventBusDestination[];
-}
-
-interface EventMessageDestinationStore {
-	[key: string]: MessageEventBusDestination;
-}
-
-export interface EventMessageSubscribeDestination {
-	subscriptionSet: EventMessageSubscriptionSetOptions;
-	destinationId: string;
-}
+import { Db } from '../..';
+import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers';
+import uniqby from 'lodash.uniqby';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
@@ -32,7 +22,9 @@ class MessageEventBus extends EventEmitter {
 
 	logWriter: MessageEventBusLogWriter;
 
-	destinations: EventMessageDestinationStore = {};
+	destinations: {
+		[key: string]: MessageEventBusDestination;
+	} = {};
 
 	#pushInteralTimer: NodeJS.Timer;
 
@@ -46,31 +38,65 @@ class MessageEventBus extends EventEmitter {
 			MessageEventBus.#instance = new MessageEventBus();
 		}
 		if (!MessageEventBus.#instance.isInitialized) {
-			MessageEventBus.#instance.initialize().catch((error) => console.log(error));
+			// console.log(
+			// 	'eventBus called before initialization. Call eventBus.initialize() once before use.',
+			// );
 		}
 		return MessageEventBus.#instance;
 	}
 
-	async initialize(options?: MessageEventBusInitializationOptions) {
+	/**
+	 * Needs to be called once at startup to set the event bus instance up. Will launch the event log writer and,
+	 * if configured to do so, the previously stored event destinations.
+	 *
+	 * Will check for unsent event messages in the previous log files once at startup and try to re-send them.
+	 *
+	 * Sets `isInitialized` to `true` once finished.
+	 */
+	async initialize() {
+		console.error('HERE');
 		if (this.isInitialized) {
 			return;
 		}
 
-		this.logWriter = await MessageEventBusLogWriter.getInstance();
-		if (options?.destinations) {
-			for (const destination of options?.destinations) {
-				this.destinations[destination.getId()] = destination;
+		LoggerProxy.debug('Initializing event bus...');
+
+		// Load stored destinations from Db and instantiate them
+		if (config.getEnv('eventBus.destinations.loadAtStart')) {
+			LoggerProxy.debug('Restoring event destinations');
+			const savedEventDestinations = await Db.collections.EventDestinations.find({});
+			if (savedEventDestinations.length > 0) {
+				for (const destinationData of savedEventDestinations) {
+					try {
+						const destination = messageEventBusDestinationFromDb(destinationData);
+						if (destination) {
+							await this.addDestination(destination);
+						}
+					} catch (error) {
+						console.log(error);
+					}
+				}
 			}
 		}
 
-		// check for unsent messages once on startup
-		LoggerProxy.debug('Checking for unsent event messages...');
-		await this.#trySendingUnsent();
+		LoggerProxy.debug('Initializing event writer');
+		this.logWriter = await MessageEventBusLogWriter.getInstance();
 
-		LoggerProxy.debug('Starting event writer');
-		// now start the logging to a fresh event log
+		// unsent event check:
+		// - find unsent messages in current event log(s)
+		// - cycle event logs and start the logging to a fresh file
+		// - retry sending events
+		LoggerProxy.debug('Checking for unsent event messages');
+		const unsentMessages = await this.getEventsUnsent();
+		LoggerProxy.debug(
+			`Start logging into ${
+				(await this.logWriter.getThread()?.getLogFileName()) ?? 'unknown filename'
+			} `,
+		);
 		await this.logWriter.startLogging();
+		await this.send(unsentMessages);
 
+		// if configured, run this test every n ms
 		if (config.getEnv('eventBus.checkUnsentInterval') > 0) {
 			if (this.#pushInteralTimer) {
 				clearInterval(this.#pushInteralTimer);
@@ -154,8 +180,8 @@ class MessageEventBus extends EventEmitter {
 		return this.destinations[destinationId];
 	}
 
-	async #trySendingUnsent() {
-		const unsentMessages = await this.getEventsUnsent();
+	async #trySendingUnsent(msgs?: EventMessageTypes[]) {
+		const unsentMessages = msgs ?? (await this.getEventsUnsent());
 		if (unsentMessages.length > 0) {
 			LoggerProxy.debug(`Found unsent event messages: ${unsentMessages.length}`);
 			for (const unsentMsg of unsentMessages) {
@@ -177,10 +203,15 @@ class MessageEventBus extends EventEmitter {
 		LoggerProxy.debug('EventBus shut down.');
 	}
 
-	async send(msg: EventMessageTypes) {
-		console.log(new Date().getMilliseconds());
-		await this.logWriter.putMessage(msg);
-		await this.#emitMessage(msg);
+	async send(msgs: EventMessageTypes | EventMessageTypes[]) {
+		if (!Array.isArray(msgs)) {
+			msgs = [msgs];
+		}
+		for (const msg of msgs) {
+			console.log(new Date().getMilliseconds());
+			await this.logWriter.putMessage(msg);
+			await this.#emitMessage(msg);
+		}
 	}
 
 	async confirmSent(msg: EventMessageTypes) {
@@ -214,15 +245,17 @@ class MessageEventBus extends EventEmitter {
 			case 'unsent':
 				queryResult = await this.logWriter.getMessagesUnsent();
 		}
-		return queryResult;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
+		const filtered = uniqby(queryResult, 'id') as EventMessageTypes[];
+		return filtered;
 	}
 
-	async getEventsSent() {
+	async getEventsSent(): Promise<EventMessageTypes[]> {
 		const sentMessages = await this.getEvents('sent');
 		return sentMessages;
 	}
 
-	async getEventsUnsent() {
+	async getEventsUnsent(): Promise<EventMessageTypes[]> {
 		const unSentMessages = await this.getEvents('unsent');
 		return unSentMessages;
 	}

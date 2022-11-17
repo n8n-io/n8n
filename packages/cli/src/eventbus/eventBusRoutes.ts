@@ -6,14 +6,11 @@ import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessag
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
 import {
 	EventMessageSubscriptionSet,
+	EventMessageSubscriptionSetOptions,
 	isEventMessageSubscriptionSetOptions,
 } from './MessageEventBusDestination/EventMessageSubscriptionSet';
 import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
-import {
-	eventBus,
-	EventMessageReturnMode,
-	EventMessageSubscribeDestination,
-} from './MessageEventBus/MessageEventBus';
+import { eventBus, EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
@@ -73,6 +70,11 @@ const isMessageEventBusDestinationWebhookOptions = (
 	if (!o) return false;
 	return o.name !== undefined && o.url !== undefined;
 };
+
+interface EventMessageSubscribeDestination {
+	subscriptionSet: EventMessageSubscriptionSetOptions;
+	destinationId: string;
+}
 
 interface MessageEventBusDestinationOptions {
 	type: 'sentry' | 'syslog' | 'webhook' | 'redis';

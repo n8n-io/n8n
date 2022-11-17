@@ -1674,30 +1674,9 @@ class App {
 		// ----------------------------------------
 
 		if (config.getEnv('eventBus.enabled')) {
-			if (config.getEnv('eventBus.destinations.loadAtStart')) {
-				// Load stored destinations from Db
-				const savedEventDestinations = await Db.collections.EventDestinations.find({});
-				if (savedEventDestinations.length > 0) {
-					for (const destinationData of savedEventDestinations) {
-						try {
-							const destination = messageEventBusDestinationFromDb(destinationData);
-							if (destination) {
-								await eventBus.addDestination(destination);
-							}
-						} catch (error) {
-							console.log(error);
-						}
-					}
-				}
-			}
 			if (!eventBus.isInitialized) {
-				// adding destinations automatically triggers initialization intrinsically, so this manual
-				// call is only required if there are none in the db
 				await eventBus.initialize();
 			}
-			// process.once('SIGINT', async () => eventBus.close());
-			// process.once('SIGTERM', async () => eventBus.close());
-
 			// add Event Bus REST endpoints
 			this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
 			// subscribe to emitters and generate eventMessages from them
