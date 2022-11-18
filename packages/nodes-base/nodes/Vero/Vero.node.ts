@@ -71,7 +71,7 @@ export class Vero implements INodeType {
 					//https://developers.getvero.com/?bash#users-identify
 					if (operation === 'create') {
 						const id = this.getNodeParameter('id', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const body = {
 							id,

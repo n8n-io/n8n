@@ -276,7 +276,7 @@ export class GmailV1 implements INodeType {
 					if (operation === 'send') {
 						// https://developers.google.com/gmail/api/v1/reference/users/messages/send
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let toStr = '';
 						let ccStr = '';
@@ -366,7 +366,7 @@ export class GmailV1 implements INodeType {
 					}
 					if (operation === 'reply') {
 						const id = this.getNodeParameter('messageId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let toStr = '';
 						let ccStr = '';
@@ -488,7 +488,7 @@ export class GmailV1 implements INodeType {
 
 						const id = this.getNodeParameter('messageId', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const format = additionalFields.format || 'resolved';
 
 						if (format === 'resolved') {
@@ -521,7 +521,7 @@ export class GmailV1 implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(qs, additionalFields);
 
 						if (qs.labelIds) {
@@ -609,7 +609,7 @@ export class GmailV1 implements INodeType {
 					if (operation === 'create') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/create
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let toStr = '';
 						let ccStr = '';
@@ -707,7 +707,7 @@ export class GmailV1 implements INodeType {
 						method = 'GET';
 						const id = this.getNodeParameter('messageId', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const format = additionalFields.format || 'resolved';
 
 						if (format === 'resolved') {
@@ -758,7 +758,7 @@ export class GmailV1 implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(qs, additionalFields);
 
 						if (returnAll) {

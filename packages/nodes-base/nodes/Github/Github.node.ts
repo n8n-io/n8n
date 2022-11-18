@@ -2034,7 +2034,7 @@ export class Github implements INodeType {
 						requestMethod = 'POST';
 
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						body.event = snakeCase(this.getNodeParameter('event', i) as string).toUpperCase();

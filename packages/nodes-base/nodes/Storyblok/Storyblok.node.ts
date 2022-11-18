@@ -170,7 +170,7 @@ export class Storyblok implements INodeType {
 							responseData = responseData.story;
 						}
 						if (operation === 'getAll') {
-							const filters = this.getNodeParameter('filters', i) as string;
+							const filters = this.getNodeParameter('filters', i);
 							const returnAll = this.getNodeParameter('returnAll', i);
 							Object.assign(qs, filters);
 
@@ -205,7 +205,7 @@ export class Storyblok implements INodeType {
 						// 	const name = this.getNodeParameter('name', i) as string;
 						// 	const slug = this.getNodeParameter('slug', i) as string;
 						// 	const jsonParameters = this.getNodeParameter('jsonParameters', i);
-						// 	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						// 	const additionalFields = this.getNodeParameter('additionalFields', i);
 						// 	const body: IDataObject = {
 						// 		name,
 						// 		slug,
@@ -280,7 +280,7 @@ export class Storyblok implements INodeType {
 						}
 						if (operation === 'getAll') {
 							const space = this.getNodeParameter('space', i) as string;
-							const filters = this.getNodeParameter('filters', i) as string;
+							const filters = this.getNodeParameter('filters', i);
 							const returnAll = this.getNodeParameter('returnAll', i);
 							Object.assign(qs, filters);
 
@@ -309,7 +309,7 @@ export class Storyblok implements INodeType {
 						if (operation === 'publish') {
 							const space = this.getNodeParameter('space', i) as string;
 							const storyId = this.getNodeParameter('storyId', i) as string;
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 							const query: IDataObject = {};
 							// Not sure if these two options work
 							if (options.releaseId) {

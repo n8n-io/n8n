@@ -124,7 +124,7 @@ export class Orbit implements INodeType {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							title,
 						};
@@ -158,7 +158,7 @@ export class Orbit implements INodeType {
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						let endpoint = `/${workspaceId}/activities`;
 						if (filters.memberId) {
 							endpoint = `/${workspaceId}/members/${filters.memberId}/activities`;
@@ -189,7 +189,7 @@ export class Orbit implements INodeType {
 				if (resource === 'member') {
 					if (operation === 'upsert') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const member: IDataObject = {};
 						const identity: IDataObject = {};
 						if (additionalFields.bio) {
@@ -288,7 +288,7 @@ export class Orbit implements INodeType {
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 						qs.resolveIdentities = this.getNodeParameter('resolveIdentities', 0) as boolean;
 						if (returnAll === true) {
@@ -345,7 +345,7 @@ export class Orbit implements INodeType {
 					if (operation === 'update') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {};
 						if (updateFields.bio) {
 							body.bio = updateFields.bio as string;
@@ -460,7 +460,7 @@ export class Orbit implements INodeType {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
 						const url = this.getNodeParameter('url', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							type: 'post',
 							activity_type: 'post',
@@ -482,7 +482,7 @@ export class Orbit implements INodeType {
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						let endpoint = `/${workspaceId}/activities`;
 						qs.type = 'content';
 						if (filters.memberId) {

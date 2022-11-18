@@ -315,7 +315,7 @@ export class CrateDb implements INodeType {
 			//         update
 			// ----------------------------------
 
-			const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+			const additionalFields = this.getNodeParameter('additionalFields', 0);
 			const mode = additionalFields.mode ?? ('multiple' as string);
 
 			if (mode === 'independently') {

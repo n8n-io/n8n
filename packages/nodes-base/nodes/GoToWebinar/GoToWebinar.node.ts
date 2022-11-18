@@ -521,7 +521,7 @@ export class GoToWebinar implements INodeType {
 							times: timesProperties,
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const endpoint = `organizers/${organizerKey}/webinars`;
@@ -605,7 +605,7 @@ export class GoToWebinar implements INodeType {
 
 						let body = {};
 
-						let updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						let updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.times) {
 							const { times } = updateFields as {

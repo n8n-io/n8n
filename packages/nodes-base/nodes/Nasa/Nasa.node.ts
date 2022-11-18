@@ -869,7 +869,7 @@ export class Nasa implements INodeType {
 				// trigger an error in getNodeParameter dealt with in the catch block.
 				let additionalFields;
 				try {
-					additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					additionalFields = this.getNodeParameter('additionalFields', i);
 				} catch (error) {
 					additionalFields = {} as IDataObject;
 				}
