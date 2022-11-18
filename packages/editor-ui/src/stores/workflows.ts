@@ -50,8 +50,7 @@ import {
 } from "@/api/workflows";
 import {useUIStore} from "./ui";
 import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
-import {isJsonKeyObject, getPairedItemsMapping} from "@/utils";
-import {stringSizeInBytes} from "@/utils";
+import {isJsonKeyObject, getPairedItemsMapping, stringSizeInBytes} from "@/utils";
 import {useNDVStore} from "./ndv";
 import {useNodeTypesStore} from "./nodeTypes";
 import {useWorkflowsEEStore} from "@/stores/workflows.ee";

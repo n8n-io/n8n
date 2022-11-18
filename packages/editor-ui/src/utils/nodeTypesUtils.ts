@@ -7,8 +7,6 @@ import {
 	PERSONALIZED_CATEGORY,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	TEMPLATES_NODES_FILTER,
-	MAIN_HEADER_TABS,
-	VIEWS,
 	REGULAR_NODE_FILTER,
 	TRIGGER_NODE_FILTER,
 	ALL_NODE_FILTER,
@@ -16,13 +14,15 @@ import {
 } from '@/constants';
 import { INodeCreateElement, ICategoriesWithNodes, INodeUi, ITemplatesNode, INodeItemProps } from '@/Interface';
 import { IDataObject, INodeExecutionData, INodeProperties, INodeTypeDescription, NodeParameterValueType } from 'n8n-workflow';
-import { Route } from 'vue-router';
 import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
+
+/*
+	Constants and utility functions mainly used to get information about
+	or manipulate node types and nodes.
+*/
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
 const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
-
-
 const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 
 const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescription, category: string, subcategory: string) => {
@@ -208,7 +208,6 @@ export function isCommunityPackageName(packageName: string): boolean {
 	return !!nameMatch;
 }
 
-
 export function hasExpressionMapping(value: unknown) {
 	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
 }
@@ -230,25 +229,6 @@ export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObjec
 	(acc, item) => isJsonKeyObject(item) ? acc.concat(item.json) : acc,
 	[],
 );
-
-
-export const getNodeViewTab = (route: Route): string|null => {
-		const routeMeta = route.meta;
-		if (routeMeta && routeMeta.nodeView === true) {
-			return MAIN_HEADER_TABS.WORKFLOW;
-		} else {
-			const executionTabRoutes = [
-				VIEWS.EXECUTION.toString(),
-				VIEWS.EXECUTION_PREVIEW.toString(),
-				VIEWS.EXECUTION_HOME.toString(),
-			];
-
-			if (executionTabRoutes.includes(route.name || '')) {
-				return MAIN_HEADER_TABS.EXECUTIONS;
-			}
-		}
-		return null;
-};
 
 export const matchesSelectType = (el: INodeCreateElement, selectedType: string) => {
 	if (selectedType === REGULAR_NODE_FILTER && el.includedByRegular) {

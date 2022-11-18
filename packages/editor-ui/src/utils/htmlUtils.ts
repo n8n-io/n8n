@@ -1,5 +1,9 @@
 import xss, { friendlyAttrValue } from 'xss';
 
+/*
+	Constants and utility functions that help in HTML, CSS and DOM manipulation
+*/
+
 export function sanitizeHtml(dirtyHtml: string) {
 	const allowedAttributes = ['href','name', 'target', 'title', 'class', 'id'];
 	const allowedTags = ['p', 'strong', 'b', 'code', 'a', 'br', 'i', 'em', 'small' ];

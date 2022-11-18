@@ -1,5 +1,5 @@
 import { getStyleTokenValue, isNumber } from "@/utils";
-import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
+import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME, MAIN_HEADER_TABS, VIEWS } from "@/constants";
 import { EndpointStyle, IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { AnchorArraySpec, Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
@@ -10,6 +10,11 @@ import {
 	NodeInputConnections,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+
+/*
+	Constants and utility functions mainly used by canvas store
+	and components used to display workflow in node view.
+*/
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
@@ -777,4 +782,22 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 	});
 
 	return nodes;
+};
+
+export const getNodeViewTab = (route: Route): string|null => {
+	const routeMeta = route.meta;
+	if (routeMeta && routeMeta.nodeView === true) {
+		return MAIN_HEADER_TABS.WORKFLOW;
+	} else {
+		const executionTabRoutes = [
+			VIEWS.EXECUTION.toString(),
+			VIEWS.EXECUTION_PREVIEW.toString(),
+			VIEWS.EXECUTION_HOME.toString(),
+		];
+
+		if (executionTabRoutes.includes(route.name || '')) {
+			return MAIN_HEADER_TABS.EXECUTIONS;
+		}
+	}
+	return null;
 };

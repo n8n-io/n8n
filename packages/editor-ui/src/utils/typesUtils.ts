@@ -1,4 +1,9 @@
 import dateformat from 'dateformat';
+import { IDataObject, jsonParse } from 'n8n-workflow';
+
+/*
+	Constants and utility functions than can be used to manipulate different data types and objects
+*/
 
 const SI_SYMBOL = ['', 'k', 'M', 'G', 'T', 'P', 'E'];
 
@@ -16,7 +21,6 @@ export function isJsonKeyObject(item: unknown): item is {
 
 	return Object.keys(item).includes('json');
 }
-
 
 export const isEmpty = (value?: unknown): boolean => {
 	if (!value && value !== 0) return true;

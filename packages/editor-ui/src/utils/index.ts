@@ -1,6 +1,5 @@
 export * from './apiUtils';
 export * from './canvasUtils';
-export * from './generalUtils';
 export * from './htmlUtils';
 export * from './nodeTypesUtils';
 export * from './sortUtils';
