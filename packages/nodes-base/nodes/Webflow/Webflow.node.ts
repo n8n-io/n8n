@@ -228,7 +228,7 @@ export class Webflow implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await webflowApiRequest.call(
 								this,
 								'GET',

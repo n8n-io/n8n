@@ -180,7 +180,7 @@ export class GSuiteAdmin implements INodeType {
 							qs,
 						);
 					} else {
-						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						qs.maxResults = this.getNodeParameter('limit', i);
 
 						responseData = await googleApiRequest.call(this, 'GET', `/directory/v1/groups`, {}, qs);
 
@@ -350,7 +350,7 @@ export class GSuiteAdmin implements INodeType {
 							qs,
 						);
 					} else {
-						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						qs.maxResults = this.getNodeParameter('limit', i);
 
 						responseData = await googleApiRequest.call(this, 'GET', `/directory/v1/users`, {}, qs);
 

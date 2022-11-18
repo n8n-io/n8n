@@ -446,7 +446,7 @@ export class Magento2 implements INodeType {
 								qs as unknown as IDataObject,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.search_criteria!.page_size = limit;
 							responseData = await magentoApiRequest.call(
 								this,
@@ -626,7 +626,7 @@ export class Magento2 implements INodeType {
 								qs as unknown as IDataObject,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.search_criteria!.page_size = limit;
 							responseData = await magentoApiRequest.call(
 								this,
@@ -748,7 +748,7 @@ export class Magento2 implements INodeType {
 								qs as unknown as IDataObject,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.search_criteria!.page_size = limit;
 							responseData = await magentoApiRequest.call(
 								this,

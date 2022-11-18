@@ -175,7 +175,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 								qs,
 							);
 						} else {
-							qs.Limit = this.getNodeParameter('limit', i) as number;
+							qs.Limit = this.getNodeParameter('limit', i);
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',

@@ -326,7 +326,7 @@ export class MondayCom implements INodeType {
 						if (returnAll === true) {
 							responseData = await mondayComApiRequestAllItems.call(this, 'data.boards', body);
 						} else {
-							body.variables.limit = this.getNodeParameter('limit', i) as number;
+							body.variables.limit = this.getNodeParameter('limit', i);
 							responseData = await mondayComApiRequest.call(this, body);
 							responseData = responseData.data.boards;
 						}
@@ -657,7 +657,7 @@ export class MondayCom implements INodeType {
 								body,
 							);
 						} else {
-							body.variables.limit = this.getNodeParameter('limit', i) as number;
+							body.variables.limit = this.getNodeParameter('limit', i);
 							responseData = await mondayComApiRequest.call(this, body);
 							responseData = responseData.data.boards[0].groups[0].items;
 						}
@@ -702,7 +702,7 @@ export class MondayCom implements INodeType {
 								body,
 							);
 						} else {
-							body.variables.limit = this.getNodeParameter('limit', i) as number;
+							body.variables.limit = this.getNodeParameter('limit', i);
 							responseData = await mondayComApiRequest.call(this, body);
 							responseData = responseData.data.items_by_column_values;
 						}

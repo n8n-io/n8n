@@ -1178,7 +1178,7 @@ export class Gitlab implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 
 						endpoint = `/projects/${id}/releases`;

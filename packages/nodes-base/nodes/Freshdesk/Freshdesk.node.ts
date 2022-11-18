@@ -1319,7 +1319,7 @@ export class Freshdesk implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await freshdeskApiRequest.call(this, 'GET', '/tickets', {}, qs);
 						}
 					}

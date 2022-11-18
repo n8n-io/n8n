@@ -759,7 +759,7 @@ export class Jira implements INodeType {
 							body,
 						);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						body.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
@@ -791,7 +791,7 @@ export class Jira implements INodeType {
 							'GET',
 						);
 					} else {
-						qs.maxResults = this.getNodeParameter('limit', i) as number;
+						qs.maxResults = this.getNodeParameter('limit', i);
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,
 							`/api/2/issue/${issueKey}/changelog`,
@@ -1107,7 +1107,7 @@ export class Jira implements INodeType {
 					);
 					responseData = attachment;
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.slice(0, limit);
 					}
 					responseData = responseData.map((data: IDataObject) => ({ json: data }));
@@ -1255,7 +1255,7 @@ export class Jira implements INodeType {
 							qs,
 						);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						body.maxResults = limit;
 						responseData = await jiraSoftwareCloudApiRequest.call(
 							this,

@@ -278,7 +278,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							qs['$top'] = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -341,7 +341,7 @@ export class MicrosoftExcel implements INodeType {
 							);
 						} else {
 							const rowsQs = { ...qs };
-							rowsQs['$top'] = this.getNodeParameter('limit', i) as number;
+							rowsQs['$top'] = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -534,7 +534,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							qs['$top'] = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -596,7 +596,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							qs['$top'] = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',

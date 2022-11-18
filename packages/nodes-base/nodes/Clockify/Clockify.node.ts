@@ -337,7 +337,7 @@ export class Clockify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await clockifyApiRequestAllItems.call(
 								this,
@@ -427,7 +427,7 @@ export class Clockify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await clockifyApiRequestAllItems.call(
 								this,
@@ -521,7 +521,7 @@ export class Clockify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await clockifyApiRequestAllItems.call(
 								this,
@@ -638,7 +638,7 @@ export class Clockify implements INodeType {
 								qs,
 							);
 						} else {
-							qs['page-size'] = this.getNodeParameter('limit', i) as number;
+							qs['page-size'] = this.getNodeParameter('limit', i);
 
 							responseData = await clockifyApiRequest.call(
 								this,
@@ -809,7 +809,7 @@ export class Clockify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await clockifyApiRequestAllItems.call(
 								this,
@@ -829,7 +829,7 @@ export class Clockify implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await clockifyApiRequest.call(this, 'GET', '/workspaces', {}, qs);
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, qs.limit);
 						}
 					}

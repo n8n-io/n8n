@@ -388,7 +388,7 @@ export class ActiveCampaign implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						Object.assign(qs, additionalFields);
@@ -472,7 +472,7 @@ export class ActiveCampaign implements INodeType {
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						if (simple === true) {
@@ -641,7 +641,7 @@ export class ActiveCampaign implements INodeType {
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						if (simple === true) {
@@ -697,7 +697,7 @@ export class ActiveCampaign implements INodeType {
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						if (simple === true) {
@@ -804,7 +804,7 @@ export class ActiveCampaign implements INodeType {
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						if (simple === true) {
@@ -903,7 +903,7 @@ export class ActiveCampaign implements INodeType {
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						if (simple === true) {
@@ -1003,7 +1003,7 @@ export class ActiveCampaign implements INodeType {
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						if (simple === true) {
@@ -1092,7 +1092,7 @@ export class ActiveCampaign implements INodeType {
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						if (simple === true) {
@@ -1138,7 +1138,7 @@ export class ActiveCampaign implements INodeType {
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						if (simple === true) {
