@@ -240,6 +240,10 @@ export default mixins(
 		font-weight: normal;
 		display: flex;
 
+		@media (max-width: $breakpoint-xs) {
+			display: none;
+		}
+
 		span {
 			margin-right: var(--spacing-4xs);
 		}
