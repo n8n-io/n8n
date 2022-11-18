@@ -100,7 +100,7 @@ export class GoogleContacts implements INodeType {
 					if (operation === 'create') {
 						const familyName = this.getNodeParameter('familyName', i) as string;
 						const givenName = this.getNodeParameter('givenName', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							names: [
@@ -329,7 +329,7 @@ export class GoogleContacts implements INodeType {
 
 						const fields = this.getNodeParameter('fields', i) as string[];
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						let etag;
 

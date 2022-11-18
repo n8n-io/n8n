@@ -261,7 +261,7 @@ export class GoogleCloudNaturalLanguage implements INodeType {
 			if (resource === 'document') {
 				if (operation === 'analyzeSentiment') {
 					const source = this.getNodeParameter('source', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const encodingType = (options.encodingType as string | undefined) || 'UTF16';
 					const documentType = (options.documentType as string | undefined) || 'PLAIN_TEXT';
 

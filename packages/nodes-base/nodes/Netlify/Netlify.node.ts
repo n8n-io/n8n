@@ -103,7 +103,7 @@ export class Netlify implements INodeType {
 
 					if (operation === 'create') {
 						const siteId = this.getNodeParameter('siteId', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(body, additionalFields);
 

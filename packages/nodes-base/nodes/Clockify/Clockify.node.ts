@@ -288,7 +288,7 @@ export class Clockify implements INodeType {
 						const clientId = this.getNodeParameter('clientId', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {
 							name,
@@ -324,7 +324,7 @@ export class Clockify implements INodeType {
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -358,7 +358,7 @@ export class Clockify implements INodeType {
 
 						const name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							name,
@@ -414,7 +414,7 @@ export class Clockify implements INodeType {
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -446,7 +446,7 @@ export class Clockify implements INodeType {
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 
@@ -508,7 +508,7 @@ export class Clockify implements INodeType {
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -540,7 +540,7 @@ export class Clockify implements INodeType {
 
 						const tagId = this.getNodeParameter('tagId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 
@@ -564,7 +564,7 @@ export class Clockify implements INodeType {
 
 						const name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							name,
@@ -625,7 +625,7 @@ export class Clockify implements INodeType {
 
 						const projectId = this.getNodeParameter('projectId', i) as string;
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 
@@ -657,7 +657,7 @@ export class Clockify implements INodeType {
 
 						const taskId = this.getNodeParameter('taskId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 
@@ -686,7 +686,7 @@ export class Clockify implements INodeType {
 
 						const start = this.getNodeParameter('start', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							start: moment.tz(start, timezone).utc().format(),
@@ -751,7 +751,7 @@ export class Clockify implements INodeType {
 
 						const timeEntryId = this.getNodeParameter('timeEntryId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 
@@ -796,7 +796,7 @@ export class Clockify implements INodeType {
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(qs, additionalFields);
 

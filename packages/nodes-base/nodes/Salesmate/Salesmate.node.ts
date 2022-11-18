@@ -145,7 +145,7 @@ export class Salesmate implements INodeType {
 					const owner = this.getNodeParameter('owner', i) as number;
 					const name = this.getNodeParameter('name', i) as string;
 					const rawData = this.getNodeParameter('rawData', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: ICompany = {
 						name,
 						owner,
@@ -206,7 +206,7 @@ export class Salesmate implements INodeType {
 				}
 				if (operation === 'update') {
 					const companyId = this.getNodeParameter('id', i) as string;
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const rawData = this.getNodeParameter('rawData', i);
 					const body: ICompany = {};
 					if (updateFields.owner) {
@@ -286,7 +286,7 @@ export class Salesmate implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					let body: IDataObject = {
 						query: {
@@ -390,7 +390,7 @@ export class Salesmate implements INodeType {
 					const title = this.getNodeParameter('title', i) as string;
 					const type = this.getNodeParameter('type', i) as string;
 					const rawData = this.getNodeParameter('rawData', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IActivity = {
 						title,
 						owner,
@@ -423,7 +423,7 @@ export class Salesmate implements INodeType {
 				if (operation === 'update') {
 					const activityId = this.getNodeParameter('id', i) as string;
 					const rawData = this.getNodeParameter('rawData', i);
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IActivity = {};
 					if (updateFields.title) {
 						body.title = updateFields.title as string;
@@ -479,7 +479,7 @@ export class Salesmate implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					let body: IDataObject = {
 						query: {
@@ -588,7 +588,7 @@ export class Salesmate implements INodeType {
 					const stage = this.getNodeParameter('stage', i) as string;
 					const currency = this.getNodeParameter('currency', i) as string;
 					const rawData = this.getNodeParameter('rawData', i);
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const body: IDeal = {
 						title,
 						owner,
@@ -628,7 +628,7 @@ export class Salesmate implements INodeType {
 				if (operation === 'update') {
 					const dealId = this.getNodeParameter('id', i) as string;
 					const rawData = this.getNodeParameter('rawData', i);
-					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+					const updateFields = this.getNodeParameter('updateFields', i);
 					const body: IDeal = {};
 					if (updateFields.title) {
 						body.title = updateFields.title as string;
@@ -690,7 +690,7 @@ export class Salesmate implements INodeType {
 				}
 				if (operation === 'getAll') {
 					const returnAll = this.getNodeParameter('returnAll', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					let body: IDataObject = {
 						query: {

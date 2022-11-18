@@ -270,7 +270,9 @@ export class NotionV2 implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const blockId = extractPageId(this.getNodeParameter('blockId', i, '', { extractValue: true }) as string);
+					const blockId = extractPageId(
+						this.getNodeParameter('blockId', i, '', { extractValue: true }) as string,
+					);
 					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (returnAll) {
@@ -363,7 +365,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'search') {
 				for (let i = 0; i < length; i++) {
 					const text = this.getNodeParameter('text', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const body: IDataObject = {
@@ -497,7 +499,9 @@ export class NotionV2 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					download = this.getNodeParameter('options.downloadFiles', 0, false) as boolean;
 					const simple = this.getNodeParameter('simple', 0) as boolean;
-					const databaseId = this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string;
+					const databaseId = this.getNodeParameter('databaseId', i, '', {
+						extractValue: true,
+					}) as string;
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const filterType = this.getNodeParameter('filterType', 0) as string;
 					const conditions = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
@@ -688,7 +692,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'search') {
 				for (let i = 0; i < length; i++) {
 					const text = this.getNodeParameter('text', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					const returnAll = this.getNodeParameter('returnAll', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const body: IDataObject = {};
