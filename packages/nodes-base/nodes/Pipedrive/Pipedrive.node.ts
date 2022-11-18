@@ -4890,7 +4890,7 @@ export class Pipedrive implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({ json: { error: error.message } });
+						returnData.push({json:{ error: error.message }});
 					}
 					continue;
 				}

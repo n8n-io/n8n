@@ -213,9 +213,10 @@ export class Gotify implements INodeType {
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
+
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: error.message } });
+					returnData.push({json:{ error: error.message }});
 					continue;
 				}
 				throw error;
