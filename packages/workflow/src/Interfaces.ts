@@ -574,13 +574,13 @@ namespace ExecuteFunctions {
 		getNodeParameter(
 			parameterName: BooleanReturning.NodeParameter,
 			itemIndex: number,
-			fallbackValue?: any,
+			fallbackValue?: boolean,
 			options?: IGetNodeParameterOptions,
 		): boolean;
 		getNodeParameter(
 			parameterName: NumberReturning.NodeParameter,
 			itemIndex: number,
-			fallbackValue?: any,
+			fallbackValue?: number,
 			options?: IGetNodeParameterOptions,
 		): number;
 		getNodeParameter(
