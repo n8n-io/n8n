@@ -4,7 +4,7 @@
 		:title="$locale.baseText('activationModal.workflowActivated')"
 		width="460px"
 	>
-		<template v-slot:content>
+		<template #content>
 			<div>
 				<n8n-text>{{ triggerContent }}</n8n-text>
 			</div>
@@ -24,7 +24,7 @@
 		</template>
 
 
-		<template v-slot:footer="{ close }">
+		<template #footer="{ close }">
 			<div :class="$style.footer">
 				<el-checkbox :value="checked" @change="handleCheckboxChange">{{ $locale.baseText('activationModal.dontShowAgain') }}</el-checkbox>
 				<n8n-button @click="close" :label="$locale.baseText('activationModal.gotIt')" />

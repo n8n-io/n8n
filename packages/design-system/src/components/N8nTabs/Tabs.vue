@@ -14,11 +14,9 @@
 				:class="{ [$style.alignRight]: option.align === 'right' }"
 			>
 				<n8n-tooltip :disabled="!option.tooltip" placement="bottom">
-					<div
-						slot="content"
-						v-html="option.tooltip"
-						@click="handleTooltipClick(option.value, $event)"
-					></div>
+					<template #content>
+						<div v-html="option.tooltip" @click="handleTooltipClick(option.value, $event)" />
+					</template>
 					<a
 						v-if="option.href"
 						target="_blank"
