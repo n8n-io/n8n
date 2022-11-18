@@ -92,7 +92,7 @@ type Options = IDataObject & {
 	signingDomain: string;
 	returnPathDomain: string;
 	sendAt: string;
-}
+};
 
 export class Mandrill implements INodeType {
 	description: INodeTypeDescription = {
