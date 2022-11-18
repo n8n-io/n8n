@@ -9,8 +9,6 @@ import {useSettingsStore} from "@/stores/settings";
 import {defineStore} from "pinia";
 import {useWorkflowsStore} from "@/stores/workflows";
 
-// @TODO Move to workflows store as part of workflows store refactoring
-//
 export const useWorkflowsEEStore = defineStore(STORES.WORKFLOWS_EE, {
 	state() { return {}; },
 	actions: {

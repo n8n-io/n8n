@@ -370,12 +370,12 @@ export default mixins(
 		},
 		hasForeignCredential(): boolean {
 			const credentials = (this.activeNode || {}).credentials;
-			const foreignCredentials = this.credentialsStore.foreignCredentialsById;
+			const usedCredentials = this.workflowsStore.usedCredentials;
 
 			let hasForeignCredential = false;
 			if (credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
 				Object.values(credentials).forEach((credential) => {
-					if (credential.id && foreignCredentials[credential.id] && !foreignCredentials[credential.id].currentUserHasAccess) {
+					if (credential.id && usedCredentials[credential.id] && !usedCredentials[credential.id].currentUserHasAccess) {
 						hasForeignCredential = true;
 					}
 				});
