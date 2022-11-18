@@ -1,4 +1,4 @@
-import ClientOAuth2 from 'client-oauth2';
+/* eslint-disable import/no-cycle */
 import Csrf from 'csrf';
 import express from 'express';
 import get from 'lodash.get';
@@ -6,6 +6,7 @@ import omit from 'lodash.omit';
 import set from 'lodash.set';
 import split from 'lodash.split';
 import unset from 'lodash.unset';
+import querystring from 'querystring';
 import { Credentials, UserSettings } from 'n8n-core';
 import {
 	LoggerProxy,
@@ -29,9 +30,28 @@ import { getLogger } from '@/Logger';
 import { OAuthRequest } from '@/requests';
 import { externalHooks } from '@/Server';
 import config from '@/config';
-import { getInstanceBaseUrl } from '@/UserManagement/UserManagementHelper';
+import { getInstanceBaseUrl, getUserById } from '@/UserManagement/UserManagementHelper';
+import { exponentialBuckets } from 'prom-client';
 
 export const oauth2CredentialController = express.Router();
+export interface OAuth2Parameters {
+	clientId?: string;
+	clientSecret?: string;
+	accessTokenUri?: string;
+	authorizationUri?: string;
+	redirectUri?: string;
+	scopes?: string[];
+	state?: string;
+	body?: {
+		[key: string]: string | string[];
+	};
+	query?: {
+		[key: string]: string | string[];
+	};
+	headers?: {
+		[key: string]: string | string[];
+	};
+}
 
 /**
  * Initialize Logger if needed
@@ -105,7 +125,7 @@ oauth2CredentialController.get(
 		};
 		const stateEncodedStr = Buffer.from(JSON.stringify(state)).toString('base64');
 
-		const oAuthOptions: ClientOAuth2.Options = {
+		const oAuthOptions: OAuth2Parameters = {
 			clientId: get(oauthCredentials, 'clientId') as string,
 			clientSecret: get(oauthCredentials, 'clientSecret', '') as string,
 			accessTokenUri: get(oauthCredentials, 'accessTokenUrl', '') as string,
@@ -116,8 +136,6 @@ oauth2CredentialController.get(
 		};
 
 		await externalHooks.run('oauth2.authenticate', [oAuthOptions]);
-
-		const oAuthObj = new ClientOAuth2(oAuthOptions);
 
 		// Encrypt the data
 		const credentials = new Credentials(
@@ -137,7 +155,7 @@ oauth2CredentialController.get(
 		await Db.collections.Credentials.update(req.query.id, newCredentialsData);
 
 		const authQueryParameters = get(oauthCredentials, 'authQueryParameters', '') as string;
-		let returnUri = oAuthObj.code.getUri();
+		let returnUri = getUri(oAuthOptions, 'token') as string;
 
 		// if scope uses comma, change it as the library always return then with spaces
 		if ((get(oauthCredentials, 'scope') as string).includes(',')) {
@@ -281,11 +299,11 @@ oauth2CredentialController.get(
 
 			await externalHooks.run('oauth2.callback', [oAuth2Parameters]);
 
-			const oAuthObj = new ClientOAuth2(oAuth2Parameters);
+			//const oAuthObj = new ClientOAuth2(oAuth2Parameters);
 
 			const queryParameters = req.originalUrl.split('?').splice(1, 1).join('');
 
-			const oauthToken = await oAuthObj.code.getToken(
+			const oauthToken = await getToken(
 				`${oAuth2Parameters.redirectUri}?${queryParameters}`,
 				options,
 			);
@@ -343,3 +361,92 @@ oauth2CredentialController.get(
 		}
 	},
 );
+
+function getUri(options: OAuth2Parameters, tokenType: string) {
+	if (!options.clientId || !options.authorizationUri) {
+		return Error('Options incomplete, expecting clientId and authorizationUri');
+	}
+	const qs = {
+		client_id: options.clientId,
+		redirect_uri: options.redirectUri,
+		response_type: tokenType,
+		state: options.state,
+	};
+
+	if (options.scopes !== undefined) {
+		Object.assign(qs, { scope: options.scopes.join(' ') });
+	}
+
+	const sep = options.authorizationUri.includes('?') ? '&' : '?';
+	return options.authorizationUri + sep + querystring.stringify(Object.assign(qs, options.query));
+}
+
+function getToken(uri: string, incOptions: Object, oAuth2Parameters: OAuth2Parameters) {
+	let self = oAuth2Parameters;
+	let options = Object.assign({}, this.client.options, incOptions);
+
+	let url = new URL(uri);
+
+	if (
+		typeof options.redirectUri === 'string' &&
+		typeof url.pathname === 'string' &&
+		url.pathname !== new URL(options.redirectUri, DEFAULT_URL_BASE).pathname
+	) {
+		return Promise.reject(
+			new TypeError('Redirected path should match configured path, but got: ' + url.pathname),
+		);
+	}
+
+	if (!url.search || !url.search.substr(1)) {
+		return Promise.reject(new TypeError('Unable to process uri: ' + uri));
+	}
+
+	var data =
+		typeof url.search === 'string' ? querystring.parse(url.search.substr(1)) : url.search || {};
+	var err = getAuthError(data);
+
+	if (err) {
+		return Promise.reject(err);
+	}
+
+	if (options.state != null && data.state !== options.state) {
+		return Promise.reject(new TypeError('Invalid state: ' + data.state));
+	}
+
+	// Check whether the response code is set.
+	if (!data.code) {
+		return Promise.reject(new TypeError('Missing code, unable to request token'));
+	}
+
+	var headers = Object.assign({}, DEFAULT_HEADERS);
+	var body = {
+		code: data.code,
+		grant_type: 'authorization_code',
+		redirect_uri: options.redirectUri,
+	};
+
+	// `client_id`: REQUIRED, if the client is not authenticating with the
+	// authorization server as described in Section 3.2.1.
+	// Reference: https://tools.ietf.org/html/rfc6749#section-3.2.1
+	if (options.clientSecret) {
+		headers.Authorization = auth(options.clientId, options.clientSecret);
+	} else {
+		body.client_id = options.clientId;
+	}
+
+	return this.client
+		._request(
+			requestOptions(
+				{
+					url: options.accessTokenUri,
+					method: 'POST',
+					headers: headers,
+					body: body,
+				},
+				options,
+			),
+		)
+		.then(function (data) {
+			return self.client.createToken(data);
+		});
+}
