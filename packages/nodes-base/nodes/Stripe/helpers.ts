@@ -118,8 +118,8 @@ export async function handleListing(
 	const returnData: IDataObject[] = [];
 	let responseData;
 
-	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-	const limit = this.getNodeParameter('limit', i, 0);
+	const returnAll = this.getNodeParameter('returnAll', i);
+	const limit = this.getNodeParameter('limit', i, 0) as number;
 
 	do {
 		responseData = await stripeApiRequest.call(this, 'GET', `/${resource}s`, {}, qs);

@@ -181,7 +181,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
 				const collection = this.getNodeParameter('collection', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as string;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 
 				if (returnAll) {
@@ -374,7 +374,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 			if (operation === 'getAll') {
 				const projectId = this.getNodeParameter('projectId', 0) as string;
 				const database = this.getNodeParameter('database', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as string;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 
 				if (returnAll) {
 					const getAllResponse = await googleApiRequestAllItems.call(

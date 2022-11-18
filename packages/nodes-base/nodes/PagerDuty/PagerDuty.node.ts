@@ -277,7 +277,7 @@ export class PagerDuty implements INodeType {
 					}
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 						if (options.userIds) {
 							options.userIds = (options.userIds as string).split(',') as string[];
@@ -390,7 +390,7 @@ export class PagerDuty implements INodeType {
 					//https://api-reference.pagerduty.com/#!/Incidents/get_incidents_id_notes
 					if (operation === 'getAll') {
 						const incidentId = this.getNodeParameter('incidentId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await pagerDutyApiRequestAllItems.call(
 								this,
@@ -429,7 +429,7 @@ export class PagerDuty implements INodeType {
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						Object.assign(qs, options);
 						keysToSnakeCase(qs);
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await pagerDutyApiRequestAllItems.call(
 								this,

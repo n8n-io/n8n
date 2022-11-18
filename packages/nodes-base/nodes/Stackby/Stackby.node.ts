@@ -301,7 +301,7 @@ export class Stackby implements INodeType {
 				try {
 					const stackId = this.getNodeParameter('stackId', i) as string;
 					const table = encodeURI(this.getNodeParameter('table', i) as string);
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 

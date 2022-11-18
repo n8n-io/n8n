@@ -226,7 +226,7 @@ export class GmailV1 implements INodeType {
 						responseData = await googleApiRequest.call(this, method, endpoint, body, qs);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await googleApiRequest.call(
 							this,
@@ -520,7 +520,7 @@ export class GmailV1 implements INodeType {
 						responseData = nodeExecutionData;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
 
@@ -757,7 +757,7 @@ export class GmailV1 implements INodeType {
 						responseData = { success: true };
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
 

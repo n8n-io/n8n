@@ -223,7 +223,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/channels/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -476,7 +476,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/playlists/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -660,7 +660,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/playlistItems/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
@@ -774,7 +774,7 @@ export class YouTube implements INodeType {
 				if (resource === 'video') {
 					//https://developers.google.com/youtube/v3/docs/search/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -1075,7 +1075,7 @@ export class YouTube implements INodeType {
 				if (resource === 'videoCategory') {
 					//https://developers.google.com/youtube/v3/docs/videoCategories/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const regionCode = this.getNodeParameter('regionCode', i) as string;
 
 						qs.regionCode = regionCode;

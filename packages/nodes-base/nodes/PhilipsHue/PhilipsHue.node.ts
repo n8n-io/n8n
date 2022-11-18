@@ -151,7 +151,7 @@ export class PhilipsHue implements INodeType {
 					);
 				}
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const user = await getUser.call(this);
 

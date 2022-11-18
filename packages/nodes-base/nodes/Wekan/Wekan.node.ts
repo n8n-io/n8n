@@ -300,7 +300,7 @@ export class Wekan implements INodeType {
 
 						const userId = this.getNodeParameter('IdUser', i) as string;
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						endpoint = `users/${userId}/boards`;
 					} else {
@@ -362,7 +362,7 @@ export class Wekan implements INodeType {
 
 						const boardId = this.getNodeParameter('boardId', i) as string;
 						const fromObject = this.getNodeParameter('fromObject', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (fromObject === 'list') {
 							const listId = this.getNodeParameter('listId', i) as string;
@@ -497,7 +497,7 @@ export class Wekan implements INodeType {
 						requestMethod = 'GET';
 
 						const boardId = this.getNodeParameter('boardId', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						endpoint = `boards/${boardId}/lists`;
 					} else {
@@ -556,7 +556,7 @@ export class Wekan implements INodeType {
 
 						const boardId = this.getNodeParameter('boardId', i) as string;
 						const cardId = this.getNodeParameter('cardId', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						endpoint = `boards/${boardId}/cards/${cardId}/checklists`;
 					} else if (operation === 'getCheckItem') {

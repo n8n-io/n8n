@@ -144,7 +144,7 @@ export class Salesmate implements INodeType {
 				if (operation === 'create') {
 					const owner = this.getNodeParameter('owner', i) as number;
 					const name = this.getNodeParameter('name', i) as string;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: ICompany = {
 						name,
@@ -207,7 +207,7 @@ export class Salesmate implements INodeType {
 				if (operation === 'update') {
 					const companyId = this.getNodeParameter('id', i) as string;
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					const body: ICompany = {};
 					if (updateFields.owner) {
 						body.owner = updateFields.owner as number;
@@ -276,7 +276,7 @@ export class Salesmate implements INodeType {
 				}
 				if (operation === 'get') {
 					const companyId = this.getNodeParameter('id', i) as string;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					responseData = await salesmateApiRequest.call(this, 'GET', `/v1/companies/${companyId}`);
 					responseData = responseData.Data;
 
@@ -285,9 +285,9 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					let body: IDataObject = {
 						query: {
 							group: {},
@@ -389,7 +389,7 @@ export class Salesmate implements INodeType {
 					const owner = this.getNodeParameter('owner', i) as number;
 					const title = this.getNodeParameter('title', i) as string;
 					const type = this.getNodeParameter('type', i) as string;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IActivity = {
 						title,
@@ -422,7 +422,7 @@ export class Salesmate implements INodeType {
 				}
 				if (operation === 'update') {
 					const activityId = this.getNodeParameter('id', i) as string;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IActivity = {};
 					if (updateFields.title) {
@@ -465,7 +465,7 @@ export class Salesmate implements INodeType {
 				}
 				if (operation === 'get') {
 					const activityId = this.getNodeParameter('id', i) as string;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					responseData = await salesmateApiRequest.call(
 						this,
 						'GET',
@@ -478,9 +478,9 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					let body: IDataObject = {
 						query: {
 							group: {},
@@ -587,7 +587,7 @@ export class Salesmate implements INodeType {
 					const status = this.getNodeParameter('status', i) as string;
 					const stage = this.getNodeParameter('stage', i) as string;
 					const currency = this.getNodeParameter('currency', i) as string;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 					const body: IDeal = {
 						title,
@@ -627,7 +627,7 @@ export class Salesmate implements INodeType {
 				}
 				if (operation === 'update') {
 					const dealId = this.getNodeParameter('id', i) as string;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
 					const body: IDeal = {};
 					if (updateFields.title) {
@@ -680,7 +680,7 @@ export class Salesmate implements INodeType {
 				}
 				if (operation === 'get') {
 					const dealId = this.getNodeParameter('id', i) as string;
-					const rawData = this.getNodeParameter('rawData', i) as boolean;
+					const rawData = this.getNodeParameter('rawData', i);
 					responseData = await salesmateApiRequest.call(this, 'GET', `/v1/deals/${dealId}`);
 					responseData = responseData.Data;
 
@@ -689,9 +689,9 @@ export class Salesmate implements INodeType {
 					}
 				}
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					let body: IDataObject = {
 						query: {
 							group: {},

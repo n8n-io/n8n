@@ -187,7 +187,7 @@ export class ConvertKit implements INodeType {
 						responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields/${id}`);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields`);
 
@@ -254,7 +254,7 @@ export class ConvertKit implements INodeType {
 						responseData = subscription;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(this, 'GET', `/forms`);
 
@@ -269,7 +269,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getSubscriptions') {
 						const formId = this.getNodeParameter('id', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -337,7 +337,7 @@ export class ConvertKit implements INodeType {
 						responseData = subscription;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(this, 'GET', `/sequences`);
 
@@ -352,7 +352,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getSubscriptions') {
 						const sequenceId = this.getNodeParameter('id', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -392,7 +392,7 @@ export class ConvertKit implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(this, 'GET', `/tags`);
 
@@ -447,7 +447,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getAll') {
 						const tagId = this.getNodeParameter('tagId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(
 							this,

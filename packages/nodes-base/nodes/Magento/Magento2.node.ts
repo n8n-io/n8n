@@ -407,7 +407,7 @@ export class Magento2 implements INodeType {
 						const sort = this.getNodeParameter('options.sort', i, {}) as {
 							sort: [{ direction: string; field: string }];
 						};
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						let qs: Search = {};
 
 						if (filterType === 'manual') {
@@ -588,7 +588,7 @@ export class Magento2 implements INodeType {
 						const sort = this.getNodeParameter('options.sort', i, {}) as {
 							sort: [{ direction: string; field: string }];
 						};
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						let qs: Search = {};
 
 						if (filterType === 'manual') {
@@ -710,7 +710,7 @@ export class Magento2 implements INodeType {
 						const sort = this.getNodeParameter('options.sort', i, {}) as {
 							sort: [{ direction: string; field: string }];
 						};
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						let qs: Search = {};
 
 						if (filterType === 'manual') {

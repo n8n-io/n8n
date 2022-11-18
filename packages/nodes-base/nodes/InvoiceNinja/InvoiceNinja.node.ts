@@ -363,7 +363,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.include) {
 							qs.include = options.include as string;
@@ -521,7 +521,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.include) {
 							qs.include = options.include as string;
@@ -617,7 +617,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.include) {
 							qs.include = options.include as string;
@@ -689,7 +689,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.include) {
 							qs.include = options.include as string;
@@ -794,7 +794,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll === true) {
 							responseData = await invoiceNinjaApiRequestAllItems.call(
 								this,
@@ -951,7 +951,7 @@ export class InvoiceNinja implements INodeType {
 						responseData = responseData.data;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.include) {
 							qs.include = options.include as string;

@@ -431,7 +431,7 @@ export class GoogleSlides implements INodeType {
 							`/presentations/${presentationId}/pages/${pageObjectId}/thumbnail`,
 						);
 
-						const download = this.getNodeParameter('download', 0) as boolean;
+						const download = this.getNodeParameter('download', 0);
 						if (download === true) {
 							const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 
@@ -510,7 +510,7 @@ export class GoogleSlides implements INodeType {
 						// ----------------------------------
 						//      presentation: getSlides
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						responseData = await googleApiRequest.call(
 							this,

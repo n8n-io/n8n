@@ -277,7 +277,7 @@ export class Hunter implements INodeType {
 				const operation = this.getNodeParameter('operation', 0) as string;
 				//https://hunter.io/api-documentation/v2#domain-search
 				if (operation === 'domainSearch') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					const domain = this.getNodeParameter('domain', i) as string;
 					const onlyEmails = this.getNodeParameter('onlyEmails', i, false) as boolean;

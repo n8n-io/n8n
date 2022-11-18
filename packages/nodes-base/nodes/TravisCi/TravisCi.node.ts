@@ -72,7 +72,7 @@ export class TravisCi implements INodeType {
 					//https://developer.travis-ci.com/resource/builds#for_current_user
 					if (operation === 'getAll') {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (additionalFields.sortBy) {
 							qs.sort_by = additionalFields.sortBy;

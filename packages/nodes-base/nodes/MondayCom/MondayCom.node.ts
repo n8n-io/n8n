@@ -302,7 +302,7 @@ export class MondayCom implements INodeType {
 						responseData = responseData.data.boards;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const body: IGraphqlBody = {
 							query: `query ($page: Int, $limit: Int) {
@@ -620,7 +620,7 @@ export class MondayCom implements INodeType {
 					if (operation === 'getAll') {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 						const groupId = this.getNodeParameter('groupId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const body: IGraphqlBody = {
 							query: `query ($boardId: [Int], $groupId: [String], $page: Int, $limit: Int) {
@@ -666,7 +666,7 @@ export class MondayCom implements INodeType {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 						const columnId = this.getNodeParameter('columnId', i) as string;
 						const columnValue = this.getNodeParameter('columnValue', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const body: IGraphqlBody = {
 							query: `query ($boardId: Int!, $columnId: String!, $columnValue: String!, $page: Int, $limit: Int ){

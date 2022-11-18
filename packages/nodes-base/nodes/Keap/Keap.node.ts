@@ -281,7 +281,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Company/listCompaniesUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					keysToSnakeCase(options);
 					Object.assign(qs, options);
@@ -415,7 +415,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/listContactsUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					if (options.email) {
 						qs.email = options.email as boolean;
@@ -484,7 +484,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Note/listNotesUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
@@ -547,7 +547,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Contact/listAppliedTagsUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const contactId = parseInt(this.getNodeParameter('contactId', i) as string, 10);
 					if (returnAll) {
 						responseData = await keapApiRequestAllItems.call(
@@ -615,7 +615,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/E-Commerce/listOrdersUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					keysToSnakeCase(options);
 					Object.assign(qs, options);
@@ -660,7 +660,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Product/listProductsUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
@@ -702,7 +702,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/Email/listEmailsUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
@@ -787,7 +787,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/File/listFilesUsingGET
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					keysToSnakeCase(filters);
 					Object.assign(qs, filters);
@@ -817,7 +817,7 @@ export class Keap implements INodeType {
 				}
 				//https://developer.infusionsoft.com/docs/rest/#!/File/createFileUsingPOST
 				if (operation === 'upload') {
-					const binaryData = this.getNodeParameter('binaryData', i) as boolean;
+					const binaryData = this.getNodeParameter('binaryData', i);
 					const fileAssociation = this.getNodeParameter('fileAssociation', i) as string;
 					const isPublic = this.getNodeParameter('isPublic', i) as boolean;
 					const body: IFile = {

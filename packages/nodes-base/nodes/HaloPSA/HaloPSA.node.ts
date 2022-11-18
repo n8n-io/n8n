@@ -284,7 +284,7 @@ export class HaloPSA implements INodeType {
 
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						const qs: IDataObject = {};
 						let response;
@@ -392,7 +392,7 @@ export class HaloPSA implements INodeType {
 
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						const qs: IDataObject = {};
 						let response;
@@ -502,7 +502,7 @@ export class HaloPSA implements INodeType {
 
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						const qs: IDataObject = {};
 						let response;
@@ -611,7 +611,7 @@ export class HaloPSA implements INodeType {
 
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const simplify = this.getNodeParameter('simplify', i) as boolean;
 						const qs: IDataObject = {};
 						let response;

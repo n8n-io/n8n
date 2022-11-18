@@ -192,7 +192,7 @@ export class Twist implements INodeType {
 					//https://developer.twist.com/v3/#get-all-channels
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						qs.workspace_id = workspaceId;
 						Object.assign(qs, filters);
@@ -320,7 +320,7 @@ export class Twist implements INodeType {
 					//https://developer.twist.com/v3/#get-all-comments
 					if (operation === 'getAll') {
 						const threadId = this.getNodeParameter('threadId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						qs.thread_id = threadId;
 
@@ -716,7 +716,7 @@ export class Twist implements INodeType {
 					//https://developer.twist.com/v3/#get-all-threads
 					if (operation === 'getAll') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						qs.channel_id = channelId;
 

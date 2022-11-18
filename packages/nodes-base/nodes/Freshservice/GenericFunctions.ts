@@ -99,7 +99,7 @@ export async function handleListing(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
 		return await freshserviceApiRequestAllItems.call(this, method, endpoint, body, qs);

@@ -93,7 +93,7 @@ export class Oura implements INodeType {
 					end: string;
 				};
 
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 
 				if (start) {
 					qs.start = moment(start).format('YYYY-MM-DD');

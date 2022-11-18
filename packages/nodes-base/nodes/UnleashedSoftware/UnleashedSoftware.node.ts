@@ -75,7 +75,7 @@ export class UnleashedSoftware implements INodeType {
 			//https://apidocs.unleashedsoftware.com/SalesOrders
 			if (resource === 'salesOrder') {
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 					if (filters.startDate) {
@@ -122,7 +122,7 @@ export class UnleashedSoftware implements INodeType {
 			//https://apidocs.unleashedsoftware.com/StockOnHand
 			if (resource === 'stockOnHand') {
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 

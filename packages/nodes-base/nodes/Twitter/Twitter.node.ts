@@ -215,7 +215,7 @@ export class Twitter implements INodeType {
 					// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
 					if (operation === 'search') {
 						const q = this.getNodeParameter('searchText', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const qs: IDataObject = {
 							q,

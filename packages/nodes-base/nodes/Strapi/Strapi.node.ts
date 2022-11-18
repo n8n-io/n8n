@@ -177,7 +177,7 @@ export class Strapi implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const contentType = this.getNodeParameter('contentType', i) as string;
 

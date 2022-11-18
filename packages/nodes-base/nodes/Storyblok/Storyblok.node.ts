@@ -171,7 +171,7 @@ export class Storyblok implements INodeType {
 						}
 						if (operation === 'getAll') {
 							const filters = this.getNodeParameter('filters', i) as string;
-							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', i);
 							Object.assign(qs, filters);
 
 							if (returnAll) {
@@ -204,7 +204,7 @@ export class Storyblok implements INodeType {
 						// 	const space = this.getNodeParameter('space', i) as string;
 						// 	const name = this.getNodeParameter('name', i) as string;
 						// 	const slug = this.getNodeParameter('slug', i) as string;
-						// 	const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						// 	const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						// 	const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						// 	const body: IDataObject = {
 						// 		name,
@@ -281,7 +281,7 @@ export class Storyblok implements INodeType {
 						if (operation === 'getAll') {
 							const space = this.getNodeParameter('space', i) as string;
 							const filters = this.getNodeParameter('filters', i) as string;
-							const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', i);
 							Object.assign(qs, filters);
 
 							if (returnAll) {

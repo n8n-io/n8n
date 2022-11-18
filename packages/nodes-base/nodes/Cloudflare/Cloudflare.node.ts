@@ -109,7 +109,7 @@ export class Cloudflare implements INodeType {
 					//https://api.cloudflare.com/#zone-level-authenticated-origin-pulls-list-certificates
 					if (operation === 'getMany') {
 						const zoneId = this.getNodeParameter('zoneId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
 
 						Object.assign(qs, filters);

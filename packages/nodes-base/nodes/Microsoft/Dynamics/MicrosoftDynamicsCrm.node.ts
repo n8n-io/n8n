@@ -214,7 +214,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 					if (operation === 'getAll') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (options.returnFields) {

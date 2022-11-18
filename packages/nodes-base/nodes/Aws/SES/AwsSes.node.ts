@@ -909,7 +909,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === true) {
 							responseData = await awsApiRequestSOAPAllItems.call(
@@ -1237,7 +1237,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === true) {
 							responseData = await awsApiRequestSOAPAllItems.call(

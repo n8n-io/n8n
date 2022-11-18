@@ -157,7 +157,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 					}
 
 					if (operation === 'getMany') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 

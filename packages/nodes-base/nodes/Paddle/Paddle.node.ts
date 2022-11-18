@@ -175,7 +175,7 @@ export class Paddle implements INodeType {
 			try {
 				if (resource === 'coupon') {
 					if (operation === 'create') {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(
@@ -253,7 +253,7 @@ export class Paddle implements INodeType {
 
 					if (operation === 'getAll') {
 						const productId = this.getNodeParameter('productId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = '/2.0/product/list_coupons';
 
 						body.product_id = productId as string;
@@ -269,7 +269,7 @@ export class Paddle implements INodeType {
 					}
 
 					if (operation === 'update') {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(
@@ -351,8 +351,8 @@ export class Paddle implements INodeType {
 				}
 				if (resource === 'payment') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(
@@ -423,7 +423,7 @@ export class Paddle implements INodeType {
 				}
 				if (resource === 'plan') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = '/2.0/subscription/plans';
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
@@ -448,7 +448,7 @@ export class Paddle implements INodeType {
 				}
 				if (resource === 'product') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = '/2.0/product/get_products';
 
 						responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
@@ -473,9 +473,9 @@ export class Paddle implements INodeType {
 				}
 				if (resource === 'user') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(

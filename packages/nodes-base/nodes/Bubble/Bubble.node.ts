@@ -115,7 +115,7 @@ export class Bubble implements INodeType {
 					//         object: getAll
 					// ----------------------------------
 
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					const typeNameInput = this.getNodeParameter('typeName', i) as string;
 					const typeName = typeNameInput.replace(/\s/g, '').toLowerCase();
 

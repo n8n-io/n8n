@@ -493,7 +493,7 @@ export class Medium implements INodeType {
 						//         publication:getAll
 						// ----------------------------------
 
-						const returnAll = this.getNodeParameter('returnAll', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const user = await mediumApiRequest.call(this, 'GET', `/me`);
 

@@ -123,7 +123,7 @@ export class Lemlist implements INodeType {
 
 						// https://developer.lemlist.com/#activities
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const qs = {} as IDataObject;
 						const filters = this.getNodeParameter('filters', i);

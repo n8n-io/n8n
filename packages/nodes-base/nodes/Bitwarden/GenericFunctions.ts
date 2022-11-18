@@ -98,7 +98,7 @@ export async function handleGetAll(
 	token: string,
 ) {
 	const responseData = await bitwardenApiRequest.call(this, method, endpoint, qs, body, token);
-	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (returnAll) {
 		return responseData.data;

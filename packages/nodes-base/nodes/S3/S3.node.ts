@@ -164,7 +164,7 @@ export class S3 implements INodeType {
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
@@ -192,7 +192,7 @@ export class S3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'search') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 						if (additionalFields.prefix) {
@@ -399,7 +399,7 @@ export class S3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {
@@ -679,7 +679,7 @@ export class S3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {

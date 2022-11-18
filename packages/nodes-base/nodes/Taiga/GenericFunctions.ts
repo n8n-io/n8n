@@ -145,7 +145,7 @@ export async function handleListing(
 ) {
 	let responseData;
 	qs.project = this.getNodeParameter('projectId', i) as number;
-	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (returnAll) {
 		return await taigaApiRequestAllItems.call(this, method, endpoint, body, qs);

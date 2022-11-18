@@ -165,7 +165,7 @@ export class Raindrop implements INodeType {
 						// ----------------------------------
 						//         bookmark: getAll
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const collectionId = this.getNodeParameter('collectionId', i);
 						const endpoint = `/raindrops/${collectionId}`;
@@ -272,7 +272,7 @@ export class Raindrop implements INodeType {
 						//        collection: getAll
 						// ----------------------------------
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const endpoint =
 							this.getNodeParameter('type', i) === 'parent'
@@ -415,7 +415,7 @@ export class Raindrop implements INodeType {
 
 						let endpoint = `/tags`;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const filter = this.getNodeParameter('filters', i) as IDataObject;
 

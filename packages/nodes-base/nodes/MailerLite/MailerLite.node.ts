@@ -126,7 +126,7 @@ export class MailerLite implements INodeType {
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 

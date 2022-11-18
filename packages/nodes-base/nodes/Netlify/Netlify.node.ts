@@ -135,7 +135,7 @@ export class Netlify implements INodeType {
 
 					if (operation === 'getAll') {
 						const siteId = this.getNodeParameter('siteId', i);
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === true) {
 							responseData = await netlifyRequestAllItems.call(
 								this,
@@ -166,7 +166,7 @@ export class Netlify implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === true) {
 							responseData = await netlifyRequestAllItems.call(
 								this,

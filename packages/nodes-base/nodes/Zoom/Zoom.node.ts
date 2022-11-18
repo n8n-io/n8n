@@ -181,7 +181,7 @@ export class Zoom implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://marketplace.zoom.us/docs/api-reference/zoom-api/meetings/meetings
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.type) {
@@ -495,7 +495,7 @@ export class Zoom implements INodeType {
 				// 		if (additionalFields.status) {
 				// 			qs.status = additionalFields.status as string;
 				// 		}
-				// 		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+				// 		const returnAll = this.getNodeParameter('returnAll', i);
 				// 		if (returnAll) {
 				// 			responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/meetings/${meetingId}/registrants`, {}, qs);
 				// 		} else {
@@ -648,7 +648,7 @@ export class Zoom implements INodeType {
 				// 	if (operation === 'getAll') {
 				// 		//https://marketplace.zoom.us/docs/api-reference/zoom-api/webinars/webinars
 				// 		const userId = this.getNodeParameter('userId', i) as string;
-				// 		const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+				// 		const returnAll = this.getNodeParameter('returnAll', i);
 				// 		if (returnAll) {
 				// 			responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/users/${userId}/webinars`, {}, qs);
 				// 		} else {
