@@ -333,7 +333,7 @@ export class SentryIo implements INodeType {
 
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/issues/`;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.statsPeriod) {
 							qs.statsPeriod = additionalFields.statsPeriod as string;
@@ -374,7 +374,7 @@ export class SentryIo implements INodeType {
 					if (operation === 'update') {
 						const issueId = this.getNodeParameter('issueId', i) as string;
 						const endpoint = `/api/0/issues/${issueId}/`;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.status) {
 							qs.status = additionalFields.status as string;
@@ -407,7 +407,7 @@ export class SentryIo implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const endpoint = `/api/0/organizations/`;
 
 						if (additionalFields.member) {
@@ -436,7 +436,7 @@ export class SentryIo implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const agreeTerms = this.getNodeParameter('agreeTerms', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const endpoint = `/api/0/organizations/`;
 
 						qs.name = name;
@@ -452,7 +452,7 @@ export class SentryIo implements INodeType {
 						const organizationSlug = this.getNodeParameter('organization_slug', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/`;
 
-						const body = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body = this.getNodeParameter('updateFields', i);
 
 						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 					}
@@ -499,7 +499,7 @@ export class SentryIo implements INodeType {
 						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/`;
-						const body = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body = this.getNodeParameter('updateFields', i);
 
 						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 					}
@@ -523,7 +523,7 @@ export class SentryIo implements INodeType {
 					if (operation === 'getAll') {
 						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (additionalFields.query) {
@@ -556,7 +556,7 @@ export class SentryIo implements INodeType {
 						const url = this.getNodeParameter('url', i) as string;
 						const projects = this.getNodeParameter('projects', i) as string[];
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.dateReleased) {
 							qs.dateReleased = additionalFields.dateReleased as string;
@@ -616,7 +616,7 @@ export class SentryIo implements INodeType {
 						const version = this.getNodeParameter('version', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/releases/${version}/`;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body = { ...updateFields };
 
@@ -697,7 +697,7 @@ export class SentryIo implements INodeType {
 						const name = this.getNodeParameter('name', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						qs.name = name;
 
@@ -712,7 +712,7 @@ export class SentryIo implements INodeType {
 						const teamSlug = this.getNodeParameter('teamSlug', i) as string;
 						const endpoint = `/api/0/teams/${organizationSlug}/${teamSlug}/`;
 
-						const body = this.getNodeParameter('updateFields', i) as IDataObject;
+						const body = this.getNodeParameter('updateFields', i);
 
 						responseData = await sentryIoApiRequest.call(this, 'PUT', endpoint, body, qs);
 					}

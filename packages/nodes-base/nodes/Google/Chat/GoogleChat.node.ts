@@ -339,7 +339,7 @@ export class GoogleChat implements INodeType {
 						const spaceId = this.getNodeParameter('spaceId', i) as string;
 
 						// get additional fields for threadKey and requestId
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.threadKey) {
 							qs.threadKey = additionalFields.threadKey;
 						}
@@ -492,7 +492,7 @@ export class GoogleChat implements INodeType {
 						const uri = this.getNodeParameter('incomingWebhookUrl', i) as string;
 
 						// get additional fields for threadKey
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.threadKey) {
 							qs.threadKey = additionalFields.threadKey;
 						}

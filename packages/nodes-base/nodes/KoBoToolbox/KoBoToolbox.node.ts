@@ -114,7 +114,7 @@ export class KoBoToolbox implements INodeType {
 							};
 						};
 					};
-					const formFilterOptions = this.getNodeParameter('filters', i) as IDataObject;
+					const formFilterOptions = this.getNodeParameter('filters', i);
 
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: '/api/v2/assets/',
@@ -142,7 +142,7 @@ export class KoBoToolbox implements INodeType {
 					//          Submissions: getAll
 					// ----------------------------------
 
-					const submissionQueryOptions = this.getNodeParameter('options', i) as IDataObject;
+					const submissionQueryOptions = this.getNodeParameter('options', i);
 					const filterJson = this.getNodeParameter('filterJson', i, null) as string;
 
 					responseData = await koBoToolboxApiRequest.call(this, {
@@ -183,7 +183,7 @@ export class KoBoToolbox implements INodeType {
 					//          Submissions: get
 					// ----------------------------------
 					const submissionId = this.getNodeParameter('submissionId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {

@@ -168,7 +168,7 @@ export class Twist implements INodeType {
 					if (operation === 'create') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							workspace_id: workspaceId,
 							name,
@@ -193,7 +193,7 @@ export class Twist implements INodeType {
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						qs.workspace_id = workspaceId;
 						Object.assign(qs, filters);
 
@@ -207,7 +207,7 @@ export class Twist implements INodeType {
 					//https://developer.twist.com/v3/#update-channel
 					if (operation === 'update') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 							id: channelId,
 						};
@@ -233,7 +233,7 @@ export class Twist implements INodeType {
 					if (operation === 'create') {
 						const threadId = this.getNodeParameter('threadId', i) as string;
 						const content = this.getNodeParameter('content', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							thread_id: threadId,
 							content,
@@ -321,7 +321,7 @@ export class Twist implements INodeType {
 					if (operation === 'getAll') {
 						const threadId = this.getNodeParameter('threadId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						qs.thread_id = threadId;
 
 						Object.assign(qs, filters);
@@ -343,7 +343,7 @@ export class Twist implements INodeType {
 					//https://developer.twist.com/v3/#update-comment
 					if (operation === 'update') {
 						const commentId = this.getNodeParameter('commentId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 							id: commentId,
 						};
@@ -420,7 +420,7 @@ export class Twist implements INodeType {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const conversationId = this.getNodeParameter('conversationId', i) as string;
 						const content = this.getNodeParameter('content', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							conversation_id: conversationId,
 							workspace_id: workspaceId,
@@ -520,7 +520,7 @@ export class Twist implements INodeType {
 					//https://developer.twist.com/v3/#get-all-messages
 					if (operation === 'getAll') {
 						const conversationId = this.getNodeParameter('conversationId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						qs.conversation_id = conversationId;
 						Object.assign(qs, additionalFields);
 
@@ -547,7 +547,7 @@ export class Twist implements INodeType {
 					//https://developer.twist.com/v3/#update-message-in-conversation
 					if (operation === 'update') {
 						const id = this.getNodeParameter('id', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 							id,
 						};
@@ -629,7 +629,7 @@ export class Twist implements INodeType {
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
 						const content = this.getNodeParameter('content', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							channel_id: channelId,
 							content,
@@ -717,7 +717,7 @@ export class Twist implements INodeType {
 					if (operation === 'getAll') {
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						qs.channel_id = channelId;
 
 						Object.assign(qs, filters);
@@ -739,7 +739,7 @@ export class Twist implements INodeType {
 					//https://developer.twist.com/v3/#update-thread
 					if (operation === 'update') {
 						const threadId = this.getNodeParameter('threadId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {
 							id: threadId,
 						};

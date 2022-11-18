@@ -993,7 +993,7 @@ export class Hubspot implements INodeType {
 						if (operation === 'upsert') {
 							const email = this.getNodeParameter('email', i) as string;
 							const resolveData = this.getNodeParameter('resolveData', i);
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const body: IDataObject[] = [];
 							if (additionalFields.annualRevenue) {
 								body.push({
@@ -1320,7 +1320,7 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/contacts/get_contact
 						if (operation === 'get') {
 							const contactId = this.getNodeParameter('contactId', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
@@ -1338,7 +1338,7 @@ export class Hubspot implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/methods/contacts/get_contacts
 						if (operation === 'getAll') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							if (additionalFields.formSubmissionMode) {
 								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
@@ -1372,7 +1372,7 @@ export class Hubspot implements INodeType {
 						if (operation === 'getRecentlyCreatedUpdated') {
 							let endpoint;
 							const returnAll = this.getNodeParameter('returnAll', 0);
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 							if (filters.formSubmissionMode) {
 								qs.formSubmissionMode = filters.formSubmissionMode as string;
 							}
@@ -1411,7 +1411,7 @@ export class Hubspot implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/api/crm/search
 						if (operation === 'search') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
 							const sortBy = additionalFields.sortBy || 'createdate';
@@ -1469,7 +1469,7 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/companies/create_company
 						if (operation === 'create') {
 							const name = this.getNodeParameter('name', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const body: IDataObject[] = [];
 							body.push({
 								name: 'name',
@@ -1694,7 +1694,7 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/companies/update_company
 						if (operation === 'update') {
 							const companyId = this.getNodeParameter('companyId', i) as string;
-							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+							const updateFields = this.getNodeParameter('updateFields', i);
 							const body: IDataObject[] = [];
 							if (updateFields.name) {
 								body.push({
@@ -1921,7 +1921,7 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/companies/get_company
 						if (operation === 'get') {
 							const companyId = this.getNodeParameter('companyId', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							if (additionalFields.includeMergeAudits) {
 								qs.includeMergeAudits = additionalFields.includeMergeAudits as boolean;
 							}
@@ -1930,7 +1930,7 @@ export class Hubspot implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/methods/companies/get-all-companies
 						if (operation === 'getAll') {
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							if (options.includeMergeAudits) {
 								qs.includeMergeAudits = options.includeMergeAudits as boolean;
@@ -1964,7 +1964,7 @@ export class Hubspot implements INodeType {
 							if (operation === 'getRecentlyCreated') {
 								endpoint = `/companies/v2/companies/recent/created`;
 							} else {
-								const filters = this.getNodeParameter('filters', i) as IDataObject;
+								const filters = this.getNodeParameter('filters', i);
 								if (filters.since) {
 									qs.since = new Date(filters.since as string).getTime();
 								}
@@ -1988,7 +1988,7 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/companies/search_companies_by_domain
 						if (operation === 'searchByDomain') {
 							const domain = this.getNodeParameter('domain', i) as string;
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const options = this.getNodeParameter('options', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							const body: IDataObject = {
 								requestOptions: {},
@@ -2024,7 +2024,7 @@ export class Hubspot implements INodeType {
 							const body: IDeal = {};
 							body.properties = [];
 							const association: IAssociation = {};
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const stage = this.getNodeParameter('stage', i) as string;
 							if (stage) {
 								body.properties.push({
@@ -2093,7 +2093,7 @@ export class Hubspot implements INodeType {
 						if (operation === 'update') {
 							const body: IDeal = {};
 							body.properties = [];
-							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+							const updateFields = this.getNodeParameter('updateFields', i);
 							const dealId = this.getNodeParameter('dealId', i) as string;
 							if (updateFields.stage) {
 								body.properties.push({
@@ -2154,7 +2154,7 @@ export class Hubspot implements INodeType {
 						}
 						if (operation === 'get') {
 							const dealId = this.getNodeParameter('dealId', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							if (additionalFields.includePropertyVersions) {
 								qs.includePropertyVersions = additionalFields.includePropertyVersions as boolean;
 							}
@@ -2162,7 +2162,7 @@ export class Hubspot implements INodeType {
 							responseData = await hubspotApiRequest.call(this, 'GET', endpoint);
 						}
 						if (operation === 'getAll') {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							if (filters.includeAssociations) {
 								qs.includeAssociations = filters.includeAssociations as boolean;
@@ -2197,7 +2197,7 @@ export class Hubspot implements INodeType {
 						}
 						if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
 							let endpoint;
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							if (filters.since) {
 								qs.since = new Date(filters.since as string).getTime();
@@ -2232,7 +2232,7 @@ export class Hubspot implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/api/crm/search
 						if (operation === 'search') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							const filtersGroupsUi = this.getNodeParameter('filterGroupsUi', i) as IDataObject;
 							const sortBy = additionalFields.sortBy || 'createdate';
@@ -2385,7 +2385,7 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/forms/submit_form_v3
 						if (operation === 'submit') {
 							const formId = this.getNodeParameter('formId', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const context = (this.getNodeParameter('contextUi', i) as IDataObject)
 								.contextValue as IDataObject;
 							const legalConsent = (this.getNodeParameter('lengalConsentUi', i) as IDataObject)
@@ -2444,7 +2444,7 @@ export class Hubspot implements INodeType {
 					if (resource === 'ticket') {
 						//https://developers.hubspot.com/docs/methods/tickets/create-ticket
 						if (operation === 'create') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const pipelineId = this.getNodeParameter('pipelineId', i) as string;
 							const stageId = this.getNodeParameter('stageId', i) as string;
 							const ticketName = this.getNodeParameter('ticketName', i) as string;
@@ -2555,7 +2555,7 @@ export class Hubspot implements INodeType {
 						//https://developers.hubspot.com/docs/methods/tickets/get_ticket_by_id
 						if (operation === 'get') {
 							const ticketId = this.getNodeParameter('ticketId', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							if (additionalFields.properties) {
 								qs.properties = additionalFields.properties as string[];
 							}
@@ -2572,7 +2572,7 @@ export class Hubspot implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/methods/tickets/get-all-tickets
 						if (operation === 'getAll') {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const returnAll = this.getNodeParameter('returnAll', 0);
 							if (additionalFields.properties) {
 								qs.properties = additionalFields.properties as string[];
@@ -2614,7 +2614,7 @@ export class Hubspot implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/methods/tickets/update-ticket
 						if (operation === 'update') {
-							const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+							const updateFields = this.getNodeParameter('updateFields', i);
 							const ticketId = this.getNodeParameter('ticketId', i) as string;
 							const body: IDataObject[] = [];
 							if (updateFields.pipelineId) {

@@ -129,7 +129,7 @@ export class Autopilot implements INodeType {
 					if (operation === 'upsert') {
 						const email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							Email: email,
