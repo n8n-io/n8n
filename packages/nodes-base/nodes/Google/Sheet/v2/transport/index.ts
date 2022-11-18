@@ -97,7 +97,7 @@ export async function apiRequestAllItems(
 	return returnData;
 }
 
-export function getAccessToken(
+export async function getAccessToken(
 	this:
 		| IExecuteFunctions
 		| IExecuteSingleFunctions

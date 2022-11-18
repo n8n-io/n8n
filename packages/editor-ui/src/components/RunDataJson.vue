@@ -69,7 +69,7 @@ import { externalHooks } from "@/components/mixins/externalHooks";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
 
-const runDataJsonActions = () => import('@/components/RunDataJsonActions.vue');
+const runDataJsonActions = async () => import('@/components/RunDataJsonActions.vue');
 
 export default mixins(externalHooks).extend({
 	name: 'run-data-json',

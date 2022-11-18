@@ -66,7 +66,7 @@ export default mixins(
 			'isReadOnly', // boolean
 		],
 		components: {
-			ParameterInputList: () => import('./ParameterInputList.vue') as Promise<Component>,
+			ParameterInputList: async () => import('./ParameterInputList.vue') as Promise<Component>,
 		},
 		data () {
 			return {

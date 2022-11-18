@@ -31,7 +31,7 @@ export function copyInputItems(items: INodeExecutionData[], properties: string[]
 	});
 }
 
-export function createConnection(
+export async function createConnection(
 	credentials: ICredentialDataDecryptedObject,
 ): Promise<mysql2.Connection> {
 	const { ssl, caCertificate, clientCertificate, clientPrivateKey, ...baseCredentials } =

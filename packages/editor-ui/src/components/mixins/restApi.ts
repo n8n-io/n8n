@@ -66,13 +66,13 @@ export const restApi = Vue.extend({
 				async makeRestApiRequest (method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
 					return makeRestApiRequest(self.rootStore.getRestApiContext, method, endpoint, data);
 				},
-				getActiveWorkflows: (): Promise<string[]> => {
+				getActiveWorkflows: async (): Promise<string[]> => {
 					return self.restApi().makeRestApiRequest('GET', `/active`);
 				},
-				getActivationError: (id: string): Promise<IActivationError | undefined> => {
+				getActivationError: async (id: string): Promise<IActivationError | undefined> => {
 					return self.restApi().makeRestApiRequest('GET', `/active/error/${id}`);
 				},
-				getCurrentExecutions: (filter: object): Promise<IExecutionsCurrentSummaryExtended[]> => {
+				getCurrentExecutions: async (filter: object): Promise<IExecutionsCurrentSummaryExtended[]> => {
 					let sendData = {};
 					if (filter) {
 						sendData = {
@@ -81,16 +81,16 @@ export const restApi = Vue.extend({
 					}
 					return self.restApi().makeRestApiRequest('GET', `/executions-current`, sendData);
 				},
-				stopCurrentExecution: (executionId: string): Promise<IExecutionsStopData> => {
+				stopCurrentExecution: async (executionId: string): Promise<IExecutionsStopData> => {
 					return self.restApi().makeRestApiRequest('POST', `/executions-current/${executionId}/stop`);
 				},
 
-				getCredentialTranslation: (credentialType): Promise<object> => {
+				getCredentialTranslation: async (credentialType): Promise<object> => {
 					return self.restApi().makeRestApiRequest('GET', '/credential-translation', { credentialType });
 				},
 
 				// Removes a test webhook
-				removeTestWebhook: (workflowId: string): Promise<boolean> => {
+				removeTestWebhook: async (workflowId: string): Promise<boolean> => {
 					return self.restApi().makeRestApiRequest('DELETE', `/test-webhook/${workflowId}`);
 				},
 
@@ -100,27 +100,27 @@ export const restApi = Vue.extend({
 				},
 
 				// Creates a new workflow
-				createNewWorkflow: (sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> => {
+				createNewWorkflow: async (sendData: IWorkflowDataUpdate): Promise<IWorkflowDb> => {
 					return self.restApi().makeRestApiRequest('POST', `/workflows`, sendData);
 				},
 
 				// Updates an existing workflow
-				updateWorkflow: (id: string, data: IWorkflowDataUpdate): Promise<IWorkflowDb> => {
+				updateWorkflow: async (id: string, data: IWorkflowDataUpdate): Promise<IWorkflowDb> => {
 					return self.restApi().makeRestApiRequest('PATCH', `/workflows/${id}`, data);
 				},
 
 				// Deletes a workflow
-				deleteWorkflow: (name: string): Promise<void> => {
+				deleteWorkflow: async (name: string): Promise<void> => {
 					return self.restApi().makeRestApiRequest('DELETE', `/workflows/${name}`);
 				},
 
 				// Returns the workflow with the given name
-				getWorkflow: (id: string): Promise<IWorkflowDb> => {
+				getWorkflow: async (id: string): Promise<IWorkflowDb> => {
 					return self.restApi().makeRestApiRequest('GET', `/workflows/${id}`);
 				},
 
 				// Returns all saved workflows
-				getWorkflows: (filter?: object): Promise<IWorkflowShortResponse[]> => {
+				getWorkflows: async (filter?: object): Promise<IWorkflowShortResponse[]> => {
 					let sendData;
 					if (filter) {
 						sendData = {
@@ -131,7 +131,7 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns a workflow from a given URL
-				getWorkflowFromUrl: (url: string): Promise<IWorkflowDb> => {
+				getWorkflowFromUrl: async (url: string): Promise<IWorkflowDb> => {
 					return self.restApi().makeRestApiRequest('GET', `/workflows/from-url`, { url });
 				},
 
@@ -142,12 +142,12 @@ export const restApi = Vue.extend({
 				},
 
 				// Deletes executions
-				deleteExecutions: (sendData: IExecutionDeleteFilter): Promise<void> => {
+				deleteExecutions: async (sendData: IExecutionDeleteFilter): Promise<void> => {
 					return self.restApi().makeRestApiRequest('POST', `/executions/delete`, sendData);
 				},
 
 				// Returns the execution with the given name
-				retryExecution: (id: string, loadWorkflow?: boolean): Promise<boolean> => {
+				retryExecution: async (id: string, loadWorkflow?: boolean): Promise<boolean> => {
 					let sendData;
 					if (loadWorkflow === true) {
 						sendData = {
@@ -159,7 +159,7 @@ export const restApi = Vue.extend({
 
 				// Returns all saved executions
 				// TODO: For sure needs some kind of default filter like last day, with max 10 results, ...
-				getPastExecutions: (filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse> => {
+				getPastExecutions: async (filter: object, limit: number, lastId?: string | number, firstId?: string | number): Promise<IExecutionsListResponse> => {
 					let sendData = {};
 					if (filter) {
 						sendData = {
@@ -174,12 +174,12 @@ export const restApi = Vue.extend({
 				},
 
 				// Returns all the available timezones
-				getTimezones: (): Promise<IDataObject> => {
+				getTimezones: async (): Promise<IDataObject> => {
 					return self.restApi().makeRestApiRequest('GET', `/options/timezones`);
 				},
 
 				// Binary data
-				getBinaryBufferString: (dataPath: string): Promise<string> => {
+				getBinaryBufferString: async (dataPath: string): Promise<string> => {
 					return self.restApi().makeRestApiRequest('GET', `/data/${dataPath}`);
 				},
 			};

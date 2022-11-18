@@ -143,7 +143,7 @@ export class Bannerbear implements INodeType {
 					if (additionalFields.waitForImage && responseData.status !== 'completed') {
 						let maxTries = (additionalFields.waitForImageMaxTries as number) || 3;
 
-						const promise = (uid: string) => {
+						const promise = async (uid: string) => {
 							let data: IDataObject = {};
 							return new Promise((resolve, reject) => {
 								const timeout = setInterval(async () => {

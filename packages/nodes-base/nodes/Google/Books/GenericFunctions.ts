@@ -99,7 +99,7 @@ export async function googleApiRequestAllItems(
 	return returnData;
 }
 
-function getAccessToken(
+async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	credentials: IGoogleAuthCredentials,
 ): Promise<IDataObject> {

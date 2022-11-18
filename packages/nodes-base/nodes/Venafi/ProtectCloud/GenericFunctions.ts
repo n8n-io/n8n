@@ -1,10 +1,6 @@
 import { OptionsWithUri } from 'request';
 
-import {
-	IExecuteFunctions,
-	IExecuteSingleFunctions,
-	ILoadOptionsFunctions,
-} from 'n8n-core';
+import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
 import { IDataObject, IHookFunctions, JsonObject, NodeApiError } from 'n8n-workflow';
 
@@ -118,7 +114,7 @@ export async function encryptPassphrase(
 	let encryptedKeyPass = '';
 	let encryptedKeyStorePass = '';
 
-	const promise = () => {
+	const promise = async () => {
 		return new Promise((resolve, reject) => {
 			// tslint:disable-next-line:no-any
 			nacl_factory.instantiate((nacl: any) => {

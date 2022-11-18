@@ -131,8 +131,8 @@ export default mixins(
 		components: {
 			MultipleParameter,
 			ParameterInputFull,
-			FixedCollectionParameter: () => import('./FixedCollectionParameter.vue') as Promise<Component>,
-			CollectionParameter: () => import('./CollectionParameter.vue') as Promise<Component>,
+			FixedCollectionParameter: async () => import('./FixedCollectionParameter.vue') as Promise<Component>,
+			CollectionParameter: async () => import('./CollectionParameter.vue') as Promise<Component>,
 			ImportParameter,
 		},
 		props: [

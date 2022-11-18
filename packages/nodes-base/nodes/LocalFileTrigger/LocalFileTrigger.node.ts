@@ -200,7 +200,7 @@ export class LocalFileTrigger implements INodeType {
 			watcher.on(eventName, (path) => executeTrigger(eventName, path));
 		}
 
-		function closeFunction() {
+		async function closeFunction() {
 			return watcher.close();
 		}
 

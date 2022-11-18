@@ -392,7 +392,7 @@ export const workflowHelpers = mixins(
 			},
 
 			// Returns the currently loaded workflow as JSON.
-			getWorkflowDataToSave (): Promise<IWorkflowData> {
+			async getWorkflowDataToSave (): Promise<IWorkflowData> {
 				const workflowNodes = this.workflowsStore.allNodes;
 				const workflowConnections = this.workflowsStore.allConnections;
 

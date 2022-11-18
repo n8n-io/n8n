@@ -181,7 +181,7 @@ export default mixins(
 
 			this.loading = true;
 
-			const saveWorkflowPromise = () => {
+			const saveWorkflowPromise = async () => {
 				return new Promise<string>((resolve) => {
 					if (this.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
 						nodeViewEventBus.$emit('saveWorkflow', () => {

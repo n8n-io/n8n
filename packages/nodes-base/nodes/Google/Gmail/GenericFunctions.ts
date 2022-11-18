@@ -302,7 +302,7 @@ export function extractEmail(s: string) {
 	return s;
 }
 
-function getAccessToken(
+async function getAccessToken(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
 	credentials: ICredentialDataDecryptedObject,
 ): Promise<IDataObject> {

@@ -6,11 +6,11 @@ function stringifyArray(arr: number[]) {
 	return arr.join(',');
 }
 
-export function testHealthEndpoint(apiEndpoint: string) {
+export async function testHealthEndpoint(apiEndpoint: string) {
 	return get(apiEndpoint, '/health');
 }
 
-export function getCategories(apiEndpoint: string, headers?: IDataObject): Promise<{categories: ITemplatesCategory[]}> {
+export async function getCategories(apiEndpoint: string, headers?: IDataObject): Promise<{categories: ITemplatesCategory[]}> {
 	return get(apiEndpoint, '/templates/categories', undefined, headers);
 }
 

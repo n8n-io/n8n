@@ -287,7 +287,7 @@ export class MySql implements INodeType {
 			// ----------------------------------
 
 			try {
-				const queryQueue = items.map((item, index) => {
+				const queryQueue = items.map(async (item, index) => {
 					const rawQuery = this.getNodeParameter('query', index) as string;
 
 					return connection.query(rawQuery);
@@ -371,7 +371,7 @@ export class MySql implements INodeType {
 				const updateSQL = `UPDATE ${table} SET ${columns
 					.map((column) => `${column} = ?`)
 					.join(',')} WHERE ${updateKey} = ?;`;
-				const queryQueue = updateItems.map((item) =>
+				const queryQueue = updateItems.map(async (item) =>
 					connection.query(updateSQL, Object.values(item).concat(item[updateKey])),
 				);
 				const queryResult = await Promise.all(queryQueue);

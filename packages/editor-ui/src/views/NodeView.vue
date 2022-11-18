@@ -239,9 +239,9 @@ interface AddNodeOptions {
 	dragAndDrop?: boolean;
 }
 
-const NodeCreator = () => import('@/components/Node/NodeCreator/NodeCreator.vue');
-const NodeCreation = () => import('@/components/Node/NodeCreation.vue');
-const CanvasControls = () => import('@/components/CanvasControls.vue');
+const NodeCreator = async () => import('@/components/Node/NodeCreator/NodeCreator.vue');
+const NodeCreation = async () => import('@/components/Node/NodeCreation.vue');
+const CanvasControls = async () => import('@/components/CanvasControls.vue');
 
 export default mixins(
 	copyPaste,
@@ -3001,7 +3001,7 @@ export default mixins(
 					connections: tempWorkflow.connectionsBySourceNode,
 				};
 			},
-			getSelectedNodesToSave(): Promise<IWorkflowData> {
+			async getSelectedNodesToSave(): Promise<IWorkflowData> {
 				const data: IWorkflowData = {
 					nodes: [],
 					connections: {},
@@ -3066,7 +3066,7 @@ export default mixins(
 
 				return Promise.resolve(data);
 			},
-			resetWorkspace() {
+			async resetWorkspace() {
 				this.workflowsStore.resetWorkflow();
 
 				// Reset nodes

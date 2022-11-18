@@ -179,7 +179,7 @@ export default mixins(
 		},
 		initialize: {
 			type: Function as PropType<() => Promise<void>>,
-			default: () => () => Promise.resolve(),
+			default: () => async () => Promise.resolve(),
 		},
 		filters: {
 			type: Object,

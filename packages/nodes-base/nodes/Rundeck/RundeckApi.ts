@@ -48,7 +48,7 @@ export class RundeckApi {
 		this.credentials = credentials as unknown as RundeckCredentials;
 	}
 
-	executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
+	async executeJob(jobId: string, args: IDataObject[]): Promise<IDataObject> {
 		let params = '';
 
 		if (args) {
@@ -64,7 +64,7 @@ export class RundeckApi {
 		return this.request('POST', `/api/14/job/${jobId}/run`, body, {});
 	}
 
-	getJobMetadata(jobId: string): Promise<IDataObject> {
+	async getJobMetadata(jobId: string): Promise<IDataObject> {
 		return this.request('GET', `/api/18/job/${jobId}/info`, {}, {});
 	}
 }

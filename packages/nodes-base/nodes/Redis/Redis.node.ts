@@ -540,7 +540,7 @@ export class Redis implements INodeType {
 		},
 	};
 
-	execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		// Parses the given value in a number if it is one else returns a string
 		function getParsedValue(value: string): string | number {
 			if (value.match(/^[\d\.]+$/) === null) {
