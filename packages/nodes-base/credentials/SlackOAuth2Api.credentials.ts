@@ -4,6 +4,7 @@ import { ICredentialType, INodeProperties } from 'n8n-workflow';
 const userScopes = [
 	'channels:write',
 	'chat:write',
+	'chat.postMessage',
 	'files:read',
 	'files:write',
 	'groups:read',
@@ -15,6 +16,7 @@ const userScopes = [
 	'stars:write',
 	'usergroups:write',
 	'usergroups:read',
+	'users.files'
 	'users.profile:read',
 	'users.profile:write',
 	'users:read',
