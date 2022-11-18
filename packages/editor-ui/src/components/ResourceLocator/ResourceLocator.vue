@@ -69,7 +69,7 @@
 						:stickyOffset="4"
 						@drop="onDrop"
 					>
-						<template v-slot="{ droppable, activeDrop }">
+						<template #default="{ droppable, activeDrop }">
 							<div
 								:class="{
 									[$style.listModeInputContainer]: isListMode,
