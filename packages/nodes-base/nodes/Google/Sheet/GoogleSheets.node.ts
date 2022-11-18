@@ -17,7 +17,8 @@ export class GoogleSheets extends VersionedNodeType {
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new GoogleSheetsV1(baseDescription),
-			2: new GoogleSheetsV2(baseDescription),
+			2: new GoogleSheetsV1(baseDescription),
+			3: new GoogleSheetsV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);
