@@ -123,7 +123,7 @@ export async function handleGetAll(
 	body: IDataObject,
 	resource: string,
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
 		qs.limit = this.getNodeParameter('limit', 0) as number;

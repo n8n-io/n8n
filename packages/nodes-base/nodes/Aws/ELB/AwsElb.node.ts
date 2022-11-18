@@ -251,7 +251,7 @@ export class AwsElb implements INodeType {
 					if (operation === 'getMany') {
 						const params = ['Version=2015-12-01'];
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const listenerId = this.getNodeParameter('listenerId', i) as string;
 
@@ -385,7 +385,7 @@ export class AwsElb implements INodeType {
 					if (operation === 'getMany') {
 						const params = ['Version=2015-12-01'];
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll) {
 							const filters = this.getNodeParameter('filters', i) as IDataObject;

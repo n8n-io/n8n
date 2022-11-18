@@ -360,7 +360,7 @@ export class Coda implements INodeType {
 			// https://coda.io/developers/apis/v1beta1#operation/listRows
 			if (operation === 'getAllRows') {
 				const docId = this.getNodeParameter('docId', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const endpoint = `/docs/${docId}/tables/${tableId}/rows`;
@@ -503,7 +503,7 @@ export class Coda implements INodeType {
 			if (operation === 'getAllColumns') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const docId = this.getNodeParameter('docId', i) as string;
 						const tableId = this.getNodeParameter('tableId', i) as string;
 						const endpoint = `/docs/${docId}/tables/${tableId}/columns`;
@@ -566,7 +566,7 @@ export class Coda implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const docId = this.getNodeParameter('docId', i) as string;
 						const endpoint = `/docs/${docId}/formulas`;
 						if (returnAll) {
@@ -628,7 +628,7 @@ export class Coda implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const docId = this.getNodeParameter('docId', i) as string;
 						const endpoint = `/docs/${docId}/controls`;
 						if (returnAll) {
@@ -678,7 +678,7 @@ export class Coda implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const docId = this.getNodeParameter('docId', i) as string;
 						const endpoint = `/docs/${docId}/tables?tableTypes=view`;
 						if (returnAll) {
@@ -709,7 +709,7 @@ export class Coda implements INodeType {
 			}
 			if (operation === 'getAllViewRows') {
 				const docId = this.getNodeParameter('docId', 0) as string;
-				const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				const returnAll = this.getNodeParameter('returnAll', 0);
 				const viewId = this.getNodeParameter('viewId', 0) as string;
 				const options = this.getNodeParameter('options', 0) as IDataObject;
 				const endpoint = `/docs/${docId}/tables/${viewId}/rows`;
@@ -821,7 +821,7 @@ export class Coda implements INodeType {
 			if (operation === 'getAllViewColumns') {
 				for (let i = 0; i < items.length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const docId = this.getNodeParameter('docId', i) as string;
 						const viewId = this.getNodeParameter('viewId', i) as string;
 						const endpoint = `/docs/${docId}/tables/${viewId}/columns`;

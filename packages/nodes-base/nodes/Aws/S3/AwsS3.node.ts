@@ -172,7 +172,7 @@ export class AwsS3 implements INodeType {
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
@@ -200,7 +200,7 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'search') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 						if (additionalFields.prefix) {
@@ -391,7 +391,7 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {
@@ -656,7 +656,7 @@ export class AwsS3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {
@@ -720,7 +720,7 @@ export class AwsS3 implements INodeType {
 					if (operation === 'upload') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
 						const fileName = this.getNodeParameter('fileName', i) as string;
-						const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const tagsValues = (this.getNodeParameter('tagsUi', i) as IDataObject)
 							.tagsValues as IDataObject[];

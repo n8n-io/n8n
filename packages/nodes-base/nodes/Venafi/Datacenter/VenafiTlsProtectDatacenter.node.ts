@@ -64,7 +64,6 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'certificate') {
-
 					if (operation === 'create') {
 						const policyDN = this.getNodeParameter('PolicyDN', i) as string;
 
@@ -158,7 +157,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 					}
 
 					if (operation === 'getMany') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
@@ -237,7 +236,6 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						itemData: { item: i },
 					}),
 				);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });

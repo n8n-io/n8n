@@ -259,7 +259,7 @@ export class NotionV2 implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					const blockId = extractPageId(this.getNodeParameter('blockId', i, '', { extractValue: true }) as string);
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
@@ -320,7 +320,7 @@ export class NotionV2 implements INodeType {
 					const body: IDataObject = {
 						filter: { property: 'object', value: 'database' },
 					};
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(
 							this,
@@ -350,7 +350,7 @@ export class NotionV2 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const text = this.getNodeParameter('text', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const body: IDataObject = {
 						filter: {
@@ -478,7 +478,7 @@ export class NotionV2 implements INodeType {
 					download = this.getNodeParameter('options.downloadFiles', 0, false) as boolean;
 					const simple = this.getNodeParameter('simple', 0) as boolean;
 					const databaseId = this.getNodeParameter('databaseId', i, '', { extractValue: true }) as string;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const filterType = this.getNodeParameter('filterType', 0) as string;
 					const conditions = this.getNodeParameter('filters.conditions', i, []) as IDataObject[];
 					const sort = this.getNodeParameter('options.sort.sortValue', i, []) as IDataObject[];
@@ -595,7 +595,7 @@ export class NotionV2 implements INodeType {
 			}
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					if (returnAll) {
 						responseData = await notionApiRequestAllItems.call(this, 'results', 'GET', '/users');
 					} else {
@@ -663,7 +663,7 @@ export class NotionV2 implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const text = this.getNodeParameter('text', i) as string;
 					const options = this.getNodeParameter('options', i) as IDataObject;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const simple = this.getNodeParameter('simple', i) as boolean;
 					const body: IDataObject = {};
 

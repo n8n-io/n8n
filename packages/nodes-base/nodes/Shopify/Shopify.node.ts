@@ -264,7 +264,7 @@ export class Shopify implements INodeType {
 					}
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#index-2020-04
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.fields) {
 							qs.fields = options.fields as string;
@@ -419,7 +419,7 @@ export class Shopify implements INodeType {
 							{},
 						) as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						Object.assign(qs, additionalFields);
 
