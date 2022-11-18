@@ -8,12 +8,14 @@ const CUSTOM_DATE_FORMATS = [
 	/\d{1,2}\.\d{1,2}\.\d{4}/, // Should handle comma separated dates
 ];
 
-export const isValidDate = (input: string|number|Date): boolean => {
+export const isValidDate = (input: string | number | Date): boolean => {
 	try {
 		// Try to construct date object using input
 		const date = new Date(input);
 		// This will not fail for wrong dates so have to check like this:
-		if (date.toString() !== 'Invalid Date') {
+		if (date.getTime() < 0) {
+			return false;
+		} else if (date.toString() !== 'Invalid Date') {
 			return true;
 		} else if (typeof input === 'string') {
 			// Try to cover edge cases with regex
