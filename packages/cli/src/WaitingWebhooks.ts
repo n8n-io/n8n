@@ -141,8 +141,7 @@ export class WaitingWebhooks {
 
 		return new Promise((resolve, reject) => {
 			const executionMode = 'webhook';
-			// eslint-disable-next-line @typescript-eslint/no-floating-promises
-			WebhookHelpers.executeWebhook(
+			void WebhookHelpers.executeWebhook(
 				workflow,
 				webhookData,
 				workflowData as IWorkflowDb,
