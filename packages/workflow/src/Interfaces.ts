@@ -555,7 +555,7 @@ namespace ExecuteFunctions {
 	}
 
 	export type GetNodeParameterFn = {
-		// @TECH_DEBT: Refactor to remove this barely used overload
+		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
 		getNodeParameter<T extends { resource: string }>(
 			parameterName: 'resource',
 			itemIndex?: number,
