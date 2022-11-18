@@ -53,7 +53,7 @@ export default mixins(externalHooks).extend({
 				},
 			);
 
-			this.$externalHooks().run('telemetry.currentUserIdChanged', {
+			void this.$externalHooks().run('telemetry.currentUserIdChanged', {
 				instanceId: this.rootStore.instanceId,
 				userId: this.currentUserId,
 			});
@@ -69,7 +69,7 @@ export default mixins(externalHooks).extend({
 			if (this.isTelemetryEnabled) {
 				this.$telemetry.identify(this.rootStore.instanceId, userId);
 			}
-			this.$externalHooks().run('telemetry.currentUserIdChanged', {
+			void this.$externalHooks().run('telemetry.currentUserIdChanged', {
 				instanceId: this.rootStore.instanceId,
 				userId,
 			});

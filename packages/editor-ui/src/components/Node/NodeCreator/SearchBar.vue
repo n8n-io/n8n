@@ -42,7 +42,7 @@ export default mixins(externalHooks).extend({
 		}
 		setTimeout(this.focus, 0);
 
-		this.$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: this.$refs['input'] });
+		void this.$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: this.$refs['input'] });
 	},
 	methods: {
 		focus() {

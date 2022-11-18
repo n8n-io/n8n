@@ -29,7 +29,6 @@ module.exports = {
 		'@typescript-eslint/no-duplicate-imports': 'off',
 		'@typescript-eslint/no-empty-interface': 'off',
 		'@typescript-eslint/no-explicit-any': 'off',
-		'@typescript-eslint/no-floating-promises': 'off',
 		'@typescript-eslint/no-for-in-array': 'off',
 		'@typescript-eslint/no-invalid-void-type': 'off',
 		'@typescript-eslint/no-loop-func': 'off',

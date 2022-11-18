@@ -54,7 +54,7 @@ export default Vue.extend({
 		onSetupFirstStep(event: MouseEvent): void {
 			this.uiStore.addFirstStepOnLoad = true;
 			const workflowRoute = this.getWorkflowRoute();
-			this.$router.push(workflowRoute);
+			void this.$router.push(workflowRoute);
 		},
 		getWorkflowRoute(): { name: string, params: {}} {
 			const workflowId = this.workflowsStore.workflowId || this.$route.params.name;

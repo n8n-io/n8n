@@ -127,9 +127,9 @@ export const workflowRun = mixins(
 							duration: 0,
 						});
 						this.$titleSet(workflow.name as string, 'ERROR');
-						this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
+						await this.$externalHooks().run('workflowRun.runError', { errorMessages, nodeName });
 
-						this.getWorkflowDataToSave().then((workflowData) => {
+						await this.getWorkflowDataToSave().then((workflowData) => {
 							this.$telemetry.track('Workflow execution preflight failed', {
 								workflow_id: workflow.id,
 								workflow_name: workflow.name,
@@ -243,7 +243,7 @@ export const workflowRun = mixins(
 
 				const runWorkflowApiResponse = await this.runWorkflowApi(startRunData);
 
-				this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
+				await this.$externalHooks().run('workflowRun.runWorkflow', { nodeName, source });
 
 				 return runWorkflowApiResponse;
 			} catch (error) {

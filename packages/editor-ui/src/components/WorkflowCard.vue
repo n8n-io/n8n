@@ -161,7 +161,7 @@ export default mixins(
 				}
 			}
 
-			this.$router.push({
+			await this.$router.push({
 				name: VIEWS.WORKFLOW,
 				params: { name: this.data.id },
 			});

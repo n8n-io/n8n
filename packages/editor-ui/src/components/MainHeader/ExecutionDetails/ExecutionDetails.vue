@@ -86,7 +86,7 @@ export default mixins(titleChange).extend({
 		async openWorkflow(workflowId: string) {
 			this.$titleSet(this.workflowName, "IDLE");
 			// Change to other workflow
-			this.$router.push({
+			await this.$router.push({
 				name: "NodeViewExisting",
 				params: { name: workflowId },
 			});

@@ -130,7 +130,7 @@ export default mixins(
 
 			await Promise.all(loadPromises);
 
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
+			await this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 		},
 		onFilter(resource: ICredentialsResponse, filters: { type: string[]; search: string; }, matches: boolean): boolean {
 			if (filters.type.length > 0) {

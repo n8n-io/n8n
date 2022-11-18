@@ -129,17 +129,17 @@ export default mixins(
 			switch (key) {
 				case 'settings-personal':
 					if (this.$router.currentRoute.name !== VIEWS.PERSONAL_SETTINGS) {
-						this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
+						await this.$router.push({ name: VIEWS.PERSONAL_SETTINGS });
 					}
 					break;
 				case 'settings-users':
 					if (this.$router.currentRoute.name !== VIEWS.USERS_SETTINGS) {
-						this.$router.push({ name: VIEWS.USERS_SETTINGS });
+						await this.$router.push({ name: VIEWS.USERS_SETTINGS });
 					}
 					break;
 				case 'settings-api':
 					if (this.$router.currentRoute.name !== VIEWS.API_SETTINGS) {
-						this.$router.push({ name: VIEWS.API_SETTINGS });
+						await this.$router.push({ name: VIEWS.API_SETTINGS });
 					}
 					break;
 				case 'environments':
@@ -148,7 +148,7 @@ export default mixins(
 					break;
 				case 'settings-community-nodes':
 					if (this.$router.currentRoute.name !== VIEWS.COMMUNITY_NODES) {
-						this.$router.push({ name: VIEWS.COMMUNITY_NODES });
+						await this.$router.push({ name: VIEWS.COMMUNITY_NODES });
 					}
 					break;
 				default:

@@ -130,7 +130,7 @@ export const showMessage = mixins(externalHooks).extend({
 				duration: 0,
 			}, false);
 
-			this.$externalHooks().run('showMessage.showError', {
+			void this.$externalHooks().run('showMessage.showError', {
 				title,
 				message,
 				errorMessage: error.message,

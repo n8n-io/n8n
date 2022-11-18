@@ -125,17 +125,17 @@ export default mixins(
 	methods: {
 		addWorkflow() {
 			this.uiStore.nodeViewInitialized = false;
-			this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+			void this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 
 			this.$telemetry.track('User clicked add workflow button', {
 				source: 'Workflows list',
 			});
 		},
 		goToTemplates() {
-			this.$router.push({ name: VIEWS.TEMPLATES });
+			void this.$router.push({ name: VIEWS.TEMPLATES });
 		},
 		async initialize() {
-			this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
+			await this.usersStore.fetchUsers(); // Can be loaded in the background, used for filtering
 
 			return await Promise.all([
 				this.workflowsStore.fetchAllWorkflows(),
@@ -166,7 +166,7 @@ export default mixins(
 		},
 	},
 	mounted() {
-		this.usersStore.showPersonalizationSurvey();
+		void this.usersStore.showPersonalizationSurvey();
 	},
 });
 </script>

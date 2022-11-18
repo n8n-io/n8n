@@ -228,7 +228,7 @@ export default mixins(
 		},
 		onRoleAction(user: IUser, action: string) {
 			if (action === 'remove') {
-				this.onRemoveSharee(user.id);
+				void this.onRemoveSharee(user.id);
 			}
 		},
 		async loadUsers() {
@@ -237,7 +237,7 @@ export default mixins(
 	},
 	mounted() {
 		if (this.isSharingAvailable) {
-			this.loadUsers();
+			void this.loadUsers();
 		}
 	},
 });

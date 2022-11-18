@@ -275,7 +275,7 @@ export default mixins(
 		async mounted() {
 			this.basePath = this.rootStore.baseUrl;
 			if (this.$refs.user) {
-				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
+				await this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
 			if (window.innerWidth < 900 || this.uiStore.isNodeView) {
 				this.uiStore.sidebarMenuCollapsed = true;
@@ -298,10 +298,10 @@ export default mixins(
 			async onUserActionToggle(action: string) {
 				switch (action) {
 					case 'logout':
-						this.onLogout();
+						await this.onLogout();
 						break;
 					case 'settings':
-						this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
+						await this.$router.push({name: VIEWS.PERSONAL_SETTINGS});
 						break;
 					default:
 						break;
@@ -334,19 +334,19 @@ export default mixins(
 				switch (key) {
 					case 'workflows': {
 						if (this.$router.currentRoute.name !== VIEWS.WORKFLOWS) {
-							this.$router.push({name: VIEWS.WORKFLOWS});
+							await this.$router.push({name: VIEWS.WORKFLOWS});
 						}
 						break;
 					}
 					case 'templates': {
 						if (this.$router.currentRoute.name !== VIEWS.TEMPLATES) {
-							this.$router.push({ name: VIEWS.TEMPLATES });
+							await this.$router.push({ name: VIEWS.TEMPLATES });
 						}
 						break;
 					}
 					case 'credentials': {
 						if (this.$router.currentRoute.name !== VIEWS.CREDENTIALS) {
-							this.$router.push({name: VIEWS.CREDENTIALS});
+							await this.$router.push({name: VIEWS.CREDENTIALS});
 						}
 						break;
 					}
@@ -359,7 +359,7 @@ export default mixins(
 						if (defaultRoute) {
 							const routeProps = this.$router.resolve({ name: defaultRoute });
 							if (this.$router.currentRoute.name !== defaultRoute) {
-								this.$router.push(routeProps.route.path);
+								await this.$router.push(routeProps.route.path);
 							}
 						}
 						break;
@@ -396,7 +396,7 @@ export default mixins(
 						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 							this.$root.$emit('newWorkflow');
 						} else {
-							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+							await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 						}
 						this.$showMessage({
 							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
@@ -408,7 +408,7 @@ export default mixins(
 							this.$root.$emit('newWorkflow');
 						} else {
 							this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+							await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 						}
 						this.$showMessage({
 							title: this.$locale.baseText('mainSidebar.showMessage.handleSelect2.title'),
@@ -420,7 +420,7 @@ export default mixins(
 				} else {
 					if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
 						this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
-						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+						await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					}
 					this.$showMessage({
 						title: this.$locale.baseText('mainSidebar.showMessage.handleSelect3.title'),
@@ -446,7 +446,7 @@ export default mixins(
 				return defaultSettingsRoute;
 			},
 			onResize (event: UIEvent) {
-				this.callDebounced("onResizeEnd", { debounceTime: 100 }, event);
+				void this.callDebounced("onResizeEnd", { debounceTime: 100 }, event);
 			},
 			onResizeEnd (event: UIEvent) {
 				const browserWidth = (event.target as Window).outerWidth;

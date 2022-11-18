@@ -275,7 +275,7 @@ export const pushConnection = mixins(
 						) {
 							const error = runDataExecuted.data.resultData.error as ExpressionError;
 
-							this.getWorkflowDataToSave().then((workflowData) => {
+							void this.getWorkflowDataToSave().then((workflowData) => {
 								const eventData: IDataObject = {
 									caused_by_credential: false,
 									error_message: error.description,
@@ -389,7 +389,7 @@ export const pushConnection = mixins(
 						itemsCount = runDataExecuted.data.resultData.runData[lastNodeExecuted as string][0].data!.main[0]!.length;
 					}
 
-					this.$externalHooks().run('pushConnection.executionFinished', {
+					void this.$externalHooks().run('pushConnection.executionFinished', {
 						itemsCount,
 						nodeName: runDataExecuted.data.resultData.lastNodeExecuted,
 						errorMessage: runDataExecutedErrorMessage,
@@ -438,15 +438,15 @@ export const pushConnection = mixins(
 
 					this.processWaitingPushMessages();
 				} else if (receivedData.type === 'reloadNodeType') {
-					this.nodeTypesStore.getNodeTypes();
-					this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
+					void this.nodeTypesStore.getNodeTypes();
+					void this.nodeTypesStore.getFullNodesProperties([receivedData.data]);
 				} else if (receivedData.type === 'removeNodeType') {
 					const pushData = receivedData.data;
 
 					const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
 
 					// Force reload of all credential types
-					this.credentialsStore.fetchCredentialTypes()
+					void this.credentialsStore.fetchCredentialTypes()
 						.then(() => {
 							this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 						});

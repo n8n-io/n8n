@@ -171,7 +171,7 @@ export class MqttTrigger implements INodeType {
 		}
 
 		if (this.getMode() === 'trigger') {
-			manualTriggerFunction();
+			await manualTriggerFunction();
 		}
 
 		async function closeFunction() {

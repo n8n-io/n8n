@@ -100,7 +100,7 @@ export default mixins(
 		},
 	},
 	mounted() {
-		this.loadUsers();
+		void this.loadUsers();
 	},
 });
 </script>

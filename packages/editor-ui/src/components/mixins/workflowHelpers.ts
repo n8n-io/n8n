@@ -741,7 +741,7 @@ export const workflowHelpers = mixins(
 
 					this.uiStore.stateIsDirty = false;
 					this.uiStore.removeActiveAction('workflowSaving');
-					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+					await this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
 				} catch (error) {
@@ -831,7 +831,7 @@ export const workflowHelpers = mixins(
 					}
 
 					if (redirect) {
-						this.$router.replace({
+						await this.$router.replace({
 							name: VIEWS.WORKFLOW,
 							params: { name: workflowData.id as string, action: 'workflowSave' },
 						});
@@ -839,7 +839,7 @@ export const workflowHelpers = mixins(
 
 					this.uiStore.removeActiveAction('workflowSaving');
 					this.uiStore.stateIsDirty = false;
-					this.$externalHooks().run('workflow.afterUpdate', { workflowData });
+					await this.$externalHooks().run('workflow.afterUpdate', { workflowData });
 
 					return true;
 				} catch (e) {

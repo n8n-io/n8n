@@ -68,7 +68,7 @@ export default mixins(externalHooks).extend({
 	},
 	watch: {
 		selectedType(newValue, oldValue) {
-			this.$externalHooks().run('nodeCreateList.selectedTypeChanged', {
+			void this.$externalHooks().run('nodeCreateList.selectedTypeChanged', {
 				oldValue,
 				newValue,
 			});
@@ -80,13 +80,13 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	mounted() {
-		this.$externalHooks().run('nodeCreateList.mounted');
+		void this.$externalHooks().run('nodeCreateList.mounted');
 		// Make sure tabs are visible on mount
 		this.nodeCreatorStore.showTabs = true;
 	},
 	destroyed() {
 		this.nodeCreatorStore.selectedType = ALL_NODE_FILTER;
-		this.$externalHooks().run('nodeCreateList.destroyed');
+		void this.$externalHooks().run('nodeCreateList.destroyed');
 		this.$telemetry.trackNodesPanel('nodeCreateList.destroyed', { workflow_id: this.workflowsStore.workflowId });
 	},
 });

@@ -168,7 +168,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 		},
 		async fetchPromptsData(): Promise<void> {
 			if (!this.isTelemetryEnabled) {
-				Promise.resolve();
+				await Promise.resolve();
 			}
 			try {
 				const uiStore = useUIStore();
@@ -182,9 +182,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 				}
 
 				this.setPromptsData(promptsData);
-				Promise.resolve();
+				await Promise.resolve();
 			} catch (error) {
-				Promise.reject(error);
+				await Promise.reject(error);
 			}
 		},
 		async submitContactInfo(email: string): Promise<IN8nPromptResponse | undefined> {

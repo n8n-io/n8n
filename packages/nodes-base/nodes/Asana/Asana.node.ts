@@ -2315,7 +2315,7 @@ export class Asana implements INodeType {
 
 						endpoint = `/projects/${projectId}`;
 
-						asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
+						await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
 						responseData = { success: true };
 					}
@@ -2410,10 +2410,9 @@ export class Asana implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					),
+					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
+						itemData: { item: i },
+					}),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {

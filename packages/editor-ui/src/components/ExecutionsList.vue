@@ -251,7 +251,7 @@ export default mixins(
 		await this.refreshData();
 		this.handleAutoRefreshToggle();
 
-		this.$externalHooks().run('executionsList.openDialog');
+		await this.$externalHooks().run('executionsList.openDialog');
 		this.$telemetry.track('User opened Executions log', { workflow_id: this.workflowsStore.workflowId });
 	},
 	beforeDestroy() {
@@ -434,7 +434,7 @@ export default mixins(
 					if (currentWorkflowExecutions.length === 0) {
 						this.workflowsStore.activeWorkflowExecution = null;
 
-						this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } });
+						await this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: currentWorkflow } });
 					} else if (removedActiveExecution) {
 						this.workflowsStore.activeWorkflowExecution = currentWorkflowExecutions[0];
 						this.$router.push({

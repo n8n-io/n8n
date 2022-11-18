@@ -95,7 +95,7 @@ export default mixins(
 				this.updateDisplayValue();
 				this.$emit('valueChanged', this.latestValue);
 			} else {
-				this.callDebounced('updateDisplayValue', { debounceTime: 500 });
+				void this.callDebounced('updateDisplayValue', { debounceTime: 500 });
 			}
 		},
 
@@ -115,7 +115,7 @@ export default mixins(
 
 		itemSelected (eventData: IVariableItemSelected) {
 			(this.$refs.inputFieldExpression as any).itemSelected(eventData); // tslint:disable-line:no-any
-			this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
+			void this.$externalHooks().run('expressionEdit.itemSelected', { parameter: this.parameter, value: this.value, selectedItem: eventData });
 
 			const trackProperties: {
 				event_version: string;
@@ -177,7 +177,7 @@ export default mixins(
 			this.latestValue = this.value;
 
 			const resolvedExpressionValue = this.$refs.expressionResult && (this.$refs.expressionResult as any).getValue() || undefined;  // tslint:disable-line:no-any
-			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
+			void this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
 				const telemetryPayload = {
@@ -189,7 +189,7 @@ export default mixins(
 					has_mapping: hasExpressionMapping(this.value),
 				};
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
-				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
+				void this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
 		},
 	},

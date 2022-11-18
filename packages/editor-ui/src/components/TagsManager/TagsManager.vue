@@ -47,7 +47,7 @@ import { useTagsStore } from "@/stores/tags";
 export default mixins(showMessage).extend({
 	name: "TagsManager",
 	created() {
-		this.tagsStore.fetchAll({force: true, withUsageCount: true});
+		void this.tagsStore.fetchAll({force: true, withUsageCount: true});
 	},
 	data() {
 		const tagIds = useTagsStore().allTags.map((tag) => tag.id);

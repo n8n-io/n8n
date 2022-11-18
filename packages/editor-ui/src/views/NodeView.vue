@@ -293,10 +293,10 @@ export default mixins(
 						this.startLoading();
 						if (nodeViewNotInitialized) {
 							const previousDirtyState = this.uiStore.stateIsDirty;
-							this.resetWorkspace();
+							void this.resetWorkspace();
 							this.uiStore.stateIsDirty = previousDirtyState;
 						}
-						this.initView().then(() => {
+						void this.initView().then(() => {
 							this.stopLoading();
 							if (this.blankRedirect) {
 								this.blankRedirect = false;
@@ -320,7 +320,7 @@ export default mixins(
 			containsTrigger(containsTrigger) {
 				// Re-center CanvasAddButton if there's no triggers
 				if (containsTrigger === false) this.canvasStore.setRecenteredCanvasAddButtonPosition(this.getNodeViewOffsetPosition);
-				else this.tryToAddWelcomeSticky();
+				else void this.tryToAddWelcomeSticky();
 			},
 			nodeViewScale(newScale) {
 				const element = this.$refs.nodeView as HTMLDivElement;
@@ -363,7 +363,7 @@ export default mixins(
 
 							// We can't use next() here since vue-router
 							// would prevent the navigation with an error
-							this.$router.push(to as RawLocation);
+							void this.$router.push(to as RawLocation);
 							});
 						} else {
 							next();
@@ -539,7 +539,7 @@ export default mixins(
 			};
 		},
 		beforeDestroy() {
-			this.resetWorkspace();
+			void this.resetWorkspace();
 			// Make sure the event listeners get removed again else we
 			// could add up with them registred multiple times
 			document.removeEventListener('keydown', this.keyDown);
@@ -558,17 +558,17 @@ export default mixins(
 					source: 'canvas',
 				};
 				this.$telemetry.track('User clicked execute node button', telemetryPayload);
-				this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
-				this.runWorkflow(nodeName, source);
+				void this.$externalHooks().run('nodeView.onRunNode', telemetryPayload);
+				void this.runWorkflow(nodeName, source);
 			},
 			async onRunWorkflow() {
-				this.getWorkflowDataToSave().then((workflowData) => {
+				await this.getWorkflowDataToSave().then((workflowData) => {
 					const telemetryPayload = {
 						workflow_id: this.workflowsStore.workflowId,
 						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
 					};
 					this.$telemetry.track('User clicked execute workflow button', telemetryPayload);
-					this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
+					void this.$externalHooks().run('nodeView.onRunWorkflow', telemetryPayload);
 
 				});
 
@@ -680,7 +680,7 @@ export default mixins(
 			},
 			async openExecution(executionId: string) {
 				this.startLoading();
-				this.resetWorkspace();
+				await this.resetWorkspace();
 				let data: IExecutionResponse | undefined;
 				try {
 					data = await this.restApi().getExecution(executionId);
@@ -706,7 +706,7 @@ export default mixins(
 					this.canvasStore.zoomToFit();
 					this.uiStore.stateIsDirty = false;
 				});
-				this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
+				await this.$externalHooks().run('execution.open', { workflowId: data.workflowData.id, workflowName: data.workflowData.name, executionId });
 				this.$telemetry.track('User opened read-only execution', { workflow_id: data.workflowData.id, execution_mode: data.mode, execution_finished: data.finished });
 
 				if (!data.finished && data.data?.resultData?.error) {
@@ -746,7 +746,7 @@ export default mixins(
 				if (!data.workflow.nodes || !data.workflow.connections) {
 					throw new Error('Invalid workflow object');
 				}
-				this.resetWorkspace();
+				await this.resetWorkspace();
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes);
 
 				await this.addNodes(data.workflow.nodes as INodeUi[], data.workflow.connections);
@@ -762,14 +762,14 @@ export default mixins(
 			async openWorkflowTemplate(templateId: string) {
 				this.startLoading();
 				this.setLoadingText(this.$locale.baseText('nodeView.loadingTemplate'));
-				this.resetWorkspace();
+				await this.resetWorkspace();
 
 				this.workflowsStore.currentWorkflowExecutions = [];
 				this.workflowsStore.activeWorkflowExecution = null;
 
 				let data: IWorkflowTemplate | undefined;
 				try {
-					this.$externalHooks().run('template.requested', { templateId });
+					await this.$externalHooks().run('template.requested', { templateId });
 					data = await this.templatesStore.getWorkflowTemplate(templateId);
 
 					if (!data) {
@@ -782,14 +782,14 @@ export default mixins(
 					}
 				} catch (error) {
 					this.$showError(error, this.$locale.baseText('nodeView.couldntImportWorkflow'));
-					this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
+					await this.$router.replace({ name: VIEWS.NEW_WORKFLOW });
 					return;
 				}
 
 				data.workflow.nodes = CanvasHelpers.getFixedNodesList(data.workflow.nodes) as INodeUi[];
 
 				this.blankRedirect = true;
-				this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
+				await this.$router.replace({ name: VIEWS.NEW_WORKFLOW, query: { templateId } });
 
 				await this.addNodes(data.workflow.nodes, data.workflow.connections);
 				this.workflowData = await this.workflowsStore.getNewWorkflowData(data.name) || {};
@@ -798,12 +798,12 @@ export default mixins(
 					this.uiStore.stateIsDirty = true;
 				});
 
-				this.$externalHooks().run('template.open', { templateId, templateName: data.name, workflow: data.workflow });
+				await this.$externalHooks().run('template.open', { templateId, templateName: data.name, workflow: data.workflow });
 				this.stopLoading();
 			},
 			async openWorkflow(workflowId: string) {
 				this.startLoading();
-				this.resetWorkspace();
+				await this.resetWorkspace();
 				let data: IWorkflowDb | undefined;
 				try {
 					data = await this.restApi().getWorkflow(workflowId);
@@ -861,7 +861,7 @@ export default mixins(
 					this.uiStore.stateIsDirty = false;
 				}
 				this.canvasStore.zoomToFit();
-				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+				await this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 				this.workflowsStore.activeWorkflowExecution = null;
 				this.stopLoading();
 				return data;
@@ -912,7 +912,7 @@ export default mixins(
 				if (e.key === 'Escape') {
 					this.createNodeActive = false;
 					if (this.activeNode) {
-						this.$externalHooks().run('dataDisplay.nodeEditingFinished');
+						await this.$externalHooks().run('dataDisplay.nodeEditingFinished');
 						this.ndvStore.activeNodeName = null;
 					}
 
@@ -925,13 +925,13 @@ export default mixins(
 				}
 
 				if (e.key === 'd') {
-					this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
+					await this.callDebounced('deactivateSelectedNode', { debounceTime: 350 });
 
 				} else if (e.key === 'Delete' || e.key === 'Backspace') {
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
+					await this.callDebounced('deleteSelectedNodes', { debounceTime: 500 });
 
 				} else if (e.key === 'Tab') {
 					this.onToggleNodeCreator({ source: 'tab', createNodeActive: !this.createNodeActive && !this.isReadOnly });
@@ -940,22 +940,22 @@ export default mixins(
 				} else if (e.key === 'F2' && !this.isReadOnly) {
 					const lastSelectedNode = this.lastSelectedNode;
 					if (lastSelectedNode !== null && lastSelectedNode.type !== STICKY_NODE_TYPE) {
-						this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
+						await this.callDebounced('renameNodePrompt', { debounceTime: 1500 }, lastSelectedNode.name);
 					}
 				} else if ((e.key === 'a') && (this.isCtrlKeyPressed(e) === true)) {
 					// Select all nodes
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectAllNodes', { debounceTime: 1000 });
+					await this.callDebounced('selectAllNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'c') && this.isCtrlKeyPressed(e)) {
-					this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
+					await this.callDebounced('copySelectedNodes', { debounceTime: 1000 });
 				} else if ((e.key === 'x') && this.isCtrlKeyPressed(e)) {
 					// Cut nodes
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
+					await this.callDebounced('cutSelectedNodes', { debounceTime: 1000 });
 				} else if (e.key === 'n' && this.isCtrlKeyPressed(e) && e.altKey) {
 					// Create a new workflow
 					e.stopPropagation();
@@ -967,7 +967,7 @@ export default mixins(
 					if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 						this.$root.$emit('newWorkflow');
 					} else {
-						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
+						await this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					}
 
 					this.$showMessage({
@@ -983,7 +983,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 });
+					await this.callDebounced('onSaveKeyboardShortcut', { debounceTime: 1000 });
 				} else if (e.key === 'Enter') {
 					// Activate the last selected node
 					const lastSelectedNode = this.lastSelectedNode;
@@ -999,7 +999,7 @@ export default mixins(
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
+					await this.callDebounced('selectDownstreamNodes', { debounceTime: 1000 });
 				} else if (e.key === 'ArrowRight') {
 					// Set child node active
 					const lastSelectedNode = this.lastSelectedNode;
@@ -1013,13 +1013,13 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
+					await this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
 				} else if (e.key === 'ArrowLeft' && e.shiftKey) {
 					// Select all downstream nodes
 					e.stopPropagation();
 					e.preventDefault();
 
-					this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
+					await this.callDebounced('selectUpstreamNodes', { debounceTime: 1000 });
 				} else if (e.key === 'ArrowLeft') {
 					// Set parent node active
 					const lastSelectedNode = this.lastSelectedNode;
@@ -1039,7 +1039,7 @@ export default mixins(
 						return;
 					}
 
-					this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
+					await this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, connections.main[0][0].node, false, true);
 				} else if (['ArrowUp', 'ArrowDown'].includes(e.key)) {
 					// Set sibling node as active
 
@@ -1099,7 +1099,7 @@ export default mixins(
 					}
 
 					if (nextSelectNode !== null) {
-						this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, nextSelectNode, false, true);
+						await this.callDebounced('nodeSelectedByName', { debounceTime: 100 }, nextSelectNode, false, true);
 					}
 				}
 			},
@@ -1196,7 +1196,7 @@ export default mixins(
 			},
 
 			copySelectedNodes(isCut: boolean) {
-				this.getSelectedNodesToSave().then((data) => {
+				void this.getSelectedNodesToSave().then((data) => {
 					const workflowToCopy: IWorkflowToShare = {
 						meta: {
 							instanceId: this.rootStore.instanceId,
@@ -1269,7 +1269,7 @@ export default mixins(
 				}
 				this.stopExecutionInProgress = false;
 
-				this.getWorkflowDataToSave().then((workflowData) => {
+				await this.getWorkflowDataToSave().then((workflowData) => {
 					const trackProps = {
 						workflow_id: this.workflowsStore.workflowId,
 						node_graph_string: JSON.stringify(TelemetryHelpers.generateNodesGraph(workflowData as IWorkflowBase, this.getNodeTypes()).nodeGraph),
@@ -1486,7 +1486,7 @@ export default mixins(
 				if (nodeTypeName) {
 					const mousePosition = this.getMousePositionWithinNodeView(event);
 
-					this.addNode(nodeTypeName, {
+					void this.addNode(nodeTypeName, {
 						position: [
 							mousePosition[0] - CanvasHelpers.NODE_SIZE / 2,
 							mousePosition[1] - CanvasHelpers.NODE_SIZE / 2,
@@ -1697,7 +1697,7 @@ export default mixins(
 				if (nodeTypeName === STICKY_NODE_TYPE) {
 					this.$telemetry.trackNodesPanel('nodeView.addSticky', { workflow_id: this.workflowsStore.workflowId });
 				} else {
-					this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
+					void this.$externalHooks().run('nodeView.addNodeButton', { nodeTypeName });
 					const trackProperties: ITelemetryTrackProperties = {
 						node_type: nodeTypeName,
 						workflow_id: this.workflowsStore.workflowId,
@@ -2208,7 +2208,7 @@ export default mixins(
 					if (workflowId !== null) {
 						const workflow = await this.restApi().getWorkflow(workflowId);
 						if (!workflow) {
-							this.$router.push({
+							void this.$router.push({
 								name: VIEWS.NEW_WORKFLOW,
 							});
 							this.$showMessage({
@@ -2584,7 +2584,7 @@ export default mixins(
 						},
 					);
 				} else {
-					this.$externalHooks().run('node.deleteNode', { node });
+					void this.$externalHooks().run('node.deleteNode', { node });
 					this.$telemetry.track('User deleted node', { node_type: node.type, workflow_id: this.workflowsStore.workflowId });
 				}
 
@@ -2645,7 +2645,7 @@ export default mixins(
 				if (parameterData.name === 'name' && parameterData.oldValue) {
 					// The name changed so we have to take care that
 					// the connections get changed.
-					this.renameNode(parameterData.oldValue as string, parameterData.value as string);
+					void this.renameNode(parameterData.oldValue as string, parameterData.value as string);
 				}
 			},
 			async renameNodePrompt(currentName: string) {
@@ -2674,7 +2674,7 @@ export default mixins(
 
 					const promptResponse = await promptResponsePromise as MessageBoxInputData;
 
-					this.renameNode(currentName, promptResponse.value);
+					await this.renameNode(currentName, promptResponse.value);
 				} catch (e) { }
 			},
 			async renameNode(currentName: string, newName: string) {
@@ -3234,11 +3234,11 @@ export default mixins(
 				}
 
 				this.createNodeActive = createNodeActive;
-				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
+				void this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
 				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.workflowsStore.workflowId });
 			},
 			onAddNode({ nodeTypeName, position }: { nodeTypeName: string; position?: [number, number] }) {
-				this.addNode(nodeTypeName, { position });
+				void this.addNode(nodeTypeName, { position });
 			},
 			async saveCurrentWorkflowExternal(callback: () => void) {
 				await this.saveCurrentWorkflow();
@@ -3250,7 +3250,7 @@ export default mixins(
 			window.addEventListener('message', this.onPostMessageReceived);
 
 			this.startLoading();
-			this.resetWorkspace();
+			await this.resetWorkspace();
 
 			const loadPromises = [
 				this.loadActiveWorkflows(),
@@ -3292,8 +3292,8 @@ export default mixins(
 				this.stopLoading();
 
 				setTimeout(() => {
-					this.usersStore.showPersonalizationSurvey();
-					this.checkForNewVersions();
+					void this.usersStore.showPersonalizationSurvey();
+					void this.checkForNewVersions();
 					this.addPinDataConnections(this.workflowsStore.getPinData || {} as IPinData);
 				}, 0);
 			});
@@ -3367,7 +3367,7 @@ export default mixins(
 			nodeViewEventBus.$off('saveWorkflow', this.saveCurrentWorkflowExternal);
 		},
 		destroyed() {
-			this.resetWorkspace();
+			void this.resetWorkspace();
 			this.uiStore.stateIsDirty = false;
 			window.removeEventListener('message', this.onPostMessageReceived);
 			this.$root.$off('newWorkflow', this.newWorkflow);

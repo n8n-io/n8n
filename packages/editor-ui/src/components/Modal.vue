@@ -116,7 +116,7 @@ export default Vue.extend({
 
 		if (this.$props.eventBus) {
 			this.$props.eventBus.$on('close', () => {
-				this.closeDialog();
+				void this.closeDialog();
 			});
 
 			this.$props.eventBus.$on('closeAll', () => {

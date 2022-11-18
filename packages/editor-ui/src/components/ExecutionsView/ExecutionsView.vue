@@ -96,7 +96,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 	watch:{
     $route (to: Route, from: Route) {
 			const workflowChanged = from.params.name !== to.params.name;
-			this.initView(workflowChanged);
+			void this.initView(workflowChanged);
 
 			if (to.params.executionId) {
 				const execution = this.workflowsStore.getExecutionDataById(to.params.executionId);
@@ -123,7 +123,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 
 				if (confirmModal === MODAL_CONFIRMED) {
 					const saved = await this.saveCurrentWorkflow({}, false);
-					if (saved) this.settingsStore.fetchPromptsData();
+					if (saved) void this.settingsStore.fetchPromptsData();
 					this.uiStore.stateIsDirty = false;
 					next();
 				} else if (confirmModal === MODAL_CANCEL) {
@@ -157,7 +157,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				}
 				await this.openWorkflow(this.$route.params.name);
 				this.uiStore.nodeViewInitialized = false;
-				this.setExecutions();
+				await this.setExecutions();
 				if (this.activeExecution) {
 					this.$router.push({
 						name: VIEWS.EXECUTION_PREVIEW,
@@ -168,7 +168,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		},
 		async onLoadMore(): Promise<void> {
 			if (!this.loadingMore) {
-				this.callDebounced("loadMore", { debounceTime: 1000 });
+				await this.callDebounced("loadMore", { debounceTime: 1000 });
 			}
 		},
 		async loadMore(): Promise<void> {
@@ -228,7 +228,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 					}).catch(()=>{});;
 				} else { // If there are no executions left, show empty state and clear active execution from the store
 					this.workflowsStore.activeWorkflowExecution = null;
-					this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
+					await this.$router.push({ name: VIEWS.EXECUTION_HOME, params: { name: this.currentWorkflow } });
 				}
 			} catch (error) {
 				this.loading = false;
@@ -260,7 +260,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 					type: 'success',
 				});
 
-				this.loadAutoRefresh();
+				await this.loadAutoRefresh();
 			} catch (error) {
 				this.$showError(
 					error,
@@ -270,7 +270,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 		},
 		onFilterUpdated(newFilter: { finished: boolean, status: string }): void {
 			this.filter = newFilter;
-			this.setExecutions();
+			void this.setExecutions();
 		},
 		async setExecutions(): Promise<void> {
 			const workflowExecutions = await this.loadExecutions();
@@ -409,7 +409,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 
 				this.tagsStore.upsertTags(tags);
 
-				this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
+				await this.$externalHooks().run('workflow.open', { workflowId, workflowName: data.name });
 				this.uiStore.stateIsDirty = false;
 		},
 		async addNodes(nodes: INodeUi[], connections?: IConnections) {
@@ -524,7 +524,7 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				duration: 2000,
 			});
 			await this.retryExecution(payload.execution, loadWorkflow);
-			this.loadAutoRefresh();
+			await this.loadAutoRefresh();
 
 			this.$telemetry.track('User clicked retry execution button', {
 				workflow_id: this.workflowsStore.workflowId,

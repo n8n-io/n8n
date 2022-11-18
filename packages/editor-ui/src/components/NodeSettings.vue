@@ -480,7 +480,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 				this.updateNodeCredentialIssues(node);
 			}
 
-			this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+			void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 		},
 		nameChanged(name: string) {
 			// @ts-ignore
@@ -572,7 +572,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 						}
 					}
 
-					this.$externalHooks().run('nodeSettings.valueChanged', {
+					void this.$externalHooks().run('nodeSettings.valueChanged', {
 						parameterPath,
 						newValue,
 						parameters: this.parameters,
@@ -680,7 +680,7 @@ export default mixins(externalHooks, nodeHelpers).extend({
 
 				this.workflowsStore.setNodeParameters(updateInformation);
 
-				this.$externalHooks().run('nodeSettings.valueChanged', {
+				void this.$externalHooks().run('nodeSettings.valueChanged', {
 					parameterPath,
 					newValue,
 					parameters: this.parameters,

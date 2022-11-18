@@ -465,7 +465,7 @@ export default mixins(
 			dependentParametersValues () {
 				// Reload the remote parameters whenever a parameter
 				// on which the current field depends on changes
-				this.loadRemoteParameterOptions();
+				void this.loadRemoteParameterOptions();
 			},
 			value () {
 				if (this.parameter.type === 'color' && this.getArgument('showAlpha') === true) {
@@ -760,7 +760,7 @@ export default mixins(
 					this.updateNodeCredentialIssues(node);
 				}
 
-				this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
+				void this.$externalHooks().run('nodeSettings.credentialSelected', { updateInformation });
 			},
 			/**
 			 * Check whether a param value must be skipped when collecting node param issues for validation.
@@ -938,7 +938,7 @@ export default mixins(
 				this.$emit('textInput', parameterData);
 			},
 			valueChangedDebounced (value: NodeParameterValueType | {} | Date) {
-				this.callDebounced('valueChanged', { debounceTime: 100 }, value);
+				void this.callDebounced('valueChanged', { debounceTime: 100 }, value);
 			},
 			valueChanged (value: NodeParameterValueType | {} | Date) {
 				if (this.parameter.name === 'nodeCredentialType') {
@@ -1029,7 +1029,7 @@ export default mixins(
 							(resourceLocator as Vue).$emit('refreshList');
 						}
 					}
-					this.loadRemoteParameterOptions();
+					void this.loadRemoteParameterOptions();
 				}
 
 				if (this.node && (command === 'addExpression' || command === 'removeExpression')) {
@@ -1043,7 +1043,7 @@ export default mixins(
 						had_parameter: typeof prevValue === 'string' && prevValue.includes('$parameter'),
 					};
 					this.$telemetry.track('User switched parameter mode', telemetryPayload);
-					this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
+					void this.$externalHooks().run('parameterInput.modeSwitch', telemetryPayload);
 				}
 			},
 		},
@@ -1052,7 +1052,7 @@ export default mixins(
 				const remoteParameterOptions = this.$el.querySelectorAll('.remote-parameter-option');
 
 				if (remoteParameterOptions.length > 0) {
-					this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
+					void this.$externalHooks().run('parameterInput.updated', { remoteParameterOptions });
 				}
 			});
 		},
@@ -1079,7 +1079,7 @@ export default mixins(
 				// Make sure to load the parameter options
 				// directly and whenever the credentials change
 				this.$watch(() => this.node!.credentials, () => {
-					this.loadRemoteParameterOptions();
+					void this.loadRemoteParameterOptions();
 				}, { deep: true, immediate: true });
 
 				// Reload function on change element from
@@ -1098,14 +1098,14 @@ export default mixins(
 									return null;
 								}
 							}, () => {
-								this.loadRemoteParameterOptions();
+								void this.loadRemoteParameterOptions();
 							}, { deep: true, immediate: true });
 						}
 					}
 				}
 			}
 
-			this.$externalHooks().run('parameterInput.mount', { parameter: this.parameter, inputFieldRef: this.$refs['inputField'] });
+			void this.$externalHooks().run('parameterInput.mount', { parameter: this.parameter, inputFieldRef: this.$refs['inputField'] });
 		},
 	});
 </script>

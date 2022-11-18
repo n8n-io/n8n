@@ -130,7 +130,7 @@ export default mixins(
 		},
 		async onAction(action: string) {
 			if (action === CREDENTIAL_LIST_ITEM_ACTIONS.OPEN) {
-				this.onClick();
+				await this.onClick();
 			} else if (action === CREDENTIAL_LIST_ITEM_ACTIONS.DELETE) {
 				const deleteConfirmed = await this.confirmMessage(
 					this.$locale.baseText('credentialEdit.credentialEdit.confirmMessage.deleteCredential.message', {
@@ -142,7 +142,7 @@ export default mixins(
 				);
 
 				if (deleteConfirmed) {
-					this.credentialsStore.deleteCredential({ id:  this.data.id });
+					await this.credentialsStore.deleteCredential({ id:  this.data.id });
 				}
 			}
 		},

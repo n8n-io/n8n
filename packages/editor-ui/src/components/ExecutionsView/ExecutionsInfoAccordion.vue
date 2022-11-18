@@ -177,7 +177,7 @@ export default mixins(workflowHelpers).extend({
 				currentId = this.$route.params.name;
 			}
 			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
-			if (saved) this.settingsStore.fetchPromptsData();
+			if (saved) await this.settingsStore.fetchPromptsData();
 		},
 	},
 });

@@ -216,7 +216,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 				: this.filterOutNodexFromExcludedCategories(returnItems);
 
 			setTimeout(() => {
-				this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
+				void this.$externalHooks().run('nodeCreateList.filteredNodeTypesComputed', {
 					nodeFilter: this.nodeFilter,
 					result: filteredNodeTypes,
 					selectedType: this.selectedType,
@@ -337,7 +337,7 @@ export default mixins(externalHooks, globalLinkActions).extend({
 			// Reset the index whenver the filter-value changes
 			this.activeIndex = 0;
 			this.activeSubcategoryIndex = 0;
-			this.$externalHooks().run('nodeCreateList.nodeFilterChanged', {
+			void this.$externalHooks().run('nodeCreateList.nodeFilterChanged', {
 				oldValue,
 				newValue,
 				selectedType: this.selectedType,

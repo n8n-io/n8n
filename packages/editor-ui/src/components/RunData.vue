@@ -826,7 +826,7 @@ export default mixins(
 					view: this.displayMode,
 					run_index: this.runIndex,
 				};
-				this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
+				void this.$externalHooks().run('runData.onDataPinningSuccess', telemetryPayload);
 				this.$telemetry.track('Ndv data pinning success', telemetryPayload);
 			},
 			onDataPinningError(
@@ -856,7 +856,7 @@ export default mixins(
 						view: !this.hasNodeRun && !this.hasPinData ? 'none' : this.displayMode,
 					};
 
-					this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
+					await this.$externalHooks().run('runData.onTogglePinData', telemetryPayload);
 					this.$telemetry.track('User clicked pin data icon', telemetryPayload);
 				}
 
@@ -967,7 +967,7 @@ export default mixins(
 				}
 
 				this.closeBinaryDataDisplay();
-				this.$externalHooks().run('runData.displayModeChanged', { newValue: displayMode, oldValue: previous });
+				void this.$externalHooks().run('runData.displayModeChanged', { newValue: displayMode, oldValue: previous });
 				if(this.activeNode) {
 					this.$telemetry.track('User changed ndv item view', {
 						previous_view: previous,

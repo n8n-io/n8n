@@ -237,7 +237,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			}
 		}
 
-		this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
+		await this.$externalHooks().run('credentialsEdit.credentialModalOpened', {
 			credentialType: this.credentialTypeName,
 			isEditingCredential: this.mode === 'edit',
 			activeNode: this.ndvStore.activeNode,
@@ -249,7 +249,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 					this.showValidationWarning = true;
 				}
 				else {
-					this.retestCredential();
+					void this.retestCredential();
 				}
 			}
 		}, 0);
@@ -790,7 +790,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				}
 
 				this.$telemetry.track('User saved credentials', trackProperties);
-				this.$externalHooks().run('credentialEdit.saveCredential', trackProperties);
+				await this.$externalHooks().run('credentialEdit.saveCredential', trackProperties);
 			}
 
 			return credential;
@@ -813,7 +813,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return null;
 			}
 
-			this.$externalHooks().run('credential.saved', {
+			await this.$externalHooks().run('credential.saved', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
 				is_new: true,
@@ -844,7 +844,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				return null;
 			}
 
-			this.$externalHooks().run('credential.saved', {
+			await this.$externalHooks().run('credential.saved', {
 				credential_type: credentialDetails.type,
 				credential_id: credential.id,
 				is_new: false,
@@ -877,7 +877,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 			try {
 				this.isDeleting = true;
-				this.credentialsStore.deleteCredential({ id: this.credentialId });
+				await this.credentialsStore.deleteCredential({ id: this.credentialId });
 				this.hasUnsavedChanges = false;
 			} catch (error) {
 				this.$showError(

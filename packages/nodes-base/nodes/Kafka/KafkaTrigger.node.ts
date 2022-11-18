@@ -271,7 +271,7 @@ export class KafkaTrigger implements INodeType {
 			});
 		};
 
-		startConsumer();
+		await startConsumer();
 
 		// The "closeFunction" function gets called by n8n whenever
 		// the workflow gets deactivated and can so clean up.
@@ -286,7 +286,7 @@ export class KafkaTrigger implements INodeType {
 		// would trigger by itself so that the user knows what data
 		// to expect.
 		async function manualTriggerFunction() {
-			startConsumer();
+			await startConsumer();
 		}
 
 		return {

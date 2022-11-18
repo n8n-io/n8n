@@ -346,7 +346,7 @@ export default mixins(
 		},
 	},
 	mounted() {
-		this.onMounted();
+		void this.onMounted();
 	},
 	watch: {
 		isOwnerSubview() {
@@ -362,7 +362,7 @@ export default mixins(
 			this.sendFiltersTelemetry('sharedWith');
 		},
 		'filters.search'() {
-			this.callDebounced('sendFiltersTelemetry', {debounceTime: 1000, trailing: true}, 'search');
+			void this.callDebounced('sendFiltersTelemetry', {debounceTime: 1000, trailing: true}, 'search');
 		},
 		sortBy() {
 			this.sendSortingTelemetry();

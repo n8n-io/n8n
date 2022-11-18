@@ -112,7 +112,7 @@ export default mixins(showMessage).extend({
 			});
 		}
 
-		this.tagsStore.fetchAll();
+		void this.tagsStore.fetchAll();
 	},
 	computed: {
 		...mapStores(
@@ -169,7 +169,7 @@ export default mixins(showMessage).extend({
 				this.$data.filter = "";
 				this.uiStore.openModal(TAGS_MANAGER_MODAL_KEY);
 			} else if (ops === CREATE_KEY) {
-				this.onCreate();
+				void this.onCreate();
 			} else {
 				setTimeout(() => {
 					if (!this.$data.preventUpdate) {

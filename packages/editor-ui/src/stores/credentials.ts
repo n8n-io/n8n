@@ -183,7 +183,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 					const usersStore = useUsersStore();
 					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
-						this.setCredentialSharedWith({
+						await this.setCredentialSharedWith({
 							credentialId: credential.id,
 							sharedWith: data.sharedWith,
 						});
@@ -211,7 +211,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 					const usersStore = useUsersStore();
 					if (data.sharedWith && data.ownedBy.id === usersStore.currentUserId) {
-						this.setCredentialSharedWith({
+						await this.setCredentialSharedWith({
 							credentialId: credential.id,
 							sharedWith: data.sharedWith,
 						});

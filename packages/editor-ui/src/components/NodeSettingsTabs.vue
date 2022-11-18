@@ -117,7 +117,7 @@ export default mixins(
 	methods: {
 		onTabSelect(tab: string) {
 			if (tab === 'docs' && this.nodeType) {
-				this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType as INodeTypeDescription, documentationUrl: this.documentationUrl });
+				void this.$externalHooks().run('dataDisplay.onDocumentationUrlClick', { nodeType: this.nodeType as INodeTypeDescription, documentationUrl: this.documentationUrl });
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
 					workflow_id: this.workflowsStore.workflowId,

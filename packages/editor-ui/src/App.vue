@@ -132,7 +132,7 @@ export default mixins(
 					return;
 				}
 
-				this.$router.replace({ name: VIEWS.SETUP });
+				void this.$router.replace({ name: VIEWS.SETUP });
 				return;
 			}
 
@@ -146,7 +146,7 @@ export default mixins(
 				const redirect =
 					this.$route.query.redirect ||
 					encodeURIComponent(`${window.location.pathname}${window.location.search}`);
-				this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
+				void this.$router.replace({ name: VIEWS.SIGNIN, query: { redirect } });
 				return;
 			}
 
@@ -154,18 +154,18 @@ export default mixins(
 			if (this.$route.name === VIEWS.SIGNIN && typeof this.$route.query.redirect === 'string') {
 				const redirect = decodeURIComponent(this.$route.query.redirect);
 				if (redirect.startsWith('/')) { // protect against phishing
-					this.$router.replace(redirect);
+					void this.$router.replace(redirect);
 					return;
 				}
 			}
 
 			// if cannot access page and is logged in
-			this.$router.replace({ name: VIEWS.HOMEPAGE });
+			void this.$router.replace({ name: VIEWS.HOMEPAGE });
 		},
 		redirectIfNecessary() {
 			const redirect = this.$route.meta && typeof this.$route.meta.getRedirect === 'function' && this.$route.meta.getRedirect();
 			if (redirect) {
-				this.$router.replace(redirect);
+				void this.$router.replace(redirect);
 			}
 		},
 		setTheme() {
@@ -186,7 +186,7 @@ export default mixins(
 
 		this.trackPage();
 		// TODO: Un-comment once front-end hooks are updated to work with pinia store
-		this.$externalHooks().run('app.mount');
+		await this.$externalHooks().run('app.mount');
 
 		if (this.defaultLocale !== 'en') {
 			await this.nodeTypesStore.getNodeTranslationHeaders();
@@ -200,7 +200,7 @@ export default mixins(
 			this.trackPage();
 		},
 		defaultLocale(newLocale) {
-			loadLanguage(newLocale);
+			void loadLanguage(newLocale);
 		},
 	},
 });

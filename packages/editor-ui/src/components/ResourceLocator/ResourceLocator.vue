@@ -562,11 +562,11 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		async loadInitialResources(): Promise<void> {
 			if (!this.currentResponse || (this.currentResponse && this.currentResponse.error)) {
 				this.searchFilter = '';
-				this.loadResources();
+				await this.loadResources();
 			}
 		},
 		loadResourcesDebounced() {
-			this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
+			void this.callDebounced('loadResources', { debounceTime: 1000, trailing: true });
 		},
 		setResponse(paramsKey: string, props: Partial<IResourceLocatorQuery>) {
 			this.cachedResponses = {
@@ -652,7 +652,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return;
 			}
 
-			this.loadInitialResources();
+			void this.loadInitialResources();
 			this.showResourceDropdown = true;
 		},
 		switchFromListMode(): void {
