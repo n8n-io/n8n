@@ -1,6 +1,6 @@
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { externalHooks } from '@/mixins/externalHooks';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { showMessage } from '@/mixins/showMessage';
 
 
 import mixins from 'vue-typed-mixins';

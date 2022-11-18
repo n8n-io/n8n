@@ -47,10 +47,10 @@ import {
 	TargetItem,
 } from '../../Interface';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { restApi } from '@/components/mixins/restApi';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { externalHooks } from '@/mixins/externalHooks';
+import { restApi } from '@/mixins/restApi';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
 
 import { isEqual } from 'lodash';
 

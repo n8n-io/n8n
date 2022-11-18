@@ -15,7 +15,7 @@
 
 <script lang="ts">
 import NodeIcon from '@/components/NodeIcon.vue';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import { ITemplatesNode } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { filterTemplateNodes } from '@/utils';

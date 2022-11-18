@@ -94,8 +94,8 @@
 import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import { externalHooks } from '@/mixins/externalHooks';
+import { globalLinkActions } from '@/mixins/globalLinkActions';
 
 import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';

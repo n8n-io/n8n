@@ -73,7 +73,7 @@ import {
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { hasExpressionMapping, isResourceLocatorValue, hasOnlyListMode } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';

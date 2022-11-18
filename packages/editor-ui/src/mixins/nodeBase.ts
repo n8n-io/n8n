@@ -1,7 +1,7 @@
 import { PropType } from "vue";
 import mixins from 'vue-typed-mixins';
 import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
-import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
+import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import {
 	ANCHOR_POSITIONS,

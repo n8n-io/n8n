@@ -152,19 +152,19 @@ import {
 	WEBHOOK_NODE_TYPE,
 	TRIGGER_NODE_FILTER, EnterpriseEditionFeature,
 } from '@/constants';
-import { copyPaste } from '@/components/mixins/copyPaste';
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { mouseSelect } from '@/components/mixins/mouseSelect';
-import { moveNodeWorkflow } from '@/components/mixins/moveNodeWorkflow';
-import { restApi } from '@/components/mixins/restApi';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
-import { showMessage } from '@/components/mixins/showMessage';
-import { titleChange } from '@/components/mixins/titleChange';
-import { newVersions } from '@/components/mixins/newVersions';
+import { copyPaste } from '@/mixins/copyPaste';
+import { externalHooks } from '@/mixins/externalHooks';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { mouseSelect } from '@/mixins/mouseSelect';
+import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
+import { restApi } from '@/mixins/restApi';
+import { globalLinkActions } from '@/mixins/globalLinkActions';
+import { showMessage } from '@/mixins/showMessage';
+import { titleChange } from '@/mixins/titleChange';
+import { newVersions } from '@/mixins/newVersions';
 
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { workflowRun } from '@/components/mixins/workflowRun';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { workflowRun } from '@/mixins/workflowRun';
 
 import NodeDetailsView from '@/components/NodeDetailsView.vue';
 import Node from '@/components/Node.vue';
@@ -248,7 +248,7 @@ import {
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 
-import { debounceHelper } from '@/components/mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';

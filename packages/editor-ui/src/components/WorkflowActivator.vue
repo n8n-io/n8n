@@ -37,8 +37,8 @@
 
 <script lang="ts">
 
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowActivate } from '@/components/mixins/workflowActivate';
+import { showMessage } from '@/mixins/showMessage';
+import { workflowActivate } from '@/mixins/workflowActivate';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';

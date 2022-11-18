@@ -164,7 +164,7 @@ import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
 import { shorten } from '@/utils';
-import { externalHooks } from './mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';

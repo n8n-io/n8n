@@ -30,7 +30,7 @@ import {
 	IUser,
 } from '@/Interface';
 
-import { restApi } from '@/components/mixins/restApi';
+import { restApi } from '@/mixins/restApi';
 
 import { get } from 'lodash';
 

@@ -59,7 +59,7 @@
 </template>
 
 <script lang="ts">
-import {showMessage} from '@/components/mixins/showMessage';
+import {showMessage} from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 
 import SettingsView from './SettingsView.vue';
@@ -68,7 +68,7 @@ import PageViewLayout from "@/components/layouts/PageViewLayout.vue";
 import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import WorkflowCard from "@/components/WorkflowCard.vue";
 import TemplateCard from "@/components/TemplateCard.vue";
-import { debounceHelper } from '@/components/mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import {EnterpriseEditionFeature, VIEWS} from '@/constants';
 import Vue from "vue";
 import {ITag, IUser, IWorkflowDb} from "@/Interface";

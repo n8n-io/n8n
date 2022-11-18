@@ -127,8 +127,8 @@ import {
 import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
-import { nodeHelpers } from '../mixins/nodeHelpers';
-import { showMessage } from '../mixins/showMessage';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';

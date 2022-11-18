@@ -12,13 +12,13 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { pushConnection } from '@/components/mixins/pushConnection';
+import { pushConnection } from '@/mixins/pushConnection';
 import WorkflowDetails from '@/components/MainHeader/WorkflowDetails.vue';
 import ExecutionDetails from '@/components/MainHeader/ExecutionDetails/ExecutionDetails.vue';
 import TabBar from '@/components/MainHeader/TabBar.vue';
 import { MAIN_HEADER_TABS, PLACEHOLDER_EMPTY_WORKFLOW_ID, STICKY_NODE_TYPE, VIEWS } from '@/constants';
 import { IExecutionsSummary, INodeUi, ITabBarItem } from '@/Interface';
-import { workflowHelpers } from '../mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { Route } from 'vue-router';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

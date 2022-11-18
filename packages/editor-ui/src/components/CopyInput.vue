@@ -12,8 +12,8 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { copyPaste } from './mixins/copyPaste';
-import { showMessage } from './mixins/showMessage';
+import { copyPaste } from '@/mixins/copyPaste';
+import { showMessage } from '@/mixins/showMessage';
 
 export default mixins(copyPaste, showMessage).extend({
 	props: {
