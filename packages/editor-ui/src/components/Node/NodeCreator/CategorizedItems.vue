@@ -83,7 +83,8 @@
 							</n8n-link>
 							{{ $locale.baseText('nodeCreator.noResults.node') }}
 						</template>
-				</no-results>
+					</no-results>
+				</template>
 			</no-results>
 		</div>
 	</transition>
