@@ -1,3 +1,12 @@
+## [0.203.1](https://github.com/n8n-io/n8n/compare/n8n@0.203.0...n8n@0.203.1) (2022-11-18)
+
+
+### Bug Fixes
+
+* **Google Sheets Node:** Versioning fix ([4e66672](https://github.com/n8n-io/n8n/commit/4e66672df225e67297981b7ee3408e5849db418a))
+
+
+
 # [0.203.0](https://github.com/n8n-io/n8n/compare/n8n@0.202.1...n8n@0.203.0) (2022-11-17)
 
 

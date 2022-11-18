@@ -38,7 +38,7 @@ importers:
       turbo: 1.5.5
       typescript: ^4.8.4
     dependencies:
-      n8n: 'link:'
+      n8n: link:packages/cli
     devDependencies:
       '@n8n_io/eslint-config': link:packages/@n8n_io/eslint-config
       '@ngneat/falso': 6.1.0
@@ -170,7 +170,7 @@ importers:
       mysql2: ~2.3.0
       n8n-core: ~0.143.0
       n8n-editor-ui: ~0.169.0
-      n8n-nodes-base: ~0.201.0
+      n8n-nodes-base: ~0.201.1
       n8n-workflow: ~0.125.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
@@ -7622,7 +7622,7 @@ packages:
   /axios/0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2_debug@3.2.7
+      follow-redirects: 1.15.2
     transitivePeerDependencies:
       - debug
     dev: false
@@ -11844,6 +11844,16 @@ packages:
 
   /fn.name/1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
+    dev: false
+
+  /follow-redirects/1.15.2:
+    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
     dev: false
 
   /follow-redirects/1.15.2_debug@3.2.7:
