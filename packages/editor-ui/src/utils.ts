@@ -1,5 +1,5 @@
 import xss, { friendlyAttrValue } from 'xss';
-import { Primitives, Optional, JsonSchema, JsonSchemaType } from "@/Interface";
+import { Primitives, Optional, JsonSchema } from "@/Interface";
 
 export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
 
@@ -70,15 +70,57 @@ export const checkExhaustive = (value: never): never => {
 
 export const isObj = (obj: unknown): obj is object => !!obj && Object.getPrototypeOf(obj) === Object.prototype;
 
-export const isSchemaTypeObjectOrList = (type: string) => ['object', 'list'].includes(type);
+export const isNorObjectNorArray = (obj: unknown): obj is Primitives => !isObj(obj) && !Array.isArray(obj);
 
-export const getTypeof = (value: unknown): JsonSchema['type'] => value === null
-	? 'null'
-	: value instanceof Date
-		? 'date'
-		: Array.isArray(value)
-			? 'list'
-			: typeof value;
+export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] => Object.keys(o) as K[];
+
+export const mergeDeep = <T extends object>(...sources: T[]): T => sources.reduce((target, source) => {
+	if(Array.isArray(target) && Array.isArray(source)){
+		const tLength = target.length;
+		const sLength = source.length;
+
+		if(target.every(isNorObjectNorArray) && source.every(isNorObjectNorArray)){
+			return [...target, ...source];
+		} else {
+			if(tLength === sLength) {
+				return target.map((item, index) => mergeDeep(item, source[index]));
+			} else {
+				const maxLength = Math.max(tLength, sLength);
+				const mergedArray = new Array(maxLength);
+				for(let i = 0; i < maxLength; i++){
+					if(isObj(target[i]) && isObj(source[i]) || Array.isArray(target[i]) && Array.isArray(source[i])){
+						mergedArray[i] = mergeDeep(target[i], source[i]);
+					} else if(i < tLength){
+						mergedArray[i] = target[i];
+					} else {
+						mergedArray[i] = source[i];
+					}
+				}
+				return mergedArray;
+			}
+		}
+	} else if(isObj(target) && isObj(source)){
+		const targetKeys = getObjectKeys(target);
+		const sourceKeys = getObjectKeys(source);
+		const allKeys = [...new Set([...targetKeys, ...sourceKeys])];
+		const mergedObject = Object.create(Object.prototype);
+		for (const key of allKeys) {
+			if (targetKeys.includes(key) && sourceKeys.includes(key)) {
+				mergedObject[key] = mergeDeep(target[key] as T, source[key] as T);
+			} else if (targetKeys.includes(key)) {
+				mergedObject[key] = target[key];
+			} else {
+				mergedObject[key] = source[key];
+			}
+		}
+		return mergedObject;
+	} else {
+		return source;
+	}
+}, (Array.isArray(sources[0]) ? [] : {}) as T);
+
+
+export const isSchemaTypeObjectOrList = (type: string) => ['object', 'list'].includes(type);
 
 export const getJsonSchema = (input: Optional<Primitives | object>, path = '', key?: string): JsonSchema => {
 	let schema:JsonSchema = { type: 'undefined', value: 'undefined', path };
@@ -87,21 +129,13 @@ export const getJsonSchema = (input: Optional<Primitives | object>, path = '', k
 			if (input === null) {
 				schema = { type: 'string', value: '[null]', path };
 			} else if (input instanceof Date) {
-				schema = { type: 'date', value: input.toISOString(), path };
+				schema = { type: 'date', value: `"${input.toISOString()}"`, path };
 			} else if (Array.isArray(input)) {
 				schema = {
 					type: 'list',
-					value: '',
-					path: `${path}[*]`,
+					value: input.map((item, index) => ({key: index.toString(), ...getJsonSchema(item,`${path}[${index}]`, index.toString())})),
+					path,
 				};
-				const firstItem = input[0];
-				if(Array.isArray(firstItem)){
-					schema.value = [getJsonSchema(firstItem, `${ path }[*]`)];
-				} else if(isObj(firstItem)){
-					schema.value = getJsonSchema(firstItem, `${ path }[*]`).value;
-				} else {
-					schema.value = getTypeof(firstItem);
-				}
 			} else if (isObj(input)) {
 				schema = {
 					type: 'object',
@@ -122,9 +156,6 @@ export const getJsonSchema = (input: Optional<Primitives | object>, path = '', k
 
 	if (!isSchemaTypeObjectOrList(schema.type)) {
 		schema.path = path;
-		if(key){
-			schema.value = schema.type;
-		}
 	}
 
 	return schema;
