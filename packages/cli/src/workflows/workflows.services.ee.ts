@@ -14,7 +14,7 @@ import { EECredentialsService as EECredentials } from '@/credentials/credentials
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 export class EEWorkflowsService extends WorkflowsService {
-	static async getSharedWorkflowIds(user: User) {
+	static async getWorkflowIdsForUser(user: User) {
 		// Get all workflows regardless of role
 		return getSharedWorkflowIds(user);
 	}

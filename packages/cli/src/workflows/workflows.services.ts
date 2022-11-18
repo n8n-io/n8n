@@ -94,12 +94,12 @@ export class WorkflowsService {
 	}
 
 	// Warning: this function is overriden by EE to disregard role list.
-	static async getSharedWorkflowIds(user: User, roles?: string[]) {
+	static async getWorkflowIdsForUser(user: User, roles?: string[]) {
 		return getSharedWorkflowIds(user, roles);
 	}
 
 	static async getMany(user: User, rawFilter: string) {
-		const sharedWorkflowIds = await this.getSharedWorkflowIds(user, ['owner']);
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
