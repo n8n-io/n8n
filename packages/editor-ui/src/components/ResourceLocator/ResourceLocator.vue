@@ -69,7 +69,7 @@
 						:stickyOffset="4"
 						@drop="onDrop"
 					>
-						<template #default="{ droppable, activeDrop }">
+						<template v-slot="{ droppable, activeDrop }">
 							<div
 								:class="{
 									[$style.listModeInputContainer]: isListMode,
@@ -103,8 +103,10 @@
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>
-									<template #suffix>
-										<div v-if="isListMode">
+									<div
+											v-if="isListMode"
+											slot="suffix"
+										>
 											<i
 												:class="{
 													['el-input__icon']: true,
@@ -114,7 +116,6 @@
 												}"
 											></i>
 										</div>
-									</template>
 								</n8n-input>
 							</div>
 						</template>
