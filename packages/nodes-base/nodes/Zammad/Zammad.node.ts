@@ -432,7 +432,7 @@ export class Zammad implements INodeType {
 
 						qs.query ||= ''; // otherwise triggers 500
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
 
@@ -540,7 +540,7 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/organization.html#list
 						// https://docs.zammad.org/en/latest/api/organization.html#search - returning empty always
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
 
@@ -639,7 +639,7 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#list
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
 
@@ -730,7 +730,7 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#list
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#search - returning empty always
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
 

@@ -282,7 +282,7 @@ export class Trello implements INodeType {
 						requestMethod = 'GET';
 
 						const id = this.getNodeParameter('id', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -497,7 +497,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
@@ -516,7 +516,7 @@ export class Trello implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;

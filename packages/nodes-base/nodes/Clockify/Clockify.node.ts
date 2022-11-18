@@ -320,7 +320,7 @@ export class Clockify implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
@@ -410,7 +410,7 @@ export class Clockify implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
@@ -504,7 +504,7 @@ export class Clockify implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
@@ -619,7 +619,7 @@ export class Clockify implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
@@ -792,7 +792,7 @@ export class Clockify implements INodeType {
 
 				if (resource === 'user') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 
@@ -826,7 +826,7 @@ export class Clockify implements INodeType {
 
 				if (resource === 'workspace') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await clockifyApiRequest.call(this, 'GET', '/workspaces', {}, qs);
 						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i) as number;

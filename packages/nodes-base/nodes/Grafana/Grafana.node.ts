@@ -197,7 +197,7 @@ export class Grafana implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -321,7 +321,7 @@ export class Grafana implements INodeType {
 						responseData = await grafanaApiRequest.call(this, 'GET', '/teams/search', {}, qs);
 						responseData = responseData.teams;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -404,7 +404,7 @@ export class Grafana implements INodeType {
 						const endpoint = `/teams/${teamId}/members`;
 						responseData = await grafanaApiRequest.call(this, 'GET', endpoint);
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;
@@ -447,7 +447,7 @@ export class Grafana implements INodeType {
 
 						responseData = await grafanaApiRequest.call(this, 'GET', '/org/users');
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', i) as number;

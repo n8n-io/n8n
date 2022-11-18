@@ -185,7 +185,7 @@ export class ERPNext implements INodeType {
 						);
 					}
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (!returnAll) {
 						const limit = this.getNodeParameter('limit', i) as number;

@@ -518,7 +518,7 @@ export class ServiceNow implements INodeType {
 				if (resource === 'attachment') {
 					if (operation === 'get') {
 						const attachmentsSysId = this.getNodeParameter('attachmentId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 						const endpoint = `/now/attachment/${attachmentsSysId}`;
 
 						const response = await serviceNowApiRequest.call(this, 'GET', endpoint, {});
@@ -543,9 +543,9 @@ export class ServiceNow implements INodeType {
 							};
 						}
 					} else if (operation === 'getAll') {
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 						const tableName = this.getNodeParameter('tableName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						qs = {} as IDataObject;
@@ -649,7 +649,7 @@ export class ServiceNow implements INodeType {
 					}
 				} else if (resource === 'businessService') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -679,7 +679,7 @@ export class ServiceNow implements INodeType {
 					}
 				} else if (resource === 'configurationItems') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -709,7 +709,7 @@ export class ServiceNow implements INodeType {
 					}
 				} else if (resource === 'department') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -739,7 +739,7 @@ export class ServiceNow implements INodeType {
 					}
 				} else if (resource === 'dictionary') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -808,7 +808,7 @@ export class ServiceNow implements INodeType {
 						);
 						responseData = response.result;
 					} else if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -911,7 +911,7 @@ export class ServiceNow implements INodeType {
 						responseData = response.result;
 					} else if (operation === 'getAll') {
 						const tableName = this.getNodeParameter('tableName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -1026,7 +1026,7 @@ export class ServiceNow implements INodeType {
 							responseData = response.result;
 						}
 					} else if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -1073,7 +1073,7 @@ export class ServiceNow implements INodeType {
 					}
 				} else if (resource === 'userGroup') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {
@@ -1109,7 +1109,7 @@ export class ServiceNow implements INodeType {
 					}
 				} else if (resource === 'userRole') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 
 						if (qs.sysparm_fields && typeof qs.sysparm_fields !== 'string') {

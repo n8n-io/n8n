@@ -1931,7 +1931,7 @@ export class Github implements INodeType {
 
 						endpoint = `/repos/${owner}/${repository}/releases`;
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
 							qs.per_page = this.getNodeParameter('limit', 0) as number;
@@ -1994,7 +1994,7 @@ export class Github implements INodeType {
 
 						endpoint = `/repos/${owner}/${repository}/issues`;
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
 							qs.per_page = this.getNodeParameter('limit', 0) as number;
@@ -2018,7 +2018,7 @@ export class Github implements INodeType {
 						// ----------------------------------
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
 
@@ -2066,7 +2066,7 @@ export class Github implements INodeType {
 
 						endpoint = `/users/${owner}/repos`;
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
 							qs.per_page = this.getNodeParameter('limit', 0) as number;
@@ -2090,7 +2090,7 @@ export class Github implements INodeType {
 						requestMethod = 'GET';
 
 						endpoint = `/orgs/${owner}/repos`;
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
 							qs.per_page = this.getNodeParameter('limit', 0) as number;

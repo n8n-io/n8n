@@ -383,7 +383,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -470,7 +470,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -637,7 +637,7 @@ export class ActiveCampaign implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
 
 						if (returnAll === false) {
@@ -695,7 +695,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -802,7 +802,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -901,7 +901,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -1001,7 +1001,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -1090,7 +1090,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -1136,7 +1136,7 @@ export class ActiveCampaign implements INodeType {
 						requestMethod = 'GET';
 
 						const simple = this.getNodeParameter('simple', i, true) as boolean;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}

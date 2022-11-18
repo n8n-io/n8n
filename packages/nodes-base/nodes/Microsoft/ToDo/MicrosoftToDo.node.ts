@@ -152,7 +152,7 @@ export class MicrosoftToDo implements INodeType {
 					} else if (operation === 'getAll') {
 						const taskListId = this.getNodeParameter('taskListId', i) as string;
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === true) {
 							responseData = await microsoftApiRequestAllItems.call(
@@ -260,7 +260,7 @@ export class MicrosoftToDo implements INodeType {
 						// https://docs.microsoft.com/en-us/graph/api/todotasklist-list-tasks?view=graph-rest-1.0&tabs=http
 					} else if (operation === 'getAll') {
 						const taskListId = this.getNodeParameter('taskListId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === true) {
 							responseData = await microsoftApiRequestAllItems.call(
@@ -353,7 +353,7 @@ export class MicrosoftToDo implements INodeType {
 
 						// https://docs.microsoft.com/en-us/graph/api/todo-list-lists?view=graph-rest-1.0&tabs=http
 					} else if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === true) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,

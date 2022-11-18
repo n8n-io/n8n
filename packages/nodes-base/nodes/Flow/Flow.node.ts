@@ -211,7 +211,7 @@ export class Flow implements INodeType {
 				}
 				//https://developer.getflow.com/api/#tasks_get-tasks
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
 					qs.organization_id = credentials.organizationId as number;
 					if (filters.include) {

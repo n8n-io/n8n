@@ -105,7 +105,7 @@ export class Strava implements INodeType {
 
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await stravaApiRequest.call(
 							this,
@@ -135,7 +135,7 @@ export class Strava implements INodeType {
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
 							responseData = await stravaApiRequestAllItems.call(

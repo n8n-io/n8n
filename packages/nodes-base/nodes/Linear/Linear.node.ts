@@ -205,7 +205,7 @@ export class Linear implements INodeType {
 						responseData = responseData.data?.issues?.nodes[0];
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const body: IGraphqlBody = {
 							query: query.getIssues(),
 							variables: {

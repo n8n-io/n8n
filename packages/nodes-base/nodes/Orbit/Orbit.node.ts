@@ -157,7 +157,7 @@ export class Orbit implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						let endpoint = `/${workspaceId}/activities`;
 						if (filters.memberId) {
@@ -287,7 +287,7 @@ export class Orbit implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						Object.assign(qs, options);
 						qs.resolveIdentities = this.getNodeParameter('resolveIdentities', 0) as boolean;
@@ -416,7 +416,7 @@ export class Orbit implements INodeType {
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
 						const memberId = this.getNodeParameter('memberId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs.resolveMember = this.getNodeParameter('resolveMember', 0) as boolean;
 						if (returnAll === true) {
 							responseData = await orbitApiRequestAllItems.call(
@@ -481,7 +481,7 @@ export class Orbit implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const workspaceId = this.getNodeParameter('workspaceId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						let endpoint = `/${workspaceId}/activities`;
 						qs.type = 'content';
