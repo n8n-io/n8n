@@ -103,9 +103,9 @@
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>
-									<div
+									<template
 											v-if="isListMode"
-											slot="suffix"
+											#suffix
 										>
 											<i
 												:class="{
@@ -115,7 +115,7 @@
 													[$style.isReverse]: showResourceDropdown,
 												}"
 											></i>
-										</div>
+										</template>
 								</n8n-input>
 							</div>
 						</template>
