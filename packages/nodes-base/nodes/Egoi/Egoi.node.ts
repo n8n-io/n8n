@@ -553,7 +553,7 @@ export class Egoi implements INodeType {
 
 						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: ICreateMemberBody = {
 							base: {
@@ -684,7 +684,7 @@ export class Egoi implements INodeType {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: ICreateMemberBody = {
 							base: {},
 							extra: [],

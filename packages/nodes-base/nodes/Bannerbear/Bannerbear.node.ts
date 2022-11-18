@@ -116,7 +116,7 @@ export class Bannerbear implements INodeType {
 				//https://developers.bannerbear.com/#create-an-image
 				if (operation === 'create') {
 					const templateId = this.getNodeParameter('templateId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const modifications = (this.getNodeParameter('modificationsUi', i) as IDataObject)
 						.modificationsValues as IDataObject;
 					const body: IDataObject = {

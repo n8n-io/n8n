@@ -117,7 +117,7 @@ export class Demio implements INodeType {
 				if (resource === 'event') {
 					if (operation === 'get') {
 						const id = this.getNodeParameter('eventId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.date_id !== undefined) {
 							responseData = await demioApiRequest.call(
@@ -131,7 +131,7 @@ export class Demio implements INodeType {
 						}
 					}
 					if (operation === 'getAll') {
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						Object.assign(qs, filters);
@@ -147,7 +147,7 @@ export class Demio implements INodeType {
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const firstName = this.getNodeParameter('firstName', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							name: firstName,
@@ -175,7 +175,7 @@ export class Demio implements INodeType {
 				if (resource === 'report') {
 					if (operation === 'get') {
 						const sessionId = this.getNodeParameter('dateId', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 

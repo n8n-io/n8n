@@ -173,7 +173,7 @@ export class Lemlist implements INodeType {
 						// https://developer.lemlist.com/#add-a-lead-in-a-campaign
 
 						const qs = {} as IDataObject;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.deduplicate !== undefined) {
 							qs.deduplicate = additionalFields.deduplicate;

@@ -166,7 +166,7 @@ export async function handleListing(
 
 	const returnAll = this.getNodeParameter('returnAll', i);
 
-	const filters = this.getNodeParameter('filters', i) as IDataObject;
+	const filters = this.getNodeParameter('filters', i);
 	if (filters.query) {
 		qs.query += ` ${filters.query}`;
 	}

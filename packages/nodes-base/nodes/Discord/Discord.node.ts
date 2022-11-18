@@ -134,7 +134,7 @@ export class Discord implements INodeType {
 
 			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
 			body.content = this.getNodeParameter('text', i) as string;
-			const options = this.getNodeParameter('options', i) as IDataObject;
+			const options = this.getNodeParameter('options', i);
 
 			if (!body.content && !options.embeds) {
 				throw new NodeOperationError(this.getNode(), 'Either content or embeds must be set.', {

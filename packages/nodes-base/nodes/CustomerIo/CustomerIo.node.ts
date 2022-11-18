@@ -121,7 +121,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const period = this.getNodeParameter('period', i) as string;
 							let endpoint = `/campaigns/${campaignId}/metrics`;
 
@@ -168,7 +168,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.customProperties) {
 								const data: any = {}; // tslint:disable-line:no-any
@@ -237,7 +237,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const data: any = {}; // tslint:disable-line:no-any
 
 							if (additionalFields.customAttributes) {
@@ -286,7 +286,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const data: any = {}; // tslint:disable-line:no-any
 
 							if (additionalFields.customAttributes) {

@@ -222,7 +222,7 @@ export class QuestDb implements INodeType {
 			//         executeQuery
 			// ----------------------------------
 
-			const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+			const additionalFields = this.getNodeParameter('additionalFields', 0);
 			const mode = (additionalFields.mode || 'independently') as string;
 
 			const queryResult = await pgQuery(

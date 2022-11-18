@@ -111,7 +111,7 @@ export class Contentful implements INodeType {
 
 						const id = this.getNodeParameter('contentTypeId', 0) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						responseData = await contentfulApiRequest.call(
 							this,
@@ -132,7 +132,7 @@ export class Contentful implements INodeType {
 
 						const id = this.getNodeParameter('entryId', 0) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						responseData = await contentfulApiRequest.call(
 							this,
@@ -150,7 +150,7 @@ export class Contentful implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', 0);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const rawData = additionalFields.rawData;
 						additionalFields.rawData = undefined;
 
@@ -231,7 +231,7 @@ export class Contentful implements INodeType {
 
 						const id = this.getNodeParameter('assetId', 0) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						responseData = await contentfulApiRequest.call(
 							this,
@@ -249,7 +249,7 @@ export class Contentful implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', 0);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const rawData = additionalFields.rawData;
 						additionalFields.rawData = undefined;
 
