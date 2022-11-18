@@ -135,7 +135,7 @@ export class Lemlist implements INodeType {
 						responseData = await lemlistApiRequest.call(this, 'GET', '/activities', {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 					}
@@ -280,7 +280,7 @@ export class Lemlist implements INodeType {
 							responseData = await lemlistApiRequestAllItems.call(this, 'GET', '/unsubscribes');
 						} else {
 							const qs = {
-								limit: this.getNodeParameter('limit', i) as number,
+								limit: this.getNodeParameter('limit', i),
 							};
 							responseData = await lemlistApiRequest.call(this, 'GET', '/unsubscribes', {}, qs);
 						}

@@ -96,7 +96,7 @@ export class TravisCi implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await travisciApiRequest.call(this, 'GET', '/builds', {}, qs);
 							responseData = responseData.builds;
 						}

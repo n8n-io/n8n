@@ -208,7 +208,7 @@ export class Reddit implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -373,7 +373,7 @@ export class Reddit implements INodeType {
 							responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 							responseData = responseData.subreddit_names.map((name: string) => ({ name }));
 							if (returnAll === false) {
-								const limit = this.getNodeParameter('limit', 0) as number;
+								const limit = this.getNodeParameter('limit', 0);
 								responseData = responseData.splice(0, limit);
 							}
 						} else if (filters.keyword) {
@@ -386,7 +386,7 @@ export class Reddit implements INodeType {
 							const returnAll = this.getNodeParameter('returnAll', 0);
 
 							if (returnAll === false) {
-								const limit = this.getNodeParameter('limit', 0) as number;
+								const limit = this.getNodeParameter('limit', 0);
 								responseData = responseData.subreddits.splice(0, limit);
 							}
 						} else {

@@ -603,7 +603,7 @@ export class Misp implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.Tag.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -720,7 +720,7 @@ export class Misp implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.Warninglists.slice(0, limit).map((i) => i.Warninglist);
 						} else {
 							responseData = responseData.Warninglists.map((i) => i.Warninglist);

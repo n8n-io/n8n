@@ -661,7 +661,7 @@ export class Egoi implements INodeType {
 								{},
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await egoiApiRequest.call(
 								this,

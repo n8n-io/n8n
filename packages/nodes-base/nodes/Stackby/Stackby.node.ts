@@ -318,7 +318,7 @@ export class Stackby implements INodeType {
 							qs,
 						);
 					} else {
-						qs.maxrecord = this.getNodeParameter('limit', 0) as number;
+						qs.maxrecord = this.getNodeParameter('limit', 0);
 						responseData = await apiRequest.call(
 							this,
 							'GET',

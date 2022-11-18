@@ -270,7 +270,7 @@ export class GoogleAnalytics implements INodeType {
 								body,
 							);
 						} else {
-							body.pageSize = this.getNodeParameter('limit', 0) as number;
+							body.pageSize = this.getNodeParameter('limit', 0);
 							responseData = await googleApiRequest.call(this, method, endpoint, body);
 							responseData = responseData.sessions;
 						}

@@ -157,7 +157,7 @@ export async function handleMatrixCall(
 					from = responseData.end;
 				} while (responseData.chunk.length > 0);
 			} else {
-				const limit = this.getNodeParameter('limit', index) as number;
+				const limit = this.getNodeParameter('limit', index);
 				const qs: IDataObject = {
 					dir: 'b', // GetfallbackText latest messages first - doesn't return anything if we use f without a previous token.
 					limit,

@@ -521,7 +521,7 @@ export class GoogleSlides implements INodeType {
 						);
 						responseData = responseData.slides;
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 

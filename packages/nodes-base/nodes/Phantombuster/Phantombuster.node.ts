@@ -176,7 +176,7 @@ export class Phantombuster implements INodeType {
 						responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.splice(0, limit);
 						}
 					}

@@ -198,7 +198,7 @@ export class CoinGecko implements INodeType {
 						responseData = await coinGeckoApiRequest.call(this, 'GET', '/coins/list', {}, qs);
 
 						if (returnAll === false) {
-							limit = this.getNodeParameter('limit', i) as number;
+							limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -227,7 +227,7 @@ export class CoinGecko implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							qs.per_page = limit;
 
@@ -292,7 +292,7 @@ export class CoinGecko implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await coinGeckoApiRequest.call(
 								this,
@@ -425,7 +425,7 @@ export class CoinGecko implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							qs.per_page = limit;
 

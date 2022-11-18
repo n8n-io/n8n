@@ -1978,7 +1978,7 @@ export class Asana implements INodeType {
 						responseData = responseData.data;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as boolean;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -2067,7 +2067,7 @@ export class Asana implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as boolean;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2365,7 +2365,7 @@ export class Asana implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as boolean;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await asanaApiRequest.call(this, requestMethod, endpoint, body, qs);
 
@@ -2410,10 +2410,9 @@ export class Asana implements INodeType {
 				}
 
 				returnData.push(
-					...this.helpers.constructExecutionMetaData(
-						this.helpers.returnJsonArray(responseData),
-						{ itemData: { item: i } },
-					),
+					...this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
+						itemData: { item: i },
+					}),
 				);
 			} catch (error) {
 				if (this.continueOnFail()) {

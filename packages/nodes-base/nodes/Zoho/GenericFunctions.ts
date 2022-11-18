@@ -108,7 +108,7 @@ export async function handleListing(
 	}
 
 	const responseData = await zohoApiRequestAllItems.call(this, method, endpoint, body, qs);
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0);
 
 	return responseData.slice(0, limit);
 }

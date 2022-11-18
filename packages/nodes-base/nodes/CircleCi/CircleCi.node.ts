@@ -97,7 +97,7 @@ export class CircleCi implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await circleciApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 							responseData = responseData.splice(0, qs.limit);
