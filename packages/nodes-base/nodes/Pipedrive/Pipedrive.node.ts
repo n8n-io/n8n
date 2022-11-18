@@ -4105,7 +4105,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -4193,7 +4193,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -4225,7 +4225,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						qs.term = this.getNodeParameter('term', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
@@ -4263,7 +4263,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 						const dealId = this.getNodeParameter('dealId', i) as string;
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
@@ -4436,7 +4436,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 						endpoint = `/notes`;
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -4535,7 +4535,7 @@ export class Pipedrive implements INodeType {
 
 						// https://developers.pipedrive.com/docs/api/v1/Leads#getLeads
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -4626,7 +4626,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -4667,7 +4667,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						qs.term = this.getNodeParameter('term', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -4723,7 +4723,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -4747,7 +4747,7 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						qs.term = this.getNodeParameter('term', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -4796,7 +4796,7 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
 							qs.limit = this.getNodeParameter('limit', i) as number;
 						}
@@ -4876,7 +4876,7 @@ export class Pipedrive implements INodeType {
 
 					responseData = responseData.data;
 					if (responseData.data === true) {
-						responseData = {success: true};
+						responseData = { success: true };
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(

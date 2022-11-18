@@ -69,7 +69,7 @@ export async function mispApiRequest(
 
 export async function mispApiRequestAllItems(this: IExecuteFunctions, endpoint: string) {
 	const responseData = await mispApiRequest.call(this, 'GET', endpoint);
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
 		const limit = this.getNodeParameter('limit', 0) as number;

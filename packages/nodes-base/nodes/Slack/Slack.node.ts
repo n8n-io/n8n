@@ -363,7 +363,7 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.types) {
 							qs.types = (filters.types as string[]).join(',');
@@ -389,7 +389,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/conversations.history
 					if (operation === 'history') {
 						const channel = this.getNodeParameter('channelId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						qs.channel = channel;
 						if (filters.inclusive) {
@@ -455,8 +455,8 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/conversations.members
 					if (operation === 'member') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-						const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
+						const resolveData = this.getNodeParameter('resolveData', 0);
 						qs.channel = this.getNodeParameter('channelId', i) as string;
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
@@ -538,7 +538,7 @@ export class Slack implements INodeType {
 					if (operation === 'replies') {
 						const channel = this.getNodeParameter('channelId', i) as string;
 						const ts = this.getNodeParameter('ts', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						qs.channel = channel;
 						qs.ts = ts;
@@ -639,7 +639,7 @@ export class Slack implements INodeType {
 							action = 'postEphemeral';
 						}
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (authentication === 'accessToken' && sendAsUser !== '') {
 							body.username = sendAsUser;
@@ -1052,7 +1052,7 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/stars.list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === true) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
@@ -1073,7 +1073,7 @@ export class Slack implements INodeType {
 					//https://api.slack.com/methods/files.upload
 					if (operation === 'upload') {
 						const options = this.getNodeParameter('options', i) as IDataObject;
-						const binaryData = this.getNodeParameter('binaryData', i) as boolean;
+						const binaryData = this.getNodeParameter('binaryData', i);
 						const body: IDataObject = {};
 						if (options.channelIds) {
 							body.channels = (options.channelIds as string[]).join(',');
@@ -1144,7 +1144,7 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/files.list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.channelId) {
 							qs.channel = filters.channelId as string;
@@ -1196,7 +1196,7 @@ export class Slack implements INodeType {
 					}
 					//https://api.slack.com/methods/users.list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === true) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
@@ -1276,7 +1276,7 @@ export class Slack implements INodeType {
 
 					//https://api.slack.com/methods/usergroups.list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 

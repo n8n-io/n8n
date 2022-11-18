@@ -192,7 +192,7 @@ export class Automizy implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const listId = this.getNodeParameter('listId', i) as string;
 
@@ -302,7 +302,7 @@ export class Automizy implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 

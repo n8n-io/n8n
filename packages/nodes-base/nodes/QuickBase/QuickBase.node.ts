@@ -127,7 +127,7 @@ export class QuickBase implements INodeType {
 		if (resource === 'field') {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
@@ -325,7 +325,7 @@ export class QuickBase implements INodeType {
 
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
@@ -558,7 +558,7 @@ export class QuickBase implements INodeType {
 		if (resource === 'report') {
 			if (operation === 'run') {
 				for (let i = 0; i < length; i++) {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 

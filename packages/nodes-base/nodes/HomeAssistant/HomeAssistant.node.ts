@@ -200,7 +200,7 @@ export class HomeAssistant implements INodeType {
 					}
 				} else if (resource === 'service') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = (await homeAssistantApiRequest.call(
 							this,
 							'GET',
@@ -240,7 +240,7 @@ export class HomeAssistant implements INodeType {
 					}
 				} else if (resource === 'state') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = (await homeAssistantApiRequest.call(
 							this,
 							'GET',
@@ -283,7 +283,7 @@ export class HomeAssistant implements INodeType {
 					}
 				} else if (resource === 'event') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = (await homeAssistantApiRequest.call(
 							this,
 							'GET',
@@ -355,7 +355,7 @@ export class HomeAssistant implements INodeType {
 					}
 				} else if (resource === 'history') {
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						let endpoint = '/history/period';
 

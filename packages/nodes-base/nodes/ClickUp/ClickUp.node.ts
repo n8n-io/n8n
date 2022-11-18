@@ -1017,7 +1017,7 @@ export class ClickUp implements INodeType {
 						responseData = await clickupApiRequest.call(this, 'GET', `/task/${taskId}`);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (filters.archived) {
 							qs.archived = filters.archived as boolean;
@@ -1101,7 +1101,7 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'member') {
 						const taskId = this.getNodeParameter('id', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === true) {
 							responseData = await clickupApiRequest.call(
 								this,
@@ -1276,7 +1276,7 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const teamId = this.getNodeParameter('team', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						const timezone = this.getTimezone();
 						Object.assign(qs, filters);
@@ -1410,7 +1410,7 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const teamId = this.getNodeParameter('team', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await clickupApiRequest.call(
 							this,
 							'GET',
@@ -1473,7 +1473,7 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const spaceId = this.getNodeParameter('space', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await clickupApiRequest.call(this, 'GET', `/space/${spaceId}/tag`);
 						responseData = responseData.tags;
 						if (returnAll === false) {
@@ -1544,7 +1544,7 @@ export class ClickUp implements INodeType {
 					}
 					if (operation === 'member') {
 						const listId = this.getNodeParameter('id', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === true) {
 							responseData = await clickupApiRequest.call(
 								this,

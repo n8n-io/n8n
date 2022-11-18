@@ -552,7 +552,7 @@ export class Mautic implements INodeType {
 					}
 					//https://developer.mautic.org/#list-contact-companies
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						qs = Object.assign(qs, additionalFields);
@@ -601,7 +601,7 @@ export class Mautic implements INodeType {
 					if (operation === 'create') {
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						let body: IDataObject = {};
 						if (!jsonActive) {
 							body.email = this.getNodeParameter('email', i) as string;
@@ -833,7 +833,7 @@ export class Mautic implements INodeType {
 					}
 					//https://developer.mautic.org/?php#list-contacts
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						qs = Object.assign(qs, options);
 						if (qs.orderBy) {
@@ -1024,7 +1024,7 @@ export class Mautic implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { error: (error as JsonObject).message }});
+					returnData.push({ json: { error: (error as JsonObject).message } });
 					continue;
 				}
 				throw error;

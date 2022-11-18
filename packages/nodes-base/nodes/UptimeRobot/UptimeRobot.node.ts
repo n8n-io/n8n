@@ -161,7 +161,7 @@ export class UptimeRobot implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 						body = {
@@ -250,7 +250,7 @@ export class UptimeRobot implements INodeType {
 						responseData = responseData.alert_contacts;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						body = {
 							...(this.getNodeParameter('filters', i) as IDataObject),
@@ -327,7 +327,7 @@ export class UptimeRobot implements INodeType {
 						responseData = responseData.mwindows;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						body = {
 							...(this.getNodeParameter('filters', i) as IDataObject),
@@ -391,7 +391,7 @@ export class UptimeRobot implements INodeType {
 						responseData = responseData.psps;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						body = {
 							...(this.getNodeParameter('filters', i) as IDataObject),

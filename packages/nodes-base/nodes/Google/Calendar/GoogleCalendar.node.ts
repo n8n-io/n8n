@@ -386,7 +386,7 @@ export class GoogleCalendar implements INodeType {
 					}
 					//https://developers.google.com/calendar/v3/reference/events/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const calendarId = this.getNodeParameter('calendar', i) as string;
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.iCalUID) {
