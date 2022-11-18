@@ -165,7 +165,7 @@ export class Affinity implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await affinityApiRequest.call(this, 'GET', `/lists`, {}, qs);
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -213,7 +213,7 @@ export class Affinity implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await affinityApiRequest.call(
 								this,
 								'GET',
@@ -308,7 +308,7 @@ export class Affinity implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await affinityApiRequest.call(this, 'GET', '/persons', {}, qs);
 							responseData = responseData.persons;
 						}
@@ -396,7 +396,7 @@ export class Affinity implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await affinityApiRequest.call(this, 'GET', '/organizations', {}, qs);
 							responseData = responseData.organizations;
 						}

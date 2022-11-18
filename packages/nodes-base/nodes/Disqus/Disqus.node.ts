@@ -640,7 +640,7 @@ export class Disqus implements INodeType {
 									endpoint,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as string;
+								const limit = this.getNodeParameter('limit', i);
 								qs.limit = limit;
 								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							}
@@ -680,7 +680,7 @@ export class Disqus implements INodeType {
 									endpoint,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as string;
+								const limit = this.getNodeParameter('limit', i);
 								qs.limit = limit;
 								responseData = (await disqusApiRequest.call(
 									this,
@@ -726,7 +726,7 @@ export class Disqus implements INodeType {
 									endpoint,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as string;
+								const limit = this.getNodeParameter('limit', i);
 								qs.limit = limit;
 								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							}

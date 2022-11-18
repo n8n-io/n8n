@@ -263,7 +263,7 @@ export class Paddle implements INodeType {
 						if (returnAll) {
 							responseData = responseData.response;
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.response.splice(0, limit);
 						}
 					}
@@ -405,7 +405,7 @@ export class Paddle implements INodeType {
 						if (returnAll) {
 							responseData = responseData.response;
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.response.splice(0, limit);
 						}
 					}
@@ -431,7 +431,7 @@ export class Paddle implements INodeType {
 						if (returnAll) {
 							responseData = responseData.response;
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.response.splice(0, limit);
 						}
 					}
@@ -456,7 +456,7 @@ export class Paddle implements INodeType {
 						if (returnAll) {
 							responseData = responseData.response.products;
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.response.products.splice(0, limit);
 						}
 					}
@@ -519,7 +519,7 @@ export class Paddle implements INodeType {
 								body,
 							);
 						} else {
-							body.results_per_page = this.getNodeParameter('limit', i) as number;
+							body.results_per_page = this.getNodeParameter('limit', i);
 							responseData = await paddleApiRequest.call(this, endpoint, 'POST', body);
 							responseData = responseData.response;
 						}

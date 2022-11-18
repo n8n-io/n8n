@@ -166,7 +166,7 @@ export class Tapfiliate implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await tapfiliateApiRequest.call(this, 'GET', `/affiliates/`, {}, qs);
 							responseData = responseData.splice(0, limit);
 						}
@@ -283,7 +283,7 @@ export class Tapfiliate implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await tapfiliateApiRequest.call(
 								this,
 								'GET',

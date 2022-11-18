@@ -112,7 +112,7 @@ export class Oura implements INodeType {
 					responseData = responseData.activity;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
 				} else if (operation === 'getReadiness') {
@@ -124,7 +124,7 @@ export class Oura implements INodeType {
 					responseData = responseData.readiness;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
 				} else if (operation === 'getSleep') {
@@ -136,7 +136,7 @@ export class Oura implements INodeType {
 					responseData = responseData.sleep;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
 				}

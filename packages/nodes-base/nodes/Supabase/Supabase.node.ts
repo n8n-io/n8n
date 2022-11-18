@@ -273,7 +273,7 @@ export class Supabase implements INodeType {
 					}
 
 					if (returnAll === false) {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit', 0);
 					}
 
 					let rows;

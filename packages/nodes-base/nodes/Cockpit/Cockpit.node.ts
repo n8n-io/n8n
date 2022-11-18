@@ -121,7 +121,7 @@ export class Cockpit implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							options.limit = this.getNodeParameter('limit', i) as number;
+							options.limit = this.getNodeParameter('limit', i);
 						}
 
 						responseData = await getAllCollectionEntries.call(this, collectionName, options);

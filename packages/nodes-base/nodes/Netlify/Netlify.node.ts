@@ -143,7 +143,7 @@ export class Netlify implements INodeType {
 								`/sites/${siteId}/deploys`,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
@@ -176,7 +176,7 @@ export class Netlify implements INodeType {
 								{ filter: 'all' },
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',

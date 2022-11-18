@@ -397,7 +397,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -507,7 +507,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -608,7 +608,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -713,7 +713,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,

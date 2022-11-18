@@ -261,7 +261,7 @@ export class GetResponse implements INodeType {
 								qs,
 							);
 						} else {
-							qs.perPage = this.getNodeParameter('limit', i) as number;
+							qs.perPage = this.getNodeParameter('limit', i);
 							responseData = await getresponseApiRequest.call(this, 'GET', `/contacts`, {}, qs);
 						}
 					}

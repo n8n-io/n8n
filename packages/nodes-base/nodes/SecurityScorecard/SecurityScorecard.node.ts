@@ -160,7 +160,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -206,7 +206,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as boolean;
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -297,7 +297,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 					returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -343,7 +343,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -377,7 +377,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -415,7 +415,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -446,7 +446,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -482,7 +482,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -506,7 +506,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 

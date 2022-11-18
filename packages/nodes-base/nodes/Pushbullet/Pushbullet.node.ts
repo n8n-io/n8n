@@ -477,7 +477,7 @@ export class Pushbullet implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 
 							responseData = await pushbulletApiRequest.call(this, 'GET', '/pushes', {}, qs);
 

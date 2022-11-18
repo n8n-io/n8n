@@ -1206,7 +1206,7 @@ export class Onfleet {
 					}
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', index) as number;
+						const limit = this.getNodeParameter('limit', index);
 						workers = workers.slice(0, limit);
 					}
 
@@ -1406,7 +1406,7 @@ export class Onfleet {
 					const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 					let teams = await onfleetApiRequest.call(this, 'GET', resource);
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit', 0);
 						teams = teams.slice(0, limit);
 					}
 

@@ -336,7 +336,7 @@ export class Elasticsearch implements INodeType {
 					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.slice(0, limit);
 					}
 				}

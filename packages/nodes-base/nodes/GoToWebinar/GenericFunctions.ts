@@ -126,7 +126,7 @@ export async function handleGetAll(
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
-		qs.limit = this.getNodeParameter('limit', 0) as number;
+		qs.limit = this.getNodeParameter('limit', 0);
 	}
 
 	return await goToWebinarApiRequestAllItems.call(this, 'GET', endpoint, qs, body, resource);

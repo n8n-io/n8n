@@ -114,7 +114,7 @@ export class Strava implements INodeType {
 						);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -146,7 +146,7 @@ export class Strava implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 
 							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
 						}
