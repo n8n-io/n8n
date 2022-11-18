@@ -82,13 +82,13 @@ export default mixins(Locale).extend({
 		};
 	},
 	computed: {
-		fitleredUsers(): IUser[] {
+		filteredUsers(): IUser[] {
 			return (this.users as IUser[]).filter((user) => {
 				if (user.isPendingUser || !user.email) {
 					return false;
 				}
 
-				if (this.ignoreIds?.includes(user.id)) {
+				if (this.ignoreIds && this.ignoreIds.includes(user.id)) {
 					return false;
 				}
 
@@ -103,7 +103,7 @@ export default mixins(Locale).extend({
 			});
 		},
 		sortedUsers(): IUser[] {
-			return [...this.fitleredUsers].sort((a: IUser, b: IUser) => {
+			return [...this.filteredUsers].sort((a: IUser, b: IUser) => {
 				if (a.lastName && b.lastName && a.lastName !== b.lastName) {
 					return a.lastName > b.lastName ? 1 : -1;
 				}

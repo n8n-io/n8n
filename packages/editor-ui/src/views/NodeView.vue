@@ -725,21 +725,11 @@ export default mixins(
 						}
 					}
 
-					if (!nodeErrorFound) {
-						const resultError = data.data.resultData.error;
-						const errorMessage = this.$getExecutionError(data.data);
-						const shouldTrack = resultError && 'node' in resultError && resultError.node!.type.startsWith('n8n-nodes-base');
-						this.$showMessage({
-							title: 'Failed execution',
-							message: errorMessage,
-							type: 'error',
-						}, shouldTrack);
-						if (data.data.resultData.error.stack) {
-							// Display some more information for now in console to make debugging easier
-							// TODO: Improve this in the future by displaying in UI
-							console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
-							console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
-						}
+					if (!nodeErrorFound && data.data.resultData.error.stack) {
+						// Display some more information for now in console to make debugging easier
+						// TODO: Improve this in the future by displaying in UI
+						console.error(`Execution ${executionId} error:`); // eslint-disable-line no-console
+						console.error(data.data.resultData.error.stack); // eslint-disable-line no-console
 					}
 				}
 				if ((data as IExecutionsSummary).waitTill) {
@@ -834,6 +824,7 @@ export default mixins(
 					);
 				}
 
+				this.workflowsStore.addWorkflow(data);
 				this.workflowsStore.setActive(data.active || false);
 				this.workflowsStore.setWorkflowId(workflowId);
 				this.workflowsStore.setWorkflowName({ newName: data.name, setStateDirty: false });
@@ -841,30 +832,22 @@ export default mixins(
 				this.workflowsStore.setWorkflowPinData(data.pinData || {});
 				this.workflowsStore.setWorkflowHash(data.hash);
 
-				// @TODO
-				this.workflowsStore.addWorkflow({
-					id: data.id,
-					name: data.name,
-					ownedBy: data.ownedBy,
-					sharedWith: data.sharedWith,
-					tags: data.tags || [],
-					active: data.active,
-					createdAt: data.createdAt,
-					updatedAt: data.updatedAt,
-					nodes: data.nodes,
-					connections: data.connections,
-				});
-				this.workflowsEEStore.setWorkflowOwnedBy({
-					workflowId: data.id,
-					ownedBy: data.ownedBy,
-				});
-				this.workflowsEEStore.setWorkflowSharedWith({
-					workflowId: data.id,
-					sharedWith: data.sharedWith,
-				});
+				if (data.ownedBy) {
+					this.workflowsEEStore.setWorkflowOwnedBy({
+						workflowId: data.id,
+						ownedBy: data.ownedBy,
+					});
+				}
+
+				if (data.sharedWith) {
+					this.workflowsEEStore.setWorkflowSharedWith({
+						workflowId: data.id,
+						sharedWith: data.sharedWith,
+					});
+				}
 
 				if (data.usedCredentials) {
-					this.credentialsStore.addCredentials(data.usedCredentials);
+					this.workflowsStore.setUsedCredentials(data.usedCredentials);
 				}
 
 				const tags = (data.tags || []) as ITag[];
@@ -2403,10 +2386,10 @@ export default mixins(
 					}
 
 					if (newNodeData.credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
-						const foreignCredentials = this.credentialsStore.foreignCredentialsById;
+						const usedCredentials = this.workflowsStore.usedCredentials;
 						newNodeData.credentials = Object.fromEntries(
 							Object.entries(newNodeData.credentials).filter(([_, credential]) => {
-								return credential.id && (!foreignCredentials[credential.id] || foreignCredentials[credential.id]?.currentUserHasAccess);
+								return credential.id && (!usedCredentials[credential.id] || usedCredentials[credential.id]?.currentUserHasAccess);
 							}),
 						);
 					}
@@ -3084,6 +3067,8 @@ export default mixins(
 				return Promise.resolve(data);
 			},
 			resetWorkspace() {
+				this.workflowsStore.resetWorkflow();
+
 				// Reset nodes
 				this.deleteEveryEndpoint();
 
@@ -3104,7 +3089,6 @@ export default mixins(
 				this.workflowsStore.resetAllNodesIssues();
 				// vm.$forceUpdate();
 
-				this.workflowsStore.$patch({ workflow: {} });
 				this.workflowsStore.setActive(false);
 				this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 				this.workflowsStore.setWorkflowName({ newName: '', setStateDirty: false });
