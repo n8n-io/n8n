@@ -43,7 +43,9 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<titled-list slot="content" :title="`${$locale.baseText('nodeCredentials.issues')}:`" :items="issues" />
+							<template #content>
+								<titled-list :title="`${$locale.baseText('nodeCredentials.issues')}:`" :items="issues" />
+							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>

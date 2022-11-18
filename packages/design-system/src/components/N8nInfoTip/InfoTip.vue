@@ -16,9 +16,11 @@
 			<span :class="$style.iconText">
 				<n8n-icon :icon="theme.startsWith('info') ? 'info-circle' : 'exclamation-triangle'" />
 			</span>
-			<span slot="content">
-				<slot />
-			</span>
+			<template #content>
+				<span>
+					<slot name="content" />
+				</span>
+			</template>
 		</n8n-tooltip>
 		<span :class="$style.iconText" v-else>
 			<n8n-icon :icon="theme.startsWith('info') ? 'info-circle' : 'exclamation-triangle'" />

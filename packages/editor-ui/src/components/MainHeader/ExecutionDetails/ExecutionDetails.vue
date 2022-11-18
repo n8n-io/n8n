@@ -27,7 +27,7 @@
 			{{ $locale.baseText('executionDetails.of') }}
 			<span class="primary-color clickable" :title="$locale.baseText('executionDetails.openWorkflow')">
 				<ShortenName :name="workflowName">
-					<template v-slot="{ shortenedName }">
+					<template #default="{ shortenedName }">
 						<span @click="openWorkflow(workflowExecution.workflowId)">
 							"{{ shortenedName }}"
 						</span>
