@@ -50,6 +50,7 @@ import dateformat from "dateformat";
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export const CREDENTIAL_LIST_ITEM_ACTIONS = {
 	OPEN: 'open',
@@ -89,19 +90,24 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useCredentialsStore,
 			useUIStore,
 			useUsersStore,
 		),
-		currentUser (): IUser {
-			return this.usersStore.currentUser || {} as IUser;
+		currentUser (): IUser | null {
+			return this.usersStore.currentUser;
 		},
 		credentialType(): ICredentialType {
-			return this.$store.getters['credentials/getCredentialTypeByName'](this.data.type);
+			return this.credentialsStore.getCredentialTypeByName(this.data.type);
 		},
-		credentialPermissions(): IPermissions {
-			return getCredentialPermissions(this.currentUser, this.data, this.$store);
+		credentialPermissions(): IPermissions | null {
+			return !this.currentUser ? null : getCredentialPermissions(this.currentUser, this.data);
 		},
 		actions(): Array<{ label: string; value: string; }> {
+			if (!this.credentialPermissions) {
+				return [];
+			}
+
 			return [
 				{
 					label: this.$locale.baseText('credentials.item.open'),
@@ -136,9 +142,7 @@ export default mixins(
 				);
 
 				if (deleteConfirmed) {
-					await this.$store.dispatch('credentials/deleteCredential', {
-						id: this.data.id,
-					});
+					this.credentialsStore.deleteCredential({ id:  this.data.id });
 				}
 			}
 		},

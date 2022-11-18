@@ -1,7 +1,7 @@
 <template>
 	<div :class="$style.container">
 		<n8n-callout
-			v-if="canPinData && hasPinData && !editMode.enabled"
+			v-if="canPinData && hasPinData && !editMode.enabled && !isProductionExecutionPreview"
 			theme="secondary"
 			icon="thumbtack"
 			:class="$style['pinned-data-callout']"
@@ -371,13 +371,14 @@ import { pinData } from '@/components/mixins/pinData';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
-import RunDataTable from './RunDataTable.vue';
-import RunDataJson from '@/components/RunDataJson.vue';
 import { isEmpty } from '@/utils';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
 import { useNodeTypesStore } from "@/stores/nodeTypes";
+
+const RunDataTable = () => import('@/components/RunDataTable.vue');
+const RunDataJson = () => import('@/components/RunDataJson.vue');
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -444,6 +445,10 @@ export default mixins(
 				type: Boolean,
 			},
 			blockUI: {
+				type: Boolean,
+				default: false,
+			},
+			isProductionExecutionPreview: {
 				type: Boolean,
 				default: false,
 			},
@@ -629,7 +634,7 @@ export default mixins(
 			inputData (): INodeExecutionData[] {
 				let inputData = this.rawInputData;
 
-				if (this.node && this.pinData) {
+				if (this.node && this.pinData && !this.isProductionExecutionPreview) {
 					inputData = Array.isArray(this.pinData)
 						? this.pinData.map((value) => ({
 							json: value,

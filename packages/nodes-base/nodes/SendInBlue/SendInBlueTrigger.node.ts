@@ -6,7 +6,6 @@ import {
 	INodeTypeDescription,
 	IWebhookFunctions,
 	IWebhookResponseData,
-	NodeOperationError,
 } from 'n8n-workflow';
 import { SendInBlueWebhookApi } from './GenericFunctions';
 

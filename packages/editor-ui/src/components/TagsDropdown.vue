@@ -3,7 +3,7 @@
 		<n8n-select
 			:popperAppendToBody="false"
 			:value="appliedTags"
-			:loading="isLoading"
+			:loading="tagsStore.isLoading"
 			:placeholder="placeholder"
 			:filter-method="filterOptions"
 			@change="onTagsUpdated"
@@ -54,7 +54,6 @@
 
 <script lang="ts">
 import mixins from "vue-typed-mixins";
-import { mapGetters } from "vuex";
 
 import { ITag } from "@/Interface";
 import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from "@/constants";
@@ -62,6 +61,7 @@ import { MAX_TAG_NAME_LENGTH, TAGS_MANAGER_MODAL_KEY } from "@/constants";
 import { showMessage } from "@/components/mixins/showMessage";
 import { mapStores } from "pinia";
 import { useUIStore } from "@/stores/ui";
+import { useTagsStore } from "@/stores/tags";
 
 const MANAGE_KEY = "__manage";
 const CREATE_KEY = "__create";
@@ -112,11 +112,19 @@ export default mixins(showMessage).extend({
 			});
 		}
 
-		this.$store.dispatch("tags/fetchAll");
+		this.tagsStore.fetchAll();
 	},
 	computed: {
-		...mapStores(useUIStore),
-		...mapGetters("tags", ["allTags", "isLoading", "hasTags"]),
+		...mapStores(
+			useTagsStore,
+			useUIStore,
+		),
+		allTags(): ITag[] {
+			return this.tagsStore.allTags;
+		},
+		hasTags(): boolean {
+			return this.tagsStore.hasTags;
+		},
 		options(): ITag[] {
 			return this.allTags
 				.filter((tag: ITag) =>
@@ -125,7 +133,7 @@ export default mixins(showMessage).extend({
 		},
 		appliedTags(): string[] {
 			return this.$props.currentTagIds.filter((id: string) =>
-				this.$store.getters['tags/getTagById'](id),
+				this.tagsStore.getTagById(id),
 			);
 		},
 	},
@@ -137,7 +145,7 @@ export default mixins(showMessage).extend({
 		async onCreate() {
 			const name = this.$data.filter;
 			try {
-				const newTag = await this.$store.dispatch("tags/create", name);
+				const newTag = await this.tagsStore.create(name);
 				this.$emit("update", [...this.$props.currentTagIds, newTag.id]);
 				this.$nextTick(() => this.focusOnTag(newTag.id));
 

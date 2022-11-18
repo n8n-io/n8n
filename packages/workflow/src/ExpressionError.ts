@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import { IDataObject } from './Interfaces';
 import { ExecutionBaseError } from './NodeErrors';
 

@@ -135,7 +135,7 @@ export class MqttTrigger implements INodeType {
 		async function manualTriggerFunction() {
 			await new Promise((resolve, reject) => {
 				client.on('connect', () => {
-					client.subscribe(topicsQoS as ISubscriptionMap, (err, granted) => {
+					client.subscribe(topicsQoS as ISubscriptionMap, (err, _granted) => {
 						if (err) {
 							reject(err);
 						}

@@ -7,43 +7,43 @@ A component system for [n8n](https://n8n.io) using Storybook to preview.
 ## Project setup
 
 ```
-npm install
+pnpm install
 ```
 
 ### Compiles and hot-reloads for development
 
 ```
-npm run storybook
+pnpm storybook
 ```
 
 ### Build static pages
 
 ```
-npm run build:storybook
+pnpm build:storybook
 ```
 
 ### Run your unit tests
 
 ```
-npm run test:unit
+pnpm test:unit
 ```
 
 ### Lints and fixes files
 
 ```
-npm run lint
+pnpm lint
 ```
 
 ### Build css files
 
 ```
-npm run build:theme
+pnpm build:theme
 ```
 
 ### Monitor theme files and build any changes
 
 ```
-npm run watch:theme
+pnpm watch:theme
 ```
 
 ## License

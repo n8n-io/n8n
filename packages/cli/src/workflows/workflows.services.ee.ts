@@ -1,15 +1,24 @@
 import { DeleteResult, EntityManager, In, Not } from 'typeorm';
-import { Db, ICredentialsDb, ResponseHelper, WorkflowHelpers } from '..';
-import { SharedWorkflow } from '../databases/entities/SharedWorkflow';
-import { User } from '../databases/entities/User';
-import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
-import { RoleService } from '../role/role.service';
-import { UserService } from '../user/user.service';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { ICredentialsDb } from '@/Interfaces';
+import { SharedWorkflow } from '@db/entities/SharedWorkflow';
+import { User } from '@db/entities/User';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { RoleService } from '@/role/role.service';
+import { UserService } from '@/user/user.service';
 import { WorkflowsService } from './workflows.services';
 import type { WorkflowWithSharingsAndCredentials } from './workflows.types';
-import { EECredentialsService as EECredentials } from '../credentials/credentials.service.ee';
+import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 export class EEWorkflowsService extends WorkflowsService {
+	static async getWorkflowIdsForUser(user: User) {
+		// Get all workflows regardless of role
+		return getSharedWorkflowIds(user);
+	}
+
 	static async isOwned(
 		user: User,
 		workflowId: string,
@@ -127,6 +136,7 @@ export class EEWorkflowsService extends WorkflowsService {
 			workflow.usedCredentials?.push({
 				id: credential.id.toString(),
 				name: credential.name,
+				type: credential.type,
 				currentUserHasAccess: userCredentialIds.includes(credentialId),
 			});
 		});
@@ -154,21 +164,17 @@ export class EEWorkflowsService extends WorkflowsService {
 		});
 	}
 
-	static async updateWorkflow(
-		user: User,
-		workflow: WorkflowEntity,
-		workflowId: string,
-		tags?: string[],
-		forceSave?: boolean,
-	): Promise<WorkflowEntity> {
+	static async preventTampering(workflow: WorkflowEntity, workflowId: string, user: User) {
 		const previousVersion = await EEWorkflowsService.get({ id: parseInt(workflowId, 10) });
+
 		if (!previousVersion) {
 			throw new ResponseHelper.ResponseError('Workflow not found', undefined, 404);
 		}
+
 		const allCredentials = await EECredentials.getAll(user);
+
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-			workflow = WorkflowHelpers.validateWorkflowCredentialUsage(
+			return WorkflowHelpers.validateWorkflowCredentialUsage(
 				workflow,
 				previousVersion,
 				allCredentials,
@@ -180,7 +186,5 @@ export class EEWorkflowsService extends WorkflowsService {
 				400,
 			);
 		}
-
-		return super.updateWorkflow(user, workflow, workflowId, tags, forceSave);
 	}
 }

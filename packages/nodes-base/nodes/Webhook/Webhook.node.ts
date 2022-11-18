@@ -491,7 +491,7 @@ export class Webhook implements INodeType {
 			// @ts-ignore
 			const form = new formidable.IncomingForm({ multiples: true });
 
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve, _reject) => {
 				form.parse(req, async (err, data, files) => {
 					const returnItem: INodeExecutionData = {
 						binary: {},
@@ -547,7 +547,7 @@ export class Webhook implements INodeType {
 		}
 
 		if (options.binaryData === true) {
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve, _reject) => {
 				const binaryPropertyName = options.binaryPropertyName || 'data';
 				const data: Buffer[] = [];
 

@@ -1,5 +1,5 @@
 import { IPermissions, IUser } from '@/Interface';
-import { isAuthorized } from '@/modules/userHelpers';
+import { isAuthorized } from '@/stores/userHelpers';
 import { useUsersStore } from '@/stores/users';
 import Vue from 'vue';
 import { Route } from 'vue-router';

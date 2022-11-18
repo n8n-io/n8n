@@ -1,16 +1,16 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { Request, Response } from 'express';
 import { IDataObject } from 'n8n-workflow';
-import { Db, ResponseHelper } from '../..';
-import { AUTH_COOKIE_NAME } from '../../constants';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { AUTH_COOKIE_NAME } from '@/constants';
 import { issueCookie, resolveJwt } from '../auth/jwt';
 import { N8nApp, PublicUser } from '../Interfaces';
 import { compareHash, sanitizeUser } from '../UserManagementHelper';
-import { User } from '../../databases/entities/User';
-import type { LoginRequest } from '../../requests';
-import config = require('../../../config');
+import { User } from '@db/entities/User';
+import type { LoginRequest } from '@/requests';
+import config from '@/config';
 
 export function authenticationMethods(this: N8nApp): void {
 	/**

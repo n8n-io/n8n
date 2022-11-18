@@ -1,6 +1,5 @@
 import { BINARY_ENCODING } from 'n8n-core';
 import {
-	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,

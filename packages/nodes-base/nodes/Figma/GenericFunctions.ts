@@ -15,7 +15,7 @@ export async function figmaApiRequest(
 	resource: string,
 	// tslint:disable-next-line:no-any
 	body: any = {},
-	qs: IDataObject = {},
+	_qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any

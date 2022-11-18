@@ -12,13 +12,11 @@ import {
 	INodeCredentialsDetails,
 	INodeExecutionData,
 	INodeIssues,
-	INodeIssueData,
 	INodeIssueObjectProperty,
 	INodeParameters,
 	INodeProperties,
 	INodeTypeDescription,
 	IRunData,
-	IRunExecutionData,
 	ITaskDataConnections,
 	INode,
 	INodePropertyOptions,
@@ -38,7 +36,6 @@ import { restApi } from '@/components/mixins/restApi';
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
 import { isObjectLiteral } from '@/utils';
 import {getCredentialPermissions} from "@/permissions";
 import { mapStores } from 'pinia';
@@ -46,6 +43,7 @@ import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export const nodeHelpers = mixins(
 	restApi,
@@ -53,11 +51,11 @@ export const nodeHelpers = mixins(
 	.extend({
 		computed: {
 			...mapStores(
+				useCredentialsStore,
 				useNodeTypesStore,
 				useSettingsStore,
 				useWorkflowsStore,
 			),
-			...mapGetters('credentials', [ 'getCredentialTypeByName', 'getCredentialsByType' ]),
 		},
 		methods: {
 			hasProxyAuth (node: INodeUi): boolean {
@@ -248,16 +246,6 @@ export const nodeHelpers = mixins(
 				let credentialType: ICredentialType | null;
 				let credentialDisplayName: string;
 				let selectedCredentials: INodeCredentialsDetails;
-				const foreignCredentials = this.$store.getters['credentials/allForeignCredentials'];
-
-				// TODO: Check if any of the node credentials is found in foreign credentials
-				if(foreignCredentials?.some(() => true)){
-					return {
-						credentials: {
-							foreign: [],
-						},
-					};
-				}
 
 				const {
 					authentication,
@@ -270,7 +258,7 @@ export const nodeHelpers = mixins(
 					genericAuthType !== '' &&
 					selectedCredsAreUnusable(node, genericAuthType)
 				) {
-					const credential = this.getCredentialTypeByName(genericAuthType);
+					const credential = this.credentialsStore.getCredentialTypeByName(genericAuthType);
 					return this.reportUnsetCredential(credential);
 				}
 
@@ -280,10 +268,10 @@ export const nodeHelpers = mixins(
 					nodeCredentialType !== '' &&
 					node.credentials !== undefined
 				) {
-					const stored = this.getCredentialsByType(nodeCredentialType);
+					const stored = this.credentialsStore.getCredentialsByType(nodeCredentialType);
 
 					if (selectedCredsDoNotExist(node, nodeCredentialType, stored)) {
-						const credential = this.getCredentialTypeByName(nodeCredentialType);
+						const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
 						return this.reportUnsetCredential(credential);
 					}
 				}
@@ -294,7 +282,7 @@ export const nodeHelpers = mixins(
 					nodeCredentialType !== '' &&
 					selectedCredsAreUnusable(node, nodeCredentialType)
 				) {
-					const credential = this.getCredentialTypeByName(nodeCredentialType);
+					const credential = this.credentialsStore.getCredentialTypeByName(nodeCredentialType);
 					return this.reportUnsetCredential(credential);
 				}
 
@@ -305,7 +293,7 @@ export const nodeHelpers = mixins(
 					}
 
 					// Get the display name of the credential type
-					credentialType = this.$store.getters['credentials/getCredentialTypeByName'](credentialTypeDescription.name);
+					credentialType = this.credentialsStore.getCredentialTypeByName(credentialTypeDescription.name);
 					if (credentialType === null) {
 						credentialDisplayName = credentialTypeDescription.name;
 					} else {
@@ -329,9 +317,9 @@ export const nodeHelpers = mixins(
 
 						const usersStore = useUsersStore();
 						const currentUser = usersStore.currentUser || {} as IUser;
-						userCredentials = this.$store.getters['credentials/getCredentialsByType'](credentialTypeDescription.name)
+						userCredentials = this.credentialsStore.getCredentialsByType(credentialTypeDescription.name)
 							.filter((credential: ICredentialsResponse) => {
-								const permissions = getCredentialPermissions(currentUser, credential, this.$store);
+								const permissions = getCredentialPermissions(currentUser, credential);
 								return permissions.use;
 							});
 
@@ -353,9 +341,7 @@ export const nodeHelpers = mixins(
 						}
 
 						if (nameMatches.length === 0) {
-							if (this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
-								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.notAvailable')];
-							} else {
+							if (!this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
 								foundIssues[credentialTypeDescription.name] = [this.$locale.baseText('nodeIssues.credentials.doNotExist', { interpolate: { name: selectedCredentials.name, type: credentialDisplayName } }), this.$locale.baseText('nodeIssues.credentials.doNotExist.hint')];
 							}
 						}

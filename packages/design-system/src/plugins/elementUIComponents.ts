@@ -31,7 +31,7 @@ import ColorPicker from 'element-ui/lib/color-picker';
 import Container from 'element-ui/lib/container';
 
 export default {
-	install: (app: typeof Vue, options?: {}) => {
+	install: (app: typeof Vue) => {
 		app.component('ElCollapseTransition', CollapseTransition);
 		app.component('ElDialog', Dialog);
 		app.component('ElDrawer', Drawer);

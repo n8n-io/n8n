@@ -14,6 +14,7 @@
 		{
 			"name": "Launch n8n with debug",
 			"program": "${workspaceFolder}/packages/cli/bin/n8n",
+			"cwd": "${workspaceFolder}/packages/cli/bin",
 			"request": "launch",
 			"skipFiles": ["<node_internals>/**"],
 			"type": "node",

@@ -1,6 +1,6 @@
 import { jsonParse } from 'n8n-workflow';
 import { ValueTransformer } from 'typeorm';
-import config from '../../../config';
+import config from '@/config';
 
 export const idStringifier = {
 	from: (value: number): string | number => (typeof value === 'number' ? value.toString() : value),

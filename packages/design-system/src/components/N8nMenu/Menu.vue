@@ -1,22 +1,20 @@
 <template>
-	<div :class="{
-		['menu-container']: true,
-		[$style.container]: true,
-		[$style.menuCollapsed]: collapsed
-	}">
+	<div
+		:class="{
+			['menu-container']: true,
+			[$style.container]: true,
+			[$style.menuCollapsed]: collapsed,
+		}"
+	>
 		<div v-if="$slots.header" :class="$style.menuHeader">
 			<slot name="header"></slot>
 		</div>
 		<div :class="$style.menuContent">
-			<div :class="{[$style.upperContent]: true, ['pt-xs']: $slots.menuPrefix }">
+			<div :class="{ [$style.upperContent]: true, ['pt-xs']: $slots.menuPrefix }">
 				<div v-if="$slots.menuPrefix" :class="$style.menuPrefix">
 					<slot name="menuPrefix"></slot>
 				</div>
-				<el-menu
-					:defaultActive="defaultActive"
-					:collapse="collapsed"
-					v-on="$listeners"
-				>
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
 					<n8n-menu-item
 						v-for="item in upperMenuItems"
 						:key="item.id"
@@ -30,11 +28,7 @@
 				</el-menu>
 			</div>
 			<div :class="[$style.lowerContent, 'pb-2xs']">
-				<el-menu
-					:defaultActive="defaultActive"
-					:collapse="collapsed"
-					v-on="$listeners"
-				>
+				<el-menu :defaultActive="defaultActive" :collapse="collapsed" v-on="$listeners">
 					<n8n-menu-item
 						v-for="item in lowerMenuItems"
 						:key="item.id"
@@ -62,7 +56,6 @@ import ElMenu from 'element-ui/lib/menu';
 import N8nMenuItem from '../N8nMenuItem';
 
 import Vue, { PropType } from 'vue';
-import { Route } from 'vue-router';
 import { IMenuItem } from '../../types';
 
 export default Vue.extend({
@@ -108,23 +101,31 @@ export default Vue.extend({
 	},
 	mounted() {
 		if (this.mode === 'router') {
-			const found = this.items.find(item => {
-				return Array.isArray(item.activateOnRouteNames) && item.activateOnRouteNames.includes(this.$route.name || '') ||
-					Array.isArray(item.activateOnRoutePaths) && item.activateOnRoutePaths.includes(this.$route.path);
+			const found = this.items.find((item) => {
+				return (
+					(Array.isArray(item.activateOnRouteNames) &&
+						item.activateOnRouteNames.includes(this.$route.name || '')) ||
+					(Array.isArray(item.activateOnRoutePaths) &&
+						item.activateOnRoutePaths.includes(this.$route.path))
+				);
 			});
 			this.activeTab = found ? found.id : '';
 		} else {
-			this.activeTab =  this.items.length > 0 ? this.items[0].id : '';
+			this.activeTab = this.items.length > 0 ? this.items[0].id : '';
 		}
 
 		this.$emit('input', this.activeTab);
 	},
 	computed: {
 		upperMenuItems(): IMenuItem[] {
-			return this.items.filter((item: IMenuItem) => item.position === 'top' && item.available !== false);
+			return this.items.filter(
+				(item: IMenuItem) => item.position === 'top' && item.available !== false,
+			);
 		},
 		lowerMenuItems(): IMenuItem[] {
-			return this.items.filter((item: IMenuItem) => item.position === 'bottom' && item.available !== false);
+			return this.items.filter(
+				(item: IMenuItem) => item.position === 'bottom' && item.available !== false,
+			);
 		},
 	},
 	methods: {
@@ -178,11 +179,13 @@ export default Vue.extend({
 
 .menuCollapsed {
 	transition: width 150ms ease-in-out;
-	:global(.hideme) { display: none !important; }
+	:global(.hideme) {
+		display: none !important;
+	}
 }
 
-.menuPrefix, .menuSuffix {
+.menuPrefix,
+.menuSuffix {
 	padding: var(--spacing-xs) var(--spacing-l);
 }
-
 </style>

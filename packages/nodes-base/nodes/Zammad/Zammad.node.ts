@@ -440,7 +440,7 @@ export class Zammad implements INodeType {
 							.call(this, 'GET', '/users/search', {}, qs, limit)
 							.then((responseData) => {
 								return responseData.map((user) => {
-									const { preferences, ...rest } = user;
+									const { _preferences, ...rest } = user;
 									return rest;
 								});
 							});

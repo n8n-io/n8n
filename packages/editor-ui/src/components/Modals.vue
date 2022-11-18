@@ -82,6 +82,10 @@
 			<ActivationModal />
 		</ModalRoot>
 
+		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
+			<WorkflowShareModal />
+		</ModalRoot>
+
 		<ModalRoot :name="ONBOARDING_CALL_SIGNUP_MODAL_KEY">
 			<OnboardingCallSignupModal />
 		</ModalRoot>
@@ -128,6 +132,7 @@ import {
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 
@@ -151,6 +156,7 @@ import DeleteUserModal from "./DeleteUserModal.vue";
 import ExecutionsList from "./ExecutionsList.vue";
 import ActivationModal from "./ActivationModal.vue";
 import ImportCurlModal from './ImportCurlModal.vue';
+import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 
 export default Vue.extend({
 	name: "Modals",
@@ -174,6 +180,7 @@ export default Vue.extend({
 		UpdatesPanel,
 		ValueSurvey,
 		WorkflowSettings,
+		WorkflowShareModal,
 		ImportCurlModal,
 	},
 	data: () => ({
@@ -192,6 +199,7 @@ export default Vue.extend({
 		TAGS_MANAGER_MODAL_KEY,
 		VERSIONS_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
+		WORKFLOW_SHARE_MODAL_KEY,
 		VALUE_SURVEY_MODAL_KEY,
 		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,

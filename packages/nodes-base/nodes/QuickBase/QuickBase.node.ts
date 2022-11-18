@@ -120,7 +120,6 @@ export class QuickBase implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const length = items.length;
 		const qs: IDataObject = {};
-		const headers: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -392,7 +391,10 @@ export class QuickBase implements INodeType {
 			if (operation === 'update') {
 				const tableId = this.getNodeParameter('tableId', 0) as string;
 
-				const { fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(this, tableId);
+				const { fieldsLabelKey: _fieldsLabelKey, fieldsIdKey } = await getFieldsObject.call(
+					this,
+					tableId,
+				);
 
 				const simple = this.getNodeParameter('simple', 0) as boolean;
 

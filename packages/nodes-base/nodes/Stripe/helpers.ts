@@ -1,7 +1,5 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
-
 import { flow, isEmpty, omit } from 'lodash';
 
 import { IDataObject, ILoadOptionsFunctions, INodePropertyOptions } from 'n8n-workflow';
@@ -29,11 +27,7 @@ export async function stripeApiRequest(
 		delete options.qs;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'stripeApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'stripeApi', options);
 }
 
 /**

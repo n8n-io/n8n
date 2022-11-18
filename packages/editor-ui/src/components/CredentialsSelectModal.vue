@@ -25,7 +25,7 @@
 				>
 					<font-awesome-icon icon="search" slot="prefix" />
 					<n8n-option
-						v-for="credential in allCredentialTypes"
+						v-for="credential in credentialsStore.allCredentialTypes"
 						:value="credential.name"
 						:key="credential.name"
 						:label="credential.displayName"
@@ -50,7 +50,6 @@
 
 <script lang="ts">
 import Vue from 'vue';
-import { mapGetters } from "vuex";
 import mixins from 'vue-typed-mixins';
 
 import Modal from './Modal.vue';
@@ -59,6 +58,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
+import { useCredentialsStore } from '@/stores/credentials';
 
 export default mixins(externalHooks).extend({
 	name: 'CredentialsSelectModal',
@@ -67,7 +67,7 @@ export default mixins(externalHooks).extend({
 	},
 	async mounted() {
 		try {
-			await this.$store.dispatch('credentials/fetchCredentialTypes');
+			await this.credentialsStore.fetchCredentialTypes(false);
 		} catch (e) {
 		}
 		this.loading = false;
@@ -89,10 +89,10 @@ export default mixins(externalHooks).extend({
 	},
 	computed: {
 		...mapStores(
+			useCredentialsStore,
 			useUIStore,
 			useWorkflowsStore,
 		),
-		...mapGetters('credentials', ['allCredentialTypes']),
 	},
 	methods: {
 		onSelect(type: string) {

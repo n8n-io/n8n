@@ -1,29 +1,30 @@
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './showMessage';
-import {
-	IVersion,
-} from '../../Interface';
 import { VERSIONS_MODAL_KEY } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import { useVersionsStore } from '@/stores/versions';
 
 export const newVersions = mixins(
 	showMessage,
 ).extend({
 	computed: {
-		...mapStores(useUIStore),
+		...mapStores(
+			useUIStore,
+			useVersionsStore,
+		),
 	},
 	methods: {
 		async checkForNewVersions() {
-			const enabled = this.$store.getters['versions/areNotificationsEnabled'];
+			const enabled = this.versionsStore.areNotificationsEnabled;
 			if (!enabled) {
 				return;
 			}
 
-			await this.$store.dispatch('versions/fetchVersions');
+			await this.versionsStore.fetchVersions();
 
-			const currentVersion: IVersion | undefined = this.$store.getters['versions/currentVersion'];
-			const nextVersions: IVersion[] = this.$store.getters['versions/nextVersions'];
+			const currentVersion = this.versionsStore.currentVersion;
+			const nextVersions = this.versionsStore.nextVersions;
 			if (currentVersion && currentVersion.hasSecurityIssue && nextVersions.length) {
 				const fixVersion = currentVersion.securityIssueFixVersion;
 				let message = `Please update to latest version.`;

@@ -1,7 +1,6 @@
-/* eslint-disable import/no-cycle */
 import { EntityManager } from 'typeorm';
-import { Db } from '..';
-import { Role } from '../databases/entities/Role';
+import * as Db from '@/Db';
+import { Role } from '@db/entities/Role';
 
 export class RoleService {
 	static async get(role: Partial<Role>): Promise<Role | undefined> {

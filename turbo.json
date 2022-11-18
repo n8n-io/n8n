@@ -1,6 +1,9 @@
 {
 	"$schema": "https://turborepo.org/schema.json",
 	"pipeline": {
+		"clean": {
+			"cache": false
+		},
 		"build": {
 			"dependsOn": ["^build"]
 		},

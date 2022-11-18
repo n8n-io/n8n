@@ -57,7 +57,7 @@ export async function googleApiRequestAllItems(
 	// tslint:disable-next-line:no-any
 	body: any = {},
 	qs: IDataObject = {},
-	headers: IDataObject = {},
+	_headers: IDataObject = {},
 	uri: string | null = null,
 	// tslint:disable-next-line:no-any
 ): Promise<any> {

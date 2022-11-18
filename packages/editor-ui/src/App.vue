@@ -34,7 +34,6 @@ import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './components/mixins/showMessage';
-import { IUser } from './Interface';
 import { userHelpers } from './components/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
 import { restApi } from '@/components/mixins/restApi';
@@ -92,9 +91,9 @@ export default mixins(
 				throw e;
 			}
 		},
-		loginWithCookie(): void {
+		async loginWithCookie(): Promise<void> {
 			try {
-				this.usersStore.loginWithCookie();
+				await this.usersStore.loginWithCookie();
 			} catch (e) {}
 		},
 		async initTemplates(): Promise<void> {

@@ -33,26 +33,22 @@ export default mixins(externalHooks).extend({
 		telemetry(): ITelemetrySettings {
 			return this.settingsStore.telemetry;
 		},
+		isTelemetryEnabled(): boolean {
+			return !!this.telemetry?.enabled;
+		},
 	},
 	mounted() {
 		this.init();
 	},
 	methods: {
 		init() {
-			if (this.isTelemetryInitialized || !this.isTelemetryEnabledOnRoute) return;
-
-			const telemetrySettings = this.telemetry;
-
-			if (!telemetrySettings || !telemetrySettings.enabled) {
-				return;
-			}
+			if (this.isTelemetryInitialized || !this.isTelemetryEnabledOnRoute || !this.isTelemetryEnabled) return;
 
 			this.$telemetry.init(
-				telemetrySettings,
+				this.telemetry,
 				{
 					instanceId: this.rootStore.instanceId,
 					userId: this.currentUserId,
-					store: this.$store,
 					versionCli: this.rootStore.versionCli,
 				},
 			);
@@ -70,7 +66,9 @@ export default mixins(externalHooks).extend({
 			this.init();
 		},
 		currentUserId(userId) {
-			this.$telemetry.identify(this.rootStore.instanceId, userId);
+			if (this.isTelemetryEnabled) {
+				this.$telemetry.identify(this.rootStore.instanceId, userId);
+			}
 			this.$externalHooks().run('telemetry.currentUserIdChanged', {
 				instanceId: this.rootStore.instanceId,
 				userId,

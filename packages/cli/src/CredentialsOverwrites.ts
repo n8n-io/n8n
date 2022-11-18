@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable no-underscore-dangle */
 import { deepCopy, ICredentialDataDecryptedObject } from 'n8n-workflow';
-
-// eslint-disable-next-line import/no-cycle
-import { CredentialTypes, GenericHelpers, ICredentialsOverwrite } from '.';
+import { CredentialTypes } from '@/CredentialTypes';
+import type { ICredentialsOverwrite } from '@/Interfaces';
+import * as GenericHelpers from '@/GenericHelpers';
 
 class CredentialsOverwritesClass {
 	private credentialTypes = CredentialTypes();

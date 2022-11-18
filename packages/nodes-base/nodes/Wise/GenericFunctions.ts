@@ -6,7 +6,6 @@ import {
 	IDataObject,
 	IHttpRequestOptions,
 	ILoadOptionsFunctions,
-	INodeExecutionData,
 	NodeApiError,
 } from 'n8n-workflow';
 

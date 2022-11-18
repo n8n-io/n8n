@@ -74,7 +74,7 @@ export class DeleteHandler implements OperationHandler {
 	async handleOperation(ctx: Context, itemIndex: number): Promise<TodoistResponse> {
 		const id = ctx.getNodeParameter('taskId', itemIndex) as string;
 
-		const responseData = await todoistApiRequest.call(ctx, 'DELETE', `/tasks/${id}`);
+		await todoistApiRequest.call(ctx, 'DELETE', `/tasks/${id}`);
 
 		return {
 			success: true,

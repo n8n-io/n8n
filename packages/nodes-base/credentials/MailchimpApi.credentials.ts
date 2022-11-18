@@ -1,6 +1,5 @@
 import {
 	IAuthenticateGeneric,
-	ICredentialTestFunctions,
 	ICredentialTestRequest,
 	ICredentialType,
 	INodeProperties,

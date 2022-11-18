@@ -9,7 +9,7 @@ module.exports = {
 
 	rules: {
 		// TODO: remove all the following rules
-		'eqeqeq': 'off',
+		eqeqeq: 'off',
 		'id-denylist': 'off',
 		'import/extensions': 'off',
 		'import/order': 'off',
@@ -25,10 +25,7 @@ module.exports = {
 		'@typescript-eslint/dot-notation': 'off',
 		'@typescript-eslint/lines-between-class-members': 'off',
 		'@typescript-eslint/member-delimiter-style': 'off',
-		'@typescript-eslint/naming-convention': [
-			'error',
-			{ selector: 'memberLike', format: null },
-		],
+		'@typescript-eslint/naming-convention': ['error', { selector: 'memberLike', format: null }],
 		'@typescript-eslint/no-duplicate-imports': 'off',
 		'@typescript-eslint/no-empty-interface': 'off',
 		'@typescript-eslint/no-explicit-any': 'off',
@@ -49,7 +46,6 @@ module.exports = {
 		'@typescript-eslint/no-unsafe-member-access': 'off',
 		'@typescript-eslint/no-unsafe-return': 'off',
 		'@typescript-eslint/no-unused-expressions': 'off',
-		'@typescript-eslint/no-unused-vars': 'off',
 		'@typescript-eslint/no-use-before-define': 'off',
 		'@typescript-eslint/no-var-requires': 'off',
 		'@typescript-eslint/prefer-nullish-coalescing': 'off',
@@ -171,4 +167,4 @@ module.exports = {
 			},
 		},
 	],
- };
+};

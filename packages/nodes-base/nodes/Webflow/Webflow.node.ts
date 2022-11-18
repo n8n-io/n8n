@@ -135,7 +135,6 @@ export class Webflow implements INodeType {
 
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
-		const qs: IDataObject = {};
 		let responseData;
 		const returnData: INodeExecutionData[] = [];
 
