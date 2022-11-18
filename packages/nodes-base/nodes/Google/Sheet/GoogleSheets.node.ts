@@ -10,14 +10,15 @@ export class GoogleSheets extends VersionedNodeType {
 			name: 'googleSheets',
 			icon: 'file:googleSheets.svg',
 			group: ['input', 'output'],
-			defaultVersion: 2,
+			defaultVersion: 3,
 			subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 			description: 'Read, update and write data to Google Sheets',
 		};
 
 		const nodeVersions: IVersionedNodeType['nodeVersions'] = {
 			1: new GoogleSheetsV1(baseDescription),
-			2: new GoogleSheetsV2(baseDescription),
+			2: new GoogleSheetsV1(baseDescription),
+			3: new GoogleSheetsV2(baseDescription),
 		};
 
 		super(nodeVersions, baseDescription);

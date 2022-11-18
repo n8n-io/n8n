@@ -6,7 +6,6 @@ import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { whereClause } from '@/CredentialsHelper';
 import config from '@/config';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { User } from '@db/entities/User';
@@ -21,6 +20,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+import { whereClause } from '@/UserManagement/UserManagementHelper';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;
@@ -93,8 +93,13 @@ export class WorkflowsService {
 		return Db.collections.Workflow.findOne(workflow, options);
 	}
 
+	// Warning: this function is overriden by EE to disregard role list.
+	static async getWorkflowIdsForUser(user: User, roles?: string[]) {
+		return getSharedWorkflowIds(user, roles);
+	}
+
 	static async getMany(user: User, rawFilter: string) {
-		const sharedWorkflowIds = await getSharedWorkflowIds(user);
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
@@ -172,15 +177,16 @@ export class WorkflowsService {
 		workflow: WorkflowEntity,
 		workflowId: string,
 		tags?: string[],
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		forceSave?: boolean,
+		roles?: string[],
 	): Promise<WorkflowEntity> {
 		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow'],
+			relations: ['workflow', 'role'],
 			where: whereClause({
 				user,
 				entityType: 'workflow',
 				entityId: workflowId,
+				roles,
 			}),
 		});
 
