@@ -1175,7 +1175,7 @@ export class Gitlab implements INodeType {
 
 						qs = this.getNodeParameter('additionalFields', i, {}) as IDataObject;
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
 							qs.per_page = this.getNodeParameter('limit', 0) as number;

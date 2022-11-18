@@ -254,7 +254,7 @@ export class CiscoWebex implements INodeType {
 							roomId: this.getNodeParameter('roomId', i),
 						};
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -401,7 +401,7 @@ export class CiscoWebex implements INodeType {
 
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const qs: IDataObject = {
 							...filters,
@@ -543,7 +543,7 @@ export class CiscoWebex implements INodeType {
 		// 			try {
 		// 				const meetingId = this.getNodeParameter('meetingId', i) as string;
 		// 				const filters = this.getNodeParameter('filters', i) as IDataObject;
-		// 				const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+		// 				const returnAll = this.getNodeParameter('returnAll', i);
 
 		// 				const qs: IDataObject = {
 		// 					meetingId,

@@ -154,7 +154,7 @@ export class Tapfiliate implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-get
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						Object.assign(qs, filters);
 						if (returnAll) {
@@ -271,7 +271,7 @@ export class Tapfiliate implements INodeType {
 					if (operation === 'getAll') {
 						//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-get
 						const programId = this.getNodeParameter('programId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						Object.assign(qs, filters);
 						if (returnAll) {

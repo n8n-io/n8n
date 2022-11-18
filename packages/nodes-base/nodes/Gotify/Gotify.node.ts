@@ -189,7 +189,7 @@ export class Gotify implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
 							responseData = await gotifyApiRequestAllItems.call(
@@ -213,10 +213,9 @@ export class Gotify implements INodeType {
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;

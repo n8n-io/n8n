@@ -148,7 +148,7 @@ export class Contentful implements INodeType {
 					} else if (operation === 'getAll') {
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const rawData = additionalFields.rawData;
@@ -247,7 +247,7 @@ export class Contentful implements INodeType {
 					} else if (operation === 'getAll') {
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const rawData = additionalFields.rawData;
@@ -326,7 +326,7 @@ export class Contentful implements INodeType {
 					if (operation === 'getAll') {
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const env = this.getNodeParameter('environmentId', i) as string;
 

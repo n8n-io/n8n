@@ -443,7 +443,7 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', 0) as number;
@@ -563,7 +563,7 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', 0) as number;

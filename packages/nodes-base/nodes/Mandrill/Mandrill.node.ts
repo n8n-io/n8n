@@ -723,7 +723,7 @@ export class Mandrill implements INodeType {
 					const options = this.getNodeParameter('options', i) as Options;
 					const fromEmail = this.getNodeParameter('fromEmail', i) as string;
 					const toEmail = this.getNodeParameter('toEmail', i) as string;
-					const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+					const jsonActive = this.getNodeParameter('jsonParameters', i);
 					const toEmailArray = getToEmailArray(toEmail);
 
 					const message: Message = {

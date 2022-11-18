@@ -265,7 +265,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 
 					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=/v3/api-docs/swagger-config&urls.primaryName=outagedetection-service#//v1/certificaterequests_getAll
 					if (operation === 'getMany') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
 							responseData = await venafiApiRequestAllItems.call(
@@ -405,7 +405,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 
 					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/%2Fv1/certificates_getAllAsCsv
 					if (operation === 'getMany') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
 						Object.assign(qs, filters);
