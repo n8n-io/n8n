@@ -5,7 +5,6 @@ import { ConnectionSecurity, RunningMode, SyncStatus } from './constants';
 
 export interface LdapConfig {
 	loginEnabled: boolean;
-	loginDisabledStrategy: loginDisabledStrategy;
 	loginLabel: string;
 	connectionUrl: string;
 	allowUnauthorizedCerts: boolean;

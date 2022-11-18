@@ -224,7 +224,6 @@ export default mixins(showMessage).extend({
 			searchTimeout: string;
 			port: string;
 			connectionSecurity: string;
-			loginDisabledStrategy: string;
 		}) {
 			if (!this.hasAnyChanges) {
 				return;
@@ -232,7 +231,6 @@ export default mixins(showMessage).extend({
 
 			const newConfiguration: ILdapConfig = {
 				loginEnabled: form.loginEnabled === 'true' ? true : false,
-				loginDisabledStrategy: form.loginDisabledStrategy ?? '',
 				loginLabel: form.loginLabel ?? '',
 				connectionUrl: form.serverAddress,
 				allowUnauthorizedCerts: form.allowUnauthorizedCerts === 'true' ? true : false,
@@ -342,29 +340,6 @@ export default mixins(showMessage).extend({
 								},
 							],
 							infoText: 'Whether to allow n8n users to sign-in using LDAP.',
-						},
-					},
-					{
-						name: 'loginDisabledStrategy',
-						initialValue: this.adConfig.loginDisabledStrategy,
-						properties: {
-							type: 'select',
-							label: 'LDAP Login Disable Strategy',
-							required: true,
-							options: [
-								{
-									label: 'Convert all LDAP users to email users',
-									value: 'convertoToEmailUsers',
-								},
-								{
-									label: 'Disable all LDAP users',
-									value: 'disableAllUsers',
-								},
-							],
-							infoText: 'Strategy to apply when login with LDAP is disabled.',
-						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === 'false';
 						},
 					},
 					{

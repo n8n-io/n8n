@@ -12,7 +12,6 @@ import * as utils from '../shared/utils';
 import {
 	LDAP_DEFAULT_CONFIGURATION,
 	LDAP_ENABLED,
-	loginDisabledStrategy,
 	RunningMode,
 	SignInType,
 } from '@/Ldap/constants';
@@ -731,7 +730,6 @@ test('PUT /ldap/config should apply "Convert all LDAP users to emaiL users" stra
 	const ldapConfig = await testDb.createLdapDefaultConfig({
 		loginEnabled: true,
 		loginLabel: '',
-		loginDisabledStrategy: loginDisabledStrategy.convertoEmailUsers,
 		ldapIdAttribute: 'uid',
 		firstNameAttribute: 'givenName',
 		lastNameAttribute: 'sn',
@@ -769,53 +767,10 @@ test('PUT /ldap/config should apply "Convert all LDAP users to emaiL users" stra
 	expect(emailUser.signInType).toBe(SignInType.EMAIL);
 });
 
-test('PUT /ldap/config should apply "Disable all LDAP users" strategy when LDAP login disabled', async () => {
-	const ldapConfig = await testDb.createLdapDefaultConfig({
-		loginEnabled: true,
-		loginLabel: '',
-		loginDisabledStrategy: loginDisabledStrategy.disableAllUsers,
-		ldapIdAttribute: 'uid',
-		firstNameAttribute: 'givenName',
-		lastNameAttribute: 'sn',
-		emailAttribute: 'mail',
-		loginIdAttribute: 'mail',
-		baseDn: 'baseDn',
-		bindingAdminDn: 'adminDn',
-		bindingAdminPassword: 'adminPassword',
-	});
-
-	LdapManager.updateConfig(ldapConfig.data as LdapConfig);
-
-	const owner = await testDb.createUser({ globalRole: globalOwnerRole });
-
-	const member = await testDb.createUser({
-		globalRole: globalMemberRole,
-		signInType: SignInType.LDAP,
-		ldapId: uniqueId(),
-	});
-
-	const configuration = ldapConfig.data as LdapConfig;
-
-	// disable the login, so the strategy is applied
-	await authAgent(owner)
-		.put('/ldap/config')
-		.send({ ...configuration, loginEnabled: false });
-
-	const ldapUser = await Db.collections.User.findOneOrFail(member.id);
-
-	expect(ldapUser.email).toBe(member.email);
-	expect(ldapUser.lastName).toBe(member.lastName);
-	expect(ldapUser.firstName).toBe(member.firstName);
-	expect(ldapUser.ldapId).toBe(member.ldapId);
-	expect(ldapUser.disabled).toBe(true);
-	expect(ldapUser.signInType).toBe(SignInType.LDAP);
-});
-
 test('If LDAP feature disabled after beeing enabled all LDAP users should be converted to email users', async () => {
 	const ldapConfig = await testDb.createLdapDefaultConfig({
 		loginEnabled: true,
 		loginLabel: '',
-		loginDisabledStrategy: loginDisabledStrategy.disableAllUsers,
 		ldapIdAttribute: 'uid',
 		firstNameAttribute: 'givenName',
 		lastNameAttribute: 'sn',

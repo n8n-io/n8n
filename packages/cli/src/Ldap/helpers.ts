@@ -22,7 +22,6 @@ import {
 	LDAP_FEATURE_NAME,
 	LDAP_LOGIN_ENABLED,
 	LDAP_LOGIN_LABEL,
-	loginDisabledStrategy,
 	SignInType,
 } from './constants';
 import type { LdapConfig, LdapDbColumns } from './types';
@@ -179,15 +178,7 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 
 	if (!config.loginEnabled) {
 		config.syncronizationEnabled = false;
-	}
-
-	// TODO: WRAP this in a transaction
-	if (config.loginDisabledStrategy === loginDisabledStrategy.convertoEmailUsers) {
 		await transformAllLdapUsersToEmailUsers();
-	}
-
-	if (config.loginDisabledStrategy === loginDisabledStrategy.disableAllUsers) {
-		await disableAllLdapUsers();
 	}
 
 	await Db.collections.FeatureConfig.update({ name: LDAP_FEATURE_NAME }, { data: config });
