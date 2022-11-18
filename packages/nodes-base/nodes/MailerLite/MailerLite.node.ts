@@ -86,7 +86,7 @@ export class MailerLite implements INodeType {
 					if (operation === 'create') {
 						const email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -128,7 +128,7 @@ export class MailerLite implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 
@@ -150,7 +150,7 @@ export class MailerLite implements INodeType {
 					if (operation === 'update') {
 						const subscriberId = this.getNodeParameter('subscriberId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 

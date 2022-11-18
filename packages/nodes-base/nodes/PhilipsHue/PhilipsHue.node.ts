@@ -100,7 +100,7 @@ export class PhilipsHue implements INodeType {
 
 					const on = this.getNodeParameter('on', i) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body = {
 						on,

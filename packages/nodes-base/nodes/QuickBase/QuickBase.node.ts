@@ -131,7 +131,7 @@ export class QuickBase implements INodeType {
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const qs: IDataObject = {
 						tableId,
@@ -329,7 +329,7 @@ export class QuickBase implements INodeType {
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const body: IDataObject = {
 						from: tableId,

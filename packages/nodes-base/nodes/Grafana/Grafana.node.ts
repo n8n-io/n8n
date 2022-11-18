@@ -149,7 +149,7 @@ export class Grafana implements INodeType {
 							},
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							if (additionalFields.folderId === '') delete additionalFields.folderId;
@@ -191,7 +191,7 @@ export class Grafana implements INodeType {
 							type: 'dash-db',
 						};
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -278,7 +278,7 @@ export class Grafana implements INodeType {
 							name: this.getNodeParameter('name', i) as string,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -312,7 +312,7 @@ export class Grafana implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, filters);
@@ -334,7 +334,7 @@ export class Grafana implements INodeType {
 
 						// https://grafana.com/docs/grafana/latest/http_api/team/#update-team
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 
@@ -461,7 +461,7 @@ export class Grafana implements INodeType {
 						// https://grafana.com/docs/grafana/latest/http_api/org/#updates-the-given-user
 
 						const body: IDataObject = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 

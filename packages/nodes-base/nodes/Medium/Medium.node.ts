@@ -420,7 +420,7 @@ export class Medium implements INodeType {
 							content,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.tags) {
 							const tags = additionalFields.tags as string;
 							bodyRequest.tags = tags.split(',').map((name) => {

@@ -188,7 +188,7 @@ export class Reddit implements INodeType {
 							restrict_sr: location === 'subreddit',
 						} as IDataObject;
 
-						const { sort } = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const { sort } = this.getNodeParameter('additionalFields', i);
 
 						if (sort) {
 							qs.sort = sort;
@@ -365,7 +365,7 @@ export class Reddit implements INodeType {
 						// https://www.reddit.com/dev/api/#POST_api_search_subreddits
 						// https://www.reddit.com/r/subreddits.json
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (filters.trending) {
 							const returnAll = this.getNodeParameter('returnAll', 0);

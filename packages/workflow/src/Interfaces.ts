@@ -564,6 +564,10 @@ namespace ExecuteFunctions {
 			| 'resolveData';
 	}
 
+	namespace RecordReturning {
+		export type NodeParameter = 'additionalFields' | 'filters' | 'options' | 'updateFields';
+	}
+
 	export type GetNodeParameterFn = {
 		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
 		getNodeParameter<T extends { resource: string }>(
@@ -571,6 +575,12 @@ namespace ExecuteFunctions {
 			itemIndex?: number,
 		): T['resource'];
 
+		getNodeParameter(
+			parameterName: RecordReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		): IDataObject;
 		getNodeParameter(
 			parameterName: BooleanReturning.NodeParameter,
 			itemIndex: number,

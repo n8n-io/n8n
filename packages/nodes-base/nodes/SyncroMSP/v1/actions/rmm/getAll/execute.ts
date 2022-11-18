@@ -9,7 +9,7 @@ export async function getAll(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const filters = this.getNodeParameter('filters', index) as IDataObject;
+	const filters = this.getNodeParameter('filters', index);
 
 	let qs = {} as IDataObject;
 	const requestMethod = 'GET';

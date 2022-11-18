@@ -2303,7 +2303,7 @@ export class GoogleDrive implements INodeType {
 						const fileId = this.getNodeParameter('fileId', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const requestOptions = {
 							resolveWithFullResponse: true,
@@ -2751,7 +2751,7 @@ export class GoogleDrive implements INodeType {
 
 						const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {};
 

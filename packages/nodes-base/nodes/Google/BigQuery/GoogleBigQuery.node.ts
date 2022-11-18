@@ -164,7 +164,7 @@ export class GoogleBigQuery implements INodeType {
 				const body: IDataObject = {};
 
 				for (let i = 0; i < length; i++) {
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					Object.assign(body, options);
 					if (body.traceId === undefined) {
 						body.traceId = uuid();
@@ -232,7 +232,7 @@ export class GoogleBigQuery implements INodeType {
 
 				for (let i = 0; i < length; i++) {
 					try {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 
 						if (qs.selectedFields) {

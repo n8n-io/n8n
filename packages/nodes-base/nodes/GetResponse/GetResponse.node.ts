@@ -146,7 +146,7 @@ export class GetResponse implements INodeType {
 
 						const campaignId = this.getNodeParameter('campaignId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -179,7 +179,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'delete') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						Object.assign(qs, options);
 
@@ -197,7 +197,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						Object.assign(qs, options);
 
@@ -213,7 +213,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const timezone = this.getTimezone();
 
@@ -269,7 +269,7 @@ export class GetResponse implements INodeType {
 					if (operation === 'update') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {};
 
