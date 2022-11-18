@@ -22,11 +22,9 @@
 			<div v-if="items.length > 0" :class="$style.accordionItems">
 				<div v-for="item in items" :key="item.id" :class="$style.accordionItem">
 					<n8n-tooltip :disabled="!item.tooltip">
-						<div
-							slot="content"
-							v-html="item.tooltip"
-							@click="onTooltipClick(item.id, $event)"
-						></div>
+						<template #content>
+							<div v-html="item.tooltip" @click="onTooltipClick(item.id, $event)"></div>
+						</template>
 						<n8n-icon :icon="item.icon" :color="item.iconColor" size="small" class="mr-2xs" />
 					</n8n-tooltip>
 					<n8n-text size="small" color="text-base">{{ item.label }}</n8n-text>

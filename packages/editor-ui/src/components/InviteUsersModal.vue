@@ -7,7 +7,7 @@
 		width="460px"
 		:eventBus="modalBus"
 	>
-		<template slot="content">
+		<template #content>
 			<n8n-form-inputs
 				:inputs="config"
 				:eventBus="formBus"
@@ -16,7 +16,7 @@
 				@submit="onSubmit"
 			/>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<n8n-button :loading="loading" :disabled="!enabledButton" :label="buttonLabel" @click="onSubmitClick" float="right" />
 		</template>
 	</Modal>

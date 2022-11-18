@@ -1,13 +1,13 @@
 <template>
 	<div class="container" v-if="workflowName">
 		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" class="name-container">
-			<template v-slot="{ value }">
+			<template #default="{ value }">
 				<ShortenName
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
 				>
-					<template v-slot="{ shortenedName }">
+					<template #default="{ shortenedName }">
 						<InlineTextEdit
 							:value="workflowName"
 							:previewValue="shortenedName"

@@ -31,7 +31,7 @@
 					:value="value[label]"
 					:nodeClass="nodeClass"
 				>
-					<template v-for="(index, name) in $scopedSlots" v-slot:[name]="data">
+					<template v-for="(index, name) in $scopedSlots" #[name]="data">
 						<slot :name="name" v-bind="data"></slot>
 					</template>
 				</n8n-tree>
