@@ -52,22 +52,48 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:create                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team',
 		name: 'teamId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
+		modes: [
+			{
+				displayName: 'Team',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Team...',
+				typeOptions: {
+					searchListMethod: 'getTeams',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'b16cb45e-df51-4ff6-a044-dd90bf2bfdb2',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+							errorMessage: 'Not a valid Microsoft Teams Team ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['create'],
 				resource: ['channel'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Name',
@@ -130,22 +156,48 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:delete                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team',
 		name: 'teamId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
+		modes: [
+			{
+				displayName: 'Team',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Team...',
+				typeOptions: {
+					searchListMethod: 'getTeams',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'b16cb45e-df51-4ff6-a044-dd90bf2bfdb2',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+							errorMessage: 'Not a valid Microsoft Teams Team ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['delete'],
 				resource: ['channel'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Channel Name or ID',
@@ -170,22 +222,48 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:get                                */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team',
 		name: 'teamId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
+		modes: [
+			{
+				displayName: 'Team',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Team...',
+				typeOptions: {
+					searchListMethod: 'getTeams',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'b16cb45e-df51-4ff6-a044-dd90bf2bfdb2',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+							errorMessage: 'Not a valid Microsoft Teams Team ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['get'],
 				resource: ['channel'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Channel Name or ID',
@@ -210,22 +288,48 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:getAll                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team',
 		name: 'teamId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
+		modes: [
+			{
+				displayName: 'Team',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Team...',
+				typeOptions: {
+					searchListMethod: 'getTeams',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'b16cb45e-df51-4ff6-a044-dd90bf2bfdb2',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+							errorMessage: 'Not a valid Microsoft Teams Team ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['getAll'],
 				resource: ['channel'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Return All',
@@ -263,22 +367,48 @@ export const channelFields: INodeProperties[] = [
 	/*                                 channel:update                             */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Team Name or ID',
+		displayName: 'Team',
 		name: 'teamId',
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
 		required: true,
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getTeams',
-		},
+		modes: [
+			{
+				displayName: 'Team',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Team...',
+				typeOptions: {
+					searchListMethod: 'getTeams',
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: 'b16cb45e-df51-4ff6-a044-dd90bf2bfdb2',
+				validation: [
+					{
+						type: 'regex',
+						properties: {
+							regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})[ \t]*',
+							errorMessage: 'Not a valid Microsoft Teams Team ID',
+						},
+					},
+				],
+				extractValue: {
+					type: 'regex',
+					regex: '^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})',
+				},
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['update'],
 				resource: ['channel'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Channel Name or ID',

@@ -2,7 +2,7 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, NodeApiError } from 'n8n-workflow';
+import { IDataObject, INodeListSearchItems, NodeApiError } from 'n8n-workflow';
 
 export async function microsoftApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
@@ -86,4 +86,24 @@ export async function microsoftApiRequestAllItemsSkip(
 	} while (responseData['value'].length !== 0);
 
 	return returnData;
+}
+
+
+export function filterSortSearchListItems(items: INodeListSearchItems[], filter?: string) {
+	return items
+		.filter(
+			(item) =>
+				!filter ||
+				item.name.toLowerCase().includes(filter.toLowerCase()) ||
+				item.value.toString().toLowerCase().includes(filter.toLowerCase()),
+		)
+		.sort((a, b) => {
+			if (a.name.toLocaleLowerCase() < b.name.toLocaleLowerCase()) {
+				return -1;
+			}
+			if (a.name.toLocaleLowerCase() > b.name.toLocaleLowerCase()) {
+				return 1;
+			}
+			return 0;
+		});
 }
