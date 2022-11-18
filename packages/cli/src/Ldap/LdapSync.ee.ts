@@ -5,18 +5,19 @@ import { LdapService } from './LdapService.ee';
 import type { LdapConfig } from './types';
 import { RunningMode, SyncStatus } from './constants';
 import {
-	getLdapUsers,
 	getLdapUserRole,
 	mapLdapUserToDbUser,
 	processUsers,
 	saveLdapSyncronization,
 	createFilter,
 	resolveBinaryAttributes,
+	getLdapIds,
 } from './helpers';
 import type { User } from '@db/entities/User';
 import type { Role } from '@db/entities/Role';
 import { LdapSyncHistory as ADSync } from '@db/entities/LdapSyncHistory';
 import { QueryFailedError } from 'typeorm/error/QueryFailedError';
+import { InternalHooksManager } from '@/InternalHooksManager';
 
 export class LdapSync {
 	private intervalId: NodeJS.Timeout | undefined = undefined;
@@ -101,7 +102,7 @@ export class LdapSync {
 
 		const startedAt = new Date();
 
-		const localAdUsers = await getLdapUsers();
+		const localAdUsers = await getLdapIds();
 
 		const role = await getLdapUserRole();
 
@@ -110,6 +111,14 @@ export class LdapSync {
 			localAdUsers,
 			role,
 		);
+
+		if (usersToDisable.length) {
+			void InternalHooksManager.getInstance().onLdapUsersDisabled({
+				reason: 'ldap_update',
+				users: usersToDisable.length,
+				user_ids: usersToDisable,
+			});
+		}
 
 		const endedAt = new Date();
 		let status = SyncStatus.SUCCESS;
@@ -140,6 +149,13 @@ export class LdapSync {
 		});
 
 		await saveLdapSyncronization(syncronization);
+
+		void InternalHooksManager.getInstance().onLdapSyncFinished({
+			type: !this.intervalId ? 'scheduled' : `manual_${mode}`,
+			succeeded: true,
+			users_synced: usersToCreate.length + usersToUpdate.length + usersToDisable.length,
+			error: errorMessage,
+		});
 
 		Logger.info(`LDAP - Syncronization finished successfully`);
 	}

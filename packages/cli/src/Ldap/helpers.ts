@@ -25,6 +25,7 @@ import {
 	SignInType,
 } from './constants';
 import type { LdapConfig, LdapDbColumns } from './types';
+import { InternalHooksManager } from '@/InternalHooksManager';
 
 /**
  *  Check whether the LDAP feature
@@ -178,7 +179,15 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
 
 	if (!config.loginEnabled) {
 		config.syncronizationEnabled = false;
-		await transformAllLdapUsersToEmailUsers();
+		const ldapUsers = await getLdapUsers();
+		if (ldapUsers.length) {
+			await transformAllLdapUsersToEmailUsers();
+			void InternalHooksManager.getInstance().onLdapUsersDisabled({
+				reason: 'ldap_update',
+				users: ldapUsers.length,
+				user_ids: ldapUsers.map((user) => user.id),
+			});
+		}
 	}
 
 	await Db.collections.FeatureConfig.update({ name: LDAP_FEATURE_NAME }, { data: config });
@@ -193,9 +202,18 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
  */
 export const handleLdapInit = async (): Promise<void> => {
 	if (!isLdapEnabled()) {
-		// In case the user's is downgrading
-		// convert all LDAP users to email users so they do not
-		// lose access to the instance
+		// In case the user is downgrading and there are LDAP
+		// users in the database, convert all LDAP users to email
+		// users so they do not lose access to the instance
+		const ldapUsers = await getLdapUsers();
+		if (ldapUsers.length) {
+			await transformAllLdapUsersToEmailUsers();
+			void InternalHooksManager.getInstance().onLdapUsersDisabled({
+				reason: 'ldap_feature_deactivated',
+				users: ldapUsers.length,
+				user_ids: ldapUsers.map((user) => user.id),
+			});
+		}
 		await transformAllLdapUsersToEmailUsers();
 		return;
 	}
@@ -254,7 +272,12 @@ export const findAndAuthenticateLdapUser = async (
 		searchResult = await ldapService.searchWithAdminBinding(
 			createFilter(`(${loginIdAttribute}=${escapeFilter(loginId)})`, userFilter),
 		);
-	} catch (_) {
+	} catch (e) {
+		if (e instanceof Error) {
+			void InternalHooksManager.getInstance().onLdapLoginSyncFailed({
+				error: e.message,
+			});
+		}
 		return undefined;
 	}
 
@@ -332,16 +355,21 @@ export const mapLdapAttributesToDb = (user: Entry, config: LdapConfig): Partial<
 };
 
 /**
- * Retrieve ID of all LDAP users in the database
+ * Retrieve LDAP ID of all LDAP users in the database
  * @returns Promise
  */
-export const getLdapUsers = async (): Promise<string[]> => {
+export const getLdapIds = async (): Promise<string[]> => {
 	const users = await Db.collections.User.find({
 		where: { signInType: SignInType.LDAP },
 		select: ['ldapId'],
 	});
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 	return users.map((user) => user.ldapId) as string[];
+};
+
+export const getLdapUsers = async (): Promise<User[]> => {
+	return Db.collections.User.find({
+		where: { signInType: SignInType.LDAP },
+	});
 };
 
 /**

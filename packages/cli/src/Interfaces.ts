@@ -364,6 +364,7 @@ export interface IDiagnosticInfo {
 	binaryDataMode: string;
 	n8n_multi_user_allowed: boolean;
 	smtp_set_up: boolean;
+	ldap_allowed: boolean;
 }
 
 export interface ITelemetryUserDeletionData {
