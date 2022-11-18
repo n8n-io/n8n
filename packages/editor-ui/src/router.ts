@@ -14,6 +14,7 @@ import SettingsPersonalView from './views/SettingsPersonalView.vue';
 import SettingsUsersView from './views/SettingsUsersView.vue';
 import SettingsCommunityNodesView from './views/SettingsCommunityNodesView.vue';
 import SettingsApiView from './views/SettingsApiView.vue';
+import SettingsLogStreamingView from './views/SettingsLogStreamingView.vue';
 import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
@@ -493,6 +494,34 @@ const router = new Router({
 							getProperties(route: Route) {
 								return {
 									feature: 'api',
+								};
+							},
+						},
+						permissions: {
+							allow: {
+								loginStatus: [LOGIN_STATUS.LoggedIn],
+							},
+							deny: {
+								shouldDeny: () => {
+									const settingsStore =  useSettingsStore();
+									return settingsStore.isPublicApiEnabled === false;
+								},
+							},
+						},
+					},
+				},
+				{
+					path: 'logstreaming',
+					name: VIEWS.LOGSTREAMING_SETTINGS,
+					components: {
+						settingsView: SettingsLogStreamingView,
+					},
+					meta: {
+						telemetry: {
+							pageCategory: 'settings',
+							getProperties(route: Route) {
+								return {
+									feature: 'logstreaming',
 								};
 							},
 						},

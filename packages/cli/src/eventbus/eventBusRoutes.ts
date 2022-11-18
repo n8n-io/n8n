@@ -25,6 +25,8 @@ import {
 	MessageEventBusDestinationWebhook,
 	MessageEventBusDestinationWebhookOptions,
 } from './MessageEventBusDestination/MessageEventBusDestinationWebhook';
+import { EventMessageLevel, eventNamesAll } from './EventMessageClasses';
+import { eventListToObjectTree } from './EventMessageClasses/Helpers';
 
 export const eventBusRouter = express.Router();
 
@@ -269,5 +271,19 @@ eventBusRouter.delete(
 		} else {
 			throw new ResponseError('Query is missing destination id', undefined, 400);
 		}
+	}),
+);
+
+// ----------------------------------------
+// Utilities
+// ----------------------------------------
+
+eventBusRouter.get(
+	`/constants`,
+	ResponseHelper.send(async (): Promise<any> => {
+		return {
+			levels: Object.values(EventMessageLevel),
+			events: eventListToObjectTree(eventNamesAll),
+		};
 	}),
 );

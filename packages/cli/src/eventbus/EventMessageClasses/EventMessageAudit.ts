@@ -5,11 +5,24 @@ import {
 	isEventMessageSerialized,
 } from './AbstractEventMessage';
 import { JsonObject } from 'n8n-workflow';
-import { EventMessageNamespaceN8n, EventMessageTypeNames } from '.';
+import { EventMessageTypeNames } from '.';
 
-type EventNames = 'created' | 'updated' | 'deleted';
-type EventGroup = 'audit';
-export type FullEventNamesAudit = `${EventMessageNamespaceN8n}.${EventGroup}.${EventNames}`;
+// export type EventNamesAudit = 'created' | 'updated' | 'deleted';
+// export const sEventNamesAudit = ['created', 'updated', 'deleted'];
+// const x = `${sEventNamesAudit}.x`;
+// export type EventGroupAudit = `${EventMessageNamespaceN8n}.audit`;
+// export const sEventGroupAudit = `n8n.audit`;
+// export type FullEventNamesAudit = `${EventGroupAudit}.${EventNamesAudit}`;
+// export const sFullEventNamesAudit = sEventNamesAudit.map(
+// 	(eventName) => `${sEventGroupAudit}.${eventName}` as const,
+// );
+
+export const eventNamesAudit = [
+	'n8n.audit.created',
+	'n8n.audit.updated',
+	'n8n.audit.deleted',
+] as const;
+export type EventNamesAuditType = typeof eventNamesAudit[number];
 
 // --------------------------------------
 // EventMessage class for Audit events
@@ -23,7 +36,7 @@ export class EventPayloadAudit extends AbstractEventPayload {
 export class EventMessageAudit extends AbstractEventMessage {
 	readonly __type: string = EventMessageTypeNames.eventMessageAudit;
 
-	eventName: FullEventNamesAudit;
+	eventName: EventNamesAuditType;
 
 	payload: EventPayloadAudit;
 

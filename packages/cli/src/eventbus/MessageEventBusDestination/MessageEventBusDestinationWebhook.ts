@@ -64,6 +64,7 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 			options: {
 				id: this.getId(),
 				name: this.getName(),
+				responseCodeMustMatch: this.responseCodeMustMatch,
 				expectedStatusCode: this.expectedStatusCode,
 				url: this.url,
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment

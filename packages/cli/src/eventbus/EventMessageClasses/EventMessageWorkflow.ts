@@ -5,11 +5,18 @@ import {
 	isEventMessageSerialized,
 } from './AbstractEventMessage';
 import { JsonObject } from 'n8n-workflow';
-import { EventMessageNamespaceN8n, EventMessageTypeNames } from '.';
+import { EventMessageTypeNames } from '.';
 
-type EventNames = 'workflowStarted' | 'workflowEnded';
-type EventGroup = 'workflow';
-export type FullEventNamesWorkflow = `${EventMessageNamespaceN8n}.${EventGroup}.${EventNames}`;
+// export type EventNamesWorkflow = 'workflowStarted' | 'workflowEnded';
+// export type EventGroupWorkflow = `${EventMessageNamespaceN8n}.workflow`;
+// export type FullEventNamesWorkflow = `${EventGroupWorkflow}.${EventNamesWorkflow}`;
+
+export const eventNamesWorkflow = [
+	'n8n.workflow.started',
+	'n8n.workflow.finished',
+	'n8n.workflow.exploded',
+] as const;
+export type EventNamesWorkflowType = typeof eventNamesWorkflow[number];
 
 // --------------------------------------
 // EventMessage class for Workflow events
@@ -23,7 +30,7 @@ export class EventPayloadWorkflow extends AbstractEventPayload {
 export class EventMessageWorkflow extends AbstractEventMessage {
 	readonly __type: string = EventMessageTypeNames.eventMessageWorkflow;
 
-	eventName: FullEventNamesWorkflow;
+	eventName: EventNamesWorkflowType;
 
 	payload: EventPayloadWorkflow;
 

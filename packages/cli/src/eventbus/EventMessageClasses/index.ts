@@ -1,9 +1,16 @@
+import { eventNamesAudit, EventNamesAuditType } from './EventMessageAudit';
 import { EventMessageGeneric } from './EventMessageGeneric';
-import { EventMessageWorkflow, FullEventNamesWorkflow } from './EventMessageWorkflow';
+import {
+	EventMessageWorkflow,
+	eventNamesWorkflow,
+	EventNamesWorkflowType,
+} from './EventMessageWorkflow';
 
-export type EventMessageNamespaceN8n = 'n8n';
-
-export type EventMessageEventNames = FullEventNamesWorkflow;
+// export type EventMessageNamespaceN8n = 'n8n';
+// export const sEventMessageNamespaceN8n = 'n8n';
+// export type EventMessageEventGroups = EventGroupWorkflow | EventGroupAudit;
+export type EventNamesTypes = EventNamesAuditType | EventNamesWorkflowType;
+export const eventNamesAll = [...eventNamesAudit, ...eventNamesWorkflow, 'michael.test.event'];
 
 export type EventMessageTypes = EventMessageGeneric | EventMessageWorkflow;
 

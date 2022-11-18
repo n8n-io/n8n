@@ -74,6 +74,14 @@ export default mixins(
 					available: this.canAccessApiSettings(),
 					activateOnRouteNames: [ VIEWS.API_SETTINGS ],
 				},
+				{
+					id: 'settings-logstreaming',
+					icon: 'question',
+					label: this.$locale.baseText('settings.logstreaming'),
+					position: 'top',
+					available: this.canAccessApiSettings(),
+					activateOnRouteNames: [ VIEWS.LOGSTREAMING_SETTINGS ],
+				},
 			];
 
 			for (const item of this.settingsFakeDoorFeatures) {
@@ -140,6 +148,11 @@ export default mixins(
 				case 'settings-api':
 					if (this.$router.currentRoute.name !== VIEWS.API_SETTINGS) {
 						this.$router.push({ name: VIEWS.API_SETTINGS });
+					}
+					break;
+				case 'settings-logstreaming':
+					if (this.$router.currentRoute.name !== VIEWS.LOGSTREAMING_SETTINGS) {
+						this.$router.push({ name: VIEWS.LOGSTREAMING_SETTINGS });
 					}
 					break;
 				case 'environments':
