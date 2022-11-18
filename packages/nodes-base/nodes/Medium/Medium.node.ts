@@ -420,7 +420,7 @@ export class Medium implements INodeType {
 							content,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.tags) {
 							const tags = additionalFields.tags as string;
 							bodyRequest.tags = tags.split(',').map((name) => {
@@ -493,7 +493,7 @@ export class Medium implements INodeType {
 						//         publication:getAll
 						// ----------------------------------
 
-						const returnAll = this.getNodeParameter('returnAll', i) as string;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const user = await mediumApiRequest.call(this, 'GET', `/me`);
 
@@ -508,7 +508,7 @@ export class Medium implements INodeType {
 						responseData = responseData.data;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

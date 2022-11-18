@@ -20,8 +20,7 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import type { IWorkflowData } from '.';
+import type { IWorkflowData } from './Interfaces';
 
 export class ActiveWorkflows {
 	private workflowData: {

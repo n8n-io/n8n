@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -26,25 +25,22 @@ import {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-// eslint-disable-next-line import/no-cycle
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Db from '@/Db';
 import {
-	CredentialTypes,
-	Db,
 	ICredentialsDb,
 	ICredentialsTypeData,
 	ITransferNodeTypes,
 	IWorkflowErrorData,
 	IWorkflowExecutionDataProcess,
-	NodeTypes,
-	WhereClause,
-	WorkflowRunner,
-} from '.';
+} from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
+import { WorkflowRunner } from '@/WorkflowRunner';
 
-import config from '../config';
-// eslint-disable-next-line import/no-cycle
-import { WorkflowEntity } from './databases/entities/WorkflowEntity';
-import { User } from './databases/entities/User';
-import { getWorkflowOwner } from './UserManagement/UserManagementHelper';
+import config from '@/config';
+import { WorkflowEntity } from '@db/entities/WorkflowEntity';
+import { User } from '@db/entities/User';
+import { getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -577,39 +573,13 @@ export async function replaceInvalidCredentials(workflow: WorkflowEntity): Promi
 }
 
 /**
- * Build a `where` clause for a TypeORM entity search,
- * checking for member access if the user is not an owner.
- */
-export function whereClause({
-	user,
-	entityType,
-	entityId = '',
-}: {
-	user: User;
-	entityType: 'workflow' | 'credentials';
-	entityId?: string;
-}): WhereClause {
-	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
-
-	// TODO: Decide if owner access should be restricted
-	if (user.globalRole.name !== 'owner') {
-		where.user = { id: user.id };
-	}
-
-	return where;
-}
-
-/**
  * Get the IDs of the workflows that have been shared with the user.
  * Returns all IDs if user is global owner (see `whereClause`)
  */
-export async function getSharedWorkflowIds(user: User): Promise<number[]> {
+export async function getSharedWorkflowIds(user: User, roles?: string[]): Promise<number[]> {
 	const sharedWorkflows = await Db.collections.SharedWorkflow.find({
-		relations: ['workflow'],
-		where: whereClause({
-			user,
-			entityType: 'workflow',
-		}),
+		relations: ['workflow', 'role'],
+		where: whereClause({ user, entityType: 'workflow', roles }),
 	});
 
 	return sharedWorkflows.map(({ workflow }) => workflow.id);

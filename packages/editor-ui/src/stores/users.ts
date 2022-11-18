@@ -23,8 +23,8 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		currentUser(): IUser | null {
 			return this.currentUserId ? this.users[this.currentUserId] : null;
 		},
-		getUserById(): (userId: string) => IUser | null {
-			return (userId: string): IUser | null => this.users[userId];
+		getUserById(state) {
+			return (userId: string): IUser | null => state.users[userId];
 		},
 		globalRoleName(): string {
 			return this.currentUser?.globalRole?.name || '';
@@ -86,15 +86,17 @@ export const useUsersStore = defineStore(STORES.USERS, {
 			}
 			Vue.set(this.currentUser, 'personalizationAnswers', answers);
 		},
-		async getCurrentUser(): void {
+		async getCurrentUser(): Promise<IUserResponse | null> {
 			const rootStore = useRootStore();
 			const user = await getCurrentUser(rootStore.getRestApiContext);
 			if (user) {
 				this.addUsers([user]);
 				this.currentUserId = user.id;
 			}
+
+			return user;
 		},
-		async loginWithCookie(): void {
+		async loginWithCookie(): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await loginCurrentUser(rootStore.getRestApiContext);
 			if (user) {

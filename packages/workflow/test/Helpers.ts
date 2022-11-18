@@ -1,13 +1,11 @@
 import get from 'lodash.get';
-import {
+import type {
 	CredentialInformation,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
 	IContextObject,
 	ICredentialDataDecryptedObject,
-	ICredentials,
 	ICredentialsEncrypted,
-	ICredentialsHelper,
 	IDataObject,
 	IExecuteData,
 	IExecuteFunctions,
@@ -32,13 +30,14 @@ import {
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	IWorkflowExecuteAdditionalData,
-	NodeHelpers,
 	NodeParameterValue,
-	Workflow,
-	WorkflowDataProxy,
 	WorkflowExecuteMode,
-	WorkflowHooks,
-} from '../src';
+} from '@/Interfaces';
+import { ICredentials, ICredentialsHelper } from '@/Interfaces';
+import { Workflow } from '@/Workflow';
+import { WorkflowDataProxy } from '@/WorkflowDataProxy';
+import { WorkflowHooks } from '@/WorkflowHooks';
+import * as NodeHelpers from '@/NodeHelpers';
 
 export interface INodeTypesObject {
 	[key: string]: INodeType;

@@ -8,10 +8,10 @@
 		maxWidth="460px"
 		minHeight="250px"
 	>
-		<template slot="header">
+		<template #header>
 			<h2 :class="$style.title">{{ $locale.baseText('credentialSelectModal.addNewCredential') }}</h2>
 		</template>
-		<template slot="content">
+		<template #content>
 			<div>
 				<div :class="$style.subtitle">{{ $locale.baseText('credentialSelectModal.selectAnAppOrServiceToConnectTo') }}</div>
 				<n8n-select
@@ -23,7 +23,9 @@
 					:value="selected"
 					@change="onSelect"
 				>
-					<font-awesome-icon icon="search" slot="prefix" />
+					<template #prefix>
+						<font-awesome-icon icon="search" />
+					</template>
 					<n8n-option
 						v-for="credential in credentialsStore.allCredentialTypes"
 						:value="credential.name"
@@ -34,7 +36,7 @@
 				</n8n-select>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<div :class="$style.footer">
 				<n8n-button
 					:label="$locale.baseText('credentialSelectModal.continue')"

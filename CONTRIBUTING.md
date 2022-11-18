@@ -4,15 +4,24 @@ Great that you are here and you want to contribute to n8n
 
 ## Contents
 
-- [Code of Conduct](#code-of-conduct)
-- [Directory Structure](#directory-structure)
-- [Development Setup](#development-setup)
-- [Development Cycle](#development-cycle)
-- [Create Custom Nodes](#create-custom-nodes)
-- [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
-- [Checklist before submitting a new node](#checklist-before-submitting-a-new-node)
-- [Extend Documentation](#extend-documentation)
-- [Contributor License Agreement](#contributor-license-agreement)
+- [Contributing to n8n](#contributing-to-n8n)
+  - [Contents](#contents)
+  - [Code of conduct](#code-of-conduct)
+  - [Directory structure](#directory-structure)
+  - [Development setup](#development-setup)
+    - [Requirements](#requirements)
+      - [Node.js](#nodejs)
+      - [Build tools](#build-tools)
+      - [pnpm workspaces](#pnpm-workspaces)
+    - [Actual n8n setup](#actual-n8n-setup)
+    - [Start](#start)
+  - [Development cycle](#development-cycle)
+    - [Test suite](#test-suite)
+  - [Create custom nodes](#create-custom-nodes)
+  - [Create a new node to contribute to n8n](#create-a-new-node-to-contribute-to-n8n)
+  - [Checklist before submitting a new node](#checklist-before-submitting-a-new-node)
+  - [Extend documentation](#extend-documentation)
+  - [Contributor License Agreement](#contributor-license-agreement)
 
 ## Code of conduct
 
@@ -51,7 +60,13 @@ dependencies are installed and the packages get linked correctly. Here a short g
 
 #### Node.js
 
-We suggest using [Node.js](https://nodejs.org/en/) version 16 for development purposes.
+We suggest using [Node.js](https://nodejs.org/en/) version 16.9 or newer for development purposes.
+
+After that we recommend enabling [Node.js corepack](https://nodejs.org/docs/latest-v16.x/api/corepack.html) with `corepack enable`, and [pnpm](https://pnpm.io/) with `corepack prepare pnpm --activate`.
+
+**IMPORTANT**: If you have installed Node.js via homebrew, you'll need to run `brew install corepack`, since homebrew explicitly removes `npm` and `corepack` from [the `node` formula](https://github.com/Homebrew/homebrew-core/blob/master/Formula/node.rb#L66).
+
+**IMPORTANT**: If you are on windows, you'd need to run `corepack enable` and `corepack prepare pnpm --activate` in a terminal as an administrator.
 
 #### Build tools
 
@@ -72,15 +87,14 @@ yum install gcc gcc-c++ make
 Windows:
 
 ```
-npm install -g windows-build-tools
+npm add -g windows-build-tools
 ```
 
-#### npm workspaces
+#### pnpm workspaces
 
 n8n is split up in different modules which are all in a single mono repository.
-To facilitate the module management, [npm workspaces](https://docs.npmjs.com/cli/v7/using-npm/workspaces) are
-used. This automatically sets up file-links between modules which depend on each
-other.
+To facilitate the module management, [pnpm workspaces](https://pnpm.io/workspaces) are used.
+This automatically sets up file-links between modules which depend on each other.
 
 ### Actual n8n setup
 
@@ -112,12 +126,12 @@ checked out and set up:
 5. Install all dependencies of all modules and link them together:
 
    ```
-   npm install
+   pnpm install
    ```
 
 6. Build all the code:
    ```
-   npm run build
+   pnpm build
    ```
 
 ### Start
@@ -125,7 +139,7 @@ checked out and set up:
 To start n8n execute:
 
 ```
-npm run start
+pnpm start
 ```
 
 To start n8n with tunnel:
@@ -136,24 +150,24 @@ To start n8n with tunnel:
 
 ## Development cycle
 
-While iterating on n8n modules code, you can run `npm run dev`. It will then
+While iterating on n8n modules code, you can run `pnpm dev`. It will then
 automatically build your code, restart the backend and refresh the frontend
 (editor-ui) on every change you make.
 
 1. Start n8n in development mode:
    ```
-   npm run dev
+   pnpm dev
    ```
 1. Hack, hack, hack
 1. Check if everything still runs in production mode
    ```
-   npm run build
-   npm run start
+   pnpm build
+   pnpm start
    ```
 1. Create tests
 1. Run all [tests](#test-suite)
    ```
-   npm run test
+   pnpm test
    ```
 1. Commit code and [create a pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork)
 
@@ -162,7 +176,7 @@ automatically build your code, restart the backend and refresh the frontend
 The tests can be started via:
 
 ```
-npm run test
+pnpm test
 ```
 
 If that gets executed in one of the package folders it will only run the tests

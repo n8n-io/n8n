@@ -1,6 +1,6 @@
 <template>
 	<div class="workflow-activator">
-		<div :class="$style.activeStatusText">
+		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
 			<n8n-text v-if="workflowActive" :color="couldNotBeStarted ? 'danger' : 'success'" size="small" bold>
 				{{ $locale.baseText('workflowActivator.active') }}
 			</n8n-text>
@@ -9,7 +9,9 @@
 			</n8n-text>
 		</div>
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
-			<div slot="content">{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+			<template #content>
+				<div>{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
 				:value="workflowActive"
@@ -24,7 +26,9 @@
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
 			<n8n-tooltip placement="top">
-				<div @click="displayActivationError" slot="content" v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"></div>
+				<template #content>
+					<div @click="displayActivationError" v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"></div>
+				</template>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</n8n-tooltip>
 		</div>

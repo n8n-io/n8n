@@ -1,8 +1,7 @@
-import { CredentialTypes } from '../../src';
 import type { ICredentialTypeData, ICredentialTypes } from 'n8n-workflow';
+import { CredentialTypes } from '@/CredentialTypes';
 
 describe('ActiveExecutions', () => {
-
 	let credentialTypes: ICredentialTypes;
 
 	beforeEach(() => {
@@ -35,7 +34,9 @@ describe('ActiveExecutions', () => {
 	test('Should return correct credential type for valid name', () => {
 		credentialTypes.init(mockCredentialTypes());
 		const mockedCredentialTypes = mockCredentialTypes();
-		expect(credentialTypes.getByName('fakeFirstCredential')).toStrictEqual(mockedCredentialTypes.fakeFirstCredential.type);
+		expect(credentialTypes.getByName('fakeFirstCredential')).toStrictEqual(
+			mockedCredentialTypes.fakeFirstCredential.type,
+		);
 	});
 });
 

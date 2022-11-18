@@ -105,15 +105,17 @@
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 				>
-					<div slot="suffix" class="expand-input-icon-container">
-						<font-awesome-icon
-							v-if="!isReadOnly"
-							icon="expand-alt"
-							class="edit-window-button clickable"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-						/>
-					</div>
+					<template #suffix>
+						<div class="expand-input-icon-container">
+							<font-awesome-icon
+								v-if="!isReadOnly"
+								icon="expand-alt"
+								class="edit-window-button clickable"
+								:title="$locale.baseText('parameterInput.openEditWindow')"
+								@click="displayEditDialog()"
+							/>
+						</div>
+					</template>
 				</n8n-input>
 			</div>
 
@@ -200,7 +202,7 @@
 				@setFocus="setFocus"
 				@onBlur="onBlur"
 			>
-				<template v-slot:issues-and-options>
+				<template #issues-and-options>
 					<parameter-issues :issues="getIssues" />
 				</template>
 			</credentials-select>
@@ -492,7 +494,7 @@ export default mixins(
 					return value.slice(1);
 				}
 
-				return '';
+				return `${this.displayValue ?? ''}`;
 			},
 			isValueExpression(): boolean {
 				return isValueExpression(this.parameter, this.value);
@@ -1013,7 +1015,14 @@ export default mixins(
 					if (this.isResourceLocatorParameter && isResourceLocatorValue(this.value)) {
 						this.valueChanged({ __rl: true, value, mode: this.value.mode });
 					} else {
-						this.valueChanged(typeof value !== 'undefined' ? value : null);
+						let newValue = typeof value !== 'undefined' ? value : null;
+
+						if (this.parameter.type === 'string') {
+							// Strip the '=' from the beginning
+							newValue = this.value ? this.value.toString().substring(1) : null;
+						}
+
+						this.valueChanged(newValue);
 					}
 				} else if (command === 'refreshOptions') {
 					if (this.isResourceLocatorParameter) {

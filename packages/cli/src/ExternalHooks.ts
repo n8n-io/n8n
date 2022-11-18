@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 /* eslint-disable import/no-dynamic-require */
 /* eslint-disable no-restricted-syntax */
-// eslint-disable-next-line import/no-cycle
-import { Db, IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '.';
+import * as Db from '@/Db';
+import { IExternalHooksClass, IExternalHooksFileData, IExternalHooksFunctions } from '@/Interfaces';
 
-import config from '../config';
+import config from '@/config';
 
 class ExternalHooksClass implements IExternalHooksClass {
 	externalHooks: {

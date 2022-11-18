@@ -1,9 +1,5 @@
 <template>
-	<n8n-button
-		square
-		v-bind="$props"
-		v-on="$listeners"
-	/>
+	<n8n-button square v-bind="$props" v-on="$listeners" />
 </template>
 
 <script lang="ts">
@@ -51,8 +47,7 @@ export default Vue.extend({
 		},
 		float: {
 			type: String,
-			validator: (value: string): boolean =>
-				['left', 'right'].includes(value),
+			validator: (value: string): boolean => ['left', 'right'].includes(value),
 		},
 	},
 });

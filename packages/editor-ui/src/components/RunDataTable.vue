@@ -26,10 +26,12 @@
 							:disabled="!mappingEnabled"
 							:open-delay="1000"
 						>
-							<div slot="content">
-								<img src='/static/data-mapping-gif.gif'/>
-								{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
-							</div>
+							<template #content>
+								<div>
+									<img src='/static/data-mapping-gif.gif'/>
+									{{ $locale.baseText('dataMapping.dragColumnToFieldHint') }}
+								</div>
+							</template>
 							<draggable
 								type="mapping"
 								:data="getExpression(column)"
@@ -37,7 +39,7 @@
 								@dragstart="onDragStart"
 								@dragend="(column) => onDragEnd(column, 'column')"
 							>
-								<template v-slot:preview="{ canDrop }">
+								<template #preview="{ canDrop }">
 									<div
 										:class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]"
 									>
@@ -48,12 +50,12 @@
 										}}
 									</div>
 								</template>
-								<template v-slot="{ isDragging }">
+								<template #default="{ isDragging }">
 									<div
 										:class="{
 											[$style.header]: true,
 											[$style.draggableHeader]: mappingEnabled,
-											[$style.activeHeader]: i === activeColumn && mappingEnabled,
+											[$style.activeHeader]: (i === activeColumn || forceShowGrip) && mappingEnabled,
 											[$style.draggingHeader]: isDragging,
 										}"
 									>
@@ -68,11 +70,13 @@
 					</th>
 					<th v-if="columnLimitExceeded" :class="$style.header">
 						<n8n-tooltip placement="bottom-end">
-							<div slot="content">
-								<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
-									<a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
-								</i18n>
-							</div>
+							<template #content>
+								<div>
+									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
+										<a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+									</i18n>
+								</div>
+							</template>
 							<span>
 								<font-awesome-icon :class="$style['warningTooltip']" icon="exclamation-triangle"></font-awesome-icon>
 								{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded') }}
@@ -91,7 +95,7 @@
 				@dragend="onCellDragEnd"
 				ref="draggable"
 			>
-				<template v-slot:preview="{ canDrop, el }">
+				<template #preview="{ canDrop, el }">
 					<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
 						{{
 							$locale.baseText(
@@ -118,7 +122,7 @@
 						>
 							<span v-if="isSimple(data)" :class="{[$style.value]: true, [$style.empty]: isEmpty(data)}">{{ getValueToRender(data) }}</span>
 							<n8n-tree :nodeClass="$style.nodeClass" v-else :value="data">
-								<template v-slot:label="{ label, path }">
+								<template #label="{ label, path }">
 									<span
 										@mouseenter="() => onMouseEnterKey(path, index2)"
 										@mouseleave="onMouseLeaveKey"
@@ -135,7 +139,7 @@
 										>{{ label || $locale.baseText('runData.unnamedField') }}</span
 									>
 								</template>
-								<template v-slot:value="{ value }">
+								<template #value="{ value }">
 									<span :class="{ [$style.nestedValue]: true, [$style.empty]: isEmpty(value) }">{{
 										getValueToRender(value)
 									}}</span>
@@ -202,6 +206,7 @@ export default mixins(externalHooks).extend({
 	data() {
 		return {
 			activeColumn: -1,
+			forceShowGrip: false,
 			draggedColumn: false,
 			draggingPath: null as null | string,
 			hoveringPath: null as null | string,
@@ -233,6 +238,9 @@ export default mixins(externalHooks).extend({
 		},
 		tableData(): ITableData {
 			return this.convertToTable(this.inputData);
+		},
+		focusedMappableInput(): string {
+			return this.ndvStore.focusedMappableInput;
 		},
 	},
 	methods: {
@@ -492,6 +500,16 @@ export default mixins(externalHooks).extend({
 		},
 		switchToJsonView(){
 			this.$emit('displayModeChange', 'json');
+		},
+	},
+	watch: {
+		focusedMappableInput(curr: boolean) {
+			setTimeout(
+				() => {
+					this.forceShowGrip = !!this.focusedMappableInput;
+				},
+				curr ? 300 : 150,
+			);
 		},
 	},
 });

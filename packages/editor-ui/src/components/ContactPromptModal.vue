@@ -8,10 +8,10 @@
 		customClass="contact-prompt-modal"
 		width="460px"
 	>
-		<template slot="header">
+		<template #header>
 			<n8n-heading tag="h2" size="xlarge" color="text-dark">{{ title }}</n8n-heading>
 		</template>
-		<template v-slot:content>
+		<template #content>
 			<div :class="$style.description">
 				<n8n-text size="medium" color="text-base">{{ description }}</n8n-text>
 			</div>
@@ -24,7 +24,7 @@
 				>
 			</div>
 		</template>
-		<template v-slot:footer>
+		<template #footer>
 			<div :class="$style.footer">
 				<n8n-button label="Send" float="right" @click="send" :disabled="!isEmailValid" />
 			</div>

@@ -1,4 +1,4 @@
-import {
+import type {
 	IBinaryKeyData,
 	IConnections,
 	IDataObject,
@@ -7,8 +7,8 @@ import {
 	INodeParameters,
 	IRunExecutionData,
 	NodeParameterValueType,
-	Workflow,
-} from '../src';
+} from '@/Interfaces';
+import { Workflow } from '@/Workflow';
 
 process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 

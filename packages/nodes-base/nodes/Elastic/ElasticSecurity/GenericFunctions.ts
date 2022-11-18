@@ -86,7 +86,7 @@ export async function handleListing(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 ) {
-	const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (returnAll) {
 		return await elasticSecurityApiRequestAllItems.call(this, method, endpoint, body, qs);
@@ -99,7 +99,7 @@ export async function handleListing(
 		body,
 		qs,
 	);
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0);
 
 	return responseData.slice(0, limit);
 }

@@ -1,11 +1,14 @@
 <template>
 	<div v-if="executionUIDetails && executionUIDetails.name === 'running'" :class="$style.runningInfo">
 		<div :class="$style.spinner">
-			<font-awesome-icon icon="spinner" spin />
+			<n8n-spinner type="ring" />
 		</div>
-		<n8n-text :class="$style.runningMessage">
+		<n8n-text :class="$style.runningMessage" color="text-light">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
+		<n8n-button class="mt-l" type="tertiary" size="medium" @click="handleStopClick">
+			{{ $locale.baseText('executionsList.stopExecution') }}
+		</n8n-button>
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div :class="{[$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }" v-if="activeExecution">
@@ -33,28 +36,31 @@
 				</n8n-text>
 			</div>
 			<div>
-				<el-dropdown v-if="executionUIDetails.name === 'error'" trigger="click" class="mr-xs" @command="handleRetryClick">
+				<el-dropdown v-if="executionUIDetails.name === 'error'" trigger="click" class="mr-xs" @command="handleRetryClick" ref="retryDropdown">
 					<span class="retry-button">
 						<n8n-icon-button
 							size="large"
 							type="tertiary"
 							:title="$locale.baseText('executionsList.retryExecution')"
 							icon="redo"
+							@blur="onRetryButtonBlur"
 						/>
 					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item command="current-workflow">
-							{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-						</el-dropdown-item>
-						<el-dropdown-item command="original-workflow">
-							{{ $locale.baseText('executionsList.retryWithOriginalworkflow') }}
-						</el-dropdown-item>
-					</el-dropdown-menu>
+					<template #dropdown>
+						<el-dropdown-menu>
+							<el-dropdown-item command="current-workflow">
+								{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+							</el-dropdown-item>
+							<el-dropdown-item command="original-workflow">
+								{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
+							</el-dropdown-item>
+						</el-dropdown-menu>
+					</template>
 				</el-dropdown>
 				<n8n-icon-button :title="$locale.baseText('executionDetails.deleteExecution')" icon="trash" size="large" type="tertiary" @click="onDeleteExecution" />
 			</div>
 		</div>
-		<workflow-preview mode="execution" loaderType="spinner" :executionId="executionId"/>
+		<workflow-preview mode="execution" loaderType="spinner" :executionId="executionId" :executionMode="executionMode"/>
 	</div>
 </template>
 
@@ -67,6 +73,7 @@ import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers'
 import { VIEWS } from '../../constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
+import ElDropdown from 'element-ui/lib/dropdown';
 
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
@@ -88,6 +95,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		sidebarCollapsed(): boolean {
 			return this.uiStore.sidebarMenuCollapsed;
 		},
+		executionMode(): string {
+			return this.activeExecution?.mode || '';
+		},
 	},
 	methods: {
 		async onDeleteExecution(): Promise<void> {
@@ -105,6 +115,16 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		},
 		handleRetryClick(command: string): void {
 			this.$emit('retryExecution', { execution: this.activeExecution, command });
+		},
+		handleStopClick(): void {
+			this.$emit('stopExecution');
+		},
+		onRetryButtonBlur(event: FocusEvent): void {
+			// Hide dropdown when clicking outside of current document
+			const retryDropdown = this.$refs.retryDropdown as Vue & { hide: () => void } | undefined;
+			if (retryDropdown && event.relatedTarget === null) {
+				retryDropdown.hide();
+			}
 		},
 	},
 });
@@ -125,9 +145,20 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	display: flex;
 	justify-content: space-between;
 	transition: all 150ms ease-in-out;
+	pointer-events: none;
+
+	& * { pointer-events: all; }
 
 	&.sidebarCollapsed {
 		width: calc(100% - 375px);
+	}
+}
+
+.spinner {
+	div div {
+		width: 30px;
+		height: 30px;
+		border-width: 2px;
 	}
 }
 
@@ -141,11 +172,6 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	flex-direction: column;
 	align-items: center;
 	margin-top: var(--spacing-4xl);
-}
-
-.spinner {
-	font-size: var(--font-size-2xl);
-	color: var(--color-primary);
 }
 
 .runningMessage {

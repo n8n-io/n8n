@@ -2,14 +2,13 @@ import express from 'express';
 
 import { UserSettings } from 'n8n-core';
 
-import { Db } from '../../../src';
+import * as Db from '@/Db';
+import type { Role } from '@db/entities/Role';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { randomApiKey, randomName, randomString } from '../shared/random';
 import * as utils from '../shared/utils';
 import type { CredentialPayload, SaveCredentialFunction } from '../shared/types';
-import type { Role } from '../../../src/databases/entities/Role';
-import type { User } from '../../../src/databases/entities/User';
 import * as testDb from '../shared/testDb';
-import { RESPONSE_ERROR_MESSAGES } from '../../../src/constants';
 
 let app: express.Application;
 let testDbName = '';
@@ -19,7 +18,7 @@ let credentialOwnerRole: Role;
 
 let saveCredential: SaveCredentialFunction;
 
-jest.mock('../../../src/telemetry');
+jest.mock('@/telemetry');
 
 beforeAll(async () => {
 	app = await utils.initTestServer({ endpointGroups: ['publicApi'], applyAuth: false });

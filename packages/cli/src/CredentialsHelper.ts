@@ -42,20 +42,15 @@ import {
 	IHttpRequestHelper,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import {
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ICredentialsDb,
-	NodeTypes,
-	WhereClause,
-	WorkflowExecuteAdditionalData,
-} from '.';
-// eslint-disable-next-line import/no-cycle
-import { User } from './databases/entities/User';
-// eslint-disable-next-line import/no-cycle
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
+import * as Db from '@/Db';
+import { ICredentialsDb } from '@/Interfaces';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { User } from '@db/entities/User';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { NodeTypes } from '@/NodeTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
+import { whereClause } from './UserManagement/UserManagementHelper';
 
 const mockNodeTypes: INodeTypes = {
 	nodeTypes: {} as INodeTypeData,
@@ -742,28 +737,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			message: 'Connection successful!',
 		};
 	}
-}
-
-/**
- * Build a `where` clause for a `find()` or `findOne()` operation
- * in the `shared_workflow` or `shared_credentials` tables.
- */
-export function whereClause({
-	user,
-	entityType,
-	entityId = '',
-}: {
-	user: User;
-	entityType: 'workflow' | 'credentials';
-	entityId?: string;
-}): WhereClause {
-	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
-
-	if (user.globalRole.name !== 'owner') {
-		where.user = { id: user.id };
-	}
-
-	return where;
 }
 
 /**

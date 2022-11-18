@@ -4,8 +4,7 @@ import { action } from '@storybook/addon-actions';
 export default {
 	title: 'Modules/FormInput',
 	component: N8nFormInput,
-	argTypes: {
-	},
+	argTypes: {},
 };
 
 const methods = {
