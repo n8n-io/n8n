@@ -11,8 +11,14 @@ import { UserService } from '@/user/user.service';
 import { WorkflowsService } from './workflows.services';
 import type { WorkflowWithSharingsAndCredentials } from './workflows.types';
 import { EECredentialsService as EECredentials } from '@/credentials/credentials.service.ee';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 export class EEWorkflowsService extends WorkflowsService {
+	static async getWorkflowIdsForUser(user: User) {
+		// Get all workflows regardless of role
+		return getSharedWorkflowIds(user);
+	}
+
 	static async isOwned(
 		user: User,
 		workflowId: string,
