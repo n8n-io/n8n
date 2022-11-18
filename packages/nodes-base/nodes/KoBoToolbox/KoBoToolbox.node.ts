@@ -119,7 +119,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: '/api/v2/assets/',
 						qs: {
-							limit: this.getNodeParameter('limit', i, 1000) as number,
+							limit: this.getNodeParameter('limit', i, 1000),
 							...(formFilterOptions.filter && { q: formFilterOptions.filter }),
 							...(formQueryOptions?.sort?.value?.ordering && {
 								ordering:
@@ -148,7 +148,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${formId}/data/`,
 						qs: {
-							limit: this.getNodeParameter('limit', i, 1000) as number,
+							limit: this.getNodeParameter('limit', i, 1000),
 							...(filterJson && { query: filterJson }),
 							...(submissionQueryOptions.sort && { sort: submissionQueryOptions.sort }),
 							...(submissionQueryOptions.fields && {
@@ -277,7 +277,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${formId}/hooks/`,
 						qs: {
-							limit: this.getNodeParameter('limit', i, 1000) as number,
+							limit: this.getNodeParameter('limit', i, 1000),
 						},
 						scroll: this.getNodeParameter('returnAll', i) as boolean,
 					});

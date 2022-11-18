@@ -265,7 +265,7 @@ export class GmailV2 implements INodeType {
 						responseData = this.helpers.returnJsonArray(responseData.labels);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -395,7 +395,7 @@ export class GmailV2 implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -620,7 +620,7 @@ export class GmailV2 implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -720,7 +720,7 @@ export class GmailV2 implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',

@@ -236,7 +236,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', 0) as number;
+							qs['$top'] = this.getNodeParameter('limit', 0);
 							responseData = await microsoftApiRequest.call(this, 'GET', `/accounts`, {}, qs);
 							responseData = responseData.value;
 						}

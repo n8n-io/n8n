@@ -201,7 +201,7 @@ export class Contentful implements INodeType {
 								responseData = assets;
 							}
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.limit = limit;
 							responseData = await contentfulApiRequest.call(
 								this,
@@ -300,7 +300,7 @@ export class Contentful implements INodeType {
 								responseData = assets;
 							}
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await contentfulApiRequest.call(
 								this,
@@ -340,7 +340,7 @@ export class Contentful implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.limit = limit;
 							responseData = await contentfulApiRequest.call(
 								this,

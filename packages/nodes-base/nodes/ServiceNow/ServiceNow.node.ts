@@ -557,7 +557,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,
@@ -657,7 +657,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,
@@ -687,7 +687,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,
@@ -717,7 +717,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,
@@ -747,7 +747,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,
@@ -816,7 +816,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,
@@ -919,7 +919,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,
@@ -1034,7 +1034,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,
@@ -1081,7 +1081,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,
@@ -1117,7 +1117,7 @@ export class ServiceNow implements INodeType {
 						}
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.sysparm_limit = limit;
 							const response = await serviceNowApiRequest.call(
 								this,

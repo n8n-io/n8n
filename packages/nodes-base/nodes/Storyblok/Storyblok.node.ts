@@ -184,7 +184,7 @@ export class Storyblok implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.per_page = limit;
 								responseData = await storyblokApiRequest.call(
 									this,
@@ -294,7 +294,7 @@ export class Storyblok implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.per_page = limit;
 								responseData = await storyblokApiRequest.call(
 									this,

@@ -299,7 +299,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/companies', {}, qs);
 						responseData = responseData.companies;
 					}
@@ -448,7 +448,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/contacts', {}, qs);
 						responseData = responseData.contacts;
 					}
@@ -498,7 +498,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/notes', {}, qs);
 						responseData = responseData.notes;
 					}
@@ -559,7 +559,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(
 							this,
 							'GET',
@@ -629,7 +629,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/orders', {}, qs);
 						responseData = responseData.orders;
 					}
@@ -674,7 +674,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/products', {}, qs);
 						responseData = responseData.products;
 					}
@@ -716,7 +716,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/emails', {}, qs);
 						responseData = responseData.emails;
 					}
@@ -810,7 +810,7 @@ export class Keap implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 						responseData = await keapApiRequest.call(this, 'GET', '/files', {}, qs);
 						responseData = responseData.files;
 					}
