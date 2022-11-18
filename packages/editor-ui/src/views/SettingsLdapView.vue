@@ -251,7 +251,21 @@ export default mixins(showMessage).extend({
 				searchTimeout: parseInt(form.searchTimeout || '60', 10),
 			};
 
+			let saveForm = true;
+
 			try {
+				if (this.adConfig.loginEnabled === true && newConfiguration.loginEnabled === false) {
+					saveForm = await this.confirmMessage(
+						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.message'),
+						this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.headline'),
+					null,
+					this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText'),
+					this.$locale.baseText('settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText'),
+				);
+				}
+
+				if (!saveForm) return;
+
 				this.adConfig = await this.settingsStore.updateLdapConfig(newConfiguration);
 				this.$showToast({
 					title: this.$locale.baseText('settings.ldap.updateConfiguration'),

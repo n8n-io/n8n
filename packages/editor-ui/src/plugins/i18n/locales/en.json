@@ -1388,5 +1388,9 @@
 	"settings.ldap.synchronizeNow": "Synchronize Now",
 	"settings.ldap.syncronizationError": "LDAP Syncronization Error",
 	"settings.ldap.configurationError": "LDAP Configuration Error",
-	"settings.ldap.usersScanned": "Users scanned {scanned}"
+	"settings.ldap.usersScanned": "Users scanned {scanned}",
+	"settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText": "Yes, disable it",
+	"settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText": "No",
+	"settings.ldap.confirmMessage.beforeSaveForm.headline": "Are you sure you want to disable LDAP login?",
+	"settings.ldap.confirmMessage.beforeSaveForm.message": "If you do so, all LDAP users will be converted to email users."
 }
