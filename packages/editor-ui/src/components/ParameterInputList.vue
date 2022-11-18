@@ -119,6 +119,9 @@ import { get, set } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import {Component} from "vue";
+import { mapState, mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	workflowHelpers,
@@ -141,6 +144,10 @@ export default mixins(
 			'isReadOnly',
 		],
 		computed: {
+			...mapStores(
+				useNodeTypesStore,
+				useNDVStore,
+			),
 			nodeTypeVersion(): number | null {
 				if (this.node) {
 					return this.node.typeVersion;
@@ -159,8 +166,8 @@ export default mixins(
 			filteredParameterNames (): string[] {
 				return this.filteredParameters.map(parameter => parameter.name);
 			},
-			node (): INodeUi {
-				return this.$store.getters['ndv/activeNode'];
+			node (): INodeUi | null {
+				return this.ndvStore.activeNode;
 			},
 			indexToShowSlotAt (): number {
 				let index = 0;
@@ -179,7 +186,7 @@ export default mixins(
 		methods: {
 			getCredentialsDependencies() {
 				const dependencies = new Set();
-				const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type, this.node.typeVersion) as INodeTypeDescription | undefined;
+				const nodeType = this.nodeTypesStore.getNodeType(this.node?.type || '', this.node?.typeVersion);
 
 				// Get names of all fields that credentials rendering depends on (using displayOptions > show)
 				if(nodeType && nodeType.credentials) {
@@ -323,7 +330,7 @@ export default mixins(
 					if (!newValue.includes(parameter)) {
 						const parameterData = {
 							name: `${this.path}.${parameter}`,
-							node: this.$store.getters['ndv/activeNode'].name,
+							node: this.ndvStore.activeNode?.name || '',
 							value: undefined,
 						};
 						this.$emit('valueChanged', parameterData);

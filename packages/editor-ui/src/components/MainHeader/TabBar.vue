@@ -12,6 +12,8 @@
 import Vue, { PropType } from 'vue';
 import { ITabBarItem } from '@/Interface';
 import { MAIN_HEADER_TABS } from '@/constants';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default Vue.extend({
 	name: 'tab-bar',
@@ -31,8 +33,11 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useUIStore,
+		),
 		mainSidebarCollapsed(): boolean {
-			return this.$store.getters['ui/sidebarMenuCollapsed'];
+			return this.uiStore.sidebarMenuCollapsed;
 		},
 	},
 	methods: {

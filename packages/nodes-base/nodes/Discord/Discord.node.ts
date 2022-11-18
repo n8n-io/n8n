@@ -7,6 +7,7 @@ import {
 	jsonParse,
 	NodeApiError,
 	NodeOperationError,
+	sleep,
 } from 'n8n-workflow';
 
 import { DiscordAttachment, DiscordWebhook } from './Interfaces';
@@ -133,7 +134,7 @@ export class Discord implements INodeType {
 
 			const webhookUri = this.getNodeParameter('webhookUri', i) as string;
 			body.content = this.getNodeParameter('text', i) as string;
-			const options = this.getNodeParameter('options', i) as IDataObject;
+			const options = this.getNodeParameter('options', i);
 
 			if (!body.content && !options.embeds) {
 				throw new NodeOperationError(this.getNode(), 'Either content or embeds must be set.', {
@@ -244,7 +245,7 @@ export class Discord implements INodeType {
 					// remaining requests 0
 					// https://discord.com/developers/docs/topics/rate-limits
 					if (!+remainingRatelimit) {
-						await new Promise<void>((resolve) => setTimeout(resolve, resetAfter || 1000));
+						await sleep(resetAfter ?? 1000);
 					}
 
 					break;
@@ -255,7 +256,7 @@ export class Discord implements INodeType {
 					if (error.statusCode === 429) {
 						const retryAfter = error.response?.headers['retry-after'] || 1000;
 
-						await new Promise<void>((resolve) => setTimeout(resolve, +retryAfter));
+						await sleep(+retryAfter);
 
 						continue;
 					}

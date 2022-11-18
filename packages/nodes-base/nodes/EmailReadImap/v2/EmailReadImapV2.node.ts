@@ -555,7 +555,7 @@ export class EmailReadImapV2 implements INodeType {
 			// Connect to the IMAP server and open the mailbox
 			// that we get informed whenever a new email arrives
 			return imapConnect(config).then(async (conn) => {
-				conn.on('close', async (hadError: boolean) => {
+				conn.on('close', async (_hadError: boolean) => {
 					if (isCurrentlyReconnecting === true) {
 						Logger.debug(`Email Read Imap: Connected closed for forced reconnecting`);
 					} else if (closeFunctionWasCalled === true) {

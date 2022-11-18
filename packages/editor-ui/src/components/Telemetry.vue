@@ -3,10 +3,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { ITelemetrySettings } from 'n8n-workflow';
+import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-
-import { mapGetters } from 'vuex';
 import { externalHooks } from './mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
@@ -17,11 +19,22 @@ export default mixins(externalHooks).extend({
 		};
 	},
 	computed: {
-		...mapGetters('settings', ['telemetry']),
-		...mapGetters('users', ['currentUserId']),
-		...mapGetters(['instanceId']),
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUsersStore,
+		),
+		currentUserId(): string {
+			return this.usersStore.currentUserId || '';
+		},
 		isTelemetryEnabledOnRoute(): boolean {
 			return this.$route.meta && this.$route.meta.telemetry ? !this.$route.meta.telemetry.disabled: true;
+		},
+		telemetry(): ITelemetrySettings {
+			return this.settingsStore.telemetry;
+		},
+		isTelemetryEnabled(): boolean {
+			return !!this.telemetry?.enabled;
 		},
 	},
 	mounted() {
@@ -29,26 +42,19 @@ export default mixins(externalHooks).extend({
 	},
 	methods: {
 		init() {
-			if (this.isTelemetryInitialized || !this.isTelemetryEnabledOnRoute) return;
-
-			const telemetrySettings = this.telemetry;
-
-			if (!telemetrySettings || !telemetrySettings.enabled) {
-				return;
-			}
+			if (this.isTelemetryInitialized || !this.isTelemetryEnabledOnRoute || !this.isTelemetryEnabled) return;
 
 			this.$telemetry.init(
-				telemetrySettings,
+				this.telemetry,
 				{
-					instanceId: this.instanceId,
+					instanceId: this.rootStore.instanceId,
 					userId: this.currentUserId,
-					store: this.$store,
-					versionCli: this.$store.getters['settings/versionCli'],
+					versionCli: this.rootStore.versionCli,
 				},
 			);
 
 			this.$externalHooks().run('telemetry.currentUserIdChanged', {
-				instanceId: this.instanceId,
+				instanceId: this.rootStore.instanceId,
 				userId: this.currentUserId,
 			});
 
@@ -60,9 +66,11 @@ export default mixins(externalHooks).extend({
 			this.init();
 		},
 		currentUserId(userId) {
-			this.$telemetry.identify(this.instanceId, userId);
+			if (this.isTelemetryEnabled) {
+				this.$telemetry.identify(this.rootStore.instanceId, userId);
+			}
 			this.$externalHooks().run('telemetry.currentUserIdChanged', {
-				instanceId: this.instanceId,
+				instanceId: this.rootStore.instanceId,
 				userId,
 			});
 		},

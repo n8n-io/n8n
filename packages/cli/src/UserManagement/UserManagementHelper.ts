@@ -1,18 +1,19 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-/* eslint-disable import/no-cycle */
 import { INode, NodeOperationError, Workflow } from 'n8n-workflow';
 import { In } from 'typeorm';
 import express from 'express';
 import { compare, genSaltSync, hash } from 'bcryptjs';
 
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
 import { PublicUser } from './Interfaces';
-import { Db, ResponseHelper } from '..';
-import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '../databases/entities/User';
-import { Role } from '../databases/entities/Role';
-import { AuthenticatedRequest } from '../requests';
-import * as config from '../../config';
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '@db/entities/User';
+import { Role } from '@db/entities/Role';
+import { AuthenticatedRequest } from '@/requests';
+import config from '@/config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
+import { WhereClause } from '@/Interfaces';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
@@ -145,97 +146,6 @@ export async function getUserById(userId: string): Promise<User> {
 	return user;
 }
 
-export async function checkPermissionsForExecution(
-	workflow: Workflow,
-	userId: string,
-): Promise<boolean> {
-	const credentialIds = new Set();
-	const nodeNames = Object.keys(workflow.nodes);
-	const credentialUsedBy = new Map();
-	// Iterate over all nodes
-	nodeNames.forEach((nodeName) => {
-		const node = workflow.nodes[nodeName];
-		if (node.disabled === true) {
-			// If a node is disabled there is no need to check its credentials
-			return;
-		}
-		// And check if any of the nodes uses credentials.
-		if (node.credentials) {
-			const credentialNames = Object.keys(node.credentials);
-			// For every credential this node uses
-			credentialNames.forEach((credentialName) => {
-				const credentialDetail = node.credentials![credentialName];
-				// If it does not contain an id, it means it is a very old
-				// workflow. Nowadays it should not happen anymore.
-				// Migrations should handle the case where a credential does
-				// not have an id.
-				if (credentialDetail.id === null) {
-					throw new NodeOperationError(
-						node,
-						`The credential on node '${node.name}' is not valid. Please open the workflow and set it to a valid value.`,
-					);
-				}
-				if (!credentialDetail.id) {
-					throw new NodeOperationError(
-						node,
-						`Error initializing workflow: credential ID not present. Please open the workflow and save it to fix this error. [Node: '${node.name}']`,
-					);
-				}
-				credentialIds.add(credentialDetail.id.toString());
-				if (!credentialUsedBy.has(credentialDetail.id)) {
-					credentialUsedBy.set(credentialDetail.id, node);
-				}
-			});
-		}
-	});
-
-	// Now that we obtained all credential IDs used by this workflow, we can
-	// now check if the owner of this workflow has access to all of them.
-
-	const ids = Array.from(credentialIds);
-
-	if (ids.length === 0) {
-		// If the workflow does not use any credentials, then we're fine
-		return true;
-	}
-	// If this check happens on top, we may get
-	// uninitialized db errors.
-	// Db is certainly initialized if workflow uses credentials.
-	const user = await getUserById(userId);
-	if (user.globalRole.name === 'owner') {
-		return true;
-	}
-
-	// Check for the user's permission to all used credentials
-	const credentialsWithAccess = await Db.collections.SharedCredentials.find({
-		where: {
-			user: { id: userId },
-			credentials: In(ids),
-		},
-	});
-
-	// Considering the user needs to have access to all credentials
-	// then both arrays (allowed credentials vs used credentials)
-	// must be the same length
-	if (ids.length !== credentialsWithAccess.length) {
-		credentialsWithAccess.forEach((credential) => {
-			credentialUsedBy.delete(credential.credentialId.toString());
-		});
-
-		// Find the first missing node from the Set - this is arbitrarily fetched
-		const firstMissingCredentialNode = credentialUsedBy.values().next().value as INode;
-		throw new NodeOperationError(
-			firstMissingCredentialNode,
-			'This node does not have access to the required credential',
-			{
-				description:
-					'Maybe the credential was removed or you have lost access to it. Try contacting the owner if this credential does not belong to you',
-			},
-		);
-	}
-	return true;
-}
-
 /**
  * Check if a URL contains an auth-excluded endpoint.
  */
@@ -300,4 +210,32 @@ export function rightDiff<T1, T2>(
 		}
 		return acc;
 	}, []);
+}
+
+/**
+ * Build a `where` clause for a TypeORM entity search,
+ * checking for member access if the user is not an owner.
+ */
+export function whereClause({
+	user,
+	entityType,
+	entityId = '',
+	roles = [],
+}: {
+	user: User;
+	entityType: 'workflow' | 'credentials';
+	entityId?: string;
+	roles?: string[];
+}): WhereClause {
+	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
+
+	// TODO: Decide if owner access should be restricted
+	if (user.globalRole.name !== 'owner') {
+		where.user = { id: user.id };
+		if (roles?.length) {
+			where.role = { name: In(roles) };
+		}
+	}
+
+	return where;
 }

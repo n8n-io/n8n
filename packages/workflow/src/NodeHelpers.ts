@@ -38,6 +38,7 @@ import {
 	NodeParameterValue,
 	WebhookHttpMethod,
 } from './Interfaces';
+import { isValidResourceLocatorParameterValue } from './type-guards';
 import { deepCopy } from './utils';
 
 import type { Workflow } from './Workflow';
@@ -292,6 +293,10 @@ export function displayParameter(
 				value = get(nodeValues, propertyName);
 			}
 
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
+			}
+
 			values.length = 0;
 			if (!Array.isArray(value)) {
 				values.push(value);
@@ -323,6 +328,10 @@ export function displayParameter(
 			} else {
 				// Get the value from current level
 				value = get(nodeValues, propertyName);
+			}
+
+			if (value && typeof value === 'object' && '__rl' in value && value.__rl) {
+				value = value.value;
 			}
 
 			values.length = 0;
@@ -620,6 +629,14 @@ export function getNodeParameters(
 						nodeValues[nodeProperties.name] !== undefined
 							? nodeValues[nodeProperties.name]
 							: nodeProperties.default;
+				} else if (
+					nodeProperties.type === 'resourceLocator' &&
+					typeof nodeProperties.default === 'object'
+				) {
+					nodeParameters[nodeProperties.name] =
+						nodeValues[nodeProperties.name] !== undefined
+							? nodeValues[nodeProperties.name]
+							: { __rl: true, ...nodeProperties.default };
 				} else {
 					nodeParameters[nodeProperties.name] =
 						nodeValues[nodeProperties.name] || nodeProperties.default;
@@ -1134,7 +1151,7 @@ export function addToIssuesIfMissing(
 		(nodeProperties.type === 'dateTime' && value === undefined) ||
 		(nodeProperties.type === 'options' && (value === '' || value === undefined)) ||
 		(nodeProperties.type === 'resourceLocator' &&
-			(!value || (typeof value === 'object' && !value.value)))
+			!isValidResourceLocatorParameterValue(value as INodeParameterResourceLocator))
 	) {
 		// Parameter is required but empty
 		if (foundIssues.parameters === undefined) {

@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
-			<template v-slot:default="{ modalName }">
+			<template #default="{ modalName }">
 				<ContactPromptModal
 					:modalName="modalName"
 				/>
@@ -9,7 +9,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
-			<template v-slot="{ modalName, activeId, mode }">
+			<template #default="{ modalName, activeId, mode }">
 				<CredentialEdit
 					:modalName="modalName"
 					:mode="mode"
@@ -26,7 +26,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
-			<template v-slot:default="{ modalName, active, data }">
+			<template #default="{ modalName, active, data }">
 				<DuplicateWorkflowDialog
 					:data="data"
 					:isActive="active"
@@ -48,7 +48,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keepAlive="true">
-			<template v-slot:default="{ active }">
+			<template #default="{ active }">
 				<ValueSurvey :isActive="active"/>
 			</template>
 		</ModalRoot>
@@ -66,7 +66,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="DELETE_USER_MODAL_KEY">
-			<template v-slot="{ modalName, activeId }">
+			<template #default="{ modalName, activeId }">
 				<DeleteUserModal
 					:modalName="modalName"
 					:activeId="activeId"
@@ -82,6 +82,10 @@
 			<ActivationModal />
 		</ModalRoot>
 
+		<ModalRoot :name="WORKFLOW_SHARE_MODAL_KEY">
+			<WorkflowShareModal />
+		</ModalRoot>
+
 		<ModalRoot :name="ONBOARDING_CALL_SIGNUP_MODAL_KEY">
 			<OnboardingCallSignupModal />
 		</ModalRoot>
@@ -95,7 +99,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
-			<template v-slot="{ modalName, activeId, mode }">
+			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
 					:modalName="modalName"
 					:activePackageName="activeId"
@@ -128,6 +132,7 @@ import {
 	VERSIONS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
 	IMPORT_CURL_MODAL_KEY,
 } from '@/constants';
 
@@ -151,6 +156,7 @@ import DeleteUserModal from "./DeleteUserModal.vue";
 import ExecutionsList from "./ExecutionsList.vue";
 import ActivationModal from "./ActivationModal.vue";
 import ImportCurlModal from './ImportCurlModal.vue';
+import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 
 export default Vue.extend({
 	name: "Modals",
@@ -174,6 +180,7 @@ export default Vue.extend({
 		UpdatesPanel,
 		ValueSurvey,
 		WorkflowSettings,
+		WorkflowShareModal,
 		ImportCurlModal,
 	},
 	data: () => ({
@@ -192,6 +199,7 @@ export default Vue.extend({
 		TAGS_MANAGER_MODAL_KEY,
 		VERSIONS_MODAL_KEY,
 		WORKFLOW_SETTINGS_MODAL_KEY,
+		WORKFLOW_SHARE_MODAL_KEY,
 		VALUE_SURVEY_MODAL_KEY,
 		EXECUTIONS_MODAL_KEY,
 		WORKFLOW_ACTIVE_MODAL_KEY,

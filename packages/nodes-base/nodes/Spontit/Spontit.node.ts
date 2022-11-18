@@ -59,7 +59,7 @@ export class Spontit implements INodeType {
 				if (resource === 'push') {
 					if (operation === 'create') {
 						const content = this.getNodeParameter('content', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							content,

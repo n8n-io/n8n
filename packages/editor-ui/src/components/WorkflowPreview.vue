@@ -14,7 +14,7 @@
 				[$style.show]: this.showPreview,
 			}"
 			ref="preview_iframe"
-			src="/workflows/demo"
+			:src="`${rootStore.baseUrl}workflows/demo`"
 			@mouseenter="onMouseEnter"
 			@mouseleave="onMouseLeave"
 		></iframe>
@@ -25,6 +25,8 @@
 import mixins from 'vue-typed-mixins';
 import { showMessage } from '@/components/mixins/showMessage';
 import { IWorkflowDb } from '../Interface';
+import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(showMessage).extend({
 	name: 'WorkflowPreview',
@@ -37,13 +39,17 @@ export default mixins(showMessage).extend({
 			type: String,
 			default: 'workflow',
 			validator: (value: string): boolean =>
-				['workflow', 'execution', 'medium'].includes(value),
+				['workflow', 'execution'].includes(value),
 		},
 		workflow: {
 			type: Object as () => IWorkflowDb,
 			required: false,
 		},
 		executionId: {
+			type: String,
+			required: false,
+		},
+		executionMode: {
 			type: String,
 			required: false,
 		},
@@ -64,6 +70,9 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
+		...mapStores(
+			useRootStore,
+		),
 		showPreview(): boolean {
 			return !this.loading &&
 				(
@@ -120,6 +129,7 @@ export default mixins(showMessage).extend({
 						JSON.stringify({
 							command: 'openExecution',
 							executionId: this.executionId,
+							executionMode: this.executionMode || '',
 						}),
 						'*',
 					);

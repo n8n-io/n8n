@@ -2,6 +2,20 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+## 0.202.0
+
+### What changed?
+
+Switched from NPM to PNPM for development.
+
+### When is action necessary?
+
+If you are contributing to n8n.
+
+### How to upgrade:
+
+Make sure that your local development setup is up to date with the latest [Contribution Guide](../../CONTRIBUTING.md).
+
 ## 0.198.0
 
 ### What changed?

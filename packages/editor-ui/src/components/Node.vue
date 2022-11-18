@@ -6,17 +6,21 @@
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
-							<titled-list slot="content" :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
+							<template #content>
+								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
+							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 					<div v-else-if="waiting" class="waiting">
 						<n8n-tooltip placement="bottom">
-							<div slot="content" v-text="waiting"></div>
+							<template #content>
+								<div v-text="waiting"></div>
+							</template>
 							<font-awesome-icon icon="clock" />
 						</n8n-tooltip>
 					</div>
-					<span v-else-if="hasPinData" class="node-pin-data-icon">
+					<span v-else-if="showPinnedDataInfo" class="node-pin-data-icon">
 						<font-awesome-icon icon="thumbtack" />
 						<span v-if="workflowDataItems > 1" class="items-count"> {{ workflowDataItems }}</span>
 					</span>
@@ -32,7 +36,9 @@
 
 				<div class="node-trigger-tooltip__wrapper">
 					<n8n-tooltip placement="top" manual :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
-						<div slot="content" v-text="getTriggerNodeTooltip"></div>
+						<template #content>
+							<div v-text="getTriggerNodeTooltip"></div>
+						</template>
 						<span />
 					</n8n-tooltip>
 					<n8n-tooltip
@@ -111,8 +117,13 @@ import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
 import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
-import { INodeUi, XYPosition } from '@/Interface';
+import { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from './mixins/debounce';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	externalHooks,
@@ -127,7 +138,22 @@ export default mixins(
 		TitledList,
 		NodeIcon,
 	},
+	props: {
+		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
+	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		showPinnedDataInfo(): boolean {
+			return this.hasPinData && !this.isProductionExecutionPreview;
+		},
 		isDuplicatable(): boolean {
 			if(!this.nodeType) return true;
 			return this.nodeType.maxNodes === undefined || this.sameTypeNodes.length < this.nodeType.maxNodes;
@@ -136,7 +162,7 @@ export default mixins(
 			return this.nodeType?.group.includes('schedule') === true;
 		},
 		nodeRunData(): ITaskData[] {
-			return this.$store.getters.getWorkflowResultDataByNodeName(this.data.name);
+			return this.workflowsStore.getWorkflowResultDataByNodeName(this.data?.name || '') || [];
 		},
 		hasIssues (): boolean {
 			if (this.hasPinData) return false;
@@ -154,7 +180,7 @@ export default mixins(
 			return workflowResultDataNode.length;
 		},
 		canvasOffsetPosition() {
-			return this.$store.getters.getNodeViewOffsetPosition;
+			return this.uiStore.nodeViewOffsetPosition;
 		},
 		getTriggerNodeTooltip (): string | undefined {
 			if (this.nodeType !== null && this.nodeType.hasOwnProperty('eventTriggerDescription')) {
@@ -179,11 +205,11 @@ export default mixins(
 			return !!(this.nodeType && this.nodeType.polling);
 		},
 		isExecuting (): boolean {
-			return this.$store.getters.executingNode === this.data.name;
+			return this.workflowsStore.executingNode === this.data.name;
 		},
 		isSingleActiveTriggerNode (): boolean {
-			const nodes = this.$store.getters.workflowTriggerNodes.filter((node: INodeUi) => {
-				const nodeType =  this.$store.getters['nodeTypes/getNodeType'](node.type, node.typeVersion) as INodeTypeDescription | null;
+			const nodes = this.workflowsStore.workflowTriggerNodes.filter((node: INodeUi) => {
+				const nodeType =  this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 				return nodeType && nodeType.eventTriggerDescription !== '' && !node.disabled;
 			});
 
@@ -193,7 +219,7 @@ export default mixins(
 			return this.data.type === MANUAL_TRIGGER_NODE_TYPE;
 		},
 		isTriggerNode (): boolean {
-			return this.$store.getters['nodeTypes/isTriggerNode'](this.data.type);
+			return this.nodeTypesStore.isTriggerNode(this.data?.type || '');
 		},
 		isTriggerNodeTooltipEmpty () : boolean {
 			return this.nodeType !== null ? this.nodeType.eventTriggerDescription === '' : false;
@@ -202,13 +228,13 @@ export default mixins(
 			return this.node && this.node.disabled;
 		},
 		nodeType (): INodeTypeDescription | null {
-			return this.data && this.$store.getters['nodeTypes/getNodeType'](this.data.type, this.data.typeVersion);
+			return this.data && this.nodeTypesStore.getNodeType(this.data.type, this.data.typeVersion);
 		},
 		node (): INodeUi | undefined { // same as this.data but reactive..
-			return this.$store.getters.nodesByName[this.name] as INodeUi | undefined;
+			return this.workflowsStore.nodesByName[this.name] as INodeUi | undefined;
 		},
 		sameTypeNodes (): INodeUi[] {
-			return this.$store.getters.allNodes.filter((node: INodeUi) => node.type === this.data.type);
+			return this.workflowsStore.allNodes.filter((node: INodeUi) => node.type === this.data.type);
 		},
 		nodeClass (): object {
 			return {
@@ -261,7 +287,7 @@ export default mixins(
 			return this.data.name;
 		},
 		waiting (): string | undefined {
-			const workflowExecution = this.$store.getters.getWorkflowExecution;
+			const workflowExecution = this.workflowsStore.getWorkflowExecution as IExecutionsSummary;
 
 			if (workflowExecution && workflowExecution.waitTill) {
 				const lastNodeExecuted = get(workflowExecution, 'data.resultData.lastNodeExecuted');
@@ -285,7 +311,7 @@ export default mixins(
 			return;
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		nodeStyle (): object {
 			let borderColor = getStyleTokenValue('--color-foreground-xdark');
@@ -296,7 +322,7 @@ export default mixins(
 			else if (!this.isExecuting) {
 				if (this.hasIssues) {
 					borderColor = getStyleTokenValue('--color-danger');
-				} else if (this.waiting || this.hasPinData) {
+				} else if (this.waiting || this.showPinnedDataInfo) {
 					borderColor = getStyleTokenValue('--color-secondary');
 				} else if (this.workflowDataItems) {
 					borderColor = getStyleTokenValue('--color-success');
@@ -312,7 +338,7 @@ export default mixins(
 			return returnStyles;
 		},
 		isSelected (): boolean {
-			return this.$store.getters.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name);
+			return this.uiStore.getSelectedNodes.find((node: INodeUi) => node.name === this.data.name) !== undefined;
 		},
 		shiftOutputCount (): boolean {
 			return !!(this.nodeType && this.nodeType.outputs.length > 2);
@@ -408,14 +434,14 @@ export default mixins(
 		},
 		disableNode () {
 			this.disableNodes([this.data]);
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'disable', workflow_id: this.workflowsStore.workflowId });
 		},
 		executeNode () {
 			this.$emit('runWorkflow', this.data.name, 'Node.executeNode');
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'execute', workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'execute', workflow_id: this.workflowsStore.workflowId });
 		},
 		deleteNode () {
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'delete', workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'delete', workflow_id: this.workflowsStore.workflowId });
 
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
@@ -423,7 +449,7 @@ export default mixins(
 			});
 		},
 		duplicateNode () {
-			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'duplicate', workflow_id: this.$store.getters.workflowId });
+			this.$telemetry.track('User clicked node hover button', { node_type: this.data.type, button_name: 'duplicate', workflow_id: this.workflowsStore.workflowId });
 			Vue.nextTick(() => {
 				// Wait a tick else vue causes problems because the data is gone
 				this.$emit('duplicateNode', this.data.name);
@@ -431,7 +457,7 @@ export default mixins(
 		},
 
 		onClick(event: MouseEvent) {
-			this.callDebounced('onClickDebounced', { debounceTime: 300, trailing: true }, event);
+			this.callDebounced('onClickDebounced', { debounceTime: 50, trailing: true }, event);
 		},
 
 		onClickDebounced(event: MouseEvent) {
@@ -444,7 +470,7 @@ export default mixins(
 		},
 
 		setNodeActive () {
-			this.$store.commit('ndv/setActiveNodeName', this.data.name);
+			this.ndvStore.activeNodeName = this.data ? this.data.name : '';
 			this.pinDataDiscoveryTooltipVisible = false;
 		},
 		touchStart () {

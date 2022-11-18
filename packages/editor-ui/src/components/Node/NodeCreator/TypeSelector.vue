@@ -10,6 +10,9 @@
 
 <script lang="ts">
 import { ALL_NODE_FILTER, REGULAR_NODE_FILTER, TRIGGER_NODE_FILTER } from '@/constants';
+import { INodeFilterType } from '@/Interface';
+import { useNodeCreatorStore } from '@/stores/nodeCreator';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -22,16 +25,19 @@ export default Vue.extend({
 		};
 	},
 	methods: {
-		setType(type: string) {
-			this.$store.commit('nodeCreator/setSelectedType', type);
+		setType(type: INodeFilterType) {
+			this.nodeCreatorStore.selectedType = type;
 		},
 	},
 	computed: {
+		...mapStores(
+			useNodeCreatorStore,
+		),
 		showTabs(): boolean {
-			return this.$store.getters['nodeCreator/showTabs'];
+			return this.nodeCreatorStore.showTabs;
 		},
 		selectedType(): string {
-			return this.$store.getters['nodeCreator/selectedType'];
+			return this.nodeCreatorStore.selectedType;
 		},
 	},
 });

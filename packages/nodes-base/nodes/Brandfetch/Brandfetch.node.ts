@@ -151,7 +151,7 @@ export class Brandfetch implements INodeType {
 			try {
 				if (operation === 'logo') {
 					const domain = this.getNodeParameter('domain', i) as string;
-					const download = this.getNodeParameter('download', i) as boolean;
+					const download = this.getNodeParameter('download', i);
 
 					const body: IDataObject = {
 						domain,

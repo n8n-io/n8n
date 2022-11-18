@@ -31,16 +31,18 @@
 						<!-- This dropdown is only enabled when sidebar is collapsed -->
 						<el-dropdown :disabled="!isCollapsed" placement="right-end" trigger="click" @command="onUserActionToggle">
 							<div :class="{[$style.avatar]: true, ['clickable']: isCollapsed }">
-								<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="small" />
-								<el-dropdown-menu slot="dropdown">
+								<n8n-avatar :firstName="usersStore.currentUser.firstName" :lastName="usersStore.currentUser.lastName" size="small" />
+							</div>
+							<template #dropdown>
+								<el-dropdown-menu>
 									<el-dropdown-item command="settings">{{ $locale.baseText('settings') }}</el-dropdown-item>
 									<el-dropdown-item command="logout">{{ $locale.baseText('auth.signout') }}</el-dropdown-item>
 								</el-dropdown-menu>
-							</div>
+							</template>
 						</el-dropdown>
 					</div>
 					<div :class="{ ['ml-2xs']: true, [$style.userName]: true, [$style.expanded]: fullyExpanded }">
-						<n8n-text size="small" :bold="true" color="text-dark">{{currentUser.fullName}}</n8n-text>
+						<n8n-text size="small" :bold="true" color="text-dark">{{usersStore.currentUser.fullName}}</n8n-text>
 					</div>
 					<div :class="{ [$style.userActions]: true, [$style.expanded]: fullyExpanded }">
 						<n8n-action-dropdown :items="userMenuItems" placement="top-start" @select="onUserActionToggle" />
@@ -55,6 +57,7 @@
 import {
 	IExecutionResponse,
 	IMenuItem,
+	IVersion,
 } from '../Interface';
 
 import ExecutionsList from '@/components/ExecutionsList.vue';
@@ -69,7 +72,6 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { workflowRun } from '@/components/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from 'vuex';
 import {
 	MODAL_CANCEL,
 	MODAL_CLOSE,
@@ -78,12 +80,18 @@ import {
 	VERSIONS_MODAL_KEY,
 	EXECUTIONS_MODAL_KEY,
 	VIEWS,
-	WORKFLOW_OPEN_MODAL_KEY,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
 import { userHelpers } from './mixins/userHelpers';
 import { debounceHelper } from './mixins/debounce';
 import Vue from 'vue';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useSettingsStore } from '@/stores/settings';
+import { useUsersStore } from '@/stores/users';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useVersionsStore } from '@/stores/versions';
 
 export default mixins(
 	genericHelpers,
@@ -105,36 +113,37 @@ export default mixins(
 		data () {
 			return {
 				// @ts-ignore
-				basePath: this.$store.getters.getBaseUrl,
+				basePath: '',
 				fullyExpanded: false,
 			};
 		},
 		computed: {
-			...mapGetters('ui', {
-				isCollapsed: 'sidebarMenuCollapsed',
-				isNodeView: 'isNodeView',
-			}),
-			...mapGetters('versions', [
-				'hasVersionUpdates',
-				'nextVersions',
-			]),
-			...mapGetters('users', [
-				'canUserAccessSidebarUserInfo',
-				'currentUser',
-			]),
-			...mapGetters('settings', [
-				'isTemplatesEnabled',
-				'isUserManagementEnabled',
-			]),
+			...mapStores(
+				useRootStore,
+				useSettingsStore,
+				useUIStore,
+				useUsersStore,
+				useVersionsStore,
+				useWorkflowsStore,
+			),
+			hasVersionUpdates(): boolean {
+				return this.versionsStore.hasVersionUpdates;
+			},
+			nextVersions(): IVersion[] {
+				return this.versionsStore.nextVersions;
+			},
+			isCollapsed(): boolean {
+				return this.uiStore.sidebarMenuCollapsed;
+			},
 			canUserAccessSettings(): boolean {
 				const accessibleRoute = this.findFirstAccessibleSettingsRoute();
 				return accessibleRoute !== null;
 			},
 			showUserArea(): boolean {
-				return this.isUserManagementEnabled && this.canUserAccessSidebarUserInfo && this.currentUser;
+				return this.settingsStore.isUserManagementEnabled && this.usersStore.canUserAccessSidebarUserInfo && this.usersStore.currentUser !== null;
 			},
 			workflowExecution (): IExecutionResponse | null {
-				return this.$store.getters.getWorkflowExecution;
+				return this.workflowsStore.getWorkflowExecution;
 			},
 			userMenuItems (): object[] {
 				return [
@@ -150,7 +159,7 @@ export default mixins(
 			},
  			mainMenuItems (): IMenuItem[] {
 				const items: IMenuItem[] = [];
-				const injectedItems = this.$store.getters.sidebarMenuItems as IMenuItem[];
+				const injectedItems =  this.uiStore.sidebarMenuItems;
 
 				if (injectedItems && injectedItems.length > 0) {
 					for(const item of injectedItems) {
@@ -182,7 +191,7 @@ export default mixins(
 						icon: 'box-open',
 						label: this.$locale.baseText('mainSidebar.templates'),
 						position: 'top',
-						available: this.isTemplatesEnabled,
+						available: this.settingsStore.isTemplatesEnabled,
 						activateOnRouteNames: [ VIEWS.TEMPLATES ],
 					},
 					{
@@ -204,7 +213,7 @@ export default mixins(
 						icon: 'cog',
 						label: this.$locale.baseText('settings'),
 						position: 'bottom',
-						available: this.canUserAccessSettings && this.currentUser,
+						available: this.canUserAccessSettings && this.usersStore.currentUser !== null,
 						activateOnRouteNames: [ VIEWS.USERS_SETTINGS, VIEWS.API_SETTINGS, VIEWS.PERSONAL_SETTINGS ],
 					},
 					{
@@ -266,13 +275,14 @@ export default mixins(
 			},
 		},
 		async mounted() {
+			this.basePath = this.rootStore.baseUrl;
 			if (this.$refs.user) {
 				this.$externalHooks().run('mainSidebar.mounted', { userRef: this.$refs.user });
 			}
-			if (window.innerWidth < 900 || this.isNodeView) {
-				this.$store.commit('ui/collapseSidebarMenu');
+			if (window.innerWidth < 900 || this.uiStore.isNodeView) {
+				this.uiStore.sidebarMenuCollapsed = true;
 			} else {
-				this.$store.commit('ui/expandSidebarMenu');
+				this.uiStore.sidebarMenuCollapsed = false;
 			}
 			await Vue.nextTick();
 			this.fullyExpanded = !this.isCollapsed;
@@ -285,7 +295,7 @@ export default mixins(
 		},
 		methods: {
 			trackHelpItemClick (itemType: string) {
-				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.$store.getters.workflowId });
+				this.$telemetry.track('User clicked help resource', { type: itemType, workflow_id: this.workflowsStore.workflowId });
 			},
 			async onUserActionToggle(action: string) {
 				switch (action) {
@@ -301,8 +311,7 @@ export default mixins(
 			},
 			async onLogout() {
 				try {
-					await this.$store.dispatch('users/logout');
-
+					await this.usersStore.logout();
 					const route = this.$router.resolve({ name: VIEWS.SIGNIN });
 					window.open(route.href, '_self');
 				} catch (e) {
@@ -310,7 +319,7 @@ export default mixins(
 				}
 			},
 			toggleCollapse () {
-				this.$store.commit('ui/toggleSidebarMenuCollapse');
+				this.uiStore.toggleSidebarMenuCollapse();
 				// When expanding, delay showing some element to ensure smooth animation
 				if (!this.isCollapsed) {
 					setTimeout(() => {
@@ -321,7 +330,7 @@ export default mixins(
 				}
 			},
 			openUpdatesPanel() {
-				this.$store.dispatch('ui/openModal', VERSIONS_MODAL_KEY);
+				this.uiStore.openModal(VERSIONS_MODAL_KEY);
 			},
 			async handleSelect (key: string) {
 				switch (key) {
@@ -344,7 +353,7 @@ export default mixins(
 						break;
 					}
 					case 'executions': {
-						this.$store.dispatch('ui/openModal', EXECUTIONS_MODAL_KEY);
+						this.uiStore.openModal(EXECUTIONS_MODAL_KEY);
 						break;
 					}
 					case 'settings': {
@@ -359,7 +368,7 @@ export default mixins(
 					}
 					case 'about': {
 						this.trackHelpItemClick('about');
-						this.$store.dispatch('ui/openModal', ABOUT_MODAL_KEY);
+						this.uiStore.openModal(ABOUT_MODAL_KEY);
 						break;
 					}
 					case 'quickstart':
@@ -373,7 +382,7 @@ export default mixins(
 				}
 			},
 			async createNewWorkflow (): Promise<void> {
-				const result = this.$store.getters.getStateIsDirty;
+				const result = this.uiStore.stateIsDirty;
 				if(result) {
 					const confirmModal = await this.confirmModal(
 						this.$locale.baseText('generic.unsavedWork.confirmMessage.message'),
@@ -385,7 +394,7 @@ export default mixins(
 					);
 					if (confirmModal === MODAL_CONFIRMED) {
 						const saved = await this.saveCurrentWorkflow({}, false);
-						if (saved) this.$store.dispatch('settings/fetchPromptsData');
+						if (saved) await this.settingsStore.fetchPromptsData();
 						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 							this.$root.$emit('newWorkflow');
 						} else {
@@ -396,11 +405,11 @@ export default mixins(
 							type: 'success',
 						});
 					} else if (confirmModal === MODAL_CANCEL) {
-						this.$store.commit('setStateDirty', false);
+						this.uiStore.stateIsDirty = false;
 						if (this.$router.currentRoute.name === VIEWS.NEW_WORKFLOW) {
 							this.$root.$emit('newWorkflow');
 						} else {
-							this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
+							this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 							this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 						}
 						this.$showMessage({
@@ -412,7 +421,7 @@ export default mixins(
 					}
 				} else {
 					if (this.$router.currentRoute.name !== VIEWS.NEW_WORKFLOW) {
-						this.$store.commit('setWorkflowId', PLACEHOLDER_EMPTY_WORKFLOW_ID);
+						this.workflowsStore.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
 						this.$router.push({ name: VIEWS.NEW_WORKFLOW });
 					}
 					this.$showMessage({
@@ -447,7 +456,7 @@ export default mixins(
 			},
 			checkWidthAndAdjustSidebar (width: number) {
 				if (width < 900) {
-					this.$store.commit('ui/collapseSidebarMenu');
+					this.uiStore.sidebarMenuCollapsed = true;
 					Vue.nextTick(() => {
 						this.fullyExpanded = !this.isCollapsed;
 					});

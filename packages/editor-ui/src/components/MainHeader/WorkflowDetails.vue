@@ -1,13 +1,13 @@
 <template>
 	<div class="container" v-if="workflowName">
 		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" class="name-container">
-			<template v-slot="{ value }">
+			<template #default="{ value }">
 				<ShortenName
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
 				>
-					<template v-slot="{ shortenedName }">
+					<template #default="{ shortenedName }">
 						<InlineTextEdit
 							:value="workflowName"
 							:previewValue="shortenedName"
@@ -17,13 +17,14 @@
 							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
 							class="name"
+							data-test-id="workflow-name-input"
 						/>
 					</template>
 				</ShortenName>
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="areTagsEnabled" class="tags">
+		<span v-if="settingsStore.areTagsEnabled" class="tags">
 			<div
 				v-if="isTagsEditEnabled">
 				<TagsDropdown
@@ -36,6 +37,7 @@
 					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 					ref="dropdown"
 					class="tags-edit"
+					data-test-id="workflow-tags-dropdown"
 				/>
 			</div>
 			<div
@@ -55,6 +57,7 @@
 				:responsive="true"
 				:key="currentWorkflowId"
 				@click="onTagsEditEnable"
+				data-test-id="workflow-tags"
 			/>
 		</span>
 		<span v-else class="tags"></span>
@@ -64,6 +67,15 @@
 				<span class="activator">
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
+				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+					<n8n-button
+						type="tertiary"
+						class="mr-2xs"
+						@click="onShareButtonClick"
+					>
+						{{ $locale.baseText('workflowDetails.share') }}
+					</n8n-button>
+				</enterprise-edition>
 				<SaveButton
 					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
@@ -71,7 +83,7 @@
 					@click="onSaveButtonClick"
 				/>
 				<div :class="$style.workflowMenuContainer">
-					<input :class="$style.hiddenInput" type="file" ref="importFile" @change="handleFileImport()">
+					<input :class="$style.hiddenInput" type="file" ref="importFile" data-test-id="workflow-import-input" @change="handleFileImport()">
 					<n8n-action-dropdown :items="workflowMenuItems" @select="onWorkflowMenuSelect" />
 				</div>
 			</template>
@@ -82,13 +94,14 @@
 <script lang="ts">
 import Vue from "vue";
 import mixins from "vue-typed-mixins";
-import { mapGetters } from "vuex";
 import {
 	DUPLICATE_MODAL_KEY,
+	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
 } from "@/constants";
 
 import ShortenName from "@/components/ShortenName.vue";
@@ -105,6 +118,12 @@ import { IWorkflowDataUpdate, IWorkflowToShare } from "@/Interface";
 import { saveAs } from 'file-saver';
 import { titleChange } from "../mixins/titleChange";
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
+import { mapStores } from "pinia";
+import { useUIStore } from "@/stores/ui";
+import { useSettingsStore } from "@/stores/settings";
+import { useWorkflowsStore } from "@/stores/workflows";
+import { useRootStore } from "@/stores/n8nRootStore";
+import { useTagsStore } from "@/stores/tags";
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -135,27 +154,37 @@ export default mixins(workflowHelpers, titleChange).extend({
 			tagsEditBus: new Vue(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
+			EnterpriseEditionFeature,
 		};
 	},
 	computed: {
-		...mapGetters({
-			isWorkflowActive: "isActive",
-			workflowName: "workflowName",
-			isDirty: "getStateIsDirty",
-			currentWorkflowTagIds: "workflowTags",
-		}),
-		...mapGetters('settings', ['areTagsEnabled']),
+		...mapStores(
+			useTagsStore,
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
+		isWorkflowActive(): boolean {
+			return this.workflowsStore.isWorkflowActive;
+		},
+		workflowName(): string {
+			return this.workflowsStore.workflowName;
+		},
+		isDirty(): boolean {
+			return this.uiStore.stateIsDirty;
+		},
+		currentWorkflowTagIds(): string[] {
+			return this.workflowsStore.workflowTags;
+		},
 		isNewWorkflow(): boolean {
 			return !this.currentWorkflowId || (this.currentWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID || this.currentWorkflowId === 'new');
 		},
 		isWorkflowSaving(): boolean {
-			return this.$store.getters.isActionActive("workflowSaving");
+			return this.uiStore.isActionActive('workflowSaving');
 		},
 		currentWorkflowId(): string {
-			return this.$store.getters.workflowId;
-		},
-		workflowName (): string {
-			return this.$store.getters.workflowName;
+			return this.workflowsStore.workflowId;
 		},
 		onWorkflowPage(): boolean {
 			return this.$route.meta && (this.$route.meta.nodeView || this.$route.meta.keepWorkflowAlive === true);
@@ -209,7 +238,10 @@ export default mixins(workflowHelpers, titleChange).extend({
 				currentId = this.$route.params.name;
 			}
 			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
-			if (saved) this.$store.dispatch('settings/fetchPromptsData');
+			if (saved) await this.settingsStore.fetchPromptsData();
+		},
+		onShareButtonClick() {
+			this.uiStore.openModal(WORKFLOW_SHARE_MODAL_KEY);
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;
@@ -314,12 +346,12 @@ export default mixins(workflowHelpers, titleChange).extend({
 		async onWorkflowMenuSelect(action: string): Promise<void> {
 			switch (action) {
 				case WORKFLOW_MENU_ACTIONS.DUPLICATE: {
-					await this.$store.dispatch('ui/openModalWithData', {
+					this.uiStore.openModalWithData({
 						name: DUPLICATE_MODAL_KEY,
 						data: {
-							id: this.$store.getters.workflowId,
-							name: this.$store.getters.workflowName,
-							tags: this.$store.getters.workflowTags,
+							id: this.workflowsStore.workflowId,
+							name: this.workflowsStore.workflowName,
+							tags: this.workflowsStore.workflowTags,
 						},
 					});
 					break;
@@ -334,10 +366,10 @@ export default mixins(workflowHelpers, titleChange).extend({
 					const exportData: IWorkflowToShare = {
 						...data,
 						meta: {
-							instanceId: this.$store.getters.instanceId,
+							instanceId: this.rootStore.instanceId,
 						},
 						tags: (tags || []).map(tagId => {
-							const {usageCount, ...tag} = this.$store.getters["tags/getTagById"](tagId);
+							const {usageCount, ...tag} = this.tagsStore.getTagById(tagId);
 
 							return tag;
 						}),
@@ -347,7 +379,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 						type: 'application/json;charset=utf-8',
 					});
 
-					let workflowName = this.$store.getters.workflowName || 'unsaved_workflow';
+					let workflowName = this.workflowName || 'unsaved_workflow';
 					workflowName = workflowName.replace(/[^a-z0-9]/gi, '_');
 
 					this.$telemetry.track('User exported workflow', { workflow_id: workflowData.id });
@@ -376,7 +408,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.SETTINGS: {
-					this.$store.dispatch('ui/openModal', WORKFLOW_SETTINGS_MODAL_KEY);
+					this.uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 					break;
 				}
 				case WORKFLOW_MENU_ACTIONS.DELETE: {
@@ -404,7 +436,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 						);
 						return;
 					}
-					this.$store.commit('setStateDirty', false);
+					this.uiStore.stateIsDirty = false;
 					// Reset tab title since workflow is deleted.
 					this.$titleReset();
 					this.$showMessage({

@@ -1,11 +1,13 @@
 import { IExternalHooks, IRootState } from '@/Interface';
+import { store } from '@/store';
+import { useWebhooksStore } from '@/stores/webhooks';
 import { IDataObject } from 'n8n-workflow';
+import { Store } from 'pinia';
 import Vue from 'vue';
-import { Store } from 'vuex';
 
 export async function runExternalHook(
 	eventName: string,
-	store: Store<IRootState>,
+	store: Store,
 	metadata?: IDataObject,
 ) {
 	// @ts-ignore
@@ -31,7 +33,7 @@ export const externalHooks = Vue.extend({
 		$externalHooks(): IExternalHooks {
 			return {
 				run: async (eventName: string, metadata?: IDataObject): Promise<void> => {
-					await runExternalHook.call(this, eventName, this.$store, metadata);
+					await runExternalHook.call(this, eventName, useWebhooksStore(), metadata);
 				},
 			};
 		},

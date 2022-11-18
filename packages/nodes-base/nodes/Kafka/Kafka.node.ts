@@ -350,7 +350,7 @@ export class Kafka implements INodeType {
 
 				const topic = this.getNodeParameter('topic', i) as string;
 
-				const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+				const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 				const useKey = this.getNodeParameter('useKey', i) as boolean;
 

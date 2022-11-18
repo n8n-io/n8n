@@ -432,15 +432,15 @@ export class Zammad implements INodeType {
 
 						qs.query ||= ''; // otherwise triggers 500
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems
 							.call(this, 'GET', '/users/search', {}, qs, limit)
 							.then((responseData) => {
 								return responseData.map((user) => {
-									const { preferences, ...rest } = user;
+									const { _preferences, ...rest } = user;
 									return rest;
 								});
 							});
@@ -540,9 +540,9 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/organization.html#list
 						// https://docs.zammad.org/en/latest/api/organization.html#search - returning empty always
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems.call(
 							this,
@@ -639,9 +639,9 @@ export class Zammad implements INodeType {
 
 						// https://docs.zammad.org/en/latest/api/group.html#list
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems.call(
 							this,
@@ -730,9 +730,9 @@ export class Zammad implements INodeType {
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#list
 						// https://docs.zammad.org/en/latest/api/ticket/index.html#search - returning empty always
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems.call(
 							this,

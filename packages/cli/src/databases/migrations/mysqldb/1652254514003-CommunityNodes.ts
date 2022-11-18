@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import * as config from '../../../../config';
+import config from '@/config';
 
 export class CommunityNodes1652254514003 implements MigrationInterface {
 	name = 'CommunityNodes1652254514003';

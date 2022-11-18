@@ -61,13 +61,13 @@ export default Vue.extend({
 				}
 			});
 
+			const darkModeBetaEnabled = document.body.classList.contains('theme-dark-beta') && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
 			monaco.editor.defineTheme('n8nCustomTheme', {
-				base: 'vs',
+				base: darkModeBetaEnabled ? 'vs-dark' : 'vs',
 				inherit: true,
 				rules: [],
-				colors: {
-					'editor.background': '#f5f2f0',
-				},
+				colors: {},
 			});
 			monaco.editor.setTheme('n8nCustomTheme');
 
@@ -129,7 +129,6 @@ export default Vue.extend({
 		.inputarea.ime-input,
 		.margin {
 			border-radius: var(--border-radius-base);
-			background-color: var(--color-background-xlight) !important;
 		}
 	}
 }

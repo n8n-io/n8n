@@ -1,14 +1,6 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { OptionsWithUri } from 'request';
-
-import {
-	IDataObject,
-	IHttpRequestMethods,
-	IHttpRequestOptions,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
 
 import { get } from 'lodash';
 
@@ -18,11 +10,9 @@ export async function customerIoApiRequest(
 	endpoint: string,
 	body: object,
 	baseApi?: string,
-	query?: IDataObject,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+	_query?: IDataObject,
+) {
 	const credentials = await this.getCredentials('customerIoApi');
-	query = query || {};
 	const options: IHttpRequestOptions = {
 		headers: {
 			'Content-Type': 'application/json',
@@ -42,11 +32,7 @@ export async function customerIoApiRequest(
 		options.url = `https://beta-api.customer.io/v1/api${endpoint}`;
 	}
 
-	try {
-		return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
-	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
-	}
+	return await this.helpers.requestWithAuthentication.call(this, 'customerIoApi', options);
 }
 
 export function eventExists(currentEvents: string[], webhookEvents: IDataObject) {

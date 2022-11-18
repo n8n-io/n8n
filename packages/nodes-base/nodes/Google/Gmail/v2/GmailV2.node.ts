@@ -2,7 +2,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -259,14 +258,14 @@ export class GmailV2 implements INodeType {
 						responseData = await googleApiRequest.call(this, 'GET', endpoint);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
 
 						responseData = this.helpers.returnJsonArray(responseData.labels);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -277,7 +276,7 @@ export class GmailV2 implements INodeType {
 				if (resource === 'message') {
 					if (operation === 'send') {
 						// https://developers.google.com/gmail/api/v1/reference/users/messages/send
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const sendTo = this.getNodeParameter('sendTo', i) as string;
 						let qs: IDataObject = {};
 
@@ -340,7 +339,7 @@ export class GmailV2 implements INodeType {
 					}
 					if (operation === 'reply') {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						responseData = await replayToEmail.call(this, items, messageIdGmail, options, i);
 					}
@@ -380,7 +379,7 @@ export class GmailV2 implements INodeType {
 						responseData = [nodeExecutionData];
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
 						const qs: IDataObject = {};
@@ -396,7 +395,7 @@ export class GmailV2 implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -510,7 +509,7 @@ export class GmailV2 implements INodeType {
 				if (resource === 'draft') {
 					if (operation === 'create') {
 						// https://developers.google.com/gmail/api/v1/reference/users/drafts/create
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						let qs: IDataObject = {};
 
 						let to = '';
@@ -574,7 +573,7 @@ export class GmailV2 implements INodeType {
 						const endpoint = `/gmail/v1/users/me/drafts/${id}`;
 						const qs: IDataObject = {};
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						qs.format = 'raw';
 
 						responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
@@ -606,8 +605,8 @@ export class GmailV2 implements INodeType {
 						responseData = { success: true };
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
 						const qs: IDataObject = {};
 						Object.assign(qs, options);
 
@@ -621,7 +620,7 @@ export class GmailV2 implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -680,7 +679,7 @@ export class GmailV2 implements INodeType {
 						const id = this.getNodeParameter('threadId', i);
 						const endpoint = `/gmail/v1/users/me/threads/${id}`;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const onlyMessages = options.returnOnlyMessages || false;
 						const qs: IDataObject = {};
 
@@ -706,8 +705,8 @@ export class GmailV2 implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/list
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						const qs: IDataObject = {};
 						Object.assign(qs, prepareQuery.call(this, filters));
 
@@ -721,7 +720,7 @@ export class GmailV2 implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -740,7 +739,7 @@ export class GmailV2 implements INodeType {
 					}
 					if (operation === 'reply') {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						responseData = await replayToEmail.call(this, items, messageIdGmail, options, i);
 					}
@@ -785,9 +784,12 @@ export class GmailV2 implements INodeType {
 				}
 				//------------------------------------------------------------------//
 
-				const executionData = this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-					itemData: { item: i },
-				});
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{
+						itemData: { item: i },
+					},
+				);
 				returnData.push(...executionData);
 			} catch (error) {
 				error.message = `${error.message} (item ${i})`;

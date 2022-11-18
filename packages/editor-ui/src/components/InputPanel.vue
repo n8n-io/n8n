@@ -13,6 +13,7 @@
 		:mappingEnabled="!readOnly"
 		:showMappingHint="draggableHintShown"
 		:distanceFromActive="currentNodeDepth"
+		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="input"
 		@itemHover="$emit('itemHover', $event)"
 		@linkRun="onLinkRun"
@@ -20,10 +21,10 @@
 		@runChange="onRunIndexChange"
 		@tableMounted="$emit('tableMounted', $event)"
 		>
-		<template v-slot:header>
+		<template #header>
 			<div :class="$style.titleSection">
 				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable>
-					<template slot="prepend">
+					<template #prepend>
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
 					<n8n-option v-for="node of parentNodes" :value="node.name" :key="node.name" class="node-option" :label="`${truncate(node.name)} ${getMultipleNodesText(node.name)}`">
@@ -36,11 +37,13 @@
 			</div>
 		</template>
 
-		<template v-slot:node-not-run>
+		<template #node-not-run>
 			<div :class="$style.noOutputData" v-if="parentNodes.length">
 				<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData.title') }}</n8n-text>
 				<n8n-tooltip v-if="!readOnly" :manual="true" :value="showDraggableHint && showDraggableHintWithDelay">
-					<div slot="content" v-html="$locale.baseText('dataMapping.dragFromPreviousHint',  { interpolate: { name: focusedMappableInput } })"></div>
+					<template #content>
+						<div v-html="$locale.baseText('dataMapping.dragFromPreviousHint',  { interpolate: { name: focusedMappableInput } })"></div>
+					</template>
 					<NodeExecuteButton type="secondary" :transparent="true" :nodeName="currentNodeName" :label="$locale.baseText('ndv.input.noOutputData.executePrevious')" @execute="onNodeExecute" telemetrySource="inputs" />
 				</n8n-tooltip>
 				<n8n-text v-if="!readOnly" tag="div" size="small">
@@ -61,7 +64,7 @@
 			</div>
 		</template>
 
-		<template v-slot:no-output-data>
+		<template #no-output-data>
 			<n8n-text tag="div" :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.input.noOutputData') }}</n8n-text>
 		</template>
 	</RunData>
@@ -76,6 +79,10 @@ import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
 import WireMeUp from './WireMeUp.vue';
 import { CRON_NODE_TYPE, INTERVAL_NODE_TYPE, LOCAL_STORAGE_MAPPING_FLAG, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE, START_NODE_TYPE } from '@/constants';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 export default mixins(
 	workflowHelpers,
@@ -103,6 +110,10 @@ export default mixins(
 		readOnly: {
 			type: Boolean,
 		},
+		isProductionExecutionPreview: {
+			type: Boolean,
+			default: false,
+		},
 	},
 	data() {
 		return {
@@ -111,8 +122,13 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useWorkflowsStore,
+		),
 		focusedMappableInput(): string {
-			return this.$store.getters['ndv/focusedMappableInput'];
+			return this.ndvStore.focusedMappableInput;
 		},
 		isUserOnboarded(): boolean {
 			return window.localStorage.getItem(LOCAL_STORAGE_MAPPING_FLAG) === 'true';
@@ -129,8 +145,8 @@ export default mixins(
 			if (!this.workflowRunning) {
 				return false;
 			}
-			const triggeredNode = this.$store.getters.executedNode;
-			const executingNode = this.$store.getters.executingNode;
+			const triggeredNode = this.workflowsStore.executedNode;
+			const executingNode = this.workflowsStore.executingNode;
 			if (this.activeNode && triggeredNode === this.activeNode.name && this.activeNode.name !== executingNode) {
 				return true;
 			}
@@ -141,16 +157,16 @@ export default mixins(
 			return false;
 		},
 		workflowRunning (): boolean {
-			return this.$store.getters.isActionActive('workflowRunning');
+			return this.uiStore.isActionActive('workflowRunning');
 		},
 		currentWorkflow(): Workflow {
 			return this.workflow as Workflow;
 		},
 		activeNode (): INodeUi | null {
-			return this.$store.getters['ndv/activeNode'];
+			return this.ndvStore.activeNode;
 		},
 		currentNode (): INodeUi | null {
-			return this.$store.getters.getNodeByName(this.currentNodeName);
+			return this.workflowsStore.getNodeByName(this.currentNodeName);
 		},
 		connectedCurrentNodeOutputs(): number[] | undefined {
 			const search = this.parentNodes.find(({name}) => name === this.currentNodeName);
@@ -174,7 +190,7 @@ export default mixins(
 		activeNodeType () : INodeTypeDescription | null {
 			if (!this.activeNode) return null;
 
-			return this.$store.getters['nodeTypes/getNodeType'](this.activeNode.type, this.activeNode.typeVersion);
+			return this.nodeTypesStore.getNodeType(this.activeNode.type, this.activeNode.typeVersion);
 		},
 		isMultiInputNode (): boolean {
 			return this.activeNodeType !== null && this.activeNodeType.inputs.length > 1;
@@ -214,7 +230,7 @@ export default mixins(
 			if (this.activeNode) {
 				this.$telemetry.track('User clicked ndv button', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: 'input',
 					type: 'executePrevious',
@@ -238,7 +254,7 @@ export default mixins(
 			if (this.activeNode) {
 				this.$telemetry.track('User clicked ndv link', {
 					node_type: this.activeNode.type,
-					workflow_id: this.$store.getters.workflowId,
+					workflow_id: this.workflowsStore.workflowId,
 					session_id: this.sessionId,
 					pane: 'input',
 					type: 'not-connected-help',

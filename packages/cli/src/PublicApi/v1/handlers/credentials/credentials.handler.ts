@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import express from 'express';
 
-import { CredentialsHelper } from '../../../../CredentialsHelper';
-import { CredentialTypes } from '../../../../CredentialTypes';
-import { CredentialsEntity } from '../../../../databases/entities/CredentialsEntity';
-import { CredentialRequest } from '../../../../requests';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { CredentialRequest } from '@/requests';
 import { CredentialTypeRequest } from '../../../types';
 import { authorize } from '../../shared/middlewares/global.middleware';
 import { validCredentialsProperties, validCredentialType } from './credentials.middleware';

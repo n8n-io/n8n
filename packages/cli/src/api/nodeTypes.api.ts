@@ -1,5 +1,4 @@
 /* eslint-disable import/no-extraneous-dependencies */
-/* eslint-disable import/no-cycle */
 import express from 'express';
 import { readFile } from 'fs/promises';
 import _ from 'lodash';
@@ -12,9 +11,11 @@ import {
 	NodeHelpers,
 } from 'n8n-workflow';
 
-import { CredentialTypes, NodeTypes, ResponseHelper } from '..';
-import config from '../../config';
-import { getNodeTranslationPath } from '../TranslationHelpers';
+import { CredentialTypes } from '@/CredentialTypes';
+import config from '@/config';
+import { NodeTypes } from '@/NodeTypes';
+import * as ResponseHelper from '@/ResponseHelper';
+import { getNodeTranslationPath } from '@/TranslationHelpers';
 
 function isOAuth(credType: ICredentialType) {
 	return (

@@ -21,6 +21,8 @@
 
 <script lang="ts">
 import { XYPosition } from '@/Interface';
+import { useNDVStore } from '@/stores/ndv';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 // @ts-ignore
@@ -66,11 +68,14 @@ export default Vue.extend({
 		};
 	},
 	computed: {
+		...mapStores(
+			useNDVStore,
+		),
 		canDrop(): boolean {
-			return this.$store.getters['ndv/canDraggableDrop'];
+			return this.ndvStore.canDraggableDrop;
 		},
 		stickyPosition(): XYPosition | null {
-			return this.$store.getters['ndv/draggableStickyPos'];
+			return this.ndvStore.draggableStickyPos;
 		},
 	},
 	methods: {
@@ -111,7 +116,7 @@ export default Vue.extend({
 				this.isDragging = true;
 
 				const data = this.targetDataKey && this.draggingEl ? this.draggingEl.dataset.value : (this.data || '');
-				this.$store.commit('ndv/draggableStartDragging', {type: this.type, data });
+				this.ndvStore.draggableStartDragging({type: this.type, data: data || '' });
 
 				this.$emit('dragstart', this.draggingEl);
 				document.body.style.cursor = 'grabbing';
@@ -141,7 +146,7 @@ export default Vue.extend({
 				this.$emit('dragend', this.draggingEl);
 				this.isDragging = false;
 				this.draggingEl = null;
-				this.$store.commit('ndv/draggableStopDragging');
+				this.ndvStore.draggableStopDragging();
 			}, 0);
 		},
 	},

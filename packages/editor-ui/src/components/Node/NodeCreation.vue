@@ -20,6 +20,8 @@
 import Vue from "vue";
 import * as CanvasHelpers from "@/views/canvasHelpers";
 import {DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE} from "@/constants";
+import { mapStores } from "pinia";
+import { useUIStore } from "@/stores/ui";
 
 export default Vue.extend({
 	name: 'node-creation',
@@ -40,6 +42,9 @@ export default Vue.extend({
 		return {
 			showStickyButton: false,
 		};
+	},
+	computed: {
+		...mapStores(useUIStore),
 	},
 	methods: {
 		onCreateMenuHoverIn(mouseinEvent: MouseEvent) {
@@ -73,7 +78,7 @@ export default Vue.extend({
 				(document.activeElement as HTMLElement).blur();
 			}
 
-			const offset: [number, number] = [...(this.$store.getters.getNodeViewOffsetPosition as [number, number])];
+			const offset: [number, number] = [...(this.uiStore.nodeViewOffsetPosition)];
 
 			const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
 			position[0] -= DEFAULT_STICKY_WIDTH / 2;

@@ -13,8 +13,10 @@ import {
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-// eslint-disable-next-line import/no-cycle
-import { IResponseCallbackData, IWorkflowDb, Push, ResponseHelper, WebhookHelpers } from '.';
+import { IResponseCallbackData, IWorkflowDb } from '@/Interfaces';
+import * as Push from '@/Push';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
 
 const WEBHOOK_TEST_UNREGISTERED_HINT = `Click the 'Execute workflow' button on the canvas, then try again. (In test mode, the webhook only works for one call after you click this button)`;
 

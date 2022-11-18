@@ -4,16 +4,18 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable no-param-reassign */
-/* eslint-disable import/no-cycle */
 
 import express from 'express';
 
-import { Db, ExternalHooks, IExternalHooksClass, ITagWithCountDb, ResponseHelper } from '..';
-import config from '../../config';
-import * as TagHelpers from '../TagHelpers';
-import { validateEntity } from '../GenericHelpers';
-import { TagEntity } from '../databases/entities/TagEntity';
-import { TagsRequest } from '../requests';
+import * as Db from '@/Db';
+import { ExternalHooks } from '@/ExternalHooks';
+import { IExternalHooksClass, ITagWithCountDb } from '@/Interfaces';
+import * as ResponseHelper from '@/ResponseHelper';
+import config from '@/config';
+import * as TagHelpers from '@/TagHelpers';
+import { validateEntity } from '@/GenericHelpers';
+import { TagEntity } from '@db/entities/TagEntity';
+import { TagsRequest } from '@/requests';
 
 export const externalHooks: IExternalHooksClass = ExternalHooks();
 

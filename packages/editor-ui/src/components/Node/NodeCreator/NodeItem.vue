@@ -19,13 +19,14 @@
 					<trigger-icon />
 				</span>
 				<n8n-tooltip v-if="isCommunityNode" placement="top">
-					<div
-						:class="$style['community-node-icon']"
-						slot="content"
-						v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
-						@click="onCommunityNodeTooltipClick"
-					>
-					</div>
+					<template #content>
+						<div
+							:class="$style['community-node-icon']"
+							v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
+							@click="onCommunityNodeTooltipClick"
+						>
+						</div>
+					</template>
 					<n8n-icon icon="cube" />
 				</n8n-tooltip>
 			</div>

@@ -549,7 +549,60 @@ export interface IGetNodeParameterOptions {
 	extractValue?: boolean;
 }
 
-export interface IExecuteFunctions {
+namespace ExecuteFunctions {
+	namespace NumberReturning {
+		export type NodeParameter = 'limit';
+	}
+
+	namespace BooleanReturning {
+		export type NodeParameter =
+			| 'binaryData'
+			| 'download'
+			| 'jsonParameters'
+			| 'returnAll'
+			| 'rawData'
+			| 'resolveData';
+	}
+
+	namespace RecordReturning {
+		export type NodeParameter = 'additionalFields' | 'filters' | 'options' | 'updateFields';
+	}
+
+	export type GetNodeParameterFn = {
+		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
+		getNodeParameter<T extends { resource: string }>(
+			parameterName: 'resource',
+			itemIndex?: number,
+		): T['resource'];
+
+		getNodeParameter(
+			parameterName: RecordReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		): IDataObject;
+		getNodeParameter(
+			parameterName: BooleanReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: boolean,
+			options?: IGetNodeParameterOptions,
+		): boolean;
+		getNodeParameter(
+			parameterName: NumberReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: number,
+			options?: IGetNodeParameterOptions,
+		): number;
+		getNodeParameter(
+			parameterName: string,
+			itemIndex: number,
+			fallbackValue?: any,
+			options?: IGetNodeParameterOptions,
+		): NodeParameterValueType | object;
+	};
+}
+
+export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn & {
 	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	executeWorkflow(
@@ -561,17 +614,6 @@ export interface IExecuteFunctions {
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
-	getNodeParameter<T extends { resource: string }>(
-		parameterName: 'resource',
-		itemIndex?: number,
-	): T['resource'];
-	// getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
-	getNodeParameter(
-		parameterName: string,
-		itemIndex: number,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;
@@ -583,8 +625,8 @@ export interface IExecuteFunctions {
 		outputIndex?: number,
 	): Promise<INodeExecutionData[][]>;
 	putExecutionToWait(waitTill: Date): Promise<void>;
-	sendMessageToUI(message: any): void; // tslint:disable-line:no-any
-	sendResponse(response: IExecuteResponsePromiseData): void; // tslint:disable-line:no-any
+	sendMessageToUI(message: any): void;
+	sendResponse(response: IExecuteResponsePromiseData): void;
 	helpers: {
 		httpRequest(
 			requestOptions: IHttpRequestOptions,
@@ -595,9 +637,9 @@ export interface IExecuteFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
-}
+};
 
 export interface IExecuteSingleFunctions {
 	continueOnFail(): boolean;
@@ -629,7 +671,7 @@ export interface IExecuteSingleFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -663,7 +705,10 @@ export interface ILoadOptionsFunctions {
 		fallbackValue?: any,
 		options?: IGetNodeParameterOptions,
 	): NodeParameterValueType | object;
-	getCurrentNodeParameter(parameterName: string): NodeParameterValueType | object | undefined;
+	getCurrentNodeParameter(
+		parameterName: string,
+		options?: IGetNodeParameterOptions,
+	): NodeParameterValueType | object | undefined;
 	getCurrentNodeParameters(): INodeParameters | undefined;
 	getTimezone(): string;
 	getRestApiUrl(): string;
@@ -676,7 +721,7 @@ export interface ILoadOptionsFunctions {
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
 			credentialsType: string,
-			requestOptions: any, // tslint:disable-line:no-any
+			requestOptions: any,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<any>;
 		httpRequestWithAuthentication(
@@ -685,7 +730,7 @@ export interface ILoadOptionsFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: ((...args: any[]) => any) | undefined; // tslint:disable-line:no-any
+		[key: string]: ((...args: any[]) => any) | undefined;
 	};
 }
 
@@ -715,12 +760,17 @@ export interface IHookFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
 export interface IPollFunctions {
-	__emit(data: INodeExecutionData[][] | NodeApiError): void;
+	__emit(
+		data: INodeExecutionData[][],
+		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		donePromise?: IDeferredPromise<IRun>,
+	): void;
+	__emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getCredentials(type: string): Promise<ICredentialDataDecryptedObject>;
 	getMode(): WorkflowExecuteMode;
 	getActivationMode(): WorkflowActivateMode;
@@ -744,7 +794,7 @@ export interface IPollFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -778,7 +828,7 @@ export interface ITriggerFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 
@@ -816,7 +866,7 @@ export interface IWebhookFunctions {
 			requestOptions: IHttpRequestOptions,
 			additionalCredentialOptions?: IAdditionalCredentialOptions,
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
-		[key: string]: (...args: any[]) => any; // tslint:disable-line:no-any
+		[key: string]: (...args: any[]) => any;
 	};
 }
 

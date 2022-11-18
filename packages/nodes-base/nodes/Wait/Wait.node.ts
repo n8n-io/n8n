@@ -679,7 +679,7 @@ export class Wait implements INodeType {
 			// @ts-ignore
 			const form = new formidable.IncomingForm({ multiples: true });
 
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve, _reject) => {
 				form.parse(req, async (err, data, files) => {
 					const returnItem: INodeExecutionData = {
 						binary: {},
@@ -735,7 +735,7 @@ export class Wait implements INodeType {
 		}
 
 		if (options.binaryData === true) {
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve, _reject) => {
 				const binaryPropertyName = options.binaryPropertyName || 'data';
 				const data: Buffer[] = [];
 
@@ -864,7 +864,7 @@ export class Wait implements INodeType {
 		if (waitValue < 65000) {
 			// If wait time is shorter than 65 seconds leave execution active because
 			// we just check the database every 60 seconds.
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve, _reject) => {
 				setTimeout(() => {
 					resolve([this.getInputData()]);
 				}, waitValue);
