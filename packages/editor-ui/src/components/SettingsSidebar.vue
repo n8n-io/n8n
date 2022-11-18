@@ -6,8 +6,10 @@
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
-					<n8n-heading slot="title" size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
 				</div>
+			</template>
+			<template #title>
+				<n8n-heading size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
 			</template>
 			<template #menuSuffix>
 				<div :class="$style.versionContainer">

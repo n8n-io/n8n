@@ -200,7 +200,7 @@ export class Grafana implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							Object.assign(qs, { limit });
 						}
 
@@ -324,7 +324,7 @@ export class Grafana implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -407,7 +407,7 @@ export class Grafana implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					}
@@ -450,7 +450,7 @@ export class Grafana implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {

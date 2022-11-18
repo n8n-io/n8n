@@ -99,7 +99,7 @@ export async function handleListing(
 		body,
 		qs,
 	);
-	const limit = this.getNodeParameter('limit', 0) as number;
+	const limit = this.getNodeParameter('limit', 0);
 
 	return responseData.slice(0, limit);
 }

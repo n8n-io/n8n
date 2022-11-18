@@ -192,7 +192,7 @@ export class Autopilot implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						responseData = await autopilotApiRequestAllItems.call(
 							this,
@@ -256,7 +256,7 @@ export class Autopilot implements INodeType {
 						const listId = this.getNodeParameter('listId', i) as string;
 
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						responseData = await autopilotApiRequestAllItems.call(
 							this,
@@ -287,7 +287,7 @@ export class Autopilot implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						responseData = await autopilotApiRequest.call(this, 'GET', '/lists');
 

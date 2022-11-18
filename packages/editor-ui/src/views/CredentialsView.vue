@@ -9,10 +9,10 @@
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
-		<template v-slot="{ data }">
+		<template #default="{ data }">
 			<credential-card :data="data"/>
 		</template>
-		<template v-slot:filters="{ setKeyValue }">
+		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
 				<n8n-input-label
 					:label="$locale.baseText('credentials.filters.type')"

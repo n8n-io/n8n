@@ -10,7 +10,7 @@
 		v-loading="isLoading"
 	>
 		<el-table-column :label="$locale.baseText('tagsTable.name')">
-			<template slot-scope="scope">
+			<template #default="scope">
 				<div class="name" :key="scope.row.id" @keydown.stop>
 					<transition name="fade" mode="out-in">
 						<n8n-input
@@ -32,7 +32,7 @@
 			</template>
 		</el-table-column>
 		<el-table-column :label="$locale.baseText('tagsTable.usage')" width="150">
-			<template slot-scope="scope">
+			<template #default="scope">
 				<transition name="fade" mode="out-in">
 						<div v-if="!scope.row.create && !scope.row.delete" :class="{ disabled: scope.row.disable }">
 							{{ scope.row.usage }}
@@ -41,7 +41,7 @@
 				</template>
 		</el-table-column>
 		<el-table-column>
-			<template slot-scope="scope">
+			<template #default="scope">
 				<transition name="fade" mode="out-in">
 					<div class="ops" v-if="scope.row.create">
 						<n8n-button :label="$locale.baseText('tagsTable.cancel')" @click.stop="cancel" type="secondary" :disabled="isSaving" />

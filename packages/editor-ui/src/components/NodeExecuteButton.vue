@@ -1,6 +1,8 @@
 <template>
 	<n8n-tooltip placement="bottom" :disabled="!disabledHint">
-		<div slot="content">{{ disabledHint }}</div>
+		<template #content>
+			<div>{{ disabledHint }}</div>
+		</template>
 		<div>
 			<n8n-button
 				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"

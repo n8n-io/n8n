@@ -566,7 +566,7 @@ export class Mautic implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							qs.start = 0;
 							responseData = await mauticApiRequest.call(this, 'GET', '/companies', {}, qs);
 							if (responseData.errors) {
@@ -853,7 +853,7 @@ export class Mautic implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							qs.start = 0;
 							responseData = await mauticApiRequest.call(this, 'GET', '/contacts', {}, qs);
 							if (responseData.errors) {

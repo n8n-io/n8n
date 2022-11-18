@@ -174,7 +174,7 @@ export class S3 implements INodeType {
 								'',
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
 								'ListAllMyBucketsResult.Buckets.Bucket',
@@ -241,7 +241,7 @@ export class S3 implements INodeType {
 								region,
 							);
 						} else {
-							qs['max-keys'] = this.getNodeParameter('limit', 0) as number;
+							qs['max-keys'] = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAP.call(
 								this,
 								bucketName,
@@ -293,9 +293,19 @@ export class S3 implements INodeType {
 
 						const region = responseData.LocationConstraint._;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'PUT', path, '', qs, headers, {}, region);
+						responseData = await s3ApiRequestSOAP.call(
+							this,
+							bucketName,
+							'PUT',
+							path,
+							'',
+							qs,
+							headers,
+							{},
+							region,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -422,7 +432,7 @@ export class S3 implements INodeType {
 								region,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
 								'ListBucketResult.Contents',
@@ -660,7 +670,7 @@ export class S3 implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -704,7 +714,7 @@ export class S3 implements INodeType {
 								region,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
 								'ListBucketResult.Contents',
@@ -882,7 +892,7 @@ export class S3 implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -895,7 +905,7 @@ export class S3 implements INodeType {
 						items[i].json = { error: error.message };
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({error: error.message}),
+							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

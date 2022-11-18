@@ -192,7 +192,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 						`/${projectId}/databases/${database}/documents/${collection}`,
 					);
 				} else {
-					const limit = this.getNodeParameter('limit', 0) as string;
+					const limit = this.getNodeParameter('limit', 0);
 					const getAllResponse = (await googleApiRequest.call(
 						this,
 						'GET',
@@ -386,7 +386,7 @@ export class GoogleFirebaseCloudFirestore implements INodeType {
 					// @ts-ignore
 					responseData = getAllResponse.map((o) => ({ name: o }));
 				} else {
-					const limit = this.getNodeParameter('limit', 0) as string;
+					const limit = this.getNodeParameter('limit', 0);
 					const getAllResponse = (await googleApiRequest.call(
 						this,
 						'POST',

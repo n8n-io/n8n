@@ -450,7 +450,7 @@ export class Zendesk implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
 							responseData = await zendeskApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.results || responseData.suspended_tickets;
@@ -508,7 +508,7 @@ export class Zendesk implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await zendeskApiRequestAllItems.call(
 								this,
@@ -600,7 +600,7 @@ export class Zendesk implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
 							responseData = await zendeskApiRequest.call(this, 'GET', `/users`, {}, qs);
 							responseData = responseData.users;
@@ -634,7 +634,7 @@ export class Zendesk implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
 							responseData = await zendeskApiRequest.call(this, 'GET', `/users/search`, {}, qs);
 							responseData = responseData.users;
@@ -733,7 +733,7 @@ export class Zendesk implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.per_page = limit;
 							responseData = await zendeskApiRequest.call(this, 'GET', `/organizations`, {}, qs);
 							responseData = responseData.organizations;

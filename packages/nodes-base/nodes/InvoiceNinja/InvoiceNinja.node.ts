@@ -378,7 +378,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/clients', {}, qs);
 							responseData = responseData.data;
 						}
@@ -539,7 +539,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/invoices', {}, qs);
 							responseData = responseData.data;
 						}
@@ -632,7 +632,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/tasks', {}, qs);
 							responseData = responseData.data;
 						}
@@ -704,7 +704,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/payments', {}, qs);
 							responseData = responseData.data;
 						}
@@ -805,7 +805,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/expenses', {}, qs);
 							responseData = responseData.data;
 						}
@@ -969,7 +969,7 @@ export class InvoiceNinja implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 							responseData = await invoiceNinjaApiRequest.call(this, 'GET', '/quotes', {}, qs);
 							responseData = responseData.data;
 						}

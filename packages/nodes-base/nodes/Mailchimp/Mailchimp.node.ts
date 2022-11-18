@@ -1700,7 +1700,7 @@ export class Mailchimp implements INodeType {
 								qs,
 							);
 						} else {
-							qs.count = this.getNodeParameter('limit', i) as number;
+							qs.count = this.getNodeParameter('limit', i);
 							responseData = await mailchimpApiRequest.call(
 								this,
 								`/lists/${listId}/interest-categories/${categoryId}/interests`,
@@ -1888,7 +1888,7 @@ export class Mailchimp implements INodeType {
 								qs,
 							);
 						} else {
-							qs.count = this.getNodeParameter('limit', i) as number;
+							qs.count = this.getNodeParameter('limit', i);
 							responseData = await mailchimpApiRequest.call(
 								this,
 								`/lists/${listId}/members`,
@@ -2126,7 +2126,7 @@ export class Mailchimp implements INodeType {
 								qs,
 							);
 						} else {
-							qs.count = this.getNodeParameter('limit', i) as number;
+							qs.count = this.getNodeParameter('limit', i);
 							responseData = await mailchimpApiRequest.call(this, `/campaigns`, 'GET', {}, qs);
 							responseData = responseData.campaigns;
 						}

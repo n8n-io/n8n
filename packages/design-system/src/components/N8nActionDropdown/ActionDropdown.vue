@@ -9,30 +9,32 @@
 			<div :class="$style.activator" @click.prevent @blur="onButtonBlur">
 				<n8n-icon :icon="activatorIcon" />
 			</div>
-			<el-dropdown-menu slot="dropdown" :class="$style.userActionsMenu">
-				<el-dropdown-item
-					v-for="item in items"
-					:key="item.id"
-					:command="item.id"
-					:disabled="item.disabled"
-					:divided="item.divided"
-				>
-					<div
-						:class="{
-							[$style.itemContainer]: true,
-							[$style.hasCustomStyling]: item.customClass !== undefined,
-							[item.customClass]: item.customClass !== undefined,
-						}"
+			<template #dropdown>
+				<el-dropdown-menu :class="$style.userActionsMenu">
+					<el-dropdown-item
+						v-for="item in items"
+						:key="item.id"
+						:command="item.id"
+						:disabled="item.disabled"
+						:divided="item.divided"
 					>
-						<span v-if="item.icon" :class="$style.icon">
-							<n8n-icon :icon="item.icon" :size="item.iconSize" />
-						</span>
-						<span :class="$style.label">
-							{{ item.label }}
-						</span>
-					</div>
-				</el-dropdown-item>
-			</el-dropdown-menu>
+						<div
+							:class="{
+								[$style.itemContainer]: true,
+								[$style.hasCustomStyling]: item.customClass !== undefined,
+								[item.customClass]: item.customClass !== undefined,
+							}"
+						>
+							<span v-if="item.icon" :class="$style.icon">
+								<n8n-icon :icon="item.icon" :size="item.iconSize" />
+							</span>
+							<span :class="$style.label">
+								{{ item.label }}
+							</span>
+						</div>
+					</el-dropdown-item>
+				</el-dropdown-menu>
+			</template>
 		</el-dropdown>
 	</div>
 </template>

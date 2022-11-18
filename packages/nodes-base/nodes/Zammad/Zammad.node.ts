@@ -434,7 +434,7 @@ export class Zammad implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems
 							.call(this, 'GET', '/users/search', {}, qs, limit)
@@ -542,7 +542,7 @@ export class Zammad implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems.call(
 							this,
@@ -641,7 +641,7 @@ export class Zammad implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems.call(
 							this,
@@ -732,7 +732,7 @@ export class Zammad implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const limit = returnAll ? 0 : (this.getNodeParameter('limit', i) as number);
+						const limit = returnAll ? 0 : this.getNodeParameter('limit', i);
 
 						responseData = await zammadApiRequestAllItems.call(
 							this,

@@ -331,7 +331,7 @@ export class Beeminder implements INodeType {
 						Object.assign(data, options);
 
 						if (returnAll === false) {
-							data.count = this.getNodeParameter('limit', 0) as number;
+							data.count = this.getNodeParameter('limit', 0);
 						}
 
 						results = await getAllDatapoints.call(this, data);

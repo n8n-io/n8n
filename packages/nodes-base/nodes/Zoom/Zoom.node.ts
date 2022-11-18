@@ -198,7 +198,7 @@ export class Zoom implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await zoomApiRequest.call(this, 'GET', '/users/me/meetings', {}, qs);
 							responseData = responseData.meetings;
 						}
@@ -499,7 +499,7 @@ export class Zoom implements INodeType {
 				// 		if (returnAll) {
 				// 			responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/meetings/${meetingId}/registrants`, {}, qs);
 				// 		} else {
-				// 			qs.page_size = this.getNodeParameter('limit', i) as number;
+				// 			qs.page_size = this.getNodeParameter('limit', i);
 				// 			responseData = await zoomApiRequest.call(this, 'GET', `/meetings/${meetingId}/registrants`, {}, qs);
 
 				// 		}
@@ -652,7 +652,7 @@ export class Zoom implements INodeType {
 				// 		if (returnAll) {
 				// 			responseData = await zoomApiRequestAllItems.call(this, 'results', 'GET', `/users/${userId}/webinars`, {}, qs);
 				// 		} else {
-				// 			qs.page_size = this.getNodeParameter('limit', i) as number;
+				// 			qs.page_size = this.getNodeParameter('limit', i);
 				// 			responseData = await zoomApiRequest.call(this, 'GET', `/users/${userId}/webinars`, {}, qs);
 
 				// 		}

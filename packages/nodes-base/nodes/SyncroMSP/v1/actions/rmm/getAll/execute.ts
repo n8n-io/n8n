@@ -25,7 +25,7 @@ export async function getAll(
 	}
 
 	if (returnAll === false) {
-		qs.per_page = this.getNodeParameter('limit', index) as number;
+		qs.per_page = this.getNodeParameter('limit', index);
 	}
 
 	let responseData;

@@ -302,7 +302,7 @@ export class SentryIo implements INodeType {
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/`;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
@@ -311,7 +311,7 @@ export class SentryIo implements INodeType {
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -346,14 +346,14 @@ export class SentryIo implements INodeType {
 						}
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -418,7 +418,7 @@ export class SentryIo implements INodeType {
 						}
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
@@ -429,7 +429,7 @@ export class SentryIo implements INodeType {
 						}
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -484,14 +484,14 @@ export class SentryIo implements INodeType {
 						const endpoint = `/api/0/projects/`;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -531,14 +531,14 @@ export class SentryIo implements INodeType {
 						}
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -680,14 +680,14 @@ export class SentryIo implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

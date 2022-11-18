@@ -259,7 +259,7 @@ export class HelpScout implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.conversations',
@@ -373,7 +373,7 @@ export class HelpScout implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.customers',
@@ -436,7 +436,7 @@ export class HelpScout implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.mailboxes',
@@ -544,7 +544,7 @@ export class HelpScout implements INodeType {
 								`/v2/conversations/${conversationId}/threads`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.threads',

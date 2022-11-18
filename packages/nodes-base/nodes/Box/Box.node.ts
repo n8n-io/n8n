@@ -215,7 +215,7 @@ export class Box implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}
@@ -449,7 +449,7 @@ export class Box implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}

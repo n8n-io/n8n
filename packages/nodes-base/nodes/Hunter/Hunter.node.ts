@@ -321,7 +321,7 @@ export class Hunter implements INodeType {
 							responseData = tempReturnData;
 						}
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.limit = limit;
 						responseData = await hunterApiRequest.call(this, 'GET', '/domain-search', {}, qs);
 						responseData = responseData.data;

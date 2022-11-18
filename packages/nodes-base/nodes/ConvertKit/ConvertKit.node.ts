@@ -194,7 +194,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.custom_fields;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -261,7 +261,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.forms;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -288,7 +288,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -344,7 +344,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.courses;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -371,7 +371,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -399,7 +399,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.tags;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -458,7 +458,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}

@@ -6,7 +6,7 @@
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-user-select
@@ -29,7 +29,7 @@
 						:readonly="!workflowPermissions.updateSharing"
 						@delete="onRemoveSharee"
 					>
-						<template v-slot:actions="{ user }">
+						<template #actions="{ user }">
 							<n8n-select
 								:class="$style.roleSelect"
 								value="editor"
@@ -57,7 +57,7 @@
 			</div>
 		</template>
 
-		<template slot="footer">
+		<template #footer>
 			<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]" :class="$style.actionButtons">
 				<n8n-text
 					v-show="isDirty"

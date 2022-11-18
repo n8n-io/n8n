@@ -55,7 +55,9 @@
 								ref="search"
 								data-test-id="resources-list-search"
 							>
-								<n8n-icon icon="search" slot="prefix"/>
+								<template #prefix>
+									<n8n-icon icon="search"/>
+								</template>
 							</n8n-input>
 							<div :class="$style['sort-and-filter']">
 								<n8n-select
@@ -75,7 +77,7 @@
 									@input="$emit('update:filters', $event)"
 									@update:filtersLength="onUpdateFiltersLength"
 								>
-									<template v-slot="resourceFiltersSlotProps">
+									<template #default="resourceFiltersSlotProps">
 										<slot name="filters" v-bind="resourceFiltersSlotProps" />
 									</template>
 								</resource-filters-dropdown>
@@ -407,4 +409,3 @@ export default mixins(
 	height: 69px;
 }
 </style>
-

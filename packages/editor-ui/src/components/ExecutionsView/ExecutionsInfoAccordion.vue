@@ -12,10 +12,12 @@
 			<footer class="mt-2xs">
 				{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer') }}
 				<n8n-tooltip :disabled="!isNewWorkflow">
-					<div slot="content">
-						<n8n-link @click.prevent="onSaveWorkflowClick">{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipLink') }}</n8n-link>
-						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipText') }}
-					</div>
+					<template #content>
+						<div>
+							<n8n-link @click.prevent="onSaveWorkflowClick">{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipLink') }}</n8n-link>
+							{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.tooltipText') }}
+						</div>
+					</template>
 					<n8n-link @click.prevent="openWorkflowSettings" :class="{[$style.disabled]: isNewWorkflow}" size="small">
 						{{ $locale.baseText('executionsLandingPage.emptyState.accordion.footer.settingsLink') }}
 					</n8n-link>

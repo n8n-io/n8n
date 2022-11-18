@@ -1934,7 +1934,7 @@ export class Github implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 					}
 					if (operation === 'update') {
@@ -1997,7 +1997,7 @@ export class Github implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 					}
 				} else if (resource === 'review') {
@@ -2023,7 +2023,7 @@ export class Github implements INodeType {
 						const pullRequestNumber = this.getNodeParameter('pullRequestNumber', i) as string;
 
 						if (returnAll === false) {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 
 						endpoint = `/repos/${owner}/${repository}/pulls/${pullRequestNumber}/reviews`;
@@ -2069,7 +2069,7 @@ export class Github implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 					} else if (operation === 'invite') {
 						// ----------------------------------
@@ -2093,7 +2093,7 @@ export class Github implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
-							qs.per_page = this.getNodeParameter('limit', 0) as number;
+							qs.per_page = this.getNodeParameter('limit', 0);
 						}
 					}
 				} else {

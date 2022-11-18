@@ -148,7 +148,7 @@ export class Bubble implements INodeType {
 					if (returnAll === true) {
 						responseData = await bubbleApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit', 0);
 						responseData = await bubbleApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.response.results;
 					}

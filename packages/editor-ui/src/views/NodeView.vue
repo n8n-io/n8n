@@ -51,10 +51,11 @@
 						:hideActions="pullConnActive"
 						:isProductionExecutionPreview="isProductionExecutionPreview"
 					>
-						<span
-							slot="custom-tooltip"
-							v-text="$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')"
-						/>
+						<template #custom-tooltip>
+							<span
+								v-text="$locale.baseText('nodeView.placeholderNode.addTriggerNodeBeforeExecuting')"
+							/>
+						</template>
 					</node>
 					<sticky
 						v-else

@@ -917,7 +917,7 @@ export class Nasa implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll === false) {
-							qs.size = this.getNodeParameter('limit', 0) as number;
+							qs.size = this.getNodeParameter('limit', 0);
 						}
 
 						propertyName = 'near_earth_objects';

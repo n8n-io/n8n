@@ -1,6 +1,6 @@
 <template>
 	<TemplatesView :goBackEnabled="true">
-		<template v-slot:header>
+		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading v-if="collection && collection.name" tag="h1" size="2xlarge">
@@ -16,7 +16,7 @@
 				<n8n-text color="text-base">{{ $locale.baseText('templates.collectionsNotFound') }}</n8n-text>
 			</div>
 		</template>
-		<template v-if="!notFoundError" v-slot:content>
+		<template v-if="!notFoundError" #content>
 			<div :class="$style.wrapper">
 				<div :class="$style.mainContent">
 					<div :class="$style.markdown" v-if="loading || (collection && collection.description)">

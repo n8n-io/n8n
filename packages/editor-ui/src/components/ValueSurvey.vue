@@ -9,12 +9,12 @@
 		width="120px"
 		class="value-survey"
 	>
-		<template slot="header">
+		<template #header>
 			<div :class="$style.title">
 				<n8n-heading tag="h2" size="medium" color="text-xlight">{{ getTitle }}</n8n-heading>
 			</div>
 		</template>
-		<template slot="content">
+		<template #content>
 			<section :class="$style.content">
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">

@@ -628,7 +628,7 @@ export class Jenkins implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							endpoint += `{0,${limit}}`;
 						}
 

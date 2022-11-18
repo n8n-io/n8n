@@ -301,7 +301,7 @@ export class HaloPSA implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.count = limit;
 							const { clients } = await haloPSAApiRequest.call(
 								this,
@@ -409,7 +409,7 @@ export class HaloPSA implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.count = limit;
 							const { sites } = await haloPSAApiRequest.call(
 								this,
@@ -519,7 +519,7 @@ export class HaloPSA implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.count = limit;
 							const { tickets } = await haloPSAApiRequest.call(
 								this,
@@ -628,7 +628,7 @@ export class HaloPSA implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.count = limit;
 							const { users } = await haloPSAApiRequest.call(
 								this,

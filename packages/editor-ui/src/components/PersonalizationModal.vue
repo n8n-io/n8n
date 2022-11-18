@@ -16,7 +16,7 @@
 		data-test-id="personalization-form"
 		@enter="onSave"
 	>
-		<template v-slot:content>
+		<template #content>
 			<div v-if="submitted" :class="$style.submittedContainer">
 				<img :class="$style.demoImage" :src="rootStore.baseUrl + 'suggestednodes.png'" />
 				<n8n-text>{{ $locale.baseText('personalizationModal.lookOutForThingsMarked') }}</n8n-text>
@@ -25,7 +25,7 @@
 				<n8n-form-inputs :inputs="survey" :columnView="true" :eventBus="formBus" @submit="onSubmit"/>
 			</div>
 		</template>
-		<template v-slot:footer>
+		<template #footer>
 			<div>
 				<n8n-button
 					v-if="submitted"
