@@ -97,11 +97,11 @@ describe("Utils", () => {
 			],
 			[
 				'John',
-				{ type: 'string', value: '"John"', path: '' },
+				{ type: 'string', value: 'John', path: '' },
 			],
 			[
 				'123',
-				{ type: 'string', value: '"123"', path: '' },
+				{ type: 'string', value: '123', path: '' },
 			],
 			[
 				123,
@@ -121,7 +121,7 @@ describe("Utils", () => {
 			],
 			[
 				new Date('2022-11-22T00:00:00.000Z'),
-				{ type: 'date', value: '"2022-11-22T00:00:00.000Z"', path: '' },
+				{ type: 'date', value: '2022-11-22T00:00:00.000Z', path: '' },
 			],
 			[
 				Symbol('x'),
@@ -133,19 +133,19 @@ describe("Utils", () => {
 			],
 			[
 				['John', 1, true],
-				{ type: 'list', value: [{ type: 'string', value: '"John"', key: '0', path: '[0]' }, { type: 'number', value: '1', key: '1', path: '[1]' }, { type: 'boolean', value: 'true', key: '2', path: '[2]' }], path: '' },
+				{ type: 'list', value: [{ type: 'string', value: 'John', key: '0', path: '[0]' }, { type: 'number', value: '1', key: '1', path: '[1]' }, { type: 'boolean', value: 'true', key: '2', path: '[2]' }], path: '' },
 			],
 			[
 				{ people: ['Joe', 'John']},
-				{ type: 'object',  value: [{ type: 'list', key: 'people', value: [{ type: 'string', value: '"Joe"', key: '0', path: '["people"][0]' }, { type: 'string', value: '"John"', key: '1', path: '["people"][1]' }], path: '["people"]' }], path: '' },
+				{ type: 'object',  value: [{ type: 'list', key: 'people', value: [{ type: 'string', value: 'Joe', key: '0', path: '["people"][0]' }, { type: 'string', value: 'John', key: '1', path: '["people"][1]' }], path: '["people"]' }], path: '' },
 			],
 			[
 				[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }],
-				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'string', key: 'name', value: '"John"', path: '[0]["name"]'}, { type: 'number', key: 'age', value: '22', path: '[0]["age"]' }], path: '[0]'}, { type: 'object', key: '1', value: [{ type: 'string', key: 'name', value: '"Joe"', path: '[1]["name"]'}, { type: 'number', key: 'age', value: '33', path: '[1]["age"]' }], path: '[1]'}], path: '' },
+				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'string', key: 'name', value: 'John', path: '[0]["name"]'}, { type: 'number', key: 'age', value: '22', path: '[0]["age"]' }], path: '[0]'}, { type: 'object', key: '1', value: [{ type: 'string', key: 'name', value: 'Joe', path: '[1]["name"]'}, { type: 'number', key: 'age', value: '33', path: '[1]["age"]' }], path: '[1]'}], path: '' },
 			],
 			[
 				[{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }],
-				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'string', key: 'name', value: '"John"', path: '[0]["name"]'}, { type: 'number', key: 'age', value: '22', path: '[0]["age"]' }, {type: 'list', key: 'hobbies', value: [{type: 'string', key: '0', value: '"surfing"', path: '[0]["hobbies"][0]'},{type: 'string', key: '1', value: '"traveling"', path: '[0]["hobbies"][1]'}], path: '[0]["hobbies"]'}], path: '[0]'}, { type: 'object', key: '1', value: [{ type: 'string', key: 'name', value: '"Joe"', path: '[1]["name"]'}, { type: 'number', key: 'age', value: '33', path: '[1]["age"]' }, {type: 'list', key: 'hobbies', value: [{type: 'string', key: '0', value: '"skateboarding"', path: '[1]["hobbies"][0]'},{type: 'string', key: '1', value: '"gaming"', path: '[1]["hobbies"][1]'}], path: '[1]["hobbies"]'}], path: '[1]'}], path: '' },
+				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'string', key: 'name', value: 'John', path: '[0]["name"]'}, { type: 'number', key: 'age', value: '22', path: '[0]["age"]' }, {type: 'list', key: 'hobbies', value: [{type: 'string', key: '0', value: 'surfing', path: '[0]["hobbies"][0]'},{type: 'string', key: '1', value: 'traveling', path: '[0]["hobbies"][1]'}], path: '[0]["hobbies"]'}], path: '[0]'}, { type: 'object', key: '1', value: [{ type: 'string', key: 'name', value: 'Joe', path: '[1]["name"]'}, { type: 'number', key: 'age', value: '33', path: '[1]["age"]' }, {type: 'list', key: 'hobbies', value: [{type: 'string', key: '0', value: 'skateboarding', path: '[1]["hobbies"][0]'},{type: 'string', key: '1', value: 'gaming', path: '[1]["hobbies"][1]'}], path: '[1]["hobbies"]'}], path: '[1]'}], path: '' },
 			],
 			[
 				[],
@@ -157,11 +157,11 @@ describe("Utils", () => {
 			],
 			[
 				[[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }]],
-				{ type: 'list', value: [{type: 'list', key: '0', value:[{ type: 'object', key: '0', value: [{ type: 'string', key: 'name', value: '"John"', path: '[0][0]["name"]'}, { type: 'number', key: 'age', value: '22', path: '[0][0]["age"]' }], path: '[0][0]'}, { type: 'object', key: '1', value: [{ type: 'string', key: 'name', value: '"Joe"', path: '[0][1]["name"]'}, { type: 'number', key: 'age', value: '33', path: '[0][1]["age"]' }], path: '[0][1]'}], path: '[0]'}], path: '' },
+				{ type: 'list', value: [{type: 'list', key: '0', value:[{ type: 'object', key: '0', value: [{ type: 'string', key: 'name', value: 'John', path: '[0][0]["name"]'}, { type: 'number', key: 'age', value: '22', path: '[0][0]["age"]' }], path: '[0][0]'}, { type: 'object', key: '1', value: [{ type: 'string', key: 'name', value: 'Joe', path: '[0][1]["name"]'}, { type: 'number', key: 'age', value: '33', path: '[0][1]["age"]' }], path: '[0][1]'}], path: '[0]'}], path: '' },
 			],
 			[
 				[{ dates: [[new Date('2022-11-22T00:00:00.000Z'), new Date('2022-11-23T00:00:00.000Z')], [new Date('2022-12-22T00:00:00.000Z'), new Date('2022-12-23T00:00:00.000Z')]] }],
-				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'list', key: 'dates', value: [{ type: 'list', key: '0', value: [{type: 'date', key: '0', value: '"2022-11-22T00:00:00.000Z"', path: '[0]["dates"][0][0]'}, {type: 'date', key: '1', value: '"2022-11-23T00:00:00.000Z"', path: '[0]["dates"][0][1]'}], path: '[0]["dates"][0]' }, { type: 'list', key: '1', value: [{type: 'date', key: '0', value: '"2022-12-22T00:00:00.000Z"', path: '[0]["dates"][1][0]'}, {type: 'date', key: '1', value: '"2022-12-23T00:00:00.000Z"', path: '[0]["dates"][1][1]'}], path: '[0]["dates"][1]' }], path: '[0]["dates"]' }], path: '[0]' }], path: '' },
+				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'list', key: 'dates', value: [{ type: 'list', key: '0', value: [{type: 'date', key: '0', value: '2022-11-22T00:00:00.000Z', path: '[0]["dates"][0][0]'}, {type: 'date', key: '1', value: '2022-11-23T00:00:00.000Z', path: '[0]["dates"][0][1]'}], path: '[0]["dates"][0]' }, { type: 'list', key: '1', value: [{type: 'date', key: '0', value: '2022-12-22T00:00:00.000Z', path: '[0]["dates"][1][0]'}, {type: 'date', key: '1', value: '2022-12-23T00:00:00.000Z', path: '[0]["dates"][1][1]'}], path: '[0]["dates"][1]' }], path: '[0]["dates"]' }], path: '[0]' }], path: '' },
 			],
 		])('should return the correct json schema for %s', (input, schema) => {
 			expect(getJsonSchema(input)).toEqual(schema);

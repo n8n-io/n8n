@@ -1,38 +1,39 @@
 <template>
 	<div :class="$style.item" :style="{ paddingLeft }">
-		<div v-if="level > 0 || (level === 0 && !isSchemaValueArray && schema.type !== 'list')" :class="$style.pill">
+		<div v-if="level > 0 || level === 0 && !isSchemaValueArray" :class="$style.pill">
 			<span :class="$style.label">
 				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" />
-				<span v-if="schema.key">{{ schema.key }}</span>
-				<span v-else>{{ schema.type }}</span>
-			</span>
-			<span v-if="!isSchemaValueArray && schema.type === 'list'" :class="$style.labelAlt">
-				<font-awesome-icon :icon="getIconBySchemaType(schema.value)" />
-				<span>{{ schema.value }}</span>
+				<span v-if="parent === 'list'">{{ schema.type }}</span>
+				<span v-if="key" :class="{[$style.listKey]: parent === 'list'}">{{ key }}</span>
 			</span>
 		</div>
-		<div v-if="isSchemaValueArray" :class="$style.value">
+		<span v-if="!isSchemaValueArray" :class="$style.value">{{ schema.value }}</span>
+		<div v-if="isSchemaValueArray" :class="$style.sub">
 			<run-data-json-schema-item v-for="(s, i) in schema.value"
 				:key="`${s.type}-${level}-${i}`"
 				:schema="s"
 				:level="level + 1"
+        :parent="schema.type"
 			/>
 		</div>
 	</div>
 </template>
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { JsonSchema } from "@/Interface";
+import {JsonSchema, JsonSchemaType} from "@/Interface";
 import { checkExhaustive } from "@/utils";
 
 type Props = {
 	schema: JsonSchema
 	level: number
+	parent: JsonSchemaType | null
 }
 
 const props = defineProps<Props>();
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const paddingLeft = computed((): string => (props.level > 0 ? props.level * 12 : 0) + 'px');
+const key = computed((): string | undefined => props.parent === 'list' ? `[${props.schema.key}]` : props.schema.key);
+
 const getIconBySchemaType = (type: JsonSchema['type']): string => {
 	switch (type) {
 		case 'object':
@@ -69,7 +70,7 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 	padding-top: var(--spacing-xs);
 }
 
-.value {
+.sub {
 	display: block;
 }
 
@@ -105,14 +106,19 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
 		border-left: 1px solid #DBDFE7;
+
+		&.listKey {
+			border: 0;
+			padding-left: 0;
+			margin-left: 0;
+		}
 	}
 }
 
-.labelAlt {
-	> span {
-		margin-left: var(--spacing-3xs);
-		padding-left: var(--spacing-3xs);
-		border-left: 1px solid #DBDFE7;
-	}
+.value {
+	display: inline-block;
+	padding-left: var(--spacing-2xs);
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-2xs);
 }
 </style>

@@ -158,7 +158,7 @@ export const getJsonSchema = (input: Optional<Primitives | object>, path = '', k
 			if (input === null) {
 				schema = { type: 'string', value: '[null]', path };
 			} else if (input instanceof Date) {
-				schema = { type: 'date', value: `"${input.toISOString()}"`, path };
+				schema = { type: 'date', value: input.toISOString(), path };
 			} else if (Array.isArray(input)) {
 				schema = {
 					type: 'list',
@@ -174,7 +174,7 @@ export const getJsonSchema = (input: Optional<Primitives | object>, path = '', k
 			}
 			break;
 		case 'string':
-			schema = { type: 'string', value: `"${input}"`, path };
+			schema = { type: isValidDate(input) ? 'date' : 'string', value: input, path };
 			break;
 		case 'function':
 			schema =  { type: 'function', value: ``, path };
