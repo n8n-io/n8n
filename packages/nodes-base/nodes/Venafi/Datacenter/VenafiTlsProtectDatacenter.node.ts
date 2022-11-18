@@ -64,7 +64,6 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'certificate') {
-
 					if (operation === 'create') {
 						const policyDN = this.getNodeParameter('PolicyDN', i) as string;
 
@@ -176,7 +175,7 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 								qs,
 							);
 						} else {
-							qs.Limit = this.getNodeParameter('limit', i) as number;
+							qs.Limit = this.getNodeParameter('limit', i);
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
@@ -237,7 +236,6 @@ export class VenafiTlsProtectDatacenter implements INodeType {
 						itemData: { item: i },
 					}),
 				);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
 					returnData.push({ json: { error: error.message } });

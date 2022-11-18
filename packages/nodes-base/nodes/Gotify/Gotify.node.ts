@@ -201,7 +201,7 @@ export class Gotify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await gotifyApiRequest.call(this, 'GET', `/message`, {}, qs);
 							responseData = responseData.messages;
 						}
@@ -213,10 +213,9 @@ export class Gotify implements INodeType {
 					{ itemData: { item: i } },
 				);
 				returnData.push(...executionData);
-
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({json:{ error: error.message }});
+					returnData.push({ json: { error: error.message } });
 					continue;
 				}
 				throw error;

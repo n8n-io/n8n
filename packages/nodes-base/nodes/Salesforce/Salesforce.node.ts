@@ -1301,7 +1301,7 @@ export class Salesforce implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Lead', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
@@ -1647,7 +1647,7 @@ export class Salesforce implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Contact', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
@@ -1803,7 +1803,7 @@ export class Salesforce implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, customObject, returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
@@ -2048,7 +2048,7 @@ export class Salesforce implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Opportunity', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
@@ -2338,7 +2338,7 @@ export class Salesforce implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Account', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
@@ -2553,7 +2553,7 @@ export class Salesforce implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Case', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
@@ -2816,7 +2816,7 @@ export class Salesforce implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Task', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
@@ -2948,7 +2948,7 @@ export class Salesforce implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'Attachment', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
@@ -3003,7 +3003,7 @@ export class Salesforce implements INodeType {
 									qs,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as number;
+								const limit = this.getNodeParameter('limit', i);
 								qs.q = getQuery(options, 'User', returnAll, limit) as string;
 								responseData = await salesforceApiRequestAllItems.call(
 									this,
@@ -3054,7 +3054,7 @@ export class Salesforce implements INodeType {
 						responseData = await salesforceApiRequest.call(this, 'GET', '/actions/custom/flow');
 						responseData = responseData.actions;
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

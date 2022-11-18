@@ -363,7 +363,7 @@ export class Salesmate implements INodeType {
 							qs,
 						);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.rows = limit;
 						responseData = await salesmateApiRequest.call(
 							this,
@@ -557,7 +557,7 @@ export class Salesmate implements INodeType {
 							qs,
 						);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.rows = limit;
 						responseData = await salesmateApiRequest.call(
 							this,
@@ -766,7 +766,7 @@ export class Salesmate implements INodeType {
 							qs,
 						);
 					} else {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						qs.rows = limit;
 						responseData = await salesmateApiRequest.call(
 							this,

@@ -182,7 +182,7 @@ export class AwsS3 implements INodeType {
 								'',
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListAllMyBucketsResult.Buckets.Bucket',
@@ -249,7 +249,7 @@ export class AwsS3 implements INodeType {
 								region,
 							);
 						} else {
-							qs['max-keys'] = this.getNodeParameter('limit', 0) as number;
+							qs['max-keys'] = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestSOAP.call(
 								this,
 								`${bucketName}.s3`,
@@ -424,7 +424,7 @@ export class AwsS3 implements INodeType {
 								region,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListBucketResult.Contents',
@@ -691,7 +691,7 @@ export class AwsS3 implements INodeType {
 								region,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await awsApiRequestSOAPAllItems.call(
 								this,
 								'ListBucketResult.Contents',

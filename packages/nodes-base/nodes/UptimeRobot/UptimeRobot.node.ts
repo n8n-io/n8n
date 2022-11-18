@@ -190,7 +190,7 @@ export class UptimeRobot implements INodeType {
 						}
 
 						if (!returnAll) {
-							body.limit = this.getNodeParameter('limit', i) as number;
+							body.limit = this.getNodeParameter('limit', i);
 						}
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMonitors', body);
@@ -257,7 +257,7 @@ export class UptimeRobot implements INodeType {
 						};
 
 						if (!returnAll) {
-							body.limit = this.getNodeParameter('limit', i) as number;
+							body.limit = this.getNodeParameter('limit', i);
 						}
 
 						responseData = await uptimeRobotApiRequest.call(
@@ -334,7 +334,7 @@ export class UptimeRobot implements INodeType {
 						};
 
 						if (!returnAll) {
-							body.limit = this.getNodeParameter('limit', i) as number;
+							body.limit = this.getNodeParameter('limit', i);
 						}
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMWindows', body);
@@ -398,7 +398,7 @@ export class UptimeRobot implements INodeType {
 						};
 
 						if (!returnAll) {
-							body.limit = this.getNodeParameter('limit', i) as number;
+							body.limit = this.getNodeParameter('limit', i);
 						}
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getPSPs', body);

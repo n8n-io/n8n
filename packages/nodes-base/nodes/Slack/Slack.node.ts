@@ -381,7 +381,7 @@ export class Slack implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await slackApiRequest.call(this, 'GET', '/conversations.list', {}, qs);
 							responseData = responseData.channels;
 						}
@@ -411,7 +411,7 @@ export class Slack implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await slackApiRequest.call(
 								this,
 								'GET',
@@ -469,7 +469,7 @@ export class Slack implements INodeType {
 							);
 							responseData = responseData.map((member: string) => ({ member }));
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await slackApiRequest.call(
 								this,
 								'GET',
@@ -561,7 +561,7 @@ export class Slack implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await slackApiRequest.call(
 								this,
 								'GET',
@@ -1063,7 +1063,7 @@ export class Slack implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await slackApiRequest.call(this, 'GET', '/stars.list', {}, qs);
 							responseData = responseData.items;
 						}
@@ -1174,7 +1174,7 @@ export class Slack implements INodeType {
 								qs,
 							);
 						} else {
-							qs.count = this.getNodeParameter('limit', i) as number;
+							qs.count = this.getNodeParameter('limit', i);
 							responseData = await slackApiRequest.call(this, 'GET', '/files.list', {}, qs);
 							responseData = responseData.files;
 						}
@@ -1207,7 +1207,7 @@ export class Slack implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await slackApiRequest.call(this, 'GET', '/users.list', {}, qs);
 							responseData = responseData.members;
 						}
@@ -1289,7 +1289,7 @@ export class Slack implements INodeType {
 						responseData = responseData.usergroups;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}

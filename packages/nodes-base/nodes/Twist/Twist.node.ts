@@ -200,7 +200,7 @@ export class Twist implements INodeType {
 						responseData = await twistApiRequest.call(this, 'GET', '/channels/get', {}, qs);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -326,7 +326,7 @@ export class Twist implements INodeType {
 
 						Object.assign(qs, filters);
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						if (qs.older_than_ts) {
 							qs.older_than_ts = moment(qs.older_than_ts as string).unix();
@@ -722,7 +722,7 @@ export class Twist implements INodeType {
 
 						Object.assign(qs, filters);
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						if (qs.older_than_ts) {
 							qs.older_than_ts = moment(qs.older_than_ts as string).unix();

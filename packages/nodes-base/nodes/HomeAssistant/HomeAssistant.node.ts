@@ -207,7 +207,7 @@ export class HomeAssistant implements INodeType {
 							'/services',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'call') {
@@ -247,7 +247,7 @@ export class HomeAssistant implements INodeType {
 							'/states',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'get') {
@@ -290,7 +290,7 @@ export class HomeAssistant implements INodeType {
 							'/events',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'create') {
@@ -385,7 +385,7 @@ export class HomeAssistant implements INodeType {
 							qs,
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					}

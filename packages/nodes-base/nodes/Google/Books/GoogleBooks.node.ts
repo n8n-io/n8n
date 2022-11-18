@@ -368,7 +368,7 @@ export class GoogleBooks implements INodeType {
 								{},
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -413,7 +413,7 @@ export class GoogleBooks implements INodeType {
 								{},
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items || [];
 						}
@@ -464,7 +464,7 @@ export class GoogleBooks implements INodeType {
 								{},
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items || [];
 						}

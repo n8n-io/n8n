@@ -514,7 +514,7 @@ export class AwsTranscribe implements INodeType {
 								{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							body['MaxResults'] = limit;
 							responseData = await awsApiRequestREST.call(
 								this,

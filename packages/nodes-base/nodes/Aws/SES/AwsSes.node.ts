@@ -920,7 +920,7 @@ export class AwsSes implements INodeType {
 								'/?Action=ListCustomVerificationEmailTemplates',
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -1248,7 +1248,7 @@ export class AwsSes implements INodeType {
 								'/?Action=ListTemplates',
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await awsApiRequestSOAP.call(
 								this,

@@ -112,13 +112,15 @@ export class VenafiTlsProtectCloud implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const currentApplication: string = this.getCurrentNodeParameter('applicationId') as string;
 
-				const { certificateIssuingTemplateAliasIdMap }  = await venafiApiRequest.call(
+				const { certificateIssuingTemplateAliasIdMap } = (await venafiApiRequest.call(
 					this,
 					'GET',
 					`/outagedetection/v1/applications/${currentApplication}`,
-				) as { certificateIssuingTemplateAliasIdMap: { [key: string]: string } };
+				)) as { certificateIssuingTemplateAliasIdMap: { [key: string]: string } };
 
-				for (const [templateName, templateId] of Object.entries(certificateIssuingTemplateAliasIdMap)) {
+				for (const [templateName, templateId] of Object.entries(
+					certificateIssuingTemplateAliasIdMap,
+				)) {
 					returnData.push({
 						name: templateName,
 						value: templateId,
@@ -277,7 +279,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
@@ -420,7 +422,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',

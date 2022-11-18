@@ -266,7 +266,7 @@ export class AwsElb implements INodeType {
 								'/?Action=DescribeListenerCertificates&' + params.join('&'),
 							);
 						} else {
-							params.push(('PageSize=' + this.getNodeParameter('limit', 0)) as string);
+							params.push('PageSize=' + this.getNodeParameter('limit', 0));
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -406,7 +406,7 @@ export class AwsElb implements INodeType {
 								'/?Action=DescribeLoadBalancers&' + params.join('&'),
 							);
 						} else {
-							params.push(('PageSize=' + this.getNodeParameter('limit', 0)) as string);
+							params.push('PageSize=' + this.getNodeParameter('limit', 0));
 
 							responseData = await awsApiRequestSOAP.call(
 								this,

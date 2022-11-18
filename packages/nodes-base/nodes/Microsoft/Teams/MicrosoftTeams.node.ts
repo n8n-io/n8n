@@ -322,7 +322,7 @@ export class MicrosoftTeams implements INodeType {
 								`/v1.0/teams/${teamId}/channels`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -401,7 +401,7 @@ export class MicrosoftTeams implements INodeType {
 								`/beta/teams/${teamId}/channels/${channelId}/messages`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -454,7 +454,7 @@ export class MicrosoftTeams implements INodeType {
 								`/v1.0/chats/${chatId}/messages`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -545,7 +545,7 @@ export class MicrosoftTeams implements INodeType {
 									`/v1.0/users/${memberId}/planner/tasks`,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', i) as number;
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await microsoftApiRequestAllItems.call(
 									this,
 									'value',
@@ -566,7 +566,7 @@ export class MicrosoftTeams implements INodeType {
 									`/v1.0/planner/plans/${planId}/tasks`,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', i) as number;
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await microsoftApiRequestAllItems.call(
 									this,
 									'value',

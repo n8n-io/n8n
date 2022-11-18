@@ -103,7 +103,7 @@ export async function handleGetAll(
 	if (returnAll) {
 		return responseData.data;
 	} else {
-		const limit = this.getNodeParameter('limit', i) as number;
+		const limit = this.getNodeParameter('limit', i);
 		return responseData.data.slice(0, limit);
 	}
 }

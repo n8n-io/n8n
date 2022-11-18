@@ -215,7 +215,7 @@ export class Linear implements INodeType {
 						if (returnAll) {
 							responseData = await linearApiRequestAllItems.call(this, 'data.issues', body);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							body.variables.first = limit;
 							responseData = await linearApiRequest.call(this, body);
 							responseData = responseData.data.issues.nodes;

@@ -302,7 +302,7 @@ export class PagerDuty implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await pagerDutyApiRequest.call(this, 'GET', '/incidents', {}, qs);
 							responseData = responseData.incidents;
 						}
@@ -401,7 +401,7 @@ export class PagerDuty implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await pagerDutyApiRequest.call(
 								this,
 								'GET',
@@ -440,7 +440,7 @@ export class PagerDuty implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await pagerDutyApiRequest.call(this, 'GET', '/log_entries', {}, qs);
 							responseData = responseData.log_entries;
 						}

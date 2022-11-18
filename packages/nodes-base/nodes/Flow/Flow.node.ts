@@ -252,7 +252,7 @@ export class Flow implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await flowApiRequest.call(this, 'GET', '/tasks', {}, qs);
 							responseData = responseData.tasks;
 						}

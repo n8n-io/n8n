@@ -259,7 +259,7 @@ export class Twitter implements INodeType {
 								qs,
 							);
 						} else {
-							qs.count = this.getNodeParameter('limit', 0) as number;
+							qs.count = this.getNodeParameter('limit', 0);
 							responseData = await twitterApiRequest.call(
 								this,
 								'GET',

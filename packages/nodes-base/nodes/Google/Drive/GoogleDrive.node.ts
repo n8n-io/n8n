@@ -2216,7 +2216,7 @@ export class GoogleDrive implements INodeType {
 								qs,
 							);
 						} else {
-							qs.pageSize = this.getNodeParameter('limit', i) as number;
+							qs.pageSize = this.getNodeParameter('limit', i);
 							const data = await googleApiRequest.call(this, 'GET', `/drive/v3/drives`, {}, qs);
 							response = data.drives as IDataObject[];
 						}
@@ -2477,7 +2477,7 @@ export class GoogleDrive implements INodeType {
 							}
 						}
 
-						const pageSize = this.getNodeParameter('limit', i) as number;
+						const pageSize = this.getNodeParameter('limit', i);
 
 						const qs = {
 							pageSize,

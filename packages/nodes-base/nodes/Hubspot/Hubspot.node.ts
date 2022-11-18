@@ -1363,7 +1363,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								qs.count = this.getNodeParameter('limit', 0) as number;
+								qs.count = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.contacts;
 							}
@@ -1398,7 +1398,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								qs.count = this.getNodeParameter('limit', 0) as number;
+								qs.count = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.contacts;
 							}
@@ -1458,7 +1458,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								body.limit = this.getNodeParameter('limit', 0) as number;
+								body.limit = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 								responseData = responseData.results;
 							}
@@ -1952,7 +1952,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0) as number;
+								qs.limit = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.companies;
 							}
@@ -1980,7 +1980,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								qs.count = this.getNodeParameter('limit', 0) as number;
+								qs.count = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
@@ -2006,7 +2006,7 @@ export class Hubspot implements INodeType {
 									body,
 								);
 							} else {
-								body.limit = this.getNodeParameter('limit', 0) as number;
+								body.limit = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body);
 								responseData = responseData.results;
 							}
@@ -2190,7 +2190,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0) as number;
+								qs.limit = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.deals;
 							}
@@ -2220,7 +2220,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								qs.count = this.getNodeParameter('limit', 0) as number;
+								qs.count = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
@@ -2279,7 +2279,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								body.limit = this.getNodeParameter('limit', 0) as number;
+								body.limit = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'POST', endpoint, body, qs);
 								responseData = responseData.results;
 							}
@@ -2365,7 +2365,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0) as number;
+								qs.limit = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
 							}
@@ -2593,7 +2593,7 @@ export class Hubspot implements INodeType {
 									qs,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', 0) as number;
+								qs.limit = this.getNodeParameter('limit', 0);
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
 									'objects',

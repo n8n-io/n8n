@@ -445,7 +445,7 @@ export class Xero implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
@@ -598,7 +598,7 @@ export class Xero implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',

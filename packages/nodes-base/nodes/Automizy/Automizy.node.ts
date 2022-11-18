@@ -216,7 +216,7 @@ export class Automizy implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 
 						responseData = await automizyApiRequest.call(
 							this,
@@ -324,7 +324,7 @@ export class Automizy implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 
 						responseData = await automizyApiRequest.call(this, 'GET', `/smart-lists`, {}, qs);
 

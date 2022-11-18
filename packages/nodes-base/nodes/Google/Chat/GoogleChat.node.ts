@@ -277,7 +277,7 @@ export class GoogleChat implements INodeType {
 								`/v1/spaces`,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.pageSize = limit;
 
 							responseData = await googleApiRequest.call(this, 'GET', `/v1/spaces`, undefined, qs);
@@ -315,7 +315,7 @@ export class GoogleChat implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.pageSize = limit;
 
 							responseData = await googleApiRequest.call(

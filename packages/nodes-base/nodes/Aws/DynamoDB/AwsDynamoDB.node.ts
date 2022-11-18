@@ -383,7 +383,7 @@ export class AwsDynamoDB implements INodeType {
 								headers,
 							);
 						} else {
-							body.Limit = this.getNodeParameter('limit', 0, 1) as number;
+							body.Limit = this.getNodeParameter('limit', 0, 1);
 							responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
 							if (select !== 'COUNT') {
 								responseData = responseData.Items;

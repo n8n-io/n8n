@@ -270,7 +270,7 @@ export class CiscoWebex implements INodeType {
 								qs,
 							);
 						} else {
-							qs.max = this.getNodeParameter('limit', i) as number;
+							qs.max = this.getNodeParameter('limit', i);
 							responseData = await webexApiRequest.call(this, 'GET', '/messages', {}, qs);
 							responseData = responseData.items;
 						}
@@ -429,7 +429,7 @@ export class CiscoWebex implements INodeType {
 								qs,
 							);
 						} else {
-							qs.max = this.getNodeParameter('limit', i) as number;
+							qs.max = this.getNodeParameter('limit', i);
 							responseData = await webexApiRequest.call(this, 'GET', '/meetings', {}, qs);
 							responseData = responseData.items;
 						}
@@ -554,7 +554,7 @@ export class CiscoWebex implements INodeType {
 		// 					responseData = await webexApiRequestAllItems.call(this, 'items', 'GET', '/meetingTranscripts', {}, qs);
 		// 					returnData.push(...responseData);
 		// 				} else {
-		// 					qs.max = this.getNodeParameter('limit', i) as number;
+		// 					qs.max = this.getNodeParameter('limit', i);
 		// 					responseData = await webexApiRequest.call(this, 'GET', '/meetingTranscripts', {}, qs);
 		// 					returnData.push(...responseData.items);
 		// 				}

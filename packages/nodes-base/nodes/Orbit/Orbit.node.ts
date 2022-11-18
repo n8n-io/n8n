@@ -173,7 +173,7 @@ export class Orbit implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as boolean;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await orbitApiRequestAllItems.call(
 								this,
 								'data',
@@ -301,7 +301,7 @@ export class Orbit implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as boolean;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await orbitApiRequestAllItems.call(
 								this,
 								'data',
@@ -428,7 +428,7 @@ export class Orbit implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as boolean;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await orbitApiRequestAllItems.call(
 								this,
 								'data',
@@ -498,7 +498,7 @@ export class Orbit implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as boolean;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await orbitApiRequestAllItems.call(
 								this,
 								'data',

@@ -124,7 +124,7 @@ export class Cloudflare implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							Object.assign(qs, { per_page: limit });
 							responseData = await cloudflareApiRequest.call(
 								this,

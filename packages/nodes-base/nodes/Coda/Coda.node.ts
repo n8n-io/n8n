@@ -392,7 +392,7 @@ export class Coda implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit', 0);
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
@@ -510,7 +510,7 @@ export class Coda implements INodeType {
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
@@ -572,7 +572,7 @@ export class Coda implements INodeType {
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
@@ -634,7 +634,7 @@ export class Coda implements INodeType {
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
@@ -684,7 +684,7 @@ export class Coda implements INodeType {
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}
@@ -738,7 +738,7 @@ export class Coda implements INodeType {
 							qs,
 						);
 					} else {
-						qs.limit = this.getNodeParameter('limit', 0) as number;
+						qs.limit = this.getNodeParameter('limit', 0);
 						responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 						responseData = responseData.items;
 					}
@@ -828,7 +828,7 @@ export class Coda implements INodeType {
 						if (returnAll) {
 							responseData = await codaApiRequestAllItems.call(this, 'items', 'GET', endpoint, {});
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await codaApiRequest.call(this, 'GET', endpoint, {}, qs);
 							responseData = responseData.items;
 						}

@@ -139,7 +139,7 @@ export class Demio implements INodeType {
 						responseData = await demioApiRequest.call(this, 'GET', `/events`, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

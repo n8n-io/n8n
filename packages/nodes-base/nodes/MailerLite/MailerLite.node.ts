@@ -141,7 +141,7 @@ export class MailerLite implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 
 							responseData = await mailerliteApiRequest.call(this, 'GET', `/subscribers`, {}, qs);
 						}

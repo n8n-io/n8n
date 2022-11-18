@@ -244,7 +244,7 @@ export class Intercom implements INodeType {
 									qs,
 								);
 							} else {
-								qs.per_page = this.getNodeParameter('limit', i) as number;
+								qs.per_page = this.getNodeParameter('limit', i);
 								responseData = await intercomApiRequest.call(this, '/contacts', 'GET', {}, qs);
 								responseData = responseData.contacts;
 							}
@@ -419,7 +419,7 @@ export class Intercom implements INodeType {
 									qs,
 								);
 							} else {
-								qs.per_page = this.getNodeParameter('limit', i) as number;
+								qs.per_page = this.getNodeParameter('limit', i);
 								responseData = await intercomApiRequest.call(this, '/users', 'GET', {}, qs);
 								responseData = responseData.users;
 							}
@@ -543,7 +543,7 @@ export class Intercom implements INodeType {
 									qs,
 								);
 							} else {
-								qs.per_page = this.getNodeParameter('limit', i) as number;
+								qs.per_page = this.getNodeParameter('limit', i);
 								responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
 								responseData = responseData.companies;
 							}
@@ -576,7 +576,7 @@ export class Intercom implements INodeType {
 										qs,
 									);
 								} else {
-									qs.per_page = this.getNodeParameter('limit', i) as number;
+									qs.per_page = this.getNodeParameter('limit', i);
 									responseData = await intercomApiRequest.call(
 										this,
 										`/companies/${value}/users`,
@@ -599,7 +599,7 @@ export class Intercom implements INodeType {
 										qs,
 									);
 								} else {
-									qs.per_page = this.getNodeParameter('limit', i) as number;
+									qs.per_page = this.getNodeParameter('limit', i);
 									responseData = await intercomApiRequest.call(this, '/companies', 'GET', {}, qs);
 									responseData = responseData.users;
 								}

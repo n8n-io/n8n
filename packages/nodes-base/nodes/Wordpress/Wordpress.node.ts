@@ -285,7 +285,7 @@ export class Wordpress implements INodeType {
 						if (returnAll === true) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
 						}
 					}
@@ -407,7 +407,7 @@ export class Wordpress implements INodeType {
 						if (returnAll === true) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
 						}
 					}

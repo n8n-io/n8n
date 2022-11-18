@@ -215,7 +215,7 @@ export class Strapi implements INodeType {
 									headers,
 								);
 							} else {
-								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i) as number;
+								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i);
 								({ data: responseData } = await strapiApiRequest.call(
 									this,
 									'GET',
@@ -258,7 +258,7 @@ export class Strapi implements INodeType {
 									headers,
 								);
 							} else {
-								qs._limit = this.getNodeParameter('limit', i) as number;
+								qs._limit = this.getNodeParameter('limit', i);
 								responseData = await strapiApiRequest.call(
 									this,
 									'GET',

@@ -316,7 +316,7 @@ export class Shopify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await shopifyApiRequest.call(this, 'GET', '/orders.json', {}, qs);
 							responseData = responseData.orders;
 						}
@@ -433,7 +433,7 @@ export class Shopify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await shopifyApiRequest.call(this, 'GET', '/products.json', {}, qs);
 							responseData = responseData.products;
 						}

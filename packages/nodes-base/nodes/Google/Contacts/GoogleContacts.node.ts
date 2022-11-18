@@ -304,7 +304,7 @@ export class GoogleContacts implements INodeType {
 								responseData = responseData.map((result: IDataObject) => result.person);
 							}
 						} else {
-							qs.pageSize = this.getNodeParameter('limit', i) as number;
+							qs.pageSize = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', `/people${endpoint}`, {}, qs);
 
 							responseData =

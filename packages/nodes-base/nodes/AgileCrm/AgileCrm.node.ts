@@ -179,7 +179,7 @@ export class AgileCrm implements INodeType {
 							true,
 						);
 					} else {
-						body.page_size = this.getNodeParameter('limit', 0) as number;
+						body.page_size = this.getNodeParameter('limit', 0);
 						responseData = await agileCrmApiRequest.call(
 							this,
 							'POST',
@@ -519,7 +519,7 @@ export class AgileCrm implements INodeType {
 							page_size: limit,
 						});
 					} else {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = await agileCrmApiRequest.call(this, 'GET', endpoint, undefined, {
 							page_size: limit,
 						});

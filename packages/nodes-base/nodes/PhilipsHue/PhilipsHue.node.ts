@@ -160,7 +160,7 @@ export class PhilipsHue implements INodeType {
 					responseData = Object.values(lights);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 				}

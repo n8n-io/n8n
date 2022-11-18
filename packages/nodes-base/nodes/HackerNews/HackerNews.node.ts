@@ -289,7 +289,7 @@ export class HackerNews implements INodeType {
 						returnAll = this.getNodeParameter('returnAll', i) as boolean;
 
 						if (!returnAll) {
-							qs.hitsPerPage = this.getNodeParameter('limit', i) as number;
+							qs.hitsPerPage = this.getNodeParameter('limit', i);
 						}
 
 						endpoint = 'search?';

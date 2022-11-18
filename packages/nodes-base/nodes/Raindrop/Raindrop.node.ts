@@ -173,7 +173,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -283,7 +283,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -427,7 +427,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.slice(0, limit);
 						}
 					}

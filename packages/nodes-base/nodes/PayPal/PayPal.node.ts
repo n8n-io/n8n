@@ -201,7 +201,7 @@ export class PayPal implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await payPalApiRequest.call(
 								this,
 								`/payments/payouts/${payoutBatchId}`,

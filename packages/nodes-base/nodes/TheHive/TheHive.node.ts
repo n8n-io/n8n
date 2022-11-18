@@ -572,7 +572,7 @@ export class TheHive implements INodeType {
 						let limit = undefined;
 
 						if (returnAll === false) {
-							limit = this.getNodeParameter('limit', i) as number;
+							limit = this.getNodeParameter('limit', i);
 						}
 
 						if (version === 'v1') {
@@ -1012,7 +1012,7 @@ export class TheHive implements INodeType {
 						let limit = undefined;
 
 						if (returnAll === false) {
-							limit = this.getNodeParameter('limit', i) as number;
+							limit = this.getNodeParameter('limit', i);
 						}
 
 						if (version === 'v1') {
@@ -1107,7 +1107,7 @@ export class TheHive implements INodeType {
 						let limit = undefined;
 
 						if (returnAll === false) {
-							limit = this.getNodeParameter('limit', i) as number;
+							limit = this.getNodeParameter('limit', i);
 						}
 
 						if (version === 'v1') {
@@ -1381,7 +1381,7 @@ export class TheHive implements INodeType {
 						let limit = undefined;
 
 						if (returnAll === false) {
-							limit = this.getNodeParameter('limit', i) as number;
+							limit = this.getNodeParameter('limit', i);
 						}
 
 						if (version === 'v1') {
@@ -1617,7 +1617,7 @@ export class TheHive implements INodeType {
 						let limit = undefined;
 
 						if (returnAll === false) {
-							limit = this.getNodeParameter('limit', i) as number;
+							limit = this.getNodeParameter('limit', i);
 						}
 
 						if (version === 'v1') {
@@ -1700,7 +1700,7 @@ export class TheHive implements INodeType {
 						let limit = undefined;
 
 						if (returnAll === false) {
-							limit = this.getNodeParameter('limit', i) as number;
+							limit = this.getNodeParameter('limit', i);
 						}
 
 						if (version === 'v1') {
@@ -1935,7 +1935,7 @@ export class TheHive implements INodeType {
 						let limit = undefined;
 
 						if (returnAll === false) {
-							limit = this.getNodeParameter('limit', i) as number;
+							limit = this.getNodeParameter('limit', i);
 						}
 
 						if (version === 'v1') {
