@@ -124,7 +124,7 @@ export class Raindrop implements INodeType {
 							},
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -185,7 +185,7 @@ export class Raindrop implements INodeType {
 
 						const body = {} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -233,7 +233,7 @@ export class Raindrop implements INodeType {
 							title: this.getNodeParameter('title', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -295,7 +295,7 @@ export class Raindrop implements INodeType {
 
 						const body = {} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -401,7 +401,7 @@ export class Raindrop implements INodeType {
 							tags: (this.getNodeParameter('tags', i) as string).split(',') as string[],
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.collectionId) {
 							endpoint += `/${additionalFields.collectionId}`;
@@ -417,7 +417,7 @@ export class Raindrop implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const filter = this.getNodeParameter('filters', i) as IDataObject;
+						const filter = this.getNodeParameter('filters', i);
 
 						if (filter.collectionId) {
 							endpoint += `/${filter.collectionId}`;

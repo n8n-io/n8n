@@ -392,7 +392,7 @@ export class ApiTemplateIo implements INodeType {
 
 						let options: IDataObject = {};
 						if (download) {
-							options = this.getNodeParameter('options', i) as IDataObject;
+							options = this.getNodeParameter('options', i);
 						}
 
 						const qs = {
@@ -483,7 +483,7 @@ export class ApiTemplateIo implements INodeType {
 
 						let options: IDataObject = {};
 						if (download) {
-							options = this.getNodeParameter('options', i) as IDataObject;
+							options = this.getNodeParameter('options', i);
 						}
 
 						const qs = {

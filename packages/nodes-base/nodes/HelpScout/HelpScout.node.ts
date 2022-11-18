@@ -163,7 +163,7 @@ export class HelpScout implements INodeType {
 						const subject = this.getNodeParameter('subject', i) as string;
 						const type = this.getNodeParameter('type', i) as string;
 						const resolveData = this.getNodeParameter('resolveData', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const threads = (this.getNodeParameter('threadsUi', i) as IDataObject)
 							.threadsValues as IDataObject[];
 						const body: IConversation = {
@@ -247,7 +247,7 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
@@ -276,7 +276,7 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/create
 					if (operation === 'create') {
 						const resolveData = this.getNodeParameter('resolveData', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const chats = (this.getNodeParameter('chatsUi', i) as IDataObject)
 							.chatsValues as IDataObject[];
 						const address = (this.getNodeParameter('addressUi', i) as IDataObject)
@@ -361,7 +361,7 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(qs, options);
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
@@ -388,7 +388,7 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/overwrite/
 					if (operation === 'update') {
 						const customerId = this.getNodeParameter('customerId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						let body: ICustomer = {};
 						body = Object.assign({}, updateFields);
 						if (body.age) {
@@ -455,7 +455,7 @@ export class HelpScout implements INodeType {
 						const conversationId = this.getNodeParameter('conversationId', i) as string;
 						const _type = this.getNodeParameter('type', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const attachments = this.getNodeParameter('attachmentsUi', i) as IDataObject;
 						const body: IThread = {
 							text,

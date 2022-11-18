@@ -106,7 +106,7 @@ export class Tapfiliate implements INodeType {
 						const firstname = this.getNodeParameter('firstname', i) as string;
 						const lastname = this.getNodeParameter('lastname', i) as string;
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							firstname,
 							lastname,
@@ -155,7 +155,7 @@ export class Tapfiliate implements INodeType {
 					if (operation === 'getAll') {
 						//https://tapfiliate.com/docs/rest/#affiliates-affiliates-collection-get
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
 						if (returnAll) {
 							responseData = await tapfiliateApiRequestAllItems.call(
@@ -223,7 +223,7 @@ export class Tapfiliate implements INodeType {
 						//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-post
 						const programId = this.getNodeParameter('programId', i) as string;
 						const affiliateId = this.getNodeParameter('affiliateId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							affiliate: {
 								id: affiliateId,
@@ -272,7 +272,7 @@ export class Tapfiliate implements INodeType {
 						//https://tapfiliate.com/docs/rest/#programs-program-affiliates-collection-get
 						const programId = this.getNodeParameter('programId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						Object.assign(qs, filters);
 						if (returnAll) {
 							responseData = await tapfiliateApiRequestAllItems.call(

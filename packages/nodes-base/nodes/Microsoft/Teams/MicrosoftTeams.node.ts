@@ -272,7 +272,7 @@ export class MicrosoftTeams implements INodeType {
 					if (operation === 'create') {
 						const teamId = this.getNodeParameter('teamId', i) as string;
 						const name = this.getNodeParameter('name', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {
 							displayName: name,
 						};
@@ -337,7 +337,7 @@ export class MicrosoftTeams implements INodeType {
 					if (operation === 'update') {
 						const teamId = this.getNodeParameter('teamId', i) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {};
 						if (updateFields.name) {
 							body.displayName = updateFields.name as string;
@@ -362,7 +362,7 @@ export class MicrosoftTeams implements INodeType {
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const messageType = this.getNodeParameter('messageType', i) as string;
 						const message = this.getNodeParameter('message', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {
 							body: {
@@ -472,7 +472,7 @@ export class MicrosoftTeams implements INodeType {
 						const planId = this.getNodeParameter('planId', i) as string;
 						const bucketId = this.getNodeParameter('bucketId', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							planId,
 							bucketId,
@@ -581,7 +581,7 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/plannertask-update?view=graph-rest-1.0&tabs=http
 					if (operation === 'update') {
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {};
 						Object.assign(body, updateFields);
 
