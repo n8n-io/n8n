@@ -27,14 +27,16 @@
 				:stickyOffset="4"
 				@drop="onDrop"
 			>
-				<template v-slot="{ droppable, activeDrop }">
+				<template #default="{ droppable, activeDrop }">
 					<n8n-tooltip
 						placement="left"
 						:manual="true"
 						:value="showMappingTooltip"
 						:buttons="dataMappingTooltipButtons"
 					>
-						<span slot="content" v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })" />
+						<template #content>
+							<span v-html="$locale.baseText(`dataMapping.${displayMode}Hint`, { interpolate: { name: parameter.displayName } })" />
+						</template>
 						<parameter-input-wrapper
 							ref="param"
 							:parameter="parameter"

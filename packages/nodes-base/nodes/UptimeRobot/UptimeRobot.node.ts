@@ -161,8 +161,8 @@ export class UptimeRobot implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 
 						body = {
 							...filters,
@@ -190,7 +190,7 @@ export class UptimeRobot implements INodeType {
 						}
 
 						if (!returnAll) {
-							body.limit = this.getNodeParameter('limit', i) as number;
+							body.limit = this.getNodeParameter('limit', i);
 						}
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMonitors', body);
@@ -250,14 +250,14 @@ export class UptimeRobot implements INodeType {
 						responseData = responseData.alert_contacts;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						body = {
 							...(this.getNodeParameter('filters', i) as IDataObject),
 						};
 
 						if (!returnAll) {
-							body.limit = this.getNodeParameter('limit', i) as number;
+							body.limit = this.getNodeParameter('limit', i);
 						}
 
 						responseData = await uptimeRobotApiRequest.call(
@@ -327,14 +327,14 @@ export class UptimeRobot implements INodeType {
 						responseData = responseData.mwindows;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						body = {
 							...(this.getNodeParameter('filters', i) as IDataObject),
 						};
 
 						if (!returnAll) {
-							body.limit = this.getNodeParameter('limit', i) as number;
+							body.limit = this.getNodeParameter('limit', i);
 						}
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getMWindows', body);
@@ -391,14 +391,14 @@ export class UptimeRobot implements INodeType {
 						responseData = responseData.psps;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						body = {
 							...(this.getNodeParameter('filters', i) as IDataObject),
 						};
 
 						if (!returnAll) {
-							body.limit = this.getNodeParameter('limit', i) as number;
+							body.limit = this.getNodeParameter('limit', i);
 						}
 
 						responseData = await uptimeRobotApiRequest.call(this, 'POST', '/getPSPs', body);

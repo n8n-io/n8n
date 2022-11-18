@@ -215,7 +215,7 @@ export class Webflow implements INodeType {
 
 						// https://developers.webflow.com/#get-all-items-for-a-collection
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const collectionId = this.getNodeParameter('collectionId', i) as string;
 						const qs: IDataObject = {};
 
@@ -228,7 +228,7 @@ export class Webflow implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await webflowApiRequest.call(
 								this,
 								'GET',

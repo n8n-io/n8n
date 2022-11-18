@@ -1,6 +1,6 @@
 <template>
 	<TemplatesView :goBackEnabled="true">
-		<template v-slot:header>
+		<template #header>
 			<div v-if="!notFoundError" :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading v-if="template && template.name" tag="h1" size="2xlarge">{{
@@ -25,7 +25,7 @@
 				<n8n-text color="text-base">{{ $locale.baseText('templates.workflowsNotFound') }}</n8n-text>
 			</div>
 		</template>
-		<template v-if="!notFoundError" v-slot:content>
+		<template v-if="!notFoundError" #content>
 			<div :class="$style.image">
 				<WorkflowPreview
 					v-if="showPreview"

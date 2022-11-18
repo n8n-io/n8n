@@ -1,6 +1,6 @@
 <template>
 	<TemplatesView>
-		<template v-slot:header>
+		<template #header>
 			<div :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading tag="h1" size="2xlarge">
@@ -16,7 +16,7 @@
 				</div>
 			</div>
 		</template>
-		<template v-slot:content>
+		<template #content>
 			<div :class="$style.contentWrapper">
 				<div :class="$style.filters">
 					<TemplateFilters
@@ -37,7 +37,9 @@
 						@blur="trackSearch"
 						clearable
 					>
-						<font-awesome-icon icon="search" slot="prefix" />
+						<template #prefix>
+							<font-awesome-icon icon="search" />
+						</template>
 					</n8n-input>
 					<div :class="$style.carouselContainer" v-show="collections.length || loadingCollections">
 						<div :class="$style.header">

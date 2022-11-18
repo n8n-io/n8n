@@ -104,18 +104,18 @@
 									@blur="onInputBlur"
 								>
 									<div
-										v-if="isListMode"
-										slot="suffix"
-									>
-										<i
-											:class="{
-												['el-input__icon']: true,
-												['el-icon-arrow-down']: true,
-												[$style.selectIcon]: true,
-												[$style.isReverse]: showResourceDropdown,
-											}"
-										></i>
-									</div>
+											v-if="isListMode"
+											slot="suffix"
+										>
+											<i
+												:class="{
+													['el-input__icon']: true,
+													['el-icon-arrow-down']: true,
+													[$style.selectIcon]: true,
+													[$style.isReverse]: showResourceDropdown,
+												}"
+											></i>
+										</div>
 								</n8n-input>
 							</div>
 						</template>

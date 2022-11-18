@@ -11,10 +11,10 @@
 		:style="styles"
 		append-to-body
 	>
-		<template v-slot:title v-if="$scopedSlots.header">
+		<template #title v-if="$scopedSlots.header">
 			<slot name="header" v-if="!loading" />
 		</template>
-		<template v-slot:title v-else-if="title">
+		<template #title v-else-if="title">
 			<div :class="centerTitle ? $style.centerTitle : ''">
 				<div v-if="title">
 					<n8n-heading tag="h1" size="xlarge">{{title}}</n8n-heading>

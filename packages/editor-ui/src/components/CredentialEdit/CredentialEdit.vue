@@ -8,7 +8,7 @@
 		width="70%"
 		height="80%"
 	>
-		<template slot="header">
+		<template #header>
 			<div :class="$style.header">
 				<div :class="$style.credInfo">
 					<div :class="$style.credIcon">
@@ -46,7 +46,7 @@
 			</div>
 			<hr />
 		</template>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<div :class="$style.sidebar">
 					<n8n-menu mode="tabs" :items="sidebarItems" @select="onTabSelect" ></n8n-menu>

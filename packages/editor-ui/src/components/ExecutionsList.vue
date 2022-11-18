@@ -5,7 +5,7 @@
 		:title="`${$locale.baseText('executionsList.workflowExecutions')} ${combinedExecutions.length}/${finishedExecutionsCountEstimated === true ? '~' : ''}${combinedExecutionsCount}`"
 		:eventBus="modalBus"
 	>
-		<template v-slot:content>
+		<template #content>
 
 			<div class="filters">
 				<el-row>
@@ -50,21 +50,21 @@
 			<el-table :data="combinedExecutions" stripe v-loading="isDataLoading" :row-class-name="getRowClass">
 				<el-table-column label="" width="30">
 					<!-- eslint-disable-next-line vue/no-unused-vars -->
-					<template slot="header" slot-scope="scope">
+					<template #header="scope" >
 						<el-checkbox :indeterminate="isIndeterminate" v-model="checkAll" @change="handleCheckAllChange" label=" "></el-checkbox>
 					</template>
-					<template slot-scope="scope">
+					<template #default="scope">
 						<el-checkbox v-if="scope.row.stoppedAt !== undefined && scope.row.id" :value="selectedItems[scope.row.id.toString()] || checkAll" @change="handleCheckboxChanged(scope.row.id)" label=" "></el-checkbox>
 					</template>
 				</el-table-column>
 				<el-table-column property="startedAt" :label="$locale.baseText('executionsList.startedAtId')" width="205">
-					<template slot-scope="scope">
+					<template #default="scope">
 						{{convertToDisplayDate(scope.row.startedAt)}}<br />
 						<small v-if="scope.row.id">ID: {{scope.row.id}}</small>
 					</template>
 				</el-table-column>
 				<el-table-column property="workflowName" :label="$locale.baseText('executionsList.name')">
-					<template slot-scope="scope">
+					<template #default="scope">
 						<div class="ph-no-capture">
 							<span class="workflow-name">
 								{{ scope.row.workflowName || $locale.baseText('executionsList.unsavedWorkflow') }}
@@ -83,9 +83,11 @@
 					</template>
 				</el-table-column>
 				<el-table-column :label="$locale.baseText('executionsList.status')" width="122" align="center">
-					<template slot-scope="scope" align="center">
+					<template #default="scope" align="center">
 						<n8n-tooltip placement="top" >
-							<div slot="content" v-html="statusTooltipText(scope.row)"></div>
+							<template #content>
+								<div v-html="statusTooltipText(scope.row)"></div>
+							</template>
 							<span class="status-badge running" v-if="scope.row.waitTill">
 								{{ $locale.baseText('executionsList.waiting') }}
 							</span>
@@ -114,25 +116,27 @@
 									icon="redo"
 								/>
 							</span>
-							<el-dropdown-menu slot="dropdown">
-								<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">
-									{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-								</el-dropdown-item>
-								<el-dropdown-item :command="{command: 'original', row: scope.row}">
-									{{ $locale.baseText('executionsList.retryWithOriginalworkflow') }}
-								</el-dropdown-item>
-							</el-dropdown-menu>
+							<template #dropdown>
+								<el-dropdown-menu>
+									<el-dropdown-item :command="{command: 'currentlySaved', row: scope.row}">
+										{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+									</el-dropdown-item>
+									<el-dropdown-item :command="{command: 'original', row: scope.row}">
+										{{ $locale.baseText('executionsList.retryWithOriginalworkflow') }}
+									</el-dropdown-item>
+								</el-dropdown-menu>
+							</template>
 						</el-dropdown>
 
 					</template>
 				</el-table-column>
 				<el-table-column property="mode" :label="$locale.baseText('executionsList.mode')" width="100" align="center">
-					<template slot-scope="scope">
+					<template #default="scope">
 						{{ $locale.baseText(`executionsList.modes.${scope.row.mode}`) }}
 					</template>
 				</el-table-column>
 				<el-table-column :label="$locale.baseText('executionsList.runningTime')" width="150" align="center">
-					<template slot-scope="scope">
+					<template #default="scope">
 						<span v-if="scope.row.stoppedAt === undefined">
 							<font-awesome-icon icon="spinner" spin />
 							<execution-time :start-time="scope.row.startedAt"/>
@@ -147,7 +151,7 @@
 					</template>
 				</el-table-column>
 				<el-table-column label="" width="100" align="center">
-					<template slot-scope="scope">
+					<template #default="scope">
 						<div class="actions-container">
 							<span v-if="scope.row.stoppedAt === undefined || scope.row.waitTill">
 								<n8n-icon-button icon="stop" size="small" :title="$locale.baseText('executionsList.stopExecution')" @click.stop="stopExecution(scope.row.id)" :loading="stoppingExecutions.includes(scope.row.id)" />

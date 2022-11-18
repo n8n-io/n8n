@@ -38,7 +38,7 @@ importers:
       turbo: 1.5.5
       typescript: ^4.8.4
     dependencies:
-      n8n: 'link:'
+      n8n: link:packages/cli
     devDependencies:
       '@n8n_io/eslint-config': link:packages/@n8n_io/eslint-config
       '@ngneat/falso': 6.1.0
@@ -170,7 +170,7 @@ importers:
       mysql2: ~2.3.0
       n8n-core: ~0.143.0
       n8n-editor-ui: ~0.169.0
-      n8n-nodes-base: ~0.201.0
+      n8n-nodes-base: ~0.201.1
       n8n-workflow: ~0.125.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
@@ -471,7 +471,6 @@ importers:
       '@fortawesome/free-regular-svg-icons': ^6.1.1
       '@fortawesome/free-solid-svg-icons': ^5.15.3
       '@fortawesome/vue-fontawesome': ^2.0.2
-      '@intlify/vue-i18n-loader': ^1.1.0
       '@pinia/testing': ^0.0.14
       '@testing-library/jest-dom': ^5.16.5
       '@testing-library/vue': ^5.8.3
@@ -487,7 +486,6 @@ importers:
       '@types/uuid': ^8.3.2
       '@vitejs/plugin-legacy': ^1.8.2
       '@vitejs/plugin-vue2': ^1.1.2
-      '@yfwz100/vite-plugin-vue2-i18n': ^1.0.0-2
       axios: ^0.21.1
       c8: ^7.12.0
       dateformat: ^3.0.3
@@ -592,7 +590,6 @@ importers:
       vue2-touch-events: 3.2.2
       xss: 1.0.14
     devDependencies:
-      '@intlify/vue-i18n-loader': 1.1.0
       '@pinia/testing': 0.0.14_pinia@2.0.23+vue@2.7.13
       '@testing-library/jest-dom': 5.16.5
       '@testing-library/vue': 5.8.3_2s2ymob7v2oigx3hqbmnjuqthq
@@ -608,7 +605,6 @@ importers:
       '@types/uuid': 8.3.4
       '@vitejs/plugin-legacy': 1.8.2_vite@2.9.5
       '@vitejs/plugin-vue2': 1.1.2_vite@2.9.5+vue@2.7.13
-      '@yfwz100/vite-plugin-vue2-i18n': 1.0.0-3_vite@2.9.5
       c8: 7.12.0
       jshint: 2.13.5
       sass: 1.55.0
@@ -2862,20 +2858,6 @@ packages:
       readable-stream: 1.1.14
       xregexp: 2.0.0
     dev: false
-
-  /@intlify/shared/9.2.2:
-    resolution: {integrity: sha512-wRwTpsslgZS5HNyM7uDQYZtxnbI12aGiBZURX3BTR9RFIKKRWpllTsgzHWvj3HKm3Y2Sh5LPC1r0PDCKEhVn9Q==}
-    engines: {node: '>= 14'}
-    dev: true
-
-  /@intlify/vue-i18n-loader/1.1.0:
-    resolution: {integrity: sha512-9LXiztMtYKTE8t/hRwwGUp+ofrwU0sxLQLzFEOZ38zvn0DonUIQmZUj1cfz5p1Lu8BllxKbCrn6HnsRJ+LYA6g==}
-    engines: {node: '>= 10'}
-    dependencies:
-      '@intlify/shared': 9.2.2
-      js-yaml: 3.14.1
-      json5: 2.2.1
-    dev: true
 
   /@istanbuljs/load-nyc-config/1.1.0:
     resolution: {integrity: sha512-VjeHSlIzpv/NyD3N0YuHfXOPDIixcA1q2ZV98wsMqcYlPmv2n3Yb2lYP9XMElnaFVXg5A7YLTeLu6V84uQDjmQ==}
@@ -6877,14 +6859,6 @@ packages:
     resolution: {integrity: sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==}
     dev: true
 
-  /@yfwz100/vite-plugin-vue2-i18n/1.0.0-3_vite@2.9.5:
-    resolution: {integrity: sha512-HlhVMhrOpBHlkkdSm5wQ6YN65ZqdF9YqP7HS1at6NjQgEOIhBiP7tRZ+dYM3ymztKAX0ovhyKCY9ZnQ/GMK0Qg==}
-    peerDependencies:
-      vite: ^2.1.5 || ^3.0.5
-    dependencies:
-      vite: 2.9.5_sass@1.55.0
-    dev: true
-
   /a-sync-waterfall/1.0.1:
     resolution: {integrity: sha512-RYTOHHdWipFUliRFMCS4X2Yn2X8M87V/OpSqWzKKOGhzqyUxzyVmhHDH9sAvG+ZuQf/TAOFsLCpMw09I1ufUnA==}
     dev: false
@@ -7622,7 +7596,7 @@ packages:
   /axios/0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2_debug@3.2.7
+      follow-redirects: 1.15.2
     transitivePeerDependencies:
       - debug
     dev: false
@@ -11844,6 +11818,16 @@ packages:
 
   /fn.name/1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
+    dev: false
+
+  /follow-redirects/1.15.2:
+    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
     dev: false
 
   /follow-redirects/1.15.2_debug@3.2.7:
