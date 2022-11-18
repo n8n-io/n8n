@@ -133,4 +133,4 @@ export const collectionFields: INodeProperties[] = [
 export type CollectionUpdateFields = IDataObject & {
 	groups: string[];
 	externalId: string;
-}
+};
