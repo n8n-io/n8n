@@ -80,7 +80,6 @@
     "xss": "^1.0.10"
   },
   "devDependencies": {
-    "@intlify/vue-i18n-loader": "^1.1.0",
     "@pinia/testing": "^0.0.14",
     "@testing-library/jest-dom": "^5.16.5",
     "@testing-library/vue": "^5.8.3",
@@ -96,7 +95,6 @@
     "@types/uuid": "^8.3.2",
     "@vitejs/plugin-legacy": "^1.8.2",
     "@vitejs/plugin-vue2": "^1.1.2",
-    "@yfwz100/vite-plugin-vue2-i18n": "^1.0.0-2",
     "c8": "^7.12.0",
     "jshint": "^2.9.7",
     "sass": "^1.55.0",

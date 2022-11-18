@@ -1,6 +1,6 @@
 <template>
 	<ResizeObserver :breakpoints="[{ bp: 'md', width: 500 }]">
-		<template v-slot="{ bp }">
+		<template #default="{ bp }">
 			<div :class="bp === 'md' || columnView ? $style.grid : $style.gridMulti">
 				<div v-for="input in filteredInputs" :key="input.name">
 					<n8n-text

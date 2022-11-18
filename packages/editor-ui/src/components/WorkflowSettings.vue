@@ -7,13 +7,15 @@
 		:eventBus="modalBus"
 		:scrollable="true"
 	>
-		<template v-slot:content>
+		<template #content>
 			<div v-loading="isLoading" class="workflow-settings">
 				<el-row>
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.errorWorkflow') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-html="helpTexts.errorWorkflow"></div>
+							<template #content>
+								<div v-html="helpTexts.errorWorkflow"></div>
+							</template>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -32,7 +34,9 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timezone') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-text="helpTexts.timezone"></div>
+							<template #content>
+								<div v-text="helpTexts.timezone"></div>
+							</template>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -51,7 +55,9 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveDataErrorExecution') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-text="helpTexts.saveDataErrorExecution"></div>
+							<template #content>
+								<div v-text="helpTexts.saveDataErrorExecution"></div>
+							</template>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -70,7 +76,9 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveDataSuccessExecution') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-text="helpTexts.saveDataSuccessExecution"></div>
+							<template #content>
+								<div v-text="helpTexts.saveDataSuccessExecution"></div>
+							</template>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -89,7 +97,9 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveManualExecutions') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-text="helpTexts.saveManualExecutions"></div>
+							<template #content>
+								<div v-text="helpTexts.saveManualExecutions"></div>
+							</template>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -108,7 +118,9 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.saveExecutionProgress') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-text="helpTexts.saveExecutionProgress"></div>
+							<template #content>
+								<div v-text="helpTexts.saveExecutionProgress"></div>
+							</template>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -128,7 +140,9 @@
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerPolicy') + ":" }}
 							<n8n-tooltip class="setting-info" placement="top" >
-								<div slot="content" v-text="helpTexts.workflowCallerPolicy"></div>
+								<template #content>
+									<div v-text="helpTexts.workflowCallerPolicy"></div>
+								</template>
 								<font-awesome-icon icon="question-circle" />
 							</n8n-tooltip>
 						</el-col>
@@ -148,7 +162,9 @@
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.callerIds') + ":" }}
 							<n8n-tooltip class="setting-info" placement="top" >
-								<div slot="content" v-text="helpTexts.workflowCallerIds"></div>
+								<template #content>
+									<div v-text="helpTexts.workflowCallerIds"></div>
+								</template>
 								<font-awesome-icon icon="question-circle" />
 							</n8n-tooltip>
 						</el-col>
@@ -166,7 +182,9 @@
 					<el-col :span="10" class="setting-name">
 						{{ $locale.baseText('workflowSettings.timeoutWorkflow') + ":" }}
 						<n8n-tooltip class="setting-info" placement="top" >
-							<div slot="content" v-text="helpTexts.executionTimeoutToggle"></div>
+							<template #content>
+								<div v-text="helpTexts.executionTimeoutToggle"></div>
+							</template>
 							<font-awesome-icon icon="question-circle" />
 						</n8n-tooltip>
 					</el-col>
@@ -181,30 +199,32 @@
 						<el-col :span="10" class="setting-name">
 							{{ $locale.baseText('workflowSettings.timeoutAfter') + ":" }}
 							<n8n-tooltip class="setting-info" placement="top" >
-								<div slot="content" v-text="helpTexts.executionTimeout"></div>
+								<template #content>
+									<div v-text="helpTexts.executionTimeout"></div>
+								</template>
 								<font-awesome-icon icon="question-circle" />
 							</n8n-tooltip>
 						</el-col>
 						<el-col :span="4">
 							<n8n-input size="medium" :value="timeoutHMS.hours" @input="(value) => setTimeout('hours', value)" :min="0">
-								<template slot="append">{{ $locale.baseText('workflowSettings.hours') }}</template>
+								<template #append>{{ $locale.baseText('workflowSettings.hours') }}</template>
 							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input size="medium" :value="timeoutHMS.minutes" @input="(value) => setTimeout('minutes', value)" :min="0" :max="60">
-								<template slot="append">{{ $locale.baseText('workflowSettings.minutes') }}</template>
+								<template #append>{{ $locale.baseText('workflowSettings.minutes') }}</template>
 							</n8n-input>
 						</el-col>
 						<el-col :span="4" class="timeout-input">
 							<n8n-input size="medium" :value="timeoutHMS.seconds" @input="(value) => setTimeout('seconds', value)" :min="0" :max="60">
-								<template slot="append">{{ $locale.baseText('workflowSettings.seconds') }}</template>
+								<template #append>{{ $locale.baseText('workflowSettings.seconds') }}</template>
 							</n8n-input>
 						</el-col>
 					</el-row>
 				</div>
 			</div>
 		</template>
-		<template v-slot:footer>
+		<template #footer>
 			<div class="action-buttons">
 				<n8n-button :label="$locale.baseText('workflowSettings.save')" size="large" float="right" @click="saveSettings" />
 			</div>
