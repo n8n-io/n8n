@@ -87,7 +87,6 @@ export class MicrosoftTeams implements INodeType {
 			async getChats(
 				this: ILoadOptionsFunctions,
 				filter?: string,
-				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
 				const qs: IDataObject = {
@@ -278,30 +277,6 @@ export class MicrosoftTeams implements INodeType {
 							value: key,
 						});
 					}
-				}
-				return returnData;
-			},
-			// Get all the chats to display them to user so that they can
-			// select them easily
-			async getChats(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const qs: IDataObject = {
-					$expand: 'members',
-				};
-				const { value } = await microsoftApiRequest.call(this, 'GET', '/v1.0/chats', {}, qs);
-				for (const chat of value) {
-					if (!chat.topic) {
-						chat.topic = chat.members
-							.filter((member: IDataObject) => member.displayName)
-							.map((member: IDataObject) => member.displayName)
-							.join(', ');
-					}
-					const chatName = `${chat.topic || '(no title) - ' + chat.id} (${chat.chatType})`;
-					const chatId = chat.id;
-					returnData.push({
-						name: chatName,
-						value: chatId,
-					});
 				}
 				return returnData;
 			},
