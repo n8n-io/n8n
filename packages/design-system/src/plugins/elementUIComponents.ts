@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 import CollapseTransition from 'element-ui/lib/transitions/collapse-transition';
 import Drawer from 'element-ui/lib/drawer';

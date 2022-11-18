@@ -39,9 +39,9 @@
 import ElSkeleton from 'element-ui/lib/skeleton';
 import ElSkeletonItem from 'element-ui/lib/skeleton-item';
 
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-loading',
 	components: {
 		ElSkeleton, // eslint-disable-line @typescript-eslint/no-unsafe-assignment

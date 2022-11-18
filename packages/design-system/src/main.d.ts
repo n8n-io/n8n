@@ -1,4 +1,4 @@
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import * as locale from './locale';
 
 declare module 'vue/types/vue' {

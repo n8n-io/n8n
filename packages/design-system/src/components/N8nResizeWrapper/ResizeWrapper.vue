@@ -13,7 +13,7 @@
 
 <script lang="ts">
 /* eslint-disable @typescript-eslint/unbound-method */
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 function closestNumber(value: number, divisor: number): number {
 	const q = value / divisor;
@@ -46,7 +46,7 @@ const directionsCursorMaps: { [key: string]: string } = {
 	bottomRight: 'se-resize',
 };
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-resize',
 	props: {
 		isResizingEnabled: {

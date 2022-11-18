@@ -29,12 +29,12 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nFormInput from '../N8nFormInput';
 import type { IFormInput } from '../../types';
 import ResizeObserver from '../ResizeObserver';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-form-inputs',
 	components: {
 		N8nFormInput,
@@ -64,7 +64,7 @@ export default Vue.extend({
 	mounted() {
 		(this.inputs as IFormInput[]).forEach((input) => {
 			if (input.hasOwnProperty('initialValue')) {
-				Vue.set(this.values, input.name, input.initialValue);
+				this.values[input.name] = input.initialValue;
 			}
 		});
 
@@ -97,7 +97,7 @@ export default Vue.extend({
 			this.$emit('input', { name, value }); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		},
 		onValidate(name: string, valid: boolean) {
-			Vue.set(this.validity, name, valid);
+			this.validity[name] = valid;
 		},
 		onSubmit() {
 			this.showValidationWarnings = true;

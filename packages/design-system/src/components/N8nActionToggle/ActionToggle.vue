@@ -39,9 +39,9 @@ import ElDropdown from 'element-ui/lib/dropdown';
 import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
 import ElDropdownItem from 'element-ui/lib/dropdown-item';
 import N8nIcon from '../N8nIcon';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-action-toggle',
 	components: {
 		ElDropdown, // eslint-disable-line @typescript-eslint/no-unsafe-assignment

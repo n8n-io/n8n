@@ -37,13 +37,13 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nFormInputs from '../N8nFormInputs';
 import N8nHeading from '../N8nHeading';
 import N8nLink from '../N8nLink';
 import N8nButton from '../N8nButton';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-form-box',
 	components: {
 		N8nHeading,

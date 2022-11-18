@@ -18,14 +18,14 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'sizes',
 	data() {
 		return {
 			observer: null as null | MutationObserver,
-			sizes: {},
+			sizes: {} as Record<string, { rem: string; px: string; }>,
 		};
 	},
 	props: {
@@ -44,7 +44,7 @@ export default Vue.extend({
 				const rem = style.getPropertyValue(variable);
 				const px = parseFloat(rem.replace('rem', '')) * 16;
 
-				Vue.set(this.sizes, variable, { rem, px });
+				this.sizes[variable] = { rem, px };
 			});
 		};
 

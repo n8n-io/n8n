@@ -15,7 +15,7 @@
 			:size="computedSize"
 			:class="$style[classes]"
 			:popper-class="popperClass"
-			v-on="$listeners"
+			v-bind="$attrs"
 			ref="innerSelect"
 		>
 			<template #prefix>
@@ -33,7 +33,7 @@
 
 <script lang="ts">
 import ElSelect from 'element-ui/lib/select';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
 export interface IProps {
 	size?: string;
@@ -41,7 +41,7 @@ export interface IProps {
 	popperClass?: string;
 }
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-select',
 	components: {
 		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment

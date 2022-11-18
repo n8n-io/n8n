@@ -7,7 +7,7 @@
 				[$style['disabled']]: this.disabled,
 			}"
 			:style="iconStyleData"
-			v-on="$listeners"
+			v-bind="$attrs"
 		>
 			<n8n-tooltip placement="top" :disabled="!showTooltip">
 				<template #content>{{ nodeTypeName }}</template>
@@ -25,11 +25,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nTooltip from '../N8nTooltip';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-node-icon',
 	components: {
 		N8nTooltip,

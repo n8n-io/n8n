@@ -17,11 +17,11 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import ElCheckbox from 'element-ui/lib/checkbox';
 import N8nInputLabel from '../N8nInputLabel';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-checkbox',
 	components: {
 		ElCheckbox, // eslint-disable-line @typescript-eslint/no-unsafe-assignment

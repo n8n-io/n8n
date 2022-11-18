@@ -1,5 +1,5 @@
 import defaultLang from '../locale/lang/en';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import Format from './format';
 
 import ElementLocale from 'element-ui/lib/locale';

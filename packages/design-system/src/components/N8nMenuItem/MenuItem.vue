@@ -74,9 +74,9 @@ import ElMenuItem from 'element-ui/lib/menu-item';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import { IMenuItem } from '../../types';
-import Vue, { PropType } from 'vue';
+import { defineComponent, PropType } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-menu-item',
 	components: {
 		ElSubmenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment

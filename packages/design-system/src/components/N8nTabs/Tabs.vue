@@ -49,10 +49,10 @@
 </template>
 
 <script lang="ts">
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 import N8nIcon from '../N8nIcon';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'N8nTabs',
 	components: {
 		N8nIcon,

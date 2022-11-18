@@ -36,11 +36,14 @@ import { IUser } from '../../types';
 import ElSelect from 'element-ui/lib/select';
 import ElOption from 'element-ui/lib/option';
 import Locale from '../../mixins/locale';
-import mixins from 'vue-typed-mixins';
 import { t } from '../../locale';
+import {defineComponent} from "vue";
 
-export default mixins(Locale).extend({
+export default defineComponent({
 	name: 'n8n-user-select',
+	mixins: [
+		Locale,
+	],
 	components: {
 		N8nUserInfo,
 		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment

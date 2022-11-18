@@ -1,19 +1,20 @@
 <template>
-	<span :class="['n8n-avatar', $style.container]" v-on="$listeners">
-		<avatar
-			v-if="firstName"
-			:size="getSize(size)"
-			:name="firstName + ' ' + lastName"
-			variant="marble"
-			:colors="getColors(colors)"
-		/>
+	<span :class="['n8n-avatar', $style.container]" v-bind="$attrs">
+<!--		<avatar-->
+<!--			v-if="firstName"-->
+<!--			:size="getSize(size)"-->
+<!--			:name="firstName + ' ' + lastName"-->
+<!--			variant="marble"-->
+<!--			:colors="getColors(colors)"-->
+<!--		/>-->
 		<div v-else :class="[$style.empty, $style[size]]"></div>
 		<span v-if="firstName" :class="$style.initials">{{ initials }}</span>
 	</span>
 </template>
 
 <script lang="ts">
-import Avatar from 'vue2-boring-avatars';
+// import Avatar from 'vue2-boring-avatars';
+import { defineComponent } from 'vue';
 
 const sizes: { [size: string]: number } = {
 	small: 28,
@@ -21,9 +22,7 @@ const sizes: { [size: string]: number } = {
 	medium: 40,
 };
 
-import Vue from 'vue';
-
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-avatar',
 	props: {
 		firstName: {
@@ -47,7 +46,7 @@ export default Vue.extend({
 		},
 	},
 	components: {
-		Avatar, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		// Avatar, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 	},
 	computed: {
 		initials() {

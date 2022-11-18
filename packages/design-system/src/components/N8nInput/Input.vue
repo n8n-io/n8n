@@ -5,7 +5,7 @@
 		:class="['n8n-input', ...classes]"
 		:autoComplete="autocomplete"
 		ref="innerInput"
-		v-on="$listeners"
+		v-bind="$attrs"
 		:name="name"
 	>
 		<template #prepend>
@@ -25,9 +25,9 @@
 
 <script lang="ts">
 import ElInput from 'element-ui/lib/input';
-import Vue from 'vue';
+import { defineComponent } from 'vue';
 
-export default Vue.extend({
+export default defineComponent({
 	name: 'n8n-input',
 	components: {
 		ElInput, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
