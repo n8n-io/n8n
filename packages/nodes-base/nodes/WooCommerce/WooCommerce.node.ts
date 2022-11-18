@@ -190,7 +190,7 @@ export class WooCommerce implements INodeType {
 
 					const qs = {} as IDataObject;
 					const filters = this.getNodeParameter('filters', i) as IDataObject;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (Object.keys(filters).length) {
 						Object.assign(qs, filters);
@@ -205,7 +205,7 @@ export class WooCommerce implements INodeType {
 							qs,
 						);
 					} else {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit', i);
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/customers', {}, qs);
 					}
 				} else if (operation === 'update') {
@@ -304,7 +304,7 @@ export class WooCommerce implements INodeType {
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-products
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					if (options.after) {
 						qs.after = options.after as string;
@@ -366,7 +366,7 @@ export class WooCommerce implements INodeType {
 							qs,
 						);
 					} else {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit', i);
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/products', {}, qs);
 					}
 				}
@@ -530,7 +530,7 @@ export class WooCommerce implements INodeType {
 				}
 				//https://woocommerce.github.io/woocommerce-rest-api-docs/#list-all-orders
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const options = this.getNodeParameter('options', i) as IDataObject;
 					if (options.after) {
 						qs.after = options.after as string;
@@ -565,7 +565,7 @@ export class WooCommerce implements INodeType {
 					if (returnAll === true) {
 						responseData = await woocommerceApiRequestAllItems.call(this, 'GET', '/orders', {}, qs);
 					} else {
-						qs.per_page = this.getNodeParameter('limit', i) as number;
+						qs.per_page = this.getNodeParameter('limit', i);
 						responseData = await woocommerceApiRequest.call(this, 'GET', '/orders', {}, qs);
 					}
 				}

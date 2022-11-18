@@ -151,7 +151,7 @@ export class PhilipsHue implements INodeType {
 					);
 				}
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const user = await getUser.call(this);
 
@@ -160,7 +160,7 @@ export class PhilipsHue implements INodeType {
 					responseData = Object.values(lights);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 				}

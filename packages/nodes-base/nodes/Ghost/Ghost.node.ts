@@ -154,7 +154,7 @@ export class Ghost implements INodeType {
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', 0);
 
 							const options = this.getNodeParameter('options', i) as IDataObject;
 
@@ -259,7 +259,7 @@ export class Ghost implements INodeType {
 						}
 
 						if (operation === 'getAll') {
-							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const returnAll = this.getNodeParameter('returnAll', 0);
 
 							const options = this.getNodeParameter('options', i) as IDataObject;
 

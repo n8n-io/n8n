@@ -30,14 +30,14 @@ export async function kitemakerRequest(
 }
 
 export async function kitemakerRequestAllItems(
-	this: IHookFunctions | IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions,
 	body: { query: string; variables: { [key: string]: string } },
 ) {
 	const resource = this.getNodeParameter('resource', 0) as 'space' | 'user' | 'workItem';
 	const [group, items] = getGroupAndItems(resource);
 
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const limit = this.getNodeParameter('limit', 0, 0);
 
 	const returnData: IDataObject[] = [];
 	let responseData;

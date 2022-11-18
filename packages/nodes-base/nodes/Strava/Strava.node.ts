@@ -105,7 +105,7 @@ export class Strava implements INodeType {
 
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await stravaApiRequest.call(
 							this,
@@ -114,7 +114,7 @@ export class Strava implements INodeType {
 						);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -135,7 +135,7 @@ export class Strava implements INodeType {
 					}
 					//https://developers.mailerlite.com/reference#subscribers
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
 							responseData = await stravaApiRequestAllItems.call(
@@ -146,7 +146,7 @@ export class Strava implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 
 							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
 						}

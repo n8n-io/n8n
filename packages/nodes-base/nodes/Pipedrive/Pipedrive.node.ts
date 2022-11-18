@@ -4105,9 +4105,9 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -4193,9 +4193,9 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						addAdditionalFields(qs, filters);
@@ -4225,10 +4225,10 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						qs.term = this.getNodeParameter('term', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						qs.exact_match = this.getNodeParameter('exactMatch', i) as boolean;
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -4263,10 +4263,10 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 						const dealId = this.getNodeParameter('dealId', i) as string;
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -4436,9 +4436,9 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 						endpoint = `/notes`;
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						addAdditionalFields(qs, additionalFields);
@@ -4535,9 +4535,9 @@ export class Pipedrive implements INodeType {
 
 						// https://developers.pipedrive.com/docs/api/v1/Leads#getLeads
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -4626,9 +4626,9 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -4667,9 +4667,9 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						qs.term = this.getNodeParameter('term', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject & {
@@ -4723,9 +4723,9 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -4747,9 +4747,9 @@ export class Pipedrive implements INodeType {
 						requestMethod = 'GET';
 
 						qs.term = this.getNodeParameter('term', i) as string;
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
@@ -4796,9 +4796,9 @@ export class Pipedrive implements INodeType {
 
 						requestMethod = 'GET';
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 
 						endpoint = `/products`;
@@ -4876,7 +4876,7 @@ export class Pipedrive implements INodeType {
 
 					responseData = responseData.data;
 					if (responseData.data === true) {
-						responseData = {success: true};
+						responseData = { success: true };
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -4890,7 +4890,7 @@ export class Pipedrive implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({json:{ error: error.message }});
+						returnData.push({ json: { error: error.message } });
 					}
 					continue;
 				}

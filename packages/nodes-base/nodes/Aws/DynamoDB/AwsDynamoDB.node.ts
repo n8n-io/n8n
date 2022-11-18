@@ -307,7 +307,7 @@ export class AwsDynamoDB implements INodeType {
 						const eavUi = this.getNodeParameter('eavUi.eavValues', i, []) as IAttributeValueUi[];
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 						const select = this.getNodeParameter('select', 0) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const scan = this.getNodeParameter('scan', 0) as boolean;
 						const eanUi = this.getNodeParameter(
 							'options.eanUi.eanValues',
@@ -383,7 +383,7 @@ export class AwsDynamoDB implements INodeType {
 								headers,
 							);
 						} else {
-							body.Limit = this.getNodeParameter('limit', 0, 1) as number;
+							body.Limit = this.getNodeParameter('limit', 0, 1);
 							responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
 							if (select !== 'COUNT') {
 								responseData = responseData.Items;

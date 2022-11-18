@@ -909,7 +909,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === true) {
 							responseData = await awsApiRequestSOAPAllItems.call(
@@ -920,7 +920,7 @@ export class AwsSes implements INodeType {
 								'/?Action=ListCustomVerificationEmailTemplates',
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await awsApiRequestSOAP.call(
 								this,
@@ -1237,7 +1237,7 @@ export class AwsSes implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === true) {
 							responseData = await awsApiRequestSOAPAllItems.call(
@@ -1248,7 +1248,7 @@ export class AwsSes implements INodeType {
 								'/?Action=ListTemplates',
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = await awsApiRequestSOAP.call(
 								this,

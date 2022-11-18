@@ -600,10 +600,10 @@ export class Misp implements INodeType {
 
 						responseData = (await mispApiRequest.call(this, 'GET', '/tags')) as LoadedTags;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.Tag.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -717,10 +717,10 @@ export class Misp implements INodeType {
 							Warninglists: Array<{ Warninglist: unknown }>;
 						};
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.Warninglists.slice(0, limit).map((i) => i.Warninglist);
 						} else {
 							responseData = responseData.Warninglists.map((i) => i.Warninglist);

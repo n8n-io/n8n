@@ -419,7 +419,7 @@ export class Xero implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.statuses) {
 							qs.statuses = (options.statuses as string[]).join(',');
@@ -445,7 +445,7 @@ export class Xero implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',
@@ -575,7 +575,7 @@ export class Xero implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const organizationId = this.getNodeParameter('organizationId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.includeArchived) {
 							qs.includeArchived = options.includeArchived as boolean;
@@ -598,7 +598,7 @@ export class Xero implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await xeroApiRequest.call(
 								this,
 								'GET',

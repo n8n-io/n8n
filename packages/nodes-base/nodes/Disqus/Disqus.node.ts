@@ -625,7 +625,7 @@ export class Disqus implements INodeType {
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						qs.forum = id;
 						qs.limit = 100;
@@ -640,7 +640,7 @@ export class Disqus implements INodeType {
 									endpoint,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as string;
+								const limit = this.getNodeParameter('limit', i);
 								qs.limit = limit;
 								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							}
@@ -662,7 +662,7 @@ export class Disqus implements INodeType {
 						endpoint = 'forums/listCategories.json';
 
 						const id = this.getNodeParameter('id', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						Object.assign(qs, additionalFields);
 
@@ -680,7 +680,7 @@ export class Disqus implements INodeType {
 									endpoint,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as string;
+								const limit = this.getNodeParameter('limit', i);
 								qs.limit = limit;
 								responseData = (await disqusApiRequest.call(
 									this,
@@ -707,7 +707,7 @@ export class Disqus implements INodeType {
 						endpoint = 'forums/listThreads.json';
 
 						const id = this.getNodeParameter('id', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						qs.forum = id;
 						qs.limit = 100;
@@ -726,7 +726,7 @@ export class Disqus implements INodeType {
 									endpoint,
 								);
 							} else {
-								const limit = this.getNodeParameter('limit', i) as string;
+								const limit = this.getNodeParameter('limit', i);
 								qs.limit = limit;
 								responseData = await disqusApiRequest.call(this, requestMethod, qs, endpoint);
 							}

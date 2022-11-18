@@ -8,7 +8,7 @@
 		:showClose="!loading"
 		:beforeClose="onModalClose"
 	>
-		<template slot="content">
+		<template #content>
 			<n8n-text>{{ getModalContent.message }}</n8n-text>
 			<div :class="$style.descriptionContainer" v-if="this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
 				<n8n-info-tip theme="info" type="note" :bold="false">
@@ -18,7 +18,7 @@
 				</n8n-info-tip>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<n8n-button
 				:loading="loading"
 				:disabled="loading"

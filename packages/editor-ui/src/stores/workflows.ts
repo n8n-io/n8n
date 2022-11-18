@@ -1,5 +1,13 @@
-import { DEFAULT_NEW_WORKFLOW_NAME, DUPLICATE_POSTFFIX, MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID, STORES } from "@/constants";
 import {
+	DEFAULT_NEW_WORKFLOW_NAME,
+	DUPLICATE_POSTFFIX,
+	EnterpriseEditionFeature,
+	MAX_WORKFLOW_NAME_LENGTH,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	STORES,
+} from "@/constants";
+import {
+	ICredentialMap,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsSummary,
@@ -9,38 +17,67 @@ import {
 	IPushDataExecutionFinished,
 	IPushDataNodeExecuteAfter,
 	IUpdateInformation,
+	IUsedCredential,
 	IWorkflowDb,
 	IWorkflowsMap,
 	WorkflowsState,
 } from "@/Interface";
-import { defineStore } from "pinia";
-import { IConnection, IConnections, IDataObject, INode, INodeConnections, INodeCredentials, INodeCredentialsDetails, INodeExecutionData, INodeIssueData, IPinData, IRunData, ITaskData, IWorkflowSettings } from 'n8n-workflow';
+import {defineStore} from "pinia";
+import {
+	deepCopy,
+	IConnection,
+	IConnections,
+	IDataObject,
+	INode,
+	INodeConnections,
+	INodeCredentials,
+	INodeCredentialsDetails,
+	INodeExecutionData,
+	INodeIssueData,
+	IPinData,
+	IRunData,
+	ITaskData,
+	IWorkflowSettings,
+} from 'n8n-workflow';
 import Vue from "vue";
-import { useRootStore } from "./n8nRootStore";
-import { getActiveWorkflows, getCurrentExecutions, getFinishedExecutions, getNewWorkflow, getWorkflows } from "@/api/workflows";
-import { useUIStore } from "./ui";
-import { getPairedItemsMapping } from "@/pairedItemUtils";
-import { dataPinningEventBus } from "@/event-bus/data-pinning-event-bus";
-import { isJsonKeyObject } from "@/utils";
-import { stringSizeInBytes } from "@/components/helpers";
-import { useNDVStore } from "./ndv";
-import { useNodeTypesStore } from "./nodeTypes";
+
+import {useRootStore} from "./n8nRootStore";
+import {
+	getActiveWorkflows,
+	getCurrentExecutions,
+	getFinishedExecutions,
+	getNewWorkflow,
+	getWorkflows,
+} from "@/api/workflows";
+import {useUIStore} from "./ui";
+import {getPairedItemsMapping} from "@/pairedItemUtils";
+import {dataPinningEventBus} from "@/event-bus/data-pinning-event-bus";
+import {isJsonKeyObject} from "@/utils";
+import {stringSizeInBytes} from "@/components/helpers";
+import {useNDVStore} from "./ndv";
+import {useNodeTypesStore} from "./nodeTypes";
+import {useWorkflowsEEStore} from "@/stores/workflows.ee";
+import {useUsersStore} from "@/stores/users";
+import {useSettingsStore} from "@/stores/settings";
+
+const createEmptyWorkflow = (): IWorkflowDb => ({
+	id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	name: '',
+	active: false,
+	createdAt: -1,
+	updatedAt: -1,
+	connections: {},
+	nodes: [],
+	settings: {},
+	tags: [],
+	pinData: {},
+	hash: '',
+});
 
 export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 	state: (): WorkflowsState => ({
-		workflow: {
-			id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
-			name: '',
-			active: false,
-			createdAt: -1,
-			updatedAt: -1,
-			connections: {},
-			nodes: [],
-			settings: {},
-			tags: [],
-			pinData: {},
-			hash: '',
-		},
+		workflow: createEmptyWorkflow(),
+		usedCredentials: {},
 		activeWorkflows: [],
 		activeExecutions: [],
 		currentWorkflowExecutions: [],
@@ -199,6 +236,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		async getNewWorkflowData(name?: string): Promise<INewWorkflowData> {
+			const workflowsEEStore = useWorkflowsEEStore();
+
 			let workflowData = {
 				name: '',
 				onboardingFlowEnabled: false,
@@ -213,11 +252,30 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 
 			this.setWorkflowName({ newName: workflowData.name, setStateDirty: false });
+
 			return workflowData;
+		},
+
+		resetWorkflow() {
+			const usersStore = useUsersStore();
+			const settingsStore = useSettingsStore();
+
+			this.workflow = createEmptyWorkflow();
+
+			if (settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
+				Vue.set(this.workflow, 'ownedBy', usersStore.currentUser);
+			}
 		},
 
 		setWorkflowId (id: string): void {
 			this.workflow.id = id === 'new' ? PLACEHOLDER_EMPTY_WORKFLOW_ID : id;
+		},
+
+		setUsedCredentials(data: IUsedCredential[]) {
+			this.usedCredentials = data.reduce<{ [name: string]: IUsedCredential }>((accu, credential) => {
+				accu[credential.id!] = credential;
+				return accu;
+			}, {});
 		},
 
 		setWorkflowName(data: { newName: string, setStateDirty: boolean }): void {
@@ -277,7 +335,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		addWorkflow(workflow: IWorkflowDb) : void {
-			Vue.set(this.workflowsById, workflow.id, workflow);
+			Vue.set(this.workflowsById, workflow.id, {
+				...this.workflowsById[workflow.id],
+				...deepCopy(workflow),
+			});
 		},
 
 		setWorkflowActive(workflowId: string): void {

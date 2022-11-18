@@ -381,7 +381,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						if (returnAll) {
@@ -397,7 +397,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -490,7 +490,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						const filter = this.getNodeParameter('filterRequest', i) as IOdooFilterOperations;
@@ -507,7 +507,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -592,7 +592,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						if (returnAll) {
@@ -608,7 +608,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,
@@ -697,7 +697,7 @@ export class Odoo implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const fields = (options.fieldsList as IDataObject[]) || [];
 						if (returnAll) {
@@ -713,7 +713,7 @@ export class Odoo implements INodeType {
 								fields,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await odooGetAll.call(
 								this,
 								db,

@@ -162,10 +162,10 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#get-all-lists
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await affinityApiRequest.call(this, 'GET', `/lists`, {}, qs);
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -201,7 +201,7 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#get-all-list-entries
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const listId = this.getNodeParameter('listId', i) as string;
 						if (returnAll === true) {
 							responseData = await affinityApiRequestAllItems.call(
@@ -213,7 +213,7 @@ export class Affinity implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await affinityApiRequest.call(
 								this,
 								'GET',
@@ -290,7 +290,7 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#search-for-persons
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.term) {
 							qs.term = options.term as string;
@@ -308,7 +308,7 @@ export class Affinity implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await affinityApiRequest.call(this, 'GET', '/persons', {}, qs);
 							responseData = responseData.persons;
 						}
@@ -378,7 +378,7 @@ export class Affinity implements INodeType {
 					}
 					//https://api-docs.affinity.co/#search-for-organizations
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.term) {
 							qs.term = options.term as string;
@@ -396,7 +396,7 @@ export class Affinity implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await affinityApiRequest.call(this, 'GET', '/organizations', {}, qs);
 							responseData = responseData.organizations;
 						}

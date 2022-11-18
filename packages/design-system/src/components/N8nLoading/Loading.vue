@@ -4,7 +4,7 @@
 		:animated="animated"
 		:class="['n8n-loading', `n8n-loading-${variant}`]"
 	>
-		<template slot="template">
+		<template #template>
 			<div v-if="variant === 'h1'">
 				<div
 					v-for="(item, index) in rows"

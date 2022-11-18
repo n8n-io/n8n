@@ -9,7 +9,6 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { whereClause } from '@/CredentialsHelper';
 import { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
 import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
@@ -23,6 +22,7 @@ import type { WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
+import { whereClause } from '@/UserManagement/UserManagementHelper';
 
 export const workflowsController = express.Router();
 
@@ -201,7 +201,7 @@ workflowsController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
-		let relations = ['workflow', 'workflow.tags'];
+		let relations = ['workflow', 'workflow.tags', 'role'];
 
 		if (config.getEnv('workflowTagsDisabled')) {
 			relations = relations.filter((relation) => relation !== 'workflow.tags');
@@ -213,6 +213,7 @@ workflowsController.get(
 				user: req.user,
 				entityType: 'workflow',
 				entityId: workflowId,
+				roles: ['owner'],
 			}),
 		});
 
@@ -252,7 +253,14 @@ workflowsController.patch(
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		const updatedWorkflow = await WorkflowsService.update(req.user, updateData, workflowId, tags);
+		const updatedWorkflow = await WorkflowsService.update(
+			req.user,
+			updateData,
+			workflowId,
+			tags,
+			false,
+			['owner'],
+		);
 
 		const { id, ...remainder } = updatedWorkflow;
 
@@ -275,11 +283,12 @@ workflowsController.delete(
 		await externalHooks.run('workflow.delete', [workflowId]);
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow'],
+			relations: ['workflow', 'role'],
 			where: whereClause({
 				user: req.user,
 				entityType: 'workflow',
 				entityId: workflowId,
+				roles: ['owner'],
 			}),
 		});
 

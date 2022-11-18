@@ -12,7 +12,7 @@
 			popper-append-to-body
 			:popper-class="`${$style.submenuPopper} ${popperClass}`"
 		>
-			<template slot="title">
+			<template #title>
 				<n8n-icon
 					v-if="item.icon"
 					:class="$style.icon"
@@ -134,7 +134,7 @@ export default Vue.extend({
 				} else if (item.activateOnRouteNames) {
 					return (
 						Array.isArray(item.activateOnRouteNames) &&
-						item.activateOnRouteNames.includes(this.$route.name ?? '')
+						item.activateOnRouteNames.includes(this.$route.name || '')
 					);
 				}
 				return false;

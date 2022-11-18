@@ -562,7 +562,7 @@ export class QuickBooks implements INodeType {
 						// ----------------------------------
 
 						const estimateId = this.getNodeParameter('estimateId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 
 						if (download) {
 							responseData = await handleBinaryData.call(
@@ -723,7 +723,7 @@ export class QuickBooks implements INodeType {
 						// ----------------------------------
 
 						const invoiceId = this.getNodeParameter('invoiceId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 
 						if (download) {
 							responseData = await handleBinaryData.call(
@@ -886,7 +886,7 @@ export class QuickBooks implements INodeType {
 						// ----------------------------------
 
 						const paymentId = this.getNodeParameter('paymentId', i) as string;
-						const download = this.getNodeParameter('download', i) as boolean;
+						const download = this.getNodeParameter('download', i);
 
 						if (download) {
 							responseData = await handleBinaryData.call(
@@ -1123,7 +1123,7 @@ export class QuickBooks implements INodeType {
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
-					const download = this.getNodeParameter('download', 0, false) as boolean;
+					const download = this.getNodeParameter('download', 0, false);
 					if (
 						['invoice', 'estimate', 'payment'].includes(resource) &&
 						['get'].includes(operation) &&
@@ -1155,7 +1155,7 @@ export class QuickBooks implements INodeType {
 			returnData.push(...executionData);
 		}
 
-		const download = this.getNodeParameter('download', 0, false) as boolean;
+		const download = this.getNodeParameter('download', 0, false);
 
 		if (
 			['invoice', 'estimate', 'payment'].includes(resource) &&

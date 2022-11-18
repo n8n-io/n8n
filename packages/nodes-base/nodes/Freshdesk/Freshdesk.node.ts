@@ -1285,7 +1285,7 @@ export class Freshdesk implements INodeType {
 					}
 					//https://developers.freshdesk.com/api/#list_all_tickets
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.requesterId) {
 							qs.requester_id = options.requesterId as string;
@@ -1319,7 +1319,7 @@ export class Freshdesk implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await freshdeskApiRequest.call(this, 'GET', '/tickets', {}, qs);
 						}
 					}

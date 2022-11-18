@@ -214,7 +214,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 					if (operation === 'getAll') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						if (options.returnFields) {
@@ -236,7 +236,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', 0) as number;
+							qs['$top'] = this.getNodeParameter('limit', 0);
 							responseData = await microsoftApiRequest.call(this, 'GET', `/accounts`, {}, qs);
 							responseData = responseData.value;
 						}
