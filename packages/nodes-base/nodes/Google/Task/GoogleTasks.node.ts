@@ -157,7 +157,7 @@ export class GoogleTasks implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://developers.google.com/tasks/v1/reference/tasks/list
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const taskListId = this.getNodeParameter('task', i) as string;
 						const {
 							showCompleted = true,

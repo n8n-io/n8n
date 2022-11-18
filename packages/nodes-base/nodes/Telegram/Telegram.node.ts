@@ -1685,7 +1685,7 @@ export class Telegram implements INodeType {
 
 		const operation = this.getNodeParameter('operation', 0) as string;
 		const resource = this.getNodeParameter('resource', 0) as string;
-		const binaryData = this.getNodeParameter('binaryData', 0, false) as boolean;
+		const binaryData = this.getNodeParameter('binaryData', 0, false);
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -2018,7 +2018,7 @@ export class Telegram implements INodeType {
 				}
 
 				if (resource === 'file' && operation === 'get') {
-					if ((this.getNodeParameter('download', i, false) as boolean) === true) {
+					if (this.getNodeParameter('download', i, false) === true) {
 						const filePath = responseData.result.file_path;
 
 						const credentials = await this.getCredentials('telegramApi');
@@ -2060,7 +2060,6 @@ export class Telegram implements INodeType {
 					continue;
 				}
 
-
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData),
 					{ itemData: { item: i } },
@@ -2068,7 +2067,7 @@ export class Telegram implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: { }, error: error.message });
+					returnData.push({ json: {}, error: error.message });
 					continue;
 				}
 				throw error;

@@ -2198,7 +2198,7 @@ export class GoogleDrive implements INodeType {
 						// ----------------------------------
 						//         list
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const qs: IDataObject = {};
 
@@ -2509,7 +2509,7 @@ export class GoogleDrive implements INodeType {
 						// ----------------------------------
 						//         upload
 						// ----------------------------------
-						const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', 0);
 
 						let mimeType = 'text/plain';
 						let body;

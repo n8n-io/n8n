@@ -132,7 +132,7 @@ export class Demio implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						Object.assign(qs, filters);
 

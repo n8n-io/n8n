@@ -1953,7 +1953,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						const taskId = this.getNodeParameter('taskId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
@@ -2032,7 +2032,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						requestMethod = 'GET';
 						endpoint = `/tasks`;
@@ -2341,7 +2341,7 @@ export class Asana implements INodeType {
 						// ----------------------------------
 						const workspaceId = this.getNodeParameter('workspace', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						requestMethod = 'GET';
 						endpoint = `/projects`;

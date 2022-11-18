@@ -600,7 +600,7 @@ export class Misp implements INodeType {
 
 						responseData = (await mispApiRequest.call(this, 'GET', '/tags')) as LoadedTags;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0) as number;
@@ -717,7 +717,7 @@ export class Misp implements INodeType {
 							Warninglists: Array<{ Warninglist: unknown }>;
 						};
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
 							const limit = this.getNodeParameter('limit', 0) as number;

@@ -160,7 +160,7 @@ export class GSuiteAdmin implements INodeType {
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/groups/list
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const options = this.getNodeParameter('options', i) as IDataObject;
 
@@ -314,7 +314,7 @@ export class GSuiteAdmin implements INodeType {
 
 				//https://developers.google.com/admin-sdk/directory/v1/reference/users/list
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const projection = this.getNodeParameter('projection', i) as string;
 

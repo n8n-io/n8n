@@ -104,7 +104,7 @@ export class AwsCertificateManager implements INodeType {
 
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getMany') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 
 						const body: { Includes: IDataObject; CertificateStatuses: string[]; MaxItems: number } = {
