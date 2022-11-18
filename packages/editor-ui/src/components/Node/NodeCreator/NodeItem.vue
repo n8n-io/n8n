@@ -57,7 +57,7 @@
 import Vue, { PropType } from 'vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
+import { getNewNodePosition, NODE_SIZE } from '@/utils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';

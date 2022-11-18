@@ -106,7 +106,6 @@ import {
 	INodeProperties,
 	INodePropertyCollection,
 	INodePropertyOptions,
-	INodeTypeDescription,
 } from 'n8n-workflow';
 import { sanitizeHtml } from '@/utils';
 import { mapStores } from 'pinia';

@@ -3,7 +3,7 @@ import { INodeUi, ITemplatesNode } from '@/Interface';
 import { isResourceLocatorValue } from '@/typeGuards';
 import dateformat from 'dateformat';
 import {IDataObject, INodeProperties, INodeTypeDescription, NodeParameterValueType,INodeExecutionData, jsonParse} from 'n8n-workflow';
-import { isJsonKeyObject } from "@/utils";
+import { isJsonKeyObject } from "@/utils/generalUtils";
 import { Route } from 'vue-router';
 
 const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];

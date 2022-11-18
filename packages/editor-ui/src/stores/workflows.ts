@@ -7,7 +7,6 @@ import {
 	STORES,
 } from "@/constants";
 import {
-	ICredentialMap,
 	IExecutionResponse,
 	IExecutionsCurrentSummaryExtended,
 	IExecutionsSummary,
