@@ -142,6 +142,7 @@ export default mixins(
 						this.$router.push({ name: VIEWS.API_SETTINGS });
 					}
 					break;
+				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
 				case 'environments':
 				case 'logging':
 					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});
