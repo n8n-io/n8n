@@ -110,7 +110,7 @@ import TitledList from '@/components/TitledList.vue';
 import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
-import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
+import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
 import { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
 import { debounceHelper } from './mixins/debounce';
 import { mapStores } from 'pinia';

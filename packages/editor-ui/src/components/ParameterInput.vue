@@ -330,8 +330,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { showMessage } from '@/components/mixins/showMessage';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { hasExpressionMapping, isValueExpression } from './helpers';
-import { isResourceLocatorValue } from '@/typeGuards';
+import { hasExpressionMapping, isValueExpression, isResourceLocatorValue } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
 import { CUSTOM_API_CALL_KEY } from '@/constants';

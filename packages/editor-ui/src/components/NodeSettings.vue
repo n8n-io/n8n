@@ -155,7 +155,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName } from './helpers';
+import { isCommunityPackageName } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

@@ -36,7 +36,7 @@ import { showMessage } from './mixins/showMessage';
 import { INodeProperties, INodePropertyMode, IRunData, isResourceLocatorValue, NodeParameterValue, NodeParameterValueType } from 'n8n-workflow';
 import { INodeUi, IUiState, IUpdateInformation, TargetItem } from '@/Interface';
 import { workflowHelpers } from './mixins/workflowHelpers';
-import { isValueExpression } from './helpers';
+import { isValueExpression } from '@/utils';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 

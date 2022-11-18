@@ -17,7 +17,7 @@ import {
 import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { getStyleTokenValue } from '../helpers';
+import { getStyleTokenValue } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from "@/stores/workflows";

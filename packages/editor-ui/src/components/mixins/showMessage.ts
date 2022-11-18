@@ -6,7 +6,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import {IExecuteContextData, IRunExecutionData} from 'n8n-workflow';
 import type { ElMessageBoxOptions } from 'element-ui/types/message-box';
 import type { ElMessageComponent, ElMessageOptions, MessageType } from 'element-ui/types/message';
-import { sanitizeHtml } from '@/utils/generalUtils';
+import { sanitizeHtml } from '@/utils';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 

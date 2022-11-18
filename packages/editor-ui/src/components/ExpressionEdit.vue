@@ -52,7 +52,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { hasExpressionMapping } from './helpers';
+import { hasExpressionMapping } from '@/utils';
 import { debounceHelper } from './mixins/debounce';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';

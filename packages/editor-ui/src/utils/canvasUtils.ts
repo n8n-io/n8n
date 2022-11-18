@@ -1,4 +1,4 @@
-import { getStyleTokenValue, isNumber } from "@/components/helpers";
+import { getStyleTokenValue, isNumber } from "@/utils";
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
 import { EndpointStyle, IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { AnchorArraySpec, Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";

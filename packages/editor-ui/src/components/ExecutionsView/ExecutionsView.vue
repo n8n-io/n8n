@@ -40,7 +40,7 @@ import { Route } from 'vue-router';
 import { executionHelpers } from '../mixins/executionsHelpers';
 import { range as _range } from 'lodash';
 import { debounceHelper } from '../mixins/debounce';
-import { getNodeViewTab } from '../helpers';
+import { getNodeViewTab } from '@/utils';
 import { workflowHelpers } from '../mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';

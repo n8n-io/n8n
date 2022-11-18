@@ -1,6 +1,6 @@
-import { INodeExecutionData, IPairedItemData, IRunData, ITaskData } from "n8n-workflow";
-import { IExecutionResponse, TargetItem } from "./Interface";
-import { isNotNull } from "./typeGuards";
+import { IPairedItemData, IRunData, ITaskData } from "n8n-workflow";
+import { IExecutionResponse, TargetItem } from "../Interface";
+import { isNotNull } from "@/utils";
 
 export function getPairedItemId(node: string, run: number, output: number, item: number): string {
 	return `${node}_r${run}_o${output}_i${item}`;

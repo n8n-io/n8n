@@ -56,7 +56,7 @@ import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
-import { getSourceItems } from '@/pairedItemUtils';
+import { getSourceItems } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

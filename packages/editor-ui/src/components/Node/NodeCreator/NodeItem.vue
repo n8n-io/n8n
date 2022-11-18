@@ -62,7 +62,7 @@ import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TriggerIcon from '@/components/TriggerIcon.vue';
-import { isCommunityPackageName } from '@/components/helpers';
+import { isCommunityPackageName } from '@/utils';
 
 Vue.component('node-icon', NodeIcon);
 Vue.component('trigger-icon', TriggerIcon);

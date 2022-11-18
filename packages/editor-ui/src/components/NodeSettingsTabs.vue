@@ -12,7 +12,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 
 import mixins from 'vue-typed-mixins';
-import { isCommunityPackageName } from './helpers';
+import { isCommunityPackageName } from '@/utils';
 
 export default mixins(
 	externalHooks,

@@ -82,7 +82,7 @@ import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery, ITemplatesCategory } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/components/helpers';
+import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { debounceHelper } from '@/components/mixins/debounce';
 import { mapStores } from 'pinia';

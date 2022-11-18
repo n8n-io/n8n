@@ -91,7 +91,7 @@
 
 <script lang="ts">
 import { ICredentialType } from 'n8n-workflow';
-import { getAppNameFromCredType, isCommunityPackageName } from '../helpers';
+import { getAppNameFromCredType, isCommunityPackageName } from '@/utils';
 
 import Banner from '../Banner.vue';
 import CopyInput from '../CopyInput.vue';

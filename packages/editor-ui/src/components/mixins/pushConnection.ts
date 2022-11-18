@@ -21,7 +21,7 @@ import {
 
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getTriggerNodeServiceName } from '../helpers';
+import { getTriggerNodeServiceName } from '@/utils';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -446,7 +446,7 @@ export const pushConnection = mixins(
 					const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
 
 					// Force reload of all credential types
-					this.credentialsStore.fetchCredentialTypes()
+					this.credentialsStore.fetchCredentialTypes(false)
 						.then(() => {
 							this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 						});

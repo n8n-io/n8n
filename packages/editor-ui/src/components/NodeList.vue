@@ -18,7 +18,7 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import { ITemplatesNode } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { filterTemplateNodes } from './helpers';
+import { filterTemplateNodes } from '@/utils';
 export default mixins(genericHelpers).extend({
 	name: 'NodeList',
 	props: {

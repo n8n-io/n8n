@@ -149,7 +149,7 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
-import { isValidCredentialResponse } from '@/typeGuards';
+import { isValidCredentialResponse } from '@/utils';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;

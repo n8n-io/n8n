@@ -40,7 +40,7 @@
 <script lang="ts">
 import { genericHelpers } from '@/components/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
-import { filterTemplateNodes, abbreviateNumber } from './helpers';
+import { filterTemplateNodes, abbreviateNumber } from '@/utils';
 import NodeList from './NodeList.vue';
 
 export default mixins(genericHelpers).extend({

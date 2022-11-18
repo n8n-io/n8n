@@ -35,7 +35,7 @@ import { restApi } from '@/components/mixins/restApi';
 import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
-import { isObjectLiteral } from '@/utils/generalUtils';
+import { isObjectLiteral } from '@/utils';
 import {getCredentialPermissions} from "@/permissions";
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';

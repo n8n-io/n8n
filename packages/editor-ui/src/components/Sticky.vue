@@ -49,7 +49,7 @@ import { externalHooks } from '@/components/mixins/externalHooks';
 import { nodeBase } from '@/components/mixins/nodeBase';
 import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { getStyleTokenValue, isNumber, isString } from './helpers';
+import { getStyleTokenValue, isNumber, isString } from '@/utils';
 import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation, XYPosition } from '@/Interface';
 
 import {

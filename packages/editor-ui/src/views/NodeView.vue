@@ -183,11 +183,13 @@ import {
 	WELCOME_STICKY_NODE,
 	addConnectionActionsOverlay,
 	addConnectionOutputSuccess,
+	getAccountAge,
 	getBackgroundStyles,
 	getConnectorLengths,
 	getFixedNodesList,
 	getMousePosition,
 	getNewNodePosition,
+	getNodeViewTab,
 	getInputEndpointUUID,
 	getOutputEndpointUUID,
 	getOutputSummary,
@@ -201,6 +203,7 @@ import {
 	resetConnection,
 	resetConnectionAfterPull,
 	resetInputLabelPosition,
+	showConnectionActions,
 } from '@/utils';
 
 import mixins from 'vue-typed-mixins';
@@ -244,12 +247,10 @@ import {
 	INodeUpdatePropertiesInformation,
 } from '@/Interface';
 
-import { getAccountAge } from '@/stores/userHelpers';
 import { debounceHelper } from '@/components/mixins/debounce';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';
-import { getNodeViewTab } from '@/components/helpers';
 import { Route, RawLocation } from 'vue-router';
 import { nodeViewEventBus } from '@/event-bus/node-view-event-bus';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -547,7 +548,7 @@ export default mixins(
 		},
 		data() {
 			return {
-				GRID_SIZE: GRID_SIZE,
+				GRID_SIZE,
 				STICKY_NODE_TYPE,
 				createNodeActive: false,
 				lastSelectedConnection: null as null | Connection,
@@ -1944,7 +1945,7 @@ export default mixins(
 										enterTimer = undefined;
 										if (info.connection) {
 											activeConnection = info.connection;
-											showConectionActions(info.connection);
+											showConnectionActions(info.connection);
 										}
 									}, 150);
 								} catch (e) {

@@ -370,7 +370,7 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 import { pinData } from '@/components/mixins/pinData';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
-import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
+import { clearJsonKey, executionDataToJson, stringSizeInBytes } from '@/utils';
 import { isEmpty } from '@/utils';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { mapStores } from "pinia";
