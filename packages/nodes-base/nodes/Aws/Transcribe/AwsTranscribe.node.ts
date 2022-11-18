@@ -490,8 +490,8 @@ export class AwsTranscribe implements INodeType {
 					}
 					//https://docs.aws.amazon.com/transcribe/latest/dg/API_ListTranscriptionJobs.html
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						const action = 'Transcribe.ListTranscriptionJobs';
 						const body: IDataObject = {};
 
@@ -514,7 +514,7 @@ export class AwsTranscribe implements INodeType {
 								{ 'x-amz-target': action, 'Content-Type': 'application/x-amz-json-1.1' },
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							body['MaxResults'] = limit;
 							responseData = await awsApiRequestREST.call(
 								this,

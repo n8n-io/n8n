@@ -180,7 +180,7 @@ export class Cortex implements INodeType {
 
 						const observableType = this.getNodeParameter('observableType', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const tlp = this.getNodeParameter('tlp', i) as string;
 

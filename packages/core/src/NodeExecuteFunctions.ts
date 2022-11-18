@@ -2421,7 +2421,7 @@ export function getExecuteFunctions(
 				constructExecutionMetaData,
 			},
 		};
-	})(workflow, runExecutionData, connectionInputData, inputData, node);
+	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
 
 /**

@@ -407,7 +407,7 @@ export class Magento2 implements INodeType {
 						const sort = this.getNodeParameter('options.sort', i, {}) as {
 							sort: [{ direction: string; field: string }];
 						};
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						let qs: Search = {};
 
 						if (filterType === 'manual') {
@@ -446,7 +446,7 @@ export class Magento2 implements INodeType {
 								qs as unknown as IDataObject,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.search_criteria!.page_size = limit;
 							responseData = await magentoApiRequest.call(
 								this,
@@ -588,7 +588,7 @@ export class Magento2 implements INodeType {
 						const sort = this.getNodeParameter('options.sort', i, {}) as {
 							sort: [{ direction: string; field: string }];
 						};
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						let qs: Search = {};
 
 						if (filterType === 'manual') {
@@ -626,7 +626,7 @@ export class Magento2 implements INodeType {
 								qs as unknown as IDataObject,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.search_criteria!.page_size = limit;
 							responseData = await magentoApiRequest.call(
 								this,
@@ -710,7 +710,7 @@ export class Magento2 implements INodeType {
 						const sort = this.getNodeParameter('options.sort', i, {}) as {
 							sort: [{ direction: string; field: string }];
 						};
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						let qs: Search = {};
 
 						if (filterType === 'manual') {
@@ -748,7 +748,7 @@ export class Magento2 implements INodeType {
 								qs as unknown as IDataObject,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.search_criteria!.page_size = limit;
 							responseData = await magentoApiRequest.call(
 								this,

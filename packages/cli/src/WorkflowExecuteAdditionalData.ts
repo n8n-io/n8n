@@ -21,7 +21,6 @@ import {
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
-	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRun,
@@ -62,7 +61,7 @@ import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { getUserById, getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
+import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
 import { PermissionChecker } from './UserManagement/PermissionChecker';
 
@@ -852,7 +851,7 @@ export async function getWorkflowData(
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations,
-			where: WorkflowHelpers.whereClause({
+			where: whereClause({
 				user,
 				entityType: 'workflow',
 				entityId: workflowInfo.id,

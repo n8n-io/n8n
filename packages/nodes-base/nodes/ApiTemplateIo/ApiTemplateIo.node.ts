@@ -383,16 +383,16 @@ export class ApiTemplateIo implements INodeType {
 				//          image: create
 				// ----------------------------------
 
-				const download = this.getNodeParameter('download', 0) as boolean;
+				const download = this.getNodeParameter('download', 0);
 
 				// https://docs.apitemplate.io/reference/api-reference.html#create-an-image-jpeg-and-png
 				for (let i = 0; i < length; i++) {
 					try {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						let options: IDataObject = {};
 						if (download) {
-							options = this.getNodeParameter('options', i) as IDataObject;
+							options = this.getNodeParameter('options', i);
 						}
 
 						const qs = {
@@ -475,15 +475,15 @@ export class ApiTemplateIo implements INodeType {
 				// ----------------------------------
 
 				// https://docs.apitemplate.io/reference/api-reference.html#create-a-pdf
-				const download = this.getNodeParameter('download', 0) as boolean;
+				const download = this.getNodeParameter('download', 0);
 
 				for (let i = 0; i < length; i++) {
 					try {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						let options: IDataObject = {};
 						if (download) {
-							options = this.getNodeParameter('options', i) as IDataObject;
+							options = this.getNodeParameter('options', i);
 						}
 
 						const qs = {

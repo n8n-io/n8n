@@ -71,7 +71,7 @@ export class CitrixAdc implements INodeType {
 					if (operation === 'upload') {
 						const fileLocation = this.getNodeParameter('fileLocation', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const endpoint = `/config/systemfile`;
 
 						const item = items[i];

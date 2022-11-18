@@ -8,7 +8,7 @@
 		<div :class="$style.controls">
 			<el-checkbox v-model="autoRefresh" @change="onAutoRefreshToggle">{{ $locale.baseText('executionsList.autoRefresh') }}</el-checkbox>
 			<n8n-popover trigger="click" >
-				<template slot="reference">
+				<template #reference>
 					<div :class="$style.filterButton">
 						<n8n-button icon="filter" type="tertiary" size="medium" :active="statusFilterApplied">
 							<n8n-badge v-if="statusFilterApplied" theme="primary" class="mr-4xs">1</n8n-badge>
