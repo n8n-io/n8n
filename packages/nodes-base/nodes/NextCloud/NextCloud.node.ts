@@ -1056,7 +1056,7 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						qs = this.getNodeParameter('options', i) as IDataObject;
 						if (!returnAll) {
 							qs.limit = this.getNodeParameter('limit', i) as number;

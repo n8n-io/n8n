@@ -412,7 +412,7 @@ export class AwsRekognition implements INodeType {
 								body.Filters.WordFilter = keysTPascalCase(wordFilter);
 							}
 
-							const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
+							const binaryData = this.getNodeParameter('binaryData', 0);
 
 							if (binaryData) {
 								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;

@@ -631,9 +631,9 @@ export class Airtable implements INodeType {
 				requestMethod = 'GET';
 				endpoint = `${application}/${table}`;
 
-				returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				returnAll = this.getNodeParameter('returnAll', 0);
 
-				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
+				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0);
 
 				const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
 

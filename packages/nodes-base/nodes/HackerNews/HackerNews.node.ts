@@ -286,7 +286,7 @@ export class HackerNews implements INodeType {
 							tags: tags ? tags.join() : '',
 						};
 
-						returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
 							qs.hitsPerPage = this.getNodeParameter('limit', i) as number;

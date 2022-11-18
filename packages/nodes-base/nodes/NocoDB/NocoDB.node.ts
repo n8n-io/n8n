@@ -387,7 +387,7 @@ export class NocoDB implements INodeType {
 										endPoint = `/api/v1/db/data/noco/${projectId}/${table}`;
 								}
 
-								returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+								returnAll = this.getNodeParameter('returnAll', 0);
 								qs = this.getNodeParameter('options', i, {}) as IDataObject;
 
 								if (qs.sort) {
