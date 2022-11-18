@@ -1,6 +1,5 @@
 import { BINARY_ENCODING } from 'n8n-core';
 import {
-	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
 	ICredentialTestRequest,
 	ICredentialType,
@@ -18,6 +17,7 @@ export class ShopifyApi implements ICredentialType {
 			name: 'apiKey',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{
@@ -25,6 +25,7 @@ export class ShopifyApi implements ICredentialType {
 			name: 'password',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 		{

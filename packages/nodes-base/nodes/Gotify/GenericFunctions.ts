@@ -12,7 +12,7 @@ export async function gotifyApiRequest(
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string | undefined,
-	option = {},
+	_option = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const credentials = await this.getCredentials('gotifyApi');

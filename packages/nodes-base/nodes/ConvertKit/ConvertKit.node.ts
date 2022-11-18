@@ -187,14 +187,14 @@ export class ConvertKit implements INodeType {
 						responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields/${id}`);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(this, 'GET', `/custom_fields`);
 
 						responseData = responseData.custom_fields;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -254,14 +254,14 @@ export class ConvertKit implements INodeType {
 						responseData = subscription;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(this, 'GET', `/forms`);
 
 						responseData = responseData.forms;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -269,7 +269,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getSubscriptions') {
 						const formId = this.getNodeParameter('id', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -288,7 +288,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -337,14 +337,14 @@ export class ConvertKit implements INodeType {
 						responseData = subscription;
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(this, 'GET', `/sequences`);
 
 						responseData = responseData.courses;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -352,7 +352,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getSubscriptions') {
 						const sequenceId = this.getNodeParameter('id', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
@@ -371,7 +371,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -392,14 +392,14 @@ export class ConvertKit implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(this, 'GET', `/tags`);
 
 						responseData = responseData.tags;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -447,7 +447,7 @@ export class ConvertKit implements INodeType {
 					if (operation === 'getAll') {
 						const tagId = this.getNodeParameter('tagId', i) as string;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await convertKitApiRequest.call(
 							this,
@@ -458,7 +458,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}

@@ -1,4 +1,4 @@
-import { BINARY_ENCODING, IExecuteFunctions } from 'n8n-core';
+import { IExecuteFunctions } from 'n8n-core';
 import {
 	deepCopy,
 	IDataObject,

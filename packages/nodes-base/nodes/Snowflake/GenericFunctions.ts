@@ -4,7 +4,7 @@ import snowflake from 'snowflake-sdk';
 
 export function connect(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {
-		conn.connect((err, conn) => {
+		conn.connect((err, _conn) => {
 			if (!err) {
 				// @ts-ignore
 				resolve();
@@ -17,7 +17,7 @@ export function connect(conn: snowflake.Connection) {
 
 export function destroy(conn: snowflake.Connection) {
 	return new Promise((resolve, reject) => {
-		conn.destroy((err, conn) => {
+		conn.destroy((err, _conn) => {
 			if (!err) {
 				// @ts-ignore
 				resolve();

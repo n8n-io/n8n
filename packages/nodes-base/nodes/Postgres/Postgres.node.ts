@@ -12,7 +12,7 @@ import {
 
 import pgPromise from 'pg-promise';
 
-import { pgInsert, pgInsertV2, pgQuery, pgQueryV2, pgUpdate } from './Postgres.node.functions';
+import { pgInsertV2, pgQueryV2, pgUpdate } from './Postgres.node.functions';
 
 export class Postgres implements INodeType {
 	description: INodeTypeDescription = {

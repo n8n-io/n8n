@@ -1,12 +1,6 @@
 import { IExecuteFunctions, IHookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	ILoadOptionsFunctions,
-	INodeProperties,
-	NodeApiError,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, INodeProperties, NodeApiError } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
 

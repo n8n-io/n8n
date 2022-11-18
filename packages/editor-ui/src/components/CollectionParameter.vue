@@ -49,6 +49,8 @@ import { get } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import {Component} from "vue";
+import { mapStores } from 'pinia';
+import { useNDVStore } from '@/stores/ndv';
 
 export default mixins(
 	nodeHelpers,
@@ -72,6 +74,9 @@ export default mixins(
 			};
 		},
 		computed: {
+			...mapStores(
+				useNDVStore,
+			),
 			getPlaceholderText (): string {
 				const placeholder = this.$locale.nodeText().placeholder(this.parameter, this.path);
 				return placeholder ? placeholder : this.$locale.baseText('collectionParameter.choose');
@@ -93,8 +98,8 @@ export default mixins(
 					return this.displayNodeParameter(option as INodeProperties);
 				});
 			},
-			node (): INodeUi {
-				return this.$store.getters['ndv/activeNode'];
+			node (): INodeUi | null {
+				return this.ndvStore.activeNode;
 			},
 			// Returns all the options which did not get added already
 			parameterOptions (): Array<INodePropertyOptions | INodeProperties> {

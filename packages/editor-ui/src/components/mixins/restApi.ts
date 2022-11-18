@@ -28,6 +28,8 @@ import {
 	INodeTypeNameVersion,
 } from 'n8n-workflow';
 import { makeRestApiRequest } from '@/api/helpers';
+import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 /**
  * Unflattens the Execution data.
@@ -52,12 +54,17 @@ function unflattenExecutionData (fullExecutionData: IExecutionFlattedResponse): 
 }
 
 export const restApi = Vue.extend({
+	computed: {
+		...mapStores(
+			useRootStore,
+		),
+	},
 	methods: {
 		restApi (): IRestApi {
 			const self = this;
 			return {
 				async makeRestApiRequest (method: Method, endpoint: string, data?: IDataObject): Promise<any> { // tslint:disable-line:no-any
-					return makeRestApiRequest(self.$store.getters.getRestApiContext, method, endpoint, data);
+					return makeRestApiRequest(self.rootStore.getRestApiContext, method, endpoint, data);
 				},
 				getActiveWorkflows: (): Promise<string[]> => {
 					return self.restApi().makeRestApiRequest('GET', `/active`);

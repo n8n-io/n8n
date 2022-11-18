@@ -157,7 +157,6 @@ export class JotFormTrigger implements INodeType {
 		},
 	};
 
-	//@ts-ignore
 	async webhook(this: IWebhookFunctions): Promise<IWebhookResponseData> {
 		const req = this.getRequestObject();
 		const formId = this.getNodeParameter('form') as string;
@@ -166,8 +165,8 @@ export class JotFormTrigger implements INodeType {
 
 		const form = new formidable.IncomingForm({});
 
-		return new Promise((resolve, reject) => {
-			form.parse(req, async (err, data, files) => {
+		return new Promise((resolve, _reject) => {
+			form.parse(req, async (err, data, _files) => {
 				// tslint:disable-next-line:no-any
 				const rawRequest = jsonParse<any>(data.rawRequest as string);
 				data.rawRequest = rawRequest;

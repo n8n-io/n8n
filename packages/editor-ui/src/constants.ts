@@ -32,6 +32,7 @@ export const DUPLICATE_MODAL_KEY = 'duplicate';
 export const TAGS_MANAGER_MODAL_KEY = 'tagsManager';
 export const VERSIONS_MODAL_KEY = 'versions';
 export const WORKFLOW_SETTINGS_MODAL_KEY = 'settings';
+export const WORKFLOW_SHARE_MODAL_KEY = 'workflowShare';
 export const PERSONALIZATION_MODAL_KEY = 'personalization';
 export const CONTACT_PROMPT_MODAL_KEY = 'contactPrompt';
 export const VALUE_SURVEY_MODAL_KEY = 'valueSurvey';
@@ -249,6 +250,7 @@ export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_NDV_FLAG = 'N8N_PIN_DATA_DISCOVERY
 export const LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG = 'N8N_PIN_DATA_DISCOVERY_CANVAS';
 export const LOCAL_STORAGE_MAPPING_FLAG = 'N8N_MAPPING_ONBOARDED';
 export const LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH = 'N8N_MAIN_PANEL_RELATIVE_WIDTH';
+export const LOCAL_STORAGE_THEME = 'N8N_THEME';
 export const BASE_NODE_SURVEY_URL = 'https://n8n-community.typeform.com/to/BvmzxqYv#nodename=';
 
 export const HIRING_BANNER = `
@@ -314,7 +316,8 @@ export enum VIEWS {
 export enum FAKE_DOOR_FEATURES {
 	ENVIRONMENTS = 'environments',
 	LOGGING = 'logging',
-	SHARING = 'sharing',
+	CREDENTIALS_SHARING = 'credentialsSharing',
+	WORKFLOWS_SHARING = 'workflowsSharing',
 }
 
 export const ONBOARDING_PROMPT_TIMEBOX = 14;
@@ -369,6 +372,7 @@ export enum WORKFLOW_MENU_ACTIONS {
  */
 export enum EnterpriseEditionFeature {
 	Sharing = 'sharing',
+	WorkflowSharing = 'workflowSharing',
 }
 export const MAIN_NODE_PANEL_WIDTH = 360;
 
@@ -409,3 +413,21 @@ export const CURL_IMPORT_NODES_PROTOCOLS: { [key: string]: string } = {
 	'imap': 'IMAP',
 	'imaps': 'IMAP',
 };
+
+export enum STORES {
+	COMMUNITY_NODES = 'communityNodes',
+	ROOT = 'root',
+	SETTINGS = 'settings',
+	UI = 'ui',
+	USERS = 'users',
+	WORKFLOWS = 'workflows',
+	WORKFLOWS_EE = 'workflowsEE',
+	NDV = 'ndv',
+	TEMPLATES = 'templates',
+	NODE_TYPES = 'nodeTypes',
+	CREDENTIALS = 'credentials',
+	TAGS = 'tags',
+	VERSIONS = 'versions',
+	NODE_CREATOR = 'nodeCreator',
+	WEBHOOKS = 'webhooks',
+}

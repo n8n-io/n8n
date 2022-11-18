@@ -1,14 +1,12 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable no-param-reassign */
 import { DeleteResult, EntityManager, In, Not } from 'typeorm';
-import { Db } from '..';
-import { RoleService } from '../role/role.service';
+import * as Db from '@/Db';
+import { RoleService } from '@/role/role.service';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { User } from '@db/entities/User';
+import { UserService } from '@/user/user.service';
 import { CredentialsService } from './credentials.service';
-
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { User } from '../databases/entities/User';
-import { UserService } from '../user/user.service';
 import type { CredentialWithSharings } from './credentials.types';
 
 export class EECredentialsService extends CredentialsService {

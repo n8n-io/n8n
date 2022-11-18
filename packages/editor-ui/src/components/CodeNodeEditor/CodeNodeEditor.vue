@@ -17,6 +17,8 @@ import { workflowHelpers } from '../mixins/workflowHelpers'; // for json field c
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { CODE_NODE_TYPE } from '@/constants';
 import { ALL_ITEMS_PLACEHOLDER, EACH_ITEM_PLACEHOLDER } from './constants';
+import { mapStores } from 'pinia';
+import { useRootStore } from '@/stores/n8nRootStore';
 
 export default mixins(linterExtension, completerExtension, workflowHelpers).extend({
 	name: 'code-node-editor',
@@ -47,6 +49,9 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 		},
 	},
 	computed: {
+		...mapStores(
+			useRootStore,
+		),
 		content(): string {
 			if (!this.editor) return '';
 
@@ -119,7 +124,7 @@ export default mixins(linterExtension, completerExtension, workflowHelpers).exte
 				}
 
 				this.$telemetry.track('User autocompleted code', {
-					instance_id: this.$store.getters.instanceId,
+					instance_id: this.rootStore.instanceId,
 					node_type: CODE_NODE_TYPE,
 					field_name: this.mode === 'runOnceForAllItems' ? 'jsCodeAllItems' : 'jsCodeEachItem',
 					field_type: 'code',

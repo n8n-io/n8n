@@ -297,12 +297,12 @@ export class SentryIo implements INodeType {
 						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
 						const full = this.getNodeParameter('full', i) as boolean;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/events/`;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
@@ -311,7 +311,7 @@ export class SentryIo implements INodeType {
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -329,7 +329,7 @@ export class SentryIo implements INodeType {
 					if (operation === 'getAll') {
 						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 						const projectSlug = this.getNodeParameter('projectSlug', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const endpoint = `/api/0/projects/${organizationSlug}/${projectSlug}/issues/`;
 
@@ -346,14 +346,14 @@ export class SentryIo implements INodeType {
 						}
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -406,7 +406,7 @@ export class SentryIo implements INodeType {
 						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const endpoint = `/api/0/organizations/`;
 
@@ -418,7 +418,7 @@ export class SentryIo implements INodeType {
 						}
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
@@ -429,7 +429,7 @@ export class SentryIo implements INodeType {
 						}
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -480,18 +480,18 @@ export class SentryIo implements INodeType {
 						responseData = await sentryIoApiRequest.call(this, 'GET', endpoint, qs);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const endpoint = `/api/0/projects/`;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -524,21 +524,21 @@ export class SentryIo implements INodeType {
 						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/releases/`;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (additionalFields.query) {
 							qs.query = additionalFields.query as string;
 						}
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -677,17 +677,17 @@ export class SentryIo implements INodeType {
 					if (operation === 'getAll') {
 						const organizationSlug = this.getNodeParameter('organizationSlug', i) as string;
 						const endpoint = `/api/0/organizations/${organizationSlug}/teams/`;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 						}
 
 						responseData = await sentryApiRequestAllItems.call(this, 'GET', endpoint, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

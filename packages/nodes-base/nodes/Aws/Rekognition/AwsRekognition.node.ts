@@ -334,7 +334,6 @@ export class AwsRekognition implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
-		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -413,7 +412,7 @@ export class AwsRekognition implements INodeType {
 								body.Filters.WordFilter = keysTPascalCase(wordFilter);
 							}
 
-							const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
+							const binaryData = this.getNodeParameter('binaryData', 0);
 
 							if (binaryData) {
 								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;

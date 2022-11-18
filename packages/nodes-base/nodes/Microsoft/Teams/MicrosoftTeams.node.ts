@@ -9,7 +9,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
 
 import { microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
@@ -339,7 +338,7 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/channel-list?view=graph-rest-beta&tabs=http
 					if (operation === 'getAll') {
 						const teamId = this.getNodeParameter('teamId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
@@ -348,7 +347,7 @@ export class MicrosoftTeams implements INodeType {
 								`/v1.0/teams/${teamId}/channels`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -418,7 +417,7 @@ export class MicrosoftTeams implements INodeType {
 					if (operation === 'getAll') {
 						const teamId = this.getNodeParameter('teamId', i) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
@@ -427,7 +426,7 @@ export class MicrosoftTeams implements INodeType {
 								`/beta/teams/${teamId}/channels/${channelId}/messages`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -471,7 +470,7 @@ export class MicrosoftTeams implements INodeType {
 					// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
 					if (operation === 'getAll') {
 						const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
@@ -480,7 +479,7 @@ export class MicrosoftTeams implements INodeType {
 								`/v1.0/chats/${chatId}/messages`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequestAllItems.call(
 								this,
 								'value',
@@ -559,7 +558,7 @@ export class MicrosoftTeams implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const tasksFor = this.getNodeParameter('tasksFor', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (tasksFor === 'member') {
 							//https://docs.microsoft.com/en-us/graph/api/planneruser-list-tasks?view=graph-rest-1.0&tabs=http
 							const memberId = this.getNodeParameter('memberId', i) as string;
@@ -571,7 +570,7 @@ export class MicrosoftTeams implements INodeType {
 									`/v1.0/users/${memberId}/planner/tasks`,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', i) as number;
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await microsoftApiRequestAllItems.call(
 									this,
 									'value',
@@ -592,7 +591,7 @@ export class MicrosoftTeams implements INodeType {
 									`/v1.0/planner/plans/${planId}/tasks`,
 								);
 							} else {
-								qs.limit = this.getNodeParameter('limit', i) as number;
+								qs.limit = this.getNodeParameter('limit', i);
 								responseData = await microsoftApiRequestAllItems.call(
 									this,
 									'value',

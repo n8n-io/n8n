@@ -164,7 +164,7 @@ export class S3 implements INodeType {
 					}
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListBuckets.html
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll) {
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
@@ -174,7 +174,7 @@ export class S3 implements INodeType {
 								'',
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
 								'ListAllMyBucketsResult.Buckets.Bucket',
@@ -192,7 +192,7 @@ export class S3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'search') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
 
 						if (additionalFields.prefix) {
@@ -241,7 +241,7 @@ export class S3 implements INodeType {
 								region,
 							);
 						} else {
-							qs['max-keys'] = this.getNodeParameter('limit', 0) as number;
+							qs['max-keys'] = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAP.call(
 								this,
 								bucketName,
@@ -293,9 +293,19 @@ export class S3 implements INodeType {
 
 						const region = responseData.LocationConstraint._;
 
-						responseData = await s3ApiRequestSOAP.call(this, bucketName, 'PUT', path, '', qs, headers, {}, region);
+						responseData = await s3ApiRequestSOAP.call(
+							this,
+							bucketName,
+							'PUT',
+							path,
+							'',
+							qs,
+							headers,
+							{},
+							region,
+						);
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -389,7 +399,7 @@ export class S3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {
@@ -422,7 +432,7 @@ export class S3 implements INodeType {
 								region,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
 								'ListBucketResult.Contents',
@@ -660,7 +670,7 @@ export class S3 implements INodeType {
 						);
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -669,7 +679,7 @@ export class S3 implements INodeType {
 					//https://docs.aws.amazon.com/AmazonS3/latest/API/API_ListObjectsV2.html
 					if (operation === 'getAll') {
 						const bucketName = this.getNodeParameter('bucketName', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						const options = this.getNodeParameter('options', 0) as IDataObject;
 
 						if (options.folderKey) {
@@ -704,7 +714,7 @@ export class S3 implements INodeType {
 								region,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await s3ApiRequestSOAPAllItems.call(
 								this,
 								'ListBucketResult.Contents',
@@ -882,7 +892,7 @@ export class S3 implements INodeType {
 						}
 
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({success: true}),
+							this.helpers.returnJsonArray({ success: true }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
@@ -895,7 +905,7 @@ export class S3 implements INodeType {
 						items[i].json = { error: error.message };
 					} else {
 						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray({error: error.message}),
+							this.helpers.returnJsonArray({ error: error.message }),
 							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);

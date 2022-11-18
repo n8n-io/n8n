@@ -244,7 +244,7 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/posts/#list-posts
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.context) {
 							qs.context = options.context as string;
@@ -285,7 +285,7 @@ export class Wordpress implements INodeType {
 						if (returnAll === true) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/posts', {}, qs);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await wordpressApiRequest.call(this, 'GET', '/posts', {}, qs);
 						}
 					}
@@ -387,7 +387,7 @@ export class Wordpress implements INodeType {
 					}
 					//https://developer.wordpress.org/rest-api/reference/users/#list-users
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.context) {
 							qs.context = options.context as string;
@@ -407,7 +407,7 @@ export class Wordpress implements INodeType {
 						if (returnAll === true) {
 							responseData = await wordpressApiRequestAllItems.call(this, 'GET', '/users', {}, qs);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 							responseData = await wordpressApiRequest.call(this, 'GET', '/users', {}, qs);
 						}
 					}

@@ -309,7 +309,7 @@ export namespace SendInBlueWebhookApi {
 		webhooks: WebhookDetails[];
 	}
 
-	const credentialsName = 'sendinblueApi';
+	const credentialsName = 'sendInBlueApi';
 	const baseURL = 'https://api.sendinblue.com/v3';
 	export const supportedAuthMap = new Map<string, (ref: IWebhookFunctions) => Promise<string>>([
 		[

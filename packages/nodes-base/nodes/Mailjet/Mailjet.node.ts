@@ -7,7 +7,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -112,7 +111,7 @@ export class Mailjet implements INodeType {
 						const subject = this.getNodeParameter('subject', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						const body: IMessage = {
 							From: {
@@ -206,7 +205,7 @@ export class Mailjet implements INodeType {
 						const subject = this.getNodeParameter('subject', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const toEmail = (this.getNodeParameter('toEmail', i) as string).split(',') as string[];
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						const body: IMessage = {
 							From: {

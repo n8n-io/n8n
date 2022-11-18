@@ -1,4 +1,4 @@
-@use "mixins/mixins";
+@use 'mixins/mixins';
 
 @include mixins.b(time-spinner) {
 	width: 100%;

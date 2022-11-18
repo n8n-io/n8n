@@ -1,11 +1,8 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
 	IDataObject,
 	ILoadOptionsFunctions,
-	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
@@ -200,10 +197,10 @@ export class Grafana implements INodeType {
 							Object.assign(qs, filters);
 						}
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							Object.assign(qs, { limit });
 						}
 
@@ -324,10 +321,10 @@ export class Grafana implements INodeType {
 						responseData = await grafanaApiRequest.call(this, 'GET', '/teams/search', {}, qs);
 						responseData = responseData.teams;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -407,10 +404,10 @@ export class Grafana implements INodeType {
 						const endpoint = `/teams/${teamId}/members`;
 						responseData = await grafanaApiRequest.call(this, 'GET', endpoint);
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					}
@@ -450,10 +447,10 @@ export class Grafana implements INodeType {
 
 						responseData = await grafanaApiRequest.call(this, 'GET', '/org/users');
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {

@@ -217,7 +217,7 @@ export class EmailReadImapV1 implements INodeType {
 					const conn = imapConnect(config).then(async (conn) => {
 						return conn;
 					});
-					(await conn).getBoxes((err, boxes) => {});
+					(await conn).getBoxes((_err, _boxes) => {});
 				} catch (error) {
 					console.log(error);
 					return {

@@ -8,7 +8,7 @@
 		:beforeClose="onModalClose"
 		:showClose="!loading"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="[$style.descriptionContainer, 'p-s']">
 				<div>
 					<n8n-text>
@@ -66,7 +66,7 @@
 				</el-checkbox>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<n8n-button
 				:loading="loading"
 				:disabled="packageName === '' || loading"
@@ -92,6 +92,8 @@ import {
 } from '../constants';
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
+import { mapStores } from 'pinia';
+import { useCommunityNodesStore } from '@/stores/communityNodes';
 
 export default mixins(
 	showMessage,
@@ -114,6 +116,9 @@ export default mixins(
 			COMMUNITY_NODES_RISKS_DOCS_URL,
 		};
 	},
+	computed: {
+		...mapStores(useCommunityNodesStore),
+	},
 	methods: {
 		openNPMPage() {
 			this.$telemetry.track('user clicked cnr browse button', { source: 'cnr install modal' });
@@ -127,9 +132,9 @@ export default mixins(
 					this.$telemetry.track('user started cnr package install', { input_string: this.packageName, source: 'cnr settings page' });
 					this.infoTextErrorMessage = '';
 					this.loading = true;
-					await this.$store.dispatch('communityNodes/installPackage', this.packageName);
+					await this.communityNodesStore.installPackage(this.packageName);
 					// TODO: We need to fetch a fresh list of installed packages until proper response is implemented on the back-end
-					await this.$store.dispatch('communityNodes/fetchInstalledPackages');
+					await this.communityNodesStore.fetchInstalledPackages();
 					this.loading = false;
 					this.modalBus.$emit('close');
 					this.$showMessage({

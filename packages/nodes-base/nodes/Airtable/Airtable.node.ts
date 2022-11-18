@@ -2,26 +2,13 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import {
 	IDataObject,
-	ILoadOptionsFunctions,
 	INodeExecutionData,
-	INodeListSearchResult,
 	INodeType,
 	INodeTypeDescription,
 	NodeOperationError,
 } from 'n8n-workflow';
 
 import { apiRequest, apiRequestAllItems, downloadRecordAttachments } from './GenericFunctions';
-
-interface AirtableBase {
-	id: string;
-	name: string;
-}
-
-interface AirtableTable {
-	id: string;
-	name: string;
-	description: string;
-}
 
 export class Airtable implements INodeType {
 	description: INodeTypeDescription = {
@@ -644,9 +631,9 @@ export class Airtable implements INodeType {
 				requestMethod = 'GET';
 				endpoint = `${application}/${table}`;
 
-				returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+				returnAll = this.getNodeParameter('returnAll', 0);
 
-				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0) as boolean;
+				const downloadAttachments = this.getNodeParameter('downloadAttachments', 0);
 
 				const additionalOptions = this.getNodeParameter('additionalOptions', 0, {}) as IDataObject;
 
@@ -661,7 +648,7 @@ export class Airtable implements INodeType {
 				if (returnAll === true) {
 					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 				} else {
-					qs.maxRecords = this.getNodeParameter('limit', 0) as number;
+					qs.maxRecords = this.getNodeParameter('limit', 0);
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 

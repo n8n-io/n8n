@@ -29,21 +29,27 @@
 					v{{ communityPackage.installedVersion }}
 				</n8n-text>
 				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+						</div>
+					</template>
 					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else-if="communityPackage.updateAvailable" placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
+						</div>
+					</template>
 					<n8n-button type="outline" label="Update" @click="onUpdateClick"/>
 				</n8n-tooltip>
 				<n8n-tooltip v-else placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
+						</div>
+					</template>
 					<n8n-icon icon="check-circle" color="text-light" size="large" />
 				</n8n-tooltip>
 				<div :class="$style.cardActions">
@@ -55,7 +61,9 @@
 </template>
 
 <script lang="ts">
+import { useUIStore } from '@/stores/ui';
 import { PublicInstalledPackage } from 'n8n-workflow';
+import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import {
 	NPM_PACKAGE_DOCS_BASE_URL,
@@ -91,6 +99,9 @@ export default mixins(
 			],
 		};
 	},
+	computed: {
+		...mapStores(useUIStore),
+	},
 	methods: {
 		async onAction(value: string) {
 			switch (value) {
@@ -102,14 +113,14 @@ export default mixins(
 					window.open(`${NPM_PACKAGE_DOCS_BASE_URL}${this.communityPackage.packageName}`, '_blank');
 					break;
 				case COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL:
-					this.$store.dispatch('ui/openCommunityPackageUninstallConfirmModal', this.communityPackage.packageName);
+					this.uiStore.openCommunityPackageUninstallConfirmModal(this.communityPackage.packageName);
 					break;
 				default:
 					break;
 			}
 		},
 		onUpdateClick() {
-			this.$store.dispatch('ui/openCommunityPackageUpdateConfirmModal', this.communityPackage.packageName);
+			this.uiStore.openCommunityPackageUpdateConfirmModal(this.communityPackage.packageName);
 		},
 	},
 });

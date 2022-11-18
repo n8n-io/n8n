@@ -7,7 +7,7 @@
 		width="460px"
 		:eventBus="modalBus"
 	>
-		<template slot="content">
+		<template #content>
 			<n8n-form-inputs
 				:inputs="config"
 				:eventBus="formBus"
@@ -16,7 +16,7 @@
 				@submit="onSubmit"
 			/>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<n8n-button :loading="loading" :label="$locale.baseText('auth.changePassword')" @click="onSubmitClick" float="right" />
 		</template>
 	</Modal>
@@ -31,6 +31,8 @@ import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IFormInputs } from "@/Interface";
 import { CHANGE_PASSWORD_MODAL_KEY } from '../constants';
+import { mapStores } from "pinia";
+import { useUsersStore } from "@/stores/users";
 
 export default mixins(showMessage).extend({
 	components: { Modal },
@@ -49,6 +51,9 @@ export default mixins(showMessage).extend({
 			loading: false,
 			CHANGE_PASSWORD_MODAL_KEY,
 		};
+	},
+	computed: {
+		...mapStores(useUsersStore),
 	},
 	mounted() {
 		this.config = [
@@ -115,7 +120,7 @@ export default mixins(showMessage).extend({
 		async onSubmit(values: {[key: string]: string}) {
 			try {
 				this.loading = true;
-				await this.$store.dispatch('users/updateCurrentUserPassword', values);
+				await this.usersStore.updateCurrentUserPassword(values);
 
 				this.$showMessage({
 					type: 'success',

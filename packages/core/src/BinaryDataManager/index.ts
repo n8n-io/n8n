@@ -4,7 +4,7 @@ import { IBinaryDataConfig, IBinaryDataManager } from '../Interfaces';
 import { BinaryDataFileSystem } from './FileSystem';
 
 export class BinaryDataManager {
-	private static instance: BinaryDataManager;
+	static instance: BinaryDataManager | undefined;
 
 	private managers: {
 		[key: string]: IBinaryDataManager;

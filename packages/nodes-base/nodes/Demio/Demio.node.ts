@@ -132,14 +132,14 @@ export class Demio implements INodeType {
 					}
 					if (operation === 'getAll') {
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						Object.assign(qs, filters);
 
 						responseData = await demioApiRequest.call(this, 'GET', `/events`, {}, qs);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

@@ -2,7 +2,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IBinaryKeyData,
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
@@ -259,14 +258,14 @@ export class GmailV2 implements INodeType {
 						responseData = await googleApiRequest.call(this, 'GET', endpoint);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await googleApiRequest.call(this, 'GET', `/gmail/v1/users/me/labels`);
 
 						responseData = this.helpers.returnJsonArray(responseData.labels);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -380,7 +379,7 @@ export class GmailV2 implements INodeType {
 						responseData = [nodeExecutionData];
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
 						const filters = this.getNodeParameter('filters', i, {}) as IDataObject;
 						const qs: IDataObject = {};
@@ -396,7 +395,7 @@ export class GmailV2 implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -606,7 +605,7 @@ export class GmailV2 implements INodeType {
 						responseData = { success: true };
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const qs: IDataObject = {};
 						Object.assign(qs, options);
@@ -621,7 +620,7 @@ export class GmailV2 implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -706,7 +705,7 @@ export class GmailV2 implements INodeType {
 					}
 					if (operation === 'getAll') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/list
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 						const qs: IDataObject = {};
 						Object.assign(qs, prepareQuery.call(this, filters));
@@ -721,7 +720,7 @@ export class GmailV2 implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -785,9 +784,12 @@ export class GmailV2 implements INodeType {
 				}
 				//------------------------------------------------------------------//
 
-				const executionData = this.helpers.constructExecutionMetaData(this.helpers.returnJsonArray(responseData), {
-					itemData: { item: i },
-				});
+				const executionData = this.helpers.constructExecutionMetaData(
+					this.helpers.returnJsonArray(responseData),
+					{
+						itemData: { item: i },
+					},
+				);
 				returnData.push(...executionData);
 			} catch (error) {
 				error.message = `${error.message} (item ${i})`;

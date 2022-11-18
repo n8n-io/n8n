@@ -114,7 +114,7 @@ export class HelpScout implements INodeType {
 				);
 				for (const tag of tags) {
 					const tagName = tag.name;
-					const tagId = tag.id;
+					const _tagId = tag.id;
 					returnData.push({
 						name: tagName,
 						value: tagName,
@@ -162,7 +162,7 @@ export class HelpScout implements INodeType {
 						const status = this.getNodeParameter('status', i) as string;
 						const subject = this.getNodeParameter('subject', i) as string;
 						const type = this.getNodeParameter('type', i) as string;
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const threads = (this.getNodeParameter('threadsUi', i) as IDataObject)
 							.threadsValues as IDataObject[];
@@ -246,7 +246,7 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						Object.assign(qs, options);
 						if (returnAll) {
@@ -259,7 +259,7 @@ export class HelpScout implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.conversations',
@@ -275,7 +275,7 @@ export class HelpScout implements INodeType {
 				if (resource === 'customer') {
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/create
 					if (operation === 'create') {
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const chats = (this.getNodeParameter('chatsUi', i) as IDataObject)
 							.chatsValues as IDataObject[];
@@ -360,7 +360,7 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/customers/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						Object.assign(qs, options);
 						if (returnAll) {
@@ -373,7 +373,7 @@ export class HelpScout implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.customers',
@@ -425,7 +425,7 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/mailboxes/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
@@ -436,7 +436,7 @@ export class HelpScout implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.mailboxes',
@@ -453,7 +453,7 @@ export class HelpScout implements INodeType {
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/threads/chat
 					if (operation === 'create') {
 						const conversationId = this.getNodeParameter('conversationId', i) as string;
-						const type = this.getNodeParameter('type', i) as string;
+						const _type = this.getNodeParameter('type', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
 						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const attachments = this.getNodeParameter('attachmentsUi', i) as IDataObject;
@@ -534,7 +534,7 @@ export class HelpScout implements INodeType {
 					}
 					//https://developer.helpscout.com/mailbox-api/endpoints/conversations/threads/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const conversationId = this.getNodeParameter('conversationId', i) as string;
 						if (returnAll) {
 							responseData = await helpscoutApiRequestAllItems.call(
@@ -544,7 +544,7 @@ export class HelpScout implements INodeType {
 								`/v2/conversations/${conversationId}/threads`,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await helpscoutApiRequestAllItems.call(
 								this,
 								'_embedded.threads',

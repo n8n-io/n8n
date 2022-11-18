@@ -111,7 +111,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							qs.$filter = tolerateDoubleQuotes(filter);
 						}
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
 							qs.$count = true;
@@ -123,7 +123,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							.then((response) => response.value)) as Array<{ controlScores: object[] }>;
 
 						if (!includeControlScores) {
-							responseData = responseData.map(({ controlScores, ...rest }) => rest);
+							responseData = responseData.map(({ controlScores: _controlScores, ...rest }) => rest);
 						}
 					}
 				} else if (resource === 'secureScoreControlProfile') {
@@ -161,7 +161,7 @@ export class MicrosoftGraphSecurity implements INodeType {
 							qs.$filter = tolerateDoubleQuotes(filter);
 						}
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
 							qs.$count = true;

@@ -8,7 +8,7 @@
 		:beforeClose="onModalClose"
 		width="460px"
 	>
-		<template slot="content">
+		<template #content>
 			<div class="pb-m">
 				<n8n-text>
 					{{ $locale.baseText('onboardingCallSignupModal.description') }}
@@ -21,7 +21,7 @@
 				</n8n-text>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<div :class="$style.buttonsContainer">
 				<n8n-button
 					:label="$locale.baseText('onboardingCallSignupModal.cancelButton.label')"
@@ -55,6 +55,8 @@ import Modal from './Modal.vue';
 
 import mixins from 'vue-typed-mixins';
 import { showMessage } from './mixins/showMessage';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
 
 export default mixins(
 	showMessage,
@@ -75,6 +77,7 @@ export default mixins(
 		};
 	},
 	computed: {
+		...mapStores(useUIStore),
 		isEmailValid(): boolean {
 			return VALID_EMAIL_REGEX.test(String(this.email).toLowerCase());
 		},
@@ -90,7 +93,7 @@ export default mixins(
 			this.okToClose = false;
 
 			try {
-				await this.$store.dispatch('ui/applyForOnboardingCall', { email: this.email });
+				await this.uiStore.applyForOnboardingCall(this.email);
 				this.$showMessage({
 					type: 'success',
 					title: this.$locale.baseText('onboardingCallSignupSucess.title'),

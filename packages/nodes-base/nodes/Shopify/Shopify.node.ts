@@ -264,7 +264,7 @@ export class Shopify implements INodeType {
 					}
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#index-2020-04
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						if (options.fields) {
 							qs.fields = options.fields as string;
@@ -316,7 +316,7 @@ export class Shopify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await shopifyApiRequest.call(this, 'GET', '/orders.json', {}, qs);
 							responseData = responseData.orders;
 						}
@@ -419,7 +419,7 @@ export class Shopify implements INodeType {
 							{},
 						) as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -433,7 +433,7 @@ export class Shopify implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await shopifyApiRequest.call(this, 'GET', '/products.json', {}, qs);
 							responseData = responseData.products;
 						}

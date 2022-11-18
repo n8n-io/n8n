@@ -1,12 +1,6 @@
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
-import {
-	IDataObject,
-	INodeType,
-	INodeTypeDescription,
-	IWebhookResponseData,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { IDataObject, INodeType, INodeTypeDescription, IWebhookResponseData } from 'n8n-workflow';
 
 import {
 	getAutomaticSecret,
@@ -587,7 +581,6 @@ export class CiscoWebexTrigger implements INodeType {
 
 		//@ts-ignore
 		const computedSignature = createHmac('sha1', webhookData.secret)
-			//@ts-ignore
 			.update(req.rawBody)
 			.digest('hex');
 		if (headers['x-spark-signature'] !== computedSignature) {

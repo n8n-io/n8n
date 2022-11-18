@@ -1,3 +1,4 @@
+import { IMenuItem } from 'n8n-design-system';
 import {
 	jsPlumbInstance,
 	DragOptions,
@@ -33,8 +34,10 @@ import {
 	ILoadOptions,
 	INodeCredentials,
 	INodeListSearchItems,
+	NodeParameterValueType,
 } from 'n8n-workflow';
 import { FAKE_DOOR_FEATURES } from './constants';
+import {ICredentialsDb} from "n8n";
 
 export * from 'n8n-design-system/src/types';
 
@@ -152,8 +155,8 @@ export type IJsPlumbInstance = Omit<jsPlumbInstance, 'addEndpoint' | 'draggable'
 
 export interface IUpdateInformation {
 	name: string;
-	key: string;
-	value: string | number | { [key: string]: string | number | boolean }; // with null makes problems in NodeSettings.vue
+	key?: string;
+	value: string | number | { [key: string]: string | number | boolean } | NodeParameterValueType | INodeParameters; // with null makes problems in NodeSettings.vue
 	node?: string;
 	oldValue?: string | number;
 }
@@ -268,6 +271,7 @@ export interface IWorkflowData {
 	settings?: IWorkflowSettings;
 	tags?: string[];
 	pinData?: IPinData;
+	hash?: string;
 }
 
 export interface IWorkflowDataUpdate {
@@ -279,6 +283,7 @@ export interface IWorkflowDataUpdate {
 	active?: boolean;
 	tags?: ITag[] | string[]; // string[] when store or requested, ITag[] from API response
 	pinData?: IPinData;
+	hash?: string;
 }
 
 export interface IWorkflowToShare extends IWorkflowDataUpdate {
@@ -315,6 +320,8 @@ export interface IWorkflowDb {
 	pinData?: IPinData;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
+	hash: string;
+	usedCredentials?: Array<Partial<ICredentialsDb>>;
 }
 
 // Identical to cli.Interfaces.ts
@@ -325,6 +332,14 @@ export interface IWorkflowShortResponse {
 	createdAt: number | string;
 	updatedAt: number | string;
 	tags: ITag[];
+}
+
+export interface IWorkflowsShareResponse {
+	id: string;
+	createdAt: number | string;
+	updatedAt: number | string;
+	sharedWith?: Array<Partial<IUser>>;
+	ownedBy?: Partial<IUser>;
 }
 
 
@@ -341,12 +356,17 @@ export interface IShareCredentialsPayload {
 	shareWithIds: string[];
 }
 
+export interface IShareWorkflowsPayload {
+	shareWithIds: string[];
+}
+
 export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: number | string;
 	updatedAt: number | string;
 	sharedWith?: Array<Partial<IUser>>;
 	ownedBy?: Partial<IUser>;
+	currentUserHasAccess?: boolean;
 }
 
 export interface ICredentialsBase {
@@ -884,6 +904,55 @@ export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
 }
 
+export interface IUsedCredential {
+	id: string;
+	name: string;
+	credentialType: string;
+	currentUserHasAccess: boolean;
+}
+
+export interface WorkflowsState {
+	activeExecutions: IExecutionsCurrentSummaryExtended[];
+	activeWorkflows: string[];
+	activeWorkflowExecution: IExecutionsSummary | null;
+	currentWorkflowExecutions: IExecutionsSummary[];
+	activeExecutionId: string | null;
+	executingNode: string | null;
+	executionWaitingForWebhook: boolean;
+	finishedExecutionsCount: number;
+	nodeMetadata: NodeMetadataMap;
+	subWorkflowExecutionError: Error | null;
+	usedCredentials: Record<string, IUsedCredential>;
+	workflow: IWorkflowDb;
+	workflowExecutionData: IExecutionResponse | null;
+	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};
+	workflowsById: IWorkflowsMap;
+}
+
+export interface RootState {
+	baseUrl: string;
+	defaultLocale: string;
+	endpointWebhook: string;
+	endpointWebhookTest: string;
+	pushConnectionActive: boolean;
+	timezone: string;
+	executionTimeout: number;
+	maxExecutionTimeout: number;
+	versionCli: string;
+	oauthCallbackUrls: object;
+	n8nMetadata: {
+		[key: string]: string | number | undefined;
+	};
+	sessionId: string;
+	urlBaseWebhook: string;
+	urlBaseEditor: string;
+	instanceId: string;
+	isNpmAvailable: boolean;
+}
+
+export interface NodeMetadataMap {
+	[nodeName: string]: INodeMetadata;
+}
 export interface IRootState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
@@ -921,12 +990,12 @@ export interface IRootState {
 	workflowsById: IWorkflowsMap;
 	sidebarMenuItems: IMenuItem[];
 	instanceId: string;
-	nodeMetadata: {[nodeName: string]: INodeMetadata};
+	nodeMetadata: NodeMetadataMap;
 	isNpmAvailable: boolean;
 	subworkflowExecutionError: Error | null;
 }
 
-export interface ICommunityPackageMap {
+export interface CommunityPackageMap {
 	[name: string]: PublicInstalledPackage;
 }
 
@@ -941,12 +1010,11 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
-	foreignCredentials?: ICredentialMap;
 }
 
 export interface ITagsState {
 	tags: { [id: string]: ITag };
-	isLoading: boolean;
+	loading: boolean;
 	fetchedAll: boolean;
 	fetchedUsageCount: boolean;
 }
@@ -961,6 +1029,7 @@ export interface IModalState {
 }
 
 export type IRunDataDisplayMode = 'table' | 'json' | 'binary';
+export type nodePanelType = 'input' | 'output';
 
 export interface TargetItem {
 	nodeName: string;
@@ -1020,6 +1089,37 @@ export interface IUiState {
 	executionSidebarAutoRefresh: boolean;
 }
 
+export interface UIState {
+	activeActions: string[];
+	activeCredentialType: string | null;
+	sidebarMenuCollapsed: boolean;
+	modalStack: string[];
+	modals: {
+		[key: string]: IModalState;
+	};
+	isPageLoading: boolean;
+	currentView: string;
+	mainPanelPosition: number;
+	fakeDoorFeatures: IFakeDoor[];
+	draggable: {
+		isDragging: boolean;
+		type: string;
+		data: string;
+		canDrop: boolean;
+		stickyPosition: null | XYPosition;
+	};
+	stateIsDirty: boolean;
+	lastSelectedNode: string | null;
+	lastSelectedNodeOutputIndex: number | null;
+	nodeViewOffsetPosition: XYPosition;
+	nodeViewMoveInProgress: boolean;
+	selectedNodes: INodeUi[];
+	sidebarMenuItems: IMenuItem[];
+	nodeViewInitialized: boolean;
+	addFirstStepOnLoad: boolean;
+	executionSidebarAutoRefresh: boolean;
+}
+
 export type ILogLevel = 'info' | 'debug' | 'warn' | 'error' | 'verbose';
 
 export type IFakeDoor = {
@@ -1034,7 +1134,7 @@ export type IFakeDoor = {
 	uiLocations: IFakeDoorLocation[],
 };
 
-export type IFakeDoorLocation = 'settings' | 'credentialsModal';
+export type IFakeDoorLocation = 'settings' | 'credentialsModal' | 'workflowShareModal';
 
 export type INodeFilterType = "Regular" | "Trigger" | "All";
 
@@ -1056,6 +1156,9 @@ export interface ISettingsState {
 		path: string;
 	};
 	onboardingCallPromptEnabled: boolean;
+	saveDataErrorExecution: string;
+	saveDataSuccessExecution: string;
+	saveManualExecutions: boolean;
 }
 
 export interface INodeTypesState {
@@ -1106,11 +1209,9 @@ export interface IWorkflowsState {
 	[name: string]: IWorkflowDb;
 }
 
-export interface IWorkflowsState {}
-
-export interface ICommunityNodesState {
+export interface CommunityNodesState {
 	availablePackageCount: number;
-	installedPackages: ICommunityPackageMap;
+	installedPackages: CommunityPackageMap;
 }
 
 export interface IRestApiContext {
@@ -1146,8 +1247,8 @@ export interface IOnboardingCallPromptResponse {
 
 export interface IOnboardingCallPrompt {
 	title: string;
-	body: string;
-	index: number;
+	description: string;
+	toast_sequence_number: number;
 }
 
 export interface ITab {
@@ -1178,4 +1279,15 @@ export interface IResourceLocatorReqParams {
 
 export interface IResourceLocatorResultExpanded extends INodeListSearchItems {
 	linkAlt?: string;
+}
+
+export interface CurlToJSONResponse {
+	"parameters.url": string;
+	"parameters.authentication": string;
+	"parameters.method": string;
+	"parameters.sendHeaders": boolean;
+	"parameters.headerParameters.parameters.0.name": string;
+	"parameters.headerParameters.parameters.0.value": string;
+	"parameters.sendQuery": boolean;
+	"parameters.sendBody": boolean;
 }

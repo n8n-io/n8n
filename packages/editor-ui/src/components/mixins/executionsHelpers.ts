@@ -1,5 +1,7 @@
 import { IExecutionsSummary } from "@/Interface";
+import { useWorkflowsStore } from "@/stores/workflows";
 import dateFormat from "dateformat";
+import { mapStores } from "pinia";
 import mixins from "vue-typed-mixins";
 import { genericHelpers } from "./genericHelpers";
 
@@ -12,20 +14,23 @@ export interface IExecutionUIData {
 
 export const executionHelpers = mixins(genericHelpers).extend({
 	computed: {
+		...mapStores(
+			useWorkflowsStore,
+		),
 		executionId(): string {
 			return this.$route.params.executionId;
 		},
 		workflowName (): string {
-			return this.$store.getters.workflowName;
+			return this.workflowsStore.workflowName;
 		},
 		currentWorkflow (): string {
-			return this.$route.params.name || this.$store.getters.workflowId;
+			return this.$route.params.name || this.workflowsStore.workflowId;
 		},
 		executions(): IExecutionsSummary[] {
-			return this.$store.getters['workflows/currentWorkflowExecutions'];
+			return this.workflowsStore.currentWorkflowExecutions;
 		},
-		activeExecution(): IExecutionsSummary {
-			return this.$store.getters['workflows/getActiveWorkflowExecution'];
+		activeExecution(): IExecutionsSummary | null {
+			return this.workflowsStore.activeWorkflowExecution;
 		},
 	},
 	methods: {

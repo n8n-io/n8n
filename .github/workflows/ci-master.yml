@@ -18,20 +18,37 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - uses: pnpm/action-setup@v2.2.4
+
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'npm'
+          cache: 'pnpm'
 
-      - name: Install npm and dependencies
-        run: npm install -g npm@latest && npm install
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: npm run build --if-present
+        run: pnpm build
 
       - name: Test
-        run: npm run test
+        run: pnpm test
+
+      - name: Test E2E
+        run: |
+          pnpm cypress:install
+          pnpm test:e2e:ci:smoke
 
       - name: Lint
-        run: npm run lint
+        env:
+          CI_LINT_MASTER: true
+        run: pnpm lint
+
+      - name: Notify Slack on failure
+        uses: act10ns/slack@v2.0.0
+        if: failure()
+        with:
+          status: ${{ job.status }}
+          channel: '#updates-build-alerts'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}

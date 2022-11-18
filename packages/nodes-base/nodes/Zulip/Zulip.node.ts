@@ -130,7 +130,6 @@ export class Zulip implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
@@ -271,7 +270,7 @@ export class Zulip implements INodeType {
 					}
 
 					if (operation === 'create') {
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 						const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject;
 
 						body.subscriptions = JSON.stringify(subscriptions.properties);
@@ -343,7 +342,7 @@ export class Zulip implements INodeType {
 					if (operation === 'update') {
 						const streamId = this.getNodeParameter('streamId', i) as string;
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(

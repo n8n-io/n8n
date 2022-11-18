@@ -223,7 +223,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/channels/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -262,7 +262,7 @@ export class YouTube implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -476,7 +476,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/playlists/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
@@ -505,7 +505,7 @@ export class YouTube implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -660,7 +660,7 @@ export class YouTube implements INodeType {
 					}
 					//https://developers.google.com/youtube/v3/docs/playlistItems/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						let part = this.getNodeParameter('part', i) as string[];
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const playlistId = this.getNodeParameter('playlistId', i) as string;
@@ -686,7 +686,7 @@ export class YouTube implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(
 								this,
 								'GET',
@@ -774,7 +774,7 @@ export class YouTube implements INodeType {
 				if (resource === 'video') {
 					//https://developers.google.com/youtube/v3/docs/search/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as IDataObject;
 						const filters = this.getNodeParameter('filters', i) as IDataObject;
 
@@ -808,7 +808,7 @@ export class YouTube implements INodeType {
 								qs,
 							);
 						} else {
-							qs.maxResults = this.getNodeParameter('limit', i) as number;
+							qs.maxResults = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', `/youtube/v3/search`, {}, qs);
 							responseData = responseData.items;
 						}
@@ -1075,7 +1075,7 @@ export class YouTube implements INodeType {
 				if (resource === 'videoCategory') {
 					//https://developers.google.com/youtube/v3/docs/videoCategories/list
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const regionCode = this.getNodeParameter('regionCode', i) as string;
 
 						qs.regionCode = regionCode;
@@ -1092,7 +1092,7 @@ export class YouTube implements INodeType {
 						responseData = responseData.items;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

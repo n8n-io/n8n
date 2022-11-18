@@ -2,9 +2,10 @@
  * @jest-environment jsdom
  */
 
-import { Expression, Workflow } from '../src';
-import * as Helpers from './Helpers';
 import { DateTime, Duration, Interval } from 'luxon';
+import { Expression } from '@/Expression';
+import { Workflow } from '@/Workflow';
+import * as Helpers from './Helpers';
 
 describe('Expression', () => {
 	describe('getParameterValue()', () => {

@@ -8,7 +8,6 @@ import {
 	IDataObject,
 	INodeProperties,
 	NodeApiError,
-	NodeOperationError,
 } from 'n8n-workflow';
 
 import moment from 'moment-timezone';

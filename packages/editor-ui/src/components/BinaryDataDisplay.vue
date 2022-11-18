@@ -32,6 +32,8 @@ import { nodeHelpers } from '@/components/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { restApi } from '@/components/mixins/restApi';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(
 	nodeHelpers,
@@ -47,6 +49,9 @@ export default mixins(
 			'windowVisible', // boolean
 		],
 		computed: {
+			...mapStores(
+				useWorkflowsStore,
+			),
 			binaryData (): IBinaryData | null {
 				const binaryData = this.getBinaryData(this.workflowRunData, this.displayData.node, this.displayData.runIndex, this.displayData.outputIndex);
 
@@ -72,12 +77,12 @@ export default mixins(
 			},
 
 			workflowRunData (): IRunData | null {
-				const workflowExecution = this.$store.getters.getWorkflowExecution;
+				const workflowExecution = this.workflowsStore.getWorkflowExecution;
 				if (workflowExecution === null) {
 					return null;
 				}
-				const executionData: IRunExecutionData = workflowExecution.data;
-				return executionData.resultData.runData;
+				const executionData = workflowExecution.data;
+				return executionData? executionData.resultData.runData : null;
 			},
 
 		},

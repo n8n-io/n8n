@@ -7,7 +7,6 @@ import {
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
 
 import { discourseApiRequest } from './GenericFunctions';
@@ -138,14 +137,14 @@ export class Discourse implements INodeType {
 					}
 					//https://docs.discourse.org/#tag/Categories/paths/~1categories.json/get
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await discourseApiRequest.call(this, 'GET', `/categories.json`, {}, qs);
 
 						responseData = responseData.category_list.categories;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -198,14 +197,14 @@ export class Discourse implements INodeType {
 					}
 					//https://docs.discourse.org/#tag/Groups/paths/~1groups.json/get
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await discourseApiRequest.call(this, 'GET', `/groups.json`, {}, qs);
 
 						responseData = responseData.groups;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -248,8 +247,8 @@ export class Discourse implements INodeType {
 					}
 					//https://docs.discourse.org/#tag/Posts/paths/~1posts.json/get
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const limit = this.getNodeParameter('limit', i, 0) as number;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const limit = this.getNodeParameter('limit', i, 0);
 
 						responseData = await discourseApiRequest.call(this, 'GET', `/posts.json`, {}, qs);
 						responseData = responseData.latest_posts;
@@ -371,7 +370,7 @@ export class Discourse implements INodeType {
 					}
 					//https://docs.discourse.org/#tag/Users/paths/~1admin~1users~1{id}.json/delete
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const flag = this.getNodeParameter('flag', i) as boolean;
 
 						responseData = await discourseApiRequest.call(
@@ -383,7 +382,7 @@ export class Discourse implements INodeType {
 						);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
