@@ -485,7 +485,7 @@ export class MicrosoftTeams implements INodeType {
 					}
 					// https://docs.microsoft.com/en-us/graph/api/chat-list-messages?view=graph-rest-1.0&tabs=http
 					if (operation === 'get') {
-						const chatId = this.getNodeParameter('chatId', i) as string;
+						const chatId = this.getNodeParameter('chatId', i, '', { extractValue: true }) as string;
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						responseData = await microsoftApiRequest.call(
 							this,
