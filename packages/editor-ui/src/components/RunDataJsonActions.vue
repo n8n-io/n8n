@@ -34,7 +34,7 @@ import { copyPaste } from "@/components/mixins/copyPaste";
 import { pinData } from "@/components/mixins/pinData";
 import { nodeHelpers } from "@/components/mixins/nodeHelpers";
 import { genericHelpers } from "@/components/mixins/genericHelpers";
-import { clearJsonKey, convertPath, executionDataToJson } from "@/utils';
+import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
 import { mapStores } from "pinia";
 import { useWorkflowsStore } from "@/stores/workflows";
 import { useNDVStore } from "@/stores/ndv";
