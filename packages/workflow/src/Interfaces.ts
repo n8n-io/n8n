@@ -549,7 +549,40 @@ export interface IGetNodeParameterOptions {
 	extractValue?: boolean;
 }
 
-export interface IExecuteFunctions {
+namespace ExecuteFunctions {
+	namespace BooleanReturning {
+		export type NodeParameter =
+			| 'binaryData'
+			| 'download'
+			| 'jsonParameters'
+			| 'returnAll'
+			| 'rawData'
+			| 'resolveData';
+	}
+
+	export type GetNodeParameterFn = {
+		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
+		getNodeParameter<T extends { resource: string }>(
+			parameterName: 'resource',
+			itemIndex?: number,
+		): T['resource'];
+
+		getNodeParameter(
+			parameterName: BooleanReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: any,
+			options?: IGetNodeParameterOptions,
+		): boolean;
+		getNodeParameter(
+			parameterName: string,
+			itemIndex: number,
+			fallbackValue?: any,
+			options?: IGetNodeParameterOptions,
+		): NodeParameterValueType | object;
+	};
+}
+
+export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn & {
 	continueOnFail(): boolean;
 	evaluateExpression(expression: string, itemIndex: number): NodeParameterValueType;
 	executeWorkflow(
@@ -597,7 +630,7 @@ export interface IExecuteFunctions {
 		): Promise<IN8nHttpResponse | IN8nHttpFullResponse>;
 		[key: string]: (...args: any[]) => any;
 	};
-}
+};
 
 export interface IExecuteSingleFunctions {
 	continueOnFail(): boolean;
