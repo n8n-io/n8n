@@ -379,7 +379,7 @@ export class DateTime implements INodeType {
 					const currentDate = this.getNodeParameter('value', i) as string;
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
 					const toFormat = this.getNodeParameter('toFormat', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					let newDate;
 
 					if (currentDate === undefined) {

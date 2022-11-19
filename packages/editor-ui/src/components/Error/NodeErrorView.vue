@@ -18,9 +18,11 @@
 				</div>
 				<div v-if="error.timestamp">
 					<el-card class="box-card" shadow="never">
-						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $locale.baseText('nodeErrorView.time') }}</span>
-						</div>
+						<template #header>
+							<div class="clearfix box-card__title">
+								<span>{{ $locale.baseText('nodeErrorView.time') }}</span>
+							</div>
+						</template>
 						<div>
 							{{new Date(error.timestamp).toLocaleString()}}
 						</div>
@@ -40,9 +42,11 @@
 			</div>
 				<div v-if="error.httpCode">
 					<el-card class="box-card" shadow="never">
-						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $locale.baseText('nodeErrorView.httpCode') }}</span>
-						</div>
+						<template #header>
+							<div class="clearfix box-card__title">
+								<span>{{ $locale.baseText('nodeErrorView.httpCode') }}</span>
+							</div>
+						</template>
 						<div>
 							{{error.httpCode}}
 						</div>
@@ -50,11 +54,13 @@
 				</div>
 				<div v-if="error.cause">
 					<el-card class="box-card" shadow="never">
-						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $locale.baseText('nodeErrorView.cause') }}</span>
-							<br>
-							<span class="box-card__subtitle">{{ $locale.baseText('nodeErrorView.dataBelowMayContain') }}</span>
-						</div>
+						<template #header>
+							<div class="clearfix box-card__title">
+								<span>{{ $locale.baseText('nodeErrorView.cause') }}</span>
+								<br>
+								<span class="box-card__subtitle">{{ $locale.baseText('nodeErrorView.dataBelowMayContain') }}</span>
+							</div>
+							</template>
 						<div>
 							<div class="copy-button" v-if="displayCause">
 								<n8n-icon-button @click="copyCause" :title="$locale.baseText('nodeErrorView.copyToClipboard')" icon="copy" />
@@ -76,9 +82,11 @@
 				</div>
 				<div v-if="error.stack">
 					<el-card class="box-card" shadow="never">
-						<div slot="header" class="clearfix box-card__title">
-							<span>{{ $locale.baseText('nodeErrorView.stack') }}</span>
-						</div>
+						<template #header>
+							<div class="clearfix box-card__title">
+								<span>{{ $locale.baseText('nodeErrorView.stack') }}</span>
+							</div>
+						</template>
 						<div>
 							<pre><code>{{error.stack}}</code></pre>
 						</div>

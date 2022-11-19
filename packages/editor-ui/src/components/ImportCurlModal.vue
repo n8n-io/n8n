@@ -6,7 +6,7 @@
 		:name="IMPORT_CURL_MODAL_KEY"
 		:center="true"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<n8n-input-label :label="$locale.baseText('importCurlModal.input.label')" color="text-dark">
 					<n8n-input
@@ -21,7 +21,7 @@
 				</n8n-input-label>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<div :class="$style.modalFooter">
 				<n8n-notice
 					:class="$style.notice"
