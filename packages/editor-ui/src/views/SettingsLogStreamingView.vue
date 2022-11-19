@@ -28,26 +28,17 @@
 
 <script lang="ts">
 import { showMessage } from '@/components/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY, N8N_IO_BASE_URL } from '@/constants';
-import { IFormInputs, INodeUi, ITableData, IUser, NDVState } from '@/Interface';
+import { IFormInputs } from '@/Interface';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
 import { mapStores } from 'pinia';
-import Vue, { PropType } from 'vue';
+import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
-import { get } from '../api/helpers';
 import { restApi } from '@/components/mixins/restApi';
 import { useWorkflowsStore } from '../stores/workflows';
 import { useNDVStore } from '../stores/ndv';
-import { getPairedItemId } from '../pairedItemUtils';
-import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import EventTree from '@/components/SettingsLogStreaming/EventTree.vue';
-
-interface StringIndexedChild {
-  name: string;
-  children: StringIndexedChild[];
-}
-
+import EventTree, { EventNamesTreeCollection } from '@/components/SettingsLogStreaming/EventTree.vue';
+import { useEventTreeStore } from '../components/SettingsLogStreaming/eventTreeStore';
 
 export default mixins(
 	showMessage,
@@ -69,8 +60,8 @@ export default mixins(
 			activeRow: null as number | null,
 			columnLimitExceeded: false,
 			isOpen: false,
-			treeData: {} as StringIndexedChild,
-			item: {} as StringIndexedChild,
+			treeData: {} as EventNamesTreeCollection,
+			item: {} as EventNamesTreeCollection,
 		};
 	},
 	mounted() {
@@ -82,16 +73,13 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useEventTreeStore,
 			useUIStore,
 			useUsersStore,
-						useNDVStore,
+			useNDVStore,
 			useWorkflowsStore,
 		),
-		currentUser(): IUser | null {
-			return this.usersStore.currentUser;
-		},
 		isFolder() {
-
 			// return this.treeData && this.treeData._;
 			return true;
 		},
@@ -104,42 +92,49 @@ export default mixins(
 			this.readyToSubmit = ready;
 		},
 		async onSubmit(form: { firstName: string, lastName: string, email: string }) {
-			if (!this.hasAnyChanges || !this.usersStore.currentUserId) {
-				return;
-			}
-			try {
-				await this.usersStore.updateUser({
-					id: this.usersStore.currentUserId,
-					firstName: form.firstName,
-					lastName: form.lastName,
-					email: form.email,
-				});
-				this.$showToast({
-					title: this.$locale.baseText('settings.personal.personalSettingsUpdated'),
-					message: '',
-					type: 'success',
-				});
-				this.hasAnyChanges = false;
-			}
-			catch (e) {
-				this.$showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
-			}
+			// if (!this.hasAnyChanges || !this.usersStore.currentUserId) {
+			// 	return;
+			// }
+			// try {
+			// 	await this.usersStore.updateUser({
+			// 		id: this.usersStore.currentUserId,
+			// 		firstName: form.firstName,
+			// 		lastName: form.lastName,
+			// 		email: form.email,
+			// 	});
+			// 	this.$showToast({
+			// 		title: this.$locale.baseText('settings.personal.personalSettingsUpdated'),
+			// 		message: '',
+			// 		type: 'success',
+			// 	});
+			// 	this.hasAnyChanges = false;
+			// }
+			// catch (e) {
+			// 	this.$showError(e, this.$locale.baseText('settings.personal.personalSettingsUpdatedError'));
+			// }
 		},
 		onSaveClick() {
 			// this.formBus.$emit('submit');
 		},
-		openPasswordModal() {
-			// this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
-		},
 		async getDestinationDataFromREST(destinationId?: string): Promise<any> {
 			const restResult = await this.restApi().makeRestApiRequest('get', '/eventbus/destination');
-			console.log(restResult);
+			// console.log(restResult);
 		},
 		async getEventConstantsFromREST(destinationId?: string): Promise<any> {
 			const restResult = await this.restApi().makeRestApiRequest('get', '/eventbus/constants');
-			if ('events' in restResult) {
-				this.treeData = restResult.events;
-				console.log(restResult.events, restResult.levels);
+			if ('eventnames' in restResult && Array.isArray(restResult['eventnames'])) {
+				try {
+					restResult['eventnames'].forEach(e=>this.eventTreeStore.addEventName(e));
+					this.eventTreeStore.addSelected('n8n.audit');
+					this.eventTreeStore.addSelected('michael');
+					// this.eventTreeStore.$patch({eventNames: restResult['eventnames']});
+					// const convertedEventNames: EventNamesTreeCollection = this.eventNamesToTree(restResult['eventnames']);
+					this.eventTreeStore.buildItemsFromEventNames();
+					this.treeData = this.eventTreeStore.items;
+				} catch (error) {
+					console.log(error);
+				}
+				// console.log(restResult.events, restResult.levels);
 			}
 		},
 		toggle() {

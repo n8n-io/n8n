@@ -1,15 +1,12 @@
 <template>
 	<div :style="{ 'margin-left': (depth ?? 0) * 10 + 'px' }">
 		<div>
-				<!-- <font-awesome-icon icon="minus" size="sm" slot="prefix"/> -->
-				<span v-if="isFolder" @click="toggle" :class="$style['folder-icon']">
-					<!-- <font-awesome-icon icon="plus" size="sm"  slot="prefix"/> -->
-				<!-- [{{ isOpen ? '-' : '+' }}]</span> -->
+				<span v-if="isFolder" @click="toggleFolder" :class="$style['folder-icon']">
 					<font-awesome-icon v-if="isOpen" icon="chevron-down" size="xs" slot="prefix"/>
 					<font-awesome-icon v-else icon="chevron-right" size="xs" slot="prefix"/>
 				</span>
-			<el-checkbox :class="{bold: isFolder}">
-						{{ item?.name }}
+			<el-checkbox :value="isChecked" :indeterminate="isIndeterminate" @change="onCheckboxChecked($event, item?._name)">
+						<span :class="item?._selected ? $style.bold : ''">{{ item?.label }}</span>
 			</el-checkbox>
 			<Transition name="slide-fade">
 			<ul v-show="isOpen" v-if="isFolder">
@@ -22,7 +19,6 @@
 					@make-folder="$emit('make-folder', $event)"
 					@add-item="$emit('add-item', $event)"
 				></event-tree>
-				<!-- <li class="add" @click="$emit('add-item', treeData)">+</li> -->
 			</ul>
 			</Transition>
 		</div>
@@ -30,15 +26,26 @@
 </template>
 
 <script lang="ts">
-	class StringIndexedChild {
-		name = '';
-		children: StringIndexedChild[] = [];
+	import ElCheckbox from 'element-ui/lib/checkbox';
+	import { mapStores } from 'pinia';
+	import { useEventTreeStore } from './eventTreeStore';
+
+	export class EventNamesTreeCollection {
+		label = '';
+		_selected? = false;
+		_indeterminate? = false;
+		_name = '';
+		children: EventNamesTreeCollection[] = [];
+	}
+
+	interface ParentEventTree extends Vue {
+		setChildChecked(checked:boolean):void
 	}
 
   export default {
 		name: 'event-tree',
 		props: {
-			item: StringIndexedChild,
+			item: EventNamesTreeCollection,
 			depth: {
 				type: Number,
 				default: 0,
@@ -46,26 +53,49 @@
 		},
 		data() {
 			return {
-				isOpen: false,
+				isOpen: this.depth === 0,
+				isChecked: this.item?._selected,
+				isIndeterminate: !this.item?._selected && this.item?._indeterminate,
+				childChecked: false,
 			};
 		},
 		computed: {
+			...mapStores(
+				useEventTreeStore,
+			),
 			isFolder() {
-				console.log(this.item?.name);
 				return this.item && this.item.children.length > 0;
 			},
-	},
-	methods: {
-			toggle() {
+		},
+		methods: {
+			toggleFolder() {
 				if (this.isFolder) {
 					this.isOpen = !this.isOpen;
 				}
 			},
-			makeFolder() {
-				if (!this.isFolder) {
-					// this.$emit("make-folder", this.item);
-					this.isOpen = true;
+			setChildChecked(childChecked: boolean) {
+				this.isIndeterminate = !this.isChecked && childChecked;
+				if (this.$parent) {
+					try {
+						(this.$parent as ParentEventTree).setChildChecked(this.isChecked || childChecked || this.childChecked);
+					} catch (error) {}
 				}
+				// moved to the end intentionally so that an item in the middle of the tree could be removed but
+				// the indeterminate flag stays set on parents further down.
+				// normally this should be at the top...
+				this.childChecked = childChecked;
+			},
+			onCheckboxChecked(checked: boolean, name:string|undefined) {
+				if (name) {
+					if (checked) {
+						this.eventTreeStore.addSelected(name);
+					} else {
+						this.eventTreeStore.removeSelected(name);
+					}
+					this.isChecked = checked;
+					this.setChildChecked(checked);
+				}
+				console.log(this.eventTreeStore.selected);
 			},
 		},
   };
@@ -74,5 +104,8 @@
 <style lang="scss" module>
 .folder-icon {
 	margin-right: .6em;
+}
+.bold {
+  font-weight: bold;
 }
 </style>

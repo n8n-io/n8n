@@ -284,6 +284,7 @@ eventBusRouter.get(
 		return {
 			levels: Object.values(EventMessageLevel),
 			events: eventListToObjectTree(eventNamesAll),
+			eventnames: eventNamesAll,
 		};
 	}),
 );
