@@ -16,7 +16,7 @@ const userScopes = [
 	'stars:write',
 	'usergroups:write',
 	'usergroups:read',
-	'users.files'
+	'users.files',
 	'users.profile:read',
 	'users.profile:write',
 	'users:read',
