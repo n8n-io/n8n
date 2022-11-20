@@ -157,7 +157,7 @@ export class GoogleAnalytics implements INodeType {
 						endpoint = '/v4/reports:batchGet';
 						const viewId = this.getNodeParameter('viewId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const simple = this.getNodeParameter('simple', i) as boolean;
 
 						const body: IData = {
@@ -250,7 +250,7 @@ export class GoogleAnalytics implements INodeType {
 						const viewId = this.getNodeParameter('viewId', i);
 						const userId = this.getNodeParameter('userId', i);
 						const returnAll = this.getNodeParameter('returnAll', 0);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {
 							viewId,
 							user: {

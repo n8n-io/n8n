@@ -246,7 +246,7 @@ export async function handleMatrixCall(
 	} else if (resource === 'roomMember') {
 		if (operation === 'getAll') {
 			const roomId = this.getNodeParameter('roomId', index) as string;
-			const filters = this.getNodeParameter('filters', index) as IDataObject;
+			const filters = this.getNodeParameter('filters', index);
 			const qs: IDataObject = {
 				membership: filters.membership ? filters.membership : '',
 				not_membership: filters.notMembership ? filters.notMembership : '',

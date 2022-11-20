@@ -255,7 +255,7 @@ export class MondayCom implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const kind = this.getNodeParameter('kind', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IGraphqlBody = {
 							query: `mutation ($name: String!, $kind: BoardKind!, $templateId: Int) {
@@ -337,7 +337,7 @@ export class MondayCom implements INodeType {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 						const title = this.getNodeParameter('title', i) as string;
 						const columnType = this.getNodeParameter('columnType', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IGraphqlBody = {
 							query: `mutation ($boardId: Int!, $title: String!, $columnType: ColumnType, $defaults: JSON ) {
@@ -541,7 +541,7 @@ export class MondayCom implements INodeType {
 						const boardId = parseInt(this.getNodeParameter('boardId', i) as string, 10);
 						const groupId = this.getNodeParameter('groupId', i) as string;
 						const itemName = this.getNodeParameter('name', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IGraphqlBody = {
 							query: `mutation ($boardId: Int!, $groupId: String!, $itemName: String!, $columnValues: JSON) {

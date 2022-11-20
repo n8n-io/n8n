@@ -537,7 +537,7 @@ export class TheHive implements INodeType {
 
 						const filters = this.getNodeParameter('filters', i, {}) as INodeParameters;
 						const queryAttributs: any = prepareOptional(filters); // tslint:disable-line:no-any
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const _searchQuery: IQueryObject = And();
 
@@ -654,7 +654,7 @@ export class TheHive implements INodeType {
 					if (operation === 'promote') {
 						const alertId = this.getNodeParameter('id', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {};
 
@@ -672,7 +672,7 @@ export class TheHive implements INodeType {
 						const alertId = this.getNodeParameter('id', i) as string;
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const customFields = await prepareCustomFields.call(this, updateFields, jsonParameters);
 
 						const artifactUi = updateFields.artifactUi as IDataObject;
@@ -999,7 +999,7 @@ export class TheHive implements INodeType {
 
 						const version = credentials.apiVersion;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const caseId = this.getNodeParameter('caseId', i);
 
@@ -1072,7 +1072,7 @@ export class TheHive implements INodeType {
 
 						const _searchQuery: IQueryObject = And();
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						for (const key of Object.keys(queryAttributs)) {
 							if (key === 'dataType' || key === 'tags') {
@@ -1348,7 +1348,7 @@ export class TheHive implements INodeType {
 
 						const _searchQuery: IQueryObject = And();
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if ('customFieldsUi' in filters) {
 							const customFields = (await prepareCustomFields.call(this, filters)) as IDataObject;
@@ -1606,7 +1606,7 @@ export class TheHive implements INodeType {
 
 						const caseId = this.getNodeParameter('caseId', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						let endpoint;
 
@@ -1677,7 +1677,7 @@ export class TheHive implements INodeType {
 
 						const _searchQuery: IQueryObject = And();
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						for (const key of Object.keys(queryAttributs)) {
 							if (key === 'title' || key === 'description') {
@@ -1771,7 +1771,7 @@ export class TheHive implements INodeType {
 							startDate: Date.parse(this.getNodeParameter('startDate', i) as string),
 							status: this.getNodeParameter('status', i),
 						};
-						const optionals = this.getNodeParameter('options', i) as IDataObject;
+						const optionals = this.getNodeParameter('options', i);
 
 						let options: IDataObject = {};
 

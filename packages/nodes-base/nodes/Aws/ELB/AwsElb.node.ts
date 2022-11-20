@@ -316,7 +316,7 @@ export class AwsElb implements INodeType {
 
 						const subnets = this.getNodeParameter('subnets', i) as string[];
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const params = ['Version=2015-12-01'];
 
@@ -388,7 +388,7 @@ export class AwsElb implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (returnAll) {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 
 							if (filters.names) {
 								const names = (filters.names as string).split(',');

@@ -211,7 +211,7 @@ export class Paddle implements INodeType {
 							body.discount_type = discountType;
 							body.discount_amount = discountAmount;
 
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.allowedUses) {
 								body.allowed_uses = additionalFields.allowedUses as number;
@@ -297,7 +297,7 @@ export class Paddle implements INodeType {
 								body.coupon_code = this.getNodeParameter('couponCode', i) as string;
 							}
 
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.allowedUses) {
 								body.allowed_uses = additionalFields.allowedUses as number;
@@ -372,7 +372,7 @@ export class Paddle implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.subscriptionId) {
 								body.subscription_id = additionalFields.subscriptionId as number;
@@ -495,7 +495,7 @@ export class Paddle implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.state) {
 								body.state = additionalFields.state as string;

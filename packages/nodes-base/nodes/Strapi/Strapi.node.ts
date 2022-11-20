@@ -181,7 +181,7 @@ export class Strapi implements INodeType {
 
 						const contentType = this.getNodeParameter('contentType', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (apiVersion === 'v4') {
 							// Sort Option

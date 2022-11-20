@@ -74,7 +74,7 @@ export class MicrosoftOneDrive implements INodeType {
 					//https://docs.microsoft.com/en-us/onedrive/developer/rest-api/api/driveitem_copy?view=odsp-graph-online
 					if (operation === 'copy') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const parentReference = this.getNodeParameter('parentReference', i) as IDataObject;
 						const body: IDataObject = {};
 						if (parentReference) {
@@ -265,7 +265,7 @@ export class MicrosoftOneDrive implements INodeType {
 						const names = (this.getNodeParameter('name', i) as string)
 							.split('/')
 							.filter((s) => s.trim() !== '');
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						let parentFolderId = options.parentFolderId ? options.parentFolderId : null;
 						for (const name of names) {
 							const body: IDataObject = {
