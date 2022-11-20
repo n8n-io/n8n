@@ -247,6 +247,7 @@ export default mixins(externalHooks).extend({
 	font-size: var(--font-size-2xs);
 	border-radius: var(--border-radius-base);
 	white-space: nowrap;
+	margin-left: 32px; // account for prepend section in expression parameter input
 }
 
 .droppablePill {

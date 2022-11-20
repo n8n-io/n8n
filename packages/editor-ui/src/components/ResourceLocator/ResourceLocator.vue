@@ -79,14 +79,13 @@
 								}"
 								@keydown.stop="onKeyDown"
 							>
-								<n8n-input
+								<expression-parameter-input
 									v-if="isValueExpression || droppable || forceShowExpression"
-									type="text"
-									:size="inputSize"
 									:value="expressionDisplayValue"
-									:title="displayTitle"
-									:disabled="isReadOnly"
+									:openModalOnClick="true"
+									:squarePrependSection="true"
 									@keydown.stop
+									@inputClick="$emit('inputClick')"
 									ref="input"
 								/>
 								<n8n-input
@@ -122,6 +121,7 @@
 					<parameter-issues
 						v-if="parameterIssues && parameterIssues.length"
 						:issues="parameterIssues"
+						:class="$style['parameter-issues']"
 					/>
 					<div v-else-if="urlValue" :class="$style.openResourceLink">
 						<n8n-link
@@ -158,7 +158,7 @@ import {
 import {
 	hasOnlyListMode,
 } from './helpers';
-
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
@@ -190,6 +190,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	components: {
 		DraggableTarget,
 		ExpressionEdit,
+		ExpressionParameterInput,
 		ParameterIssues,
 		ResourceLocatorDropdown,
 	},
@@ -717,9 +718,8 @@ $--mode-selector-width: 92px;
 		align-items: center;
 		width: 100%;
 
-		div:first-child {
-			display: flex;
-			flex-grow: 1;
+		> div {
+			width: 100%;
 		}
 	}
 
@@ -784,6 +784,11 @@ $--mode-selector-width: 92px;
 }
 
 .openResourceLink {
+	width: 25px !important; // @TODO: Better idea?
 	margin-left: var(--spacing-2xs);
+}
+
+.parameter-issues {
+	width: 25px !important; // @TODO: Better idea?
 }
 </style>

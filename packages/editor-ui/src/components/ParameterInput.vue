@@ -12,7 +12,6 @@
 		<div
 			class="parameter-input ignore-key-press"
 			:style="parameterInputWrapperStyle"
-			@click="openExpressionEdit"
 		>
 			<resource-locator
 				v-if="isResourceLocatorParameter"
@@ -29,19 +28,19 @@
 				:node="node"
 				:path="path"
 				@input="valueChanged"
+				@inputClick="expressionEditDialogVisible = true"
 				@focus="setFocus"
 				@blur="onBlur"
 				@drop="onResourceLocatorDrop"
 			/>
-			<n8n-input
+			<expression-parameter-input
 				v-else-if="isValueExpression || droppable || forceShowExpression"
-				:size="inputSize"
-				:type="getStringInputType"
-				:rows="getArgument('rows')"
 				:value="expressionDisplayValue"
 				:title="displayTitle"
-				:readOnly="isReadOnly"
-				@keydown.stop
+				:isReadOnly="isReadOnly"
+				@valueChanged="expressionUpdated"
+				@openerClick="openExpressionEditorModal"
+				ref="inputField"
 			/>
 			<div
 				v-else-if="
@@ -92,6 +91,7 @@
 					v-else
 					v-model="tempValue"
 					ref="inputField"
+					class="input-with-expander-icon"
 					:size="inputSize"
 					:type="getStringInputType"
 					:rows="getArgument('rows')"
@@ -106,15 +106,16 @@
 					:placeholder="getPlaceholder()"
 				>
 					<template #suffix>
-						<div class="expand-input-icon-container">
-							<font-awesome-icon
-								v-if="!isReadOnly"
-								icon="expand-alt"
-								class="edit-window-button clickable"
-								:title="$locale.baseText('parameterInput.openEditWindow')"
-								@click="displayEditDialog()"
-							/>
-						</div>
+						<n8n-icon
+							v-if="!isReadOnly"
+							icon="external-link-alt"
+							size="xsmall"
+							class="edit-window-button input-expander-icon"
+							:class="{ focused: isFocused, invalid: !isFocused && getIssues.length && !isValueExpression }"
+							:title="$locale.baseText('parameterInput.openEditWindow')"
+							@click="displayEditDialog()"
+							@focus="setFocus"
+						/>
 					</template>
 				</n8n-input>
 			</div>
@@ -324,6 +325,7 @@ import ScopesNotice from '@/components/ScopesNotice.vue';
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocator from '@/components/ResourceLocator/ResourceLocator.vue';
+import ExpressionParameterInput from '@/components/ExpressionParameterInput.vue';
 // @ts-ignore
 import PrismEditor from 'vue-prism-editor';
 import TextEdit from '@/components/TextEdit.vue';
@@ -359,6 +361,7 @@ export default mixins(
 			CodeEdit,
 			CodeNodeEditor,
 			ExpressionEdit,
+			ExpressionParameterInput,
 			NodeCredentials,
 			CredentialsSelect,
 			PrismEditor,
@@ -461,6 +464,7 @@ export default mixins(
 						},
 					],
 				},
+				isFocused: false,
 			};
 		},
 		watch: {
@@ -871,25 +875,33 @@ export default mixins(
 				const val: NodeParameterValueType = this.isResourceLocatorParameter ? { __rl: true, value, mode: this.value.mode } : value;
 				this.valueChanged(val);
 			},
+			openExpressionEditorModal() {
+				if (!this.isValueExpression) return;
+
+				this.expressionEditDialogVisible = true;
+				this.trackExpressionEditOpen();
+			},
 			openExpressionEdit() {
-				if (this.isValueExpression) {
-					this.expressionEditDialogVisible = true;
-					this.trackExpressionEditOpen();
-					return;
-				}
+				console.log('openExpressionEdit');
+				// if (this.isValueExpression) {
+				// 	this.expressionEditDialogVisible = true;
+				// 	this.trackExpressionEditOpen();
+				// 	return;
+				// }
 			},
 			onBlur () {
 				this.$emit('blur');
+				this.isFocused = false;
 			},
 			onResourceLocatorDrop(data: string) {
 				this.$emit('drop', data);
 			},
 			setFocus () {
-				if (this.isValueExpression) {
-					this.expressionEditDialogVisible = true;
-					this.trackExpressionEditOpen();
-					return;
-				}
+				// if (this.isValueExpression) {
+				// 	this.expressionEditDialogVisible = true;
+				// 	this.trackExpressionEditOpen();
+				// 	return;
+				// }
 
 				if (['json', 'string'].includes(this.parameter.type) && this.getArgument('alwaysOpenEditWindow')) {
 					this.displayEditDialog();
@@ -912,6 +924,7 @@ export default mixins(
 					if (this.$refs.inputField && this.$refs.inputField.$el) {
 						// @ts-ignore
 						this.$refs.inputField.focus();
+						this.isFocused = true;
 					}
 				});
 
@@ -984,7 +997,7 @@ export default mixins(
 				if (command === 'resetValue') {
 					this.valueChanged(this.parameter.default);
 				} else if (command === 'openExpression') {
-					this.expressionEditDialogVisible = true;
+					// this.expressionEditDialogVisible = true;
 				} else if (command === 'addExpression') {
 					if (this.isResourceLocatorParameter) {
 						if (isResourceLocatorValue(this.value)) {
@@ -1000,12 +1013,16 @@ export default mixins(
 						this.valueChanged(`=${this.value}`);
 					}
 
-					setTimeout(() => {
-						this.expressionEditDialogVisible = true;
-						this.trackExpressionEditOpen();
-					}, 375);
+					this.setFocus();
+
+					// setTimeout(() => {
+					// 	this.expressionEditDialogVisible = true;
+					// 	this.trackExpressionEditOpen();
+					// }, 375);
 				} else if (command === 'removeExpression') {
 					let value: NodeParameterValueType = this.expressionEvaluated;
+
+					this.isFocused = false;
 
 					if (this.parameter.type === 'multiOptions' && typeof value === 'string') {
 						value = (value || '').split(',')
@@ -1154,13 +1171,13 @@ export default mixins(
 }
 
 .expression {
-	textarea, input {
-		cursor: pointer !important;
-	}
+	// textarea, input {
+	// 	cursor: pointer !important;
+	// }
 
-	--input-border-color: var(--color-secondary-tint-1);
-	--input-background-color: var(--color-secondary-tint-3);
-	--input-font-color: var(--color-secondary);
+	// --input-border-color: var(--color-secondary-tint-1);
+	// --input-background-color: var(--color-secondary-tint-3);
+	// --input-font-color: var(--color-secondary);
 }
 
 
@@ -1222,4 +1239,30 @@ export default mixins(
 	align-items: center;
 }
 
+.input-with-expander-icon > .el-input__suffix {
+	right: 0;
+}
+
+.input-expander-icon {
+	position: absolute;
+	right: 0;
+	bottom: 0;
+	padding: var(--spacing-4xs);
+	border: var(--border-base);
+	border-top-left-radius: var(--border-radius-base);
+	border-bottom-right-radius: var(--border-radius-base);
+	cursor: pointer;
+
+	svg {
+		transform: rotate(270deg);
+	}
+}
+
+.focused {
+	border-color: var(--color-secondary);
+}
+
+.invalid {
+	border-color: var(--color-danger);
+}
 </style>
