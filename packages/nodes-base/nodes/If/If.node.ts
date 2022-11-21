@@ -315,6 +315,8 @@ export class If implements INodeType {
 		let item: INodeExecutionData;
 		let combineOperation: string;
 
+		const isDateObject = (value: NodeParameterValue) => Object.prototype.toString.call(value) === '[object Date]';
+
 		// The compare operations
 		const compareOperationFunctions: {
 			[key: string]: (value1: NodeParameterValue, value2: NodeParameterValue) => boolean;
@@ -347,13 +349,13 @@ export class If implements INodeType {
 				!(value1 as string).startsWith(value2 as string),
 			isEmpty: (value1: NodeParameterValue) =>
 				[undefined, null, '', NaN].includes(value1 as string) ||
-				(typeof value1 === 'object' && value1 !== null
+				(typeof value1 === 'object' && value1 !== null && !isDateObject(value1)
 					? Object.entries(value1 as string).length === 0
 					: false),
 			isNotEmpty: (value1: NodeParameterValue) =>
 				!(
 					[undefined, null, '', NaN].includes(value1 as string) ||
-					(typeof value1 === 'object' && value1 !== null
+					(typeof value1 === 'object' && value1 !== null && !isDateObject(value1)
 						? Object.entries(value1 as string).length === 0
 						: false)
 				),
