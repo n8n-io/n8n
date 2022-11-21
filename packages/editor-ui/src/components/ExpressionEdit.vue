@@ -237,6 +237,7 @@ export default mixins(
   justify-content: space-between;
 
 	.hint {
+		color: var(--color-text-base);
 		font-weight: normal;
 		display: flex;
 
@@ -253,6 +254,7 @@ export default mixins(
 			height: 16px;
 			line-height: 1;
 			background-color: #f0f0f0;
+			color: var(--color-text-dark);
 			margin-right: var(--spacing-4xs);
 		}
 	}
