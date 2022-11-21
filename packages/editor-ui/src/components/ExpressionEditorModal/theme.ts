@@ -30,10 +30,24 @@ export const SYNTAX_HIGHLIGHTING_CLASSES = {
 
 export const EXPRESSION_EDITOR_THEME = [
 	EditorView.theme({
+		'&': {
+			borderWidth: 'var(--border-width-base)',
+			borderStyle: 'var(--input-border-style, var(--border-style-base))',
+			borderColor: 'var(--input-border-color, var(--border-color-base))',
+			borderRadius: 'var(--input-border-radius, var(--border-radius-base))',
+		},
+		'&.cm-focused': {
+			borderColor: 'var(--color-secondary)',
+			outline: 'unset !important',
+		},
 		'.cm-content': {
 			fontFamily: BASE_STYLING.fontFamily,
-			backgroundColor: '#f0f0f0',
 			height: '220px',
+			padding: '12px', // var(--spacing-xs)
+			color: 'var(--input-font-color, var(--color-text-dark))',
+		},
+		'.cm-line': {
+			padding: '0',
 		},
 	}),
 	syntaxHighlighting(
