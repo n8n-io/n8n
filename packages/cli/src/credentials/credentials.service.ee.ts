@@ -1,5 +1,5 @@
 /* eslint-disable no-param-reassign */
-import { DeleteResult, EntityManager, FindOneOptions, In, Not } from 'typeorm';
+import { DeleteResult, EntityManager, FindOneOptions, In, Not, ObjectLiteral } from 'typeorm';
 import * as Db from '@/Db';
 import { RoleService } from '@/role/role.service';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
@@ -34,7 +34,7 @@ export class EECredentialsService extends CredentialsService {
 		relations: string[] = ['credentials'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
-		const options: FindOneOptions = {
+		const options: FindOneOptions<SharedCredentials> & { where: ObjectLiteral } = {
 			where: {
 				credentials: { id: credentialId },
 			},
@@ -44,7 +44,6 @@ export class EECredentialsService extends CredentialsService {
 		// owner. This allows the global owner to view and delete
 		// credentials they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			options.where.user = { id: user.id };
 		}
 

@@ -250,7 +250,7 @@ EEWorkflowController.post(
 		if (workflow.id !== undefined) {
 			const safeWorkflow = await EEWorkflows.preventTampering(
 				workflow,
-				workflow.id?.toString(),
+				workflow.id.toString(),
 				req.user,
 			);
 			req.body.workflowData.nodes = safeWorkflow.nodes;

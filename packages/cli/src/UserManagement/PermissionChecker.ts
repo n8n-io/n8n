@@ -26,9 +26,8 @@ export class PermissionChecker {
 		// allow if all creds used in this workflow are a subset of
 		// all creds accessible to users who have access to this workflow
 
-		let workflowUserIds = [] as string[];
+		let workflowUserIds: string[] = [];
 
-		// unsaved workflows have no id, so only get credentials for current user
 		if (workflow.id) {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
@@ -37,6 +36,7 @@ export class PermissionChecker {
 
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		} else {
+			// unsaved workflows have no id, so only get credentials for current user
 			workflowUserIds = [userId];
 		}
 

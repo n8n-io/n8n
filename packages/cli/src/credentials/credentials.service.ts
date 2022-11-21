@@ -65,7 +65,7 @@ export class CredentialsService {
 			whereConditions.where = {
 				...whereConditions.where,
 				role: { name: In(options.roles) },
-			} as FindOneOptions;
+			} as FindManyOptions;
 			whereConditions.relations = ['role'];
 		}
 
