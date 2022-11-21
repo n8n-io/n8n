@@ -12,7 +12,6 @@ import { syntaxTree } from '@codemirror/language';
 
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { n8nLanguageSupport } from './n8nLanguageSupport';
-import { resolvableCompletions } from './resolvable.completions';
 import { braceHandler } from './braceHandler';
 import { EXPRESSION_EDITOR_THEME } from './theme';
 import { addColor, removeColor } from './colorDecorations';
@@ -20,7 +19,7 @@ import { addColor, removeColor } from './colorDecorations';
 import type { IVariableItemSelected } from '@/Interface';
 import type { RawSegment, Segment, Resolvable, Plaintext } from './types';
 
-const EVALUATION_DELAY = 150; // ms
+const EVALUATION_DELAY = 300; // ms
 
 export default mixins(workflowHelpers).extend({
 	name: 'ExpressionModalInput',
@@ -41,7 +40,10 @@ export default mixins(workflowHelpers).extend({
 			n8nLanguageSupport(),
 			history(),
 			braceHandler(),
-			autocompletion({ override: [resolvableCompletions] }),
+			// autocompletions disabled until after inlining
+			// autocompletion({
+			// 	override: [resolvableCompletions],
+			// }),
 			EditorView.lineWrapping,
 			EditorState.transactionFilter.of((tx) => (tx.newDoc.lines > 1 ? [] : tx)), // forbid newlines
 			EditorView.updateListener.of((viewUpdate) => {
