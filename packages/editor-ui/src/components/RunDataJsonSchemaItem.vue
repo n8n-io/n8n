@@ -1,19 +1,25 @@
 <template>
-	<div :class="$style.item" :style="{ paddingLeft }">
+	<div :class="$style.item">
 		<div v-if="level > 0 || level === 0 && !isSchemaValueArray" :class="$style.pill">
 			<span :class="$style.label">
-				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" />
+				<font-awesome-icon :icon="getIconBySchemaType(schema.type)"/>
 				<span v-if="parent === 'list'">{{ schema.type }}</span>
 				<span v-if="key" :class="{[$style.listKey]: parent === 'list'}">{{ key }}</span>
 			</span>
 		</div>
 		<span v-if="!isSchemaValueArray" :class="$style.value">{{ schema.value }}</span>
+		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
+			<input :id="subKey" type="checkbox" checked />
+			<font-awesome-icon icon="angle-down" />
+		</label>
 		<div v-if="isSchemaValueArray" :class="$style.sub">
 			<run-data-json-schema-item v-for="(s, i) in schema.value"
 				:key="`${s.type}-${level}-${i}`"
 				:schema="s"
 				:level="level + 1"
-        :parent="schema.type"
+				:parent="schema.type"
+				:sub-key="`${s.type}-${level}-${i}`"
+																 :style="{transitionDelay: `${i * 0.05}s`}"
 			/>
 		</div>
 	</div>
@@ -27,11 +33,11 @@ type Props = {
 	schema: JsonSchema
 	level: number
 	parent: JsonSchemaType | null
+	subKey: string
 }
 
 const props = defineProps<Props>();
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
-const paddingLeft = computed((): string => (props.level > 0 ? props.level * 12 : 0) + 'px');
 const key = computed((): string | undefined => props.parent === 'list' ? `[${props.schema.key}]` : props.schema.key);
 
 const getIconBySchemaType = (type: JsonSchema['type']): string => {
@@ -65,13 +71,23 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 </script>
 
 <style lang="scss" module>
+@import '@/css-animation-helpers.scss';
+
 .item {
 	display: block;
+	position: relative;
 	padding-top: var(--spacing-xs);
+	transition: all 0.3s $ease-out-expo;
+
+	.item {
+		padding-left: var(--spacing-l);
+	}
 }
 
 .sub {
 	display: block;
+	overflow: hidden;
+	transition: all 0.2s $ease-out-expo;
 }
 
 .pill {
@@ -120,5 +136,47 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 	padding-left: var(--spacing-2xs);
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
+}
+
+.toggle {
+	display: inline-flex;
+	position: absolute;
+	left: 0;
+	top: 16px;
+	justify-content: center;
+	align-items: center;
+	cursor: pointer;
+	user-select: none;
+
+	svg {
+		transition: all 0.3s $ease-out-expo;
+	}
+
+	input {
+		width: 0;
+		height: 0;
+
+		&:not(:checked) ~ svg {
+			transform: rotate(180deg);
+		}
+	}
+
+	+ .sub {
+		height: 0;
+
+		> .item {
+			transform: translateX(-100%);
+		}
+	}
+
+	&:has(> input:checked) {
+		+ .sub {
+			height: auto;
+
+      > .item {
+				transform: translateX(0);
+			}
+		}
+	}
 }
 </style>

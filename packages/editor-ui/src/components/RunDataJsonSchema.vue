@@ -7,7 +7,7 @@
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
 		>
-		  <run-data-json-schema-item :schema="schema" :level="0" :parent="null" />
+		  <run-data-json-schema-item :schema="schema" :level="0" :parent="null" :sub-key="`${schema.type}-0-0`" />
 		</draggable>
 	</div>
 </template>
