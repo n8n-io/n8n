@@ -316,6 +316,7 @@ export class If implements INodeType {
 		let combineOperation: string;
 
 		const isDateObject = (value: NodeParameterValue) => Object.prototype.toString.call(value) === '[object Date]';
+		const isDateInvalid = (value: NodeParameterValue) => value?.toString() === 'Invalid Date';
 
 		// The compare operations
 		const compareOperationFunctions: {
@@ -351,13 +352,15 @@ export class If implements INodeType {
 				[undefined, null, '', NaN].includes(value1 as string) ||
 				(typeof value1 === 'object' && value1 !== null && !isDateObject(value1)
 					? Object.entries(value1 as string).length === 0
-					: false),
+					: false) ||
+				(isDateObject(value1) && isDateInvalid(value1)),
 			isNotEmpty: (value1: NodeParameterValue) =>
 				!(
 					[undefined, null, '', NaN].includes(value1 as string) ||
 					(typeof value1 === 'object' && value1 !== null && !isDateObject(value1)
 						? Object.entries(value1 as string).length === 0
-						: false)
+						: false) ||
+					(isDateObject(value1) && isDateInvalid(value1))
 				),
 			regex: (value1: NodeParameterValue, value2: NodeParameterValue) => {
 				const regexMatch = (value2 || '').toString().match(new RegExp('^/(.*?)/([gimusy]*)$'));
