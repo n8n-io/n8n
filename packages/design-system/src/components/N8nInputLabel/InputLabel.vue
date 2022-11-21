@@ -23,7 +23,9 @@
 			>
 				<n8n-tooltip placement="top" :popper-class="$style.tooltipPopper">
 					<n8n-icon icon="question-circle" size="small" />
-					<div slot="content" v-html="addTargetBlank(tooltipText)" />
+					<template #content>
+						<div v-html="addTargetBlank(tooltipText)" />
+					</template>
 				</n8n-tooltip>
 			</span>
 			<div

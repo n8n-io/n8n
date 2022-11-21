@@ -11,7 +11,7 @@
 		@click:add="addWorkflow"
 		@update:filters="filters = $event"
 	>
-		<template v-slot="{ data }">
+		<template #default="{ data }">
 			<workflow-card :data="data" @click:tag="onClickTag" />
 		</template>
 		<template #empty>
@@ -38,7 +38,7 @@
 				</n8n-card>
 			</div>
 		</template>
-		<template v-slot:filters="{ setKeyValue }">
+		<template #filters="{ setKeyValue }">
 			<div class="mb-s" v-if="settingsStore.areTagsEnabled">
 				<n8n-input-label
 					:label="$locale.baseText('workflows.filters.tags')"

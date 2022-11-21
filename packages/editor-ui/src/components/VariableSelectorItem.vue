@@ -13,9 +13,11 @@
 						<span class="el-dropdown-link clickable" @click.stop>
 							<font-awesome-icon icon="dot-circle" :title="$locale.baseText('variableSelectorItem.selectItem')" />
 						</span>
-						<el-dropdown-menu slot="dropdown">
-							<el-dropdown-item :command="operation.command" v-for="operation in itemAddOperations" :key="operation.command">{{operation.displayName}}</el-dropdown-item>
-						</el-dropdown-menu>
+						<template #dropdown>
+							<el-dropdown-menu>
+								<el-dropdown-item :command="operation.command" v-for="operation in itemAddOperations" :key="operation.command">{{operation.displayName}}</el-dropdown-item>
+							</el-dropdown-menu>
+						</template>
 					</el-dropdown>
 
 				</div>

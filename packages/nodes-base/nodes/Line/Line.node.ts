@@ -72,7 +72,7 @@ export class Line implements INodeType {
 					if (operation === 'send') {
 						const message = this.getNodeParameter('message', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							message,

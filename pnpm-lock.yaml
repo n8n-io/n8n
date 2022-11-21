@@ -163,10 +163,10 @@ importers:
       lodash.split: ^4.4.2
       lodash.unset: ^4.5.2
       mysql2: ~2.3.0
-      n8n-core: ~0.142.1
-      n8n-editor-ui: ~0.168.1
-      n8n-nodes-base: ~0.200.1
-      n8n-workflow: ~0.124.1
+      n8n-core: ~0.143.0
+      n8n-editor-ui: ~0.169.0
+      n8n-nodes-base: ~0.201.1
+      n8n-workflow: ~0.125.0
       nodemailer: ^6.7.1
       nodemon: ^2.0.2
       oauth-1.0a: ^2.2.6
@@ -330,7 +330,7 @@ importers:
       form-data: ^4.0.0
       lodash.get: ^4.4.2
       mime-types: ^2.1.27
-      n8n-workflow: ~0.124.1
+      n8n-workflow: ~0.125.0
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
       qs: ^6.10.1
@@ -466,7 +466,6 @@ importers:
       '@fortawesome/free-regular-svg-icons': ^6.1.1
       '@fortawesome/free-solid-svg-icons': ^5.15.3
       '@fortawesome/vue-fontawesome': ^2.0.2
-      '@intlify/vue-i18n-loader': ^1.1.0
       '@pinia/testing': ^0.0.14
       '@testing-library/jest-dom': ^5.16.5
       '@testing-library/vue': ^5.8.3
@@ -481,7 +480,6 @@ importers:
       '@types/uuid': ^8.3.2
       '@vitejs/plugin-legacy': ^1.8.2
       '@vitejs/plugin-vue2': ^1.1.2
-      '@yfwz100/vite-plugin-vue2-i18n': ^1.0.0-2
       axios: ^0.21.1
       c8: ^7.12.0
       dateformat: ^3.0.3
@@ -501,8 +499,8 @@ importers:
       lodash.set: ^4.3.2
       luxon: ^2.3.0
       monaco-editor: ^0.33.0
-      n8n-design-system: ~0.42.0
-      n8n-workflow: ~0.124.1
+      n8n-design-system: ~0.43.0
+      n8n-workflow: ~0.125.0
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
       prismjs: ^1.17.1
@@ -582,7 +580,6 @@ importers:
       vue2-touch-events: 3.2.2
       xss: 1.0.14
     devDependencies:
-      '@intlify/vue-i18n-loader': 1.1.0
       '@pinia/testing': 0.0.14_pinia@2.0.23+vue@2.7.13
       '@testing-library/jest-dom': 5.16.5
       '@testing-library/vue': 5.8.3_2s2ymob7v2oigx3hqbmnjuqthq
@@ -597,7 +594,6 @@ importers:
       '@types/uuid': 8.3.4
       '@vitejs/plugin-legacy': 1.8.2_vite@2.9.5
       '@vitejs/plugin-vue2': 1.1.2_vite@2.9.5+vue@2.7.13
-      '@yfwz100/vite-plugin-vue2-i18n': 1.0.0-3_vite@2.9.5
       c8: 7.12.0
       jshint: 2.13.5
       sass: 1.55.0
@@ -621,8 +617,8 @@ importers:
       change-case: ^4.1.1
       fast-glob: ^3.2.5
       inquirer: ^7.0.1
-      n8n-core: ~0.142.1
-      n8n-workflow: ~0.124.1
+      n8n-core: ~0.143.0
+      n8n-workflow: ~0.125.0
       oauth-1.0a: ^2.2.6
       replace-in-file: ^6.0.0
       request: ^2.88.2
@@ -712,8 +708,8 @@ importers:
       mqtt: 4.2.6
       mssql: ^8.1.2
       mysql2: ~2.3.0
-      n8n-core: ~0.142.1
-      n8n-workflow: ~0.124.1
+      n8n-core: ~0.143.0
+      n8n-workflow: ~0.125.0
       node-html-markdown: ^1.1.3
       node-ssh: ^12.0.0
       nodemailer: ^6.7.1
@@ -2851,20 +2847,6 @@ packages:
       readable-stream: 1.1.14
       xregexp: 2.0.0
     dev: false
-
-  /@intlify/shared/9.2.2:
-    resolution: {integrity: sha512-wRwTpsslgZS5HNyM7uDQYZtxnbI12aGiBZURX3BTR9RFIKKRWpllTsgzHWvj3HKm3Y2Sh5LPC1r0PDCKEhVn9Q==}
-    engines: {node: '>= 14'}
-    dev: true
-
-  /@intlify/vue-i18n-loader/1.1.0:
-    resolution: {integrity: sha512-9LXiztMtYKTE8t/hRwwGUp+ofrwU0sxLQLzFEOZ38zvn0DonUIQmZUj1cfz5p1Lu8BllxKbCrn6HnsRJ+LYA6g==}
-    engines: {node: '>= 10'}
-    dependencies:
-      '@intlify/shared': 9.2.2
-      js-yaml: 3.14.1
-      json5: 2.2.1
-    dev: true
 
   /@istanbuljs/load-nyc-config/1.1.0:
     resolution: {integrity: sha512-VjeHSlIzpv/NyD3N0YuHfXOPDIixcA1q2ZV98wsMqcYlPmv2n3Yb2lYP9XMElnaFVXg5A7YLTeLu6V84uQDjmQ==}
@@ -6857,14 +6839,6 @@ packages:
 
   /@xtuc/long/4.2.2:
     resolution: {integrity: sha512-NuHqBY1PB/D8xU6s/thBgOAiAP7HOYDQ32+BFZILJ8ivkUkAHQnWfn6WhL79Owj1qmUnoN/YPhktdIoucipkAQ==}
-    dev: true
-
-  /@yfwz100/vite-plugin-vue2-i18n/1.0.0-3_vite@2.9.5:
-    resolution: {integrity: sha512-HlhVMhrOpBHlkkdSm5wQ6YN65ZqdF9YqP7HS1at6NjQgEOIhBiP7tRZ+dYM3ymztKAX0ovhyKCY9ZnQ/GMK0Qg==}
-    peerDependencies:
-      vite: ^2.1.5 || ^3.0.5
-    dependencies:
-      vite: 2.9.5_sass@1.55.0
     dev: true
 
   /a-sync-waterfall/1.0.1:

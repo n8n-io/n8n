@@ -14,9 +14,11 @@
 			:disabled="!showTriggerWaitingWarning"
 			manual
 		>
-			<div slot="content" :class="$style.triggerWarning">
-				{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
-			</div>
+			<template #content>
+				<div :class="$style.triggerWarning">
+					{{ $locale.baseText('ndv.backToCanvas.waitingForTriggerWarning') }}
+				</div>
+			</template>
 			<div :class="$style.backToCanvas" @click="close" data-test-id="back-to-canvas">
 				<n8n-icon icon="arrow-left" color="text-xlight" size="medium" />
 				<n8n-text color="text-xlight" size="medium" :bold="true">
@@ -370,12 +372,12 @@ export default mixins(
 		},
 		hasForeignCredential(): boolean {
 			const credentials = (this.activeNode || {}).credentials;
-			const foreignCredentials = this.credentialsStore.foreignCredentialsById;
+			const usedCredentials = this.workflowsStore.usedCredentials;
 
 			let hasForeignCredential = false;
 			if (credentials && this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing)) {
 				Object.values(credentials).forEach((credential) => {
-					if (credential.id && foreignCredentials[credential.id] && !foreignCredentials[credential.id].currentUserHasAccess) {
+					if (credential.id && usedCredentials[credential.id] && !usedCredentials[credential.id].currentUserHasAccess) {
 						hasForeignCredential = true;
 					}
 				});

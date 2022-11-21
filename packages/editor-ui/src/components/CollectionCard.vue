@@ -4,7 +4,7 @@
 		:title="collection.name"
 		@click="onClick"
 	>
-		<template v-slot:footer>
+		<template #footer>
 			<n8n-text size="small" color="text-light">
 				{{ collection.workflows.length }}
 				{{ $locale.baseText('templates.workflows') }}

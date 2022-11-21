@@ -180,7 +180,7 @@ export class MicrosoftExcel implements INodeType {
 					const workbookId = this.getNodeParameter('workbook', 0) as string;
 					const worksheetId = this.getNodeParameter('worksheet', 0) as string;
 					const tableId = this.getNodeParameter('table', 0) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', 0);
 					const body: IDataObject = {};
 
 					if (additionalFields.index) {
@@ -260,10 +260,10 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const tableId = this.getNodeParameter('table', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
 								qs['$select'] = filters.fields;
 							}
@@ -278,7 +278,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							qs['$top'] = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -322,10 +322,10 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const tableId = this.getNodeParameter('table', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
 								qs['$select'] = filters.fields;
 							}
@@ -341,7 +341,7 @@ export class MicrosoftExcel implements INodeType {
 							);
 						} else {
 							const rowsQs = { ...qs };
-							rowsQs['$top'] = this.getNodeParameter('limit', i) as number;
+							rowsQs['$top'] = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -408,7 +408,7 @@ export class MicrosoftExcel implements INodeType {
 						const tableId = this.getNodeParameter('table', i) as string;
 						const lookupColumn = this.getNodeParameter('lookupColumn', i) as string;
 						const lookupValue = this.getNodeParameter('lookupValue', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						responseData = await microsoftApiRequestAllItemsSkip.call(
 							this,
@@ -488,7 +488,7 @@ export class MicrosoftExcel implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/worksheetcollection-add?view=graph-rest-1.0&tabs=http
 					if (operation === 'addWorksheet') {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {};
 						if (additionalFields.name) {
 							body.name = additionalFields.name;
@@ -519,8 +519,8 @@ export class MicrosoftExcel implements INodeType {
 						);
 					}
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						if (filters.fields) {
 							qs['$select'] = filters.fields;
 						}
@@ -534,7 +534,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							qs['$top'] = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -580,9 +580,9 @@ export class MicrosoftExcel implements INodeType {
 				try {
 					//https://docs.microsoft.com/en-us/graph/api/workbook-list-worksheets?view=graph-rest-1.0&tabs=http
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const workbookId = this.getNodeParameter('workbook', i) as string;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						if (filters.fields) {
 							qs['$select'] = filters.fields;
 						}
@@ -596,7 +596,7 @@ export class MicrosoftExcel implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', i) as number;
+							qs['$top'] = this.getNodeParameter('limit', i);
 							responseData = await microsoftApiRequest.call(
 								this,
 								'GET',
@@ -612,9 +612,9 @@ export class MicrosoftExcel implements INodeType {
 						const workbookId = this.getNodeParameter('workbook', i) as string;
 						const worksheetId = this.getNodeParameter('worksheet', i) as string;
 						const range = this.getNodeParameter('range', i) as string;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 						if (rawData) {
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							const filters = this.getNodeParameter('filters', i);
 							if (filters.fields) {
 								qs['$select'] = filters.fields;
 							}

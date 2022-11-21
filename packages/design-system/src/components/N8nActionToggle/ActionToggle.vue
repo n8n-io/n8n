@@ -11,25 +11,28 @@
 			<span :class="{ [$style.button]: true, [$style[theme]]: !!theme }">
 				<component :is="$options.components.N8nIcon" icon="ellipsis-v" :size="iconSize" />
 			</span>
-			<el-dropdown-menu slot="dropdown" data-test-id="action-toggle-dropdown">
-				<el-dropdown-item
-					v-for="action in actions"
-					:key="action.value"
-					:command="action.value"
-					:disabled="action.disabled"
-				>
-					{{ action.label }}
-					<div :class="$style.iconContainer">
-						<component
-							v-if="action.type === 'external-link'"
-							:is="$options.components.N8nIcon"
-							icon="external-link-alt"
-							size="xsmall"
-							color="text-base"
-						/>
-					</div>
-				</el-dropdown-item>
-			</el-dropdown-menu>
+
+			<template #dropdown>
+				<el-dropdown-menu data-test-id="action-toggle-dropdown">
+					<el-dropdown-item
+						v-for="action in actions"
+						:key="action.value"
+						:command="action.value"
+						:disabled="action.disabled"
+					>
+						{{ action.label }}
+						<div :class="$style.iconContainer">
+							<component
+								v-if="action.type === 'external-link'"
+								:is="$options.components.N8nIcon"
+								icon="external-link-alt"
+								size="xsmall"
+								color="text-base"
+							/>
+						</div>
+					</el-dropdown-item>
+				</el-dropdown-menu>
+			</template>
 		</el-dropdown>
 	</span>
 </template>

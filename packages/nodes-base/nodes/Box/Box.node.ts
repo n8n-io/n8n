@@ -81,7 +81,7 @@ export class Box implements INodeType {
 					if (operation === 'copy') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						const parentId = this.getNodeParameter('parentId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const body: IDataObject = {};
 						if (additionalFields.name) {
 							body.name = additionalFields.name as string;
@@ -163,7 +163,7 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-files-id
 					if (operation === 'get') {
 						const fileId = this.getNodeParameter('fileId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						if (additionalFields.fields) {
 							qs.fields = additionalFields.fields as string;
 						}
@@ -172,8 +172,8 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
 						const query = this.getNodeParameter('query', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const timezone = this.getTimezone();
 						qs.type = 'file';
 						qs.query = query;
@@ -215,7 +215,7 @@ export class Box implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}
@@ -225,7 +225,7 @@ export class Box implements INodeType {
 						const fileId = this.getNodeParameter('fileId', i) as string;
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						// tslint:disable-next-line: no-any
 						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
@@ -267,7 +267,7 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/post-files-content
 					if (operation === 'upload') {
 						const parentId = this.getNodeParameter('parentId', i) as string;
-						const isBinaryData = this.getNodeParameter('binaryData', i) as boolean;
+						const isBinaryData = this.getNodeParameter('binaryData', i);
 						const fileName = this.getNodeParameter('fileName', i) as string;
 
 						const attributes: IDataObject = {};
@@ -366,7 +366,7 @@ export class Box implements INodeType {
 					if (operation === 'create') {
 						const name = this.getNodeParameter('name', i) as string;
 						const parentId = this.getNodeParameter('parentId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {
 							name,
 						};
@@ -406,8 +406,8 @@ export class Box implements INodeType {
 					// https://developer.box.com/reference/get-search/
 					if (operation === 'search') {
 						const query = this.getNodeParameter('query', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const timezone = this.getTimezone();
 						qs.type = 'folder';
 						qs.query = query;
@@ -449,7 +449,7 @@ export class Box implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await boxApiRequest.call(this, 'GET', `/search`, {}, qs);
 							responseData = responseData.entries;
 						}
@@ -459,7 +459,7 @@ export class Box implements INodeType {
 						const folderId = this.getNodeParameter('folderId', i) as string;
 						const role = this.getNodeParameter('role', i) as string;
 						const accessibleBy = this.getNodeParameter('accessibleBy', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						// tslint:disable-next-line: no-any
 						const body: { accessible_by: IDataObject; [key: string]: any } = {
 							accessible_by: {},
@@ -501,7 +501,7 @@ export class Box implements INodeType {
 					//https://developer.box.com/guides/folders/single/move/
 					if (operation === 'update') {
 						const folderId = this.getNodeParameter('folderId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.fields) {
 							qs.fields = updateFields.fields;
