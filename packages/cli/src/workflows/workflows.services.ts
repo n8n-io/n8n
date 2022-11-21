@@ -1,6 +1,7 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
+import pick from 'lodash.pick';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -254,9 +255,18 @@ export class WorkflowsService {
 			await validateEntity(workflow);
 		}
 
-		const { hash, ...rest } = workflow;
-
-		await Db.collections.Workflow.update(workflowId, rest);
+		await Db.collections.Workflow.update(
+			workflowId,
+			pick(workflow, [
+				'name',
+				'active',
+				'nodes',
+				'connections',
+				'settings',
+				'staticData',
+				'pinData',
+			]),
+		);
 
 		if (tags && !config.getEnv('workflowTagsDisabled')) {
 			const tablePrefix = config.getEnv('database.tablePrefix');
@@ -306,8 +316,7 @@ export class WorkflowsService {
 				);
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
-				workflow.active = false;
-				await Db.collections.Workflow.update(workflowId, workflow);
+				await Db.collections.Workflow.update(workflowId, { active: false });
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
