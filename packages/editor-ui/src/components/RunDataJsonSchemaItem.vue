@@ -19,14 +19,14 @@
 				:level="level + 1"
 				:parent="schema.type"
 				:sub-key="`${s.type}-${level}-${i}`"
-																 :style="{transitionDelay: `${i * 0.05}s`}"
+				:style="{transitionDelay: `${i * 0.05}s`}"
 			/>
 		</div>
 	</div>
 </template>
 <script lang="ts" setup>
 import { computed } from 'vue';
-import {JsonSchema, JsonSchemaType} from "@/Interface";
+import { JsonSchema, JsonSchemaType } from "@/Interface";
 import { checkExhaustive } from "@/utils";
 
 type Props = {
