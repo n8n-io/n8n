@@ -289,7 +289,7 @@ export class WorkflowDataProxy {
 
 			if (!that.runExecutionData.resultData.runData.hasOwnProperty(nodeName)) {
 				if (that.workflow.getNode(nodeName)) {
-					throw new ExpressionError(`no data, execute "${nodeName}" first`, {
+					throw new ExpressionError(`no data, execute "${nodeName}" node first`, {
 						runIndex: that.runIndex,
 						itemIndex: that.itemIndex,
 					});
@@ -377,15 +377,15 @@ export class WorkflowDataProxy {
 		const that = this;
 		const node = this.workflow.nodes[nodeName];
 
-		if (!node) {
-			return undefined;
-		}
-
 		return new Proxy(
 			{ binary: undefined, data: undefined, json: undefined },
 			{
 				get(target, name, receiver) {
 					name = name.toString();
+
+					if (!node) {
+						throw new ExpressionError(`"${nodeName}" node doesn't exist`);
+					}
 
 					if (['binary', 'data', 'json'].includes(name)) {
 						const executionData = that.getNodeExecutionData(nodeName, shortSyntax, undefined);

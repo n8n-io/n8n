@@ -89,12 +89,4 @@ export default Vue.extend({
 });
 </script>
 
-<style lang="scss">
-.expression-result-wrapper .cm-content {
-	background-color: var(--color-background-lighter);
-}
-
-.expression-result-wrapper .cm-scroller {
-	border: 1px solid var(--color-secondary);
-}
-</style>
+<style lang="scss"></style>
