@@ -1371,6 +1371,7 @@
 	"importParameter.showError.invalidProtocol2.title": "Invalid Protocol",
 	"importParameter.showError.invalidProtocol.message": "The HTTP node doesn’t support {protocol} requests",
 	"settings.ldap": "LDAP",
+	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/' target='_blank'>LDAP on the Docs</a>",
 	"settings.ldap.save": "Save",
 	"settings.ldap.connectionTestError": "Problem testing LDAP connection",
 	"settings.ldap.connectionTest": "LDAP connection tested",

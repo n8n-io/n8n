@@ -6,12 +6,18 @@
 						{{ $locale.baseText('settings.ldap') }}
 					</n8n-heading>
 				</div>
+				<n8n-info-tip theme="info" type="note">
+				<template>
+					<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
+				</template>
+			</n8n-info-tip>
 				<div>
 					<n8n-form-inputs
 						v-if="formInputs"
 						:inputs="formInputs"
 						:eventBus="formBus"
 						:columnView="true"
+						verticalSpacing="l"
 						@input="onInput"
 						@ready="onReadyToSubmit"
 						@submit="onSubmit"
@@ -19,22 +25,22 @@
 				</div>
 				<div>
 					<n8n-button
-						:label="$locale.baseText('settings.ldap.save')"
-						size="large"
-						class="mr-s"
-						:disabled="!hasAnyChanges || !readyToSubmit"
-						@click="onSaveClick"
-					/>
-					<n8n-button
 						:label="
 							loadingTestConnection
 								? $locale.baseText('settings.ldap.testingConnection')
 								: $locale.baseText('settings.ldap.testConnection')
 						"
 						size="large"
+						class="mr-s"
 						:disabled="hasAnyChanges || !readyToSubmit"
 						:loading="loadingTestConnection"
 						@click="onTestConnectionClick"
+					/>
+					<n8n-button
+						:label="$locale.baseText('settings.ldap.save')"
+						size="large"
+						:disabled="!hasAnyChanges || !readyToSubmit"
+						@click="onSaveClick"
 					/>
 				</div>
 			</div>
@@ -214,7 +220,7 @@ export default mixins(showMessage).extend({
 			lastName: string;
 			firstName: string;
 			ldapId: string;
-			syncronizationEnabled: string;
+			syncronizationEnabled: boolean;
 			allowUnauthorizedCerts: string;
 			syncronizationInterval: string;
 			userFilter: string;
@@ -243,7 +249,7 @@ export default mixins(showMessage).extend({
 				loginIdAttribute: form.loginId,
 				ldapIdAttribute: form.ldapId,
 				userFilter: form.userFilter ?? '',
-				syncronizationEnabled: form.syncronizationEnabled === 'true' ? true : false,
+				syncronizationEnabled: form.syncronizationEnabled === true,
 				syncronizationInterval: parseInt(form.syncronizationInterval || '60', 10),
 				searchPageSize: parseInt(form.pageSize || '0', 10),
 				searchTimeout: parseInt(form.searchTimeout || '60', 10),
@@ -273,7 +279,9 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			} finally {
-				this.hasAnyChanges = false;
+				if (saveForm) {
+					this.hasAnyChanges = false;
+				}
 			}
 		},
 		onSaveClick() {
@@ -341,6 +349,7 @@ export default mixins(showMessage).extend({
 							type: 'toggle',
 							label: 'Enable LDAP Login',
 							tooltipText: 'Whether to allow n8n users to sign-in using LDAP.',
+							required: true,
 						},
 					},
 					{
@@ -351,15 +360,6 @@ export default mixins(showMessage).extend({
 							required: false,
 							placeholder: 'E.g.: LDAP Username or Email',
 							infoText: 'The placeholder text that appears in the login field on the login page.',
-						},
-					},
-					{
-						name: 'connectionInfo',
-						properties: {
-							label: 'Connection Details',
-							type: 'info',
-							labelSize: 'large',
-							labelAlignment: 'left',
 						},
 					},
 					{
@@ -587,22 +587,12 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'syncronizationEnabled',
-						initialValue: this.adConfig.syncronizationEnabled.toString(),
+						initialValue: this.adConfig.syncronizationEnabled,
 						properties: {
-							type: 'select',
+							type: 'toggle',
 							label: 'Enable LDAP Syncronization',
+							tooltipText: 'Whether to enable background syncronizations.',
 							required: true,
-							options: [
-								{
-									label: 'True',
-									value: 'true',
-								},
-								{
-									label: 'False',
-									value: 'false',
-								},
-							],
-							infoText: 'Whether to enable background syncronizations.',
 						},
 						shouldDisplay(values): boolean {
 							return values['loginEnabled'] === true;
@@ -618,7 +608,7 @@ export default mixins(showMessage).extend({
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === true
+								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -633,7 +623,7 @@ export default mixins(showMessage).extend({
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === true
+								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -648,7 +638,7 @@ export default mixins(showMessage).extend({
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === true
+								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},

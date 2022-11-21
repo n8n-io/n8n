@@ -5,8 +5,9 @@
 		<template v-slot="{ bp }">
 			<div :class="bp === 'md' || columnView? $style.grid : $style.gridMulti">
 				<div
-					v-for="(input) in filteredInputs"
+					v-for="(input, index) in filteredInputs"
 					:key="input.name"
+					:class="{[`mt-${verticalSpacing}`]: index > 0}"
 				>
 					<n8n-text color="text-base" v-if="input.properties.type === 'info'" tag="div" :size="input.properties.labelSize" :align="input.properties.labelAlignment">
 						{{input.properties.label}}
@@ -54,6 +55,12 @@ export default Vue.extend({
 		columnView: {
 			type: Boolean,
 			default: false,
+		},
+		verticalSpacing: {
+			type: String,
+			required: false,
+			validator: (value: string): boolean =>
+				['xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
 		},
 	},
 	data() {
