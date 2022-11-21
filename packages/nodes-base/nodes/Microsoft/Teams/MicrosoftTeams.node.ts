@@ -397,7 +397,7 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/channel-post-messages?view=graph-rest-beta&tabs=http
 					//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
 					if (operation === 'create') {
-						const teamId = this.getNodeParameter('teamId', i) as string;
+						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const messageType = this.getNodeParameter('messageType', i) as string;
 						const message = this.getNodeParameter('message', i) as string;
@@ -429,7 +429,7 @@ export class MicrosoftTeams implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/graph/api/channel-list-messages?view=graph-rest-beta&tabs=http
 					if (operation === 'getAll') {
-						const teamId = this.getNodeParameter('teamId', i) as string;
+						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
