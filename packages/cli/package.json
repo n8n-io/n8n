@@ -103,12 +103,13 @@
     "tsconfig-paths": "^3.14.1"
   },
   "dependencies": {
+    "@n8n_io/license-sdk": "^1.3.4",
     "@oclif/command": "^1.8.16",
     "@oclif/core": "^1.16.4",
     "@oclif/errors": "^1.3.6",
     "@rudderstack/rudder-sdk-node": "1.0.6",
-    "@sentry/node": "^7.17.3",
     "@sentry/integrations": "^7.17.3",
+    "@sentry/node": "^7.17.3",
     "axios": "^0.21.1",
     "basic-auth": "^2.0.1",
     "bcryptjs": "^2.4.3",
