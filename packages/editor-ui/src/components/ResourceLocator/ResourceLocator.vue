@@ -69,8 +69,7 @@
 						:stickyOffset="4"
 						@drop="onDrop"
 					>
-						<!-- eslint-disable-next-line vue/v-slot-style -->
-						<template v-slot="{ droppable, activeDrop }">
+						<template #default="{ droppable, activeDrop }">
 							<div
 								:class="{
 									[$style.listModeInputContainer]: isListMode,
@@ -104,17 +103,16 @@
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>
-								<!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
-									<div v-if="isListMode" slot="suffix">
-											<i
-												:class="{
-													['el-input__icon']: true,
-													['el-icon-arrow-down']: true,
-													[$style.selectIcon]: true,
-													[$style.isReverse]: showResourceDropdown,
-												}"
-											></i>
-										</div>
+									<template v-if="isListMode" #suffix>
+										<i
+											:class="{
+												['el-input__icon']: true,
+												['el-icon-arrow-down']: true,
+												[$style.selectIcon]: true,
+												[$style.isReverse]: showResourceDropdown,
+											}"
+										/>
+										</template>
 								</n8n-input>
 							</div>
 						</template>
