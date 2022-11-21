@@ -3,7 +3,7 @@
 		:breakpoints="[{bp: 'md', width: 500}]"
 	>
 		<template v-slot="{ bp }">
-			<div :class="bp === 'md' || columnView? $style.grid : $style.gridMulti">
+			<div :class="bp === 'md' || columnView? $style.gridMulti : $style.grid">
 				<div
 					v-for="(input) in filteredInputs"
 					:key="input.name"
@@ -15,6 +15,7 @@
 						v-else
 						v-bind="input.properties"
 						:name="input.name"
+						:label="input.properties.label || ''"
 						:value="values[input.name]"
 						:data-test-id="input.name"
 						:showValidationWarnings="showValidationWarnings"
@@ -52,6 +53,7 @@ export default Vue.extend({
 		},
 		columnView: {
 			type: Boolean,
+			default: false,
 		},
 	},
 	data() {
