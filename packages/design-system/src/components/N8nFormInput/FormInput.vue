@@ -102,7 +102,7 @@ export interface Props {
 	name?: string;
 	focusInitially?: boolean;
 	labelSize?: 'small' | 'medium';
-  disabled?: boolean;
+	disabled?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
