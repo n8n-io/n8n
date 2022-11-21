@@ -20,8 +20,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nBadge,
 	},
-	template:
-		'<n8n-badge v-bind="$props">Badge</n8n-badge>',
+	template: '<n8n-badge v-bind="$props">Badge</n8n-badge>',
 });
 
 export const Badge = Template.bind({});

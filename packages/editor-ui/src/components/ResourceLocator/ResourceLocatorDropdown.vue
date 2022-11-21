@@ -11,6 +11,7 @@
 		</div>
 		<div :class="$style.searchInput" v-if="filterable && !errorView" @keydown="onKeyDown">
 			<n8n-input size="medium" :value="filter" :clearable="true" @input="onFilterInput" @blur="onSearchBlur" ref="search" :placeholder="$locale.baseText('resourceLocator.search.placeholder')">
+				<!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
 				<font-awesome-icon :class="$style.searchIcon" icon="search" slot="prefix" />
 			</n8n-input>
 		</div>
@@ -48,6 +49,7 @@
 				</div>
 			</div>
 		</div>
+		<!-- eslint-disable-next-line vue/no-deprecated-slot-attribute -->
 		<slot slot="reference" />
 	</n8n-popover>
 </template>

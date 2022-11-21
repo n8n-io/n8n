@@ -288,9 +288,9 @@ export class SeaTable implements INodeType {
 					try {
 						const endpoint = `/dtable-server/api/v1/dtables/{{dtable_uuid}}/rows/`;
 						qs.table_name = tableName;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const filters = this.getNodeParameter('filters', i);
+						const options = this.getNodeParameter('options', i);
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						Object.assign(qs, filters, options);
 
@@ -309,7 +309,7 @@ export class SeaTable implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 							responseData = await seaTableApiRequest.call(this, ctx, 'GET', endpoint, body, qs);
 							responseData = responseData.rows;
 						}

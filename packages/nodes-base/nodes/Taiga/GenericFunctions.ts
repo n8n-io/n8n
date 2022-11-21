@@ -145,12 +145,12 @@ export async function handleListing(
 ) {
 	let responseData;
 	qs.project = this.getNodeParameter('projectId', i) as number;
-	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', i);
 
 	if (returnAll) {
 		return await taigaApiRequestAllItems.call(this, method, endpoint, body, qs);
 	} else {
-		qs.limit = this.getNodeParameter('limit', i) as number;
+		qs.limit = this.getNodeParameter('limit', i);
 		responseData = await taigaApiRequestAllItems.call(this, method, endpoint, body, qs);
 		return responseData.splice(0, qs.limit);
 	}

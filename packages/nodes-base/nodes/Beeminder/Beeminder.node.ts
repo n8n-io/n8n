@@ -323,7 +323,7 @@ export class Beeminder implements INodeType {
 						);
 						returnData.push(...executionData);
 					} else if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const options = this.getNodeParameter('options', i) as INodeParameters;
 						const data: IDataObject = {
 							goalName,
@@ -331,7 +331,7 @@ export class Beeminder implements INodeType {
 						Object.assign(data, options);
 
 						if (returnAll === false) {
-							data.count = this.getNodeParameter('limit', 0) as number;
+							data.count = this.getNodeParameter('limit', 0);
 						}
 
 						results = await getAllDatapoints.call(this, data);

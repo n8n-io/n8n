@@ -107,7 +107,7 @@
 
 		<div :class="$style.runSelector" v-if="maxRunIndex > 0" v-show="!editMode.enabled">
 			<n8n-select size="small" :value="runIndex" @input="onRunIndexChange" @click.stop popper-append-to-body>
-				<template slot="prepend">{{ $locale.baseText('ndv.output.run') }}</template>
+				<template #prepend>{{ $locale.baseText('ndv.output.run') }}</template>
 				<n8n-option v-for="option in (maxRunIndex + 1)" :label="getRunLabel(option)" :value="option - 1" :key="option"></n8n-option>
 			</n8n-select>
 
@@ -307,7 +307,7 @@
 
 			<div :class="$style.pageSizeSelector">
 				<n8n-select size="mini" :value="pageSize" @input="onPageSizeChange" popper-append-to-body>
-					<template slot="prepend">{{ $locale.baseText('ndv.output.pageSize') }}</template>
+					<template #prepend>{{ $locale.baseText('ndv.output.pageSize') }}</template>
 					<n8n-option
 						v-for="size in pageSizes"
 						:key="size"

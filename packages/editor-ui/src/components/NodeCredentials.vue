@@ -15,7 +15,7 @@
 				size="small"
 				color="text-dark"
 			>
-				<div v-if="isReadOnly">
+				<div v-if="readonly || isReadOnly">
 					<n8n-input
 						:value="selected && selected[credentialTypeDescription.name] && selected[credentialTypeDescription.name].name"
 						disabled
@@ -43,7 +43,9 @@
 
 					<div :class="$style.warning" v-if="issues.length">
 						<n8n-tooltip placement="top" >
-							<titled-list slot="content" :title="`${$locale.baseText('nodeCredentials.issues')}:`" :items="issues" />
+							<template #content>
+								<titled-list :title="`${$locale.baseText('nodeCredentials.issues')}:`" :items="issues" />
+							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
@@ -94,6 +96,7 @@ export default mixins(
 ).extend({
 	name: 'NodeCredentials',
 	props: [
+		'readonly',
 		'node', // INodeUi
 		'overrideCredType', // cred type
 	],

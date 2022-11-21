@@ -155,12 +155,12 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					responseData = await scorecardApiRequest.call(this, 'GET', 'portfolios');
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -192,9 +192,9 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					const portfolioId = this.getNodeParameter('portfolioId', i) as string;
-					const filterParams = this.getNodeParameter('filters', i) as IDataObject;
+					const filterParams = this.getNodeParameter('filters', i);
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
@@ -206,7 +206,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', 0) as boolean;
+						const limit = this.getNodeParameter('limit', 0);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -277,7 +277,7 @@ export class SecurityScorecard implements INodeType {
 						body = { params: body };
 					}
 					if (reportType === 'scorecard-footprint') {
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						Object.assign(body, options);
 					}
 
@@ -292,12 +292,12 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					responseData = await scorecardApiRequest.call(this, 'GET', 'reports/recent');
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 					returnData.push.apply(returnData, responseData as IDataObject[]);
@@ -333,7 +333,7 @@ export class SecurityScorecard implements INodeType {
 
 				if (operation === 'getFactor') {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
-					const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', 0);
 					const industry = this.getNodeParameter('industry', i);
 					responseData = await scorecardApiRequest.call(
 						this,
@@ -343,7 +343,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -356,9 +356,9 @@ export class SecurityScorecard implements INodeType {
 
 				if (operation === 'getFactorHistorical') {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const industry = this.getNodeParameter('industry', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					// Convert to YYYY-MM-DD
 					if (options['from']) {
 						options['from'] = moment(options['from'] as Date).format('YYYY-MM-DD');
@@ -377,7 +377,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -401,9 +401,9 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getFactor') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
-					const filterParams = this.getNodeParameter('filters', i) as IDataObject;
+					const filterParams = this.getNodeParameter('filters', i);
 					responseData = await scorecardApiRequest.call(
 						this,
 						'GET',
@@ -415,7 +415,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -424,9 +424,9 @@ export class SecurityScorecard implements INodeType {
 
 				if (operation === 'getFactorHistorical') {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					// Convert to YYYY-MM-DD
 					if (options['date_from']) {
 						options['date_from'] = moment(options['date_from'] as Date).format('YYYY-MM-DD');
@@ -446,7 +446,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -459,9 +459,9 @@ export class SecurityScorecard implements INodeType {
 
 				if (operation === 'getHistoricalScore') {
 					const simple = this.getNodeParameter('simple', 0) as boolean;
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i);
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					// for some reason the params are different between these two APis :/
 					if (options['date_from']) {
@@ -482,7 +482,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 
@@ -494,7 +494,7 @@ export class SecurityScorecard implements INodeType {
 				}
 
 				if (operation === 'getScorePlan') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 					const scorecardIdentifier = this.getNodeParameter('scorecardIdentifier', i) as string;
 					const targetScore = this.getNodeParameter('score', i);
 					responseData = await scorecardApiRequest.call(
@@ -506,7 +506,7 @@ export class SecurityScorecard implements INodeType {
 					responseData = responseData.entries;
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 

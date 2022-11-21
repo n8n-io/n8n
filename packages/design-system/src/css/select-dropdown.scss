@@ -1,6 +1,6 @@
-@use "mixins/mixins";
-@use "./common/var";
-@use "./popper";
+@use 'mixins/mixins';
+@use './common/var';
+@use './popper';
 
 @include mixins.b(select-dropdown) {
 	position: absolute;
@@ -11,7 +11,7 @@
 	box-shadow: var.$select-dropdown-shadow;
 	box-sizing: border-box;
 	margin: 5px 0;
-  	max-width: var(--max-width);
+	max-width: var(--max-width);
 
 	@include mixins.when(multiple) {
 		& .el-select-dropdown__item.selected {
