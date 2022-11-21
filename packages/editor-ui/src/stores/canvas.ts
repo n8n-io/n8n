@@ -11,11 +11,15 @@ import * as CanvasHelpers from '@/views/canvasHelpers';
 import { START_NODE_TYPE } from '@/constants';
 import '@/plugins/N8nCustomConnectorType';
 import '@/plugins/PlusEndpointType';
+// import * as jsPlumbBrowserUI from "@jsplumb/browser-ui";
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
 	const nodeTypesStore = useNodeTypesStore();
 	const uiStore = useUIStore();
+	console.log('Before');
+	// const jsPlumbInstanceNew =  jsPlumbBrowserUI.newInstance();
+	// console.log("🚀 ~ file: canvas.ts ~ line 21 ~ useCanvasStore ~ jsPlumbInstanceNew", jsPlumbInstanceNew);
 	const jsPlumbInstance = jsPlumb.getInstance();
 
 	const nodes = computed<INodeUi[]>(() => workflowStore.allNodes);
@@ -114,6 +118,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 	return {
 		jsPlumbInstance,
+		// jsPlumbInstanceNew,
 		isDemo,
 		nodeViewScale,
 		canvasAddButtonPosition,

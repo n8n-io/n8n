@@ -38,7 +38,7 @@ importers:
       turbo: 1.5.5
       typescript: ^4.8.4
     dependencies:
-      n8n: 'link:'
+      n8n: link:packages/cli
     devDependencies:
       '@n8n_io/eslint-config': link:packages/@n8n_io/eslint-config
       '@ngneat/falso': 6.1.0
@@ -472,6 +472,11 @@ importers:
       '@fortawesome/free-solid-svg-icons': ^5.15.3
       '@fortawesome/vue-fontawesome': ^2.0.2
       '@intlify/vue-i18n-loader': ^1.1.0
+      '@jsplumb/browser-ui': ^5.12.6
+      '@jsplumb/common': ^5.12.6
+      '@jsplumb/connector-bezier': ^5.12.6
+      '@jsplumb/core': ^5.12.6
+      '@jsplumb/util': ^5.12.6
       '@pinia/testing': ^0.0.14
       '@testing-library/jest-dom': ^5.16.5
       '@testing-library/vue': ^5.8.3
@@ -551,6 +556,11 @@ importers:
       '@fortawesome/free-regular-svg-icons': 6.2.0
       '@fortawesome/free-solid-svg-icons': 5.15.4
       '@fortawesome/vue-fontawesome': 2.0.8_tc4irwwlc7tvswdic4b5cxexom
+      '@jsplumb/browser-ui': link:../../../jsplumb/dist/browser-ui
+      '@jsplumb/common': 5.12.6
+      '@jsplumb/connector-bezier': 5.12.6
+      '@jsplumb/core': 5.12.6
+      '@jsplumb/util': 5.12.6
       axios: 0.21.4
       dateformat: 3.0.3
       esprima-next: 5.8.4
@@ -3217,6 +3227,28 @@ packages:
 
   /@jsdevtools/ono/7.1.3:
     resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
+
+  /@jsplumb/common/5.12.6:
+    resolution: {integrity: sha512-099DvG4jzZYszOirn+OBusKBWhPf38vYzfrwIN+v8AUjjx1S+7xdy7wWhFcCkCaXT6NTP6iV55s5Az42yDP/7Q==}
+    dependencies:
+      '@jsplumb/util': 5.12.6
+    dev: false
+
+  /@jsplumb/connector-bezier/5.12.6:
+    resolution: {integrity: sha512-uhui644WMHY56ZQdbvBaHwLXiSTE2btk8GP1emOffqvkq1+/fweZFu7LIMoqGj5DLOWF2TnSbWpyxYp5NnCkLg==}
+    dependencies:
+      '@jsplumb/core': 5.12.6
+    dev: false
+
+  /@jsplumb/core/5.12.6:
+    resolution: {integrity: sha512-gubETYlESN4yk7gF0y1APmv35U5+rlJp4dGLI5KlFNuQouPMmOSu3GguJkK0orwGmmcJEDDj+US8jGqz2++rYw==}
+    dependencies:
+      '@jsplumb/common': 5.12.6
+    dev: false
+
+  /@jsplumb/util/5.12.6:
+    resolution: {integrity: sha512-b+G3LGF/G4cDj/g919rlZPdveojWbPTneX7xzCJ3c62z6g7KCAuITP5LhhwQr/mTfUDcllzGkT4N6hGSXrVxFA==}
+    dev: false
 
   /@kafkajs/confluent-schema-registry/1.0.6:
     resolution: {integrity: sha512-NrZL1peOIlmlLKvheQcJAx9PHdnc4kaW+9+Yt4jXUfbbYR9EFNCZt6yApI4SwlFilaiZieReM6XslWy1LZAvoQ==}
@@ -7622,7 +7654,7 @@ packages:
   /axios/0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2_debug@3.2.7
+      follow-redirects: 1.15.2
     transitivePeerDependencies:
       - debug
     dev: false
@@ -11844,6 +11876,16 @@ packages:
 
   /fn.name/1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
+    dev: false
+
+  /follow-redirects/1.15.2:
+    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
+    engines: {node: '>=4.0'}
+    peerDependencies:
+      debug: '*'
+    peerDependenciesMeta:
+      debug:
+        optional: true
     dev: false
 
   /follow-redirects/1.15.2_debug@3.2.7:

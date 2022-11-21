@@ -13,6 +13,8 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { useNodeTypesStore } from "@/stores/nodeTypes";
+import { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
+import { SingleAnchorSpec } from '@jsplumb/common';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -46,7 +48,7 @@ export const nodeBase = mixins(
 			type: String,
 		},
 		instance: {
-			type: Object as PropType<IJsPlumbInstance>,
+			type: Object as PropType<BrowserJsPlumbInstance>,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -66,6 +68,7 @@ export const nodeBase = mixins(
 	},
 	methods: {
 		__addInputEndpoints (node: INodeUi, nodeTypeData: INodeTypeDescription) {
+			console.log("🚀 ~ file: nodeBase.ts ~ line 70 ~ __addInputEndpoints ~ nodeTypeData", nodeTypeData);
 			// Add Inputs
 			let index;
 			const indexData: {
@@ -83,10 +86,11 @@ export const nodeBase = mixins(
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
+				console.log("🚀 ~ file: nodeBase.ts ~ line 87 ~ nodeTypeData.inputs.forEach ~ anchorPosition", anchorPosition);
 
-				const newEndpointData: IEndpointOptions = {
+				const newEndpointData = {
 					uuid: CanvasHelpers.getInputEndpointUUID(this.nodeId, index),
-					anchor: anchorPosition,
+					anchor: [[0.01, 0.5, -1, 0]] as SingleAnchorSpec[],
 					maxConnections: -1,
 					endpoint: 'Rectangle',
 					endpointStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
@@ -109,20 +113,20 @@ export const nodeBase = mixins(
 
 				if (nodeTypeData.inputNames) {
 					// Apply input names if they got set
-					newEndpointData.overlays = [
-						CanvasHelpers.getInputNameOverlay(nodeTypeData.inputNames[index]),
-					];
+					// newEndpointData.overlays = [
+					// 	CanvasHelpers.getInputNameOverlay(nodeTypeData.inputNames[index]),
+					// ];
 				}
 
-				const endpoint = this.instance.addEndpoint(this.nodeId, newEndpointData);
-				if(!Array.isArray(endpoint)) {
-					endpoint.__meta = {
-						nodeName: node.name,
-						nodeId: this.nodeId,
-						index: i,
-						totalEndpoints: nodeTypeData.inputs.length,
-					};
-				}
+				const endpoint = this.instance.addEndpoint(this.$refs[this.nodeId] as Element, newEndpointData);
+				// if(!Array.isArray(endpoint)) {
+				// 	endpoint.__meta = {
+				// 		nodeName: node.name,
+				// 		nodeId: this.nodeId,
+				// 		index: i,
+				// 		totalEndpoints: nodeTypeData.inputs.length,
+				// 	};
+				// }
 
 				// TODO: Activate again if it makes sense. Currently makes problems when removing
 				//       connection on which the input has a name. It does not get hidden because
@@ -315,6 +319,7 @@ export const nodeBase = mixins(
 			});
 		},
 		__addNode (node: INodeUi) {
+			console.log('Add node');
 			let nodeTypeData = this.nodeTypesStore.getNodeType(node.type, node.typeVersion);
 			if (!nodeTypeData) {
 				// If node type is not know use by default the base.noOp data to display it

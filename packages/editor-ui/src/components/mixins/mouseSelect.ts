@@ -187,16 +187,16 @@ export const mouseSelect = mixins(
 		nodeDeselected (node: INodeUi) {
 			this.uiStore.removeNodeFromSelection(node);
 			// @ts-ignore
-			this.instance.removeFromDragSelection(node.id);
+			this.newInstance.removeFromDragSelection(this.$refs[`node-${node.id}`][0].$el);
 		},
 		nodeSelected (node: INodeUi) {
 			this.uiStore.addSelectedNode(node);
 			// @ts-ignore
-			this.instance.addToDragSelection(node.id);
+			this.newInstance.addToDragSelection(this.$refs[`node-${node.id}`][0].$el);
 		},
 		deselectAllNodes () {
 			// @ts-ignore
-			this.instance.clearDragSelection();
+			this.newInstance.clearDragSelection();
 			this.uiStore.resetSelectedNodes();
 			this.uiStore.lastSelectedNode = null;
 			this.uiStore.lastSelectedNodeOutputIndex = null;
