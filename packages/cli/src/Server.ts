@@ -158,6 +158,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
+import { getLicense } from '@/License';
 
 require('body-parser-xml')(bodyParser);
 
@@ -389,6 +390,16 @@ class App {
 		return this.frontendSettings;
 	}
 
+	async initLicense(): Promise<void> {
+		const license = getLicense();
+		await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
+
+		const activationKey = config.getEnv('license.activationKey');
+		if (activationKey) {
+			await license.activate(activationKey);
+		}
+	}
+
 	async config(): Promise<void> {
 		const enableMetrics = config.getEnv('endpoints.metrics.enable');
 		let register: Registry;
@@ -410,6 +421,8 @@ class App {
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
+
+		await this.initLicense();
 
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 

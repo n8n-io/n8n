@@ -987,4 +987,31 @@ export const schema = {
 			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
 		},
 	},
+
+	license: {
+		serverUrl: {
+			format: String,
+			default: 'https://license.n8n.io/v1',
+			env: 'N8N_LICENSE_SERVER_URL',
+			doc: 'License server url to retrieve license.',
+		},
+		autoRenewEnabled: {
+			format: Boolean,
+			default: true,
+			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
+			doc: 'Whether autorenew for licenses is enabled.',
+		},
+		autoRenewOffset: {
+			format: Number,
+			default: 60 * 60 * 72, // 72 hours
+			env: 'N8N_LICENSE_AUTO_RENEW_OFFSET',
+			doc: 'How many seconds before expiry a license should get automatically renewed. ',
+		},
+		activationKey: {
+			format: String,
+			default: '',
+			env: 'N8N_LICENSE_ACTIVATION_KEY',
+			doc: 'Activation key to initialize license',
+		},
+	},
 };

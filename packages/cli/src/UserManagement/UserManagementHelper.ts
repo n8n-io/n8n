@@ -13,6 +13,7 @@ import { Role } from '@db/entities/Role';
 import { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
+import { getLicense } from '@/License';
 import { WhereClause } from '@/Interfaces';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
@@ -41,7 +42,11 @@ export function isUserManagementEnabled(): boolean {
 }
 
 export function isSharingEnabled(): boolean {
-	return isUserManagementEnabled() && config.getEnv('enterprise.features.sharing');
+	const license = getLicense();
+	return (
+		isUserManagementEnabled() &&
+		(config.getEnv('enterprise.features.sharing') || license.isSharingEnabled())
+	);
 }
 
 export function isUserManagementDisabled(): boolean {
