@@ -166,7 +166,7 @@ export async function handleListing(
 
 	const returnAll = this.getNodeParameter('returnAll', i);
 
-	const filters = this.getNodeParameter('filters', i) as IDataObject;
+	const filters = this.getNodeParameter('filters', i);
 	if (filters.query) {
 		qs.query += ` ${filters.query}`;
 	}
@@ -174,7 +174,7 @@ export async function handleListing(
 	if (returnAll) {
 		return await quickBooksApiRequestAllItems.call(this, 'GET', endpoint, qs, {}, resource);
 	} else {
-		const limit = this.getNodeParameter('limit', i) as number;
+		const limit = this.getNodeParameter('limit', i);
 		qs.query += ` MAXRESULTS ${limit}`;
 		responseData = await quickBooksApiRequest.call(this, 'GET', endpoint, qs, {});
 		responseData = responseData.QueryResponse[capitalCase(resource)];

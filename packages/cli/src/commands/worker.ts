@@ -38,13 +38,11 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import { getLogger } from '@/Logger';
+import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
 import config from '@/config';
 import * as Queue from '@/Queue';
-import {
-	checkPermissionsForExecution,
-	getWorkflowOwner,
-} from '@/UserManagement/UserManagementHelper';
+import { getWorkflowOwner } from '@/UserManagement/UserManagementHelper';
 import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 
 export class Worker extends Command {
@@ -199,7 +197,7 @@ export class Worker extends Command {
 		);
 
 		try {
-			await checkPermissionsForExecution(workflow, workflowOwner.id);
+			await PermissionChecker.check(workflow, workflowOwner.id);
 		} catch (error) {
 			const failedExecution = generateFailedExecutionFromError(
 				currentExecutionDb.mode,

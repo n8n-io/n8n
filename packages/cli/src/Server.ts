@@ -89,7 +89,7 @@ import * as Queue from '@/Queue';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { getCredentialTranslationPath } from '@/TranslationHelpers';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
-import { getSharedWorkflowIds, whereClause } from '@/WorkflowHelpers';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
@@ -122,6 +122,7 @@ import {
 	isEmailSetUp,
 	isSharingEnabled,
 	isUserManagementEnabled,
+	whereClause,
 } from '@/UserManagement/UserManagementHelper';
 import * as Db from '@/Db';
 import {
@@ -159,6 +160,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
+import { getLicense } from '@/License';
 
 import { ldapController } from './Ldap/routes/ldap.controller.ee';
 import { getLdapLoginLabel, isLdapEnabled, isLdapLoginEnabled } from './Ldap/helpers';
@@ -399,6 +401,16 @@ class App {
 		return this.frontendSettings;
 	}
 
+	async initLicense(): Promise<void> {
+		const license = getLicense();
+		await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
+
+		const activationKey = config.getEnv('license.activationKey');
+		if (activationKey) {
+			await license.activate(activationKey);
+		}
+	}
+
 	async config(): Promise<void> {
 		const enableMetrics = config.getEnv('endpoints.metrics.enable');
 		let register: Registry;
@@ -420,6 +432,8 @@ class App {
 		this.frontendSettings.instanceId = await UserSettings.getInstanceId();
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
+
+		await this.initLicense();
 
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 

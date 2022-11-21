@@ -1,16 +1,20 @@
 <template>
-	<ResizeObserver
-		:breakpoints="[{bp: 'md', width: 500}]"
-	>
+	<ResizeObserver :breakpoints="[{ bp: 'md', width: 500 }]">
 		<template v-slot="{ bp }">
-			<div :class="bp === 'md' || columnView? $style.grid : $style.gridMulti">
+			<div :class="bp === 'md' || columnView ? $style.grid : $style.gridMulti">
 				<div
 					v-for="(input, index) in filteredInputs"
 					:key="input.name"
-					:class="{[`mt-${verticalSpacing}`]: index > 0}"
+					:class="{ [`mt-${verticalSpacing}`]: index > 0 }"
 				>
-					<n8n-text color="text-base" v-if="input.properties.type === 'info'" tag="div" :size="input.properties.labelSize" :align="input.properties.labelAlignment">
-						{{input.properties.label}}
+					<n8n-text
+						color="text-base"
+						v-if="input.properties.type === 'info'"
+						tag="div"
+						:size="input.properties.labelSize"
+						:align="input.properties.labelAlignment"
+					>
+						{{ input.properties.label }}
 					</n8n-text>
 					<n8n-form-input
 						v-else
@@ -59,15 +63,14 @@ export default Vue.extend({
 		verticalSpacing: {
 			type: String,
 			required: false,
-			validator: (value: string): boolean =>
-				['xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
+			validator: (value: string): boolean => ['xs', 's', 'm', 'm', 'l', 'xl'].includes(value),
 		},
 	},
 	data() {
 		return {
 			showValidationWarnings: false,
-			values: {} as {[key: string]: any},
-			validity: {} as {[key: string]: boolean},
+			values: {} as { [key: string]: any },
+			validity: {} as { [key: string]: boolean },
 		};
 	},
 	mounted() {
@@ -83,10 +86,8 @@ export default Vue.extend({
 	},
 	computed: {
 		filteredInputs(): IFormInput[] {
-			return (this.inputs as IFormInput[]).filter(
-				(input) => typeof input.shouldDisplay === 'function'
-					? input.shouldDisplay(this.values)
-					: true,
+			return (this.inputs as IFormInput[]).filter((input) =>
+				typeof input.shouldDisplay === 'function' ? input.shouldDisplay(this.values) : true,
 			);
 		},
 		isReadyToSubmit(): boolean {
@@ -105,7 +106,7 @@ export default Vue.extend({
 				...this.values,
 				[name]: value, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 			};
-			this.$emit('input', {name, value}); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+			this.$emit('input', { name, value }); // eslint-disable-line @typescript-eslint/no-unsafe-assignment
 		},
 		onValidate(name: string, valid: boolean) {
 			Vue.set(this.validity, name, valid);
@@ -113,7 +114,7 @@ export default Vue.extend({
 		onSubmit() {
 			this.showValidationWarnings = true;
 			if (this.isReadyToSubmit) {
-				const toSubmit = (this.filteredInputs ).reduce<{ [key: string]: unknown }>((accu, input) => {
+				const toSubmit = this.filteredInputs.reduce<{ [key: string]: unknown }>((accu, input) => {
 					if (this.values[input.name]) {
 						accu[input.name] = this.values[input.name];
 					}
@@ -142,5 +143,4 @@ export default Vue.extend({
 	composes: grid;
 	grid-template-columns: repeat(2, 1fr);
 }
-
 </style>

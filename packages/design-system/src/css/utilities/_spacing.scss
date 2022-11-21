@@ -5,29 +5,29 @@ $spacing-properties: 'margin', 'padding';
 $spacing-sides: 'top', 'right', 'bottom', 'left';
 
 @each $size in $spacing-sizes {
-  @each $property in $spacing-properties {
-	@each $side in $spacing-sides {
-	  .#{string.slice($property, 0, 1)}#{string.slice($side, 0, 1)}-#{$size} {
-		#{$property}-#{$side}: var(--spacing-#{$size}) !important;
-	  }
-	}
+	@each $property in $spacing-properties {
+		@each $side in $spacing-sides {
+			.#{string.slice($property, 0, 1)}#{string.slice($side, 0, 1)}-#{$size} {
+				#{$property}-#{$side}: var(--spacing-#{$size}) !important;
+			}
+		}
 
-	.#{string.slice($property, 0, 1)}-#{$size} {
-	  #{$property}: var(--spacing-#{$size}) !important;
+		.#{string.slice($property, 0, 1)}-#{$size} {
+			#{$property}: var(--spacing-#{$size}) !important;
+		}
 	}
-  }
 }
 
 @each $property in $spacing-properties {
-  @each $side in $spacing-sides {
-	@if $property == 'margin' {
-	  .#{string.slice($property, 0, 1)}#{string.slice($side, 0, 1)}-auto {
-		#{$property}-#{$side}: auto !important;
-	  }
-	}
+	@each $side in $spacing-sides {
+		@if $property == 'margin' {
+			.#{string.slice($property, 0, 1)}#{string.slice($side, 0, 1)}-auto {
+				#{$property}-#{$side}: auto !important;
+			}
+		}
 
-	.#{string.slice($property, 0, 1)}#{string.slice($side, 0, 1)}-0 {
-	  #{$property}-#{$side}: 0 !important;
+		.#{string.slice($property, 0, 1)}#{string.slice($side, 0, 1)}-0 {
+			#{$property}-#{$side}: 0 !important;
+		}
 	}
-  }
 }

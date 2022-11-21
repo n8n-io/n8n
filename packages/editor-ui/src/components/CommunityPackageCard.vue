@@ -29,21 +29,27 @@
 					v{{ communityPackage.installedVersion }}
 				</n8n-text>
 				<n8n-tooltip v-if="communityPackage.failedLoading === true" placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.failedToLoad.tooltip') }}
+						</div>
+					</template>
 					<n8n-icon icon="exclamation-triangle" color="danger" size="large" />
 				</n8n-tooltip>
 				<n8n-tooltip v-else-if="communityPackage.updateAvailable" placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.updateAvailable.tooltip') }}
+						</div>
+					</template>
 					<n8n-button type="outline" label="Update" @click="onUpdateClick"/>
 				</n8n-tooltip>
 				<n8n-tooltip v-else placement="top">
-					<div slot="content">
-						{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
-					</div>
+					<template #content>
+						<div>
+							{{ $locale.baseText('settings.communityNodes.upToDate.tooltip') }}
+						</div>
+					</template>
 					<n8n-icon icon="check-circle" color="text-light" size="large" />
 				</n8n-tooltip>
 				<div :class="$style.cardActions">

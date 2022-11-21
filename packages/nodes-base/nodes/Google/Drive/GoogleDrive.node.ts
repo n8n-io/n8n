@@ -2198,7 +2198,7 @@ export class GoogleDrive implements INodeType {
 						// ----------------------------------
 						//         list
 						// ----------------------------------
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const qs: IDataObject = {};
 
@@ -2216,7 +2216,7 @@ export class GoogleDrive implements INodeType {
 								qs,
 							);
 						} else {
-							qs.pageSize = this.getNodeParameter('limit', i) as number;
+							qs.pageSize = this.getNodeParameter('limit', i);
 							const data = await googleApiRequest.call(this, 'GET', `/drive/v3/drives`, {}, qs);
 							response = data.drives as IDataObject[];
 						}
@@ -2303,7 +2303,7 @@ export class GoogleDrive implements INodeType {
 						const fileId = this.getNodeParameter('fileId', i, undefined, {
 							extractValue: true,
 						}) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const requestOptions = {
 							resolveWithFullResponse: true,
@@ -2477,7 +2477,7 @@ export class GoogleDrive implements INodeType {
 							}
 						}
 
-						const pageSize = this.getNodeParameter('limit', i) as number;
+						const pageSize = this.getNodeParameter('limit', i);
 
 						const qs = {
 							pageSize,
@@ -2509,7 +2509,7 @@ export class GoogleDrive implements INodeType {
 						// ----------------------------------
 						//         upload
 						// ----------------------------------
-						const resolveData = this.getNodeParameter('resolveData', 0) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', 0);
 
 						let mimeType = 'text/plain';
 						let body;
@@ -2751,7 +2751,7 @@ export class GoogleDrive implements INodeType {
 
 						const permissions = this.getNodeParameter('permissionsUi', i) as IDataObject;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {};
 

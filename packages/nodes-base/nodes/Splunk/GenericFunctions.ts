@@ -216,9 +216,7 @@ function compactEntryContent(splunkObject: any): any {
  * Set count of entries to retrieve.
  */
 export function setCount(this: IExecuteFunctions, qs: IDataObject) {
-	qs.count = this.getNodeParameter('returnAll', 0)
-		? 0
-		: (this.getNodeParameter('limit', 0) as number);
+	qs.count = this.getNodeParameter('returnAll', 0) ? 0 : this.getNodeParameter('limit', 0);
 }
 
 export function populate(source: IDataObject, destination: IDataObject) {

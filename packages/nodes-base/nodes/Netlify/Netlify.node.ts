@@ -103,7 +103,7 @@ export class Netlify implements INodeType {
 
 					if (operation === 'create') {
 						const siteId = this.getNodeParameter('siteId', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(body, additionalFields);
 
@@ -135,7 +135,7 @@ export class Netlify implements INodeType {
 
 					if (operation === 'getAll') {
 						const siteId = this.getNodeParameter('siteId', i);
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === true) {
 							responseData = await netlifyRequestAllItems.call(
 								this,
@@ -143,7 +143,7 @@ export class Netlify implements INodeType {
 								`/sites/${siteId}/deploys`,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
@@ -166,7 +166,7 @@ export class Netlify implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll === true) {
 							responseData = await netlifyRequestAllItems.call(
 								this,
@@ -176,7 +176,7 @@ export class Netlify implements INodeType {
 								{ filter: 'all' },
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
