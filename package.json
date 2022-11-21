@@ -9,6 +9,7 @@
   },
   "packageManager": "pnpm@7.14.2",
   "scripts": {
+    "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
     "dev": "turbo run dev --parallel",
     "clean": "turbo run clean --parallel",
