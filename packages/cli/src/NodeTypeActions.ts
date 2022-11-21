@@ -65,11 +65,31 @@ class NodeTypeActionsClass {
 
 	#recommendedCategory(nodeTypeDescription: INodeTypeDescription): INodeAction | null {
 		const matchingKeys = ['event', 'events', 'trigger on'];
+		const isTrigger = nodeTypeDescription.displayName?.toLowerCase().includes('trigger');
 		const matchedProperty = nodeTypeDescription.properties.find((property) =>
 			matchingKeys.includes(property.displayName?.toLowerCase()),
 		);
 
-		if (!matchedProperty || !matchedProperty.options) return null;
+		if (!isTrigger) return null;
+
+		if (!matchedProperty || !matchedProperty.options) {
+			return {
+				key: 'placeholder_recommended',
+				title: 'Recommended',
+				type: 'category',
+				items: [
+					{
+						nodeName: nodeTypeDescription.name,
+						key: nodeTypeDescription.name,
+						title: `On new ${nodeTypeDescription.displayName
+							.replace('Trigger', '')
+							.trimEnd()} event`,
+						displayOptions: {},
+						values: {},
+					},
+				],
+			};
+		}
 
 		const filteredOutItems = matchedProperty.options.filter(
 			(categoryItem: INodePropertyOptions) => !['*', '', ' '].includes(categoryItem.name),

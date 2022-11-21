@@ -26,7 +26,7 @@ import { reactive, toRefs, getCurrentInstance, computed, onMounted } from 'vue';
 import { INodeCreateElement, INodeItemProps } from '@/Interface';
 import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, EMAIL_IMAP_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
-import { deepCopy } from 'n8n-workflow';
+import { deepCopy, INodeAction } from 'n8n-workflow';
 
 export interface Props {
 	searchItems: INodeCreateElement[];
@@ -196,8 +196,13 @@ const mergedNodes = computed(() => Object.values(
 			acc[normalizedName] = clonedNode;
 		}
 
-		return acc;
+		// Filter-out placeholder recommended actions if they are the only actions
+		nodeType.actions = (nodeType.actions || []).filter((action: INodeAction, _: number, arr: INodeAction[]) => {
+			const isPlaceholderCategory = action.key === 'placeholder_recommended';
+			return !isPlaceholderCategory || (isPlaceholderCategory && arr.length > 1);
+		});
 
+		return acc;
 	}, {}),
 ));
 
