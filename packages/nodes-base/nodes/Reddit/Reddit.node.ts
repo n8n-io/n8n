@@ -188,7 +188,7 @@ export class Reddit implements INodeType {
 							restrict_sr: location === 'subreddit',
 						} as IDataObject;
 
-						const { sort } = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const { sort } = this.getNodeParameter('additionalFields', i);
 
 						if (sort) {
 							qs.sort = sort;
@@ -208,7 +208,7 @@ export class Reddit implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -365,7 +365,7 @@ export class Reddit implements INodeType {
 						// https://www.reddit.com/dev/api/#POST_api_search_subreddits
 						// https://www.reddit.com/r/subreddits.json
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (filters.trending) {
 							const returnAll = this.getNodeParameter('returnAll', 0);
@@ -373,7 +373,7 @@ export class Reddit implements INodeType {
 							responseData = await redditApiRequest.call(this, 'GET', endpoint, {});
 							responseData = responseData.subreddit_names.map((name: string) => ({ name }));
 							if (returnAll === false) {
-								const limit = this.getNodeParameter('limit', 0) as number;
+								const limit = this.getNodeParameter('limit', 0);
 								responseData = responseData.splice(0, limit);
 							}
 						} else if (filters.keyword) {
@@ -386,7 +386,7 @@ export class Reddit implements INodeType {
 							const returnAll = this.getNodeParameter('returnAll', 0);
 
 							if (returnAll === false) {
-								const limit = this.getNodeParameter('limit', 0) as number;
+								const limit = this.getNodeParameter('limit', 0);
 								responseData = responseData.subreddits.splice(0, limit);
 							}
 						} else {

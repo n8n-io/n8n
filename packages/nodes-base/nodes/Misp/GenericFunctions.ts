@@ -72,7 +72,7 @@ export async function mispApiRequestAllItems(this: IExecuteFunctions, endpoint: 
 	const returnAll = this.getNodeParameter('returnAll', 0);
 
 	if (!returnAll) {
-		const limit = this.getNodeParameter('limit', 0) as number;
+		const limit = this.getNodeParameter('limit', 0);
 		return responseData.slice(0, limit);
 	}
 

@@ -95,7 +95,7 @@ export async function getAllResource(
 
 	qs.per_page = 100;
 
-	const additionalFields = this.getNodeParameter('filters', i) as IDataObject;
+	const additionalFields = this.getNodeParameter('filters', i);
 	const returnAll = this.getNodeParameter('returnAll', i);
 
 	Object.assign(qs, additionalFields);
@@ -110,7 +110,7 @@ export async function getAllResource(
 			resource,
 		);
 	} else {
-		const limit = this.getNodeParameter('limit', i) as string;
+		const limit = this.getNodeParameter('limit', i);
 		qs.per_page = limit;
 		responseData = await harvestApiRequest.call(this, requestMethod, qs, endpoint);
 	}

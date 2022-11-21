@@ -181,7 +181,7 @@ export class Strapi implements INodeType {
 
 						const contentType = this.getNodeParameter('contentType', i) as string;
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (apiVersion === 'v4') {
 							// Sort Option
@@ -215,7 +215,7 @@ export class Strapi implements INodeType {
 									headers,
 								);
 							} else {
-								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i) as number;
+								qs['pagination[pageSize]'] = this.getNodeParameter('limit', i);
 								({ data: responseData } = await strapiApiRequest.call(
 									this,
 									'GET',
@@ -258,7 +258,7 @@ export class Strapi implements INodeType {
 									headers,
 								);
 							} else {
-								qs._limit = this.getNodeParameter('limit', i) as number;
+								qs._limit = this.getNodeParameter('limit', i);
 								responseData = await strapiApiRequest.call(
 									this,
 									'GET',

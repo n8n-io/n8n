@@ -194,7 +194,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.custom_fields;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -218,7 +218,7 @@ export class ConvertKit implements INodeType {
 
 						const formId = this.getNodeParameter('id', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -261,7 +261,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.forms;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -271,7 +271,7 @@ export class ConvertKit implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.subscriberState) {
 							qs.subscriber_state = additionalFields.subscriberState as string;
@@ -288,7 +288,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -301,7 +301,7 @@ export class ConvertKit implements INodeType {
 
 						const sequenceId = this.getNodeParameter('id', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -344,7 +344,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.courses;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -354,7 +354,7 @@ export class ConvertKit implements INodeType {
 
 						const returnAll = this.getNodeParameter('returnAll', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.subscriberState) {
 							qs.subscriber_state = additionalFields.subscriberState as string;
@@ -371,7 +371,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -399,7 +399,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.tags;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}
@@ -412,7 +412,7 @@ export class ConvertKit implements INodeType {
 
 						const email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							email,
@@ -458,7 +458,7 @@ export class ConvertKit implements INodeType {
 						responseData = responseData.subscriptions;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 
 							responseData = responseData.slice(0, limit);
 						}

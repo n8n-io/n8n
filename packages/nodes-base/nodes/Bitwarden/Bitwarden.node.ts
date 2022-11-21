@@ -219,7 +219,7 @@ export class Bitwarden implements INodeType {
 					//         event: getAll
 					// ----------------------------------
 
-					const filters = this.getNodeParameter('filters', i) as IDataObject;
+					const filters = this.getNodeParameter('filters', i);
 					const qs = isEmpty(filters) ? {} : filters;
 					const endpoint = '/public/events';
 					responseData = await handleGetAll.call(this, i, 'GET', endpoint, qs, {});

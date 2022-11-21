@@ -4,7 +4,6 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
-	IDataObject,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
@@ -242,7 +241,7 @@ export class Mqtt implements INodeType {
 				for (let i = 0; i < length; i++) {
 					let message;
 					const topic = this.getNodeParameter('topic', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					try {
 						if (sendInputData === true) {

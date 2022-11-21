@@ -648,7 +648,7 @@ export class Airtable implements INodeType {
 				if (returnAll === true) {
 					responseData = await apiRequestAllItems.call(this, requestMethod, endpoint, body, qs);
 				} else {
-					qs.maxRecords = this.getNodeParameter('limit', 0) as number;
+					qs.maxRecords = this.getNodeParameter('limit', 0);
 					responseData = await apiRequest.call(this, requestMethod, endpoint, body, qs);
 				}
 

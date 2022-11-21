@@ -192,7 +192,7 @@ export class AwsDynamoDB implements INodeType {
 							i,
 							[],
 						) as IAttributeNameUi[];
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 
 						const items = this.getNodeParameter('keysUi.keyValues', i, []) as [
@@ -245,7 +245,7 @@ export class AwsDynamoDB implements INodeType {
 						const tableName = this.getNodeParameter('tableName', 0) as string;
 						const simple = this.getNodeParameter('simple', 0, false) as boolean;
 						const select = this.getNodeParameter('select', 0) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const eanUi = this.getNodeParameter(
 							'additionalFields.eanUi.eanValues',
 							i,
@@ -383,7 +383,7 @@ export class AwsDynamoDB implements INodeType {
 								headers,
 							);
 						} else {
-							body.Limit = this.getNodeParameter('limit', 0, 1) as number;
+							body.Limit = this.getNodeParameter('limit', 0, 1);
 							responseData = await awsApiRequest.call(this, 'dynamodb', 'POST', '/', body, headers);
 							if (select !== 'COUNT') {
 								responseData = responseData.Items;

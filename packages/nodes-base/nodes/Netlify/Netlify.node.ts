@@ -103,7 +103,7 @@ export class Netlify implements INodeType {
 
 					if (operation === 'create') {
 						const siteId = this.getNodeParameter('siteId', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(body, additionalFields);
 
@@ -143,7 +143,7 @@ export class Netlify implements INodeType {
 								`/sites/${siteId}/deploys`,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',
@@ -176,7 +176,7 @@ export class Netlify implements INodeType {
 								{ filter: 'all' },
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await netlifyApiRequest.call(
 								this,
 								'GET',

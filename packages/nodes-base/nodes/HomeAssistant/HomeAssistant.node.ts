@@ -207,7 +207,7 @@ export class HomeAssistant implements INodeType {
 							'/services',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'call') {
@@ -247,7 +247,7 @@ export class HomeAssistant implements INodeType {
 							'/states',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'get') {
@@ -290,7 +290,7 @@ export class HomeAssistant implements INodeType {
 							'/events',
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'create') {
@@ -326,7 +326,7 @@ export class HomeAssistant implements INodeType {
 							};
 						}
 					} else if (operation === 'getLogbookEntries') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let endpoint = '/logbook';
 
 						if (Object.entries(additionalFields).length) {
@@ -356,7 +356,7 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'history') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let endpoint = '/history/period';
 
 						if (Object.entries(additionalFields).length) {
@@ -385,7 +385,7 @@ export class HomeAssistant implements INodeType {
 							qs,
 						)) as IDataObject[];
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					}

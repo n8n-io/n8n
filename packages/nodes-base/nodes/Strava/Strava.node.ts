@@ -68,7 +68,7 @@ export class Strava implements INodeType {
 
 						const elapsedTime = this.getNodeParameter('elapsedTime', i) as number;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.trainer === true) {
 							additionalFields.trainer = 1;
@@ -114,7 +114,7 @@ export class Strava implements INodeType {
 						);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -146,7 +146,7 @@ export class Strava implements INodeType {
 								qs,
 							);
 						} else {
-							qs.per_page = this.getNodeParameter('limit', i) as number;
+							qs.per_page = this.getNodeParameter('limit', i);
 
 							responseData = await stravaApiRequest.call(this, 'GET', `/activities`, {}, qs);
 						}
@@ -155,7 +155,7 @@ export class Strava implements INodeType {
 					if (operation === 'update') {
 						const activityId = this.getNodeParameter('activityId', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.trainer === true) {
 							updateFields.trainer = 1;

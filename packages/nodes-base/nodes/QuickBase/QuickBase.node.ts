@@ -131,7 +131,7 @@ export class QuickBase implements INodeType {
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const qs: IDataObject = {
 						tableId,
@@ -142,7 +142,7 @@ export class QuickBase implements INodeType {
 					responseData = await quickbaseApiRequest.call(this, 'GET', '/fields', {}, qs);
 
 					if (returnAll === false) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 
 						responseData = responseData.splice(0, limit);
 					}
@@ -329,7 +329,7 @@ export class QuickBase implements INodeType {
 
 					const tableId = this.getNodeParameter('tableId', i) as string;
 
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					const body: IDataObject = {
 						from: tableId,
@@ -358,7 +358,7 @@ export class QuickBase implements INodeType {
 							qs,
 						);
 					} else {
-						body.options = { top: this.getNodeParameter('limit', i) as number };
+						body.options = { top: this.getNodeParameter('limit', i) };
 
 						responseData = await quickbaseApiRequest.call(this, 'POST', '/records/query', body, qs);
 
@@ -575,7 +575,7 @@ export class QuickBase implements INodeType {
 							qs,
 						);
 					} else {
-						qs.top = this.getNodeParameter('limit', i) as number;
+						qs.top = this.getNodeParameter('limit', i);
 
 						responseData = await quickbaseApiRequest.call(
 							this,

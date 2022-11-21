@@ -550,6 +550,10 @@ export interface IGetNodeParameterOptions {
 }
 
 namespace ExecuteFunctions {
+	namespace NumberReturning {
+		export type NodeParameter = 'limit';
+	}
+
 	namespace BooleanReturning {
 		export type NodeParameter =
 			| 'binaryData'
@@ -560,6 +564,10 @@ namespace ExecuteFunctions {
 			| 'resolveData';
 	}
 
+	namespace RecordReturning {
+		export type NodeParameter = 'additionalFields' | 'filters' | 'options' | 'updateFields';
+	}
+
 	export type GetNodeParameterFn = {
 		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
 		getNodeParameter<T extends { resource: string }>(
@@ -568,11 +576,23 @@ namespace ExecuteFunctions {
 		): T['resource'];
 
 		getNodeParameter(
+			parameterName: RecordReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		): IDataObject;
+		getNodeParameter(
 			parameterName: BooleanReturning.NodeParameter,
 			itemIndex: number,
-			fallbackValue?: any,
+			fallbackValue?: boolean,
 			options?: IGetNodeParameterOptions,
 		): boolean;
+		getNodeParameter(
+			parameterName: NumberReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: number,
+			options?: IGetNodeParameterOptions,
+		): number;
 		getNodeParameter(
 			parameterName: string,
 			itemIndex: number,
@@ -594,17 +614,6 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn & {
 	getInputData(inputIndex?: number, inputName?: string): INodeExecutionData[];
 	getMode(): WorkflowExecuteMode;
 	getNode(): INode;
-	getNodeParameter<T extends { resource: string }>(
-		parameterName: 'resource',
-		itemIndex?: number,
-	): T['resource'];
-	// getNodeParameter(parameterName: 'operation', itemIndex?: number): string;
-	getNodeParameter(
-		parameterName: string,
-		itemIndex: number,
-		fallbackValue?: any,
-		options?: IGetNodeParameterOptions,
-	): NodeParameterValueType | object;
 	getWorkflowDataProxy(itemIndex: number): IWorkflowDataProxyData;
 	getWorkflowStaticData(type: string): IDataObject;
 	getRestApiUrl(): string;

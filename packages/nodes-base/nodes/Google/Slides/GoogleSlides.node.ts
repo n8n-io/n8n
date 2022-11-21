@@ -521,7 +521,7 @@ export class GoogleSlides implements INodeType {
 						);
 						responseData = responseData.slides;
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 
@@ -537,7 +537,7 @@ export class GoogleSlides implements INodeType {
 						// ----------------------------------
 						const presentationId = this.getNodeParameter('presentationId', i) as string;
 						const texts = this.getNodeParameter('textUi.textValues', i, []) as IDataObject[];
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const requests = texts.map((text) => {
 							return {
 								replaceAllText: {

@@ -342,7 +342,7 @@ export class AwsRekognition implements INodeType {
 				if (resource === 'image') {
 					//https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectModerationLabels.html#API_DetectModerationLabels_RequestSyntax
 					if (operation === 'analyze') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let action = undefined;
 

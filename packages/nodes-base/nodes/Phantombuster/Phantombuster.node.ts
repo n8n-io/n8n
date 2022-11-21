@@ -139,7 +139,7 @@ export class Phantombuster implements INodeType {
 
 						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -176,7 +176,7 @@ export class Phantombuster implements INodeType {
 						responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -188,7 +188,7 @@ export class Phantombuster implements INodeType {
 
 						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							id: agentId,
