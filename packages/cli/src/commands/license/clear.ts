@@ -23,7 +23,7 @@ export class ClearLicenseCommand extends Command {
 			await Db.collections.Settings.delete({
 				key: SETTINGS_LICENSE_CERT_KEY,
 			});
-			console.info('Done');
+			console.info('Done. Restart n8n to take effect.');
 		} catch (e: unknown) {
 			console.error('Error updating database. See log messages for details.');
 			logger.error('\nGOT ERROR');
