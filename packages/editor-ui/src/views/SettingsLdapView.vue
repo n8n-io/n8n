@@ -1,5 +1,21 @@
 <template>
-		<div>
+		<div v-if="!isLDAPFeatureEnabled">
+			<div :class="[$style.header, 'mb-2xl']">
+				<n8n-heading size="2xlarge">
+					{{ $locale.baseText('settings.ldap') }}
+				</n8n-heading>
+			</div>
+			<n8n-action-box
+				:description="$locale.baseText('settings.ldap.disabled.description')"
+				:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
+				@click="openDocsPage"
+			>
+				<template #heading>
+					<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
+				</template>
+			</n8n-action-box>
+			</div>
+		<div v-else>
 			<div :class="$style.container">
 				<div :class="$style.header">
 					<n8n-heading size="2xlarge">
@@ -7,10 +23,10 @@
 					</n8n-heading>
 				</div>
 				<n8n-info-tip theme="info" type="note">
-				<template>
-					<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
-				</template>
-			</n8n-info-tip>
+					<template>
+						<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
+					</template>
+				</n8n-info-tip>
 				<div>
 					<n8n-form-inputs
 						v-if="formInputs"
@@ -166,8 +182,14 @@ export default mixins(showMessage).extend({
 		currentUser(): null | IUser {
 			return this.usersStore.currentUser;
 		},
+		isLDAPFeatureEnabled(): boolean {
+			return this.settingsStore.settings.enterprise.ldap === true;
+		},
 	},
 	methods: {
+		openDocsPage(event: MouseEvent): void {
+			window.open('https://n8n.io/pricing/', '_blank');
+		},
 		cellClassStyle({ row, column }: { row: rowType; column: cellType }) {
 			if (column.property === 'status') {
 				if (row.status === 'Success') {
