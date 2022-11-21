@@ -129,7 +129,7 @@ export class Autopilot implements INodeType {
 					if (operation === 'upsert') {
 						const email = this.getNodeParameter('email', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							Email: email,
@@ -189,10 +189,10 @@ export class Autopilot implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						responseData = await autopilotApiRequestAllItems.call(
 							this,
@@ -251,12 +251,12 @@ export class Autopilot implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const listId = this.getNodeParameter('listId', i) as string;
 
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						responseData = await autopilotApiRequestAllItems.call(
 							this,
@@ -284,10 +284,10 @@ export class Autopilot implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll === false) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						responseData = await autopilotApiRequest.call(this, 'GET', '/lists');
 

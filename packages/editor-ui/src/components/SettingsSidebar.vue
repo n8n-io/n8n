@@ -6,8 +6,10 @@
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
-					<n8n-heading slot="title" size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
 				</div>
+			</template>
+			<template #title>
+				<n8n-heading size="large" :class="$style.settingsHeading" :bold="true">{{ $locale.baseText('settings') }}</n8n-heading>
 			</template>
 			<template #menuSuffix>
 				<div :class="$style.versionContainer">
@@ -142,6 +144,7 @@ export default mixins(
 						this.$router.push({ name: VIEWS.API_SETTINGS });
 					}
 					break;
+				case 'users': // Fakedoor feature added via hooks when user management is disabled on cloud
 				case 'environments':
 				case 'logging':
 					this.$router.push({ name: VIEWS.FAKE_DOOR, params: { featureId: key } }).catch(() => {});

@@ -137,9 +137,9 @@ export class Phantombuster implements INodeType {
 					if (operation === 'getOutput') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(qs, additionalFields);
 
@@ -171,12 +171,12 @@ export class Phantombuster implements INodeType {
 					}
 					//https://api.phantombuster.com/api/v2/agents/fetch-all
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await phantombusterApiRequest.call(this, 'GET', '/agents/fetch-all');
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -184,11 +184,11 @@ export class Phantombuster implements INodeType {
 					if (operation === 'launch') {
 						const agentId = this.getNodeParameter('agentId', i) as string;
 
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
-						const resolveData = this.getNodeParameter('resolveData', i) as boolean;
+						const resolveData = this.getNodeParameter('resolveData', i);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							id: agentId,

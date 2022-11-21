@@ -89,7 +89,7 @@ import * as Queue from '@/Queue';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { getCredentialTranslationPath } from '@/TranslationHelpers';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
-import { getSharedWorkflowIds, whereClause } from '@/WorkflowHelpers';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
@@ -122,6 +122,7 @@ import {
 	isEmailSetUp,
 	isSharingEnabled,
 	isUserManagementEnabled,
+	whereClause,
 } from '@/UserManagement/UserManagementHelper';
 import * as Db from '@/Db';
 import {

@@ -9,7 +9,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleSheets',
 	icon: 'file:googleSheets.svg',
 	group: ['input', 'output'],
-	version: 2,
+	version: 3,
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Read, update and write data to Google Sheets',
 	defaults: {
