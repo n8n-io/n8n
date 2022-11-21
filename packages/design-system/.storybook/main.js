@@ -14,7 +14,7 @@ module.exports = {
 				postcssLoaderOptions: {
 					implementation: require('postcss'),
 				},
-			}
+			},
 		},
 		'storybook-addon-designs',
 		'storybook-addon-themes',

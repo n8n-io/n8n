@@ -11,6 +11,7 @@
 		:sessionId="sessionId"
 		:isReadOnly="isReadOnly"
 		:blockUI="blockUI"
+		:isProductionExecutionPreview="isProductionExecutionPreview"
 		paneType="output"
 		@runChange="onRunIndexChange"
 		@linkRun="onLinkRun"
@@ -19,7 +20,7 @@
 		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
 	>
-		<template v-slot:header>
+		<template #header>
 			<div :class="$style.titleSection">
 				<span :class="$style.title">
 					{{ $locale.baseText(outputPanelEditMode.enabled ? 'ndv.output.edit' : 'ndv.output') }}
@@ -45,7 +46,7 @@
 			</div>
 		</template>
 
-		<template v-slot:node-not-run>
+		<template #node-not-run>
 			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
 			<n8n-text v-if="!workflowRunning">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
@@ -63,7 +64,7 @@
 			</n8n-text>
 		</template>
 
-		<template v-slot:no-output-data>
+		<template #no-output-data>
 			<n8n-text :bold="true" color="text-dark" size="large">{{ $locale.baseText('ndv.output.noOutputData.title') }}</n8n-text>
 			<n8n-text>
 				{{ $locale.baseText('ndv.output.noOutputData.message') }}
@@ -116,6 +117,10 @@ export default mixins(
 			type: String,
 		},
 		blockUI: {
+			type: Boolean,
+			default: false,
+		},
+		isProductionExecutionPreview: {
 			type: Boolean,
 			default: false,
 		},

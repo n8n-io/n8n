@@ -4,6 +4,6 @@ exports[`N8nInfoTip > should render correctly as note 1`] = `"<div class=\\"n8n-
 
 exports[`N8nInfoTip > should render correctly as tooltip 1`] = `
 "<div class=\\"n8n-info-tip _info_3egb8_33 _tooltip_3egb8_23 _base_3egb8_1 _bold_3egb8_12\\">
-  <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\"><span class=\\"_iconText_3egb8_28\\"><span class=\\"n8n-icon n8n-text _compact_e4k11_34 _size-medium_e4k11_19 _regular_e4k11_5\\"></span></span><span>Need help doing something?<a href=\\"/docs\\" target=\\"_blank\\">Open docs</a></span></n8n-tooltip-stub>
+  <n8n-tooltip-stub justifybuttons=\\"flex-end\\" buttons=\\"\\" placement=\\"top\\"><span class=\\"_iconText_3egb8_28\\"><span class=\\"n8n-icon n8n-text _compact_e4k11_34 _size-medium_e4k11_19 _regular_e4k11_5\\"></span></span></n8n-tooltip-stub>
 </div>"
 `;

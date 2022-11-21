@@ -2,7 +2,9 @@
 	<span>
 		<div class="push-connection-lost primary-color" v-if="!rootStore.pushConnectionActive">
 			<n8n-tooltip placement="bottom-end" >
-				<div slot="content" v-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
+				<template #current>
+					<div v-html="$locale.baseText('pushConnectionTracker.cannotConnectToServer')"></div>
+				</template>
 				<span>
 					<font-awesome-icon icon="exclamation-triangle" />&nbsp; {{ $locale.baseText('pushConnectionTracker.connectionLost') }}
 				</span>

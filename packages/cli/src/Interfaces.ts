@@ -24,7 +24,7 @@ import { WorkflowExecute } from 'n8n-core';
 
 // eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
-import { Repository } from 'typeorm';
+import type { FindOperator, Repository } from 'typeorm';
 
 import { ChildProcess } from 'child_process';
 import { Url } from 'url';
@@ -732,7 +732,7 @@ export interface IWorkflowExecuteProcess {
 	workflowExecute: WorkflowExecute;
 }
 
-export type WhereClause = Record<string, { id: string }>;
+export type WhereClause = Record<string, { [key: string]: string | FindOperator<unknown> }>;
 
 // ----------------------------------
 //          community nodes

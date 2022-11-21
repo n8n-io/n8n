@@ -1,7 +1,5 @@
-/* tslint:disable:variable-name */
-
 import N8nNotice from './Notice.vue';
-import {StoryFn} from "@storybook/vue";
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Notice',
@@ -14,7 +12,7 @@ export default {
 	},
 };
 
-const SlotTemplate: StoryFn = (args, {argTypes}) => ({
+const SlotTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nNotice,
@@ -22,7 +20,7 @@ const SlotTemplate: StoryFn = (args, {argTypes}) => ({
 	template: `<n8n-notice v-bind="$props">This is a notice! Thread carefully from this point forward.</n8n-notice>`,
 });
 
-const PropTemplate: StoryFn = (args, {argTypes}) => ({
+const PropTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nNotice,
@@ -53,19 +51,22 @@ Info.args = {
 export const Sanitized = PropTemplate.bind({});
 Sanitized.args = {
 	theme: 'warning',
-	content: '<script>alert(1)</script> This content contains a script tag and is <strong>sanitized</strong>.',
+	content:
+		'<script>alert(1)</script> This content contains a script tag and is <strong>sanitized</strong>.',
 };
 
 export const Truncated = PropTemplate.bind({});
 Truncated.args = {
 	theme: 'warning',
 	truncate: true,
-	content: 'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
+	content:
+		'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
 };
 
 export const HtmlEdgeCase = PropTemplate.bind({});
 HtmlEdgeCase.args = {
 	theme: 'warning',
 	truncate: true,
-	content: 'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua.',
+	content:
+		'This content is long and will be truncated at 150 characters. Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod <a href="">read the documentation</a> ut labore et dolore magna aliqua.',
 };
