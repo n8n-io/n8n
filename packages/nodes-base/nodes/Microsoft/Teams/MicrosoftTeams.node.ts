@@ -149,7 +149,6 @@ export class MicrosoftTeams implements INodeType {
 			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 				const returnData: INodePropertyOptions[] = [];
 				const teamId = this.getCurrentNodeParameter('teamId', { extractValue: true }) as string;
-				console.log({ teamId })
 				const { value } = await microsoftApiRequest.call(
 					this,
 					'GET',
@@ -310,7 +309,7 @@ export class MicrosoftTeams implements INodeType {
 				if (resource === 'channel') {
 					//https://docs.microsoft.com/en-us/graph/api/channel-post?view=graph-rest-beta&tabs=http
 					if (operation === 'create') {
-						const teamId = this.getNodeParameter('teamId', i) as string;
+						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 						const name = this.getNodeParameter('name', i) as string;
 						const options = this.getNodeParameter('options', i);
 						const body: IDataObject = {
@@ -331,7 +330,7 @@ export class MicrosoftTeams implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/graph/api/channel-delete?view=graph-rest-beta&tabs=http
 					if (operation === 'delete') {
-						const teamId = this.getNodeParameter('teamId', i) as string;
+						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						responseData = await microsoftApiRequest.call(
 							this,
@@ -342,8 +341,7 @@ export class MicrosoftTeams implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/graph/api/channel-get?view=graph-rest-beta&tabs=http
 					if (operation === 'get') {
-						const teamId = this.getNodeParameter('teamId', i) as string;
-						console.log({ teamId })
+						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						responseData = await microsoftApiRequest.call(
 							this,
@@ -354,7 +352,6 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/channel-list?view=graph-rest-beta&tabs=http
 					if (operation === 'getAll') {
 						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-						console.log({ teamId })
 						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(
@@ -377,7 +374,7 @@ export class MicrosoftTeams implements INodeType {
 					}
 					//https://docs.microsoft.com/en-us/graph/api/channel-patch?view=graph-rest-beta&tabs=http
 					if (operation === 'update') {
-						const teamId = this.getNodeParameter('teamId', i) as string;
+						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
 						const channelId = this.getNodeParameter('channelId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {};
