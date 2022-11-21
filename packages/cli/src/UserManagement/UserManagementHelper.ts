@@ -9,7 +9,7 @@ import * as Db from '@/Db';
 import * as ResponseHelper from '@/ResponseHelper';
 import { PublicUser } from './Interfaces';
 import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH, User } from '@db/entities/User';
-import { Role } from '@db/entities/Role';
+import { Role, RoleNames, RoleScopes } from '@db/entities/Role';
 import { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
@@ -76,6 +76,16 @@ export async function getInstanceOwner(): Promise<User> {
 		},
 	});
 	return owner;
+}
+
+export async function getRole(scope: RoleScopes, name: RoleNames): Promise<Role> {
+	const role = await Db.collections.Role.findOneOrFail({
+		where: {
+			name,
+			scope,
+		},
+	});
+	return role;
 }
 
 /**

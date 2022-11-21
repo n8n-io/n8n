@@ -3,7 +3,8 @@ import { In, ObjectLiteral } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
 import { FindManyOptions } from 'typeorm';
-import { SharedCredentials } from '@/../dist/databases/entities/SharedCredentials';
+import type { SharedCredentials } from '@db/entities/SharedCredentials';
+import { getRole } from './UserManagementHelper';
 
 export class PermissionChecker {
 	/**
@@ -45,10 +46,10 @@ export class PermissionChecker {
 				where: { user: In(workflowUserIds) },
 			};
 
-		if (config.getEnv('enterprise.features.sharing')) {
-			credentialsWhereCondition.where.role = {
-				name: 'owner',
-			};
+		if (!config.getEnv('enterprise.features.sharing')) {
+			// If credential sharing is not enabled, get only credentials owned by this user
+			const credentialOwnerRole = await getRole('credential', 'owner');
+			credentialsWhereCondition.where.role = credentialOwnerRole;
 		}
 
 		const credentialSharings = await Db.collections.SharedCredentials.find(
