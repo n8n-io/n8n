@@ -112,7 +112,7 @@
 												[$style.isReverse]: showResourceDropdown,
 											}"
 										/>
-										</template>
+									</template>
 								</n8n-input>
 							</div>
 						</template>
