@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { JsonObject } from 'n8n-workflow';
-import { EventMessageTypeNames } from '.';
+import { EventMessageTypeNames } from './Enums';
 import {
 	AbstractEventMessage,
-	AbstractEventPayload,
 	// EventMessageSerialized,
 	isEventMessageSerialized,
 } from './AbstractEventMessage';
+import { AbstractEventPayload } from './AbstractEventPayload';
 
 export class EventPayloadGeneric extends AbstractEventPayload {}
 

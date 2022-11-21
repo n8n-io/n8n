@@ -1,9 +1,5 @@
 import { JsonValue, LoggerProxy } from 'n8n-workflow';
 import { DeleteResult } from 'typeorm';
-import {
-	EventMessageSubscriptionSet,
-	EventMessageSubscriptionSetOptions,
-} from '../MessageEventBusDestination/EventMessageSubscriptionSet';
 import { EventMessageTypes } from '../EventMessageClasses/';
 import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
@@ -12,6 +8,7 @@ import config from '../../config';
 import { Db } from '../..';
 import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers';
 import uniqby from 'lodash.uniqby';
+import { EventDestinations } from '../../databases/entities/MessageEventBusDestinationEntity';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
@@ -64,7 +61,10 @@ class MessageEventBus extends EventEmitter {
 		// Load stored destinations from Db and instantiate them
 		if (config.getEnv('eventBus.destinations.loadAtStart')) {
 			LoggerProxy.debug('Restoring event destinations');
-			const savedEventDestinations = await Db.collections.EventDestinations.find({});
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+			const savedEventDestinations = (await Db.collections.EventDestinations.find(
+				{},
+			)) as EventDestinations[];
 			if (savedEventDestinations.length > 0) {
 				for (const destinationData of savedEventDestinations) {
 					try {
@@ -113,6 +113,7 @@ class MessageEventBus extends EventEmitter {
 	async addDestination(destination: MessageEventBusDestination) {
 		await this.removeDestination(destination.getId());
 		this.destinations[destination.getId()] = destination;
+		this.destinations[destination.getId()].startListening();
 		return destination;
 	}
 
@@ -141,44 +142,46 @@ class MessageEventBus extends EventEmitter {
 	 */
 	getDestinationSubscriptionSet(destinationId: string): JsonValue {
 		if (Object.keys(this.destinations).includes(destinationId)) {
-			return this.destinations[destinationId].subscriptionSet.serialize();
+			return {
+				events: this.destinations[destinationId].subscribedEvents,
+				levels: this.destinations[destinationId].subscribedLevels,
+			};
 		}
 		return {};
 	}
 
-	/**
-	 * Sets SubscriptionsSet on the selected destination
-	 * @param destinationId the destination id
-	 * @param subscriptionSetOptions EventMessageSubscriptionSet object containing event subscriptions
-	 * @returns serialized destination after change
-	 */
-	setDestinationSubscriptionSet(
-		destinationId: string,
-		subscriptionSetOptions: EventMessageSubscriptionSetOptions,
-	): MessageEventBusDestination {
-		if (Object.keys(this.destinations).includes(destinationId)) {
-			this.destinations[destinationId].setSubscription(subscriptionSetOptions);
-		}
-		return this.destinations[destinationId];
-	}
+	// /**
+	//  * Sets SubscriptionsSet on the selected destination
+	//  * @param destinationId the destination id
+	//  * @param subscriptionSetOptions EventMessageSubscriptionSet object containing event subscriptions
+	//  * @returns serialized destination after change
+	//  */
+	// setDestinationSubscriptionSet(
+	// 	destinationId: string,
+	// 	subscriptionSetOptions: EventMessageSubscriptionSetOptions,
+	// ): MessageEventBusDestination {
+	// 	if (Object.keys(this.destinations).includes(destinationId)) {
+	// 		this.destinations[destinationId].setSubscription(subscriptionSetOptions);
+	// 	}
+	// 	return this.destinations[destinationId];
+	// }
 
-	/**
-	 * Resets SubscriptionsSet to empty values on the selected destination
-	 * @param destinationId the destination id
-	 * @returns serialized destination after reset
-	 */
-	resetDestinationSubscriptionSet(destinationId: string): MessageEventBusDestination {
-		if (Object.keys(this.destinations).includes(destinationId)) {
-			this.destinations[destinationId].setSubscription(
-				new EventMessageSubscriptionSet({
-					eventGroups: [],
-					eventNames: [],
-					eventLevels: [],
-				}),
-			);
-		}
-		return this.destinations[destinationId];
-	}
+	// /**
+	//  * Resets SubscriptionsSet to empty values on the selected destination
+	//  * @param destinationId the destination id
+	//  * @returns serialized destination after reset
+	//  */
+	// resetDestinationSubscriptionSet(destinationId: string): MessageEventBusDestination {
+	// 	if (Object.keys(this.destinations).includes(destinationId)) {
+	// 		this.destinations[destinationId].setSubscription(
+	// 			new EventMessageSubscriptionSet({
+	// 				eventNames: [],
+	// 				eventLevels: [],
+	// 			}),
+	// 		);
+	// 	}
+	// 	return this.destinations[destinationId];
+	// }
 
 	async #trySendingUnsent(msgs?: EventMessageTypes[]) {
 		const unsentMessages = msgs ?? (await this.getEventsUnsent());
@@ -246,7 +249,7 @@ class MessageEventBus extends EventEmitter {
 				queryResult = await this.logWriter.getMessagesUnsent();
 		}
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
-		const filtered = uniqby(queryResult, 'id') as EventMessageTypes[];
+		const filtered = uniqby(queryResult, 'id');
 		return filtered;
 	}
 

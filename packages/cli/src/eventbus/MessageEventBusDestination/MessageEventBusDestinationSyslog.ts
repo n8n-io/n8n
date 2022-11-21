@@ -8,7 +8,7 @@ import {
 import syslog from 'syslog-client';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { JsonObject, JsonValue } from 'n8n-workflow';
-import { EventMessageLevel } from '../EventMessageClasses';
+import { EventMessageLevel } from '../EventMessageClasses/Enums';
 import { MessageEventBusDestinationTypeNames } from '.';
 
 export const isMessageEventBusDestinationSyslogOptions = (
@@ -71,7 +71,7 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 		this.client = syslog.createClient(this.sysLogOptions.host, {
 			appName: this.sysLogOptions.app_name,
 			facility: syslog.Facility.Local0,
-			severity: syslog.Severity.Error,
+			// severity: syslog.Severity.Error,
 			port: this.sysLogOptions.port,
 			transport:
 				options.protocol !== undefined && options.protocol === 'tcp'
@@ -116,32 +116,46 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 		return true;
 	}
 
-	serialize(): JsonValue {
+	serialize(): { __type: string; [key: string]: JsonValue } {
+		const abstractSerialized = super.serialize();
 		return {
+			...abstractSerialized,
 			__type: MessageEventBusDestinationSyslog.__type,
-			options: {
-				id: this.getId(),
-				name: this.getName(),
-				expectedStatusCode: this.sysLogOptions.expectedStatusCode!,
-				host: this.sysLogOptions.host,
-				port: this.sysLogOptions.port!,
-				protocol: this.sysLogOptions.protocol!,
-				facility: this.sysLogOptions.facility!,
-				app_name: this.sysLogOptions.app_name!,
-				eol: this.sysLogOptions.eol!,
-				subscriptionSet: this.subscriptionSet.serialize(),
-			},
+			expectedStatusCode: this.sysLogOptions.expectedStatusCode!,
+			host: this.sysLogOptions.host,
+			port: this.sysLogOptions.port!,
+			protocol: this.sysLogOptions.protocol!,
+			facility: this.sysLogOptions.facility!,
+			app_name: this.sysLogOptions.app_name!,
+			eol: this.sysLogOptions.eol!,
 		};
 	}
+
+	// serialize(): JsonValue {
+	// 	return {
+	// 		__type: MessageEventBusDestinationSyslog.__type,
+	// 		options: {
+	// 			id: this.getId(),
+	// 			name: this.getName(),
+	// 			expectedStatusCode: this.sysLogOptions.expectedStatusCode!,
+	// 			host: this.sysLogOptions.host,
+	// 			port: this.sysLogOptions.port!,
+	// 			protocol: this.sysLogOptions.protocol!,
+	// 			facility: this.sysLogOptions.facility!,
+	// 			app_name: this.sysLogOptions.app_name!,
+	// 			eol: this.sysLogOptions.eol!,
+	// 			subscriptionSet: this.subscriptionSet.serialize(),
+	// 		},
+	// 	};
+	// }
 
 	static deserialize(data: JsonObject): MessageEventBusDestinationSyslog | null {
 		if (
 			'__type' in data &&
 			data.__type === MessageEventBusDestinationSyslog.__type &&
-			'options' in data &&
-			isMessageEventBusDestinationSyslogOptions(data.options)
+			isMessageEventBusDestinationSyslogOptions(data)
 		) {
-			return new MessageEventBusDestinationSyslog(data.options);
+			return new MessageEventBusDestinationSyslog(data);
 		}
 		return null;
 	}

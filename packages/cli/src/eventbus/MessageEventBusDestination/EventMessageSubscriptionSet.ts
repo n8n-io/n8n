@@ -1,69 +1,58 @@
-import { JsonObject, JsonValue } from 'n8n-workflow';
-import { EventMessageLevel } from '../EventMessageClasses';
+// import { JsonObject, JsonValue } from 'n8n-workflow';
+// import { EventMessageLevel } from '../EventMessageClasses/Enums';
 
-export const isEventMessageSubscriptionSetOptions = (
-	candidate: unknown,
-): candidate is EventMessageSubscriptionSetOptions => {
-	const o = candidate as EventMessageSubscriptionSetOptions;
-	if (!o) return false;
-	return (
-		o.eventGroups !== undefined &&
-		Array.isArray(o.eventGroups) &&
-		o.eventNames !== undefined &&
-		Array.isArray(o.eventNames) &&
-		o.eventLevels !== undefined &&
-		Array.isArray(o.eventLevels)
-	);
-};
+// export const isEventMessageSubscriptionSetOptions = (
+// 	candidate: unknown,
+// ): candidate is EventMessageSubscriptionSetOptions => {
+// 	const o = candidate as EventMessageSubscriptionSetOptions;
+// 	if (!o) return false;
+// 	return (
+// 		o.eventNames !== undefined &&
+// 		Array.isArray(o.eventNames) &&
+// 		o.eventLevels !== undefined &&
+// 		Array.isArray(o.eventLevels)
+// 	);
+// };
 
-export interface EventMessageSubscriptionSetOptions {
-	eventGroups?: string[];
-	eventNames?: string[];
-	eventLevels?: EventMessageLevel[];
-}
+// export interface EventMessageSubscriptionSetOptions {
+// 	eventNames?: string[];
+// 	eventLevels?: EventMessageLevel[];
+// }
 
-export class EventMessageSubscriptionSet {
-	static readonly __type: '$$EventMessageSubscriptionSet';
+// export class EventMessageSubscriptionSet {
+// 	static readonly __type: '$$EventMessageSubscriptionSet';
 
-	eventGroups: string[];
+// 	eventNames: string[];
 
-	eventNames: string[];
+// 	eventLevels: EventMessageLevel[];
 
-	eventLevels: EventMessageLevel[];
+// 	constructor(options?: EventMessageSubscriptionSetOptions | EventMessageSubscriptionSet) {
+// 		this.eventNames = options?.eventNames ?? ['*'];
+// 		this.eventLevels = options?.eventLevels ?? [EventMessageLevel.log];
+// 	}
 
-	constructor(options?: EventMessageSubscriptionSetOptions | EventMessageSubscriptionSet) {
-		this.eventGroups = options?.eventGroups ?? ['*'];
-		this.eventNames = options?.eventNames ?? ['*'];
-		this.eventLevels = options?.eventLevels ?? [EventMessageLevel.log];
-	}
+// 	setEventNames(names: string[]) {
+// 		this.eventNames = names;
+// 	}
 
-	setEventGroups(groups: string[]) {
-		this.eventGroups = groups;
-	}
+// 	setEventLevels(levels: EventMessageLevel[]) {
+// 		this.eventLevels = levels;
+// 	}
 
-	setEventNames(names: string[]) {
-		this.eventNames = names;
-	}
+// 	serialize(): JsonValue {
+// 		return {
+// 			__type: EventMessageSubscriptionSet.__type,
+// 			eventNames: this.eventNames,
+// 			eventLevels: this.eventLevels,
+// 		};
+// 	}
 
-	setEventLevels(levels: EventMessageLevel[]) {
-		this.eventLevels = levels;
-	}
-
-	serialize(): JsonValue {
-		return {
-			__type: EventMessageSubscriptionSet.__type,
-			eventGroups: this.eventGroups,
-			eventNames: this.eventNames,
-			eventLevels: this.eventLevels,
-		};
-	}
-
-	static deserialize(
-		data: JsonObject | EventMessageSubscriptionSetOptions,
-	): EventMessageSubscriptionSet {
-		if (isEventMessageSubscriptionSetOptions(data)) {
-			return new EventMessageSubscriptionSet(data);
-		}
-		return new EventMessageSubscriptionSet();
-	}
-}
+// 	static deserialize(
+// 		data: JsonObject | EventMessageSubscriptionSetOptions,
+// 	): EventMessageSubscriptionSet {
+// 		if (isEventMessageSubscriptionSetOptions(data)) {
+// 			return new EventMessageSubscriptionSet(data);
+// 		}
+// 		return new EventMessageSubscriptionSet();
+// 	}
+// }

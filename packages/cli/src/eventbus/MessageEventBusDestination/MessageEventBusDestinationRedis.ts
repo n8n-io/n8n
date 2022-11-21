@@ -66,27 +66,23 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 		}
 	}
 
-	serialize(): JsonValue {
+	serialize(): { __type: string; [key: string]: JsonValue } {
+		const abstractSerialized = super.serialize();
 		return {
+			...abstractSerialized,
 			__type: MessageEventBusDestinationRedis.__type,
-			options: {
-				id: this.getId(),
-				name: this.getName(),
-				channelName: this.#channelName,
-				redisOptions: this.redisOptions as JsonObject,
-				subscriptionSet: this.subscriptionSet.serialize(),
-			},
-		};
+			channelName: this.#channelName,
+			redisOptions: this.redisOptions as JsonObject,
+		} as { __type: string; [key: string]: JsonValue };
 	}
 
 	static deserialize(data: JsonObject): MessageEventBusDestinationRedis | null {
 		if (
 			'__type' in data &&
 			data.__type === MessageEventBusDestinationRedis.__type &&
-			'options' in data &&
-			isMessageEventBusDestinationRedisOptions(data.options)
+			isMessageEventBusDestinationRedisOptions(data)
 		) {
-			return new MessageEventBusDestinationRedis(data.options);
+			return new MessageEventBusDestinationRedis(data);
 		}
 		return null;
 	}

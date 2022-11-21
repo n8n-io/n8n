@@ -1,42 +1,65 @@
 import { v4 as uuid } from 'uuid';
 import { JsonValue, LoggerProxy } from 'n8n-workflow';
-import {
-	EventMessageSubscriptionSet,
-	EventMessageSubscriptionSetOptions,
-} from './EventMessageSubscriptionSet';
 import { Db } from '../..';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
-import { EventMessageLevel, EventMessageTypes } from '../EventMessageClasses';
+import { EventMessageTypes } from '../EventMessageClasses';
 import { eventBus } from '..';
+import { DeleteResult, InsertResult } from 'typeorm';
+import { EventMessageLevel } from '../EventMessageClasses/Enums';
+// import { MessageEventBusDestinationTypeNames } from '.';
 
 export interface MessageEventBusDestinationOptions {
 	id?: string;
+	enabled?: boolean;
 	name?: string;
-	subscriptionSet?: EventMessageSubscriptionSet;
+	subscribedEvents?: string[];
+	subscribedLevels?: EventMessageLevel[];
 }
 
 export abstract class MessageEventBusDestination {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
 	// static readonly __type: string;
-	// static deserialize(): MessageEventBusDestination;
-	// static fromString(data: string): MessageEventBusDestination;
+	// static abstract deserialize(): MessageEventBusDestination | null;
 
 	readonly id: string;
 
+	enabled: boolean;
+
 	name: string;
 
-	subscriptionSet: EventMessageSubscriptionSet;
+	// subscriptionSet: EventMessageSubscriptionSet;
+	subscribedEvents: string[];
+
+	subscribedLevels: EventMessageLevel[];
 
 	constructor(options: MessageEventBusDestinationOptions) {
 		this.id = options.id ?? uuid();
+		this.enabled = options.enabled ?? true;
 		this.name = options.name ?? 'MessageEventBusDestination';
-		this.subscriptionSet = options.subscriptionSet
-			? new EventMessageSubscriptionSet(options.subscriptionSet)
-			: new EventMessageSubscriptionSet();
-		eventBus.on(this.getName(), async (msg: EventMessageTypes) => {
-			await this.receiveFromEventBus(msg);
-		});
+		this.subscribedEvents = options.subscribedEvents ?? ['*'];
+		this.subscribedLevels = options.subscribedLevels ?? [EventMessageLevel.allLevels];
 		LoggerProxy.debug(`${this.name} event destination initialized`);
+	}
+
+	startListening() {
+		if (this.enabled) {
+			eventBus.on(this.getName(), async (msg: EventMessageTypes) => {
+				await this.receiveFromEventBus(msg);
+				LoggerProxy.debug(`${this.name} listener started`);
+			});
+		}
+	}
+
+	enable() {
+		this.enabled = true;
+	}
+
+	disable() {
+		this.enabled = false;
+	}
+
+	stopListening() {
+		eventBus.removeAllListeners(this.getName());
 	}
 
 	getName() {
@@ -47,43 +70,24 @@ export abstract class MessageEventBusDestination {
 		return this.id;
 	}
 
-	setSubscription(subscriptionSetOptions: EventMessageSubscriptionSetOptions) {
-		this.subscriptionSet = EventMessageSubscriptionSet.deserialize(subscriptionSetOptions);
-	}
-
-	setEventGroups(groups: string[]) {
-		this.subscriptionSet.setEventGroups(groups);
-	}
-
-	setEventNames(names: string[]) {
-		this.subscriptionSet.setEventNames(names);
-	}
-
-	setLevels(levels: EventMessageLevel[]) {
-		this.subscriptionSet.setEventLevels(levels);
-	}
-
 	hasSubscribedToEvent(msg: AbstractEventMessage) {
-		const eventGroup = msg.getEventGroup();
-
+		if (!this.enabled) return false;
 		if (
-			this.subscriptionSet.eventLevels.includes(EventMessageLevel.allLevels) ||
-			this.subscriptionSet.eventLevels.includes(msg.level)
+			this.subscribedLevels.includes(EventMessageLevel.allLevels) ||
+			this.subscribedLevels.includes(msg.level)
 		) {
-			if (
-				this.subscriptionSet.eventGroups.includes('*') ||
-				this.subscriptionSet.eventNames.includes('*') ||
-				(eventGroup !== undefined && this.subscriptionSet.eventGroups.includes(eventGroup)) ||
-				this.subscriptionSet.eventNames.includes(msg.eventName)
-			) {
-				return true;
+			for (const eventName of this.subscribedEvents) {
+				if (eventName === '*' || eventName.startsWith(msg.eventName)) {
+					return true;
+				}
 			}
 		}
 		return false;
 	}
 
 	async saveToDb() {
-		const dbResult = await Db.collections.EventDestinations.upsert(
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+		const dbResult: InsertResult = await Db.collections.EventDestinations.upsert(
 			{
 				id: this.getId(),
 				name: this.getName(),
@@ -101,12 +105,22 @@ export abstract class MessageEventBusDestination {
 		return MessageEventBusDestination.deleteFromDb(this.getId());
 	}
 
-	static async deleteFromDb(id: string) {
+	static async deleteFromDb(id: string): Promise<DeleteResult> {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 		const dbResult = await Db.collections.EventDestinations.delete({ id });
-		return dbResult;
+		return dbResult as DeleteResult;
 	}
 
-	abstract serialize(): JsonValue;
+	serialize(): { __type: string; [key: string]: JsonValue } {
+		return {
+			__type: '$$AbstractMessageEventBusDestination',
+			id: this.getId(),
+			enabled: this.enabled,
+			name: this.getName(),
+			subscribedEvents: this.subscribedEvents,
+			subscribedLevels: this.subscribedLevels,
+		};
+	}
 
 	abstract receiveFromEventBus(msg: AbstractEventMessage): Promise<boolean>;
 
@@ -115,6 +129,6 @@ export abstract class MessageEventBusDestination {
 	}
 
 	close(): void | Promise<void> {
-		eventBus.removeAllListeners(this.getName());
+		this.stopListening();
 	}
 }

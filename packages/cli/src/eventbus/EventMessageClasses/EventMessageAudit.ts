@@ -1,21 +1,11 @@
 import {
 	AbstractEventMessage,
-	AbstractEventPayload,
 	EventMessageSerialized,
 	isEventMessageSerialized,
 } from './AbstractEventMessage';
 import { JsonObject } from 'n8n-workflow';
-import { EventMessageTypeNames } from '.';
-
-// export type EventNamesAudit = 'created' | 'updated' | 'deleted';
-// export const sEventNamesAudit = ['created', 'updated', 'deleted'];
-// const x = `${sEventNamesAudit}.x`;
-// export type EventGroupAudit = `${EventMessageNamespaceN8n}.audit`;
-// export const sEventGroupAudit = `n8n.audit`;
-// export type FullEventNamesAudit = `${EventGroupAudit}.${EventNamesAudit}`;
-// export const sFullEventNamesAudit = sEventNamesAudit.map(
-// 	(eventName) => `${sEventGroupAudit}.${eventName}` as const,
-// );
+import { EventMessageTypeNames } from './Enums';
+import { AbstractEventPayload } from './AbstractEventPayload';
 
 export const eventNamesAudit = [
 	'n8n.audit.created',

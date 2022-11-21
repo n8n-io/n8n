@@ -4,11 +4,6 @@ import { ResponseHelper } from '..';
 import { ResponseError } from '../ResponseHelper';
 import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
-import {
-	EventMessageSubscriptionSet,
-	EventMessageSubscriptionSetOptions,
-	isEventMessageSubscriptionSetOptions,
-} from './MessageEventBusDestination/EventMessageSubscriptionSet';
 import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
 import { eventBus, EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
 import {
@@ -25,8 +20,9 @@ import {
 	MessageEventBusDestinationWebhook,
 	MessageEventBusDestinationWebhookOptions,
 } from './MessageEventBusDestination/MessageEventBusDestinationWebhook';
-import { EventMessageLevel, eventNamesAll } from './EventMessageClasses';
-import { eventListToObjectTree } from './EventMessageClasses/Helpers';
+import { eventNamesAll } from './EventMessageClasses';
+import { EventMessageLevel } from './EventMessageClasses/Enums';
+import { MessageEventBusDestinationTypeNames } from './MessageEventBusDestination';
 
 export const eventBusRouter = express.Router();
 
@@ -52,17 +48,17 @@ const isWithDestinationIdString = (candidate: unknown): candidate is { destinati
 	return o.destinationId !== undefined;
 };
 
-const isEventMessageDestinationSubscription = (
-	candidate: unknown,
-): candidate is EventMessageSubscribeDestination => {
-	const o = candidate as EventMessageSubscribeDestination;
-	if (!o) return false;
-	return (
-		o.subscriptionSet !== undefined &&
-		o.destinationId !== undefined &&
-		isEventMessageSubscriptionSetOptions(o.subscriptionSet)
-	);
-};
+// const isEventMessageDestinationSubscription = (
+// 	candidate: unknown,
+// ): candidate is EventMessageSubscribeDestination => {
+// 	const o = candidate as EventMessageSubscribeDestination;
+// 	if (!o) return false;
+// 	return (
+// 		o.subscriptionSet !== undefined &&
+// 		o.destinationId !== undefined &&
+// 		isEventMessageSubscriptionSetOptions(o.subscriptionSet)
+// 	);
+// };
 
 // TODO: add credentials
 const isMessageEventBusDestinationWebhookOptions = (
@@ -73,17 +69,16 @@ const isMessageEventBusDestinationWebhookOptions = (
 	return o.name !== undefined && o.url !== undefined;
 };
 
-interface EventMessageSubscribeDestination {
-	subscriptionSet: EventMessageSubscriptionSetOptions;
-	destinationId: string;
-}
+// interface EventMessageSubscribeDestination {
+// 	subscriptionSet: EventMessageSubscriptionSetOptions;
+// 	destinationId: string;
+// }
 
-interface MessageEventBusDestinationOptions {
-	type: 'sentry' | 'syslog' | 'webhook' | 'redis';
-	options:
-		| MessageEventBusDestinationWebhookOptions
-		| MessageEventBusDestinationSentryOptions
-		| MessageEventBusDestinationSyslogOptions;
+interface MessageEventBusDestinationOptions
+	extends MessageEventBusDestinationWebhookOptions,
+		MessageEventBusDestinationSentryOptions,
+		MessageEventBusDestinationSyslogOptions {
+	__type: MessageEventBusDestinationTypeNames;
 }
 
 const isMessageEventBusDestinationOptions = (
@@ -91,7 +86,7 @@ const isMessageEventBusDestinationOptions = (
 ): candidate is MessageEventBusDestinationOptions => {
 	const o = candidate as MessageEventBusDestinationOptions;
 	if (!o) return false;
-	return o.type !== undefined && o.options !== undefined;
+	return o.__type !== undefined;
 };
 
 // ----------------------------------------
@@ -176,31 +171,25 @@ eventBusRouter.post(
 	ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<any> => {
 		if (isMessageEventBusDestinationOptions(req.body)) {
 			let result;
-			switch (req.body.type) {
-				case 'sentry':
-					if (isMessageEventBusDestinationSentryOptions(req.body.options)) {
-						result = await eventBus.addDestination(
-							new MessageEventBusDestinationSentry(req.body.options),
-						);
+			switch (req.body.__type) {
+				case MessageEventBusDestinationTypeNames.sentry:
+					if (isMessageEventBusDestinationSentryOptions(req.body)) {
+						result = await eventBus.addDestination(new MessageEventBusDestinationSentry(req.body));
 					}
 					break;
-				case 'webhook':
-					if (isMessageEventBusDestinationWebhookOptions(req.body.options)) {
-						result = await eventBus.addDestination(
-							new MessageEventBusDestinationWebhook(req.body.options),
-						);
+				case MessageEventBusDestinationTypeNames.webhook:
+					if (isMessageEventBusDestinationWebhookOptions(req.body)) {
+						result = await eventBus.addDestination(new MessageEventBusDestinationWebhook(req.body));
 					}
 					break;
-				case 'syslog':
-					if (isMessageEventBusDestinationSyslogOptions(req.body.options)) {
-						result = await eventBus.addDestination(
-							new MessageEventBusDestinationSyslog(req.body.options),
-						);
+				case MessageEventBusDestinationTypeNames.syslog:
+					if (isMessageEventBusDestinationSyslogOptions(req.body)) {
+						result = await eventBus.addDestination(new MessageEventBusDestinationSyslog(req.body));
 					}
 					break;
 				default:
 					throw new ResponseError(
-						`Body is missing ${req.body.type} options or type ${req.body.type} is unknown`,
+						`Body is missing ${req.body.__type} options or type ${req.body.__type} is unknown`,
 						undefined,
 						400,
 					);
@@ -210,6 +199,11 @@ eventBusRouter.post(
 			}
 			return result;
 		}
+		throw new ResponseError(
+			`Body is not configuring MessageEventBusDestinationOptions`,
+			undefined,
+			400,
+		);
 	}),
 );
 
@@ -243,36 +237,36 @@ eventBusRouter.get(
 	}),
 );
 
-eventBusRouter.post(
-	`/subscription`,
-	ResponseHelper.send(async (req: express.Request): Promise<any> => {
-		if (isEventMessageDestinationSubscription(req.body)) {
-			const result = eventBus.setDestinationSubscriptionSet(
-				req.body.destinationId,
-				EventMessageSubscriptionSet.deserialize(req.body.subscriptionSet),
-			);
-			if (result) {
-				await result.saveToDb();
-			}
-		} else {
-			throw new ResponseError('Body is missing subscriptionSet or destinationId', undefined, 400);
-		}
-	}),
-);
+// eventBusRouter.post(
+// 	`/subscription`,
+// 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+// 		if (isEventMessageDestinationSubscription(req.body)) {
+// 			const result = eventBus.setDestinationSubscriptionSet(
+// 				req.body.destinationId,
+// 				EventMessageSubscriptionSet.deserialize(req.body.subscriptionSet),
+// 			);
+// 			if (result) {
+// 				await result.saveToDb();
+// 			}
+// 		} else {
+// 			throw new ResponseError('Body is missing subscriptionSet or destinationId', undefined, 400);
+// 		}
+// 	}),
+// );
 
-eventBusRouter.delete(
-	`/subscription`,
-	ResponseHelper.send(async (req: express.Request): Promise<any> => {
-		if (isWithDestinationIdString(req.query)) {
-			const result = eventBus.resetDestinationSubscriptionSet(req.query.destinationId);
-			if (result) {
-				await result.saveToDb();
-			}
-		} else {
-			throw new ResponseError('Query is missing destination id', undefined, 400);
-		}
-	}),
-);
+// eventBusRouter.delete(
+// 	`/subscription`,
+// 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+// 		if (isWithDestinationIdString(req.query)) {
+// 			const result = eventBus.resetDestinationSubscriptionSet(req.query.destinationId);
+// 			if (result) {
+// 				await result.saveToDb();
+// 			}
+// 		} else {
+// 			throw new ResponseError('Query is missing destination id', undefined, 400);
+// 		}
+// 	}),
+// );
 
 // ----------------------------------------
 // Utilities
@@ -282,9 +276,9 @@ eventBusRouter.get(
 	`/constants`,
 	ResponseHelper.send(async (): Promise<any> => {
 		return {
-			levels: Object.values(EventMessageLevel),
-			events: eventListToObjectTree(eventNamesAll),
-			eventnames: eventNamesAll,
+			eventLevels: Object.values(EventMessageLevel),
+			// events: eventListToObjectTree(eventNamesAll),
+			eventNames: eventNamesAll,
 		};
 	}),
 );

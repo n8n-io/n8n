@@ -58,29 +58,39 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 		return false;
 	}
 
-	serialize(): JsonValue {
+	serialize(): { __type: string; [key: string]: JsonValue } {
+		const abstractSerialized = super.serialize();
 		return {
+			...abstractSerialized,
 			__type: MessageEventBusDestinationWebhook.__type,
-			options: {
-				id: this.getId(),
-				name: this.getName(),
-				responseCodeMustMatch: this.responseCodeMustMatch,
-				expectedStatusCode: this.expectedStatusCode,
-				url: this.url,
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				subscriptionSet: this.subscriptionSet.serialize(),
-			},
+			responseCodeMustMatch: this.responseCodeMustMatch,
+			expectedStatusCode: this.expectedStatusCode,
+			url: this.url,
 		};
 	}
+
+	// serialize(): JsonValue {
+	// 	return {
+	// 		__type: MessageEventBusDestinationWebhook.__type,
+	// 		options: {
+	// 			id: this.getId(),
+	// 			name: this.getName(),
+	// 			responseCodeMustMatch: this.responseCodeMustMatch,
+	// 			expectedStatusCode: this.expectedStatusCode,
+	// 			url: this.url,
+	// 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	// 			subscriptionSet: this.subscriptionSet.serialize(),
+	// 		},
+	// 	};
+	// }
 
 	static deserialize(data: JsonObject): MessageEventBusDestinationWebhook | null {
 		if (
 			'__type' in data &&
 			data.__type === MessageEventBusDestinationWebhook.__type &&
-			'options' in data &&
-			isMessageEventBusDestinationWebhookOptions(data.options)
+			isMessageEventBusDestinationWebhookOptions(data)
 		) {
-			return new MessageEventBusDestinationWebhook(data.options);
+			return new MessageEventBusDestinationWebhook(data);
 		}
 		return null;
 	}

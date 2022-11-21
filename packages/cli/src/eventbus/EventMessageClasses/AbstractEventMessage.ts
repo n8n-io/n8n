@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DateTime } from 'luxon';
-import { JsonObject, JsonValue } from 'n8n-workflow';
+import { JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-import { EventMessageLevel } from '.';
+import { AbstractEventPayload } from './AbstractEventPayload';
+import { EventMessageLevel } from './Enums';
 
 export interface EventMessageOptions {
 	id?: string;
@@ -28,7 +29,7 @@ export const isEventMessage = (candidate: unknown): candidate is AbstractEventMe
 		o.eventName !== undefined &&
 		o.id !== undefined &&
 		o.ts !== undefined &&
-		o.getEventGroup !== undefined
+		o.getEventName !== undefined
 	);
 };
 
@@ -55,10 +56,6 @@ export const isEventMessageSerialized = (
 		return o.eventName !== undefined && o.__type !== undefined;
 	}
 };
-
-export abstract class AbstractEventPayload {
-	[key: string]: JsonValue;
-}
 
 export abstract class AbstractEventMessage {
 	abstract readonly __type: string;
@@ -113,14 +110,6 @@ export abstract class AbstractEventMessage {
 		} else {
 			this.ts = options.ts ?? DateTime.now();
 		}
-	}
-
-	getEventGroup(): string | undefined {
-		const matches = this.eventName.match(/^[\w\s]+\.[\w\s]+/);
-		if (matches && matches?.length > 0) {
-			return matches[0];
-		}
-		return;
 	}
 
 	getEventName(): string {

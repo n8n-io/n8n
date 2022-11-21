@@ -5,8 +5,10 @@
 					<font-awesome-icon v-if="isOpen" icon="chevron-down" size="xs" slot="prefix"/>
 					<font-awesome-icon v-else icon="chevron-right" size="xs" slot="prefix"/>
 				</span>
-			<el-checkbox :value="isChecked" :indeterminate="isIndeterminate" @change="onCheckboxChecked($event, item?._name)">
-						<span :class="item?._selected ? $style.bold : ''">{{ item?.label }}</span>
+			<el-checkbox :value="isChecked" :indeterminate="isIndeterminate"
+				@input="onInput"
+				@change="onCheckboxChecked($event, item?._name)">
+						{{ item?.label }}
 			</el-checkbox>
 			<Transition name="slide-fade">
 			<ul v-show="isOpen" v-if="isFolder">
@@ -16,8 +18,8 @@
 					:key="index"
 					:item="baby"
 					:depth="depth+1"
-					@make-folder="$emit('make-folder', $event)"
-					@add-item="$emit('add-item', $event)"
+					:destinationId="destinationId"
+					@input="onInput"
 				></event-tree>
 			</ul>
 			</Transition>
@@ -28,7 +30,7 @@
 <script lang="ts">
 	import ElCheckbox from 'element-ui/lib/checkbox';
 	import { mapStores } from 'pinia';
-	import { useEventTreeStore } from './eventTreeStore';
+	import { useEventTreeStore } from '../../stores/eventTreeStore';
 
 	export class EventNamesTreeCollection {
 		label = '';
@@ -40,12 +42,17 @@
 
 	interface ParentEventTree extends Vue {
 		setChildChecked(checked:boolean):void
+		onInput():void
 	}
 
   export default {
 		name: 'event-tree',
 		props: {
 			item: EventNamesTreeCollection,
+			destinationId: {
+				type: String,
+				default: 'default',
+			},
 			depth: {
 				type: Number,
 				default: 0,
@@ -57,6 +64,7 @@
 				isChecked: this.item?._selected,
 				isIndeterminate: !this.item?._selected && this.item?._indeterminate,
 				childChecked: false,
+				unchanged: true,
 			};
 		},
 		computed: {
@@ -73,6 +81,9 @@
 					this.isOpen = !this.isOpen;
 				}
 			},
+			onInput() {
+				this.$emit('input');
+			},
 			setChildChecked(childChecked: boolean) {
 				this.isIndeterminate = !this.isChecked && childChecked;
 				if (this.$parent) {
@@ -88,14 +99,14 @@
 			onCheckboxChecked(checked: boolean, name:string|undefined) {
 				if (name) {
 					if (checked) {
-						this.eventTreeStore.addSelected(name);
+						this.eventTreeStore.addSelectedEvent(this.destinationId, name);
 					} else {
-						this.eventTreeStore.removeSelected(name);
+						this.eventTreeStore.removeSelectedEvent(this.destinationId,name);
 					}
 					this.isChecked = checked;
 					this.setChildChecked(checked);
 				}
-				console.log(this.eventTreeStore.selected);
+				console.log(this.eventTreeStore.items[this.destinationId]);
 			},
 		},
   };
@@ -104,8 +115,5 @@
 <style lang="scss" module>
 .folder-icon {
 	margin-right: .6em;
-}
-.bold {
-  font-weight: bold;
 }
 </style>

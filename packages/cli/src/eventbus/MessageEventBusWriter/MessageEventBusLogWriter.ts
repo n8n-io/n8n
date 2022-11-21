@@ -13,8 +13,9 @@ import remove from 'lodash.remove';
 import config from '../../config';
 import { getEventMessageByType } from '../EventMessageClasses/Helpers';
 import { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
-import { EventMessageTypeNames, EventMessageTypes } from '../EventMessageClasses';
+import { EventMessageTypes } from '../EventMessageClasses';
 import { DateTime } from 'luxon';
+import { EventMessageTypeNames } from '../EventMessageClasses/Enums';
 
 interface MessageEventBusLogWriterOptions {
 	syncFileAccess?: boolean;

@@ -1,15 +1,7 @@
-import {
-	AbstractEventMessage,
-	AbstractEventPayload,
-	// EventMessageSerialized,
-	isEventMessageSerialized,
-} from './AbstractEventMessage';
+import { AbstractEventMessage, isEventMessageSerialized } from './AbstractEventMessage';
 import { JsonObject } from 'n8n-workflow';
-import { EventMessageTypeNames } from '.';
-
-// export type EventNamesWorkflow = 'workflowStarted' | 'workflowEnded';
-// export type EventGroupWorkflow = `${EventMessageNamespaceN8n}.workflow`;
-// export type FullEventNamesWorkflow = `${EventGroupWorkflow}.${EventNamesWorkflow}`;
+import { EventMessageTypeNames } from './Enums';
+import { AbstractEventPayload } from './AbstractEventPayload';
 
 export const eventNamesWorkflow = [
 	'n8n.workflow.started',
@@ -42,10 +34,6 @@ export class EventMessageWorkflow extends AbstractEventMessage {
 	anonymize(): this {
 		return this;
 	}
-
-	// serialize(): EventMessageSerialized {
-	// 	const baseSerialized = super.serialize();
-	// }
 
 	deserialize(data: JsonObject): this {
 		if (isEventMessageSerialized(data, this.__type)) {

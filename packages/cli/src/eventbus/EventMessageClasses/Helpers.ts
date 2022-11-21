@@ -1,5 +1,6 @@
-import { EventMessageTypeNames, EventMessageTypes } from '.';
+import { EventMessageTypes } from '.';
 import { EventMessageSerialized } from './AbstractEventMessage';
+import { EventMessageTypeNames } from './Enums';
 import { EventMessageGeneric } from './EventMessageGeneric';
 import { EventMessageWorkflow } from './EventMessageWorkflow';
 
@@ -20,20 +21,13 @@ interface StringIndexedObject {
 	[key: string]: StringIndexedObject | string;
 }
 
-// function dotsToObject(dottedString: string, o?: StringIndexedObject): StringIndexedObject {
-// 	const rootObject: StringIndexedObject = o ?? {};
-// 	if (!dottedString) return rootObject;
-
-// 	const parts = dottedString.split('.'); /*?*/
-
-// 	let part: string | undefined;
-// 	let obj: StringIndexedObject = rootObject;
-// 	while ((part = parts.shift())) {
-// 		if (typeof obj[part] !== 'object') obj[part] = {};
-// 		obj = obj[part];
-// 	}
-// 	return rootObject;
-// }
+export function eventGroupFromEventName(eventName: string): string | undefined {
+	const matches = eventName.match(/^[\w\s]+\.[\w\s]+/);
+	if (matches && matches?.length > 0) {
+		return matches[0];
+	}
+	return;
+}
 
 function dotsToObject2(dottedString: string, o?: StringIndexedObject): StringIndexedObject {
 	const rootObject: StringIndexedObject = o ?? {};
@@ -96,25 +90,3 @@ export function eventListToObjectTree(dottedList: string[]): StringIndexedChild 
 	});
 	return x;
 }
-
-// export const messageEventSerializer: SerializerImplementation = {
-// 	deserialize(message, defaultHandler) {
-// 		if (isEventMessageConfirmSerialized(message)) {
-// 			return EventMessageConfirm.deserialize(message);
-// 		} else if (isEventMessageSerialized(message)) {
-// 			const msg = getEventMessageByType(message);
-// 			if (msg !== null) return msg;
-// 		}
-// 		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
-// 		return defaultHandler(message);
-// 	},
-// 	serialize(thing, defaultHandler) {
-// 		if (thing instanceof EventMessageConfirm) {
-// 			return thing.serialize();
-// 		} else if (thing instanceof EventMessage) {
-// 			return thing.serialize();
-// 		} else {
-// 			return defaultHandler(thing);
-// 		}
-// 	},
-// };
