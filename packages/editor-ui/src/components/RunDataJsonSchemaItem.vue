@@ -1,10 +1,24 @@
 <template>
 	<div :class="$style.item">
-		<div v-if="level > 0 || level === 0 && !isSchemaValueArray" :class="$style.pill">
-			<span :class="$style.label">
+		<div
+			v-if="level > 0 || level === 0 && !isSchemaValueArray"
+			:class="{
+				[$style.pill]: true,
+				[$style.mappable]: mappingEnabled,
+				[$style.dragged]: draggingPath === schema.path,
+			}"
+		>
+			<span
+				:class="$style.label"
+				:data-value="getJsonParameterPath(schema.path)"
+				:data-name="schemaName"
+				:data-path="schema.path"
+				:data-depth="level"
+				data-target="mappable"
+			>
 				<font-awesome-icon :icon="getIconBySchemaType(schema.type)"/>
-				<span v-if="parent === 'list'">{{ schema.type }}</span>
-				<span v-if="key" :class="{[$style.listKey]: parent === 'list'}">{{ key }}</span>
+				<span v-if="isSchemaParentTypeList">{{ schema.type }}</span>
+				<span v-if="key" :class="{[$style.listKey]: isSchemaParentTypeList}">{{ key }}</span>
 			</span>
 		</div>
 		<span v-if="!isSchemaValueArray" :class="$style.value">{{ schema.value }}</span>
@@ -17,28 +31,42 @@
 				:key="`${s.type}-${level}-${i}`"
 				:schema="s"
 				:level="level + 1"
-				:parent="schema.type"
+				:parent="schema"
 				:sub-key="`${s.type}-${level}-${i}`"
-				:style="{transitionDelay: `${i * 0.05}s`}"
+				:mapping-enabled="mappingEnabled"
+				:dragging-path="draggingPath"
+				:distance-from-active="distanceFromActive"
+				:node="node"
+				:style="{transitionDelay: transitionDelay(i)}"
 			/>
 		</div>
 	</div>
 </template>
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { JsonSchema, JsonSchemaType } from "@/Interface";
+import { INodeUi, JsonSchema } from "@/Interface";
 import { checkExhaustive } from "@/utils";
 
 type Props = {
 	schema: JsonSchema
 	level: number
-	parent: JsonSchemaType | null
+	parent: JsonSchema | null
 	subKey: string
+	mappingEnabled: boolean
+	draggingPath: string
+	distanceFromActive: number
+	node: INodeUi | null
 }
 
 const props = defineProps<Props>();
+
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
-const key = computed((): string | undefined => props.parent === 'list' ? `[${props.schema.key}]` : props.schema.key);
+const isSchemaParentTypeList = computed(() => props.parent?.type === 'list');
+const key = computed((): string | undefined => isSchemaParentTypeList.value ? `[${props.schema.key}]` : props.schema.key);
+const schemaName = computed(() => isSchemaParentTypeList.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key);
+
+const getJsonParameterPath = (path: string): string => `{{ ${props.distanceFromActive ? '$json' : `$node["${ props.node!.name }"].json`}${path} }}`;
+const transitionDelay = (i:number) => `${i * 0.033}s`;
 
 const getIconBySchemaType = (type: JsonSchema['type']): string => {
 	switch (type) {
@@ -71,7 +99,7 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 </script>
 
 <style lang="scss" module>
-@import '@/css-animation-helpers.scss';
+@import '@/styles/css-animation-helpers.scss';
 
 .item {
 	display: block;
@@ -96,14 +124,12 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 	padding: 0 var(--spacing-3xs);
 	border: 1px solid #DBDFE7;
 	border-radius: 4px;
-	cursor: grab;
 	background: #fff;
 	font-weight: var(--font-weight-bold);
 	font-size: var(--font-size-2xs);
 
 	&:hover {
 		box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
-		background-color: var(--color-foreground-light);
 	}
 
 	span {
@@ -177,6 +203,21 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 				transform: translateX(0);
 			}
 		}
+	}
+}
+
+.mappable {
+	cursor: grab;
+
+	&:hover {
+		background-color: var(--color-foreground-light);
+	}
+}
+
+.dragged {
+	&,
+	&:hover {
+		background-color: var(--color-primary-tint-2);
 	}
 }
 </style>

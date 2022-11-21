@@ -46,7 +46,17 @@
 					>"{{ node.key }}"</span>
 					</template>
 					<template #nodeValue="{ node }">
-						<span>{{ getContent(node.content) }}</span>
+						<span
+							data-target="mappable"
+							:data-value="getJsonParameterPath(node.path)"
+							:data-name="node.key"
+							:data-path="node.path"
+							:data-depth="node.level"
+							:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						>{{ getContent(node.content) }}</span>
 					</template>
 				</vue-json-pretty>
 			</template>

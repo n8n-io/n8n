@@ -251,6 +251,8 @@
 				v-else-if="hasNodeRun && displayMode === 'json-schema'"
 				:schema="jsonSchema"
 				:mappingEnabled="mappingEnabled"
+				:distanceFromActive="distanceFromActive"
+				:node="node"
 			/>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
