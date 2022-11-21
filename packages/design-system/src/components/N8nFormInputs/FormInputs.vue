@@ -3,12 +3,12 @@
 		:breakpoints="[{bp: 'md', width: 500}]"
 	>
 		<template v-slot="{ bp }">
-			<div :class="bp === 'md' || columnView? $style.gridMulti : $style.grid">
+			<div :class="bp === 'md' || columnView? $style.grid : $style.gridMulti">
 				<div
 					v-for="(input) in filteredInputs"
 					:key="input.name"
 				>
-					<n8n-text color="text-base" v-if="input.properties.type === 'info'" tag="div" align="center">
+					<n8n-text color="text-base" v-if="input.properties.type === 'info'" tag="div" :size="input.properties.labelSize" :align="input.properties.labelAlignment">
 						{{input.properties.label}}
 					</n8n-text>
 					<n8n-form-input
