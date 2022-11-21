@@ -1,5 +1,5 @@
 import type { ICredentialDataDecryptedObject, ICredentialTypes } from 'n8n-workflow';
-import { deepCopy, jsonParse } from 'n8n-workflow';
+import { deepCopy, LoggerProxy as Logger, jsonParse } from 'n8n-workflow';
 import type { ICredentialsOverwrite } from '@/Interfaces';
 import * as GenericHelpers from '@/GenericHelpers';
 
@@ -13,12 +13,11 @@ class CredentialsOverwritesClass {
 	async init() {
 		const data = (await GenericHelpers.getConfigValue('credentials.overwrite.data')) as string;
 
-		try {
-			const overwriteData = jsonParse<ICredentialsOverwrite>(data);
-			this.setData(overwriteData);
-		} catch (error) {
-			throw new Error(`The credentials-overwrite is not valid JSON.`);
-		}
+		const overwriteData = jsonParse<ICredentialsOverwrite>(data, {
+			errorMessage: 'The credentials-overwrite is not valid JSON.',
+		});
+
+		this.setData(overwriteData);
 	}
 
 	setData(overwriteData: ICredentialsOverwrite) {
@@ -60,6 +59,11 @@ class CredentialsOverwritesClass {
 		if (this.resolvedTypes.includes(type)) {
 			// Type got already resolved and can so returned directly
 			return this.overwriteData[type];
+		}
+
+		if (!this.credentialTypes.recognizes(type)) {
+			Logger.warn(`Unknown credential type ${type} in Credential overwrites`);
+			return;
 		}
 
 		const credentialTypeData = this.credentialTypes.getByName(type);

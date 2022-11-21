@@ -11,6 +11,10 @@ import type { ICredentialsTypeData } from './Interfaces';
 class CredentialTypesClass implements ICredentialTypes {
 	constructor(private nodesAndCredentials: INodesAndCredentials) {}
 
+	recognizes(type: string) {
+		return type in this.knownCredentials || type in this.loadedCredentials;
+	}
+
 	getByName(credentialType: string): ICredentialType {
 		return this.getCredential(credentialType).type;
 	}

@@ -324,6 +324,7 @@ export interface ICredentialType {
 }
 
 export interface ICredentialTypes {
+	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
 }
 
