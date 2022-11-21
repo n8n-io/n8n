@@ -162,16 +162,7 @@ export default mixins(
 			},
 			expressionOutput(): string | null {
 				if (this.isValueExpression && this.expressionValueComputed) {
-					const inputData = this.ndvStore.ndvInputData;
-					if (!inputData || (inputData && inputData.length <= 1)) {
-						return this.expressionValueComputed;
-					}
-
-					return this.$locale.baseText(`parameterInput.expressionResult`, {
-						interpolate: {
-							result: this.expressionValueComputed,
-						},
-					});
+					return this.expressionValueComputed;
 				}
 
 				return null;
