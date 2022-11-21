@@ -4,7 +4,6 @@ import {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialTestFunctions,
-	IDataObject,
 	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeType,
