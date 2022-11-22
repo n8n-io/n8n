@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const path = require('path');
 const glob = require('fast-glob');
 const { createContext, Script } = require('vm');

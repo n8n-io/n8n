@@ -14,6 +14,10 @@
   },
   "main": "dist/index",
   "types": "dist/index.d.ts",
+  "bin": {
+    "n8n-generate-known": "./bin/generate-known",
+    "n8n-generate-ui-types": "./bin/generate-ui-types"
+  },
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc",

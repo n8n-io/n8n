@@ -1,7 +1,7 @@
 const path = require('path');
 const { mkdir, writeFile } = require('fs/promises');
 
-const packageDir = path.resolve(__dirname, '..');
+const packageDir = process.cwd();
 const distDir = path.join(packageDir, 'dist');
 
 const writeJSON = async (file, data) => {
