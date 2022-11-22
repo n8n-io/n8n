@@ -46,13 +46,13 @@ EEWorkflowController.put(
 			!Array.isArray(shareWithIds) ||
 			!shareWithIds.every((userId) => typeof userId === 'string')
 		) {
-			throw new ResponseHelper.ResponseError('Bad request', undefined, 400);
+			throw new ResponseHelper.BadRequestError('Bad request');
 		}
 
 		const { ownsWorkflow, workflow } = await EEWorkflows.isOwned(req.user, workflowId);
 
 		if (!ownsWorkflow || !workflow) {
-			throw new ResponseHelper.ResponseError('Forbidden', undefined, 403);
+			throw new ResponseHelper.UnauthorizedError('Forbidden');
 		}
 
 		let newShareeIds: string[] = [];
@@ -86,20 +86,14 @@ EEWorkflowController.get(
 		);
 
 		if (!workflow) {
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" does not exist`,
-				undefined,
-				404,
-			);
+			throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.UnauthorizedError(
 				'It looks like you cannot access this workflow. Ask the owner to share it with you.',
-				undefined,
-				403,
 			);
 		}
 
@@ -143,10 +137,8 @@ EEWorkflowController.post(
 		try {
 			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				'The workflow you are trying to save contains credentials that are not shared with you',
-				undefined,
-				400,
 			);
 		}
 
@@ -173,7 +165,7 @@ EEWorkflowController.post(
 
 		if (!savedWorkflow) {
 			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.InternalServerError(
 				'An error occurred while saving your workflow. Please try again.',
 			);
 		}

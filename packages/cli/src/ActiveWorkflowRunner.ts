@@ -191,10 +191,8 @@ export class ActiveWorkflowRunner {
 	): Promise<IResponseCallbackData> {
 		Logger.debug(`Received webhook "${httpMethod}" for path "${path}"`);
 		if (this.activeWorkflows === null) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				'The "activeWorkflows" instance did not get initialized yet.',
-				404,
-				404,
 			);
 		}
 
@@ -224,10 +222,8 @@ export class ActiveWorkflowRunner {
 			});
 			if (dynamicWebhooks === undefined || dynamicWebhooks.length === 0) {
 				// The requested webhook is not registered
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.NotFoundError(
 					`The requested webhook "${httpMethod} ${path}" is not registered.`,
-					404,
-					404,
 					WEBHOOK_PROD_UNREGISTERED_HINT,
 				);
 			}
@@ -252,10 +248,8 @@ export class ActiveWorkflowRunner {
 				}
 			});
 			if (webhook === undefined) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.NotFoundError(
 					`The requested webhook "${httpMethod} ${path}" is not registered.`,
-					404,
-					404,
 					WEBHOOK_PROD_UNREGISTERED_HINT,
 				);
 			}
@@ -277,10 +271,8 @@ export class ActiveWorkflowRunner {
 			relations: ['shared', 'shared.user', 'shared.user.globalRole'],
 		});
 		if (workflowData === undefined) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`Could not find workflow with id "${webhook.workflowId}"`,
-				404,
-				404,
 			);
 		}
 
@@ -313,7 +305,7 @@ export class ActiveWorkflowRunner {
 		const workflowStartNode = workflow.getNode(webhookData.node);
 
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.ResponseError('Could not find node to process webhook.', 404, 404);
+			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
 		}
 
 		return new Promise((resolve, reject) => {
