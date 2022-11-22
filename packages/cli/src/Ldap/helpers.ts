@@ -25,6 +25,7 @@ import {
 	SignInType,
 } from './constants';
 import type { LdapConfig, LdapDbColumns } from './types';
+import { LoggerProxy as Logger } from 'n8n-workflow';
 import { getLicense } from '@/License';
 
 /**
@@ -251,14 +252,16 @@ export const findAndAuthenticateLdapUser = async (
 	// Search for the user with the administrator binding using the
 	// the Login ID attribute and whatever was inputted in the UI's
 	// email input.
-	let searchResult: Entry[];
+	let searchResult: Entry[] = [];
 
 	try {
 		searchResult = await ldapService.searchWithAdminBinding(
 			createFilter(`(${loginIdAttribute}=${escapeFilter(loginId)})`, userFilter),
 		);
-	} catch (_) {
-		return undefined;
+	} catch (e) {
+		if (e instanceof Error) {
+			Logger.error(`LDAP - Error during search`, { message: e.message });
+		}
 	}
 
 	if (!searchResult.length) {
@@ -280,7 +283,10 @@ export const findAndAuthenticateLdapUser = async (
 		// for the user) and the password, attempt to validate the
 		// user by binding
 		await ldapService.validUser(user.dn, password);
-	} catch (_) {
+	} catch (e) {
+		if (e instanceof Error) {
+			Logger.error(`LDAP - Error validating user agains LDAP server`, { message: e.message });
+		}
 		return undefined;
 	}
 
