@@ -38,7 +38,7 @@ export async function lemlistApiRequest(
 		Object.assign(options, option);
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'lemlistApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'lemlistApi', options);
 }
 
 /**
