@@ -61,9 +61,6 @@ export class LdapSync {
 	 * @returns void
 	 */
 	scheduleRun(): void {
-		Logger.info(
-			`LDAP - Scheduling a syncronization run in ${this._config.syncronizationInterval} minutes`,
-		);
 		if (!this._config.syncronizationInterval) {
 			throw new Error('Interval variable has to be defined');
 		}
@@ -82,7 +79,7 @@ export class LdapSync {
 	 * @returns Promise
 	 */
 	async run(mode: RunningMode): Promise<void> {
-		Logger.info(`LDAP - Starting a syncronization run in ${mode} mode`);
+		Logger.debug(`LDAP - Starting a syncronization run in ${mode} mode`);
 
 		let adUsers: Entry[] = [];
 
@@ -90,6 +87,10 @@ export class LdapSync {
 			adUsers = await this._ldapService.searchWithAdminBinding(
 				createFilter(`(${this._config.loginIdAttribute}=*)`, this._config.userFilter),
 			);
+
+			Logger.debug(`LDAP - Users return by the query`, {
+				users: adUsers,
+			});
 
 			resolveBinaryAttributes(adUsers);
 		} catch (e) {
@@ -110,6 +111,12 @@ export class LdapSync {
 			localAdUsers,
 			role,
 		);
+
+		Logger.debug(`LDAP - Users proccesed`, {
+			created: usersToCreate.length,
+			updated: usersToUpdate.length,
+			disabled: usersToDisable.length,
+		});
 
 		const endedAt = new Date();
 		let status = SyncStatus.SUCCESS;
@@ -141,7 +148,7 @@ export class LdapSync {
 
 		await saveLdapSyncronization(syncronization);
 
-		Logger.info(`LDAP - Syncronization finished successfully`);
+		Logger.debug(`LDAP - Syncronization finished successfully`);
 	}
 
 	/**
@@ -150,7 +157,6 @@ export class LdapSync {
 	 * @returns void
 	 */
 	stop(): void {
-		Logger.info(`LDAP - Stopping syncronization job`);
 		clearInterval(this.intervalId);
 		this.intervalId = undefined;
 	}

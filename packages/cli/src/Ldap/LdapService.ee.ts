@@ -31,7 +31,6 @@ export class LdapService {
 			throw new Error('Service cannot be used without setting the property config');
 		}
 		if (this.client === undefined) {
-			Logger.info(`LDAP - Creating new LDAP client`);
 			const url = formatUrl(
 				this._config.connectionUrl,
 				this._config.connectionPort,
@@ -62,7 +61,6 @@ export class LdapService {
 	 * @returns Promise
 	 */
 	private async bindAdmin(): Promise<void> {
-		Logger.info(`LDAP - Binding with admin credentials`);
 		await this.getClient();
 		if (this.client) {
 			await this.client.bind(this._config.bindingAdminDn, this._config.bindingAdminPassword);
@@ -77,7 +75,6 @@ export class LdapService {
 	 * @returns Promise
 	 */
 	async searchWithAdminBinding(filter: string): Promise<Entry[]> {
-		Logger.info(`LDAP - Searching with admin credentials`);
 		await this.bindAdmin();
 		if (this.client) {
 			const { searchEntries } = await this.client.search(this._config.baseDn, {
@@ -103,7 +100,6 @@ export class LdapService {
 	 * @returns Promise
 	 */
 	async validUser(dn: string, password: string): Promise<void> {
-		Logger.info(`LDAP - Binding with user credentials`);
 		await this.getClient();
 		if (this.client) {
 			await this.client.bind(dn, password);
