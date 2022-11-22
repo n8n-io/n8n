@@ -223,7 +223,7 @@ workflowsController.get(
 				userId: req.user.id,
 			});
 			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found.`,
+				'Could not load the workflow - you can only access workflows owned by you',
 				undefined,
 				404,
 			);
@@ -298,7 +298,7 @@ workflowsController.delete(
 				userId: req.user.id,
 			});
 			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be deleted.`,
+				'Could not delete the workflow - you can only remove workflows owned by you',
 				undefined,
 				400,
 			);

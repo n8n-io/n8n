@@ -87,7 +87,7 @@ EEWorkflowController.get(
 
 		if (!workflow) {
 			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found.`,
+				`Workflow with ID "${workflowId}" does not exist`,
 				undefined,
 				404,
 			);
@@ -96,7 +96,11 @@ EEWorkflowController.get(
 		const userSharing = workflow.shared?.find((shared) => shared.user.id === req.user.id);
 
 		if (!userSharing && req.user.globalRole.name !== 'owner') {
-			throw new ResponseHelper.ResponseError(`Forbidden.`, undefined, 403);
+			throw new ResponseHelper.ResponseError(
+				'It looks like you cannot access this workflow. Ask the owner to share it with you.',
+				undefined,
+				403,
+			);
 		}
 
 		return EEWorkflows.addCredentialsToWorkflow(
@@ -140,7 +144,7 @@ EEWorkflowController.post(
 			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
-				'The workflow contains credentials that you do not have access to',
+				'The workflow you are trying to save contains credentials that are not shared with you',
 				undefined,
 				400,
 			);
@@ -169,7 +173,9 @@ EEWorkflowController.post(
 
 		if (!savedWorkflow) {
 			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.ResponseError('Failed to save workflow');
+			throw new ResponseHelper.ResponseError(
+				'An error occurred while saving your workflow. Please try again.',
+			);
 		}
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {

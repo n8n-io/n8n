@@ -197,7 +197,7 @@ export class WorkflowsService {
 				userId: user.id,
 			});
 			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be updated.`,
+				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 				undefined,
 				404,
 			);
@@ -205,7 +205,7 @@ export class WorkflowsService {
 
 		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
 			throw new ResponseHelper.ResponseError(
-				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
+				'We are sorry, but the workflow has been changed in the meantime. Please reload the workflow and try again.',
 				undefined,
 				400,
 			);

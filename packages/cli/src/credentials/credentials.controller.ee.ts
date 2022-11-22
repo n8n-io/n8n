@@ -64,7 +64,7 @@ EECredentialsController.get(
 
 		if (!credential) {
 			throw new ResponseHelper.ResponseError(
-				`Credential with ID "${credentialId}" could not be found.`,
+				'Could not load the credential. If you think this is an error, ask the owner to share it with you again',
 				undefined,
 				404,
 			);
