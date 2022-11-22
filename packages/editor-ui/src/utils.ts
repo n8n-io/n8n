@@ -105,39 +105,38 @@ export const isNorObjectNorArray = (obj: unknown): obj is Primitives => !isObj(o
 
 export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] => Object.keys(o) as K[];
 
-export const mergeDeep = <T extends object>(...sources: T[]): T => sources.reduce((target, source) => {
+export const mergeDeep = <T extends object | Primitives>(sources: T[], options?: Partial<Record<'overwriteArrays' | 'concatArrays', boolean>>): T => sources.reduce((target, source) => {
 	if(Array.isArray(target) && Array.isArray(source)){
 		const tLength = target.length;
 		const sLength = source.length;
 
-		if(target.every(isNorObjectNorArray) && source.every(isNorObjectNorArray)){
-			return [...target, ...source];
-		} else {
-			if(tLength === sLength) {
-				return target.map((item, index) => mergeDeep(item, source[index]));
-			} else {
-				const maxLength = Math.max(tLength, sLength);
-				const mergedArray = new Array(maxLength);
-				for(let i = 0; i < maxLength; i++){
-					if(isObj(target[i]) && isObj(source[i]) || Array.isArray(target[i]) && Array.isArray(source[i])){
-						mergedArray[i] = mergeDeep(target[i], source[i]);
-					} else if(i < tLength){
-						mergedArray[i] = target[i];
-					} else {
-						mergedArray[i] = source[i];
-					}
-				}
-				return mergedArray;
-			}
+		if(tLength === 0 || options?.overwriteArrays) {
+			return source;
 		}
-	} else if(isObj(target) && isObj(source)){
+
+		if(sLength === 0) {
+			return target;
+		}
+
+		if(options?.concatArrays) {
+			return [...target, ...source];
+		}
+
+		if(tLength === sLength) {
+			return target.map((item, index) => mergeDeep([item, source[index]], options));
+		} else if(tLength < sLength) {
+			return source.map((item, index) => mergeDeep([target[index], item], options));
+		} else {
+			return [...source, ...target.slice(sLength)];
+		}
+	} else if(isObj(target) && isObj(source)) {
 		const targetKeys = getObjectKeys(target);
 		const sourceKeys = getObjectKeys(source);
 		const allKeys = [...new Set([...targetKeys, ...sourceKeys])];
 		const mergedObject = Object.create(Object.prototype);
 		for (const key of allKeys) {
 			if (targetKeys.includes(key) && sourceKeys.includes(key)) {
-				mergedObject[key] = mergeDeep(target[key] as T, source[key] as T);
+				mergedObject[key] = mergeDeep([target[key] as T, source[key] as T], options);
 			} else if (targetKeys.includes(key)) {
 				mergedObject[key] = target[key];
 			} else {

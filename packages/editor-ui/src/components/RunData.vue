@@ -250,8 +250,8 @@
 			<run-data-json-schema
 				v-else-if="hasNodeRun && displayMode === 'json-schema'"
 				:schema="jsonSchema"
-				:mappingEnabled="mappingEnabled"
-				:distanceFromActive="distanceFromActive"
+				:mapping-enabled="mappingEnabled"
+				:distance-from-active="distanceFromActive"
 				:node="node"
 			/>
 
@@ -714,7 +714,7 @@ export default mixins(
 				return this.paneType === 'input';
 			},
 			jsonSchema(): JsonSchema {
-				return getJsonSchema(mergeDeep(...this.jsonData));
+				return getJsonSchema(mergeDeep(this.jsonData));
 			},
 		},
 		methods: {
