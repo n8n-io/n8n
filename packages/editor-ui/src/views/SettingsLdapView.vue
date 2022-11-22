@@ -62,6 +62,7 @@
 					/>
 				</div>
 			</div>
+			<n8n-heading tag="h1" class="mb-2xl mt-3xl" size="medium">User synchronization</n8n-heading>
 			<div :class="$style.syncTable">
 				<el-table
 					v-loading="loadingTable"
@@ -750,7 +751,6 @@ export default mixins(showMessage).extend({
 	> * {
 		margin-bottom: var(--spacing-2xl);
 	}
-	padding-bottom: 100px;
 }
 
 .syncTable {
