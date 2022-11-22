@@ -43,6 +43,7 @@
 				<item-iterator
 					:elements="filteredNodeTypes"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
+					:transitionsEnabled="true"
 					@selected="selected"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
 					:with-actions-getter="withActionsGetter"
