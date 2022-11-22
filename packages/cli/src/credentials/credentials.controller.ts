@@ -75,16 +75,14 @@ credentialsController.get(
 		const includeDecryptedData = req.query.includeData === 'true';
 
 		if (Number.isNaN(Number(credentialId))) {
-			throw new ResponseHelper.ResponseError(`Credential ID must be a number.`, undefined, 400);
+			throw new ResponseHelper.BadRequestError(`Credential ID must be a number.`);
 		}
 
 		const sharing = await CredentialsService.getSharing(req.user, credentialId, ['credentials']);
 
 		if (!sharing) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`Credential with ID "${credentialId}" could not be found.`,
-				undefined,
-				404,
 			);
 		}
 
@@ -159,10 +157,8 @@ credentialsController.patch(
 				credentialId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				'Credential to be updated not found. You can only update credentials owned by you',
-				undefined,
-				404,
 			);
 		}
 
@@ -183,10 +179,8 @@ credentialsController.patch(
 		const responseData = await CredentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === undefined) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`Credential ID "${credentialId}" could not be found to be updated.`,
-				undefined,
-				404,
 			);
 		}
 
@@ -217,10 +211,8 @@ credentialsController.delete(
 				credentialId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				'Credential to be deleted not found. You can only removed credentials owned by you',
-				undefined,
-				404,
 			);
 		}
 

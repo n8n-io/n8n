@@ -391,11 +391,7 @@ export class Worker extends Command {
 								await connection.query('SELECT 1');
 							} catch (e) {
 								LoggerProxy.error('No Database connection!', e);
-								const error = new ResponseHelper.ResponseError(
-									'No Database connection!',
-									undefined,
-									503,
-								);
+								const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
 								return ResponseHelper.sendErrorResponse(res, error);
 							}
 
@@ -406,11 +402,7 @@ export class Worker extends Command {
 								await Worker.jobQueue.client.ping();
 							} catch (e) {
 								LoggerProxy.error('No Redis connection!', e);
-								const error = new ResponseHelper.ResponseError(
-									'No Redis connection!',
-									undefined,
-									503,
-								);
+								const error = new ResponseHelper.ServiceUnavailableError('No Redis connection!');
 								return ResponseHelper.sendErrorResponse(res, error);
 							}
 
