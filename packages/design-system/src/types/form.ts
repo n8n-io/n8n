@@ -50,7 +50,7 @@ export type IFormInput = {
 		capitalize?: boolean;
 		focusInitially?: boolean;
 		disabled?: boolean;
-		labelSize?: 'small' | 'medium' | 'large',
+		labelSize?: 'small' | 'medium' | 'large';
 		labelAlignment?: 'left' | 'right' | 'center';
 	};
 	shouldDisplay?: (values: { [key: string]: unknown }) => boolean;

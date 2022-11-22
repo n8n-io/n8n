@@ -14,7 +14,9 @@
 					{{ firstName }} {{ lastName }}
 					{{ isCurrentUser ? this.t('nds.userInfo.you') : '' }}
 				</n8n-text>
-				<span v-if="disabled" :class="$style.pendingBadge"><n8n-badge :bold="true">Disabled</n8n-badge></span>
+				<span v-if="disabled" :class="$style.pendingBadge">
+					<n8n-badge :bold="true">Disabled</n8n-badge>
+				</span>
 			</div>
 			<div>
 				<n8n-text size="small" color="text-light">{{ email }}</n8n-text>
