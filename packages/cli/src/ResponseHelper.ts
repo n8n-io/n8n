@@ -17,11 +17,8 @@ import type {
 
 /**
  * Special Error which allows to return also an error code and http status code
- *
- * @class ResponseError
- * @extends {Error}
  */
-export class ResponseError extends Error {
+class ResponseError extends Error {
 	// The HTTP status code of  response
 	httpStatusCode?: number;
 
@@ -34,11 +31,6 @@ export class ResponseError extends Error {
 	/**
 	 * Creates an instance of ResponseError.
 	 * Must be used inside a block with `ResponseHelper.send()`.
-	 *
-	 * @param {string} message The error message
-	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
-	 * @param {number} [httpStatusCode] The HTTP status code the response should have
-	 * @param {string} [hint] The error hint to provide a context (webhook related)
 	 */
 	constructor(message: string, errorCode?: number, httpStatusCode?: number, hint?: string) {
 		super(message);
@@ -53,6 +45,48 @@ export class ResponseError extends Error {
 		if (hint) {
 			this.hint = hint;
 		}
+	}
+}
+
+export class BadRequestError extends ResponseError {
+	constructor(message: string) {
+		super(message, undefined, 400);
+	}
+}
+
+export class AuthError extends ResponseError {
+	constructor(message: string) {
+		super(message, undefined, 401);
+	}
+}
+
+export class UnauthorizedError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, undefined, 403, hint);
+	}
+}
+
+export class NotFoundError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 404, 404, hint);
+	}
+}
+
+export class ConflictError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 409, 409, hint);
+	}
+}
+
+export class InternalServerError extends ResponseError {
+	constructor(message: string, errorCode = 500) {
+		super(message, errorCode, 500);
+	}
+}
+
+export class ServiceUnavailableError extends ResponseError {
+	constructor(message: string, errorCode = 503) {
+		super(message, errorCode, 503);
 	}
 }
 
@@ -95,40 +129,48 @@ export function sendSuccessResponse(
 	}
 }
 
-export function sendErrorResponse(res: Response, error: ResponseError) {
+interface ErrorResponse {
+	code: number;
+	message: string;
+	hint?: string;
+	stacktrace?: string;
+}
+
+export function sendErrorResponse(res: Response, error: Error) {
 	let httpStatusCode = 500;
-	if (error.httpStatusCode) {
-		httpStatusCode = error.httpStatusCode;
-	}
 
-	if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
-		console.error('ERROR RESPONSE');
-		console.error(error);
-	}
-
-	const response = {
+	const response: ErrorResponse = {
 		code: 0,
 		message: 'Unknown error',
-		hint: '',
 	};
 
-	if (error.name === 'NodeApiError') {
-		Object.assign(response, error);
+	if (error instanceof ResponseError) {
+		if (error.httpStatusCode) {
+			httpStatusCode = error.httpStatusCode;
+		}
+
+		if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
+			console.error(error.httpStatusCode, error.message);
+		}
+
+		if (error.name === 'NodeApiError') {
+			Object.assign(response, error);
+		}
+
+		if (error.errorCode) {
+			response.code = error.errorCode;
+		}
+		if (error.message) {
+			response.message = error.message;
+		}
+		if (error.hint) {
+			response.hint = error.hint;
+		}
+		if (error.stack && process.env.NODE_ENV !== 'production') {
+			response.stacktrace = error.stack;
+		}
 	}
 
-	if (error.errorCode) {
-		response.code = error.errorCode;
-	}
-	if (error.message) {
-		response.message = error.message;
-	}
-	if (error.hint) {
-		response.hint = error.hint;
-	}
-	if (error.stack && process.env.NODE_ENV !== 'production') {
-		// @ts-ignore
-		response.stack = error.stack;
-	}
 	res.status(httpStatusCode).json(response);
 }
 
