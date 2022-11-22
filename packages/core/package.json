@@ -30,7 +30,8 @@
     "test": "jest"
   },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "devDependencies": {
     "@types/cron": "~1.7.1",
