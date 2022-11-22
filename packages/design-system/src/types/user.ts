@@ -6,4 +6,6 @@ export interface IUser {
 	email?: string;
 	isOwner: boolean;
 	isPendingUser: boolean;
+	disabled: boolean;
+	signInType: string;
 }
