@@ -1,8 +1,7 @@
 import { INode, NodeOperationError, Workflow } from 'n8n-workflow';
-import { In, ObjectLiteral } from 'typeorm';
+import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
 import * as Db from '@/Db';
 import config from '@/config';
-import { FindManyOptions } from 'typeorm';
 import type { SharedCredentials } from '@db/entities/SharedCredentials';
 import { getRole } from './UserManagementHelper';
 
