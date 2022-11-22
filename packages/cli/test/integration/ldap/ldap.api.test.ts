@@ -18,7 +18,6 @@ import {
 import { LdapManager } from '@/Ldap/LdapManager.ee';
 import { LdapConfig } from '@/Ldap/types';
 import { LdapService } from '@/Ldap/LdapService.ee';
-import { handleLdapInit } from '@/Ldap/helpers';
 
 jest.mock('@/telemetry');
 jest.mock('@/UserManagement/email/NodeMailer');
