@@ -17,6 +17,7 @@ import type { PasswordResetRequest } from '@/requests';
 import { issueCookie } from '../auth/jwt';
 import config from '@/config';
 import { SignInType } from '@/Ldap/constants';
+import { isLdapEnabled } from '@/Ldap/helpers';
 
 export function passwordResetNamespace(this: N8nApp): void {
 	/**
@@ -84,7 +85,7 @@ export function passwordResetNamespace(this: N8nApp): void {
 					lastName,
 					passwordResetUrl: url.toString(),
 					domain: baseUrl,
-					isLdapUser: signInType === SignInType.LDAP,
+					isLdapUser: isLdapEnabled() && signInType === SignInType.LDAP,
 				});
 			} catch (error) {
 				void InternalHooksManager.getInstance().onEmailFailed({

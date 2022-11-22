@@ -47,6 +47,7 @@ import { CHANGE_PASSWORD_MODAL_KEY, SignInType } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -74,7 +75,7 @@ export default mixins(
 					required: true,
 					autocomplete: 'given-name',
 					capitalize: true,
-					disabled: this.signInWithLdap,
+					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
 				},
 			},
 			{
@@ -86,7 +87,7 @@ export default mixins(
 					required: true,
 					autocomplete: 'family-name',
 					capitalize: true,
-					disabled: this.signInWithLdap,
+					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
 				},
 			},
 			{
@@ -99,7 +100,7 @@ export default mixins(
 					validationRules: [{name: 'VALID_EMAIL'}],
 					autocomplete: 'email',
 					capitalize: true,
-					disabled: this.signInWithLdap,
+					disabled: this.isLDAPFeatureEnabled && this.signInWithLdap,
 				},
 			},
 		];
@@ -108,12 +109,16 @@ export default mixins(
 		...mapStores(
 			useUIStore,
 			useUsersStore,
+			useSettingsStore,
 		),
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
 		signInWithLdap(): boolean {
 			return this.currentUser?.signInType === SignInType.LDAP;
+		},
+		isLDAPFeatureEnabled(): boolean {
+			return this.settingsStore.settings.enterprise.ldap === true;
 		},
 	},
 	methods: {

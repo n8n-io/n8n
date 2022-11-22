@@ -1,5 +1,4 @@
 import * as Db from '@/Db';
-import { SignInType } from '@/Ldap/constants';
 import type { User } from '@db/entities/User';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
 import { InternalHooksManager } from '@/InternalHooksManager';
@@ -12,7 +11,6 @@ export const handleEmailLogin = async (
 	const user = await Db.collections.User.findOne(
 		{
 			email,
-			signInType: SignInType.EMAIL,
 		},
 		{
 			relations: ['globalRole'],

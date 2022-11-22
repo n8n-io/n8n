@@ -48,10 +48,7 @@ export function authenticationMethods(this: N8nApp): void {
 				return sanitizeUser(localUser);
 			}
 
-			const error = new Error('Wrong username or password. Do you have caps lock on?');
-			// @ts-ignore
-			error.httpStatusCode = 401;
-			throw error;
+			throw new ResponseHelper.AuthError('Wrong username or password. Do you have caps lock on?');
 		}),
 	);
 

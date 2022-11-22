@@ -284,8 +284,6 @@ export class Start extends Command {
 					);
 				}
 
-				await handleLdapInit();
-
 				if (config.getEnv('executions.mode') === 'queue') {
 					const redisHost = config.getEnv('queue.bull.redis.host');
 					const redisPassword = config.getEnv('queue.bull.redis.password');
@@ -415,6 +413,8 @@ export class Start extends Command {
 				await activeWorkflowRunner.init();
 
 				WaitTracker();
+
+				await handleLdapInit();
 
 				const editorUrl = GenericHelpers.getBaseUrl();
 				this.log(`\nEditor is now accessible via:\n${editorUrl}`);
