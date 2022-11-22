@@ -242,10 +242,26 @@ export default mixins(workflowHelpers).extend({
 		itemSelected({ variable }: IVariableItemSelected) {
 			if (!this.editor) return;
 
+			const OPEN_MARKER = '{{';
+			const CLOSE_MARKER = '}}';
+
+			const { doc, selection } = this.editor.state;
+
+			const before = doc.toString().slice(0, selection.main.head);
+			const after = doc.toString().slice(selection.main.head, doc.length);
+
+			if (before.includes(OPEN_MARKER) && after.includes(CLOSE_MARKER)) {
+				this.editor.dispatch({
+					changes: { from: selection.main.head, insert: variable },
+				});
+
+				return;
+			}
+
 			this.editor.dispatch({
 				changes: {
-					from: this.editor.state.selection.main.head,
-					insert: `{{ ${variable} }}`,
+					from: selection.main.head,
+					insert: [OPEN_MARKER, variable, CLOSE_MARKER].join(' '),
 				},
 			});
 		},
