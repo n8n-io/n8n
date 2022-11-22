@@ -247,13 +247,14 @@ EEWorkflowController.post(
 		const workflow = new WorkflowEntity();
 		Object.assign(workflow, req.body.workflowData);
 
-		const safeWorkflow = await EEWorkflows.preventTampering(
-			workflow,
-			workflow.id.toString(),
-			req.user,
-		);
-
-		req.body.workflowData.nodes = safeWorkflow.nodes;
+		if (workflow.id !== undefined) {
+			const safeWorkflow = await EEWorkflows.preventTampering(
+				workflow,
+				workflow.id.toString(),
+				req.user,
+			);
+			req.body.workflowData.nodes = safeWorkflow.nodes;
+		}
 
 		return EEWorkflows.runManually(req.body, req.user, GenericHelpers.getSessionId(req));
 	}),
