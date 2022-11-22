@@ -1,6 +1,4 @@
-import {
-	OptionsWithUri,
-} from 'request';
+import { OptionsWithUri } from 'request';
 
 import {
 	IExecuteFunctions,
@@ -9,12 +7,18 @@ import {
 	IPollFunctions,
 } from 'n8n-core';
 
-import {
-	IDataObject, NodeApiError,
-} from 'n8n-workflow';
+import { IDataObject, NodeApiError } from 'n8n-workflow';
 
-export async function cloudflareApiRequest(this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions, method: string, resource: string, body: any = {}, qs: IDataObject = {}, uri?: string, headers: IDataObject = {}): Promise<any> { // tslint:disable-line:no-any
-
+export async function cloudflareApiRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions | IPollFunctions,
+	method: string,
+	resource: string,
+	body = {},
+	qs: IDataObject = {},
+	uri?: string,
+	headers: IDataObject = {},
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	const options: OptionsWithUri = {
 		method,
 		body,
@@ -51,13 +55,7 @@ export async function cloudflareApiRequestAllItems(
 	query.page = 1;
 
 	do {
-		responseData = await cloudflareApiRequest.call(
-			this,
-			method,
-			endpoint,
-			body,
-			query,
-		);
+		responseData = await cloudflareApiRequest.call(this, method, endpoint, body, query);
 		query.page++;
 		returnData.push.apply(returnData, responseData[propertyName]);
 	} while (responseData.result_info.total_pages !== responseData.result_info.page);

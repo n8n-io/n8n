@@ -64,9 +64,7 @@ export const certificateRequestFields: INodeProperties[] = [
 			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
 		typeOptions: {
 			loadOptionsMethod: 'getCertificateIssuingTemplates',
-			loadOptionsDependsOn: [
-				'applicationId',
-			],
+			loadOptionsDependsOn: ['applicationId'],
 		},
 		displayOptions: {
 			show: {
@@ -155,7 +153,7 @@ export const certificateRequestFields: INodeProperties[] = [
 				default: 'RSA',
 				description: 'The encryption algorithm for the public key',
 			},
-						{
+			{
 				displayName: 'Key Curve',
 				name: 'keyCurve',
 				type: 'options',
@@ -323,7 +321,8 @@ export const certificateRequestFields: INodeProperties[] = [
 				type: 'string',
 				placeholder: 'P1Y',
 				default: 'P1Y',
-				description: 'Specify how long the issued certificate should be valid for. Use ISO8601 format.',
+				description:
+					'Specify how long the issued certificate should be valid for. Use ISO8601 format.',
 				hint: 'e.g. 1 year -> P1Y',
 			},
 		],
