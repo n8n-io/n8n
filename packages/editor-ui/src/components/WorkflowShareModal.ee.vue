@@ -5,6 +5,7 @@
 		:eventBus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
+		:beforeClose="onCloseModal"
 	>
 		<template #content>
 			<div :class="$style.container">
@@ -241,6 +242,25 @@ export default mixins(
 			if (action === 'remove') {
 				this.onRemoveSharee(user.id);
 			}
+		},
+		async onCloseModal() {
+			if (this.isDirty) {
+				const shouldSave = await this.confirmMessage(
+					this.$locale.baseText(
+						'workflows.shareModal.saveBeforeClose.message',
+					),
+					this.$locale.baseText('workflows.shareModal.saveBeforeClose.title'),
+					'warning',
+					this.$locale.baseText('workflows.shareModal.saveBeforeClose.confirmButtonText'),
+					this.$locale.baseText('workflows.shareModal.saveBeforeClose.cancelButtonText'),
+				);
+
+				if (shouldSave) {
+					return await this.onSave();
+				}
+			}
+
+			return true;
 		},
 		async loadUsers() {
 			await this.usersStore.fetchUsers();
