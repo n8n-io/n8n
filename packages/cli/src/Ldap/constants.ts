@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/naming-convention */
 
-import { LdapConfig } from "./types";
+import { LdapConfig } from './types';
 
 export const LDAP_FEATURE_NAME = 'ldap';
 

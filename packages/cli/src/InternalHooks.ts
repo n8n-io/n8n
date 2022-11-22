@@ -17,7 +17,6 @@ import {
 	IExecutionTrackProperties,
 } from '@/Interfaces';
 import { Telemetry } from '@/telemetry';
-import { isLdapEnabled } from './Ldap/helpers';
 import { SignInType } from './Ldap/constants';
 
 export class InternalHooksClass implements IInternalHooksClass {

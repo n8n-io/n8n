@@ -25,7 +25,6 @@ import {
 import config from '@/config';
 import { issueCookie } from '../auth/jwt';
 import { InternalHooksManager } from '@/InternalHooksManager';
-import { Sign } from 'crypto';
 import { SignInType } from '@/Ldap/constants';
 
 export function usersNamespace(this: N8nApp): void {
