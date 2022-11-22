@@ -1,6 +1,5 @@
 import { loadClassInIsolation } from 'n8n-core';
 import type {
-	INode,
 	INodesAndCredentials,
 	INodeType,
 	INodeTypeDescription,
@@ -66,22 +65,6 @@ class NodeTypesClass implements INodeTypes {
 			return loadedNodes[type];
 		}
 		throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${type}`);
-	}
-
-	/**
-	 * Returns the names of the NodeTypes which are are needed
-	 * to execute the gives nodes
-	 *
-	 */
-	private getNeededNodeTypes(nodes: INode[]): Array<{ type: string; version: number }> {
-		// Check which node-types have to be loaded
-		const neededNodeTypes: Array<{ type: string; version: number }> = [];
-		for (const node of nodes) {
-			if (neededNodeTypes.find((neededNodes) => node.type === neededNodes.type) === undefined) {
-				neededNodeTypes.push({ type: node.type, version: node.typeVersion });
-			}
-		}
-		return neededNodeTypes;
 	}
 
 	private get loadedNodes() {

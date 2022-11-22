@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import {
+import type {
 	ExecutionError,
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
@@ -15,6 +15,7 @@ import {
 	ITelemetrySettings,
 	ITelemetryTrackProperties,
 	IWorkflowBase as IWorkflowBaseWorkflow,
+	LoadingDetails,
 	Workflow,
 	WorkflowActivateMode,
 	WorkflowExecuteMode,
@@ -58,10 +59,7 @@ export interface ICustomRequest extends Request {
 }
 
 export interface ICredentialsTypeData {
-	[key: string]: {
-		className: string;
-		sourcePath: string;
-	};
+	[key: string]: LoadingDetails;
 }
 
 export interface ICredentialsOverwrite {

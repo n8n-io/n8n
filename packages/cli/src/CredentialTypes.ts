@@ -6,7 +6,6 @@ import type {
 	LoadedClass,
 } from 'n8n-workflow';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
-import type { ICredentialsTypeData } from './Interfaces';
 
 class CredentialTypesClass implements ICredentialTypes {
 	constructor(private nodesAndCredentials: INodesAndCredentials) {}
@@ -17,38 +16,6 @@ class CredentialTypesClass implements ICredentialTypes {
 
 	getByName(credentialType: string): ICredentialType {
 		return this.getCredential(credentialType).type;
-	}
-
-	/**
-	 * Returns the credentials data of the given type and its parent types it extends
-	 */
-	getCredentialsDataWithParents(type: string): ICredentialsTypeData {
-		const credentialType = this.getByName(type);
-
-		const credentialTypes = this.loadedCredentials;
-		const credentialTypeData: ICredentialsTypeData = {};
-		credentialTypeData[type] = {
-			className: credentialTypes[type].type.constructor.name,
-			sourcePath: credentialTypes[type].sourcePath,
-		};
-
-		if (credentialType === undefined || credentialType.extends === undefined) {
-			return credentialTypeData;
-		}
-
-		for (const typeName of credentialType.extends) {
-			if (credentialTypeData[typeName] !== undefined) {
-				continue;
-			}
-
-			credentialTypeData[typeName] = {
-				className: credentialTypes[typeName].type.constructor.name,
-				sourcePath: credentialTypes[typeName].sourcePath,
-			};
-			Object.assign(credentialTypeData, this.getCredentialsDataWithParents(typeName));
-		}
-
-		return credentialTypeData;
 	}
 
 	private getCredential(type: string): LoadedClass<ICredentialType> {

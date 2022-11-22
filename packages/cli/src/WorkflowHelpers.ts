@@ -16,11 +16,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import * as Db from '@/Db';
-import {
-	ICredentialsDb,
-	IWorkflowErrorData,
-	IWorkflowExecutionDataProcess,
-} from '@/Interfaces';
+import { ICredentialsDb, IWorkflowErrorData, IWorkflowExecutionDataProcess } from '@/Interfaces';
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 

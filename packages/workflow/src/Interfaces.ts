@@ -1475,14 +1475,14 @@ export interface INodeTypes {
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
-export type KnownData = {
+export type LoadingDetails = {
 	className: string;
 	sourcePath: string;
 };
 
 export type KnownNodesAndCredentials = {
-	nodes: Record<string, KnownData>;
-	credentials: Record<string, KnownData>;
+	nodes: Record<string, LoadingDetails>;
+	credentials: Record<string, LoadingDetails>;
 };
 
 export interface LoadedClass<T> {

@@ -26,13 +26,15 @@ const loadClass = (sourcePath) => {
 	}
 };
 
-const writeJSON = async (file, data) => {
+const writePromises = [];
+const writeJSON = (file, data) => {
 	const filePath = path.resolve(distDir, file);
-	await mkdir(path.dirname(filePath), { recursive: true });
-	const payload = Array.isArray(data)
-		? `[\n${data.map((entry) => JSON.stringify(entry)).join(',\n')}\n]`
-		: JSON.stringify(data, null, 2);
-	await writeFile(filePath, payload, { encoding: 'utf-8' });
+	mkdir(path.dirname(filePath), { recursive: true }).then(() => {
+		const payload = Array.isArray(data)
+			? `[\n${data.map((entry) => JSON.stringify(entry)).join(',\n')}\n]`
+			: JSON.stringify(data, null, 2);
+		writePromises.push(writeFile(filePath, payload, { encoding: 'utf-8' }));
+	});
 };
 
 (async () => {
@@ -42,7 +44,7 @@ const writeJSON = async (file, data) => {
 			.sync(`dist/${kind}/**/*.${kind === 'nodes' ? 'node' : kind}.js`, {
 				cwd: packageDir,
 			})
-			.filter((filePath) => !/[vV]\d.node.js$/.test(filePath))
+			.filter((filePath) => !/[vV]\d.node\.js$/.test(filePath))
 			.map(loadClass)
 			.filter((data) => !!data)
 			.reduce((obj, { className, sourcePath, instance }) => {
@@ -52,24 +54,23 @@ const writeJSON = async (file, data) => {
 				return obj;
 			}, {});
 
-		await writeJSON(`known/${kind}.json`, known[kind]);
+		writeJSON(`known/${kind}.json`, known[kind]);
 	}
-
-	await mkdir(path.resolve(distDir, 'icons/nodes'), { recursive: true });
-	await mkdir(path.resolve(distDir, 'icons/credentials'), { recursive: true });
 
 	const loader = new PackageDirectoryLoader(packageDir);
 	await loader.loadAll();
 
 	const credentialTypes = Object.values(loader.credentialTypes).map((data) => data.type);
-	await writeJSON('types/credentials.json', credentialTypes);
+	writeJSON('types/credentials.json', credentialTypes);
 
 	const nodeTypes = Object.values(loader.nodeTypes)
 		.map((data) => data.type)
 		.flatMap((nodeData) => {
 			const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-			return allNodeTypes.map((element) => ({ ...element.description }));
+			return allNodeTypes.map((element) => element.description);
 		});
 
-	await writeJSON('types/nodes.json', nodeTypes);
+	writeJSON('types/nodes.json', nodeTypes);
+
+	await Promise.all(writePromises);
 })();
