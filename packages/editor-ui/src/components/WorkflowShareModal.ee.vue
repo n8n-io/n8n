@@ -205,9 +205,20 @@ export default mixins(
 				});
 			};
 
-			const workflowId = await saveWorkflowPromise();
-			await this.workflowsEEStore.saveWorkflowSharedWith({ workflowId, sharedWith: this.sharedWith });
-			this.loading = false;
+			try {
+				const workflowId = await saveWorkflowPromise();
+				await this.workflowsEEStore.saveWorkflowSharedWith({ workflowId, sharedWith: this.sharedWith });
+
+				this.$showMessage({
+					title: this.$locale.baseText('workflows.shareModal.onSave.success.title'),
+					type: 'success',
+				});
+			} catch (error) {
+				this.$showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
+			} finally {
+				this.modalBus.$emit('close');
+				this.loading = false;
+			}
 		},
 		async onAddSharee(userId: string) {
 			const { id, firstName, lastName, email } = this.usersStore.getUserById(userId)!;
