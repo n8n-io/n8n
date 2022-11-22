@@ -6,8 +6,8 @@ import { SharedWorkflow } from './SharedWorkflow';
 import { SharedCredentials } from './SharedCredentials';
 import { AbstractEntity } from './AbstractEntity';
 
-export type RoleNames = 'owner' | 'member' | 'user' | 'editor';
-export type RoleScopes = 'global' | 'workflow' | 'credential';
+type RoleNames = 'owner' | 'member' | 'user' | 'editor';
+type RoleScopes = 'global' | 'workflow' | 'credential';
 
 @Entity()
 @Unique(['scope', 'name'])
