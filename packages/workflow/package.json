@@ -28,7 +28,7 @@
     "dev": "pnpm watch",
     "typecheck": "tsc",
     "build": "tsc -p tsconfig.build.json",
-    "format": "prettier **/**.ts --write . --ignore-path ../../.prettierignore",
+    "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc --watch",
