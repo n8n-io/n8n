@@ -36,5 +36,5 @@ export async function segmentApiRequest(
 	if (!Object.keys(body).length) {
 		delete options.body;
 	}
-	return await this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'segmentApi', options);
 }
