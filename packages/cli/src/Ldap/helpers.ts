@@ -281,10 +281,9 @@ export const findAndAuthenticateLdapUser = async (
 			void InternalHooksManager.getInstance().onLdapLoginSyncFailed({
 				error: e.message,
 			});
-      Logger.error(`LDAP - Error during search`, { message: e.message });
+			Logger.error(`LDAP - Error during search`, { message: e.message });
 		}
 		return undefined;
-		}
 	}
 
 	if (!searchResult.length) {
