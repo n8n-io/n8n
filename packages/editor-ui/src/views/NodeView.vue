@@ -677,7 +677,9 @@ export default mixins(
 				this.nodeCreatorStore.selectedType = TRIGGER_NODE_FILTER;
 				this.nodeCreatorStore.showScrim = true;
 				this.onToggleNodeCreator({ source, createNodeActive: true });
-				this.nodeCreatorStore.showTabs = false;
+				this.$nextTick(() => {
+					this.nodeCreatorStore.showTabs = false;
+				});
 			},
 			async openExecution(executionId: string) {
 				this.startLoading();
