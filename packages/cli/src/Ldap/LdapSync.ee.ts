@@ -121,7 +121,7 @@ export class LdapSync {
 			});
 		}
 
-    Logger.debug(`LDAP - Users proccesed`, {
+		Logger.debug(`LDAP - Users proccesed`, {
 			created: usersToCreate.length,
 			updated: usersToUpdate.length,
 			disabled: usersToDisable.length,
@@ -165,7 +165,7 @@ export class LdapSync {
 		});
 
 		Logger.debug(`LDAP - Syncronization finished successfully`);
-  }
+	}
 
 	/**
 	 * Stop the current job scheduled,
