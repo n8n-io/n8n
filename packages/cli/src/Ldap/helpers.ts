@@ -26,13 +26,16 @@ import {
 } from './constants';
 import type { LdapConfig, LdapDbColumns } from './types';
 import { LoggerProxy as Logger } from 'n8n-workflow';
+import { getLicense } from '@/License';
 
 /**
  *  Check whether the LDAP feature
 *	is disabled in the instance
  */
-export const isLdapEnabled = (): boolean =>
-	isUserManagementEnabled() && config.getEnv(LDAP_ENABLED);
+export const isLdapEnabled = (): boolean => {
+	const license = getLicense();
+	return isUserManagementEnabled() && (config.getEnv(LDAP_ENABLED) || license.isLdapEnabled());
+};
 
 /**
  * 	Check whether the LDAP feature
