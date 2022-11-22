@@ -17,8 +17,7 @@ const Template = (args, { argTypes }) => ({
 	components: {
 		N8nTag,
 	},
-	template:
-		'<n8n-tag v-bind="$props"></n8n-tag>',
+	template: '<n8n-tag v-bind="$props"></n8n-tag>',
 });
 
 export const Tag = Template.bind({});

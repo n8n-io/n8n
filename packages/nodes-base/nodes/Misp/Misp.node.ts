@@ -193,7 +193,7 @@ export class Misp implements INodeType {
 							value: this.getNodeParameter('value', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						throwOnMissingSharingGroup.call(this, additionalFields);
 
@@ -234,7 +234,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						throwOnMissingSharingGroup.call(this, updateFields);
@@ -261,7 +261,7 @@ export class Misp implements INodeType {
 							info: this.getNodeParameter('information', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						throwOnMissingSharingGroup.call(this, additionalFields);
 
@@ -318,7 +318,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						throwOnMissingSharingGroup.call(this, updateFields);
@@ -375,7 +375,7 @@ export class Misp implements INodeType {
 							url,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -509,7 +509,7 @@ export class Misp implements INodeType {
 							name: this.getNodeParameter('name', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -550,7 +550,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						Object.assign(body, updateFields);
 
@@ -600,10 +600,10 @@ export class Misp implements INodeType {
 
 						responseData = (await mispApiRequest.call(this, 'GET', '/tags')) as LoadedTags;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.Tag.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -645,7 +645,7 @@ export class Misp implements INodeType {
 							role_id: this.getNodeParameter('role_id', i),
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields)) {
 							Object.assign(body, additionalFields);
@@ -685,7 +685,7 @@ export class Misp implements INodeType {
 						// ----------------------------------------
 
 						const body = {};
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						throwOnEmptyUpdate.call(this, resource, updateFields);
 						Object.assign(body, updateFields);
 
@@ -717,10 +717,10 @@ export class Misp implements INodeType {
 							Warninglists: Array<{ Warninglist: unknown }>;
 						};
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							responseData = responseData.Warninglists.slice(0, limit).map((i) => i.Warninglist);
 						} else {
 							responseData = responseData.Warninglists.map((i) => i.Warninglist);

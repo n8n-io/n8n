@@ -9,17 +9,19 @@
 					:circle="false"
 				/>
 			</span>
-			<el-dropdown-menu slot="dropdown">
-				<el-dropdown-item :command="{command: 'value'}">
-					{{ $locale.baseText('runData.copyValue') }}
-				</el-dropdown-item>
-				<el-dropdown-item :command="{command: 'itemPath'}" divided>
-					{{ $locale.baseText('runData.copyItemPath') }}
-				</el-dropdown-item>
-				<el-dropdown-item :command="{command: 'parameterPath'}">
-					{{ $locale.baseText('runData.copyParameterPath') }}
-				</el-dropdown-item>
-			</el-dropdown-menu>
+			<template #dropdown>
+				<el-dropdown-menu>
+					<el-dropdown-item :command="{command: 'value'}">
+						{{ $locale.baseText('runData.copyValue') }}
+					</el-dropdown-item>
+					<el-dropdown-item :command="{command: 'itemPath'}" divided>
+						{{ $locale.baseText('runData.copyItemPath') }}
+					</el-dropdown-item>
+					<el-dropdown-item :command="{command: 'parameterPath'}">
+						{{ $locale.baseText('runData.copyParameterPath') }}
+					</el-dropdown-item>
+				</el-dropdown-menu>
+			</template>
 		</el-dropdown>
 	</div>
 </template>

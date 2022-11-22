@@ -2,8 +2,7 @@ const hasOwnProperty = Object.prototype.hasOwnProperty;
 
 export function hasOwn(obj, key) {
 	return hasOwnProperty.call(obj, key);
-};
-
+}
 
 const RE_NARGS = /(%|)\{([0-9a-zA-Z_]+)\}/g;
 /**
@@ -12,15 +11,14 @@ const RE_NARGS = /(%|)\{([0-9a-zA-Z_]+)\}/g;
  *    https://github.com/ElemeFE/element/blob/dev/src/locale/format.js
  *    https://github.com/Matt-Esch/string-template/index.js
  */
-export default function(Vue) {
-
+export default function (Vue) {
 	/**
-   * template
-   *
-   * @param {String | Function} string
-   * @param {Array} ...args
-   * @return {String}
-   */
+	 * template
+	 *
+	 * @param {String | Function} string
+	 * @param {Array} ...args
+	 * @return {String}
+	 */
 
 	function template(value, ...args) {
 		if (typeof value === 'function') {
@@ -38,8 +36,7 @@ export default function(Vue) {
 		return string.replace(RE_NARGS, (match, prefix, i, index) => {
 			let result;
 
-			if (string[index - 1] === '{' &&
-        string[index + match.length] === '}') {
+			if (string[index - 1] === '{' && string[index + match.length] === '}') {
 				return i;
 			} else {
 				result = hasOwn(args, i) ? args[i] : null;

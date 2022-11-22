@@ -72,7 +72,7 @@ export function authenticationMethods(this: N8nApp): void {
 
 					// currently only LDAP users during syncronization
 					// can be set to disabled
-					if (user.disabled === true) {
+					if (user.disabled) {
 						res.clearCookie(AUTH_COOKIE_NAME);
 						const error = new Error('User disabled cannot log in');
 						// @ts-ignore

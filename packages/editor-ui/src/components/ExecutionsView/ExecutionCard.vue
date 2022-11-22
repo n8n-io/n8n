@@ -18,7 +18,8 @@
 					<n8n-spinner v-if="executionUIDetails.name === 'running'" size="small" :class="[$style.spinner, 'mr-4xs']"/>
 					<n8n-text :class="$style.statusLabel" size="small">{{ executionUIDetails.label }}</n8n-text>
 					<n8n-text v-if="executionUIDetails.name === 'running'" :color="isActive? 'text-dark' : 'text-base'" size="small">
-						{{ $locale.baseText('executionDetails.runningTimeRunning', { interpolate: { time: executionUIDetails.runningTime } }) }}
+						{{ $locale.baseText('executionDetails.runningTimeRunning') }}
+						<execution-time :start-time="execution.startedAt"/>
 					</n8n-text>
 					<n8n-text v-else-if="executionUIDetails.name !== 'waiting' && executionUIDetails.name !== 'unknown'" :color="isActive? 'text-dark' : 'text-base'" size="small">
 						{{ $locale.baseText('executionDetails.runningTimeFinished', { interpolate: { time: executionUIDetails.runningTime } }) }}
@@ -56,6 +57,7 @@ import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers'
 import { VIEWS } from '../../constants';
 import { showMessage } from '../mixins/showMessage';
 import { restApi } from '../mixins/restApi';
+import ExecutionTime from '@/components/ExecutionTime.vue';
 
 export default mixins(
 	executionHelpers,
@@ -63,6 +65,9 @@ export default mixins(
 	restApi,
 ).extend({
 	name: 'execution-card',
+	components: {
+		ExecutionTime,
+	},
 	data() {
 		return {
 			VIEWS,

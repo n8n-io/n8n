@@ -443,10 +443,10 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 						}
 
 						const { webinarKey, times } = this.getNodeParameter('additionalFields', i) as {
@@ -521,7 +521,7 @@ export class GoToWebinar implements INodeType {
 							times: timesProperties,
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						Object.assign(body, additionalFields);
 
 						const endpoint = `organizers/${organizerKey}/webinars`;
@@ -563,10 +563,10 @@ export class GoToWebinar implements INodeType {
 
 						const qs = {} as IDataObject;
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', 0) as number;
+							qs.limit = this.getNodeParameter('limit', 0);
 						}
 
 						const { times } = this.getNodeParameter('additionalFields', i) as {
@@ -605,7 +605,7 @@ export class GoToWebinar implements INodeType {
 
 						let body = {};
 
-						let updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						let updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.times) {
 							const { times } = updateFields as {

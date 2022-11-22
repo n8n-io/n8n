@@ -14,7 +14,7 @@ export async function getAll(
 
 	//limit parameters
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const limit = this.getNodeParameter('limit', 0, 0);
 
 	//response
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);

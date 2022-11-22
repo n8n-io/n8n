@@ -337,6 +337,12 @@ function getPropertyKeyValue(value: any, type: string, timezone: string, version
 				select: version === 1 ? { id: value.selectValue } : { name: value.selectValue },
 			};
 			break;
+		case 'status':
+			result = {
+				type: 'status',
+				status: { name: value.statusValue },
+			};
+			break;
 		case 'date':
 			const format = getDateFormat(value.includeTime);
 			const timezoneValue = value.timezone === 'default' ? timezone : value.timezone;
@@ -542,6 +548,8 @@ function simplifyProperty(property: any) {
 			// tslint:disable-next-line: no-any
 			(file: { type: string; [key: string]: any }) => file[file.type].url,
 		);
+	} else if (['status'].includes(property.type)) {
+		result = property[type].name;
 	}
 	return result;
 }
@@ -622,6 +630,7 @@ export function getConditions() {
 		checkbox: 'checkbox',
 		select: 'select',
 		multi_select: 'multi_select',
+		status: 'status',
 		date: 'date',
 		people: 'people',
 		files: 'files',
@@ -660,6 +669,7 @@ export function getConditions() {
 		checkbox: ['equals', 'does_not_equal'],
 		select: ['equals', 'does_not_equal', 'is_empty', 'is_not_empty'],
 		multi_select: ['contains', 'does_not_equal', 'is_empty', 'is_not_empty'],
+		status: ['equals', 'does_not_equal'],
 		date: [
 			'equals',
 			'before',
@@ -933,4 +943,29 @@ export function validateJSON(json: string | undefined): any {
 		result = undefined;
 	}
 	return result;
+}
+
+/**
+ * Manually extract a richtext's database mention RLC parameter.
+ * @param blockValues the blockUi.blockValues node parameter.
+ */
+export function extractDatabaseMentionRLC(blockValues: IDataObject[]) {
+	blockValues.forEach(bv => {
+		if (bv.richText && bv.text) {
+			const texts = (bv.text as { text: [{ textType: string, mentionType: string, database: string | { value: string, mode: string, __rl: boolean, __regex: string } }] }).text;
+			texts.forEach(txt => {
+				if (txt.textType === 'mention' && txt.mentionType === 'database') {
+					if (typeof txt.database === 'object' && txt.database.__rl) {
+						if (txt.database.__regex) {
+							const regex = new RegExp(txt.database.__regex);
+							const extracted = regex.exec(txt.database.value);
+							txt.database = extracted![1];
+						} else {
+							txt.database = txt.database.value;
+						}
+					}
+				}
+			});
+		}
+	});
 }

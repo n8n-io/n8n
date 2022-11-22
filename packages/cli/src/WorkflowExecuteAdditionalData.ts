@@ -21,7 +21,6 @@ import {
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
-	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRun,
@@ -62,12 +61,9 @@ import * as Push from '@/Push';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import {
-	checkPermissionsForExecution,
-	getUserById,
-	getWorkflowOwner,
-} from '@/UserManagement/UserManagementHelper';
+import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
 import { findSubworkflowStart } from '@/utils';
+import { PermissionChecker } from './UserManagement/PermissionChecker';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -855,7 +851,7 @@ export async function getWorkflowData(
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
 			relations,
-			where: WorkflowHelpers.whereClause({
+			where: whereClause({
 				user,
 				entityType: 'workflow',
 				entityId: workflowInfo.id,
@@ -942,7 +938,7 @@ export async function executeWorkflow(
 
 	let data;
 	try {
-		await checkPermissionsForExecution(workflow, additionalData.userId);
+		await PermissionChecker.check(workflow, additionalData.userId);
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
