@@ -471,7 +471,7 @@ describe('POST /workflows', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
-			'The workflow contains credentials that you do not have access to',
+			'The workflow you are trying to save contains credentials that are not shared with you',
 		);
 	});
 
@@ -760,7 +760,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
@@ -802,7 +802,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
@@ -832,7 +832,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(activationAttemptResponse.status).toBe(400);
 		expect(activationAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
@@ -871,7 +871,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
@@ -906,7 +906,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
@@ -941,7 +941,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 });

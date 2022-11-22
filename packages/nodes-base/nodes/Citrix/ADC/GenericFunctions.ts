@@ -19,8 +19,7 @@ export async function citrixADCApiRequest(
 	uri?: string,
 	option: IDataObject = {},
 	// tslint:disable-next-line:no-any
-	): Promise<any> {
-
+): Promise<any> {
 	const { url } = (await this.getCredentials('citrixAdcApi')) as { url: string };
 
 	let options: OptionsWithUri = {

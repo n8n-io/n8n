@@ -294,7 +294,7 @@ class App {
 
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (!Db.isInitialized) {
-				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('Database is not ready!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -318,7 +318,7 @@ class App {
 				await connection.query('SELECT 1');
 				// eslint-disable-next-line id-denylist
 			} catch (err) {
-				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 

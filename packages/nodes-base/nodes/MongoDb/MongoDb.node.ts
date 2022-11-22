@@ -16,7 +16,13 @@ import { nodeDescription } from './MongoDbDescription';
 
 import { buildParameterizedConnString, prepareFields, prepareItems } from './GenericFunctions';
 
-import { FindOneAndReplaceOptions, FindOneAndUpdateOptions, MongoClient, ObjectId, UpdateOptions } from 'mongodb';
+import {
+	FindOneAndReplaceOptions,
+	FindOneAndUpdateOptions,
+	MongoClient,
+	ObjectId,
+	UpdateOptions,
+} from 'mongodb';
 
 import { validateAndResolveMongoCredentials } from './GenericFunctions';
 

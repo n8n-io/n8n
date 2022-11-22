@@ -168,7 +168,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		const previousVersion = await EEWorkflowsService.get({ id: parseInt(workflowId, 10) });
 
 		if (!previousVersion) {
-			throw new ResponseHelper.ResponseError('Workflow not found', undefined, 404);
+			throw new ResponseHelper.NotFoundError('Workflow not found');
 		}
 
 		const allCredentials = await EECredentials.getAll(user);
@@ -180,10 +180,8 @@ export class EEWorkflowsService extends WorkflowsService {
 				allCredentials,
 			);
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				'Invalid workflow credentials - make sure you have access to all credentials and try again.',
-				undefined,
-				400,
 			);
 		}
 	}
