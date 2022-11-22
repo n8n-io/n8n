@@ -13,7 +13,9 @@
 		:tooltipText="tooltipText"
 		:required="required && showRequiredAsterisk"
 	>
-		<slot #content>{{ tooltipText }}</slot>
+		<template #content>
+			{{ tooltipText }}
+		</template>
 		<el-switch
 			:value="value"
 			@change="onInput"
