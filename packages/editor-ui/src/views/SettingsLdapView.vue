@@ -97,13 +97,13 @@
 						:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
 					>
 					</el-table-column>
-
+					<template #append>
 					<infinite-loading
-						slot="append"
 						@infinite="getLdapSyncronizations"
 						force-use-infinite-wrapper=".el-table__body-wrapper"
 					>
 					</infinite-loading>
+				</template>
 				</el-table>
 			</div>
 			<div class="pb-3xl">
@@ -296,7 +296,9 @@ export default mixins(showMessage).extend({
 				);
 				}
 
-				if (!saveForm) return;
+				if (!saveForm) {
+					this.hasAnyChanges = true;
+				}
 
 				this.adConfig = await this.settingsStore.updateLdapConfig(newConfiguration);
 				this.$showToast({

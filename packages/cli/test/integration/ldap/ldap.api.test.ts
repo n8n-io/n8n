@@ -46,6 +46,7 @@ beforeAll(async () => {
 	utils.initConfigFile();
 	utils.initTestLogger();
 	utils.initLdapManager();
+	utils.initTestTelemetry();
 });
 
 beforeEach(async () => {

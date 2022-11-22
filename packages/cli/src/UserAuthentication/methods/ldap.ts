@@ -1,3 +1,5 @@
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { SignInType } from '@/Ldap/constants';
 import {
 	createLdapUserOnLocalDb,
 	findAndAuthenticateLdapUser,
@@ -48,7 +50,13 @@ export const handleLdapLogin = async (
 			await transformEmailUserToLdapUser(emailUser.email, ldapAttributesValues);
 		} else {
 			const role = await getLdapUserRole();
-			await createLdapUserOnLocalDb(role, ldapAttributesValues);
+			const { id } = await createLdapUserOnLocalDb(role, ldapAttributesValues);
+
+			void InternalHooksManager.getInstance().onUserSignup({
+				user_id: id,
+				user_type: SignInType.LDAP,
+				was_disabled_ldap_user: false,
+			});
 		}
 	}
 

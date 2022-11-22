@@ -107,10 +107,10 @@ export interface Props {
 	focusInitially?: boolean;
 	labelSize?: 'small' | 'medium';
 	disabled?: boolean;
-	activeLabel?: string,
-	activeColor?: string,
-	inactiveLabel?: string,
-	inactiveColor?: string,
+	activeLabel?: string;
+	activeColor?: string;
+	inactiveLabel?: string;
+	inactiveColor?: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {

@@ -224,6 +224,15 @@ export function passwordResetNamespace(this: N8nApp): void {
 				fields_changed: ['password'],
 			});
 
+			// if this user used to be an LDAP users
+			if (user.ldapId) {
+				void InternalHooksManager.getInstance().onUserSignup({
+					user_id: userId,
+					user_type: SignInType.EMAIL,
+					was_disabled_ldap_user: true,
+				});
+			}
+
 			await this.externalHooks.run('user.password.update', [user.email, password]);
 		}),
 	);

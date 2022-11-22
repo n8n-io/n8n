@@ -1941,6 +1941,7 @@ export async function start(): Promise<void> {
 			binaryDataMode: binaryDataConfig.mode,
 			n8n_multi_user_allowed: isUserManagementEnabled(),
 			smtp_set_up: config.getEnv('userManagement.emails.mode') === 'smtp',
+			ldap_allowed: isLdapEnabled(),
 		};
 
 		void Db.collections

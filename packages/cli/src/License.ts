@@ -108,6 +108,10 @@ export class License {
 	isSharingEnabled() {
 		return this.isFeatureEnabled(LICENSE_FEATURES.SHARING);
 	}
+
+	isLdapEnabled() {
+		return this.isFeatureEnabled(LICENSE_FEATURES.LDAP);
+	}
 }
 
 let licenseInstance: License | undefined;
