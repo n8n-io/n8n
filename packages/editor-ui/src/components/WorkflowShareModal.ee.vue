@@ -120,6 +120,12 @@ export default mixins(
 	components: {
 		Modal,
 	},
+	props: {
+		data: {
+			type: Object,
+			default: () => ({}),
+		},
+	},
 	data() {
 		const workflowsStore = useWorkflowsStore();
 
@@ -127,7 +133,7 @@ export default mixins(
 			WORKFLOW_SHARE_MODAL_KEY,
 			loading: false,
 			modalBus: new Vue(),
-			sharedWith: [...(workflowsStore.workflow.sharedWith || [])] as Array<Partial<IUser>>,
+			sharedWith: [...(workflowsStore.workflowsById[this.data.id].sharedWith || [])] as Array<Partial<IUser>>,
 			EnterpriseEditionFeature,
 		};
 	},
@@ -150,7 +156,7 @@ export default mixins(
 			] as Array<Partial<IUser>>).concat(this.sharedWith || []);
 		},
 		workflow(): IWorkflowDb {
-			return this.workflowsStore.workflow;
+			return this.workflowsStore.workflowsById[this.data.id];
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -221,7 +227,7 @@ export default mixins(
 			}
 
 			if (confirm) {
-				this.sharedWith = this.sharedWith.filter((sharee: IUser) => {
+				this.sharedWith = this.sharedWith.filter((sharee: Partial<IUser>) => {
 					return sharee.id !== user.id;
 				});
 			}
