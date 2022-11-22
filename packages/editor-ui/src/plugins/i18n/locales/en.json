@@ -1378,6 +1378,8 @@
 	"workflows.shareModal.list.delete.confirm.message": "<strong>This might cause the workflow to stop working:</strong> if {name} is the only user with access to credentials used in this workflow, those credentials will also be removed from {workflow}.",
 	"workflows.shareModal.list.delete.confirm.confirmButtonText": "Remove access",
 	"workflows.shareModal.list.delete.confirm.cancelButtonText": "Cancel",
+	"workflows.shareModal.onSave.success.title": "Workflow sharing settings have been saved",
+	"workflows.shareModal.onSave.error.title": "There was a problem saving sharing settings",
 	"workflows.shareModal.save": "Save",
 	"workflows.shareModal.changesHint": "You made changes",
 	"workflows.shareModal.notAvailable": "Sharing workflows with others is currently available only on n8n cloud, our hosted offering.",
