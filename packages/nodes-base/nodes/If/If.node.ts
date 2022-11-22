@@ -315,7 +315,8 @@ export class If implements INodeType {
 		let item: INodeExecutionData;
 		let combineOperation: string;
 
-		const isDateObject = (value: NodeParameterValue) => Object.prototype.toString.call(value) === '[object Date]';
+		const isDateObject = (value: NodeParameterValue) =>
+			Object.prototype.toString.call(value) === '[object Date]';
 		const isDateInvalid = (value: NodeParameterValue) => value?.toString() === 'Invalid Date';
 
 		// The compare operations

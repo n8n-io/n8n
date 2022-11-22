@@ -108,7 +108,7 @@ export class MicrosoftToDo implements INodeType {
 						const body: IDataObject = {
 							applicationName: this.getNodeParameter('applicationName', i) as string,
 							displayName: this.getNodeParameter('displayName', i) as string,
-							...(this.getNodeParameter('additionalFields', i)),
+							...this.getNodeParameter('additionalFields', i),
 						};
 
 						responseData = await microsoftApiRequest.call(
