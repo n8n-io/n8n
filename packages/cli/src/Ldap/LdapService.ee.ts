@@ -1,6 +1,5 @@
 /* eslint-disable no-underscore-dangle */
 import { Client, Entry, ClientOptions } from 'ldapts';
-import { LoggerProxy as Logger } from 'n8n-workflow';
 import type { LdapConfig } from './types';
 import { formatUrl, getMappingAttributes } from './helpers';
 import { BINARY_AD_ATTRIBUTES, ConnectionSecurity } from './constants';

@@ -30,7 +30,7 @@ import { getLicense } from '@/License';
 
 /**
  *  Check whether the LDAP feature
-*	is disabled in the instance
+ *	is disabled in the instance
  */
 export const isLdapEnabled = (): boolean => {
 	const license = getLicense();
