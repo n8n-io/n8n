@@ -6,12 +6,9 @@ import {
 	IPollFunctions,
 } from 'n8n-workflow';
 
-import {
-	apiRequest,
-	sheetsSearch,
-	spreadsheetGetSheetNameById,
-	spreadSheetsSearch,
-} from './GenericFunctions';
+import { apiRequest } from './v2/transport';
+import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
+import { GoogleSheet } from './v2/helpers/GoogleSheet';
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -281,11 +278,14 @@ export class GoogleSheetsTrigger implements INodeType {
 		const documentId = this.getNodeParameter('documentId', undefined, {
 			extractValue: true,
 		}) as string;
+
 		const sheetId = this.getNodeParameter('sheetId', undefined, {
 			extractValue: true,
 		}) as string;
 
-		const sheetName = await spreadsheetGetSheetNameById.call(this, documentId, sheetId);
+		const googleSheet = new GoogleSheet(documentId, this);
+
+		const sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
 
 		const range = this.getNodeParameter('range') as string;
 		const startIndex = this.getNodeParameter('startIndex') as number;
@@ -315,6 +315,7 @@ export class GoogleSheetsTrigger implements INodeType {
 		} else {
 			ranges.push(`${rangeFrom}${webhookData.lastIndexChecked}:${rangeTo}`);
 		}
+
 		const { values } = await apiRequest.call(
 			this,
 			'GET',
