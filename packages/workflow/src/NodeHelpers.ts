@@ -423,9 +423,7 @@ export function getContext(
  * Returns which parameters are dependent on which
  *
  */
-export function getParamterDependencies(
-	nodePropertiesArray: INodeProperties[],
-): IParameterDependencies {
+function getParameterDependencies(nodePropertiesArray: INodeProperties[]): IParameterDependencies {
 	const dependencies: IParameterDependencies = {};
 
 	for (const nodeProperties of nodePropertiesArray) {
@@ -548,7 +546,7 @@ export function getNodeParameters(
 	parameterDependencies?: IParameterDependencies,
 ): INodeParameters | null {
 	if (parameterDependencies === undefined) {
-		parameterDependencies = getParamterDependencies(nodePropertiesArray);
+		parameterDependencies = getParameterDependencies(nodePropertiesArray);
 	}
 
 	// Get the parameter names which get used multiple times as for this

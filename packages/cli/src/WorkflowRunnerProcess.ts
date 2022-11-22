@@ -47,7 +47,7 @@ import { generateFailedExecutionFromError } from '@/WorkflowHelpers';
 import { initErrorHandling } from '@/ErrorReporting';
 import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 
-export class WorkflowRunnerProcess {
+class WorkflowRunnerProcess {
 	data: IWorkflowExecutionDataProcessWithExecution | undefined;
 
 	logger: ILogger;
