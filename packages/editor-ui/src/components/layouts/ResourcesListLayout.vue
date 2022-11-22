@@ -374,7 +374,7 @@ export default mixins(
 			this.sendSortingTelemetry();
 		},
 		loading(value) {
-			if (!value && this.shouldSwitchToAllSubview) {
+			if (!value && this.subviewResources.length === 0 && this.shouldSwitchToAllSubview) {
 				this.isOwnerSubview = false;
 			}
 		},
