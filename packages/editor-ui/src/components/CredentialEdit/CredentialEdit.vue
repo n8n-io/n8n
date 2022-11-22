@@ -231,7 +231,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		if (this.credentialType) {
 			for (const property of this.credentialType.properties) {
-				if (!this.credentialData.hasOwnProperty(property.name)) {
+				if (
+					!this.credentialData.hasOwnProperty(property.name) &&
+					!this.credentialType.__overwrittenProperties?.includes(property.name)
+				) {
 					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
 				}
 			}
@@ -516,7 +519,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				);
 			}
 
-			// The properties defined on the parent credentials take presidence
+			// The properties defined on the parent credentials take precedence
 			NodeHelpers.mergeNodeProperties(
 				combineProperties,
 				credentialTypeData.properties,
