@@ -24,7 +24,7 @@ export class RundeckApi implements ICredentialType {
 			default: '',
 		},
 	];
-	
+
 	authenticate: IAuthenticateGeneric = {
 		type: 'generic',
 		properties: {
@@ -41,5 +41,5 @@ export class RundeckApi implements ICredentialType {
 			url: '/api/14/system/info',
 			method: 'GET',
 		},
-	};	
+	};
 }

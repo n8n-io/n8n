@@ -18,9 +18,6 @@
 		]
 	},
 	"subcategories": {
-		"Core Nodes": [
-			"Flow",
-			"Other Trigger Nodes"
-		]
+		"Core Nodes": ["Flow", "Other Trigger Nodes"]
 	}
 }

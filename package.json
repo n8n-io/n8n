@@ -26,11 +26,11 @@
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
     "cypress:install": "cypress install",
-    "test:e2e:db:clean": "rimraf ~/.n8n/cypress.sqlite ~/.n8n/cypress.sqlite.bak",
+    "test:e2e:db:clean": "rimraf ~/.n8n/cypress.sqlite",
     "test:e2e:cypress:run": "cypress run",
     "test:e2e": "pnpm test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:run",
     "test:e2e:cypress:dev": "cypress open",
-    "test:e2e:dev": "pnpm test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:dev",
+    "test:e2e:dev": "pnpm test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false CYPRESS_BASE_URL=http://localhost:8080 start-server-and-test dev http://localhost:8080/favicon.ico test:e2e:cypress:dev",
     "test:e2e:cypress:ci:smoke": "cypress run --headless --spec \"cypress/e2e/0-smoke.cy.ts\"",
     "test:e2e:ci:smoke": "pnpm test:e2e:db:clean && cross-env DB_SQLITE_DATABASE=cypress.sqlite N8N_DIAGNOSTICS_ENABLED=false start-server-and-test start http://localhost:5678/favicon.ico test:e2e:cypress:ci:smoke"
   },
