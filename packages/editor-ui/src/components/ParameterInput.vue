@@ -105,15 +105,17 @@
 					:title="displayTitle"
 					:placeholder="getPlaceholder()"
 				>
-					<div slot="suffix" class="expand-input-icon-container">
-						<font-awesome-icon
-							v-if="!isReadOnly"
-							icon="expand-alt"
-							class="edit-window-button clickable"
-							:title="$locale.baseText('parameterInput.openEditWindow')"
-							@click="displayEditDialog()"
-						/>
-					</div>
+					<template #suffix>
+						<div class="expand-input-icon-container">
+							<font-awesome-icon
+								v-if="!isReadOnly"
+								icon="expand-alt"
+								class="edit-window-button clickable"
+								:title="$locale.baseText('parameterInput.openEditWindow')"
+								@click="displayEditDialog()"
+							/>
+						</div>
+					</template>
 				</n8n-input>
 			</div>
 
@@ -200,7 +202,7 @@
 				@setFocus="setFocus"
 				@onBlur="onBlur"
 			>
-				<template v-slot:issues-and-options>
+				<template #issues-and-options>
 					<parameter-issues :issues="getIssues" />
 				</template>
 			</credentials-select>

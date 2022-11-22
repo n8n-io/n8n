@@ -13,6 +13,8 @@ import { Role } from '@db/entities/Role';
 import { AuthenticatedRequest } from '@/requests';
 import config from '@/config';
 import { getWebhookBaseUrl } from '../WebhookHelpers';
+import { getLicense } from '@/License';
+import { WhereClause } from '@/Interfaces';
 
 export async function getWorkflowOwner(workflowId: string | number): Promise<User> {
 	const sharedWorkflow = await Db.collections.SharedWorkflow.findOneOrFail({
@@ -40,7 +42,11 @@ export function isUserManagementEnabled(): boolean {
 }
 
 export function isSharingEnabled(): boolean {
-	return isUserManagementEnabled() && config.getEnv('enterprise.features.sharing');
+	const license = getLicense();
+	return (
+		isUserManagementEnabled() &&
+		(config.getEnv('enterprise.features.sharing') || license.isSharingEnabled())
+	);
 }
 
 export function isUserManagementDisabled(): boolean {
@@ -209,4 +215,32 @@ export function rightDiff<T1, T2>(
 		}
 		return acc;
 	}, []);
+}
+
+/**
+ * Build a `where` clause for a TypeORM entity search,
+ * checking for member access if the user is not an owner.
+ */
+export function whereClause({
+	user,
+	entityType,
+	entityId = '',
+	roles = [],
+}: {
+	user: User;
+	entityType: 'workflow' | 'credentials';
+	entityId?: string;
+	roles?: string[];
+}): WhereClause {
+	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
+
+	// TODO: Decide if owner access should be restricted
+	if (user.globalRole.name !== 'owner') {
+		where.user = { id: user.id };
+		if (roles?.length) {
+			where.role = { name: In(roles) };
+		}
+	}
+
+	return where;
 }

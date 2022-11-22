@@ -6,7 +6,7 @@ export const versionDescription: INodeTypeDescription = {
 	name: 'googleSheets',
 	icon: 'file:googleSheets.svg',
 	group: ['input', 'output'],
-	version: 1,
+	version: [1, 2],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Read, update and write data to Google Sheets',
 	defaults: {
@@ -51,6 +51,33 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			],
 			default: 'serviceAccount',
+			displayOptions: {
+				show: {
+					'@version': [1],
+				},
+			},
+		},
+		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'options',
+			options: [
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					name: 'OAuth2 (recommended)',
+					value: 'oAuth2',
+				},
+				{
+					name: 'Service Account',
+					value: 'serviceAccount',
+				},
+			],
+			default: 'oAuth2',
+			displayOptions: {
+				show: {
+					'@version': [2],
+				},
+			},
 		},
 		{
 			displayName: 'Resource',

@@ -52,7 +52,6 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 
 import config from '@/config';
 import { User } from '@db/entities/User';
-import { whereClause } from '@/WorkflowHelpers';
 import { WorkflowEntity } from '@db/entities/WorkflowEntity';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import { createErrorExecution } from '@/GenericHelpers';
@@ -60,6 +59,7 @@ import { WORKFLOW_REACTIVATE_INITIAL_TIMEOUT, WORKFLOW_REACTIVATE_MAX_TIMEOUT } 
 import { NodeTypes } from '@/NodeTypes';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import { ExternalHooks } from '@/ExternalHooks';
+import { whereClause } from './UserManagement/UserManagementHelper';
 
 const WEBHOOK_PROD_UNREGISTERED_HINT = `The workflow must be active for a production URL to run successfully. You can activate the workflow using the toggle in the top-right of the editor. Note that unlike test URL calls, production URL calls aren't shown on the canvas (only in the executions list)`;
 

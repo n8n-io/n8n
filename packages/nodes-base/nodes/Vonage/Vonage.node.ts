@@ -459,7 +459,7 @@ export class Vonage implements INodeType {
 							body.vcal = vcal;
 						}
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						Object.assign(body, additionalFields);
 

@@ -6,7 +6,7 @@
 		:name="ABOUT_MODAL_KEY"
 		:center="true"
 	>
-		<template slot="content">
+		<template #content>
 			<div :class="$style.container">
 				<el-row>
 					<el-col :span="8" class="info-name">
@@ -45,7 +45,7 @@
 			</div>
 		</template>
 
-		<template slot="footer">
+		<template #footer>
 			<div class="action-buttons">
 				<n8n-button @click="closeDialog" float="right" :label="$locale.baseText('about.close')" />
 			</div>

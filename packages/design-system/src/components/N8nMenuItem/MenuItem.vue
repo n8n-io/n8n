@@ -12,7 +12,7 @@
 			popper-append-to-body
 			:popper-class="`${$style.submenuPopper} ${popperClass}`"
 		>
-			<template slot="title">
+			<template #title>
 				<n8n-icon
 					v-if="item.icon"
 					:class="$style.icon"

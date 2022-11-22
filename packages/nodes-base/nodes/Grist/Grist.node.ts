@@ -220,10 +220,10 @@ export class Grist implements INodeType {
 
 					const qs: IDataObject = {};
 
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (!returnAll) {
-						qs.limit = this.getNodeParameter('limit', i) as number;
+						qs.limit = this.getNodeParameter('limit', i);
 					}
 
 					const { sort, filter } = this.getNodeParameter(
