@@ -401,7 +401,6 @@ export class ActiveWorkflowRunner {
 
 	/**
 	 * Adds all the webhooks of the workflow
-	 *
 	 */
 	async addWorkflowWebhooks(
 		workflow: Workflow,
@@ -487,7 +486,10 @@ export class ActiveWorkflowRunner {
 				// TODO check if there is standard error code for duplicate key violation that works
 				// with all databases
 				if (error.name === 'QueryFailedError') {
-					error.message = `The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`;
+					error = new Error(
+						`The URL path that the "${webhook.node}" node uses is already taken. Please change it to something else.`,
+						{ cause: error },
+					);
 				} else if (error.detail) {
 					// it's a error running the webhook methods (checkExists, create)
 					error.message = error.detail;
