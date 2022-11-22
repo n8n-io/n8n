@@ -42,6 +42,7 @@
 				</div>
 				<div>
 					<n8n-button
+						v-if="loginEnabled"
 						:label="
 							loadingTestConnection
 								? $locale.baseText('settings.ldap.testingConnection')
@@ -196,6 +197,7 @@ export default mixins(showMessage).extend({
 			formBus: new Vue(),
 			readyToSubmit: false,
 			page: 0,
+			loginEnabled: false,
 		};
 	},
 	async mounted() {
@@ -231,7 +233,10 @@ export default mixins(showMessage).extend({
 			}
 			return {};
 		},
-		onInput() {
+		onInput(input: { name: string, value: string | number | boolean }) {
+			if (input.name === 'loginEnabled' && typeof input.value === 'boolean') {
+				this.loginEnabled = input.value;
+			}
 			this.hasAnyChanges = true;
 		},
 		onReadyToSubmit(ready: boolean) {
@@ -371,6 +376,7 @@ export default mixins(showMessage).extend({
 		async getLdapConfig() {
 			try {
 				this.adConfig = await this.settingsStore.getLdapConfig();
+				this.loginEnabled = this.adConfig.loginEnabled;
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
@@ -391,6 +397,9 @@ export default mixins(showMessage).extend({
 							placeholder: 'E.g.: LDAP Username or Email',
 							infoText: 'The placeholder text that appears in the login field on the login page.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'serverAddress',
@@ -401,6 +410,9 @@ export default mixins(showMessage).extend({
 							capitalize: true,
 							infoText: 'IP or domain of the LDAP server.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'port',
@@ -409,6 +421,9 @@ export default mixins(showMessage).extend({
 							label: 'LDAP Server Port',
 							capitalize: true,
 							infoText: 'The port used to connect to the LDAP server. Default 389.',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -434,6 +449,9 @@ export default mixins(showMessage).extend({
 							required: true,
 							capitalize: true,
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'allowUnauthorizedCerts',
@@ -444,7 +462,7 @@ export default mixins(showMessage).extend({
 							required: false,
 						},
 						shouldDisplay(values): boolean {
-							return values['connectionSecurity'] !== 'none';
+							return values['connectionSecurity'] !== 'none' && values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -456,6 +474,9 @@ export default mixins(showMessage).extend({
 							capitalize: true,
 							infoText:
 								'Distinguished Name of the location where n8n should start its search for user in the AD/LDAP tree.',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -475,6 +496,9 @@ export default mixins(showMessage).extend({
 								},
 							],
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'adminDn',
@@ -485,7 +509,7 @@ export default mixins(showMessage).extend({
 							infoText: 'Distinguished Name of user used to perform the search.',
 						},
 						shouldDisplay(values): boolean {
-							return values['bindingType'] === 'admin';
+							return values['bindingType'] === 'admin' && values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -498,7 +522,7 @@ export default mixins(showMessage).extend({
 							infoText: 'Password of the user provided in the Binding DN field.',
 						},
 						shouldDisplay(values): boolean {
-							return values['bindingType'] === 'admin';
+							return values['bindingType'] === 'admin' && values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -508,6 +532,9 @@ export default mixins(showMessage).extend({
 							type: 'info',
 							labelSize: 'large',
 							labelAlignment: 'left',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -521,6 +548,9 @@ export default mixins(showMessage).extend({
 							infoText:
 								'LDAP query to use when searching for user. Only users returned by this filter will be allowed to sign-in in n8n.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'attributeMappingInfo',
@@ -529,6 +559,9 @@ export default mixins(showMessage).extend({
 							type: 'info',
 							labelSize: 'large',
 							labelAlignment: 'left',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -542,6 +575,9 @@ export default mixins(showMessage).extend({
 							infoText:
 								'The atribute in the LDAP server used as a unique identifier in n8n. It shoud be an unique LDAP attribute like uid.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'loginId',
@@ -554,6 +590,9 @@ export default mixins(showMessage).extend({
 							capitalize: true,
 							infoText: 'The attribute in the LDAP server used to log-in in n8n.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'email',
@@ -565,6 +604,9 @@ export default mixins(showMessage).extend({
 							required: true,
 							capitalize: true,
 							infoText: 'The attribute in the LDAP server used to populate the email in n8n.',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -579,6 +621,9 @@ export default mixins(showMessage).extend({
 							placeholder: 'givenName',
 							infoText: 'The attribute in the LDAP server used to populate the first name in n8n.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'lastName',
@@ -591,6 +636,9 @@ export default mixins(showMessage).extend({
 							capitalize: true,
 							placeholder: 'sn',
 							infoText: 'The attribute in the LDAP server used to populate the last name in n8n.',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
