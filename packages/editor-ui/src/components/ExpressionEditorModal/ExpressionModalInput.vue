@@ -80,6 +80,8 @@ export default mixins(workflowHelpers).extend({
 						segments: this.displayableSegments,
 					});
 				}, delay);
+
+				this.$nextTick(() => this.editor?.focus());
 			}),
 		];
 
