@@ -206,11 +206,7 @@ export class CredentialsService {
 		try {
 			return await UserSettings.getEncryptionKey();
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
+			throw new ResponseHelper.InternalServerError(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 		}
 	}
 
