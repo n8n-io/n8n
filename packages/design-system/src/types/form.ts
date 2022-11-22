@@ -25,6 +25,7 @@ export type IFormInput = {
 			| 'password'
 			| 'select'
 			| 'multi-select'
+			| 'number'
 			| 'info'
 			| 'checkbox'
 			| 'toggle';

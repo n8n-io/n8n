@@ -30,6 +30,7 @@
 				<div>
 					<n8n-form-inputs
 						v-if="formInputs"
+						ref="ldapConfigForm"
 						:inputs="formInputs"
 						:eventBus="formBus"
 						:columnView="true"
@@ -141,6 +142,29 @@ import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
 
+type FormValues = {
+	loginEnabled: boolean;
+	loginLabel: string;
+	serverAddress: string;
+	baseDn: string;
+	bindingType: string;
+	adminDn: string;
+	adminPassword: string;
+	loginId: string;
+	email: string;
+	lastName: string;
+	firstName: string;
+	ldapId: string;
+	syncronizationEnabled: boolean;
+	allowUnauthorizedCerts: boolean;
+	syncronizationInterval: number;
+	userFilter: string;
+	pageSize: number;
+	searchTimeout: number;
+	port: number;
+	connectionSecurity: string;
+}
+
 type tableRow = {
 	status: string;
 	startAt: string;
@@ -229,52 +253,34 @@ export default mixins(showMessage).extend({
 				}),
 			};
 		},
-		async onSubmit(form: {
-			loginEnabled: boolean;
-			loginLabel: string;
-			serverAddress: string;
-			baseDn: string;
-			bindingType: string;
-			adminDn: string;
-			adminPassword: string;
-			loginId: string;
-			email: string;
-			lastName: string;
-			firstName: string;
-			ldapId: string;
-			syncronizationEnabled: boolean;
-			allowUnauthorizedCerts: string;
-			syncronizationInterval: string;
-			userFilter: string;
-			pageSize: string;
-			searchTimeout: string;
-			port: string;
-			connectionSecurity: string;
-		}) {
-			if (!this.hasAnyChanges) {
+		async onSubmit(): Promise<void> {
+			// We want to save all form values (incl. the hidden onces), so we are using
+			// `values` data prop of the `FormInputs` child component since they are all preserved there
+			const formInputs = this.$refs.ldapConfigForm as Vue & { values: FormValues} | undefined;
+			if (!this.hasAnyChanges || !formInputs) {
 				return;
 			}
 
 			const newConfiguration: ILdapConfig = {
-				loginEnabled: form.loginEnabled === true,
-				loginLabel: form.loginLabel ?? '',
-				connectionUrl: form.serverAddress,
-				allowUnauthorizedCerts: form.allowUnauthorizedCerts === 'true' ? true : false,
-				connectionPort: parseInt(form.port || '389', 10),
-				connectionSecurity: form.connectionSecurity,
-				baseDn: form.baseDn,
-				bindingAdminDn: form.bindingType === 'admin' ? form.adminDn : '',
-				bindingAdminPassword: form.bindingType === 'admin' ? form.adminPassword : '',
-				emailAttribute: form.email,
-				firstNameAttribute: form.firstName,
-				lastNameAttribute: form.lastName,
-				loginIdAttribute: form.loginId,
-				ldapIdAttribute: form.ldapId,
-				userFilter: form.userFilter ?? '',
-				syncronizationEnabled: form.syncronizationEnabled === true,
-				syncronizationInterval: parseInt(form.syncronizationInterval || '60', 10),
-				searchPageSize: parseInt(form.pageSize || '0', 10),
-				searchTimeout: parseInt(form.searchTimeout || '60', 10),
+				loginEnabled: formInputs.values.loginEnabled,
+				loginLabel: formInputs.values.loginLabel,
+				connectionUrl: formInputs.values.serverAddress,
+				allowUnauthorizedCerts: formInputs.values.allowUnauthorizedCerts,
+				connectionPort: formInputs.values.port,
+				connectionSecurity: formInputs.values.connectionSecurity,
+				baseDn: formInputs.values.baseDn,
+				bindingAdminDn: formInputs.values.bindingType === 'admin' ? formInputs.values.adminDn : '',
+				bindingAdminPassword: formInputs.values.bindingType === 'admin' ? formInputs.values.adminPassword : '',
+				emailAttribute: formInputs.values.email,
+				firstNameAttribute: formInputs.values.firstName,
+				lastNameAttribute: formInputs.values.lastName,
+				loginIdAttribute: formInputs.values.loginId,
+				ldapIdAttribute: formInputs.values.ldapId,
+				userFilter: formInputs.values.userFilter,
+				syncronizationEnabled: formInputs.values.syncronizationEnabled,
+				syncronizationInterval: formInputs.values.syncronizationInterval,
+				searchPageSize: +formInputs.values.pageSize,
+				searchTimeout: formInputs.values.searchTimeout,
 			};
 
 			let saveForm = true;
@@ -429,21 +435,11 @@ export default mixins(showMessage).extend({
 					},
 					{
 						name: 'allowUnauthorizedCerts',
-						initialValue: this.adConfig.allowUnauthorizedCerts.toString(),
+						initialValue: this.adConfig.allowUnauthorizedCerts,
 						properties: {
-							type: 'select',
+							type: 'toggle',
 							label: 'Ignore SSL/TLS Issues',
 							required: false,
-							options: [
-								{
-									label: 'True',
-									value: 'true',
-								},
-								{
-									label: 'False',
-									value: 'false',
-								},
-							],
 						},
 						shouldDisplay(values): boolean {
 							return values['connectionSecurity'] !== 'none';
@@ -640,8 +636,7 @@ export default mixins(showMessage).extend({
 						properties: {
 							label: 'Page Size',
 							type: 'text',
-							infoText:
-								'Max number of records to return per page during syncronization. 0 for unlimited.',
+							infoText: 'Max number of records to return per page during syncronization. 0 for unlimited.',
 						},
 						shouldDisplay(values): boolean {
 							return (
@@ -655,8 +650,7 @@ export default mixins(showMessage).extend({
 						properties: {
 							label: 'Search Timeout (Seconds)',
 							type: 'text',
-							infoText:
-								'The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server.',
+							infoText: 'The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server.',
 						},
 						shouldDisplay(values): boolean {
 							return (
