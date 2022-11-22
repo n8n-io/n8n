@@ -77,24 +77,20 @@ export function authenticationMethods(this: N8nApp): void {
 			}
 
 			if (config.get('userManagement.isInstanceOwnerSetUp')) {
-				throw new ResponseHelper.ResponseError('Not logged in', undefined, 401);
+				throw new ResponseHelper.AuthError('Not logged in');
 			}
 
 			try {
 				user = await Db.collections.User.findOneOrFail({ relations: ['globalRole'] });
 			} catch (error) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					'No users found in database - did you wipe the users table? Create at least one user.',
-					undefined,
-					500,
 				);
 			}
 
 			if (user.email || user.password) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					'Invalid database state - user has password set.',
-					undefined,
-					500,
 				);
 			}
 

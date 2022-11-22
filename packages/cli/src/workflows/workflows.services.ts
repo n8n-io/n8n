@@ -124,10 +124,8 @@ export class WorkflowsService {
 					userId: user.id,
 					filter,
 				});
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					`Parameter "filter" contained invalid JSON string.`,
-					500,
-					500,
 				);
 			}
 		}
@@ -196,18 +194,14 @@ export class WorkflowsService {
 				workflowId,
 				userId: user.id,
 			});
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				'You do not have permission to update this workflow. Ask the owner to share it with you.',
-				undefined,
-				404,
 			);
 		}
 
 		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				'We are sorry, but the workflow has been changed in the meantime. Please reload the workflow and try again.',
-				undefined,
-				400,
 			);
 		}
 
@@ -290,10 +284,8 @@ export class WorkflowsService {
 		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, options);
 
 		if (updatedWorkflow === undefined) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
-				undefined,
-				400,
 			);
 		}
 
