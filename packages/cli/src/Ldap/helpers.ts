@@ -206,19 +206,14 @@ export const updateLdapConfig = async (config: LdapConfig): Promise<void> => {
  */
 export const handleLdapInit = async (): Promise<void> => {
 	if (!isLdapEnabled()) {
-		// In case the user is downgrading and there are LDAP
-		// users in the database, convert all LDAP users to email
-		// users so they do not lose access to the instance
 		const ldapUsers = await getLdapUsers();
 		if (ldapUsers.length) {
-			await transformAllLdapUsersToEmailUsers();
 			void InternalHooksManager.getInstance().onLdapUsersDisabled({
 				reason: 'ldap_feature_deactivated',
 				users: ldapUsers.length,
 				user_ids: ldapUsers.map((user) => user.id),
 			});
 		}
-		await transformAllLdapUsersToEmailUsers();
 		return;
 	}
 

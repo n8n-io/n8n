@@ -3,6 +3,7 @@ import { SignInType } from '@/Ldap/constants';
 import type { User } from '@db/entities/User';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
 import { InternalHooksManager } from '@/InternalHooksManager';
+import { ResponseHelper } from '@/index';
 
 export const handleEmailLogin = async (
 	email: string,
@@ -29,10 +30,7 @@ export const handleEmailLogin = async (
 			user_id: user.id,
 		});
 
-		const error = new Error('Reset your password to gain access to the instance.');
-		// @ts-ignore
-		error.httpStatusCode = 401;
-		throw error;
+		throw new ResponseHelper.AuthError('Reset your password to gain access to the instance.');
 	}
 
 	return undefined;
