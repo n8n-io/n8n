@@ -54,6 +54,23 @@
 					@update="setKeyValue('tags', $event)"
 				/>
 			</div>
+			<div class="mb-s">
+				<n8n-input-label
+					:label="$locale.baseText('workflows.filters.status')"
+					:bold="false"
+					size="small"
+					color="text-base"
+					class="mb-3xs"
+				/>
+				<n8n-select :value="filters.status" @input="setKeyValue('status', $event)" size="small">
+					<n8n-option
+						v-for="option in statusFilterOptions"
+						:key="option.label"
+						:label="option.label"
+						:value="option.value">
+					</n8n-option>
+				</n8n-select>
+			</div>
 		</template>
 	</resources-list-layout>
 </template>
@@ -69,7 +86,7 @@ import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import WorkflowCard from "@/components/WorkflowCard.vue";
 import TemplateCard from "@/components/TemplateCard.vue";
 import { debounceHelper } from '@/components/mixins/debounce';
-import {EnterpriseEditionFeature, VIEWS} from '@/constants';
+import {EnterpriseEditionFeature, SAAS_COMPANY_TYPE, VIEWS} from '@/constants';
 import Vue from "vue";
 import {ITag, IUser, IWorkflowDb} from "@/Interface";
 import TagsDropdown from "@/components/TagsDropdown.vue";
@@ -80,6 +97,12 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 
 type IResourcesListLayoutInstance = Vue & { sendFiltersTelemetry: (source: string) => void };
+
+const StatusFilter = {
+	ACTIVE: true,
+	DEACTIVATED: false,
+	ALL: '',
+};
 
 export default mixins(
 	showMessage,
@@ -101,6 +124,7 @@ export default mixins(
 				search: '',
 				ownedBy: '',
 				sharedWith: '',
+				status: StatusFilter.ALL,
 				tags: [] as string[],
 			},
 		};
@@ -120,6 +144,22 @@ export default mixins(
 		},
 		isShareable(): boolean {
 			return this.settingsStore.isEnterpriseFeatureEnabled(EnterpriseEditionFeature.WorkflowSharing);
+		},
+		statusFilterOptions(): Array<{ label: string, value: string | boolean }> {
+			return [
+				{
+					label: this.$locale.baseText('workflows.filters.status.all'),
+					value: StatusFilter.ALL,
+				},
+				{
+					label: this.$locale.baseText('workflows.filters.status.active'),
+					value: StatusFilter.ACTIVE,
+				},
+				{
+					label: this.$locale.baseText('workflows.filters.status.deactivated'),
+					value: StatusFilter.DEACTIVATED,
+				},
+			];
 		},
 	},
 	methods: {
@@ -147,11 +187,15 @@ export default mixins(
 				this.filters.tags.push(tagId);
 			}
 		},
-		onFilter(resource: IWorkflowDb, filters: { tags: string[]; search: string; }, matches: boolean): boolean {
+		onFilter(resource: IWorkflowDb, filters: { tags: string[]; search: string; status: string | boolean }, matches: boolean): boolean {
 			if (this.settingsStore.areTagsEnabled && filters.tags.length > 0) {
 				matches = matches && filters.tags.every(
 					(tag) => (resource.tags as ITag[])?.find((resourceTag) => typeof resourceTag === 'object' ? `${resourceTag.id}` === `${tag}` : `${resourceTag}` === `${tag}`),
 				);
+			}
+
+			if (filters.status !== '') {
+				matches = matches && resource.active === filters.status;
 			}
 
 			return matches;
