@@ -1148,6 +1148,10 @@ export class WorkflowDataProxy {
 					executionData = that.getNodeExecutionData(nodeName, false, outputIndex, runIndex);
 				}
 
+				if (that.workflow.getNode(that.activeNodeName)?.executeOnce) {
+					executionData = that.connectionInputData.slice(0, 1);
+				}
+
 				return executionData;
 			},
 			$json: {}, // Placeholder
