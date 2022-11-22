@@ -19,7 +19,16 @@ export type IFormInput = {
 	initialValue?: string | number | boolean | null;
 	properties: {
 		label?: string;
-		type?: 'text' | 'email' | 'password' | 'select' | 'multi-select' | 'info' | 'checkbox';
+		type?:
+			| 'text'
+			| 'email'
+			| 'password'
+			| 'select'
+			| 'multi-select'
+			| 'number'
+			| 'info'
+			| 'checkbox'
+			| 'toggle';
 		maxlength?: number;
 		required?: boolean;
 		showRequiredAsterisk?: boolean;
@@ -41,6 +50,8 @@ export type IFormInput = {
 		capitalize?: boolean;
 		focusInitially?: boolean;
 		disabled?: boolean;
+		labelSize?: 'small' | 'medium' | 'large';
+		labelAlignment?: 'left' | 'right' | 'center';
 	};
 	shouldDisplay?: (values: { [key: string]: unknown }) => boolean;
 };

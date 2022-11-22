@@ -26,6 +26,7 @@ const Template = (args, { argTypes }) => ({
 
 export const FormInputs = Template.bind({});
 FormInputs.args = {
+	columnView: true,
 	inputs: [
 		{
 			name: 'email',
@@ -72,11 +73,20 @@ FormInputs.args = {
 			name: 'agree',
 			properties: {
 				type: 'checkbox',
-				label:
-					'Signup for newsletter and somebody from our marketing team will get in touch with you as soon as possible. You will not spam you, just want to send you some love every now and then ❤️',
+				label: 'Signup for newsletter and somebody from our marketing team will get in touch with you as soon as possible. You will not spam you, just want to send you some love every now and then ❤️',
 				labelSize: 'small',
-				tooltipText: 'Check this if you agree to be contacted by our marketing team',
-			},
+				tooltipText: 'Check this if you agree to be contacted by our marketing team'
+			}
 		},
+		{
+			name: 'activate',
+			properties: {
+				type: 'toggle',
+				label: 'Activated',
+				activeColor: '#13ce66',
+				inactiveColor: '#8899AA',
+				tooltipText: 'Check this if you agree to be contacted by our marketing team'
+			}
+		}
 	],
 };

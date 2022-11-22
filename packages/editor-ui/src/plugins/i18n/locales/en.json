@@ -1405,6 +1405,7 @@
 	"importParameter.showError.invalidProtocol2.title": "Invalid Protocol",
 	"importParameter.showError.invalidProtocol.message": "The HTTP node doesn’t support {protocol} requests",
 	"settings.ldap": "LDAP",
+	"settings.ldap.infoTip": "Learn more about <a href='https://docs.n8n.io/' target='_blank'>LDAP on the Docs</a>",
 	"settings.ldap.save": "Save",
 	"settings.ldap.connectionTestError": "Problem testing LDAP connection",
 	"settings.ldap.connectionTest": "LDAP connection tested",
@@ -1426,5 +1427,8 @@
 	"settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText": "Yes, disable it",
 	"settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText": "No",
 	"settings.ldap.confirmMessage.beforeSaveForm.headline": "Are you sure you want to disable LDAP login?",
-	"settings.ldap.confirmMessage.beforeSaveForm.message": "If you do so, all LDAP users will be converted to email users."
+	"settings.ldap.confirmMessage.beforeSaveForm.message": "If you do so, all LDAP users will be converted to email users.",
+	"settings.ldap.disabled.title": "Upgrade to use AD/LDAP",
+	"settings.ldap.disabled.description": "This feature is available for the Company and Enterprise plans. Learn more about AD/LDAP on the Docs.",
+	"settings.ldap.disabled.buttonText": "See plans and pricing"
 }

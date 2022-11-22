@@ -1,17 +1,40 @@
 <template>
-		<div>
+		<div v-if="!isLDAPFeatureEnabled">
+			<div :class="[$style.header, 'mb-2xl']">
+				<n8n-heading size="2xlarge">
+					{{ $locale.baseText('settings.ldap') }}
+				</n8n-heading>
+			</div>
+			<n8n-action-box
+				:description="$locale.baseText('settings.ldap.disabled.description')"
+				:buttonText="$locale.baseText('settings.ldap.disabled.buttonText')"
+				@click="openDocsPage"
+			>
+				<template #heading>
+					<span>{{ $locale.baseText('settings.ldap.disabled.title') }}</span>
+				</template>
+			</n8n-action-box>
+			</div>
+		<div v-else>
 			<div :class="$style.container">
 				<div :class="$style.header">
 					<n8n-heading size="2xlarge">
 						{{ $locale.baseText('settings.ldap') }}
 					</n8n-heading>
 				</div>
+				<n8n-info-tip theme="info" type="note">
+					<template>
+						<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
+					</template>
+				</n8n-info-tip>
 				<div>
 					<n8n-form-inputs
 						v-if="formInputs"
+						ref="ldapConfigForm"
 						:inputs="formInputs"
 						:eventBus="formBus"
 						:columnView="true"
+						verticalSpacing="l"
 						@input="onInput"
 						@ready="onReadyToSubmit"
 						@submit="onSubmit"
@@ -19,26 +42,27 @@
 				</div>
 				<div>
 					<n8n-button
-						float="right"
-						:label="$locale.baseText('settings.ldap.save')"
-						size="large"
-						:disabled="!hasAnyChanges || !readyToSubmit"
-						@click="onSaveClick"
-					/>
-					<n8n-button
-						float="left"
+						v-if="loginEnabled"
 						:label="
 							loadingTestConnection
 								? $locale.baseText('settings.ldap.testingConnection')
 								: $locale.baseText('settings.ldap.testConnection')
 						"
 						size="large"
+						class="mr-s"
 						:disabled="hasAnyChanges || !readyToSubmit"
 						:loading="loadingTestConnection"
 						@click="onTestConnectionClick"
 					/>
+					<n8n-button
+						:label="$locale.baseText('settings.ldap.save')"
+						size="large"
+						:disabled="!hasAnyChanges || !readyToSubmit"
+						@click="onSaveClick"
+					/>
 				</div>
 			</div>
+			<n8n-heading tag="h1" class="mb-2xl mt-3xl" size="medium">User synchronization</n8n-heading>
 			<div :class="$style.syncTable">
 				<el-table
 					v-loading="loadingTable"
@@ -84,18 +108,17 @@
 				</template>
 				</el-table>
 			</div>
-			<div :class="$style.syncronizationActionButtons">
+			<div class="pb-3xl">
 				<n8n-button
-					float="right"
 					:label="$locale.baseText('settings.ldap.dryRun')"
 					type="secondary"
 					size="large"
+					class="mr-s"
 					:disabled="hasAnyChanges || !readyToSubmit"
 					:loading="loadingDryRun"
 					@click="onDryRunClick"
 				/>
 				<n8n-button
-					float="left"
 					:label="$locale.baseText('settings.ldap.synchronizeNow')"
 					size="large"
 					:disabled="hasAnyChanges || !readyToSubmit"
@@ -120,6 +143,29 @@ import InfiniteLoading from 'vue-infinite-loading';
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useSettingsStore } from '@/stores/settings';
+
+type FormValues = {
+	loginEnabled: boolean;
+	loginLabel: string;
+	serverAddress: string;
+	baseDn: string;
+	bindingType: string;
+	adminDn: string;
+	adminPassword: string;
+	loginId: string;
+	email: string;
+	lastName: string;
+	firstName: string;
+	ldapId: string;
+	syncronizationEnabled: boolean;
+	allowUnauthorizedCerts: boolean;
+	syncronizationInterval: number;
+	userFilter: string;
+	pageSize: number;
+	searchTimeout: number;
+	port: number;
+	connectionSecurity: string;
+}
 
 type tableRow = {
 	status: string;
@@ -152,6 +198,7 @@ export default mixins(showMessage).extend({
 			formBus: new Vue(),
 			readyToSubmit: false,
 			page: 0,
+			loginEnabled: false,
 		};
 	},
 	async mounted() {
@@ -162,8 +209,14 @@ export default mixins(showMessage).extend({
 		currentUser(): null | IUser {
 			return this.usersStore.currentUser;
 		},
+		isLDAPFeatureEnabled(): boolean {
+			return this.settingsStore.settings.enterprise.ldap === true;
+		},
 	},
 	methods: {
+		openDocsPage(event: MouseEvent): void {
+			window.open('https://n8n.io/pricing/', '_blank');
+		},
 		cellClassStyle({ row, column }: { row: rowType; column: cellType }) {
 			if (column.property === 'status') {
 				if (row.status === 'Success') {
@@ -181,7 +234,10 @@ export default mixins(showMessage).extend({
 			}
 			return {};
 		},
-		onInput() {
+		onInput(input: { name: string, value: string | number | boolean }) {
+			if (input.name === 'loginEnabled' && typeof input.value === 'boolean') {
+				this.loginEnabled = input.value;
+			}
 			this.hasAnyChanges = true;
 		},
 		onReadyToSubmit(ready: boolean) {
@@ -203,52 +259,34 @@ export default mixins(showMessage).extend({
 				}),
 			};
 		},
-		async onSubmit(form: {
-			loginEnabled: string;
-			loginLabel: string;
-			serverAddress: string;
-			baseDn: string;
-			bindingType: string;
-			adminDn: string;
-			adminPassword: string;
-			loginId: string;
-			email: string;
-			lastName: string;
-			firstName: string;
-			ldapId: string;
-			syncronizationEnabled: string;
-			allowUnauthorizedCerts: string;
-			syncronizationInterval: string;
-			userFilter: string;
-			pageSize: string;
-			searchTimeout: string;
-			port: string;
-			connectionSecurity: string;
-		}) {
-			if (!this.hasAnyChanges) {
+		async onSubmit(): Promise<void> {
+			// We want to save all form values (incl. the hidden onces), so we are using
+			// `values` data prop of the `FormInputs` child component since they are all preserved there
+			const formInputs = this.$refs.ldapConfigForm as Vue & { values: FormValues} | undefined;
+			if (!this.hasAnyChanges || !formInputs) {
 				return;
 			}
 
 			const newConfiguration: ILdapConfig = {
-				loginEnabled: form.loginEnabled === 'true' ? true : false,
-				loginLabel: form.loginLabel ?? '',
-				connectionUrl: form.serverAddress,
-				allowUnauthorizedCerts: form.allowUnauthorizedCerts === 'true' ? true : false,
-				connectionPort: parseInt(form.port || '389', 10),
-				connectionSecurity: form.connectionSecurity,
-				baseDn: form.baseDn,
-				bindingAdminDn: form.bindingType === 'admin' ? form.adminDn : '',
-				bindingAdminPassword: form.bindingType === 'admin' ? form.adminPassword : '',
-				emailAttribute: form.email,
-				firstNameAttribute: form.firstName,
-				lastNameAttribute: form.lastName,
-				loginIdAttribute: form.loginId,
-				ldapIdAttribute: form.ldapId,
-				userFilter: form.userFilter ?? '',
-				syncronizationEnabled: form.syncronizationEnabled === 'true' ? true : false,
-				syncronizationInterval: parseInt(form.syncronizationInterval || '60', 10),
-				searchPageSize: parseInt(form.pageSize || '0', 10),
-				searchTimeout: parseInt(form.searchTimeout || '60', 10),
+				loginEnabled: formInputs.values.loginEnabled,
+				loginLabel: formInputs.values.loginLabel,
+				connectionUrl: formInputs.values.serverAddress,
+				allowUnauthorizedCerts: formInputs.values.allowUnauthorizedCerts,
+				connectionPort: formInputs.values.port,
+				connectionSecurity: formInputs.values.connectionSecurity,
+				baseDn: formInputs.values.baseDn,
+				bindingAdminDn: formInputs.values.bindingType === 'admin' ? formInputs.values.adminDn : '',
+				bindingAdminPassword: formInputs.values.bindingType === 'admin' ? formInputs.values.adminPassword : '',
+				emailAttribute: formInputs.values.email,
+				firstNameAttribute: formInputs.values.firstName,
+				lastNameAttribute: formInputs.values.lastName,
+				loginIdAttribute: formInputs.values.loginId,
+				ldapIdAttribute: formInputs.values.ldapId,
+				userFilter: formInputs.values.userFilter,
+				syncronizationEnabled: formInputs.values.syncronizationEnabled,
+				syncronizationInterval: formInputs.values.syncronizationInterval,
+				searchPageSize: +formInputs.values.pageSize,
+				searchTimeout: formInputs.values.searchTimeout,
 			};
 
 			let saveForm = true;
@@ -277,7 +315,9 @@ export default mixins(showMessage).extend({
 			} catch (error) {
 				this.$showError(error, this.$locale.baseText('settings.ldap.configurationError'));
 			} finally {
-				this.hasAnyChanges = false;
+				if (saveForm) {
+					this.hasAnyChanges = false;
+				}
 			}
 		},
 		onSaveClick() {
@@ -337,25 +377,16 @@ export default mixins(showMessage).extend({
 		async getLdapConfig() {
 			try {
 				this.adConfig = await this.settingsStore.getLdapConfig();
+				this.loginEnabled = this.adConfig.loginEnabled;
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
-						initialValue: this.adConfig.loginEnabled.toString(),
+						initialValue: this.adConfig.loginEnabled,
 						properties: {
-							type: 'select',
+							type: 'toggle',
 							label: 'Enable LDAP Login',
+							tooltipText: 'Whether to allow n8n users to sign-in using LDAP.',
 							required: true,
-							options: [
-								{
-									label: 'True',
-									value: 'true',
-								},
-								{
-									label: 'False',
-									value: 'false',
-								},
-							],
-							infoText: 'Whether to allow n8n users to sign-in using LDAP.',
 						},
 					},
 					{
@@ -367,12 +398,8 @@ export default mixins(showMessage).extend({
 							placeholder: 'E.g.: LDAP Username or Email',
 							infoText: 'The placeholder text that appears in the login field on the login page.',
 						},
-					},
-					{
-						name: 'connectionInfo',
-						properties: {
-							label: 'Connection Details',
-							type: 'info',
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -384,6 +411,9 @@ export default mixins(showMessage).extend({
 							capitalize: true,
 							infoText: 'IP or domain of the LDAP server.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'port',
@@ -392,6 +422,9 @@ export default mixins(showMessage).extend({
 							label: 'LDAP Server Port',
 							capitalize: true,
 							infoText: 'The port used to connect to the LDAP server. Default 389.',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -417,27 +450,20 @@ export default mixins(showMessage).extend({
 							required: true,
 							capitalize: true,
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'allowUnauthorizedCerts',
-						initialValue: this.adConfig.allowUnauthorizedCerts.toString(),
+						initialValue: this.adConfig.allowUnauthorizedCerts,
 						properties: {
-							type: 'select',
+							type: 'toggle',
 							label: 'Ignore SSL/TLS Issues',
 							required: false,
-							options: [
-								{
-									label: 'True',
-									value: 'true',
-								},
-								{
-									label: 'False',
-									value: 'false',
-								},
-							],
 						},
 						shouldDisplay(values): boolean {
-							return values['connectionSecurity'] !== 'none';
+							return values['connectionSecurity'] !== 'none' && values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -449,6 +475,9 @@ export default mixins(showMessage).extend({
 							capitalize: true,
 							infoText:
 								'Distinguished Name of the location where n8n should start its search for user in the AD/LDAP tree.',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -468,6 +497,9 @@ export default mixins(showMessage).extend({
 								},
 							],
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'adminDn',
@@ -478,7 +510,7 @@ export default mixins(showMessage).extend({
 							infoText: 'Distinguished Name of user used to perform the search.',
 						},
 						shouldDisplay(values): boolean {
-							return values['bindingType'] === 'admin';
+							return values['bindingType'] === 'admin' && values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -491,7 +523,7 @@ export default mixins(showMessage).extend({
 							infoText: 'Password of the user provided in the Binding DN field.',
 						},
 						shouldDisplay(values): boolean {
-							return values['bindingType'] === 'admin';
+							return values['bindingType'] === 'admin' && values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -499,6 +531,11 @@ export default mixins(showMessage).extend({
 						properties: {
 							label: 'Filters',
 							type: 'info',
+							labelSize: 'large',
+							labelAlignment: 'left',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -512,12 +549,20 @@ export default mixins(showMessage).extend({
 							infoText:
 								'LDAP query to use when searching for user. Only users returned by this filter will be allowed to sign-in in n8n.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'attributeMappingInfo',
 						properties: {
 							label: 'Attribute Mapping',
 							type: 'info',
+							labelSize: 'large',
+							labelAlignment: 'left',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -531,6 +576,9 @@ export default mixins(showMessage).extend({
 							infoText:
 								'The atribute in the LDAP server used as a unique identifier in n8n. It shoud be an unique LDAP attribute like uid.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'loginId',
@@ -543,6 +591,9 @@ export default mixins(showMessage).extend({
 							capitalize: true,
 							infoText: 'The attribute in the LDAP server used to log-in in n8n.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'email',
@@ -554,6 +605,9 @@ export default mixins(showMessage).extend({
 							required: true,
 							capitalize: true,
 							infoText: 'The attribute in the LDAP server used to populate the email in n8n.',
+						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -568,6 +622,9 @@ export default mixins(showMessage).extend({
 							placeholder: 'givenName',
 							infoText: 'The attribute in the LDAP server used to populate the first name in n8n.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'lastName',
@@ -581,38 +638,33 @@ export default mixins(showMessage).extend({
 							placeholder: 'sn',
 							infoText: 'The attribute in the LDAP server used to populate the last name in n8n.',
 						},
+						shouldDisplay(values): boolean {
+							return values['loginEnabled'] === true;
+						},
 					},
 					{
 						name: 'syncronizationInfo',
 						properties: {
 							label: 'Syncronization Info',
 							type: 'info',
+							labelSize: 'large',
+							labelAlignment: 'left',
 						},
 						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === 'true';
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
 						name: 'syncronizationEnabled',
-						initialValue: this.adConfig.syncronizationEnabled.toString(),
+						initialValue: this.adConfig.syncronizationEnabled,
 						properties: {
-							type: 'select',
+							type: 'toggle',
 							label: 'Enable LDAP Syncronization',
+							tooltipText: 'Whether to enable background syncronizations.',
 							required: true,
-							options: [
-								{
-									label: 'True',
-									value: 'true',
-								},
-								{
-									label: 'False',
-									value: 'false',
-								},
-							],
-							infoText: 'Whether to enable background syncronizations.',
 						},
 						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === 'true';
+							return values['loginEnabled'] === true;
 						},
 					},
 					{
@@ -625,7 +677,7 @@ export default mixins(showMessage).extend({
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true'
+								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -635,12 +687,11 @@ export default mixins(showMessage).extend({
 						properties: {
 							label: 'Page Size',
 							type: 'text',
-							infoText:
-								'Max number of records to return per page during syncronization. 0 for unlimited.',
+							infoText: 'Max number of records to return per page during syncronization. 0 for unlimited.',
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true'
+								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -650,12 +701,11 @@ export default mixins(showMessage).extend({
 						properties: {
 							label: 'Search Timeout (Seconds)',
 							type: 'text',
-							infoText:
-								'The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server.',
+							infoText: 'The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server.',
 						},
 						shouldDisplay(values): boolean {
 							return (
-								values['syncronizationEnabled'] === 'true' && values['loginEnabled'] === 'true'
+								values['syncronizationEnabled'] === true && values['loginEnabled'] === true
 							);
 						},
 					},
@@ -701,15 +751,10 @@ export default mixins(showMessage).extend({
 	> * {
 		margin-bottom: var(--spacing-2xl);
 	}
-	padding-bottom: 100px;
 }
 
 .syncTable {
 	margin-bottom: var(--spacing-2xl);
-}
-
-.syncronizationActionButtons {
-	padding-bottom: var(--spacing-3xl);
 }
 
 .header {

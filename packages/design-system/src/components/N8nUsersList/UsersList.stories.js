@@ -40,6 +40,8 @@ UsersList.args = {
 				name: 'owner',
 				id: 1,
 			},
+			signInType: 'email',
+			disabled: false,
 		},
 		{
 			id: '2',
@@ -54,6 +56,8 @@ UsersList.args = {
 				name: 'member',
 				id: '2',
 			},
+			signInType: 'ldap',
+			disabled: true,
 		},
 		{
 			id: '3',
