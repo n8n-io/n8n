@@ -31,6 +31,7 @@
 			<div class="ph-no-capture" v-if="resources.length === 0">
 				<slot name="empty">
 					<n8n-action-box
+						data-test-id="empty-resources-list"
 						emoji="👋"
 						:heading="$locale.baseText(usersStore.currentUser.firstName ? `${resourceKey}.empty.heading` : `${resourceKey}.empty.heading.userNotSetup`, {
 							interpolate: { name: usersStore.currentUser.firstName }
