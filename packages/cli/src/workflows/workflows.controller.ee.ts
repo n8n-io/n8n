@@ -144,7 +144,7 @@ EEWorkflowController.post(
 			EEWorkflows.validateCredentialPermissionsToUser(newWorkflow, allCredentials);
 		} catch (error) {
 			throw new ResponseHelper.ResponseError(
-				'The workflow you trying to save contains credentials not shared with you',
+				'The workflow you are trying to save contains credentials that are not shared with you',
 				undefined,
 				400,
 			);

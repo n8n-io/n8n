@@ -160,7 +160,7 @@ credentialsController.patch(
 				userId: req.user.id,
 			});
 			throw new ResponseHelper.ResponseError(
-				'Credential not found to be updated. You can only update credentials owned by you',
+				'Credential to be updated not found. You can only update credentials owned by you',
 				undefined,
 				404,
 			);
@@ -218,7 +218,7 @@ credentialsController.delete(
 				userId: req.user.id,
 			});
 			throw new ResponseHelper.ResponseError(
-				'Credential not found to be deleted. You can only removed credentials owned by you',
+				'Credential to be deleted not found. You can only removed credentials owned by you',
 				undefined,
 				404,
 			);
