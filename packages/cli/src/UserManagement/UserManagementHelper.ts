@@ -78,6 +78,15 @@ export async function getInstanceOwner(): Promise<User> {
 	return owner;
 }
 
+export async function getRole(scope: Role['scope'], name: Role['name']): Promise<Role> {
+	return Db.collections.Role.findOneOrFail({
+		where: {
+			name,
+			scope,
+		},
+	});
+}
+
 /**
  * Return the n8n instance base URL without trailing slash.
  */
@@ -90,7 +99,7 @@ export function getInstanceBaseUrl(): string {
 // TODO: Enforce at model level
 export function validatePassword(password?: string): string {
 	if (!password) {
-		throw new ResponseHelper.ResponseError('Password is mandatory', undefined, 400);
+		throw new ResponseHelper.BadRequestError('Password is mandatory');
 	}
 
 	const hasInvalidLength =
@@ -117,7 +126,7 @@ export function validatePassword(password?: string): string {
 			message.push('Password must contain at least 1 uppercase letter.');
 		}
 
-		throw new ResponseHelper.ResponseError(message.join(' '), undefined, 400);
+		throw new ResponseHelper.BadRequestError(message.join(' '));
 	}
 
 	return password;

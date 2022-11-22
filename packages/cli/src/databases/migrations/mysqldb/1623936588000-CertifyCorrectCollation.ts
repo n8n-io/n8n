@@ -13,7 +13,9 @@ export class CertifyCorrectCollation1623936588000 implements MigrationInterface 
 			return;
 		}
 
-		const checkCollationExistence = await queryRunner.query(`show collation where collation like 'utf8mb4_0900_ai_ci';`);
+		const checkCollationExistence = await queryRunner.query(
+			`show collation where collation like 'utf8mb4_0900_ai_ci';`,
+		);
 		let collation = 'utf8mb4_general_ci';
 		if (checkCollationExistence.length > 0) {
 			collation = 'utf8mb4_0900_ai_ci';
@@ -21,7 +23,9 @@ export class CertifyCorrectCollation1623936588000 implements MigrationInterface 
 
 		const databaseName = config.getEnv(`database.mysqldb.database`);
 
-		await queryRunner.query(`ALTER DATABASE \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE ${collation};`);
+		await queryRunner.query(
+			`ALTER DATABASE \`${databaseName}\` CHARACTER SET utf8mb4 COLLATE ${collation};`,
+		);
 
 		for (const tableName of [
 			'credentials_entity',
@@ -31,7 +35,9 @@ export class CertifyCorrectCollation1623936588000 implements MigrationInterface 
 			'workflow_entity',
 			'workflows_tags',
 		]) {
-			await queryRunner.query(`ALTER TABLE ${tablePrefix}${tableName} CONVERT TO CHARACTER SET utf8mb4 COLLATE ${collation};`);
+			await queryRunner.query(
+				`ALTER TABLE ${tablePrefix}${tableName} CONVERT TO CHARACTER SET utf8mb4 COLLATE ${collation};`,
+			);
 		}
 	}
 
@@ -40,5 +46,4 @@ export class CertifyCorrectCollation1623936588000 implements MigrationInterface 
 		// This migration exists simply to enforce that n8n will work with
 		// older mysql versions
 	}
-
 }

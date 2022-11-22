@@ -284,6 +284,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 				uiStore.stateIsDirty = true;
 			}
 			this.workflow.name = data.newName;
+
+			if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				this.workflowsById[this.workflow.id].name = data.newName;
+			}
 		},
 
 		setWorkflowHash(hash: string): void {
