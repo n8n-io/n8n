@@ -96,14 +96,16 @@ export const databaseFields: INodeProperties[] = [
 						type: 'regex',
 						properties: {
 							regex:
-								'(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
-							errorMessage: 'Not a valid Notion Database URL. Hint: use the URL of the database itself, not a page containing it.',
+								'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12}).*',
+							errorMessage:
+								'Not a valid Notion Database URL. Hint: use the URL of the database itself, not a page containing it.',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: '(?:https|http):\/\/www.notion.so\/(?:[a-z0-9\-]{2,}\/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
+					regex:
+						'(?:https|http)://www.notion.so/(?:[a-z0-9-]{2,}/)?([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})',
 				},
 			},
 			{
@@ -115,7 +117,8 @@ export const databaseFields: INodeProperties[] = [
 					{
 						type: 'regex',
 						properties: {
-							regex: '^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
+							regex:
+								'^(([0-9a-f]{8}[0-9a-f]{4}4[0-9a-f]{3}[89ab][0-9a-f]{3}[0-9a-f]{12})|([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}))[ \t]*',
 							errorMessage: 'Not a valid Notion Database ID',
 						},
 					},
@@ -133,7 +136,7 @@ export const databaseFields: INodeProperties[] = [
 				operation: ['get'],
 			},
 		},
-		description: "The Notion Database to get",
+		description: 'The Notion Database to get',
 	},
 	/* -------------------------------------------------------------------------- */
 	/*                                database:getAll                             */
