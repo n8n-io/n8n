@@ -6,45 +6,40 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 import { ResourceLocator } from '../helpers/GoogleSheets.types';
-import { getSpreadsheetId, sortLoadOptions } from '../helpers/GoogleSheets.utils';
-import { apiRequest, apiRequestAllItems } from '../transport';
+import { getSpreadsheetId } from '../helpers/GoogleSheets.utils';
+import { apiRequest } from '../transport';
 
 export async function spreadSheetsSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
+	paginationToken?: string,
 ): Promise<INodeListSearchResult> {
-	const returnData: INodeListSearchItems[] = [];
 	const query: string[] = [];
 	if (filter) {
 		query.push(`name contains '${filter.replace("'", "\\'")}'`);
 	}
 	query.push("mimeType = 'application/vnd.google-apps.spreadsheet'");
-	const qs = {
-		pageSize: 50,
-		orderBy: 'modifiedTime desc',
-		fields: 'nextPageToken, files(id, name, webViewLink)',
-		q: query.join(' and '),
-		includeItemsFromAllDrives: true,
-		supportsAllDrives: true,
-	};
-
-	const sheets = await apiRequestAllItems.call(
+	const res = await apiRequest.call(
 		this,
-		'files',
 		'GET',
 		'',
 		{},
-		qs,
+		{
+			q: query.join(' and '),
+			pageToken: paginationToken as string | undefined,
+			fields: 'nextPageToken, files(id, name, webViewLink)',
+			orderBy: 'name_natural',
+		},
 		'https://www.googleapis.com/drive/v3/files',
 	);
-	for (const sheet of sheets) {
-		returnData.push({
+	return {
+		results: res.files.map((sheet: IDataObject) => ({
 			name: sheet.name as string,
 			value: sheet.id as string,
 			url: sheet.webViewLink as string,
-		});
-	}
-	return { results: sortLoadOptions(returnData) };
+		})),
+		paginationToken: res.nextPageToken,
+	};
 }
 
 export async function sheetsSearch(
