@@ -73,7 +73,10 @@
 							<template #content>
 								<div>
 									<i18n path="dataMapping.tableView.tableColumnsExceeded.tooltip">
-										<a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+										<template #columnLimit>{{ columnLimit }}</template>
+										<template #link>
+										  <a @click="switchToJsonView">{{ $locale.baseText('dataMapping.tableView.tableColumnsExceeded.tooltip.link') }}</a>
+										</template>
 									</i18n>
 								</div>
 							</template>
@@ -212,6 +215,7 @@ export default mixins(externalHooks).extend({
 			hoveringPath: null as null | string,
 			mappingHintVisible: false,
 			activeRow: null as number | null,
+			columnLimit: MAX_COLUMNS_LIMIT,
 			columnLimitExceeded: false,
 		};
 	},

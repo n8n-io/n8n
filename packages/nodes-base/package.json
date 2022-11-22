@@ -17,7 +17,7 @@
     "dev": "pnpm watch",
     "build": "tsc && gulp build:icons && gulp build:translations",
     "build:translations": "gulp build:translations",
-    "format": "prettier --write **/*.{ts,json}",
+    "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "tslint -p tsconfig.json -c tslint.json && eslint nodes credentials",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint nodes credentials --fix",
     "watch": "tsc --watch",
