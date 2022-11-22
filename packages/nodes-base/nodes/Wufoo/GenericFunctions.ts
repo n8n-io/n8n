@@ -36,5 +36,5 @@ export async function wufooApiRequest(
 		delete options.body;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'wufooApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'wufooApi', options);
 }

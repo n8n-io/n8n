@@ -27,7 +27,7 @@ export async function urlScanIoApiRequest(
 		delete options.qs;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi', options);
 }
 
 export async function handleListing(
