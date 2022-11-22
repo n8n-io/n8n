@@ -7,10 +7,12 @@ import mixins from 'vue-typed-mixins';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
-import { autocompletion } from '@codemirror/autocomplete';
+// import { autocompletion } from '@codemirror/autocomplete';
 import { syntaxTree } from '@codemirror/language';
+import { mapStores } from 'pinia';
 
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { useNDVStore } from '@/stores/ndv';
 import { n8nLanguageSupport } from './n8nLanguageSupport';
 import { braceHandler } from './braceHandler';
 import { EXPRESSION_EDITOR_THEME } from './theme';
@@ -103,6 +105,7 @@ export default mixins(workflowHelpers).extend({
 		this.editor?.destroy();
 	},
 	computed: {
+		...mapStores(useNDVStore),
 		unresolvedExpression(): string {
 			return this.segments.reduce((acc, segment) => {
 				acc += segment.kind === 'resolvable' ? segment.resolvable : segment.plaintext;
@@ -216,7 +219,11 @@ export default mixins(workflowHelpers).extend({
 			const result: { resolved: unknown; error: boolean } = { resolved: undefined, error: false };
 
 			try {
-				result.resolved = this.resolveExpression('=' + resolvable) as unknown;
+				result.resolved = this.resolveExpression('=' + resolvable, undefined, {
+					inputNodeName: this.ndvStore.ndvInputNodeName,
+					inputRunIndex: this.ndvStore.ndvInputRunIndex,
+					inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+				});
 			} catch (error) {
 				result.resolved = `[${error.message}]`;
 				result.error = true;
