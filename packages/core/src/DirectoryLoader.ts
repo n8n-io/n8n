@@ -293,7 +293,7 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 			}
 		}
 
-		Logger.info(`Loaded all credentials and nodes from ${this.packageName}`, {
+		Logger.debug(`Loaded all credentials and nodes from ${this.packageName}`, {
 			credentials: credentials?.length ?? 0,
 			nodes: nodes?.length ?? 0,
 		});
@@ -325,14 +325,14 @@ export class LazyPackageDirectoryLoader extends PackageDirectoryLoader {
 			this.types.nodes = await this.readJSON('dist/types/nodes.json');
 			this.types.credentials = await this.readJSON('dist/types/credentials.json');
 
-			Logger.info(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
+			Logger.debug(`Lazy Loading credentials and nodes from ${this.packageJson.name}`, {
 				credentials: this.types.credentials?.length ?? 0,
 				nodes: this.types.nodes?.length ?? 0,
 			});
 
 			return; // We can load nodes and credentials lazily now
 		} catch {
-			Logger.info("Can't enable lazy-loading");
+			Logger.debug("Can't enable lazy-loading");
 			await super.loadAll();
 		}
 	}
