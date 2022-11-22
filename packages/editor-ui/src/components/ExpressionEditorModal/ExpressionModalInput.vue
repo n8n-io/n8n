@@ -91,6 +91,8 @@ export default mixins(workflowHelpers).extend({
 			}),
 		});
 
+		this.editor.focus();
+
 		addColor(this.editor, this.resolvableSegments);
 
 		this.$emit('change', { value: this.unresolvedExpression, segments: this.displayableSegments });
