@@ -4,6 +4,7 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IPollFunctions,
+	NodeOperationError,
 } from 'n8n-workflow';
 
 import { apiRequest } from './v2/transport';
@@ -71,6 +72,10 @@ export class GoogleSheetsTrigger implements INodeType {
 					{
 						name: 'Row Added',
 						value: 'rowAdded',
+					},
+					{
+						name: 'All Updates',
+						value: 'allUpdates',
 					},
 				],
 				default: 'rowAdded',
@@ -184,7 +189,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				displayName: 'Range',
 				name: 'range',
 				type: 'string',
-				default: 'A:F',
+				default: 'A:Z',
 				required: true,
 				description: 'The table range to read from',
 			},
@@ -206,7 +211,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				typeOptions: {
 					minValue: 1,
 				},
-				default: 1,
+				default: 2,
 				required: true,
 				description: 'Index where to start looking for new data',
 			},
@@ -274,10 +279,41 @@ export class GoogleSheetsTrigger implements INodeType {
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const webhookData = this.getWorkflowStaticData('node');
+		const event = this.getNodeParameter('event', 0) as string;
 
 		const documentId = this.getNodeParameter('documentId', undefined, {
 			extractValue: true,
 		}) as string;
+
+		// Check if new revision is available, if not return
+		let pageToken;
+		do {
+			const { revisions, nextPageToken } = await apiRequest.call(
+				this,
+				'GET',
+				``,
+				undefined,
+				{
+					fields: 'revisions(id), nextPageToken',
+					pageToken,
+					pageSize: 1000,
+				},
+				`https://www.googleapis.com/drive/v3/files/${documentId}/revisions`,
+			);
+
+			if (nextPageToken) {
+				pageToken = nextPageToken as string;
+			} else {
+				pageToken = undefined;
+				const lastRevision = +revisions[revisions.length - 1];
+
+				if (lastRevision <= (webhookData.lastRevision as number)) {
+					return null;
+				} else {
+					webhookData.lastRevision = lastRevision;
+				}
+			}
+		} while (pageToken);
 
 		const sheetId = this.getNodeParameter('sheetId', undefined, {
 			extractValue: true,
@@ -290,56 +326,69 @@ export class GoogleSheetsTrigger implements INodeType {
 		const range = this.getNodeParameter('range') as string;
 		const startIndex = this.getNodeParameter('startIndex') as number;
 		const keyRow = this.getNodeParameter('keyRow') as number;
+
 		const options = this.getNodeParameter('options') as IDataObject;
 		const qs: IDataObject = {};
 
 		Object.assign(qs, options);
 
-		const ranges = [];
+		if (event === 'rowAdded') {
+			let rangeToCheck;
+			const [rangeFrom, rangeTo] = range.split(':');
+			const keyRange = `${rangeFrom}${keyRow}:${rangeTo}${keyRow}`;
 
-		const [rangeFrom, rangeTo] = range.split(':');
-
-		const keyRange = `${rangeFrom}${keyRow}:${rangeTo}${keyRow}`;
-
-		let { values: columns } = await apiRequest.call(
-			this,
-			'GET',
-			`/v4/spreadsheets/${documentId}/values/${sheetName}!${keyRange}`,
-		);
-
-		columns = columns[0];
-
-		if (webhookData.lastIndexChecked === undefined) {
-			ranges.push(`${rangeFrom}${startIndex}:${rangeTo}`);
-			webhookData.lastIndexChecked = startIndex;
-		} else {
-			ranges.push(`${rangeFrom}${webhookData.lastIndexChecked}:${rangeTo}`);
-		}
-
-		const { values } = await apiRequest.call(
-			this,
-			'GET',
-			`/v4/spreadsheets/${documentId}/values/${sheetName}!${ranges[0]}`,
-			{},
-			qs,
-		);
-
-		const results: IDataObject[] = [];
-
-		if (Array.isArray(values)) {
-			for (let i = 0; i < values.length; i++) {
-				const column: IDataObject = {};
-				for (let y = 0; y < columns.length; y++) {
-					column[columns[y]] = values[i][y] || '';
-				}
-				results.push(column);
+			if (webhookData.lastIndexChecked === undefined) {
+				rangeToCheck = `${rangeFrom}${startIndex}:${rangeTo}`;
+				webhookData.lastIndexChecked = startIndex;
+			} else {
+				rangeToCheck = `${rangeFrom}${webhookData.lastIndexChecked}:${rangeTo}`;
 			}
 
-			webhookData.lastIndexChecked = (webhookData.lastIndexChecked as number) + values.length;
+			const [columns] = (
+				(await apiRequest.call(
+					this,
+					'GET',
+					`/v4/spreadsheets/${documentId}/values/${sheetName}!${keyRange}`,
+				)) as IDataObject
+			).values as string[][];
+
+			if (columns === undefined || columns.length === 0) {
+				throw new NodeOperationError(this.getNode(), 'Could not retrieve the columns from key row');
+			}
+
+			const { values: sheetData } = await apiRequest.call(
+				this,
+				'GET',
+				`/v4/spreadsheets/${documentId}/values/${sheetName}!${rangeToCheck}`,
+				{},
+				qs,
+			);
+
+			if (Array.isArray(sheetData)) {
+				const returnData: IDataObject[] = [];
+
+				for (let rowIndex = 0; rowIndex < sheetData.length; rowIndex++) {
+					const rowData: IDataObject = {};
+
+					for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
+						const columnName = columns[columnIndex];
+						const cellValue = sheetData[rowIndex][columnIndex] || '';
+
+						rowData[columnName] = cellValue;
+					}
+
+					returnData.push(rowData);
+				}
+
+				webhookData.lastIndexChecked = (webhookData.lastIndexChecked as number) + sheetData.length;
+
+				if (Array.isArray(returnData) && returnData.length !== 0) {
+					return [this.helpers.returnJsonArray(returnData)];
+				}
+			}
 		}
 
-		if (Array.isArray(results) && results.length !== 0) {
-			return [this.helpers.returnJsonArray(results)];
+		if (event === 'allUpdates') {
 		}
 
 		return null;
