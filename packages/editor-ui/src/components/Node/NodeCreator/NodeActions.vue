@@ -27,40 +27,51 @@
 						/>
 					</header>
 					<ul :class="$style.categoryActions" v-show="!subtractedCategories.includes(action.key)">
-						<node-action
+						<n8n-node-creator-node
 							v-for="item in action.items"
 							v-show="item.key !== CUSTOM_API_CALL_KEY"
 							:key="`${action.key}_${item.key}`"
-							:action="item"
-							:nodeType="nodeType"
 							@click="onActionClick(item)"
-
 							@dragstart="$e => onDragStart($e, item)"
 							@dragend="$emit('dragend')"
-						/>
+							draggable
+							:class="$style.action"
+							:title="item.title"
+							:isTrigger="isTriggerAction(item)"
+						>
+							<template slot="icon">
+								<node-icon :nodeType="nodeType" />
+							</template>
+						</n8n-node-creator-node>
 					</ul>
 				</div>
 
 				<!-- Flat actions -->
-				<node-action
+				<n8n-node-creator-node
 					v-else
 					v-show="action.key !== CUSTOM_API_CALL_KEY"
 					:key="`${action.key}__${action.title}`"
-					:action="action"
-					:nodeType="nodeType"
 					@click="onActionClick(action)"
-
 					@dragstart="$e => onDragStart($e, action)"
 					@dragend="$emit('dragend')"
-				/>
+					draggable
+					:class="$style.action"
+					:title="action.title"
+					:isTrigger="isTriggerAction(action)"
+
+				>
+					<template slot="icon">
+						<node-icon :nodeType="nodeType" />
+					</template>
+				</n8n-node-creator-node>
 			</template>
+			<footer
+				v-if="containsAPIAction"
+				:class="$style.apiHint"
+				@click.stop="addHttpNode"
+				v-html="$locale.baseText('nodeCreator.actionsList.apiCall', { interpolate: { nodeNameTitle }})"
+			/>
 		</main>
-		<footer
-			v-if="containsAPIAction"
-			:class="$style.apiHint"
-			@click.stop="addHttpNode"
-			v-html="$locale.baseText('nodeCreator.actionsList.apiCall', { interpolate: { nodeNameTitle }})"
-		/>
 	</aside>
 </template>
 
@@ -70,7 +81,6 @@ import { IDataObject, INodeTypeDescription, INodeAction, INodeParameters } from 
 import { IUpdateInformation } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
 import SearchBar from './SearchBar.vue';
-import NodeAction from './NodeAction.vue';
 import { sublimeSearch } from './sortUtils';
 import { CUSTOM_API_CALL_KEY, HTTP_REQUEST_NODE_TYPE } from '@/constants';
 
@@ -123,6 +133,8 @@ const filteredActions = computed(() => {
 
 	return matchedActions.map(({item}) => item);
 });
+
+const isTriggerAction = (action: INodeAction) => action.nodeName?.toLowerCase().includes('trigger');
 
 function toggleCategory(category: string) {
 	if (state.subtractedCategories.includes(category)) {
@@ -189,6 +201,19 @@ const { subtractedCategories, search } = toRefs(state);
 	cursor: default;
 
 	--search-margin: 0;
+}
+
+.action {
+	position: relative;
+	&:hover:before {
+		content: "";
+		position: absolute;
+		right: calc(100% + var(--spacing-s) - 1px);
+		top: 0;
+		bottom: 0;
+		width: 2px;
+		background: var(--color-text-light);
+	}
 }
 .content {
 	height: 100%;
@@ -275,9 +300,8 @@ const { subtractedCategories, search } = toRefs(state);
 .apiHint {
 	font-size: var(--font-size-2xs);
 	color: var(--color-text-base);
-	margin: 0 var(--spacing-s);
 	padding-top: var(--spacing-s);
-	padding-bottom: var(--spacing-l);
+	line-height: var(--font-line-height-regular);
 	border-top: 1px solid #DBDFE7;
 	z-index: 1;
 }

@@ -165,29 +165,31 @@ function shouldShowNodeActions(node: INodeCreateElement) {
 	return false;
 }
 
+const WHITELISTED_APP_CORE_NODES = [
+	EMAIL_IMAP_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+];
+
 const isAppEventSubcategory = computed(() => state.selectedSubcategory === "*");
 
 const firstLevelItems = computed(() => isRoot.value ? items : []);
 
 const isSearchActive = computed(() => state.filter !== '');
 
+
 // On App Event is a special subcategory because we want to
 // show merged regular nodes with actions and trigger nodes
 const mergedNodes = computed(() => Object.values(
 	props.searchItems.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
 		const clonedNode = deepCopy(node);
-		const isRegularNode = clonedNode.includedByRegular === true;
 		const nodeType = (clonedNode.properties as INodeItemProps).nodeType;
 		const actions = nodeType.actions || [];
-		const isCoreNode = nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) && node.key !== EMAIL_IMAP_NODE_TYPE;
-		const hasActions = actions?.length > 0;
+		const isCoreNode = nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) && !WHITELISTED_APP_CORE_NODES.includes(node.key);
 		const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
-		const isAppEventsSearch = isSearchActive.value && isAppEventSubcategory.value;
 
-		const excludedCoreNode = isCoreNode && isAppEventsSearch;
-		const excludedRegularNode = isRegularNode && (!hasActions || !state.showMergedActions);
+		const excludedCoreNode = isCoreNode && isAppEventSubcategory.value;
 
-		if(excludedCoreNode || excludedRegularNode) return acc;
+		if(excludedCoreNode) return acc;
 
 		const existingNode = acc[normalizedName];
 		if(existingNode) {

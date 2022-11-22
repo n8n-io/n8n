@@ -20,7 +20,6 @@
 		<node-item
 			v-else-if="item.type === 'node'"
 			:nodeType="item.properties.nodeType"
-			:simpleStyle="simpleNodeStyle"
 			:allow-actions="allowActions"
 			@dragstart="$listeners.dragstart"
 			@dragend="$listeners.dragend"
@@ -38,7 +37,6 @@ import CategoryItem from './CategoryItem.vue';
 export interface Props {
 	item: INodeCreateElement;
 	active?: boolean;
-	simpleNodeStyle?: boolean;
 	clickable?: boolean;
 	lastNode?: boolean;
 	allowActions?: boolean;

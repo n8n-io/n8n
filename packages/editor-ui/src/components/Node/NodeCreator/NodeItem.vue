@@ -1,74 +1,62 @@
 <template>
 	<!-- Node Item is draggable only if it doesn't contain actions -->
-	<div
+	<n8n-node-creator-node
 		:draggable="!(allowActions && nodeType.actions && nodeType.actions.length > 0)"
 		@dragstart="onDragStart"
 		@dragend="onDragEnd"
 		@click.stop="onClick"
 		:class="$style.nodeItem"
+		:description="allowActions ? undefined : $locale.headerText({
+			key: `headers.${shortNodeType}.description`,
+			fallback: nodeType.description,
+		})"
+		:title="displayName"
+		:isTrigger="!allowActions && isTriggerNode"
+		:isPanelActive="showActionsPanel"
 	>
-		<node-icon :class="$style['node-icon']" :nodeType="nodeType" />
-		<div>
-			<div :class="$style.details">
-				<span :class="$style.name">
-					{{ $locale.headerText({
-							key: `headers.${shortNodeType}.displayName`,
-							fallback: allowActions ? nodeType.displayName.replace('Trigger', '') : nodeType.displayName,
-						})
-					}}
-				</span>
-				<trigger-icon v-if="!allowActions && isTriggerNode" :class="$style.triggerIcon" />
-				<n8n-tooltip v-if="isCommunityNode" placement="top" >
-					<div
-						:class="$style['communityNodeIcon']"
-						slot="content"
-						v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
-						@click="onCommunityNodeTooltipClick"
-					>
-					</div>
-					<n8n-icon icon="cube" />
-				</n8n-tooltip>
-			</div>
-			<div :class="$style.description" v-if="!simpleStyle">
-				{{ $locale.headerText({
-						key: `headers.${shortNodeType}.description`,
-						fallback: nodeType.description,
-					})
-				}}
-			</div>
+		<template slot="icon">
+			<node-icon :nodeType="nodeType" />
+		</template>
 
-			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer" />
-			<transition name="node-item-transition">
-				<div
-					:class="$style.draggable"
-					:style="draggableStyle"
-					v-show="dragging"
-				>
-					<node-icon class="node-icon" :nodeType="nodeType" :size="40" :shrink="false" />
-				</div>
-			</transition>
-		</div>
-		<node-actions
-			:class="$style.actions"
-			v-if="allowActions && nodeType.actions && showActionsPanel"
-			:nodeType="nodeType"
-			:actions="nodeType.actions"
-			@actionSelected="onActionSelected"
-			@back="showActionsPanel = false"
+		<template slot="tooltip" v-if="isCommunityNode">
+			<div
+				:class="$style.communityNodeIcon"
+				slot="content"
+				v-html="$locale.baseText('generic.communityNode.tooltip', { interpolate: { packageName: nodeType.name.split('.')[0], docURL: COMMUNITY_NODES_INSTALLATION_DOCS_URL } })"
+				@click="onCommunityNodeTooltipClick"
+			>
+			</div>
+			<n8n-icon icon="cube" />
+		</template>
 
-			@dragstart="onDragStart"
-			@dragend="onDragEnd"
-		/>
-		<div :class="{[$style.actionIcon]: true, [$style.visible]: allowActions && hasActions}" >
-			<font-awesome-icon :class="$style.actionArrow" icon="arrow-right" />
-		</div>
-	</div>
+		<template slot="dragContent">
+			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer"/>
+			<div
+				:class="$style.draggable"
+				:style="draggableStyle"
+				v-show="dragging"
+			>
+				<node-icon :nodeType="nodeType" @click.capture.stop :size="40" :shrink="false" />
+			</div>
+		</template>
+
+		<template slot="panel" v-if="allowActions && nodeType.actions && nodeType.actions.length > 0">
+			<node-actions
+				:class="$style.actions"
+				:nodeType="nodeType"
+				:actions="nodeType.actions"
+				@actionSelected="onActionSelected"
+				@back="showActionsPanel = false"
+				@dragstart="onDragStart"
+				@dragend="onDragEnd"
+			/>
+		</template>
+</n8n-node-creator-node>
 </template>
 
 <script setup lang="ts">
-import TriggerIcon from '@/components/TriggerIcon.vue';
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
-import { INodeTypeDescription, IDataObject } from 'n8n-workflow';
+import { INodeTypeDescription } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
 import { isCommunityPackageName } from '@/components/helpers';
@@ -79,19 +67,14 @@ import NodeIcon from '@/components/NodeIcon.vue';
 import NodeActions from './NodeActions.vue';
 import { useWorkflowsStore } from '@/stores/workflows';
 
-
 export interface Props {
 	nodeType: INodeTypeDescription;
 	active?: boolean;
-	simpleStyle?: boolean;
-	hideDescription?: boolean;
 	allowActions?: boolean;
 }
 
 const props = withDefaults(defineProps<Props>(), {
 	active: false,
-	simpleStyle: false,
-	hideDescription: false,
 	allowActions: false,
 });
 
@@ -125,6 +108,14 @@ const draggableStyle = computed<{ top: string; left: string; }>(() => ({
 
 const isCommunityNode = computed<boolean>(() => isCommunityPackageName(props.nodeType.name));
 
+const displayName = computed<any>(() => {
+	const displayName = props.nodeType.displayName.trimEnd();
+
+	return instance?.proxy.$locale.headerText({
+		key: `headers.${shortNodeType}.displayName`,
+		fallback: props.allowActions ? displayName.replace('Trigger', '') : displayName,
+	});
+});
 const isTriggerNode = computed<boolean>(() => props.nodeType.displayName.toLowerCase().includes('trigger'));
 
 function onClick() {
@@ -168,7 +159,7 @@ function onDragStart(event: DragEvent): void {
 
 	const { pageX: x, pageY: y } = event;
 
-	emit('dragstart', event);
+
 
 	if (event.dataTransfer) {
 		event.dataTransfer.effectAllowed = "copy";
@@ -179,7 +170,7 @@ function onDragStart(event: DragEvent): void {
 		const actionData = event.dataTransfer.getData('actionData');
 		if(actionData) {
 			try {
-				const action = JSON.parse(actionData) as IDataObject;
+				const action = JSON.parse(actionData) as IUpdateInformation;
 
 				event.dataTransfer.setData('nodeTypeName', getActionNodeTypes(action).join(','));
 				document.body.addEventListener("dragend", () => onDragActionSelected(action));
@@ -191,6 +182,7 @@ function onDragStart(event: DragEvent): void {
 
 	state.dragging = true;
 	state.draggablePosition = { x, y };
+	emit('dragstart', event);
 }
 
 function onDragOver(event: DragEvent): void {
@@ -222,68 +214,18 @@ function onCommunityNodeTooltipClick(event: MouseEvent) {
 
 const { showActionsPanel, dragging, draggableDataTransfer } = toRefs(state);
 </script>
-
 <style lang="scss" module>
 .actions {
+
 	position: absolute;
 	top: 0;
 	z-index: 1;
 }
-
-.actionIcon {
-	opacity: 0;
-	flex-grow: 1;
-	display: flex;
-	justify-content: flex-end;
-	align-items: center;
-	margin-left: 8px;
-	color: var(--color-text-lighter);
-
-	&.visible {
-		opacity: 1;
-	}
-}
-.nodeItem:hover .actionIcon {
-	color: var(--color-text-light)
-}
-.actionArrow {
-	font-size: 12px;
-	width: 12px;
-}
 .nodeItem {
-	padding: 11px 8px 11px 0;
+	--trigger-icon-background-color: #{$trigger-icon-background-color};
+	--trigger-icon-border-color: #{$trigger-icon-border-color};
 	margin-left: 15px;
 	margin-right: 12px;
-	display: flex;
-	align-items: center;
-}
-
-.details {
-	align-items: center;
-}
-
-.node-icon {
-	min-width: 26px;
-	max-width: 26px;
-	margin-right: 15px;
-}
-
-.name {
-	font-weight: var(--font-weight-bold);
-	font-size: 14px;
-	line-height: 18px;
-}
-
-.description {
-	margin-top: 2px;
-	font-size: var(--font-size-2xs);
-	line-height: 16px;
-	font-weight: 400;
-	color: $node-creator-description-color;
-}
-
-.triggerIcon {
-	margin-left: var(--spacing-3xs);
 }
 
 .communityNodeIcon {
@@ -311,20 +253,6 @@ const { showActionsPanel, dragging, draggableDataTransfer } = toRefs(state);
 </style>
 
 <style lang="scss" scoped>
-.nodeItem-transition {
-	&-enter-active,
-	&-leave-active {
-		transition-property: opacity, transform;
-		transition-duration: 300ms;
-		transition-timing-function: ease;
-	}
-
-	&-enter,
-	&-leave-to {
-		opacity: 0;
-		transform: scale(0);
-	}
-}
 .el-tooltip svg {
 	color: var(--color-foreground-xdark);
 }

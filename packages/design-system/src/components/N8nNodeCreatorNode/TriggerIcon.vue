@@ -28,13 +28,14 @@ export default {
 
 <style lang="scss" module>
 .trigger {
-	background-color: $trigger-icon-background-color;
-	border: 1px solid $trigger-icon-border-color;
+	background-color: var(--trigger-icon-background-color, var(--color-background-xlight));
+	border: 1px solid var(--trigger-icon-border-color, var(--color-background-xlight));
 	border-radius: 4px;
 	height: 16px;
 	width: 16px;
 	display: inline-block;
 	vertical-align: middle;
+	line-height: 16px;
 
 	> svg {
 		width: 100%;
