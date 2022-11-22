@@ -25,6 +25,7 @@ import {
 import config from '@/config';
 import { issueCookie } from '../auth/jwt';
 import { InternalHooksManager } from '@/InternalHooksManager';
+import { SignInType } from '@/Ldap/constants';
 
 export function usersNamespace(this: N8nApp): void {
 	/**
@@ -366,6 +367,8 @@ export function usersNamespace(this: N8nApp): void {
 
 			void InternalHooksManager.getInstance().onUserSignup({
 				user_id: invitee.id,
+				user_type: SignInType.EMAIL,
+				was_disabled_ldap_user: false,
 			});
 
 			await this.externalHooks.run('user.profile.update', [invitee.email, sanitizeUser(invitee)]);

@@ -2,6 +2,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/naming-convention */
 
+import { LdapConfig } from './types';
+
 export const LDAP_FEATURE_NAME = 'ldap';
 
 export const LDAP_ENABLED = 'enterprise.features.ldap';
@@ -140,3 +142,17 @@ export const LDAP_CONFIG_SCHEMA = {
 	],
 	additionalProperties: false,
 };
+
+export const NON_SENSIBLE_LDAP_CONFIG_PROPERTIES: Array<keyof LdapConfig> = [
+	'loginEnabled',
+	'emailAttribute',
+	'firstNameAttribute',
+	'lastNameAttribute',
+	'loginIdAttribute',
+	'ldapIdAttribute',
+	'syncronizationEnabled',
+	'syncronizationInterval',
+	'searchPageSize',
+	'searchTimeout',
+	'loginLabel',
+];

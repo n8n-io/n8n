@@ -2,6 +2,7 @@ import * as Db from '@/Db';
 import { SignInType } from '@/Ldap/constants';
 import type { User } from '@db/entities/User';
 import { compareHash } from '@/UserManagement/UserManagementHelper';
+import { InternalHooksManager } from '@/InternalHooksManager';
 
 export const handleEmailLogin = async (
 	email: string,
@@ -24,6 +25,10 @@ export const handleEmailLogin = async (
 	// At this point if the user has a LDAP ID, means it was previosly an LDAP user,
 	// so suggest to reset the password to gain access to the instance.
 	if (user?.ldapId) {
+		void InternalHooksManager.getInstance().userLoginFailedDueToLdapDisabled({
+			user_id: user.id,
+		});
+
 		const error = new Error('Reset your password to gain access to the instance.');
 		// @ts-ignore
 		error.httpStatusCode = 401;

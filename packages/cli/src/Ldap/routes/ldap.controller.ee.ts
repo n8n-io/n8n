@@ -2,6 +2,9 @@ import express from 'express';
 import { LdapManager } from '../LdapManager.ee';
 import { getLdapConfig, getLdapSyncronizations, updateLdapConfig } from '../helpers';
 import type { LdapConfiguration } from '../types';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import pick from 'lodash.pick';
+import { NON_SENSIBLE_LDAP_CONFIG_PROPERTIES } from '../constants';
 
 export const ldapController = express.Router();
 
@@ -40,6 +43,11 @@ ldapController.put('/config', async (req: LdapConfiguration.Update, res: express
 	const data = await getLdapConfig();
 
 	LdapManager.updateConfig(data);
+
+	void InternalHooksManager.getInstance().onUserUpdatedLdapSettings({
+		user_id: req.user.id,
+		...pick(data, NON_SENSIBLE_LDAP_CONFIG_PROPERTIES),
+	});
 
 	return res.status(200).json({ data });
 });
