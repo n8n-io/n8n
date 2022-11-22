@@ -714,7 +714,7 @@ export default mixins(
 				return this.paneType === 'input';
 			},
 			jsonSchema(): JsonSchema {
-				return getJsonSchema(mergeDeep(this.jsonData));
+				return getJsonSchema(mergeDeep([...this.jsonData, this.jsonData[0]]));
 			},
 		},
 		methods: {
