@@ -30,7 +30,7 @@
 				<item-iterator
 					:elements="renderedItems"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
-					:transitionsEnabled="true"
+					:transitionsEnabled="enableItemsTransition"
 					@selected="selected"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
 					:with-actions-getter="withActionsGetter"
@@ -43,7 +43,7 @@
 				<item-iterator
 					:elements="filteredNodeTypes"
 					:activeIndex="activeSubcategory ? activeSubcategoryIndex : activeIndex"
-					:transitionsEnabled="true"
+					:transitionsEnabled="enableItemsTransition"
 					@selected="selected"
 					@nodeTypeSelected="$listeners.nodeTypeSelected"
 					:with-actions-getter="withActionsGetter"
@@ -108,6 +108,7 @@ export interface Props {
 	firstLevelItems?: INodeCreateElement[];
 	initialActiveCategories?: string[];
 	initialActiveIndex?: number;
+	enableItemsTransition?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {

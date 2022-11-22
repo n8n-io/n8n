@@ -58,7 +58,6 @@
 					:class="$style.action"
 					:title="action.title"
 					:isTrigger="isTriggerAction(action)"
-
 				>
 					<template slot="icon">
 						<node-icon :nodeType="nodeType" />

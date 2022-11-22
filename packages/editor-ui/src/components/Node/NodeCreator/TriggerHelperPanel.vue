@@ -11,6 +11,7 @@
 			:firstLevelItems="firstLevelItems"
 			:flatten="isAppEventSubcategory"
 			:filterByType="false"
+			:enableItemsTransition="true"
 		>
 			<template #header>
 				<slot name="header" />
