@@ -36,7 +36,7 @@ credentialsController.use('/', EECredentialsController);
 credentialsController.get(
 	'/',
 	ResponseHelper.send(async (req: CredentialRequest.GetAll): Promise<ICredentialsResponse[]> => {
-		const credentials = await CredentialsService.getAll(req.user);
+		const credentials = await CredentialsService.getAll(req.user, { roles: ['owner'] });
 
 		return credentials.map((credential) => {
 			// eslint-disable-next-line no-param-reassign

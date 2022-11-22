@@ -415,7 +415,13 @@ export class ScheduleTrigger implements INodeType {
 		const timezone = this.getTimezone();
 		const cronJobs: CronJob[] = [];
 		const intervalArr: NodeJS.Timeout[] = [];
-		const executeTrigger = () => {
+		const staticData = this.getWorkflowStaticData('node') as {
+			recurrencyRules: number[];
+		};
+		if (!staticData.recurrencyRules) {
+			staticData.recurrencyRules = [];
+		}
+		const executeTrigger = (recurrencyRuleIndex?: number, weeksInterval?: number) => {
 			const resultData = {
 				timestamp: moment.tz(timezone).toISOString(true),
 				'Readable date': moment.tz(timezone).format('MMMM Do YYYY, h:mm:ss a'),
@@ -429,8 +435,27 @@ export class ScheduleTrigger implements INodeType {
 				Second: moment.tz(timezone).format('ss'),
 				Timezone: moment.tz(timezone).format('z Z'),
 			};
-			this.emit([this.helpers.returnJsonArray([resultData])]);
+			const lastExecutionWeekNumber =
+				recurrencyRuleIndex !== undefined
+					? staticData.recurrencyRules[recurrencyRuleIndex]
+					: undefined;
+
+			// Checks if have the right week interval, handles new years as well
+			if (weeksInterval && recurrencyRuleIndex !== undefined) {
+				if (
+					lastExecutionWeekNumber === undefined || // First time executing this rule
+					moment.tz(timezone).week() >= weeksInterval + lastExecutionWeekNumber || // not first time, but minimum interval has passed
+					moment.tz(timezone).week() + 52 >= weeksInterval + lastExecutionWeekNumber // not first time, correct interval but year has passed
+				) {
+					staticData.recurrencyRules[recurrencyRuleIndex] = moment.tz(timezone).week();
+					this.emit([this.helpers.returnJsonArray([resultData])]);
+				}
+				// There is no else block here since we don't want to emit anything now
+			} else {
+				this.emit([this.helpers.returnJsonArray([resultData])]);
+			}
 		};
+
 		for (let i = 0; i < interval.length; i++) {
 			let intervalValue = 1000;
 			if (interval[i].field === 'cronExpression') {
@@ -484,10 +509,21 @@ export class ScheduleTrigger implements INodeType {
 				const week = interval[i].weeksInterval as number;
 				const days = interval[i].triggerAtDay as IDataObject[];
 				const day = days.length === 0 ? '*' : (days.join(',') as string);
-				const cronTimes: string[] = [minute, hour, `*/${week * 7}`, '*', day];
+				const cronTimes: string[] = [minute, hour, '*', '*', day];
 				const cronExpression = cronTimes.join(' ');
-				const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
-				cronJobs.push(cronJob);
+				if (week === 1) {
+					const cronJob = new CronJob(cronExpression, executeTrigger, undefined, true, timezone);
+					cronJobs.push(cronJob);
+				} else {
+					const cronJob = new CronJob(
+						cronExpression,
+						() => executeTrigger(i, week),
+						undefined,
+						true,
+						timezone,
+					);
+					cronJobs.push(cronJob);
+				}
 			}
 
 			if (interval[i].field === 'months') {

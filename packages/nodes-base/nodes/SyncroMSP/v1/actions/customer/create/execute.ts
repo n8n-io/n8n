@@ -21,7 +21,7 @@ export async function addCustomer(
 		notificationEmail,
 		phone,
 		referredBy,
-	} = this.getNodeParameter('additionalFields', index) as IDataObject;
+	} = this.getNodeParameter('additionalFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'POST';

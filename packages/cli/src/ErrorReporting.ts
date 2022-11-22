@@ -14,6 +14,9 @@ export const initErrorHandling = () => {
 		return;
 	}
 
+	// Collect longer stacktraces
+	Error.stackTraceLimit = 50;
+
 	const dsn = config.getEnv('diagnostics.config.sentry.dsn');
 	const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
 

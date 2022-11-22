@@ -11,7 +11,7 @@ export async function members(
 	const channelId = this.getNodeParameter('channelId', index) as string;
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
 	const resolveData = this.getNodeParameter('resolveData', index) as boolean;
-	const limit = this.getNodeParameter('limit', index, 0) as number;
+	const limit = this.getNodeParameter('limit', index, 0);
 
 	const body = {} as IDataObject;
 	const qs = {} as IDataObject;
@@ -19,7 +19,7 @@ export async function members(
 	const endpoint = `channels/${channelId}/members`;
 
 	if (returnAll === false) {
-		qs.per_page = this.getNodeParameter('limit', index) as number;
+		qs.per_page = this.getNodeParameter('limit', index);
 	}
 
 	let responseData;

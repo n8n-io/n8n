@@ -625,10 +625,10 @@ export class Jenkins implements INodeType {
 					if (operation === 'getAll') {
 						const job = this.getNodeParameter('job', i) as string;
 						let endpoint = `/job/${job}/api/json?tree=builds[*]`;
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							endpoint += `{0,${limit}}`;
 						}
 

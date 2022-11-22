@@ -342,7 +342,7 @@ export class Git implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', itemIndex, false) as boolean;
 					if (returnAll === false) {
-						logOptions.maxCount = this.getNodeParameter('limit', itemIndex, 100) as number;
+						logOptions.maxCount = this.getNodeParameter('limit', itemIndex, 100);
 					}
 					if (options.file) {
 						logOptions.file = options.file as string;

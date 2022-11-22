@@ -11,7 +11,7 @@ export async function getAll(
 	index: number,
 ): Promise<INodeExecutionData[]> {
 	const returnAll = this.getNodeParameter('returnAll', index) as boolean;
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 
 	const qs = {} as IDataObject;
 	const requestMethod = 'GET';
@@ -98,7 +98,7 @@ export async function getAll(
 	}
 
 	if (returnAll === false) {
-		qs.per_page = this.getNodeParameter('limit', index) as number;
+		qs.per_page = this.getNodeParameter('limit', index);
 	}
 
 	let responseData;

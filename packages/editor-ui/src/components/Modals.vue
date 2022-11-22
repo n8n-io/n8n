@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<ModalRoot :name="CONTACT_PROMPT_MODAL_KEY">
-			<template v-slot:default="{ modalName }">
+			<template #default="{ modalName }">
 				<ContactPromptModal
 					:modalName="modalName"
 				/>
@@ -9,7 +9,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="CREDENTIAL_EDIT_MODAL_KEY">
-			<template v-slot="{ modalName, activeId, mode }">
+			<template #default="{ modalName, activeId, mode }">
 				<CredentialEdit
 					:modalName="modalName"
 					:mode="mode"
@@ -26,7 +26,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="DUPLICATE_MODAL_KEY">
-			<template v-slot:default="{ modalName, active, data }">
+			<template #default="{ modalName, active, data }">
 				<DuplicateWorkflowDialog
 					:data="data"
 					:isActive="active"
@@ -48,7 +48,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="VALUE_SURVEY_MODAL_KEY" :keepAlive="true">
-			<template v-slot:default="{ active }">
+			<template #default="{ active }">
 				<ValueSurvey :isActive="active"/>
 			</template>
 		</ModalRoot>
@@ -66,7 +66,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="DELETE_USER_MODAL_KEY">
-			<template v-slot="{ modalName, activeId }">
+			<template #default="{ modalName, activeId }">
 				<DeleteUserModal
 					:modalName="modalName"
 					:activeId="activeId"
@@ -99,7 +99,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY">
-			<template v-slot="{ modalName, activeId, mode }">
+			<template #default="{ modalName, activeId, mode }">
 				<CommunityPackageManageConfirmModal
 					:modalName="modalName"
 					:activePackageName="activeId"
