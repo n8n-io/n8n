@@ -36,7 +36,6 @@ export class PermissionChecker {
 				relations: ['workflow'],
 				where: { workflow: { id: Number(workflow.id) } },
 			});
-
 			workflowUserIds = workflowSharings.map((s) => s.userId);
 		}
 
