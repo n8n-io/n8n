@@ -151,7 +151,7 @@ export async function executeWebhook(
 	if (nodeType === undefined) {
 		const errorMessage = `The type of the webhook node "${workflowStartNode.name}" is not known`;
 		responseCallback(new Error(errorMessage), {});
-		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
+		throw new ResponseHelper.InternalServerError(errorMessage);
 	}
 
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
@@ -168,7 +168,7 @@ export async function executeWebhook(
 		try {
 			user = await getWorkflowOwner(workflowData.id.toString());
 		} catch (error) {
-			throw new ResponseHelper.ResponseError('Cannot find workflow', undefined, 404);
+			throw new ResponseHelper.NotFoundError('Cannot find workflow');
 		}
 	}
 
@@ -211,7 +211,7 @@ export async function executeWebhook(
 		// that something does not resolve properly.
 		const errorMessage = `The response mode '${responseMode}' is not valid!`;
 		responseCallback(new Error(errorMessage), {});
-		throw new ResponseHelper.ResponseError(errorMessage, 500, 500);
+		throw new ResponseHelper.InternalServerError(errorMessage);
 	}
 
 	// Add the Response and Request so that this data can be accessed in the node
@@ -660,7 +660,7 @@ export async function executeWebhook(
 					responseCallback(new Error('There was a problem executing the workflow'), {});
 				}
 
-				throw new ResponseHelper.ResponseError(e.message, 500, 500);
+				throw new ResponseHelper.InternalServerError(e.message);
 			});
 
 		// eslint-disable-next-line consistent-return
@@ -670,7 +670,7 @@ export async function executeWebhook(
 			responseCallback(new Error('There was a problem executing the workflow'), {});
 		}
 
-		throw new ResponseHelper.ResponseError(e.message, 500, 500);
+		throw new ResponseHelper.InternalServerError(e.message);
 	}
 }
 

@@ -31,6 +31,7 @@
 			<div class="ph-no-capture" v-if="resources.length === 0">
 				<slot name="empty">
 					<n8n-action-box
+						data-test-id="empty-resources-list"
 						emoji="👋"
 						:heading="$locale.baseText(usersStore.currentUser.firstName ? `${resourceKey}.empty.heading` : `${resourceKey}.empty.heading.userNotSetup`, {
 							interpolate: { name: usersStore.currentUser.firstName }
@@ -373,7 +374,7 @@ export default mixins(
 			this.sendSortingTelemetry();
 		},
 		loading(value) {
-			if (!value && this.shouldSwitchToAllSubview) {
+			if (!value && this.subviewResources.length === 0 && this.shouldSwitchToAllSubview) {
 				this.isOwnerSubview = false;
 			}
 		},

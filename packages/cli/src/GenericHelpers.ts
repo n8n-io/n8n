@@ -209,7 +209,7 @@ export async function validateEntity(
 		.join(' | ');
 
 	if (errorMessages) {
-		throw new ResponseHelper.ResponseError(errorMessages, undefined, 400);
+		throw new ResponseHelper.BadRequestError(errorMessages);
 	}
 }
 

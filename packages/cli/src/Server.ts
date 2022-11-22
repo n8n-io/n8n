@@ -155,7 +155,6 @@ import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WebhookServer from '@/WebhookServer';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
@@ -732,7 +731,7 @@ class App {
 		// eslint-disable-next-line consistent-return
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (!Db.isInitialized) {
-				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('Database is not ready!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -773,7 +772,7 @@ class App {
 			} catch (err) {
 				ErrorReporter.error(err);
 				LoggerProxy.error('No Database connection!', err);
-				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -876,7 +875,9 @@ class App {
 					const { path, methodName } = req.query;
 
 					if (!req.query.currentNodeParameters) {
-						throw new ResponseError('Parameter currentNodeParameters is required.', undefined, 400);
+						throw new ResponseHelper.BadRequestError(
+							'Parameter currentNodeParameters is required.',
+						);
 					}
 
 					const currentNodeParameters = jsonParse(
@@ -911,7 +912,7 @@ class App {
 						);
 					}
 
-					throw new ResponseError('Parameter methodName is required.', undefined, 400);
+					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
 				},
 			),
 		);
@@ -999,10 +1000,8 @@ class App {
 						userId: req.user.id,
 					});
 
-					throw new ResponseHelper.ResponseError(
+					throw new ResponseHelper.BadRequestError(
 						`Workflow with ID "${workflowId}" could not be found.`,
-						undefined,
-						400,
 					);
 				}
 
@@ -1026,7 +1025,7 @@ class App {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.ResponseError(`Invalid cURL command`, undefined, 400);
+						throw new ResponseHelper.BadRequestError(`Invalid cURL command`);
 					}
 				},
 			),
@@ -1044,11 +1043,7 @@ class App {
 
 				if (!credentialId) {
 					LoggerProxy.error('OAuth1 credential authorization failed due to missing credential ID');
-					throw new ResponseHelper.ResponseError(
-						'Required credential ID is missing',
-						undefined,
-						400,
-					);
+					throw new ResponseHelper.BadRequestError('Required credential ID is missing');
 				}
 
 				const credential = await getCredentialForUser(credentialId, req.user);
@@ -1058,18 +1053,14 @@ class App {
 						'OAuth1 credential authorization failed because the current user does not have the correct permissions',
 						{ userId: req.user.id },
 					);
-					throw new ResponseHelper.ResponseError(
-						RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-						undefined,
-						404,
-					);
+					throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 				}
 
 				let encryptionKey: string;
 				try {
 					encryptionKey = await UserSettings.getEncryptionKey();
 				} catch (error) {
-					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+					throw new ResponseHelper.InternalServerError(error.message);
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
@@ -1170,12 +1161,10 @@ class App {
 					const { oauth_verifier, oauth_token, cid: credentialId } = req.query;
 
 					if (!oauth_verifier || !oauth_token) {
-						const errorResponse = new ResponseHelper.ResponseError(
+						const errorResponse = new ResponseHelper.ServiceUnavailableError(
 							`Insufficient parameters for OAuth1 callback. Received following query parameters: ${JSON.stringify(
 								req.query,
 							)}`,
-							undefined,
-							503,
 						);
 						LoggerProxy.error(
 							'OAuth1 callback failed because of insufficient parameters received',
@@ -1194,10 +1183,8 @@ class App {
 							userId: req.user?.id,
 							credentialId,
 						});
-						const errorResponse = new ResponseHelper.ResponseError(
+						const errorResponse = new ResponseHelper.NotFoundError(
 							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-							undefined,
-							404,
 						);
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
@@ -1206,7 +1193,7 @@ class App {
 					try {
 						encryptionKey = await UserSettings.getEncryptionKey();
 					} catch (error) {
-						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+						throw new ResponseHelper.InternalServerError(error.message);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
@@ -1244,11 +1231,7 @@ class App {
 							userId: req.user?.id,
 							credentialId,
 						});
-						const errorResponse = new ResponseHelper.ResponseError(
-							'Unable to get access tokens!',
-							undefined,
-							404,
-						);
+						const errorResponse = new ResponseHelper.NotFoundError('Unable to get access tokens!');
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
@@ -1405,7 +1388,7 @@ class App {
 				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 				if (!sharedWorkflowIds.length) {
-					throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
+					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
 				const execution = await Db.collections.Execution.findOne({
@@ -1416,7 +1399,7 @@ class App {
 				});
 
 				if (!execution) {
-					throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
+					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
 				if (config.getEnv('executions.mode') === 'queue') {

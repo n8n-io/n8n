@@ -67,10 +67,8 @@ export class TestWebhooks {
 			webhookData = this.activeWebhooks!.get(httpMethod, pathElements.join('/'), webhookId);
 			if (webhookData === undefined) {
 				// The requested webhook is not registered
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.NotFoundError(
 					`The requested webhook "${httpMethod} ${path}" is not registered.`,
-					404,
-					404,
 					WEBHOOK_TEST_UNREGISTERED_HINT,
 				);
 			}
@@ -94,10 +92,8 @@ export class TestWebhooks {
 		// TODO: Clean that duplication up one day and improve code generally
 		if (this.testWebhookData[webhookKey] === undefined) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`The requested webhook "${httpMethod} ${path}" is not registered.`,
-				404,
-				404,
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
 		}
@@ -108,7 +104,7 @@ export class TestWebhooks {
 		// get additional data
 		const workflowStartNode = workflow.getNode(webhookData.node);
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.ResponseError('Could not find node to process webhook.', 404, 404);
+			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
 		}
 
 		// eslint-disable-next-line no-async-promise-executor
@@ -173,10 +169,8 @@ export class TestWebhooks {
 
 		if (webhookMethods === undefined) {
 			// The requested webhook is not registered
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`The requested webhook "${path}" is not registered.`,
-				404,
-				404,
 				WEBHOOK_TEST_UNREGISTERED_HINT,
 			);
 		}

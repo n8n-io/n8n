@@ -1,6 +1,9 @@
 import { INode, NodeOperationError, Workflow } from 'n8n-workflow';
-import { In } from 'typeorm';
+import { FindManyOptions, In, ObjectLiteral } from 'typeorm';
 import * as Db from '@/Db';
+import config from '@/config';
+import type { SharedCredentials } from '@db/entities/SharedCredentials';
+import { getRole } from './UserManagementHelper';
 
 export class PermissionChecker {
 	/**
@@ -26,23 +29,29 @@ export class PermissionChecker {
 		// allow if all creds used in this workflow are a subset of
 		// all creds accessible to users who have access to this workflow
 
-		let workflowUserIds: string[] = [];
+		let workflowUserIds = [userId];
 
-		if (workflow.id) {
+		if (workflow.id && config.getEnv('enterprise.workflowSharingEnabled')) {
 			const workflowSharings = await Db.collections.SharedWorkflow.find({
 				relations: ['workflow'],
 				where: { workflow: { id: Number(workflow.id) } },
 			});
-
 			workflowUserIds = workflowSharings.map((s) => s.userId);
-		} else {
-			// unsaved workflows have no id, so only get credentials for current user
-			workflowUserIds = [userId];
 		}
 
-		const credentialSharings = await Db.collections.SharedCredentials.find({
-			where: { user: In(workflowUserIds) },
-		});
+		const credentialsWhereCondition: FindManyOptions<SharedCredentials> & { where: ObjectLiteral } =
+			{
+				where: { user: In(workflowUserIds) },
+			};
+
+		if (!config.getEnv('enterprise.features.sharing')) {
+			// If credential sharing is not enabled, get only credentials owned by this user
+			credentialsWhereCondition.where.role = await getRole('credential', 'owner');
+		}
+
+		const credentialSharings = await Db.collections.SharedCredentials.find(
+			credentialsWhereCondition,
+		);
 
 		const accessibleCredIds = credentialSharings.map((s) => s.credentialId.toString());
 
