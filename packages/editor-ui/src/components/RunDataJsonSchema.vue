@@ -1,0 +1,103 @@
+<template>
+	<div :class="$style.jsonSchema">
+		<draggable
+			type="mapping"
+			targetDataKey="mappable"
+			:disabled="!mappingEnabled"
+			@dragstart="onDragStart"
+			@dragend="onDragEnd"
+		>
+			<template #preview="{ canDrop, el }">
+				<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
+					{{ $locale.baseText('dataMapping.mapKeyToField', { interpolate: { name: getShortKey(el) } }) }}
+				</div>
+			</template>
+			<template>
+				<run-data-json-schema-item
+					:schema="schema"
+					:level="0"
+					:parent="null"
+					:sub-key="`${schema.type}-0-0`"
+					:mapping-enabled="mappingEnabled"
+					:dragging-path="draggingPath"
+					:distance-from-active="distanceFromActive"
+					:node="node"
+				/>
+			</template>
+		</draggable>
+	</div>
+</template>
+<script lang="ts" setup>
+import { ref } from 'vue';
+import { INodeUi, JsonSchema } from "@/Interface";
+import RunDataJsonSchemaItem from "@/components/RunDataJsonSchemaItem.vue";
+import Draggable from '@/components/Draggable.vue';
+import { shorten } from "@/components/helpers";
+
+type Props = {
+	schema: JsonSchema
+	mappingEnabled: boolean
+	distanceFromActive: number
+	node: INodeUi | null
+}
+
+const props = withDefaults(defineProps<Props>(), {
+	distanceFromActive: 0,
+});
+
+const draggingPath = ref<string>('');
+
+const onDragStart = (el: HTMLElement) => {
+	if (el && el.dataset.path) {
+		draggingPath.value = el.dataset.path;
+	}
+};
+const onDragEnd = (el: HTMLElement) => {
+	draggingPath.value = '';
+};
+
+const getShortKey = (el: HTMLElement): string => {
+	if (!el) {
+		return '';
+	}
+
+	return shorten(el.dataset.name || '', 16, 2);
+};
+
+</script>
+
+<style lang="scss" module>
+.jsonSchema {
+	position: absolute;
+	top: 0;
+	left: 0;
+	padding-left: var(--spacing-s);
+	right: 0;
+	overflow-y: auto;
+	line-height: 1.5;
+	word-break: normal;
+	height: 100%;
+	padding-bottom: var(--spacing-3xl);
+	background-color: var(--color-background-base);
+	padding-top: var(--spacing-s);
+}
+
+.dragPill {
+	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
+	color: var(--color-text-xlight);
+	font-weight: var(--font-weight-bold);
+	font-size: var(--font-size-2xs);
+	border-radius: var(--border-radius-base);
+	white-space: nowrap;
+}
+
+.droppablePill {
+	background-color: var(--color-success);
+}
+
+.defaultPill {
+	background-color: var(--color-primary);
+	transform: translate(-50%, -100%);
+	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
+}
+</style>

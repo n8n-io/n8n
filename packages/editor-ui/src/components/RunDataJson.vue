@@ -16,7 +16,6 @@
 			:disabled="!mappingEnabled"
 			@dragstart="onDragStart"
 			@dragend="onDragEnd"
-			ref="draggable"
 		>
 			<template #preview="{ canDrop, el }">
 				<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
@@ -47,7 +46,17 @@
 					>"{{ node.key }}"</span>
 					</template>
 					<template #nodeValue="{ node }">
-						<span>{{ getContent(node.content) }}</span>
+						<span
+							data-target="mappable"
+							:data-value="getJsonParameterPath(node.path)"
+							:data-name="node.key"
+							:data-path="node.path"
+							:data-depth="node.level"
+							:class="{
+							[$style.mappable]: mappingEnabled,
+							[$style.dragged]: draggingPath === node.path,
+						}"
+						>{{ getContent(node.content) }}</span>
 					</template>
 				</vue-json-pretty>
 			</template>
@@ -81,9 +90,6 @@ export default mixins(externalHooks).extend({
 	props: {
 		editMode: {
 			type: Object as () => { enabled?: boolean; value?: string; },
-		},
-		currentOutputIndex: {
-			type: Number,
 		},
 		sessionId: {
 			type: String,

@@ -1,6 +1,6 @@
 import { isValidDate } from './utils';
 import jp from "jsonpath";
-import { isEmpty, intersection, getJsonSchema } from "@/utils";
+import { isEmpty, intersection, mergeDeep, getJsonSchema } from "@/utils";
 import { JsonSchema } from "@/Interface";
 
 describe("Utils", () => {
@@ -42,6 +42,133 @@ describe("Utils", () => {
 		});
 	});
 
+	describe("mergeDeep", () => {
+		test.each([
+			[
+				[[1, 2], [3, 4]],
+				{},
+				[3, 4],
+			],
+			[
+				[[1, 2], [3, 4]],
+				{ concatArrays: true },
+				[1, 2, 3, 4],
+			],
+			[
+				[[1, 2], [3, 4]],
+				{ overwriteArrays: true },
+				[3, 4],
+			],
+			[
+				[[1, 2, 3], [4, 5]],
+				{},
+				[4, 5, 3],
+			],
+			[
+				[[1, 2, 3], [4, 5]],
+				{ concatArrays: true },
+				[1, 2, 3, 4, 5],
+			],
+			[
+				[[1, 2, 3], [4, 5]],
+				{ overwriteArrays: true },
+				[4, 5],
+			],
+			[
+				[[1, 2], [3, 4, 5]],
+				{},
+				[3, 4, 5],
+			],
+			[
+				[[1, 2], [3, 4, 5]],
+				{ concatArrays: true },
+				[1, 2, 3, 4, 5],
+			],
+			[
+				[[1, 2], [3, 4, 5]],
+				{ overwriteArrays: true },
+				[3, 4, 5],
+			],
+			[
+				[{a:1, b: [1, 2, {d: 2}]},{}],
+				{},
+				{a:1, b: [1, 2, {d:2}]},
+			],
+			[
+				[{a:1, b: [1, 2, {d: 2}]},{}],
+				{ concatArrays: true },
+				{a:1, b: [1, 2, {d:2}]},
+			],
+			[
+				[{a:1, b: [1, 2, {d: 2}]},{}],
+				{ overwriteArrays: true },
+				{a:1, b: [1, 2, {d:2}]},
+			],
+			[
+				[[{a:1, b: [1, 2, {d: 2}]}],[]],
+				{},
+				[{a:1, b: [1, 2, {d:2}]}],
+			],
+			[
+				[[{a:1, b: [1, 2, {d: 2}]}],[]],
+				{ concatArrays: true },
+				[{a:1, b: [1, 2, {d:2}]}],
+			],
+			[
+				[[{a:1, b: [1, 2, {d: 2}]}],[]],
+				{ overwriteArrays: true },
+				[],
+			],
+			[
+				[{a: 1, b: [1, 2, 3]}, {a: 2, b: [4, 5, 6, 7], c: "2"}, {a: 3, b: [8, 9], d: "3"}],
+				{},
+				{a: 3, b: [8, 9, 6, 7], c: "2", d: "3"},
+			],
+			[
+				[{a: 1, b: [1, 2, 3]}, {a: 2, b: [4, 5, 6, 7], c: "2"}, {a: 3, b: [8, 9], d: "3"}],
+				{ concatArrays: true },
+				{a: 3, b: [1, 2, 3, 4, 5, 6, 7, 8, 9], c: "2", d: "3"},
+			],
+			[
+				[{a: 1, b: [1, 2, 3]}, {a: 2, b: [4, 5, 6, 7], c: "2"}, {a: 3, b: [8, 9], d: "3"}],
+				{ overwriteArrays: true },
+				{a: 3, b: [8, 9], c: "2", d: "3"},
+			],
+			[
+				[{a: 1, b: [{x: 'a'}]}, {a: 2, b: [{y: 'b'}], c: "2"}, {a: 3, b: [{z: 'c'}], d: "3"}],
+				{},
+				{a: 3, b: [{x: 'a', y: 'b', z: 'c'}], c: "2", d: "3"},
+			],
+			[
+				[{a: 1, b: [{x: 'a'}]}, {a: 2, b: [{y: 'b'}], c: "2"}, {a: 3, b: [{z: 'c'}], d: "3"}],
+				{ concatArrays: true },
+				{a: 3, b: [{x: 'a'}, {y: 'b'}, {z: 'c'}], c: "2", d: "3"},
+			],
+			[
+				[{a: 1, b: [{x: 'a'}]}, {a: 2, b: [{y: 'b'}], c: "2"}, {a: 3, b: [{z: 'c'}], d: "3"}],
+				{ overwriteArrays: true },
+				{a: 3, b: [{z: 'c'}], c: "2", d: "3"},
+			],
+			[
+				[{a: 1, b: [{x: 'a'}, {w: 'd'}]}, {a: 2, b: [{y: 'b'}], c: "2"}, {a: 3, b: [{z: 'c'}], d: "3"}],
+				{},
+				{a: 3, b: [{z: 'c'}, {w: 'd'}], c: "2", d: "3"},
+			],
+			[
+				[{a: 1, b: [{x: 'a'}, {w: 'd'}]}, {a: 2, b: [{y: 'b'}], c: "2"}, {a: 3, b: [{z: 'c'}], d: "3"}],
+				{ concatArrays: true },
+				{a: 3, b: [{x: 'a'}, {w: 'd'}, {y: 'b'}, {z: 'c'}], c: "2", d: "3"},
+			],
+			[
+				[{a: 1, b: [{x: 'a'}, {w: 'd'}]}, {a: 2, b: [{y: 'b'}], c: "2"}, {a: 3, b: [{z: 'c'}], d: "3"}],
+				{ overwriteArrays: true },
+				{a: 3, b: [{z: 'c'}], c: "2", d: "3"},
+			],
+		])(`case %#. input %j, options %j should return %j`, (sources, options, expected) => {
+			expect(mergeDeep([...sources], options)).toEqual(expected);
+		});
+	});
+
 	describe("getJsonSchema", () => {
 		test.each([
 			[
@@ -58,11 +185,11 @@ describe("Utils", () => {
 			],
 			[
 				'John',
-				{ type: 'string', value: '"John"', path: '' },
+				{ type: 'string', value: 'John', path: '' },
 			],
 			[
 				'123',
-				{ type: 'string', value: '"123"', path: '' },
+				{ type: 'string', value: '123', path: '' },
 			],
 			[
 				123,
@@ -94,35 +221,35 @@ describe("Utils", () => {
 			],
 			[
 				['John', 1, true],
-				{ type: 'list', value: 'string', path: '[*]' },
+				{ type: 'list', value: [{ type: 'string', value: 'John', key: '0', path: '[0]' }, { type: 'number', value: '1', key: '1', path: '[1]' }, { type: 'boolean', value: 'true', key: '2', path: '[2]' }], path: '' },
 			],
 			[
 				{ people: ['Joe', 'John']},
-				{ type: 'object',  value: [{ type: 'list', key: 'people', value: 'string', path: '["people"][*]' }], path: '' },
+				{ type: 'object',  value: [{ type: 'list', key: 'people', value: [{ type: 'string', value: 'Joe', key: '0', path: '["people"][0]' }, { type: 'string', value: 'John', key: '1', path: '["people"][1]' }], path: '["people"]' }], path: '' },
 			],
 			[
 				[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }],
-				{ type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*]["name"]'}, { type: 'number', key: 'age', value: 'number', path: '[*]["age"]' }], path: '[*]' },
+				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'string', key: 'name', value: 'John', path: '[0]["name"]'}, { type: 'number', key: 'age', value: '22', path: '[0]["age"]' }], path: '[0]'}, { type: 'object', key: '1', value: [{ type: 'string', key: 'name', value: 'Joe', path: '[1]["name"]'}, { type: 'number', key: 'age', value: '33', path: '[1]["age"]' }], path: '[1]'}], path: '' },
 			],
 			[
 				[{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }],
-				{ type: 'list', value: [{ type: 'string', key: 'name', value: 'string', path: '[*]["name"]' }, { type: 'number', key: 'age', value: 'number', path: '[*]["age"]' }, { type: 'list', key: 'hobbies', value: 'string', path: '[*]["hobbies"][*]' }], path: '[*]' },
+				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'string', key: 'name', value: 'John', path: '[0]["name"]'}, { type: 'number', key: 'age', value: '22', path: '[0]["age"]' }, {type: 'list', key: 'hobbies', value: [{type: 'string', key: '0', value: 'surfing', path: '[0]["hobbies"][0]'},{type: 'string', key: '1', value: 'traveling', path: '[0]["hobbies"][1]'}], path: '[0]["hobbies"]'}], path: '[0]'}, { type: 'object', key: '1', value: [{ type: 'string', key: 'name', value: 'Joe', path: '[1]["name"]'}, { type: 'number', key: 'age', value: '33', path: '[1]["age"]' }, {type: 'list', key: 'hobbies', value: [{type: 'string', key: '0', value: 'skateboarding', path: '[1]["hobbies"][0]'},{type: 'string', key: '1', value: 'gaming', path: '[1]["hobbies"][1]'}], path: '[1]["hobbies"]'}], path: '[1]'}], path: '' },
 			],
 			[
 				[],
-				{ type: 'list', value: 'undefined', path: '[*]' },
+				{ type: 'list', value: [], path: '' },
 			],
 			[
 				[[1,2]],
-				{ type: 'list', value: [{ type: 'list', value: 'number', path: '[*][*]' }], path: '[*]' },
+				{ type: 'list', value: [{ type: 'list', key: '0', value: [{type: 'number', key: '0', value: '1', path: '[0][0]'}, {type: 'number', key: '1', value: '2', path: '[0][1]'}], path: '[0]' }], path: '' },
 			],
 			[
 				[[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }]],
-				{ type: 'list', value: [{ type: 'list', value:  [{ type: 'string', key: 'name', value: 'string', path: '[*][*]["name"]' }, { type: 'number', key: 'age', value: 'number', path: '[*][*]["age"]' }], path: '[*][*]' }], path: '[*]' },
+				{ type: 'list', value: [{type: 'list', key: '0', value:[{ type: 'object', key: '0', value: [{ type: 'string', key: 'name', value: 'John', path: '[0][0]["name"]'}, { type: 'number', key: 'age', value: '22', path: '[0][0]["age"]' }], path: '[0][0]'}, { type: 'object', key: '1', value: [{ type: 'string', key: 'name', value: 'Joe', path: '[0][1]["name"]'}, { type: 'number', key: 'age', value: '33', path: '[0][1]["age"]' }], path: '[0][1]'}], path: '[0]'}], path: '' },
 			],
 			[
 				[{ dates: [[new Date('2022-11-22T00:00:00.000Z'), new Date('2022-11-23T00:00:00.000Z')], [new Date('2022-12-22T00:00:00.000Z'), new Date('2022-12-23T00:00:00.000Z')]] }],
-				{ type: 'list', value: [{ type: 'list', key: 'dates', value: [{ type: 'list', value: 'date', path: '[*]["dates"][*][*]' }], path: '[*]["dates"][*]' }], path: '[*]' },
+				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'list', key: 'dates', value: [{ type: 'list', key: '0', value: [{type: 'date', key: '0', value: '2022-11-22T00:00:00.000Z', path: '[0]["dates"][0][0]'}, {type: 'date', key: '1', value: '2022-11-23T00:00:00.000Z', path: '[0]["dates"][0][1]'}], path: '[0]["dates"][0]' }, { type: 'list', key: '1', value: [{type: 'date', key: '0', value: '2022-12-22T00:00:00.000Z', path: '[0]["dates"][1][0]'}, {type: 'date', key: '1', value: '2022-12-23T00:00:00.000Z', path: '[0]["dates"][1][1]'}], path: '[0]["dates"][1]' }], path: '[0]["dates"]' }], path: '[0]' }], path: '' },
 			],
 		])('should return the correct json schema for %s', (input, schema) => {
 			expect(getJsonSchema(input)).toEqual(schema);
@@ -131,36 +258,36 @@ describe("Utils", () => {
 		it('should return the correct data when using the generated json path on an object', () => {
 			const input = { people: ['Joe', 'John']};
 			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ ((schema.value as JsonSchema[])[0] as JsonSchema).path }`);
-			expect(pathData).toEqual(['Joe', 'John']);
+			const pathData = jp.query(input, `$${ ((schema.value as JsonSchema[])[0].value as JsonSchema[])[0].path }`);
+			expect(pathData).toEqual(['Joe']);
 		});
 
 		it('should return the correct data when using the generated json path on a list', () => {
 			const input = [{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }];
 			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ ((schema.value as JsonSchema[])[2] as JsonSchema).path }`);
-			expect(pathData).toEqual(['surfing', 'traveling', 'skateboarding', 'gaming']);
+			const pathData = jp.query(input, `$${ (((schema.value as JsonSchema[])[0].value as JsonSchema[])[2].value as JsonSchema[])[1].path }`);
+			expect(pathData).toEqual(['traveling']);
 		});
 
 		it('should return the correct data when using the generated json path on a list of list', () => {
 			const input = [[1,2]];
 			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ (schema.value as JsonSchema[])[0].path }`);
-			expect(pathData).toEqual([1, 2]);
+			const pathData = jp.query(input, `$${ (((schema.value as JsonSchema[])[0]).value as JsonSchema[])[1].path }`);
+			expect(pathData).toEqual([2]);
 		});
 
 		it('should return the correct data when using the generated json path on a list of list of objects', () => {
 			const input = [[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }]];
 			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ ((schema.value as JsonSchema[])[0].value as JsonSchema[])[1].path }`);
-			expect(pathData).toEqual([22, 33]);
+			const pathData = jp.query(input, `$${ (((schema.value as JsonSchema[])[0].value as JsonSchema[])[1].value as JsonSchema[])[1].path}`);
+			expect(pathData).toEqual([33]);
 		});
 
 		it('should return the correct data when using the generated json path on a list of objects with a list of date tuples', () => {
 			const input = [{ dates: [[new Date('2022-11-22T00:00:00.000Z'), new Date('2022-11-23T00:00:00.000Z')], [new Date('2022-12-22T00:00:00.000Z'), new Date('2022-12-23T00:00:00.000Z')]] }];
 			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ ((schema.value as JsonSchema[])[0].value as JsonSchema[])[0].path }`);
-			expect(pathData).toEqual([new Date('2022-11-22T00:00:00.000Z'), new Date('2022-11-23T00:00:00.000Z'), new Date('2022-12-22T00:00:00.000Z'), new Date('2022-12-23T00:00:00.000Z')]);
+			const pathData = jp.query(input, `$${ ((((schema.value as JsonSchema[])[0].value as JsonSchema[])[0].value as JsonSchema[])[0].value as JsonSchema[])[0].path}`);
+			expect(pathData).toEqual([new Date('2022-11-22T00:00:00.000Z')]);
 		});
 	});
 

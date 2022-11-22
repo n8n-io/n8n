@@ -90,6 +90,9 @@ export default Vue.extend({
 			}
 
 			this.draggingEl = e.target as HTMLElement;
+			if (!this.draggingEl.dataset.target) {
+				this.draggingEl = this.draggingEl.closest(`[data-target]`) as HTMLElement;
+			}
 			if (this.targetDataKey && this.draggingEl && this.draggingEl.dataset.target !== this.targetDataKey) {
 				return;
 			}

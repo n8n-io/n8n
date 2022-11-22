@@ -981,6 +981,7 @@
 	"runData.invalidPinnedData": "Invalid pinned data",
 	"runData.items": "Items",
 	"runData.json": "JSON",
+	"runData.jsonSchema": "JSON Schema",
 	"runData.mimeType": "Mime Type",
 	"runData.ms": "ms",
 	"runData.noBinaryDataFound": "No binary data found",

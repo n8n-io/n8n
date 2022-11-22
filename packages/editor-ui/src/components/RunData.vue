@@ -237,7 +237,6 @@
 				class="ph-no-capture"
 				:paneType="paneType"
 				:editMode="editMode"
-				:currentOutputIndex="currentOutputIndex"
 				:sessioId="sessionId"
 				:node="node"
 				:inputData="inputData"
@@ -246,6 +245,14 @@
 				:showMappingHint="showMappingHint"
 				:runIndex="runIndex"
 				:totalRuns="maxRunIndex"
+			/>
+
+			<run-data-json-schema
+				v-else-if="hasNodeRun && displayMode === 'json-schema'"
+				:schema="jsonSchema"
+				:mapping-enabled="mappingEnabled"
+				:distance-from-active="distanceFromActive"
+				:node="node"
 			/>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">
@@ -347,6 +354,8 @@ import {
 	INodeUpdatePropertiesInformation,
 	IRunDataDisplayMode,
 	ITab,
+	NodePanelType,
+	JsonSchema,
 } from '@/Interface';
 
 import {
@@ -371,7 +380,7 @@ import { pinData } from '@/components/mixins/pinData';
 import { CodeEditor } from "@/components/forms";
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { clearJsonKey, executionDataToJson, stringSizeInBytes } from './helpers';
-import { isEmpty } from '@/utils';
+import { getJsonSchema, isEmpty, mergeDeep } from '@/utils';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
@@ -379,6 +388,7 @@ import { useNodeTypesStore } from "@/stores/nodeTypes";
 
 const RunDataTable = () => import('@/components/RunDataTable.vue');
 const RunDataJson = () => import('@/components/RunDataJson.vue');
+const RunDataJsonSchema = () => import('@/components/RunDataJsonSchema.vue');
 
 export type EnterEditModeArgs = {
 	origin: 'editIconButton' | 'insertTestDataLink',
@@ -400,6 +410,7 @@ export default mixins(
 			CodeEditor,
 			RunDataTable,
 			RunDataJson,
+			RunDataJsonSchema,
 		},
 		props: {
 			nodeUi: {
@@ -430,7 +441,7 @@ export default mixins(
 				type: String,
 			},
 			paneType: {
-				type: String,
+				type: String as PropType<NodePanelType>,
 			},
 			overrideOutputs: {
 				type: Array as PropType<number[]>,
@@ -511,7 +522,7 @@ export default mixins(
 				return DATA_EDITING_DOCS_URL;
 			},
 			displayMode(): IRunDataDisplayMode {
-				return this.ndvStore.getPanelDisplayMode(this.paneType as "input" | "output");
+				return this.ndvStore.getPanelDisplayMode(this.paneType);
 			},
 			node(): INodeUi | null {
 				return (this.nodeUi as INodeUi | null) || null;
@@ -536,10 +547,12 @@ export default mixins(
 					{ label: this.$locale.baseText('runData.json'), value: 'json'},
 				];
 				if (this.binaryData.length) {
-					return [ ...defaults,
-						{ label: this.$locale.baseText('runData.binary'), value: 'binary'},
-					];
+					defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary'});
 				}
+
+				// if (window.posthog?.isFeatureEnabled?.('json-schema-view')) {
+					defaults.push({ label: this.$locale.baseText('runData.jsonSchema'), value: 'json-schema'});
+				// }
 
 				return defaults;
 			},
@@ -699,6 +712,10 @@ export default mixins(
 			},
 			isPaneTypeInput(): boolean {
 				return this.paneType === 'input';
+			},
+			jsonSchema(): JsonSchema {
+				const [head, ...tail] = this.jsonData;
+				return getJsonSchema(mergeDeep([head, ...tail, head]));
 			},
 		},
 		methods: {
@@ -955,7 +972,7 @@ export default mixins(
 			},
 			onDisplayModeChange(displayMode: IRunDataDisplayMode) {
 				const previous = this.displayMode;
-				this.ndvStore.setPanelDisplayMode({pane: this.paneType as "input" | "output", mode: displayMode});
+				this.ndvStore.setPanelDisplayMode({pane: this.paneType, mode: displayMode});
 
 				const dataContainer = this.$refs.dataContainer;
 				if (dataContainer) {
