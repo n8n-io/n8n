@@ -20,6 +20,7 @@
 						:readonly="!credentialPermissions.updateName"
 						type="Credential"
 						@input="onNameEdit"
+						data-test-id="credential-name"
 					/>
 				</div>
 				<div :class="$style.credActions">
@@ -32,6 +33,7 @@
 						:disabled="isSaving"
 						:loading="isDeleting"
 						@click="deleteCredential"
+						data-test-id="credential-delete-button"
 					/>
 					<SaveButton
 						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
@@ -41,6 +43,7 @@
 							? $locale.baseText('credentialEdit.credentialEdit.testing')
 							: $locale.baseText('credentialEdit.credentialEdit.saving')"
 						@click="saveCredential"
+						data-test-id="credential-save-button"
 					/>
 				</div>
 			</div>
