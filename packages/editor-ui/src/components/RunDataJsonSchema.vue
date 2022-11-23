@@ -36,6 +36,7 @@ import { shorten } from "@/components/helpers";
 import { useNDVStore } from "@/stores/ndv";
 import { useWebhooksStore } from "@/stores/webhooks";
 import { runExternalHook } from "@/components/mixins/externalHooks";
+import { telemetry } from "@/plugins/telemetry";
 
 type Props = {
 	schema: JsonSchema
@@ -50,7 +51,7 @@ const props = withDefaults(defineProps<Props>(), {
 	distanceFromActive: 0,
 });
 
-const vueInstance: ReturnType<typeof getCurrentInstance> = getCurrentInstance();
+const vueInstance = getCurrentInstance();
 
 const draggingPath = ref<string>('');
 const ndvStore = useNDVStore();
@@ -83,7 +84,7 @@ const onDragEnd = (el: HTMLElement) => {
 
 		runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
 
-		vueInstance?.$telemetry?.track('User dragged data for mapping', telemetryPayload);
+		telemetry.track('User dragged data for mapping', telemetryPayload);
 	}, 1000); // ensure dest data gets set if drop
 };
 
