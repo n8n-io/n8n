@@ -47,7 +47,6 @@ export default mixins(workflowHelpers).extend({
 			// 	override: [resolvableCompletions],
 			// }),
 			EditorView.lineWrapping,
-			EditorState.transactionFilter.of((tx) => (tx.newDoc.lines > 1 ? [] : tx)), // forbid newlines
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
