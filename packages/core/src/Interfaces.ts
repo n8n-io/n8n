@@ -317,3 +317,18 @@ export interface IBinaryDataManager {
 	deleteBinaryDataByExecutionId(executionId: string): Promise<void>;
 	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
 }
+
+export namespace n8n {
+	export interface PackageJson {
+		name: string;
+		version: string;
+		n8n?: {
+			credentials?: string[];
+			nodes?: string[];
+		};
+		author?: {
+			name?: string;
+			email?: string;
+		};
+	}
+}

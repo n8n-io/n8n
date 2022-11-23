@@ -36,7 +36,7 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 
 export default mixins(showMessage).extend({
 	name: 'InlineNameEdit',

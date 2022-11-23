@@ -17,7 +17,7 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({

@@ -1,4 +1,4 @@
-import { set } from 'lodash';
+import set from 'lodash.set';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -805,8 +805,6 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> {}
-
 	getAll(): INodeType[] {
 		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
 	}
@@ -825,7 +823,6 @@ let nodeTypesInstance: NodeTypesClass | undefined;
 export function NodeTypes(): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
 		nodeTypesInstance = new NodeTypesClass();
-		nodeTypesInstance.init({});
 	}
 
 	return nodeTypesInstance;

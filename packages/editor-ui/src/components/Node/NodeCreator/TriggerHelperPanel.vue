@@ -23,7 +23,7 @@
 import { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 import { INodeCreateElement } from '@/Interface';
 import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, COMMUNICATION_CATEGORY, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
 

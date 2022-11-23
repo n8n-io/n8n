@@ -11,6 +11,7 @@
   "scripts": {
     "preinstall": "node scripts/block-npm-install.js",
     "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
     "dev": "turbo run dev --parallel",
     "clean": "turbo run clean --parallel",
     "format": "turbo run format && node scripts/format.mjs",
@@ -53,6 +54,7 @@
     "start-server-and-test": "^1.14.0",
     "supertest": "^6.2.2",
     "ts-jest": "^29.0.3",
+    "tsc-watch": "^5.0.3",
     "turbo": "1.5.5",
     "typescript": "^4.8.4"
   },

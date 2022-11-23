@@ -15,7 +15,7 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import Card from '@/components/CollectionWorkflowCard.vue';
 import mixins from 'vue-typed-mixins';
 import NodeList from '@/components/NodeList.vue';

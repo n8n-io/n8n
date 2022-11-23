@@ -1,4 +1,4 @@
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { VIEWS } from '@/constants';
 
 import mixins from 'vue-typed-mixins';
