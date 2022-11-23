@@ -130,8 +130,8 @@
 </template>
 
 <script lang="ts">
-import { convertToDisplayDate } from '@/components/helpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { convertToDisplayDate } from '@/utils';
+import { showMessage } from '@/mixins/showMessage';
 import { ILdapConfig, ILdapSyncData, ILdapSyncTable, IFormInputs, IUser } from '@/Interface';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';

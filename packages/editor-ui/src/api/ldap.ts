@@ -1,5 +1,5 @@
 import {ILdapConfig, ILdapSyncData, IRestApiContext} from "@/Interface";
-import {makeRestApiRequest} from "@/api/helpers";
+import { makeRestApiRequest } from '@/utils';
 import { IDataObject } from "n8n-workflow";
 
 export function getLdapConfig(context: IRestApiContext): Promise<ILdapConfig> {
