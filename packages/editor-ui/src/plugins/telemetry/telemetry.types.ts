@@ -1,6 +1,6 @@
 import type { Telemetry } from '.';
 
-declare module 'vue' {
+declare module 'vue/types/vue' {
 	interface Vue {
 		$telemetry: Telemetry;
 	}
