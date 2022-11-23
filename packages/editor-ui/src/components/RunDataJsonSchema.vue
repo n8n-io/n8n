@@ -30,11 +30,17 @@ import { ref } from 'vue';
 import { INodeUi, JsonSchema } from "@/Interface";
 import RunDataJsonSchemaItem from "@/components/RunDataJsonSchemaItem.vue";
 import Draggable from '@/components/Draggable.vue';
+import { useNDVStore } from "@/stores/ndv";
+import { useWebhooksStore } from "@/stores/webhooks";
+import { runExternalHook } from "@/mixins/externalHooks";
+import { telemetry } from "@/plugins/telemetry";
 
 type Props = {
 	schema: JsonSchema
 	mappingEnabled: boolean
 	distanceFromActive: number
+	runIndex: number
+	totalRuns: number
 	node: INodeUi | null
 }
 
@@ -43,14 +49,38 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const draggingPath = ref<string>('');
+const ndvStore = useNDVStore();
+const webhooksStore = useWebhooksStore();
 
 const onDragStart = (el: HTMLElement) => {
 	if (el && el.dataset?.path) {
 		draggingPath.value = el.dataset.path;
 	}
+
+	ndvStore.resetMappingTelemetry();
 };
 const onDragEnd = (el: HTMLElement) => {
 	draggingPath.value = '';
+
+	setTimeout(() => {
+		const mappingTelemetry = ndvStore.mappingTelemetry;
+		const telemetryPayload = {
+			src_node_type: props.node?.type,
+			src_field_name: el.dataset.name || '',
+			src_nodes_back: props.distanceFromActive,
+			src_run_index: props.runIndex,
+			src_runs_total: props.totalRuns,
+			src_field_nest_level: el.dataset.depth || 0,
+			src_view: 'json-schema',
+			src_element: el,
+			success: false,
+			...mappingTelemetry,
+		};
+
+		runExternalHook('runDataJson.onDragEnd', webhooksStore, telemetryPayload);
+
+		telemetry.track('User dragged data for mapping', telemetryPayload);
+	}, 1000); // ensure dest data gets set if drop
 };
 
 </script>
