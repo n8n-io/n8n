@@ -26,6 +26,10 @@ export const useRootStore = defineStore(STORES.ROOT, {
 		instanceId: '',
 	}),
 	getters: {
+		getBaseUrl(): string {
+			return this.baseUrl;
+		},
+
 		getWebhookUrl(): string {
 			return `${this.urlBaseWebhook}${this.endpointWebhook}`;
 		},

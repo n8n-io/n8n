@@ -31,16 +31,15 @@ export default Vue.extend({
 		},
 
 		filePath(): string | null {
-			if (!this.credentialWithIcon || !this.credentialWithIcon.icon || !this.credentialWithIcon.icon.startsWith('file:')) {
+			const iconUrl = this.credentialWithIcon?.iconUrl;
+			if (!iconUrl) {
 				return null;
 			}
-
-			const restUrl = this.rootStore.getRestUrl;
-
-			return `${restUrl}/credential-icon/${this.credentialWithIcon.name}`;
+			return this.rootStore.getBaseUrl + iconUrl;
 		},
+
 		relevantNode(): INodeTypeDescription | null	 {
-			if (this.credentialWithIcon && this.credentialWithIcon.icon && this.credentialWithIcon.icon.startsWith('node:')) {
+			if (this.credentialWithIcon?.icon?.startsWith('node:')) {
 				const nodeType = this.credentialWithIcon.icon.replace('node:', '');
 				return this.nodeTypesStore.getNodeType(nodeType);
 			}
@@ -65,7 +64,7 @@ export default Vue.extend({
 				return null;
 			}
 
-			if (type.icon) {
+			if (type.icon || type.iconUrl) {
 				return type;
 			}
 

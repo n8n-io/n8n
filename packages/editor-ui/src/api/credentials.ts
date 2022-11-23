@@ -7,9 +7,11 @@ import {
 	INodeCredentialTestRequest,
 	INodeCredentialTestResult,
 } from 'n8n-workflow';
+import axios from 'axios';
 
-export async function getCredentialTypes(context: IRestApiContext): Promise<ICredentialType[]> {
-	return await makeRestApiRequest(context, 'GET', '/credential-types');
+export async function getCredentialTypes(baseUrl: string): Promise<ICredentialType[]> {
+	const { data } = await axios.get(baseUrl + 'types/credentials.json');
+	return data;
 }
 
 export async function getCredentialsNewName(context: IRestApiContext, name?: string): Promise<{name: string}> {

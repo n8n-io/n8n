@@ -120,7 +120,7 @@ export const useNodeTypesStore =  defineStore(STORES.NODE_TYPES, {
 		},
 		async getNodeTypes(): Promise<void> {
 			const rootStore = useRootStore();
-			const nodeTypes = await getNodeTypes(rootStore.getRestApiContext);
+			const nodeTypes = await getNodeTypes(rootStore.getBaseUrl);
 			if (nodeTypes.length) {
 				this.setNodeTypes(nodeTypes);
 			}

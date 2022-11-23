@@ -4,7 +4,7 @@ import { existsSync } from 'fs';
 import bodyParser from 'body-parser';
 import { CronJob } from 'cron';
 import express from 'express';
-import { set } from 'lodash';
+import set from 'lodash.set';
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import {
 	ICredentialType,
@@ -13,8 +13,7 @@ import {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	INodeTypeData,
-	INodeTypes,
+	INodesAndCredentials,
 	ITriggerFunctions,
 	ITriggerResponse,
 	LoggerProxy,
@@ -68,6 +67,14 @@ import type {
 import { v4 as uuid } from 'uuid';
 import { handleLdapInit } from '../../../src/Ldap/helpers';
 import { ldapController } from '@/Ldap/routes/ldap.controller.ee';
+
+const loadNodesAndCredentials: INodesAndCredentials = {
+	loaded: { nodes: {}, credentials: {} },
+	known: { nodes: {}, credentials: {} },
+};
+
+const mockNodeTypes = NodeTypes(loadNodesAndCredentials);
+CredentialTypes(loadNodesAndCredentials);
 
 /**
  * Initialize a test server.
@@ -152,8 +159,6 @@ export async function initTestServer({
  * Pre-requisite: Mock the telemetry module before calling.
  */
 export function initTestTelemetry() {
-	const mockNodeTypes = { nodeTypes: {} } as INodeTypes;
-
 	void InternalHooksManager.init('test-instance-id', 'test-version', mockNodeTypes);
 }
 
@@ -220,13 +225,12 @@ export function gitHubCredentialType(): ICredentialType {
  * Initialize node types.
  */
 export async function initCredentialsTypes(): Promise<void> {
-	const credentialTypes = CredentialTypes();
-	await credentialTypes.init({
+	loadNodesAndCredentials.loaded.credentials = {
 		githubApi: {
 			type: gitHubCredentialType(),
 			sourcePath: '',
 		},
-	});
+	};
 }
 
 /**
@@ -240,7 +244,7 @@ export async function initLdapManager(): Promise<void> {
  * Initialize node types.
  */
 export async function initNodeTypes() {
-	const types: INodeTypeData = {
+	loadNodesAndCredentials.loaded.nodes = {
 		'n8n-nodes-base.start': {
 			sourcePath: '',
 			type: {
@@ -534,8 +538,6 @@ export async function initNodeTypes() {
 			},
 		},
 	};
-
-	await NodeTypes().init(types);
 }
 
 /**
