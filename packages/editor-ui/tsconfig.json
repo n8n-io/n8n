@@ -8,6 +8,7 @@
 		"skipLibCheck": true,
 		"allowJs": true,
 		"importHelpers": true,
+		"incremental": false,
 		"allowSyntheticDefaultImports": true,
 		"baseUrl": ".",
 		"types": ["vitest/globals"],
