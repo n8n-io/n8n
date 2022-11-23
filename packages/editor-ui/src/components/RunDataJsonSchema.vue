@@ -32,7 +32,7 @@ import RunDataJsonSchemaItem from "@/components/RunDataJsonSchemaItem.vue";
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from "@/stores/ndv";
 import { useWebhooksStore } from "@/stores/webhooks";
-import { runExternalHook } from "@/components/mixins/externalHooks";
+import { runExternalHook } from "@/mixins/externalHooks";
 import { telemetry } from "@/plugins/telemetry";
 
 type Props = {
