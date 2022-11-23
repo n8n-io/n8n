@@ -8,11 +8,6 @@ import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
 import { INodeUi, XYPosition } from '@/Interface';
 import {
-	DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
-	PLACEHOLDER_TRIGGER_NODE_SIZE,
-	getMidCanvasPosition,
-	getNewNodePosition,
-	getZoomToFit,
 	scaleBigger,
 	scaleReset,
 	scaleSmaller,
@@ -20,6 +15,7 @@ import {
 import { START_NODE_TYPE } from '@/constants';
 import '@/plugins/N8nCustomConnectorType';
 import '@/plugins/PlusEndpointType';
+import { DEFAULT_PLACEHOLDER_TRIGGER_BUTTON, getMidCanvasPosition, getNewNodePosition, getZoomToFit, PLACEHOLDER_TRIGGER_NODE_SIZE } from '@/utils/nodeViewUtils';
 
 export const useCanvasStore = defineStore('canvas', () => {
 	const workflowStore = useWorkflowsStore();
