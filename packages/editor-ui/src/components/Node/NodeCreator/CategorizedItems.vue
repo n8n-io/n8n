@@ -537,6 +537,7 @@ const { searchEventBus, activeSubcategoryIndex, activeIndex, mainPanelContainer 
 	overflow-y: auto;
 	overflow-x: visible;
 
+	scrollbar-width: none; /* Firefox 64 */
 	&::-webkit-scrollbar {
 		display: none;
 	}
