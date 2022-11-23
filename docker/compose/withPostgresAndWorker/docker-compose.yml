@@ -65,6 +65,7 @@ services:
     <<: *shared
     image: n8nio/n8n
     command: /bin/sh -c "n8n start --tunnel"
+    hostname: n8nlocal
     ports:
       - 5678:5678
 
