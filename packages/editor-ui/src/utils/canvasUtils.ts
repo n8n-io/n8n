@@ -1,5 +1,6 @@
-import { getStyleTokenValue, isNumber } from "@/components/helpers";
-import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
+import { isNumber } from "@/utils/typesUtils";
+import { getStyleTokenValue } from '@/utils/htmlUtils';
+import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME, MAIN_HEADER_TABS, VIEWS } from "@/constants";
 import { EndpointStyle, IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
 import { AnchorArraySpec, Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
 import {
@@ -10,7 +11,11 @@ import {
 	NodeInputConnections,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
+
+/*
+	Constants and utility functions mainly used by canvas store
+	and components used to display workflow in node view.
+*/
 
 export const OVERLAY_DROP_NODE_ID = 'drop-add-node';
 export const OVERLAY_MIDPOINT_ARROW_ID = 'midpoint-arrow';
@@ -541,7 +546,7 @@ export const hideConnectionActions = (connection: Connection | null) => {
 	}
 };
 
-export const showConectionActions = (connection: Connection | null) => {
+export const showConnectionActions = (connection: Connection | null) => {
 	if (connection && connection.connector) {
 		showOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID);
 		hideOverlay(connection, OVERLAY_RUN_ITEMS_ID);
@@ -778,4 +783,22 @@ export const getFixedNodesList = (workflowNodes: INode[]) => {
 	});
 
 	return nodes;
+};
+
+export const getNodeViewTab = (route: Route): string|null => {
+	const routeMeta = route.meta;
+	if (routeMeta && routeMeta.nodeView === true) {
+		return MAIN_HEADER_TABS.WORKFLOW;
+	} else {
+		const executionTabRoutes = [
+			VIEWS.EXECUTION.toString(),
+			VIEWS.EXECUTION_PREVIEW.toString(),
+			VIEWS.EXECUTION_HOME.toString(),
+		];
+
+		if (executionTabRoutes.includes(route.name || '')) {
+			return MAIN_HEADER_TABS.EXECUTIONS;
+		}
+	}
+	return null;
 };

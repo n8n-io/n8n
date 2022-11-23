@@ -98,11 +98,11 @@
 
 import Vue from 'vue';
 import { CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeBase } from '@/components/mixins/nodeBase';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { pinData } from '@/components/mixins/pinData';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeBase } from '@/mixins/nodeBase';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { pinData } from '@/mixins/pinData';
 
 import {
 	INodeTypeDescription,
@@ -116,9 +116,9 @@ import TitledList from '@/components/TitledList.vue';
 import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
-import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
+import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
 import { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
-import { debounceHelper } from './mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
