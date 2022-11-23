@@ -130,8 +130,8 @@ import {
 import CredentialIcon from '../CredentialIcon.vue';
 
 import mixins from 'vue-typed-mixins';
-import { nodeHelpers } from '../mixins/nodeHelpers';
-import { showMessage } from '../mixins/showMessage';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
@@ -152,7 +152,7 @@ import { useUsersStore } from '@/stores/users';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 import { useCredentialsStore } from '@/stores/credentials';
-import { isValidCredentialResponse } from '@/typeGuards';
+import { isValidCredentialResponse } from '@/utils';
 
 interface NodeAccessMap {
 	[nodeType: string]: ICredentialNodeAccess | null;

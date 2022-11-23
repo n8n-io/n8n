@@ -1,6 +1,5 @@
-import { isValidDate } from './utils';
 import jp from "jsonpath";
-import { isEmpty, intersection, mergeDeep, getJsonSchema } from "@/utils";
+import { isEmpty, intersection, mergeDeep, getJsonSchema, isValidDate } from "@/utils";
 import { JsonSchema } from "@/Interface";
 
 describe("Utils", () => {

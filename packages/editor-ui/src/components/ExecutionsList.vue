@@ -179,12 +179,12 @@ import ExecutionTime from '@/components/ExecutionTime.vue';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Modal from '@/components/Modal.vue';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 import { WAIT_TIME_UNLIMITED, EXECUTIONS_MODAL_KEY, VIEWS } from '@/constants';
 
-import { restApi } from '@/components/mixins/restApi';
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { restApi } from '@/mixins/restApi';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { showMessage } from '@/mixins/showMessage';
 import {
 	IExecutionsCurrentSummaryExtended,
 	IExecutionDeleteFilter,
@@ -196,7 +196,7 @@ import {
 
 import {
 	convertToDisplayDate,
-} from './helpers';
+} from '@/utils';
 
 import {
 	IDataObject,

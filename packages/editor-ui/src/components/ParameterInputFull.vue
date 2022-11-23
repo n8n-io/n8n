@@ -73,13 +73,11 @@ import {
 import ParameterOptions from '@/components/ParameterOptions.vue';
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
-import { hasExpressionMapping } from '@/components/helpers';
+import { hasExpressionMapping, isResourceLocatorValue, hasOnlyListMode } from '@/utils';
 import ParameterInputWrapper from '@/components/ParameterInputWrapper.vue';
-import { hasOnlyListMode } from '@/components/ResourceLocator/helpers';
 import { INodeParameters, INodeProperties, INodePropertyMode } from 'n8n-workflow';
-import { isResourceLocatorValue } from '@/typeGuards';
 import { BaseTextKey } from "@/plugins/i18n";
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';

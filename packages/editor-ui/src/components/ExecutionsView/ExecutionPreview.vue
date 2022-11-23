@@ -66,11 +66,11 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
-import { showMessage } from '../mixins/showMessage';
+import { restApi } from '@/mixins/restApi';
+import { showMessage } from '@/mixins/showMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers';
-import { VIEWS } from '../../constants';
+import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
+import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import ElDropdown from 'element-ui/lib/dropdown';

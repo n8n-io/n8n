@@ -43,11 +43,7 @@ export function authenticationMethods(this: N8nApp): void {
 			}
 
 			if (!user?.password || !(await compareHash(req.body.password, user.password))) {
-				// password is empty until user signs up
-				const error = new Error('Wrong username or password. Do you have caps lock on?');
-				// @ts-ignore
-				error.httpStatusCode = 401;
-				throw error;
+				throw new ResponseHelper.AuthError('Wrong username or password. Do you have caps lock on?');
 			}
 
 			await issueCookie(res, user);

@@ -26,7 +26,7 @@
 <script lang="ts">
 import mixins from "vue-typed-mixins";
 
-import { showMessage } from "@/components/mixins/showMessage";
+import { showMessage } from "@/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IFormInputs } from "@/Interface";

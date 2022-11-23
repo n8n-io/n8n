@@ -153,9 +153,6 @@ import {
 	INodePropertyMode,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import {
-	hasOnlyListMode,
-} from './helpers';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -163,12 +160,11 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
 import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
-import { debounceHelper } from '../mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
-import { workflowHelpers } from '../mixins/workflowHelpers';
-import { nodeHelpers } from '../mixins/nodeHelpers';
-import { getAppNameFromNodeName } from '../helpers';
-import { isResourceLocatorValue } from '@/typeGuards';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { getAppNameFromNodeName, isResourceLocatorValue, hasOnlyListMode } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

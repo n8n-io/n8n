@@ -1,6 +1,29 @@
-import { CORE_NODES_CATEGORY, CUSTOM_NODES_CATEGORY, SUBCATEGORY_DESCRIPTIONS, UNCATEGORIZED_CATEGORY, UNCATEGORIZED_SUBCATEGORY, PERSONALIZED_CATEGORY  } from '@/constants';
-import { INodeCreateElement, ICategoriesWithNodes } from '@/Interface';
-import { INodeTypeDescription } from 'n8n-workflow';
+import {
+	CORE_NODES_CATEGORY,
+	CUSTOM_NODES_CATEGORY,
+	SUBCATEGORY_DESCRIPTIONS,
+	UNCATEGORIZED_CATEGORY,
+	UNCATEGORIZED_SUBCATEGORY,
+	PERSONALIZED_CATEGORY,
+	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
+	TEMPLATES_NODES_FILTER,
+	REGULAR_NODE_FILTER,
+	TRIGGER_NODE_FILTER,
+	ALL_NODE_FILTER,
+	MAPPING_PARAMS,
+} from '@/constants';
+import { INodeCreateElement, ICategoriesWithNodes, INodeUi, ITemplatesNode, INodeItemProps } from '@/Interface';
+import { IDataObject, INodeExecutionData, INodeProperties, INodeTypeDescription, NodeParameterValueType } from 'n8n-workflow';
+import { isResourceLocatorValue, isJsonKeyObject } from '@/utils';
+
+/*
+	Constants and utility functions mainly used to get information about
+	or manipulate node types and nodes.
+*/
+
+const CRED_KEYWORDS_TO_FILTER = ['API', 'OAuth1', 'OAuth2'];
+const NODE_KEYWORDS_TO_FILTER = ['Trigger'];
+const COMMUNITY_PACKAGE_NAME_REGEX = /(@\w+\/)?n8n-nodes-(?!base\b)\b\w+/g;
 
 const addNodeToCategory = (accu: ICategoriesWithNodes, nodeType: INodeTypeDescription, category: string, subcategory: string) => {
 	if (!accu[category]) {
@@ -147,4 +170,93 @@ export const getCategorizedList = (categoriesWithNodes: ICategoriesWithNodes): I
 		},
 		[],
 	);
+};
+
+export function getAppNameFromCredType(name: string) {
+	return name.split(' ').filter((word) => !CRED_KEYWORDS_TO_FILTER.includes(word)).join(' ');
+}
+
+export function getAppNameFromNodeName(name: string) {
+	return name.split(' ').filter((word) => !NODE_KEYWORDS_TO_FILTER.includes(word)).join(' ');
+}
+
+
+export function getTriggerNodeServiceName(nodeType: INodeTypeDescription): string {
+	return nodeType.displayName.replace(/ trigger/i, '');
+}
+
+export function getActivatableTriggerNodes(nodes: INodeUi[]) {
+	return nodes.filter((node: INodeUi) => !node.disabled && !NON_ACTIVATABLE_TRIGGER_NODE_TYPES.includes(node.type));
+}
+
+export function filterTemplateNodes(nodes: ITemplatesNode[]) {
+	const notCoreNodes = nodes.filter((node: ITemplatesNode) => {
+		return !(node.categories || []).some(
+			(category) => category.name === CORE_NODES_CATEGORY,
+		);
+	});
+
+	const results = notCoreNodes.length > 0 ? notCoreNodes : nodes;
+	return results.filter((elem) => !TEMPLATES_NODES_FILTER.includes(elem.name));
+}
+
+export function isCommunityPackageName(packageName: string): boolean {
+	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
+	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
+	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
+
+	return !!nameMatch;
+}
+
+export function hasExpressionMapping(value: unknown) {
+	return typeof value === 'string' && !!MAPPING_PARAMS.find((param) => value.includes(param));
+}
+
+export function isValueExpression (parameter: INodeProperties, paramValue: NodeParameterValueType): boolean {
+	if (parameter.noDataExpression === true) {
+		return false;
+	}
+	if (typeof paramValue === 'string' && paramValue.charAt(0) === '=') {
+		return true;
+	}
+	if (isResourceLocatorValue(paramValue) && paramValue.value && paramValue.value.toString().charAt(0) === '=') {
+		return true;
+	}
+	return false;
+}
+
+export const executionDataToJson = (inputData: INodeExecutionData[]): IDataObject[] => inputData.reduce<IDataObject[]>(
+	(acc, item) => isJsonKeyObject(item) ? acc.concat(item.json) : acc,
+	[],
+);
+
+export const matchesSelectType = (el: INodeCreateElement, selectedType: string) => {
+	if (selectedType === REGULAR_NODE_FILTER && el.includedByRegular) {
+		return true;
+	}
+	if (selectedType === TRIGGER_NODE_FILTER && el.includedByTrigger) {
+		return true;
+	}
+
+	return selectedType === ALL_NODE_FILTER;
+};
+
+const matchesAlias = (nodeType: INodeTypeDescription, filter: string): boolean => {
+	if (!nodeType.codex || !nodeType.codex.alias) {
+		return false;
+	}
+
+	return nodeType.codex.alias.reduce((accu: boolean, alias: string) => {
+		return accu || alias.toLowerCase().indexOf(filter) > -1;
+	}, false);
+};
+
+export const matchesNodeType = (el: INodeCreateElement, filter: string) => {
+	const nodeType = (el.properties as INodeItemProps).nodeType;
+
+	return nodeType.displayName.toLowerCase().indexOf(filter) !== -1 || matchesAlias(nodeType, filter);
+};
+
+export const hasOnlyListMode = (parameter: INodeProperties) : boolean => {
+	return parameter.modes !== undefined && parameter.modes.length === 1 && parameter.modes[0].name === 'list';
 };

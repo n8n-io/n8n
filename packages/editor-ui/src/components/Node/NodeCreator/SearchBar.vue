@@ -24,7 +24,7 @@
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
 	name: "SearchBar",

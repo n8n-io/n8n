@@ -1,11 +1,14 @@
-import { INodeExecutionData, IPairedItemData, IRunData, ITaskData } from "n8n-workflow";
-import { IExecutionResponse, TargetItem } from "./Interface";
-import { isNotNull } from "./typeGuards";
+import { IPairedItemData, IRunData, ITaskData } from "n8n-workflow";
+import { IExecutionResponse, TargetItem } from "../Interface";
+import { isNotNull } from "@/utils";
+
+/*
+	Utility functions that provide shared functionalities used to add paired item support to nodes
+*/
 
 export function getPairedItemId(node: string, run: number, output: number, item: number): string {
 	return `${node}_r${run}_o${output}_i${item}`;
 }
-
 
 export function getSourceItems(data: IExecutionResponse, target: TargetItem): TargetItem[] {
 	if (!data?.data?.resultData?.runData) {
