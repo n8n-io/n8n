@@ -8,9 +8,7 @@
 			@dragend="onDragEnd"
 		>
 			<template #preview="{ canDrop, el }">
-				<div :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]">
-					{{ $locale.baseText('dataMapping.mapKeyToField', { interpolate: { name: getShortKey(el) } }) }}
-				</div>
+				<div v-if="el" :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]" v-html="el.outerHTML" />
 			</template>
 			<template>
 				<run-data-json-schema-item
@@ -32,7 +30,6 @@ import { ref } from 'vue';
 import { INodeUi, JsonSchema } from "@/Interface";
 import RunDataJsonSchemaItem from "@/components/RunDataJsonSchemaItem.vue";
 import Draggable from '@/components/Draggable.vue';
-import { shorten } from "@/components/helpers";
 import { useNDVStore } from "@/stores/ndv";
 import { useWebhooksStore } from "@/stores/webhooks";
 import { runExternalHook } from "@/components/mixins/externalHooks";
@@ -56,7 +53,7 @@ const ndvStore = useNDVStore();
 const webhooksStore = useWebhooksStore();
 
 const onDragStart = (el: HTMLElement) => {
-	if (el && el.dataset.path) {
+	if (el && el.dataset?.path) {
 		draggingPath.value = el.dataset.path;
 	}
 
@@ -86,14 +83,6 @@ const onDragEnd = (el: HTMLElement) => {
 	}, 1000); // ensure dest data gets set if drop
 };
 
-const getShortKey = (el: HTMLElement): string => {
-	if (!el) {
-		return '';
-	}
-
-	return shorten(el.dataset.name || '', 16, 2);
-};
-
 </script>
 
 <style lang="scss" module>
@@ -113,21 +102,42 @@ const getShortKey = (el: HTMLElement): string => {
 }
 
 .dragPill {
-	padding: var(--spacing-4xs) var(--spacing-4xs) var(--spacing-3xs) var(--spacing-4xs);
-	color: var(--color-text-xlight);
-	font-weight: var(--font-weight-bold);
+	display: inline-flex;
+	height: 24px;
+	padding: 0 var(--spacing-3xs);
+	border: 1px solid var(--color-foreground-light);
+	border-radius: 4px;
+	background: var(--color-background-xlight);
 	font-size: var(--font-size-2xs);
-	border-radius: var(--border-radius-base);
+	color: var(--color-text-base);
 	white-space: nowrap;
+	align-items: center;
+
+	span {
+		display: flex;
+		height: 100%;
+		align-items: center;
+	}
 }
 
 .droppablePill {
-	background-color: var(--color-success);
+	&,
+	span span {
+		color: var(--color-success);
+		border-color: var(--color-success-light);
+		background: var(--color-success-tint-3);
+	}
 }
 
 .defaultPill {
-	background-color: var(--color-primary);
 	transform: translate(-50%, -100%);
 	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
+
+	&,
+	span span {
+		color: var(--color-primary);
+		border-color: var(--color-primary-tint-1);
+		background: var(--color-primary-tint-3);
+	}
 }
 </style>

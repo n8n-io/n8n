@@ -16,7 +16,7 @@
 				:data-depth="level"
 				data-target="mappable"
 			>
-				<font-awesome-icon :icon="getIconBySchemaType(schema.type)"/>
+				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm"/>
 				<span v-if="isSchemaParentTypeList">{{ schema.type }}</span>
 				<span v-if="key" :class="{[$style.listKey]: isSchemaParentTypeList}">{{ key }}</span>
 			</span>
@@ -122,11 +122,11 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 	display: inline-flex;
 	height: 24px;
 	padding: 0 var(--spacing-3xs);
-	border: 1px solid #DBDFE7;
+	border: 1px solid var(--color-foreground-light);
 	border-radius: 4px;
-	background: #fff;
-	font-weight: var(--font-weight-bold);
+	background: var(--color-background-xlight);
 	font-size: var(--font-size-2xs);
+	color: var(--color-text-base);
 
 	&:hover {
 		box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
@@ -136,10 +136,6 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 		display: flex;
 		height: 100%;
 		align-items: center;
-
-		& > {
-
-		}
 	}
 }
 
@@ -147,7 +143,7 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 	> span {
 		margin-left: var(--spacing-3xs);
 		padding-left: var(--spacing-3xs);
-		border-left: 1px solid #DBDFE7;
+		border-left: 1px solid var(--color-foreground-light);
 
 		&.listKey {
 			border: 0;
@@ -160,19 +156,21 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 .value {
 	display: inline-block;
 	padding-left: var(--spacing-2xs);
-	font-weight: var(--font-weight-bold);
+	font-weight: var(--font-weight-normal);
 	font-size: var(--font-size-2xs);
 }
 
 .toggle {
-	display: inline-flex;
+	display: flex;
 	position: absolute;
-	left: 0;
-	top: 16px;
+	padding: var(--spacing-2xs);
+	left: -8px;
+	top: 9px;
 	justify-content: center;
 	align-items: center;
 	cursor: pointer;
 	user-select: none;
+	font-weight: normal;
 
 	svg {
 		transition: all 0.3s $ease-out-expo;
@@ -210,14 +208,23 @@ const getIconBySchemaType = (type: JsonSchema['type']): string => {
 	cursor: grab;
 
 	&:hover {
-		background-color: var(--color-foreground-light);
+		&,
+		span span {
+			background-color: var(--color-foreground-light);
+			border-color: var(--color-foreground-base);
+		}
 	}
 }
 
 .dragged {
+	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
+
 	&,
-	&:hover {
-		background-color: var(--color-primary-tint-2);
+	&:hover,
+	span span {
+		color: var(--color-primary);
+		border-color: var(--color-primary-tint-1);
+		background: var(--color-primary-tint-3);
 	}
 }
 </style>
