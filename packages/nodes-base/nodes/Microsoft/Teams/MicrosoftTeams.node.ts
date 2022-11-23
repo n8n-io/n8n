@@ -11,7 +11,11 @@ import {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { filterSortSearchListItems, microsoftApiRequest, microsoftApiRequestAllItems } from './GenericFunctions';
+import {
+	filterSortSearchListItems,
+	microsoftApiRequest,
+	microsoftApiRequestAllItems,
+} from './GenericFunctions';
 
 import { channelFields, channelOperations } from './ChannelDescription';
 
@@ -83,10 +87,7 @@ export class MicrosoftTeams implements INodeType {
 
 	methods = {
 		listSearch: {
-			async getChats(
-				this: ILoadOptionsFunctions,
-				filter?: string,
-			): Promise<INodeListSearchResult> {
+			async getChats(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
 				const qs: IDataObject = {
 					$expand: 'members',
@@ -142,7 +143,10 @@ export class MicrosoftTeams implements INodeType {
 				const results = filterSortSearchListItems(returnData, filter);
 				return { results };
 			},
-			async getChannels(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
+			async getChannels(
+				this: ILoadOptionsFunctions,
+				filter?: string,
+			): Promise<INodeListSearchResult> {
 				const returnData: INodeListSearchItems[] = [];
 				const teamId = this.getCurrentNodeParameter('teamId', { extractValue: true }) as string;
 				const { value } = await microsoftApiRequest.call(
@@ -317,7 +321,9 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/channel-delete?view=graph-rest-beta&tabs=http
 					if (operation === 'delete') {
 						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-						const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+						const channelId = this.getNodeParameter('channelId', i, '', {
+							extractValue: true,
+						}) as string;
 						responseData = await microsoftApiRequest.call(
 							this,
 							'DELETE',
@@ -328,7 +334,9 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/channel-get?view=graph-rest-beta&tabs=http
 					if (operation === 'get') {
 						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-						const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+						const channelId = this.getNodeParameter('channelId', i, '', {
+							extractValue: true,
+						}) as string;
 						responseData = await microsoftApiRequest.call(
 							this,
 							'GET',
@@ -361,7 +369,9 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/channel-patch?view=graph-rest-beta&tabs=http
 					if (operation === 'update') {
 						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-						const channelId = this.getNodeParameter('channelId', i, '', { extractValue: true }) as string;
+						const channelId = this.getNodeParameter('channelId', i, '', {
+							extractValue: true,
+						}) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IDataObject = {};
 						if (updateFields.name) {
@@ -384,7 +394,9 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/channel-post-messagereply?view=graph-rest-beta&tabs=http
 					if (operation === 'create') {
 						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-						const channelId = (this.getNodeParameter('channelId', i, '', { extractValue: true }) as string).trim();
+						const channelId = (
+							this.getNodeParameter('channelId', i, '', { extractValue: true }) as string
+						).trim();
 						const messageType = this.getNodeParameter('messageType', i) as string;
 						const message = this.getNodeParameter('message', i) as string;
 						const options = this.getNodeParameter('options', i);
@@ -416,7 +428,9 @@ export class MicrosoftTeams implements INodeType {
 					//https://docs.microsoft.com/en-us/graph/api/channel-list-messages?view=graph-rest-beta&tabs=http
 					if (operation === 'getAll') {
 						const teamId = this.getNodeParameter('teamId', i, '', { extractValue: true }) as string;
-						const channelId = (this.getNodeParameter('channelId', i, '', { extractValue: true }) as string).trim();
+						const channelId = (
+							this.getNodeParameter('channelId', i, '', { extractValue: true }) as string
+						).trim();
 						const returnAll = this.getNodeParameter('returnAll', i);
 						if (returnAll) {
 							responseData = await microsoftApiRequestAllItems.call(

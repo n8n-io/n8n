@@ -60,26 +60,28 @@ export const chatMessageFields: INodeProperties[] = [
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
-				placeholder: 'https://teams.microsoft.com/_#/conversations/19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces?ctx=chat',
+				placeholder:
+					'https://teams.microsoft.com/_#/conversations/19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces?ctx=chat',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'https:\/\/teams.microsoft.com\/_#\/conversations\/([^\\s?]+)\\?ctx=chat[ \t]*',
+							regex: 'https://teams.microsoft.com/_#/conversations/([^\\s?]+)\\?ctx=chat[ \t]*',
 							errorMessage: 'Not a valid Microsoft Teams URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: 'https:\/\/teams.microsoft.com\/_#\/conversations\/([^\\s?]+)',
+					regex: 'https://teams.microsoft.com/_#/conversations/([^\\s?]+)',
 				},
 			},
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
-				placeholder: '19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces',
+				placeholder:
+					'19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces',
 				// validation missing because no documentation found how these unique chat ids look like.
 				url: '=https://teams.microsoft.com/l/chat/{{encodeURIComponent($value)}}/0',
 			},
@@ -173,26 +175,28 @@ export const chatMessageFields: INodeProperties[] = [
 				displayName: 'By URL',
 				name: 'url',
 				type: 'string',
-				placeholder: 'https://teams.microsoft.com/_#/conversations/19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces?ctx=chat',
+				placeholder:
+					'https://teams.microsoft.com/_#/conversations/19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces?ctx=chat',
 				validation: [
 					{
 						type: 'regex',
 						properties: {
-							regex: 'https:\/\/teams.microsoft.com\/_#\/conversations\/([^\\s?]+)\\?ctx=chat[ \t]*',
+							regex: 'https://teams.microsoft.com/_#/conversations/([^\\s?]+)\\?ctx=chat[ \t]*',
 							errorMessage: 'Not a valid Microsoft Teams URL',
 						},
 					},
 				],
 				extractValue: {
 					type: 'regex',
-					regex: 'https:\/\/teams.microsoft.com\/_#\/conversations\/([^\\s?]+)',
+					regex: 'https://teams.microsoft.com/_#/conversations/([^\\s?]+)',
 				},
 			},
 			{
 				displayName: 'ID',
 				name: 'id',
 				type: 'string',
-				placeholder: '19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces',
+				placeholder:
+					'19:7e2f1174-e8ee-4859-b8b1-a8d1cc63d276_0c5cfdbb-596f-4d39-b557-5d9516c94107@unq.gbl.spaces',
 				// validation missing because no documentation found how these unique chat ids look like.
 				url: '=https://teams.microsoft.com/l/chat/{{encodeURIComponent($value)}}/0',
 			},

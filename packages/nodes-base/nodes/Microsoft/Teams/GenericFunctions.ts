@@ -88,7 +88,6 @@ export async function microsoftApiRequestAllItemsSkip(
 	return returnData;
 }
 
-
 export function filterSortSearchListItems(items: INodeListSearchItems[], filter?: string) {
 	return items
 		.filter(
