@@ -14,6 +14,10 @@
   },
   "main": "dist/index",
   "types": "dist/index.d.ts",
+  "bin": {
+    "n8n-generate-known": "./bin/generate-known",
+    "n8n-generate-ui-types": "./bin/generate-ui-types"
+  },
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc",
@@ -22,11 +26,12 @@
     "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
-    "watch": "tsc --watch",
+    "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest"
   },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "devDependencies": {
     "@types/cron": "~1.7.1",
@@ -42,6 +47,7 @@
     "client-oauth2": "^4.2.5",
     "cron": "~1.7.2",
     "crypto-js": "~4.1.1",
+    "fast-glob": "^3.2.5",
     "file-type": "^16.5.4",
     "flatted": "^3.2.4",
     "form-data": "^4.0.0",
