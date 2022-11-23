@@ -1,6 +1,7 @@
 import dateformat from 'dateformat';
 import { IDataObject, jsonParse } from 'n8n-workflow';
 import { JsonSchema, Optional, Primitives } from "@/Interface";
+import { isObj } from "@/utils/typeGuards";
 
 /*
 	Constants and utility functions than can be used to manipulate different data types and objects
@@ -59,14 +60,6 @@ export function convertToDisplayDate (epochTime: number) {
 
 export function convertToHumanReadableDate (epochTime: number) {
 	return dateformat(epochTime, 'd mmmm, yyyy @ HH:MM Z');
-}
-
-export function isString(value: unknown): value is string {
-	return typeof value === 'string';
-}
-
-export function isNumber(value: unknown): value is number {
-	return typeof value === 'number';
 }
 
 export function stringSizeInBytes(input: string | IDataObject | IDataObject[] | undefined): number {
@@ -163,12 +156,6 @@ export const isValidDate = (input: string | number | Date): boolean => {
 		return false;
 	}
 };
-
-export const checkExhaustive = (value: never): never => {
-	throw new Error(`Unhandled value: ${value}`);
-};
-
-export const isObj = (obj: unknown): obj is object => !!obj && Object.getPrototypeOf(obj) === Object.prototype;
 
 export const getObjectKeys = <T extends object, K extends keyof T>(o: T): K[] => Object.keys(o) as K[];
 
