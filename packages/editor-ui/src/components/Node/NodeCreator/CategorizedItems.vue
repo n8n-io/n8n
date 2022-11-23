@@ -2,7 +2,6 @@
 	<transition :name="activeSubcategoryTitle ? 'panel-slide-in' : 'panel-slide-out'" >
 		<div
 			:class="$style.categorizedItems"
-			@click="onClickInside"
 			ref="mainPanelContainer"
 			tabindex="0"
 			@keydown.capture="nodeFilterKeyDown"
@@ -20,10 +19,10 @@
 			</div>
 
 			<search-bar
+				:key="nodeCreatorStore.selectedType"
 				v-if="isSearchVisible"
 				:value="nodeCreatorStore.itemsFilter"
 				@input="onNodeFilterChange"
-				:eventBus="searchEventBus"
 				:placeholder="$locale.baseText('nodeCreator.searchBar.searchNodes')"
 			/>
 			<div v-if="searchFilter.length === 0" :class="$style.scrollable">
@@ -141,11 +140,11 @@ const state = reactive({
 	activeSubcategoryHistory: [] as INodeCreateElement[],
 	activeIndex: props.initialActiveIndex || 0,
 	activeSubcategoryIndex: 0,
-	searchEventBus: new Vue(),
 	ALL_NODE_FILTER,
 	TRIGGER_NODE_FILTER,
 	REGULAR_NODE_FILTER,
 	mainPanelContainer: null as HTMLElement | null,
+	searchBarRef: null as HTMLElement | null,
 });
 
 const activeSubcategory = computed<INodeCreateElement | null> (
@@ -413,9 +412,6 @@ function onSubcategoryClose() {
   }
 }
 
-function onClickInside() {
-  state.searchEventBus.$emit('focus');
-}
 
 onMounted(() => {
 	registerCustomAction('showAllNodeCreatorNodes', switchToAllTabAndFilter);
@@ -460,7 +456,7 @@ watch(() => nodeCreatorStore.itemsFilter, (newValue, oldValue) => {
 	});
 });
 
-const { searchEventBus, activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state);
+const { searchBarRef, activeSubcategoryIndex, activeIndex, mainPanelContainer } = toRefs(state);
 </script>
 
 <style lang="scss" module>

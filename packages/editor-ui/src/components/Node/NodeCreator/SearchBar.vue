@@ -6,10 +6,10 @@
 		<div :class="$style.text">
 			<input
 				:placeholder="placeholder"
-				ref="input"
 				:value="value"
 				@input="onInput"
 				:class="$style.input"
+				ref="inputRef"
 			/>
 		</div>
 		<div :class="$style.suffix" v-if="value.length > 0" @click="clear">
@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import Vue, { onMounted, onUnmounted, reactive, toRefs } from 'vue';
+import Vue, { onMounted, reactive, toRefs, onBeforeUnmount  } from 'vue';
 import { externalHooks } from '@/components/mixins/externalHooks';
 
 export interface Props {
@@ -30,7 +30,7 @@ export interface Props {
 	eventBus?: Vue;
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
 	placeholder: '',
 	value: '',
 });
@@ -42,11 +42,11 @@ const emit = defineEmits<{
 const { $externalHooks } = new externalHooks();
 
 const state = reactive({
-	input: null as HTMLInputElement | null,
+	inputRef: null as HTMLInputElement | null,
 });
 
 function focus() {
-	state.input?.focus();
+	state.inputRef?.focus();
 }
 
 function onInput(event: Event) {
@@ -59,17 +59,18 @@ function clear() {
 }
 
 onMounted(() => {
-	props.eventBus?.$on("focus", focus);
-	setTimeout(focus, 0);
-
-	$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: state.input });
+	$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: state.inputRef });
+	focus();
 });
 
-onUnmounted(() => {
-	props.eventBus?.$off("focus", focus);
+onBeforeUnmount(() => {
+	state.inputRef?.remove();
 });
 
-const { input } = toRefs(state);
+const { inputRef } = toRefs(state);
+defineExpose({
+	focus,
+});
 </script>
 
 <style lang="scss" module>
