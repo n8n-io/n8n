@@ -165,26 +165,6 @@ export class MicrosoftTeams implements INodeType {
 			},
 		},
 		loadOptions: {
-			// Get all the team's channels to display them to user so that he can
-			// select them easily
-			async getChannels(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
-				const returnData: INodePropertyOptions[] = [];
-				const teamId = this.getCurrentNodeParameter('teamId', { extractValue: true }) as string;
-				const { value } = await microsoftApiRequest.call(
-					this,
-					'GET',
-					`/v1.0/teams/${teamId}/channels`,
-				);
-				for (const channel of value) {
-					const channelName = channel.displayName;
-					const channelId = channel.id;
-					returnData.push({
-						name: channelName,
-						value: channelId,
-					});
-				}
-				return returnData;
-			},
 			// Get all the groups to display them to user so that he can
 			// select them easily
 			async getGroups(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
