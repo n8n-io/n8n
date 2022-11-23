@@ -548,13 +548,14 @@ export default mixins(
 					{ label: this.$locale.baseText('runData.table'), value: 'table'},
 					{ label: this.$locale.baseText('runData.json'), value: 'json'},
 				];
+
 				if (this.binaryData.length) {
 					defaults.push({ label: this.$locale.baseText('runData.binary'), value: 'binary'});
 				}
 
-				// if (window.posthog?.isFeatureEnabled?.('json-schema-view')) {
+				if (window.posthog?.isFeatureEnabled?.('json-schema-view')) {
 					defaults.push({ label: this.$locale.baseText('runData.jsonSchema'), value: 'json-schema'});
-				// }
+				}
 
 				return defaults;
 			},
