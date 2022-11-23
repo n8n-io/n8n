@@ -20,6 +20,7 @@
 						:readonly="!credentialPermissions.updateName"
 						type="Credential"
 						@input="onNameEdit"
+						data-test-id="credential-name"
 					/>
 				</div>
 				<div :class="$style.credActions">
@@ -32,6 +33,7 @@
 						:disabled="isSaving"
 						:loading="isDeleting"
 						@click="deleteCredential"
+						data-test-id="credential-delete-button"
 					/>
 					<SaveButton
 						v-if="(hasUnsavedChanges || credentialId) && credentialPermissions.save"
@@ -41,6 +43,7 @@
 							? $locale.baseText('credentialEdit.credentialEdit.testing')
 							: $locale.baseText('credentialEdit.credentialEdit.saving')"
 						@click="saveCredential"
+						data-test-id="credential-save-button"
 					/>
 				</div>
 			</div>
@@ -231,7 +234,10 @@ export default mixins(showMessage, nodeHelpers).extend({
 
 		if (this.credentialType) {
 			for (const property of this.credentialType.properties) {
-				if (!this.credentialData.hasOwnProperty(property.name)) {
+				if (
+					!this.credentialData.hasOwnProperty(property.name) &&
+					!this.credentialType.__overwrittenProperties?.includes(property.name)
+				) {
 					Vue.set(this.credentialData, property.name, property.default as CredentialInformation);
 				}
 			}
@@ -516,7 +522,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 				);
 			}
 
-			// The properties defined on the parent credentials take presidence
+			// The properties defined on the parent credentials take precedence
 			NodeHelpers.mergeNodeProperties(
 				combineProperties,
 				credentialTypeData.properties,

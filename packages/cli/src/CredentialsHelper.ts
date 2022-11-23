@@ -551,6 +551,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 			});
 		}
 
+		if (credentialsDecrypted.data) {
+			credentialsDecrypted.data = CredentialsOverwrites().applyOverwrite(
+				credentialType,
+				credentialsDecrypted.data,
+			);
+		}
+
 		if (typeof credentialTestFunction === 'function') {
 			// The credentials get tested via a function that is defined on the node
 			const credentialTestFunctions = NodeExecuteFunctions.getCredentialTestFunctions();

@@ -1,5 +1,10 @@
-import { IDataObject, ILoadOptionsFunctions, INodeListSearchItems, INodeListSearchResult } from "n8n-workflow";
-import { notionApiRequestAllItems } from "./GenericFunctions";
+import {
+	IDataObject,
+	ILoadOptionsFunctions,
+	INodeListSearchItems,
+	INodeListSearchResult,
+} from 'n8n-workflow';
+import { notionApiRequestAllItems } from './GenericFunctions';
 
 export async function getDatabases(
 	this: ILoadOptionsFunctions,
@@ -11,13 +16,7 @@ export async function getDatabases(
 		query: filter,
 		filter: { property: 'object', value: 'database' },
 	};
-	const databases = await notionApiRequestAllItems.call(
-		this,
-		'results',
-		'POST',
-		`/search`,
-		body,
-	);
+	const databases = await notionApiRequestAllItems.call(this, 'results', 'POST', `/search`, body);
 	for (const database of databases) {
 		returnData.push({
 			name: database.title[0]?.plain_text || database.id,

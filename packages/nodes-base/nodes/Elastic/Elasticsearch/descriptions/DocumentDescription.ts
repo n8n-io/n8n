@@ -195,21 +195,16 @@ export const documentFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'By default, you cannot page through more than 10,000 hits. To page through more hits, add "Sort" from options.',
+		displayName:
+			'By default, you cannot page through more than 10,000 hits. To page through more hits, add "Sort" from options.',
 		name: 'paginateNotice',
 		type: 'notice',
 		default: '',
 		displayOptions: {
 			show: {
-				resource: [
-					'document',
-				],
-				operation: [
-					'getAll',
-				],
-				returnAll: [
-					true,
-				],
+				resource: ['document'],
+				operation: ['getAll'],
+				returnAll: [true],
 			},
 		},
 	},

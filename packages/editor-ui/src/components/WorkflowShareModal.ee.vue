@@ -5,6 +5,7 @@
 		:eventBus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
+		:beforeClose="onCloseModal"
 	>
 		<template #content>
 			<div :class="$style.container">
@@ -120,14 +121,23 @@ export default mixins(
 	components: {
 		Modal,
 	},
+	props: {
+		data: {
+			type: Object,
+			default: () => ({}),
+		},
+	},
 	data() {
 		const workflowsStore = useWorkflowsStore();
+		const workflow = this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
+			? workflowsStore.workflow
+			: workflowsStore.workflowsById[this.data.id];
 
 		return {
 			WORKFLOW_SHARE_MODAL_KEY,
 			loading: false,
 			modalBus: new Vue(),
-			sharedWith: [...(workflowsStore.workflow.sharedWith || [])] as Array<Partial<IUser>>,
+			sharedWith: [...(workflow.sharedWith || [])] as Array<Partial<IUser>>,
 			EnterpriseEditionFeature,
 		};
 	},
@@ -150,7 +160,9 @@ export default mixins(
 			] as Array<Partial<IUser>>).concat(this.sharedWith || []);
 		},
 		workflow(): IWorkflowDb {
-			return this.workflowsStore.workflow;
+			return this.data.id === PLACEHOLDER_EMPTY_WORKFLOW_ID
+				? this.workflowsStore.workflow
+				: this.workflowsStore.workflowsById[this.data.id];
 		},
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
@@ -193,9 +205,20 @@ export default mixins(
 				});
 			};
 
-			const workflowId = await saveWorkflowPromise();
-			await this.workflowsEEStore.saveWorkflowSharedWith({ workflowId, sharedWith: this.sharedWith });
-			this.loading = false;
+			try {
+				const workflowId = await saveWorkflowPromise();
+				await this.workflowsEEStore.saveWorkflowSharedWith({ workflowId, sharedWith: this.sharedWith });
+
+				this.$showMessage({
+					title: this.$locale.baseText('workflows.shareModal.onSave.success.title'),
+					type: 'success',
+				});
+			} catch (error) {
+				this.$showError(error, this.$locale.baseText('workflows.shareModal.onSave.error.title'));
+			} finally {
+				this.modalBus.$emit('close');
+				this.loading = false;
+			}
 		},
 		async onAddSharee(userId: string) {
 			const { id, firstName, lastName, email } = this.usersStore.getUserById(userId)!;
@@ -221,7 +244,7 @@ export default mixins(
 			}
 
 			if (confirm) {
-				this.sharedWith = this.sharedWith.filter((sharee: IUser) => {
+				this.sharedWith = this.sharedWith.filter((sharee: Partial<IUser>) => {
 					return sharee.id !== user.id;
 				});
 			}
@@ -230,6 +253,25 @@ export default mixins(
 			if (action === 'remove') {
 				this.onRemoveSharee(user.id);
 			}
+		},
+		async onCloseModal() {
+			if (this.isDirty) {
+				const shouldSave = await this.confirmMessage(
+					this.$locale.baseText(
+						'workflows.shareModal.saveBeforeClose.message',
+					),
+					this.$locale.baseText('workflows.shareModal.saveBeforeClose.title'),
+					'warning',
+					this.$locale.baseText('workflows.shareModal.saveBeforeClose.confirmButtonText'),
+					this.$locale.baseText('workflows.shareModal.saveBeforeClose.cancelButtonText'),
+				);
+
+				if (shouldSave) {
+					return await this.onSave();
+				}
+			}
+
+			return true;
 		},
 		async loadUsers() {
 			await this.usersStore.fetchUsers();

@@ -18,7 +18,7 @@
 			</span>
 			<template #content>
 				<span>
-					<slot name="content" />
+					<slot />
 				</span>
 			</template>
 		</n8n-tooltip>

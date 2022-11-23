@@ -31,6 +31,7 @@
 			<div class="ph-no-capture" v-if="resources.length === 0">
 				<slot name="empty">
 					<n8n-action-box
+						data-test-id="empty-resources-list"
 						emoji="👋"
 						:heading="$locale.baseText(usersStore.currentUser.firstName ? `${resourceKey}.empty.heading` : `${resourceKey}.empty.heading.userNotSetup`, {
 							interpolate: { name: usersStore.currentUser.firstName }
@@ -103,7 +104,7 @@
 					</ul>
 					<n8n-text color="text-base" size="medium" v-else>
 						{{ $locale.baseText(`${resourceKey}.noResults`) }}
-						<template v-if="!hasFilters && isOwnerSubview && resourcesNotOwned.length > 0">
+						<template v-if="shouldSwitchToAllSubview">
 							<span v-if="!filters.search">
 								({{ $locale.baseText(`${resourceKey}.noResults.switchToShared.preamble`) }}
 								<n8n-link @click="setOwnerSubview(false)">{{$locale.baseText(`${resourceKey}.noResults.switchToShared.link`) }}</n8n-link>)
@@ -275,6 +276,9 @@ export default mixins(
 				return resource.ownedBy && resource.ownedBy.id !== this.usersStore.currentUser?.id;
 			});
 		},
+		shouldSwitchToAllSubview(): boolean {
+			return !this.hasFilters && this.isOwnerSubview && this.resourcesNotOwned.length > 0;
+		},
 	},
 	methods: {
 		async onMounted() {
@@ -368,6 +372,11 @@ export default mixins(
 		},
 		sortBy() {
 			this.sendSortingTelemetry();
+		},
+		loading(value) {
+			if (!value && this.subviewResources.length === 0 && this.shouldSwitchToAllSubview) {
+				this.isOwnerSubview = false;
+			}
 		},
 	},
 });
