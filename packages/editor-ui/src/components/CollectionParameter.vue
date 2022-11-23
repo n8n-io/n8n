@@ -43,7 +43,7 @@ import {
 	INodePropertyOptions,
 } from 'n8n-workflow';
 
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import { get } from 'lodash';
 

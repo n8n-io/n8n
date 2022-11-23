@@ -36,7 +36,7 @@
 <script lang="ts">
 import {IUser} from "@/Interface";
 import mixins from "vue-typed-mixins";
-import {showMessage} from "@/components/mixins/showMessage";
+import {showMessage} from "@/mixins/showMessage";
 import { mapStores } from 'pinia';
 import { useUsersStore } from '@/stores/users';
 import { useCredentialsStore } from "@/stores/credentials";

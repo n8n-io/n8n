@@ -19,7 +19,7 @@
     "typecheck": "tsc",
     "build": "tsc -p tsconfig.build.json",
     "dev": "pnpm watch",
-    "format": "prettier **/**.ts --write",
+    "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "watch": "tsc --watch",

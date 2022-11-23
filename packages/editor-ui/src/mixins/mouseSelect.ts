@@ -2,8 +2,8 @@ import { INodeUi, XYPosition } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
 
-import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
-import { getMousePosition, getRelativePosition, HEADER_HEIGHT, INNER_SIDEBAR_WIDTH, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/views/canvasHelpers';
+import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
+import { getMousePosition, getRelativePosition, HEADER_HEIGHT, SIDEBAR_WIDTH, SIDEBAR_WIDTH_EXPANDED } from '@/utils';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

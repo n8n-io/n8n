@@ -21,7 +21,7 @@
     "test:dev": "vitest",
     "build:storybook": "build-storybook",
     "storybook": "start-storybook -p 6006",
-    "format": "prettier **/**.{js,ts,vue,css,scss,mdx,html} --write .",
+    "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint --ext .js,.ts,.vue src",
     "lintfix": "eslint --ext .js,.ts,.vue src --fix"
   },

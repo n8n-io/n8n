@@ -47,7 +47,7 @@ properties:
     example: { additionalProperties: {} }
   credentials:
     type: object
-    example: { jiraSoftwareCloudApi: { id: "35", name: "jiraApi"} }
+    example: { jiraSoftwareCloudApi: { id: '35', name: 'jiraApi' } }
   createdAt:
     type: string
     format: date-time
