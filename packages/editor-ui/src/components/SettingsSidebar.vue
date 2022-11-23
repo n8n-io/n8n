@@ -23,8 +23,8 @@
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS } from '@/constants';
-import { userHelpers } from './mixins/userHelpers';
-import { pushConnection } from "@/components/mixins/pushConnection";
+import { userHelpers } from '@/mixins/userHelpers';
+import { pushConnection } from "@/mixins/pushConnection";
 import { IFakeDoor } from '@/Interface';
 import { IMenuItem } from 'n8n-design-system';
 import { BaseTextKey } from '@/plugins/i18n';

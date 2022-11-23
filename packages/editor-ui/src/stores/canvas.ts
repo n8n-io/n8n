@@ -7,7 +7,16 @@ import { useWorkflowsStore } from '@/stores/workflows';
 import { useNodeTypesStore } from '@/stores/nodeTypes';
 import { useUIStore } from '@/stores/ui';
 import { INodeUi, XYPosition } from '@/Interface';
-import * as CanvasHelpers from '@/views/canvasHelpers';
+import {
+	DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
+	PLACEHOLDER_TRIGGER_NODE_SIZE,
+	getMidCanvasPosition,
+	getNewNodePosition,
+	getZoomToFit,
+	scaleBigger,
+	scaleReset,
+	scaleSmaller,
+} from '@/utils';
 import { START_NODE_TYPE } from '@/constants';
 import '@/plugins/N8nCustomConnectorType';
 import '@/plugins/PlusEndpointType';
@@ -29,12 +38,12 @@ export const useCanvasStore = defineStore('canvas', () => {
 	const canvasAddButtonPosition = ref<XYPosition>([1, 1]);
 
 	const setRecenteredCanvasAddButtonPosition = (offset?: XYPosition) => {
-		const position = CanvasHelpers.getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
+		const position = getMidCanvasPosition(nodeViewScale.value, offset || [0, 0]);
 
-		position[0] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
-		position[1] -= CanvasHelpers.PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
+		position[0] -= PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
+		position[1] -= PLACEHOLDER_TRIGGER_NODE_SIZE / 2;
 
-		canvasAddButtonPosition.value = CanvasHelpers.getNewNodePosition(nodes.value, position);
+		canvasAddButtonPosition.value = getNewNodePosition(nodes.value, position);
 	};
 
 	const getPlaceholderTriggerNodeUI = (): INodeUi => {
@@ -42,7 +51,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 
 		return {
 			id: uuid(),
-			...CanvasHelpers.DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
+			...DEFAULT_PLACEHOLDER_TRIGGER_BUTTON,
 			position: canvasAddButtonPosition.value,
 		};
 	};
@@ -57,7 +66,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const resetZoom = () => {
-		const {scale, offset} = CanvasHelpers.scaleReset({
+		const {scale, offset} = scaleReset({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
 		});
@@ -65,7 +74,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const zoomIn = () => {
-		const {scale, offset} = CanvasHelpers.scaleBigger({
+		const {scale, offset} = scaleBigger({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
 		});
@@ -73,7 +82,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 	};
 
 	const zoomOut = () => {
-		const {scale, offset} = CanvasHelpers.scaleSmaller({
+		const {scale, offset} = scaleSmaller({
 			scale: nodeViewScale.value,
 			offset: uiStore.nodeViewOffsetPosition,
 		});
@@ -85,7 +94,7 @@ export const useCanvasStore = defineStore('canvas', () => {
 		if (!nodes.length) { // some unknown workflow executions
 			return;
 		}
-		const {zoomLevel, offset} = CanvasHelpers.getZoomToFit(nodes, !isDemo.value);
+		const {zoomLevel, offset} = getZoomToFit(nodes, !isDemo.value);
 		setZoomLevel(zoomLevel, offset);
 	};
 

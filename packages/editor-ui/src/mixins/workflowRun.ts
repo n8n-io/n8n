@@ -12,10 +12,10 @@ import {
 	TelemetryHelpers,
 } from 'n8n-workflow';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { restApi } from '@/components/mixins/restApi';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { externalHooks } from '@/mixins/externalHooks';
+import { restApi } from '@/mixins/restApi';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { titleChange } from './titleChange';

@@ -36,7 +36,7 @@ import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
 

@@ -23,7 +23,7 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { IWorkflowDb } from '../Interface';
 import { mapStores } from 'pinia';
 import { useRootStore } from '@/stores/n8nRootStore';

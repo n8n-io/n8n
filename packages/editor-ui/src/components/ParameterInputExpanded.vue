@@ -52,7 +52,7 @@ import { IUpdateInformation } from '@/Interface';
 import ParameterOptions from './ParameterOptions.vue';
 import Vue, { PropType } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
-import { isValueExpression } from './helpers';
+import { isValueExpression } from '@/utils';
 import { INodeParameterResourceLocator, INodeProperties } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';

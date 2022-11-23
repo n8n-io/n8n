@@ -85,7 +85,7 @@ import { INodeTypeDescription, IRunData, IRunExecutionData, ITaskData } from 'n8
 import Vue from 'vue';
 import RunData, { EnterEditModeArgs } from './RunData.vue';
 import RunInfo from './RunInfo.vue';
-import { pinData } from "@/components/mixins/pinData";
+import { pinData } from "@/mixins/pinData";
 import mixins from 'vue-typed-mixins';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

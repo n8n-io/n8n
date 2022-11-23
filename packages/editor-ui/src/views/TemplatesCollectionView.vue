@@ -52,7 +52,7 @@ import TemplateDetails from '@/components/TemplateDetails.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import {
 	ITemplatesCollection,
 	ITemplatesCollectionFull,
@@ -61,7 +61,7 @@ import {
 } from '@/Interface';
 
 import mixins from 'vue-typed-mixins';
-import { setPageTitle } from '@/components/helpers';
+import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates';

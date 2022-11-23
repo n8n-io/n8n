@@ -43,7 +43,7 @@ import {
 	IVariableSelectorOption,
 	IVariableItemSelected,
 } from '@/Interface';
-import { externalHooks } from "@/components/mixins/externalHooks";
+import { externalHooks } from "@/mixins/externalHooks";
 import mixins from 'vue-typed-mixins';
 
 export default mixins(externalHooks).extend({
