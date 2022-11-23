@@ -74,9 +74,8 @@ function wrappedEmit(event: 'selected' | 'dragstart' | 'dragend', element: INode
 // Lazy render items to prevent the browser from freezing
 // when loading many items.
 function renderItems() {
-	const elementsCopy = [...props.elements];
-	if (state.renderedItems.length < elementsCopy.length) {
-		state.renderedItems.push(...elementsCopy.splice(state.renderedItems.length, 3));
+	if (state.renderedItems.length < props.elements.length) {
+		state.renderedItems.push(...props.elements.slice(state.renderedItems.length, state.renderedItems.length + 3));
 		state.renderAnimationRequest = window.requestAnimationFrame(renderItems);
 	}
 }
