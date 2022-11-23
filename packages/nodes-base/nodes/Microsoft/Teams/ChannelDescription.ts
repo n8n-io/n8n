@@ -200,22 +200,37 @@ export const channelFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel',
 		name: 'channelId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: ['teamId'],
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Channel',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Channel...',
+				typeOptions: {
+					searchListMethod: 'getChannels',
+					// missing searchListDependsOn: ['teamId'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2',
+				// validation missing because no documentation found how these unique ids look like.
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['delete'],
 				resource: ['channel'],
 			},
 		},
-		default: '',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -266,22 +281,37 @@ export const channelFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel',
 		name: 'channelId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: ['teamId'],
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Channel',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Channel...',
+				typeOptions: {
+					searchListMethod: 'getChannels',
+					// missing searchListDependsOn: ['teamId'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2',
+				// validation missing because no documentation found how these unique ids look like.
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['get'],
 				resource: ['channel'],
 			},
 		},
-		default: '',
 	},
 
 	/* -------------------------------------------------------------------------- */
@@ -411,22 +441,37 @@ export const channelFields: INodeProperties[] = [
 		},
 	},
 	{
-		displayName: 'Channel Name or ID',
+		displayName: 'Channel',
 		name: 'channelId',
-		type: 'options',
-		description:
-			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-		typeOptions: {
-			loadOptionsMethod: 'getChannels',
-			loadOptionsDependsOn: ['teamId'],
-		},
+		type: 'resourceLocator',
+		default: { mode: 'list', value: '' },
+		required: true,
+		modes: [
+			{
+				displayName: 'Channel',
+				name: 'list',
+				type: 'list',
+				placeholder: 'Select a Channel...',
+				typeOptions: {
+					searchListMethod: 'getChannels',
+					// missing searchListDependsOn: ['teamId'],
+					searchable: true,
+				},
+			},
+			{
+				displayName: 'ID',
+				name: 'id',
+				type: 'string',
+				placeholder: '19:-xlxyqXNSCxpI1SDzgQ_L9ZvzSR26pgphq1BJ9y7QJE1@thread.tacv2',
+				// validation missing because no documentation found how these unique ids look like.
+			},
+		],
 		displayOptions: {
 			show: {
 				operation: ['update'],
 				resource: ['channel'],
 			},
 		},
-		default: '',
 	},
 	{
 		displayName: 'Update Fields',
