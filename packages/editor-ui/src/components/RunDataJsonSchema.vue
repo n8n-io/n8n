@@ -28,7 +28,7 @@
 	</div>
 </template>
 <script lang="ts" setup>
-import { ref, getCurrentInstance } from 'vue';
+import { ref } from 'vue';
 import { INodeUi, JsonSchema } from "@/Interface";
 import RunDataJsonSchemaItem from "@/components/RunDataJsonSchemaItem.vue";
 import Draggable from '@/components/Draggable.vue';
@@ -50,8 +50,6 @@ type Props = {
 const props = withDefaults(defineProps<Props>(), {
 	distanceFromActive: 0,
 });
-
-const vueInstance = getCurrentInstance();
 
 const draggingPath = ref<string>('');
 const ndvStore = useNDVStore();
