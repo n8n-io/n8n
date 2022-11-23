@@ -541,7 +541,7 @@ export class WorkflowDataProxy {
 						const value = that.workflow[name as keyof typeof target];
 
 						if (value === undefined && name === 'id') {
-							throw new ExpressionError('Workflow is not saved', {
+							throw new ExpressionError('save workflow to view', {
 								description: `Please save the workflow first to use $workflow`,
 								runIndex: that.runIndex,
 								itemIndex: that.itemIndex,

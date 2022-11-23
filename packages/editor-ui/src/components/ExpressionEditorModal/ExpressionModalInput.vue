@@ -7,10 +7,12 @@ import mixins from 'vue-typed-mixins';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
-import { autocompletion } from '@codemirror/autocomplete';
+// import { autocompletion } from '@codemirror/autocomplete';
 import { syntaxTree } from '@codemirror/language';
+import { mapStores } from 'pinia';
 
 import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { useNDVStore } from '@/stores/ndv';
 import { n8nLanguageSupport } from './n8nLanguageSupport';
 import { braceHandler } from './braceHandler';
 import { EXPRESSION_EDITOR_THEME } from './theme';
@@ -80,6 +82,8 @@ export default mixins(workflowHelpers).extend({
 						segments: this.displayableSegments,
 					});
 				}, delay);
+
+				this.$nextTick(() => this.editor?.focus());
 			}),
 		];
 
@@ -91,6 +95,8 @@ export default mixins(workflowHelpers).extend({
 			}),
 		});
 
+		this.editor.focus();
+
 		addColor(this.editor, this.resolvableSegments);
 
 		this.$emit('change', { value: this.unresolvedExpression, segments: this.displayableSegments });
@@ -99,6 +105,7 @@ export default mixins(workflowHelpers).extend({
 		this.editor?.destroy();
 	},
 	computed: {
+		...mapStores(useNDVStore),
 		unresolvedExpression(): string {
 			return this.segments.reduce((acc, segment) => {
 				acc += segment.kind === 'resolvable' ? segment.resolvable : segment.plaintext;
@@ -212,7 +219,11 @@ export default mixins(workflowHelpers).extend({
 			const result: { resolved: unknown; error: boolean } = { resolved: undefined, error: false };
 
 			try {
-				result.resolved = this.resolveExpression('=' + resolvable) as unknown;
+				result.resolved = this.resolveExpression('=' + resolvable, undefined, {
+					inputNodeName: this.ndvStore.ndvInputNodeName,
+					inputRunIndex: this.ndvStore.ndvInputRunIndex,
+					inputBranchIndex: this.ndvStore.ndvInputBranchIndex,
+				});
 			} catch (error) {
 				result.resolved = `[${error.message}]`;
 				result.error = true;
@@ -240,10 +251,26 @@ export default mixins(workflowHelpers).extend({
 		itemSelected({ variable }: IVariableItemSelected) {
 			if (!this.editor) return;
 
+			const OPEN_MARKER = '{{';
+			const CLOSE_MARKER = '}}';
+
+			const { doc, selection } = this.editor.state;
+
+			const before = doc.toString().slice(0, selection.main.head);
+			const after = doc.toString().slice(selection.main.head, doc.length);
+
+			if (before.includes(OPEN_MARKER) && after.includes(CLOSE_MARKER)) {
+				this.editor.dispatch({
+					changes: { from: selection.main.head, insert: variable },
+				});
+
+				return;
+			}
+
 			this.editor.dispatch({
 				changes: {
-					from: this.editor.state.selection.main.head,
-					insert: `{{ ${variable} }}`,
+					from: selection.main.head,
+					insert: [OPEN_MARKER, variable, CLOSE_MARKER].join(' '),
 				},
 			});
 		},

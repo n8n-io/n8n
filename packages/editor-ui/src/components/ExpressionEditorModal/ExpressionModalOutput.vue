@@ -37,7 +37,7 @@ export default Vue.extend({
 	mounted() {
 		const extensions = [
 			EXPRESSION_EDITOR_THEME,
-			EditorView.editable.of(false),
+			EditorState.readOnly.of(true),
 			EditorView.lineWrapping,
 		];
 

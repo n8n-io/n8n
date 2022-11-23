@@ -35,6 +35,7 @@ export const EXPRESSION_EDITOR_THEME = [
 			borderStyle: 'var(--input-border-style, var(--border-style-base))',
 			borderColor: 'var(--input-border-color, var(--border-color-base))',
 			borderRadius: 'var(--input-border-radius, var(--border-radius-base))',
+			backgroundColor: '#ffffff',
 		},
 		'&.cm-focused': {
 			borderColor: 'var(--color-secondary)',
