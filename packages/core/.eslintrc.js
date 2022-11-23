@@ -9,6 +9,8 @@ module.exports = {
 		tsconfigRootDir: __dirname,
 	},
 
+	ignorePatterns: ['bin/*.js'],
+
 	rules: {
 		// TODO: Remove this
 		'import/order': 'off',

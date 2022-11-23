@@ -580,9 +580,9 @@ export const schema = {
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
 		},
-		skipWebhoooksDeregistrationOnShutdown: {
+		skipWebhooksDeregistrationOnShutdown: {
 			/**
-			 * Longer explanation: n8n deregisters webhooks on shutdown / deactivation
+			 * Longer explanation: n8n de-registers webhooks on shutdown / deactivation
 			 * and registers on startup / activation. If we skip
 			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
 			 * We don't have to worry about startup as it always

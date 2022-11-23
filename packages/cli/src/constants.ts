@@ -2,11 +2,12 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/naming-convention */
 import { resolve, join } from 'path';
-import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES } from 'n8n-core';
+import { RESPONSE_ERROR_MESSAGES as CORE_RESPONSE_ERROR_MESSAGES, UserSettings } from 'n8n-core';
 
 export const CLI_DIR = resolve(__dirname, '..');
 export const TEMPLATES_DIR = join(CLI_DIR, 'templates');
 export const NODES_BASE_DIR = join(CLI_DIR, '..', 'nodes-base');
+export const GENERATED_STATIC_DIR = join(UserSettings.getUserHome(), '.cache/n8n/public');
 
 export const NODE_PACKAGE_PREFIX = 'n8n-nodes-';
 
@@ -14,6 +15,7 @@ export const STARTER_TEMPLATE_NAME = `${NODE_PACKAGE_PREFIX}starter`;
 
 export const RESPONSE_ERROR_MESSAGES = {
 	NO_CREDENTIAL: 'Credential not found',
+	NO_NODE: 'Node not found',
 	NO_ENCRYPTION_KEY: CORE_RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
 	PACKAGE_NAME_NOT_PROVIDED: 'Package name is required',
 	PACKAGE_NAME_NOT_VALID: `Package name is not valid - it must start with "${NODE_PACKAGE_PREFIX}"`,

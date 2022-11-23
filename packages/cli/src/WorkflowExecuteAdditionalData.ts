@@ -880,10 +880,8 @@ export async function getWorkflowData(
 
 /**
  * Executes the workflow with the given ID
- *
- * @param {string} workflowId The id of the workflow to execute
  */
-export async function executeWorkflow(
+async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options?: {
@@ -1111,7 +1109,7 @@ export async function getBase(
  * Returns WorkflowHooks instance for running integrated workflows
  * (Workflows which get started inside of another workflow)
  */
-export function getWorkflowHooksIntegrated(
+function getWorkflowHooksIntegrated(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,

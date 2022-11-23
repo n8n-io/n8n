@@ -13,7 +13,6 @@ import { getConnectionManager } from 'typeorm';
 import bodyParser from 'body-parser';
 
 import compression from 'compression';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import parseUrl from 'parseurl';
 import { WebhookHttpMethod } from 'n8n-workflow';
 

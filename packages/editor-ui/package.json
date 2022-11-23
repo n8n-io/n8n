@@ -16,6 +16,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
+    "typecheck": "vue-tsc --emitDeclarationOnly",
     "dev": "pnpm serve",
     "lint": "tslint -p tsconfig.json -c tslint.json && eslint --ext .js,.ts,.vue src",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint --ext .js,.ts,.vue src --fix",
@@ -104,6 +105,6 @@
     "vite-plugin-html": "^3.2.0",
     "vite-plugin-monaco-editor": "^1.0.10",
     "vitest": "0.9.3",
-    "vue-tsc": "^0.34.15"
+    "vue-tsc": "^0.35.0"
   }
 }
