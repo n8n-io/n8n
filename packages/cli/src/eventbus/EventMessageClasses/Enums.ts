@@ -7,11 +7,10 @@ export enum EventMessageTypeNames {
 
 // Uses same logging levels as LoggerProxy
 export enum EventMessageLevel {
-	log = 'log',
 	debug = 'debug',
-	info = 'info',
-	error = 'error',
 	verbose = 'verbose',
+	log = 'log',
+	info = 'info',
 	warn = 'warn',
-	allLevels = '*',
+	error = 'error',
 }

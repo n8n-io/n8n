@@ -1,52 +1,54 @@
 import { v4 as uuid } from 'uuid';
-import { JsonValue, LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy } from 'n8n-workflow';
 import { Db } from '../..';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import { EventMessageTypes } from '../EventMessageClasses';
 import { eventBus } from '..';
 import { DeleteResult, InsertResult } from 'typeorm';
 import { EventMessageLevel } from '../EventMessageClasses/Enums';
-// import { MessageEventBusDestinationTypeNames } from '.';
+import { MessageEventBusDestinationTypeNames } from '.';
 
 export interface MessageEventBusDestinationOptions {
+	__type?: string;
 	id?: string;
 	enabled?: boolean;
-	name?: string;
 	subscribedEvents?: string[];
 	subscribedLevels?: EventMessageLevel[];
 }
 
 export abstract class MessageEventBusDestination {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
-	// static readonly __type: string;
 	// static abstract deserialize(): MessageEventBusDestination | null;
-
 	readonly id: string;
+
+	__type: string;
 
 	enabled: boolean;
 
-	name: string;
-
-	// subscriptionSet: EventMessageSubscriptionSet;
 	subscribedEvents: string[];
 
 	subscribedLevels: EventMessageLevel[];
 
 	constructor(options: MessageEventBusDestinationOptions) {
 		this.id = options.id ?? uuid();
+		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.abstract;
 		this.enabled = options.enabled ?? true;
-		this.name = options.name ?? 'MessageEventBusDestination';
-		this.subscribedEvents = options.subscribedEvents ?? ['*'];
-		this.subscribedLevels = options.subscribedLevels ?? [EventMessageLevel.allLevels];
-		LoggerProxy.debug(`${this.name} event destination initialized`);
+		this.subscribedEvents = options.subscribedEvents ?? [];
+		this.subscribedLevels = options.subscribedLevels ?? [
+			EventMessageLevel.log,
+			EventMessageLevel.error,
+			EventMessageLevel.warn,
+			EventMessageLevel.info,
+		];
+		LoggerProxy.debug(`${this.__type}(${this.id}) event destination initialized`);
 	}
 
 	startListening() {
 		if (this.enabled) {
-			eventBus.on(this.getName(), async (msg: EventMessageTypes) => {
+			eventBus.on(this.getId(), async (msg: EventMessageTypes) => {
 				await this.receiveFromEventBus(msg);
-				LoggerProxy.debug(`${this.name} listener started`);
 			});
+			LoggerProxy.debug(`${this.id} listener started`);
 		}
 	}
 
@@ -59,11 +61,7 @@ export abstract class MessageEventBusDestination {
 	}
 
 	stopListening() {
-		eventBus.removeAllListeners(this.getName());
-	}
-
-	getName() {
-		return this.name;
+		eventBus.removeAllListeners(this.getId());
 	}
 
 	getId() {
@@ -72,12 +70,9 @@ export abstract class MessageEventBusDestination {
 
 	hasSubscribedToEvent(msg: AbstractEventMessage) {
 		if (!this.enabled) return false;
-		if (
-			this.subscribedLevels.includes(EventMessageLevel.allLevels) ||
-			this.subscribedLevels.includes(msg.level)
-		) {
+		if (this.subscribedLevels.includes(msg.level)) {
 			for (const eventName of this.subscribedEvents) {
-				if (eventName === '*' || eventName.startsWith(msg.eventName)) {
+				if (eventName === '*' || msg.eventName.startsWith(eventName)) {
 					return true;
 				}
 			}
@@ -86,18 +81,15 @@ export abstract class MessageEventBusDestination {
 	}
 
 	async saveToDb() {
+		const data = {
+			id: this.getId(),
+			destination: this.serialize(),
+		};
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		const dbResult: InsertResult = await Db.collections.EventDestinations.upsert(
-			{
-				id: this.getId(),
-				name: this.getName(),
-				destination: this.toString(),
-			},
-			{
-				skipUpdateIfNoValuesChanged: true,
-				conflictPaths: ['id'],
-			},
-		);
+		const dbResult: InsertResult = await Db.collections.EventDestinations.upsert(data, {
+			skipUpdateIfNoValuesChanged: true,
+			conflictPaths: ['id'],
+		});
 		return dbResult;
 	}
 
@@ -111,12 +103,12 @@ export abstract class MessageEventBusDestination {
 		return dbResult as DeleteResult;
 	}
 
-	serialize(): { __type: string; [key: string]: JsonValue } {
+	serialize(): MessageEventBusDestinationOptions {
 		return {
-			__type: '$$AbstractMessageEventBusDestination',
+			__type: this.__type,
 			id: this.getId(),
 			enabled: this.enabled,
-			name: this.getName(),
+			// name: this.getName(),
 			subscribedEvents: this.subscribedEvents,
 			subscribedLevels: this.subscribedLevels,
 		};

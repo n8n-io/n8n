@@ -1,4 +1,4 @@
-import { jsonParse, JsonObject } from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from '.';
 import { EventDestinations } from '../../databases/entities/MessageEventBusDestinationEntity';
 import { MessageEventBusDestination } from './MessageEventBusDestination';
 import { MessageEventBusDestinationRedis } from './MessageEventBusDestinationRedis';
@@ -9,16 +9,16 @@ import { MessageEventBusDestinationWebhook } from './MessageEventBusDestinationW
 export function messageEventBusDestinationFromDb(
 	dbData: EventDestinations,
 ): MessageEventBusDestination | null {
-	const destinationData = jsonParse<JsonObject>(dbData.destination);
+	const destinationData = dbData.destination;
 	if ('__type' in destinationData) {
 		switch (destinationData.__type) {
-			case MessageEventBusDestinationSentry.__type:
+			case MessageEventBusDestinationTypeNames.sentry:
 				return MessageEventBusDestinationSentry.deserialize(destinationData);
-			case MessageEventBusDestinationSyslog.__type:
+			case MessageEventBusDestinationTypeNames.syslog:
 				return MessageEventBusDestinationSyslog.deserialize(destinationData);
-			case MessageEventBusDestinationRedis.__type:
+			case MessageEventBusDestinationTypeNames.redis:
 				return MessageEventBusDestinationRedis.deserialize(destinationData);
-			case MessageEventBusDestinationWebhook.__type:
+			case MessageEventBusDestinationTypeNames.webhook:
 				return MessageEventBusDestinationWebhook.deserialize(destinationData);
 			default:
 				console.log('MessageEventBusDestination __type unknown');

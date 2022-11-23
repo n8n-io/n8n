@@ -10,7 +10,6 @@ export class MessageEventBusDestinations1668516860002 implements MigrationInterf
 		await queryRunner.query(
 			`CREATE TABLE "${tablePrefix}eventdestinations_entity" (` +
 				'`id` varchar(36) PRIMARY KEY NOT NULL,' +
-				'`name` varchar(255) NOT NULL,' +
 				'`destination` text NOT NULL,' +
 				'`createdAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, ' +
 				'`updatedAt` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP' +

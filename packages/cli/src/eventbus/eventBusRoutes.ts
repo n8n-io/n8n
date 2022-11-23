@@ -48,31 +48,14 @@ const isWithDestinationIdString = (candidate: unknown): candidate is { destinati
 	return o.destinationId !== undefined;
 };
 
-// const isEventMessageDestinationSubscription = (
-// 	candidate: unknown,
-// ): candidate is EventMessageSubscribeDestination => {
-// 	const o = candidate as EventMessageSubscribeDestination;
-// 	if (!o) return false;
-// 	return (
-// 		o.subscriptionSet !== undefined &&
-// 		o.destinationId !== undefined &&
-// 		isEventMessageSubscriptionSetOptions(o.subscriptionSet)
-// 	);
-// };
-
 // TODO: add credentials
 const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationWebhookOptions => {
 	const o = candidate as MessageEventBusDestinationWebhookOptions;
 	if (!o) return false;
-	return o.name !== undefined && o.url !== undefined;
+	return o.url !== undefined;
 };
-
-// interface EventMessageSubscribeDestination {
-// 	subscriptionSet: EventMessageSubscriptionSetOptions;
-// 	destinationId: string;
-// }
 
 interface MessageEventBusDestinationOptions
 	extends MessageEventBusDestinationWebhookOptions,
@@ -237,37 +220,6 @@ eventBusRouter.get(
 	}),
 );
 
-// eventBusRouter.post(
-// 	`/subscription`,
-// 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
-// 		if (isEventMessageDestinationSubscription(req.body)) {
-// 			const result = eventBus.setDestinationSubscriptionSet(
-// 				req.body.destinationId,
-// 				EventMessageSubscriptionSet.deserialize(req.body.subscriptionSet),
-// 			);
-// 			if (result) {
-// 				await result.saveToDb();
-// 			}
-// 		} else {
-// 			throw new ResponseError('Body is missing subscriptionSet or destinationId', undefined, 400);
-// 		}
-// 	}),
-// );
-
-// eventBusRouter.delete(
-// 	`/subscription`,
-// 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
-// 		if (isWithDestinationIdString(req.query)) {
-// 			const result = eventBus.resetDestinationSubscriptionSet(req.query.destinationId);
-// 			if (result) {
-// 				await result.saveToDb();
-// 			}
-// 		} else {
-// 			throw new ResponseError('Query is missing destination id', undefined, 400);
-// 		}
-// 	}),
-// );
-
 // ----------------------------------------
 // Utilities
 // ----------------------------------------
@@ -277,7 +229,6 @@ eventBusRouter.get(
 	ResponseHelper.send(async (): Promise<any> => {
 		return {
 			eventLevels: Object.values(EventMessageLevel),
-			// events: eventListToObjectTree(eventNamesAll),
 			eventNames: eventNamesAll,
 		};
 	}),

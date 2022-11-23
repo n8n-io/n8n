@@ -28,8 +28,6 @@ interface MessageEventBusDestinationRedisOptions extends MessageEventBusDestinat
 }
 
 export class MessageEventBusDestinationRedis extends MessageEventBusDestination {
-	static readonly __type = MessageEventBusDestinationTypeNames.redis;
-
 	#client: Redis | undefined;
 
 	#channelName: string;
@@ -38,6 +36,7 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 
 	constructor(options: MessageEventBusDestinationRedisOptions) {
 		super(options);
+		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.redis;
 		this.redisOptions = options?.redisOptions ?? {
 			port: 6379, // Redis port
 			host: '127.0.0.1', // Redis host
@@ -70,16 +69,17 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 		const abstractSerialized = super.serialize();
 		return {
 			...abstractSerialized,
-			__type: MessageEventBusDestinationRedis.__type,
 			channelName: this.#channelName,
 			redisOptions: this.redisOptions as JsonObject,
 		} as { __type: string; [key: string]: JsonValue };
 	}
 
-	static deserialize(data: JsonObject): MessageEventBusDestinationRedis | null {
+	static deserialize(
+		data: MessageEventBusDestinationOptions,
+	): MessageEventBusDestinationRedis | null {
 		if (
 			'__type' in data &&
-			data.__type === MessageEventBusDestinationRedis.__type &&
+			data.__type === MessageEventBusDestinationTypeNames.redis &&
 			isMessageEventBusDestinationRedisOptions(data)
 		) {
 			return new MessageEventBusDestinationRedis(data);

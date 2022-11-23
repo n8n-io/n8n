@@ -1,7 +1,10 @@
 import { JsonValue, LoggerProxy } from 'n8n-workflow';
 import { DeleteResult } from 'typeorm';
 import { EventMessageTypes } from '../EventMessageClasses/';
-import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination';
+import {
+	MessageEventBusDestination,
+	MessageEventBusDestinationOptions,
+} from '../MessageEventBusDestination/MessageEventBusDestination';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'node:events';
 import config from '../../config';
@@ -117,12 +120,14 @@ class MessageEventBus extends EventEmitter {
 		return destination;
 	}
 
-	async findDestination(id?: string): Promise<JsonValue[]> {
+	async findDestination(id?: string): Promise<MessageEventBusDestinationOptions[]> {
+		let result: MessageEventBusDestinationOptions[];
 		if (id && Object.keys(this.destinations).includes(id)) {
-			return [this.destinations[id].serialize()];
+			result = [this.destinations[id].serialize()];
 		} else {
-			return Object.keys(this.destinations).map((e) => this.destinations[e].serialize());
+			result = Object.keys(this.destinations).map((e) => this.destinations[e].serialize());
 		}
+		return result.sort((a, b) => (a.__type ?? '').localeCompare(b.__type ?? ''));
 	}
 
 	async removeDestination(id: string): Promise<DeleteResult | undefined> {
@@ -150,39 +155,6 @@ class MessageEventBus extends EventEmitter {
 		return {};
 	}
 
-	// /**
-	//  * Sets SubscriptionsSet on the selected destination
-	//  * @param destinationId the destination id
-	//  * @param subscriptionSetOptions EventMessageSubscriptionSet object containing event subscriptions
-	//  * @returns serialized destination after change
-	//  */
-	// setDestinationSubscriptionSet(
-	// 	destinationId: string,
-	// 	subscriptionSetOptions: EventMessageSubscriptionSetOptions,
-	// ): MessageEventBusDestination {
-	// 	if (Object.keys(this.destinations).includes(destinationId)) {
-	// 		this.destinations[destinationId].setSubscription(subscriptionSetOptions);
-	// 	}
-	// 	return this.destinations[destinationId];
-	// }
-
-	// /**
-	//  * Resets SubscriptionsSet to empty values on the selected destination
-	//  * @param destinationId the destination id
-	//  * @returns serialized destination after reset
-	//  */
-	// resetDestinationSubscriptionSet(destinationId: string): MessageEventBusDestination {
-	// 	if (Object.keys(this.destinations).includes(destinationId)) {
-	// 		this.destinations[destinationId].setSubscription(
-	// 			new EventMessageSubscriptionSet({
-	// 				eventNames: [],
-	// 				eventLevels: [],
-	// 			}),
-	// 		);
-	// 	}
-	// 	return this.destinations[destinationId];
-	// }
-
 	async #trySendingUnsent(msgs?: EventMessageTypes[]) {
 		const unsentMessages = msgs ?? (await this.getEventsUnsent());
 		if (unsentMessages.length > 0) {
@@ -199,7 +171,7 @@ class MessageEventBus extends EventEmitter {
 		await this.logWriter.close();
 		for (const destinationName of Object.keys(this.destinations)) {
 			LoggerProxy.debug(
-				`Shutting down event destination ${this.destinations[destinationName].getName()}...`,
+				`Shutting down event destination ${this.destinations[destinationName].getId()}...`,
 			);
 			await this.destinations[destinationName].close();
 		}
@@ -211,7 +183,6 @@ class MessageEventBus extends EventEmitter {
 			msgs = [msgs];
 		}
 		for (const msg of msgs) {
-			console.log(new Date().getMilliseconds());
 			await this.logWriter.putMessage(msg);
 			await this.#emitMessage(msg);
 		}
@@ -224,14 +195,14 @@ class MessageEventBus extends EventEmitter {
 	async #emitMessage(msg: EventMessageTypes) {
 		// generic emit for external modules to capture events
 		this.emit('message', msg);
-		console.log(this.eventNames());
+		console.log('Listeners:', this.eventNames());
 
 		// if there are no set up destinations, immediately mark the event as sent
 		if (Object.keys(this.destinations).length === 0) {
 			await this.confirmSent(msg);
 		} else {
 			for (const destinationName of Object.keys(this.destinations)) {
-				this.emit(this.destinations[destinationName].getName(), msg);
+				this.emit(this.destinations[destinationName].getId(), msg);
 			}
 		}
 	}

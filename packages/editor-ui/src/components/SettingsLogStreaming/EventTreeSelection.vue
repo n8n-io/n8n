@@ -5,14 +5,16 @@
 					<font-awesome-icon v-if="isOpen" icon="chevron-down" size="xs" slot="prefix"/>
 					<font-awesome-icon v-else icon="chevron-right" size="xs" slot="prefix"/>
 				</span>
-			<el-checkbox :value="isChecked" :indeterminate="isIndeterminate"
+			<el-checkbox
+				:value="isChecked"
+				:indeterminate="isIndeterminate"
 				@input="onInput"
-				@change="onCheckboxChecked($event, item?._name)">
+				@change="onCheckboxChecked">
 						{{ item?.label }}
 			</el-checkbox>
 			<Transition name="slide-fade">
 			<ul v-show="isOpen" v-if="isFolder">
-				<event-tree
+				<event-tree-selection
 					class="item"
 					v-for="(baby, index) in item?.children"
 					:key="index"
@@ -20,7 +22,7 @@
 					:depth="depth+1"
 					:destinationId="destinationId"
 					@input="onInput"
-				></event-tree>
+				/>
 			</ul>
 			</Transition>
 		</div>
@@ -41,12 +43,12 @@
 	}
 
 	interface ParentEventTree extends Vue {
-		setChildChecked(checked:boolean):void
+		tellParentChildCheckChanged(checked:boolean):void
 		onInput():void
 	}
 
   export default {
-		name: 'event-tree',
+		name: 'event-tree-selection',
 		props: {
 			item: EventNamesTreeCollection,
 			destinationId: {
@@ -63,7 +65,6 @@
 				isOpen: this.depth === 0,
 				isChecked: this.item?._selected,
 				isIndeterminate: !this.item?._selected && this.item?._indeterminate,
-				childChecked: false,
 				unchanged: true,
 			};
 		},
@@ -84,29 +85,55 @@
 			onInput() {
 				this.$emit('input');
 			},
-			setChildChecked(childChecked: boolean) {
-				this.isIndeterminate = !this.isChecked && childChecked;
+			isAnyChildChecked() {
+				let result: boolean | undefined;
+				if (this.item) {
+					if (this.item.children.length > 0) {
+						this.item.children.forEach((child)=> {
+							result = result || !!(child._selected || child._indeterminate);
+						});
+					} else {
+						result = false;
+					}
+				} else {
+					result = false;
+				}
+				return result;
+			},
+			computeIndeterminate(): boolean {
+				const anyChildChecked = this.isAnyChildChecked();
+				if (this.isChecked) {
+					return false;
+				}	else if (anyChildChecked === true && this.isChecked === false) {
+					return true;
+				} else if (anyChildChecked === false && this.isChecked === false) {
+					return false;
+				} else {
+					return false;
+				}
+			},
+			tellParentChildCheckChanged(someChildChecked: boolean) {
+				this.isIndeterminate = this.computeIndeterminate();
+				if (this.item) {
+					this.eventTreeStore.setIndeterminateInTree(this.destinationId, this.item._name, this.isIndeterminate);
+				}
 				if (this.$parent) {
 					try {
-						(this.$parent as ParentEventTree).setChildChecked(this.isChecked || childChecked || this.childChecked);
+						(this.$parent as ParentEventTree).tellParentChildCheckChanged(
+							(this.isChecked === true) || someChildChecked || (this.isIndeterminate === true));
 					} catch (error) {}
 				}
-				// moved to the end intentionally so that an item in the middle of the tree could be removed but
-				// the indeterminate flag stays set on parents further down.
-				// normally this should be at the top...
-				this.childChecked = childChecked;
 			},
-			onCheckboxChecked(checked: boolean, name:string|undefined) {
-				if (name) {
-					if (checked) {
-						this.eventTreeStore.addSelectedEvent(this.destinationId, name);
-					} else {
-						this.eventTreeStore.removeSelectedEvent(this.destinationId,name);
-					}
+			onCheckboxChecked(checked: boolean) {
+				if (this.item?._name) {
 					this.isChecked = checked;
-					this.setChildChecked(checked);
+					if (checked) {
+						this.eventTreeStore.addSelectedEvent(this.destinationId, this.item._name);
+					} else {
+						this.eventTreeStore.removeSelectedEvent(this.destinationId, this.item._name);
+					}
+					this.tellParentChildCheckChanged(checked);
 				}
-				console.log(this.eventTreeStore.items[this.destinationId]);
 			},
 		},
   };

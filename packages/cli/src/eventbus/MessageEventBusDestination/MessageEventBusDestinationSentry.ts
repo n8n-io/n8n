@@ -3,7 +3,6 @@ import {
 	MessageEventBusDestination,
 	MessageEventBusDestinationOptions,
 } from './MessageEventBusDestination';
-import { JsonObject, JsonValue } from 'n8n-workflow';
 import * as Sentry from '@sentry/node';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { getInstanceOwner } from '../../UserManagement/UserManagementHelper';
@@ -44,14 +43,13 @@ export interface MessageEventBusDestinationSentryOptions extends MessageEventBus
 }
 
 export class MessageEventBusDestinationSentry extends MessageEventBusDestination {
-	static readonly __type = MessageEventBusDestinationTypeNames.sentry;
-
 	readonly dsn: string;
 
 	tracesSampleRate: number;
 
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
+		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.sentry;
 		this.dsn = options.dsn;
 		this.tracesSampleRate = options.tracesSampleRate ?? 1.0;
 		const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
@@ -77,7 +75,7 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 				},
 				tags: {
 					event: msg.getEventName(),
-					logger: this.getName(),
+					logger: this.getId(),
 				},
 			};
 			const sentryResult = Sentry.captureMessage(
@@ -94,20 +92,21 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 		return false;
 	}
 
-	serialize(): { __type: string; [key: string]: JsonValue } {
+	serialize(): MessageEventBusDestinationSentryOptions {
 		const abstractSerialized = super.serialize();
 		return {
 			...abstractSerialized,
-			__type: MessageEventBusDestinationSentry.__type,
 			dsn: this.dsn,
 			tracesSampleRate: this.tracesSampleRate,
 		};
 	}
 
-	static deserialize(data: JsonObject): MessageEventBusDestinationSentry | null {
+	static deserialize(
+		data: MessageEventBusDestinationOptions,
+	): MessageEventBusDestinationSentry | null {
 		if (
 			'__type' in data &&
-			data.__type === MessageEventBusDestinationSentry.__type &&
+			data.__type === MessageEventBusDestinationTypeNames.sentry &&
 			isMessageEventBusDestinationSentryOptions(data)
 		) {
 			return new MessageEventBusDestinationSentry(data);

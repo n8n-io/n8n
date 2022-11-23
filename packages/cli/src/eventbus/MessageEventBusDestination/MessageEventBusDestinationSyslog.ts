@@ -7,7 +7,6 @@ import {
 } from './MessageEventBusDestination';
 import syslog from 'syslog-client';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import { JsonObject, JsonValue } from 'n8n-workflow';
 import { EventMessageLevel } from '../EventMessageClasses/Enums';
 import { MessageEventBusDestinationTypeNames } from '.';
 
@@ -49,14 +48,13 @@ function eventMessageLevelToSyslogSeverity(emLevel: EventMessageLevel) {
 }
 
 export class MessageEventBusDestinationSyslog extends MessageEventBusDestination {
-	static readonly __type = MessageEventBusDestinationTypeNames.syslog;
-
 	client: syslog.Client;
 
 	sysLogOptions: MessageEventBusDestinationSyslogOptions;
 
 	constructor(options: MessageEventBusDestinationSyslogOptions) {
 		super(options);
+		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.syslog;
 
 		this.sysLogOptions = {
 			host: options.host ?? 'localhost',
@@ -78,9 +76,7 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 					? syslog.Transport.Tcp
 					: syslog.Transport.Udp,
 		});
-		console.debug(
-			`MessageEventBusDestinationSyslog ${this.getName()} with id ${this.getId()} initialized`,
-		);
+		console.debug(`MessageEventBusDestinationSyslog with id ${this.getId()} initialized`);
 		this.client.on('error', function (error) {
 			console.error(error);
 		});
@@ -116,11 +112,10 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 		return true;
 	}
 
-	serialize(): { __type: string; [key: string]: JsonValue } {
+	serialize(): MessageEventBusDestinationSyslogOptions {
 		const abstractSerialized = super.serialize();
 		return {
 			...abstractSerialized,
-			__type: MessageEventBusDestinationSyslog.__type,
 			expectedStatusCode: this.sysLogOptions.expectedStatusCode!,
 			host: this.sysLogOptions.host,
 			port: this.sysLogOptions.port!,
@@ -131,28 +126,12 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 		};
 	}
 
-	// serialize(): JsonValue {
-	// 	return {
-	// 		__type: MessageEventBusDestinationSyslog.__type,
-	// 		options: {
-	// 			id: this.getId(),
-	// 			name: this.getName(),
-	// 			expectedStatusCode: this.sysLogOptions.expectedStatusCode!,
-	// 			host: this.sysLogOptions.host,
-	// 			port: this.sysLogOptions.port!,
-	// 			protocol: this.sysLogOptions.protocol!,
-	// 			facility: this.sysLogOptions.facility!,
-	// 			app_name: this.sysLogOptions.app_name!,
-	// 			eol: this.sysLogOptions.eol!,
-	// 			subscriptionSet: this.subscriptionSet.serialize(),
-	// 		},
-	// 	};
-	// }
-
-	static deserialize(data: JsonObject): MessageEventBusDestinationSyslog | null {
+	static deserialize(
+		data: MessageEventBusDestinationOptions,
+	): MessageEventBusDestinationSyslog | null {
 		if (
 			'__type' in data &&
-			data.__type === MessageEventBusDestinationSyslog.__type &&
+			data.__type === MessageEventBusDestinationTypeNames.syslog &&
 			isMessageEventBusDestinationSyslogOptions(data)
 		) {
 			return new MessageEventBusDestinationSyslog(data);

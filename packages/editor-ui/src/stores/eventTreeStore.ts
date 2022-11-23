@@ -1,9 +1,10 @@
 import { defineStore } from "pinia";
-import { EventNamesTreeCollection } from '@/components/SettingsLogStreaming/EventTree.vue';
+import { EventNamesTreeCollection } from '@/components/SettingsLogStreaming/EventTreeSelection.vue';
 import { AbstractMessageEventBusDestination } from "../components/SettingsLogStreaming/types";
 
 export interface TreeAndSelectionStoreItem {
 		tree: EventNamesTreeCollection,
+		// elTree: Tree,
 		selectedEvents: Set<string>,
 		selectedLevels: Set<string>,
 }
@@ -16,6 +17,7 @@ export const useEventTreeStore = defineStore('eventTree', {
   state: () => ({
 		items: {} as TreeAndSelectionStore,
 		eventNames: new Set<string>(),
+		eventLevels: new Set<string>(),
 	}),
   getters: {
   },
@@ -26,11 +28,61 @@ export const useEventTreeStore = defineStore('eventTree', {
 		removeEventName(name: string) {
 			this.eventNames.delete(name);
 		},
+		clearEventNames() {
+			this.eventNames.clear();
+		},
+		addEventLevel(name: string) {
+			this.eventLevels.add(name);
+		},
+		removeEventLevel(name: string) {
+			this.eventLevels.delete(name);
+		},
+		clearEventLevels() {
+			this.eventLevels.clear();
+		},
 		addSelectedEvent(id:string, name: string) {
 			this.items[id]?.selectedEvents?.add(name);
+			this.setSelectedInTree(id, name, true);
 		},
 		removeSelectedEvent(id:string, name: string) {
 			this.items[id]?.selectedEvents?.delete(name);
+			this.setSelectedInTree(id, name, false);
+		},
+		setSelectedInTree(id: string, name: string, isSelected: boolean) {
+			const parts = name.split('.');
+			let part: string | undefined;
+			let children = this.items[id].tree.children;
+			while ((part = parts.shift())) {
+				if (part) {
+					const foundChild = children.find((e) => e.label === part);
+					if (foundChild) {
+						if (parts.length === 0) {
+							foundChild._selected = isSelected;
+						}
+						children = foundChild.children;
+					} else {
+						break;
+					}
+				}
+			}
+		},
+		setIndeterminateInTree(id: string, name: string, isIndeterminate: boolean) {
+			const parts = name.split('.');
+			let part: string | undefined;
+			let children = this.items[id].tree.children;
+			while ((part = parts.shift())) {
+				if (part) {
+					const foundChild = children.find((e) => e.label === part);
+					if (foundChild) {
+						if (parts.length === 0) {
+							foundChild._indeterminate = isIndeterminate;
+						}
+						children = foundChild.children;
+					} else {
+						break;
+					}
+				}
+			}
 		},
 		addSelectedLevel(id:string, name: string) {
 			this.items[id]?.selectedLevels?.add(name);
@@ -38,8 +90,25 @@ export const useEventTreeStore = defineStore('eventTree', {
 		removeSelectedLevel(id:string, name: string) {
 			this.items[id]?.selectedLevels?.delete(name);
 		},
+		setSelectedLevels(id:string, levelCheckList: string[]) {
+			if (id in this.items) {
+				this.items[id].selectedLevels = new Set<string>(levelCheckList);
+			}
+		},
+		getSelectedLevels(id:string): string[] {
+			return Array.from(this.items[id]?.selectedLevels.values()) ?? [];
+		},
+		getEventTree(id:string): EventNamesTreeCollection {
+			return this.items[id]?.tree ?? {};
+		},
+		// getElEventTree(id:string) {
+		// 	return this.items[id]?.elTree;
+		// },
 		removeDestination(id: string) {
 			delete this.items[id];
+		},
+		clearDestinations() {
+			this.items = {} as TreeAndSelectionStore;
 		},
 		setSelectionAndBuildItems(destination: AbstractMessageEventBusDestination) {
 			if (!(destination.id in this.items)) {
@@ -57,9 +126,51 @@ export const useEventTreeStore = defineStore('eventTree', {
 				this.items[destination.id]?.selectedLevels?.add(eventLevel);
 			}
 			this.items[destination.id].tree = treeCollectionFromStringList(this.eventNames, this.items[destination.id]?.selectedEvents);
+			// this.items[destination.id].elTree = elTreeFromStringList(this.eventNames);
 		},
 	},
 });
+
+// export interface ElTreeData {
+//   label: string
+// 	name: string,
+//   children?: ElTreeData[]
+// }
+
+// export function elTreeFromStringList(dottedList: Set<string>) {
+// 	const conversionResult = {
+// 		label: 'root',
+// 		name: 'root',
+// 		children: [],
+// 	} as ElTreeData;
+// 	dottedList.forEach((dottedString: string) => {
+// 		const parts = dottedString.split('.');
+
+// 		let part: string | undefined;
+// 		let children = conversionResult.children;
+// 		let partialName = '';
+// 		while ((part = parts.shift())) {
+// 			if (part) {
+// 				const foundChild = children?.find((e) => e.label === part);
+// 				partialName += part;
+// 				if (foundChild) {
+// 					children = foundChild.children;
+// 				} else {
+// 					const newChild: ElTreeData = {
+// 						label: part,
+// 						name: partialName,
+// 						children: [],
+// 					};
+// 					if (!children) children = [];
+// 					children.push(newChild);
+// 					children = newChild.children;
+// 				}
+// 			}
+// 			partialName += '.';
+// 		}
+// 	});
+// 	return conversionResult;
+// };
 
 
 export function treeCollectionFromStringList(dottedList: Set<string>, selectionList: Set<string> = new Set()) {
@@ -73,12 +184,13 @@ export function treeCollectionFromStringList(dottedList: Set<string>, selectionL
 		while ((part = parts.shift())) {
 			if (part) {
 				const foundChild = children.find((e) => e.label === part);
+				partialName += part;
 				if (foundChild) {
 					children = foundChild.children;
 				} else {
-					partialName += part;
 					let _indeterminate = false;
 					selectionList.forEach((e)=>{if (e.startsWith(partialName)) _indeterminate = true;});
+					console.log(partialName);
 					const newChild: EventNamesTreeCollection = {
 						label: part,
 						_name: partialName,
