@@ -38,8 +38,7 @@ import Vue from 'vue';
 
 import Modal from '@/components/Modal.vue';
 import { WORKFLOW_ACTIVE_MODAL_KEY, WORKFLOW_SETTINGS_MODAL_KEY, LOCAL_STORAGE_ACTIVATION_FLAG, VIEWS } from '../constants';
-import { getActivatableTriggerNodes, getTriggerNodeServiceName } from './helpers';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { getActivatableTriggerNodes, getTriggerNodeServiceName } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

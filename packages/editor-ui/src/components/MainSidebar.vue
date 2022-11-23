@@ -64,12 +64,12 @@ import ExecutionsList from '@/components/ExecutionsList.vue';
 import GiftNotificationIcon from './GiftNotificationIcon.vue';
 import WorkflowSettings from '@/components/WorkflowSettings.vue';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { restApi } from '@/components/mixins/restApi';
-import { showMessage } from '@/components/mixins/showMessage';
-import { titleChange } from '@/components/mixins/titleChange';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { workflowRun } from '@/components/mixins/workflowRun';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { restApi } from '@/mixins/restApi';
+import { showMessage } from '@/mixins/showMessage';
+import { titleChange } from '@/mixins/titleChange';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { workflowRun } from '@/mixins/workflowRun';
 
 import mixins from 'vue-typed-mixins';
 import {
@@ -82,8 +82,8 @@ import {
 	VIEWS,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/constants';
-import { userHelpers } from './mixins/userHelpers';
-import { debounceHelper } from './mixins/debounce';
+import { userHelpers } from '@/mixins/userHelpers';
+import { debounceHelper } from '@/mixins/debounce';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

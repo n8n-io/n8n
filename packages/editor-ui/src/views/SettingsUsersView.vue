@@ -46,7 +46,7 @@ import { INVITE_USER_MODAL_KEY, VIEWS } from '@/constants';
 import PageAlert from '../components/PageAlert.vue';
 import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useSettingsStore } from '@/stores/settings';

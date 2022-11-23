@@ -161,13 +161,13 @@
 <script lang="ts">
 /* eslint-disable prefer-spread */
 import { INodeUi, ITableData, NDVState } from '@/Interface';
-import { getPairedItemId } from '@/pairedItemUtils';
+import { getPairedItemId } from '@/utils';
 import Vue, { PropType } from 'vue';
 import mixins from 'vue-typed-mixins';
 import { GenericValue, IDataObject, INodeExecutionData } from 'n8n-workflow';
 import Draggable from './Draggable.vue';
-import { shorten } from './helpers';
-import { externalHooks } from './mixins/externalHooks';
+import { shorten } from '@/utils';
+import { externalHooks } from '@/mixins/externalHooks';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';

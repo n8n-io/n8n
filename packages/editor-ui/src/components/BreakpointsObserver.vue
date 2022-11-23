@@ -22,8 +22,8 @@ import {
  */
 
 import mixins from "vue-typed-mixins";
-import { genericHelpers } from "@/components/mixins/genericHelpers";
-import { debounceHelper } from "./mixins/debounce";
+import { genericHelpers } from "@/mixins/genericHelpers";
+import { debounceHelper } from "@/mixins/debounce";
 
 export default mixins(genericHelpers, debounceHelper).extend({
 	name: "BreakpointsObserver",
