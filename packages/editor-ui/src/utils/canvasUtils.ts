@@ -1,3 +1,4 @@
+import type { Route } from "vue-router";
 import { isNumber } from "@/utils/typeGuards";
 import { getStyleTokenValue } from '@/utils/htmlUtils';
 import { NODE_OUTPUT_DEFAULT_KEY, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME, MAIN_HEADER_TABS, VIEWS } from "@/constants";
