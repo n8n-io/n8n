@@ -11,6 +11,8 @@ import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
 
+import * as XLSX from 'xlsx';
+
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Google Sheets Trigger',
@@ -287,6 +289,7 @@ export class GoogleSheetsTrigger implements INodeType {
 
 		// Check if new revision is available, if not return
 		let pageToken;
+		const previousRevision = workflowStaticData.lastRevision as number;
 		do {
 			const { revisions, nextPageToken } = await apiRequest.call(
 				this,
@@ -305,9 +308,9 @@ export class GoogleSheetsTrigger implements INodeType {
 				pageToken = nextPageToken as string;
 			} else {
 				pageToken = undefined;
-				const lastRevision = +revisions[revisions.length - 1];
-
-				if (lastRevision <= (workflowStaticData.lastRevision as number)) {
+				const lastRevision = +revisions[revisions.length - 1]['id'];
+				console.log(lastRevision, previousRevision);
+				if (lastRevision <= previousRevision) {
 					return null;
 				} else {
 					workflowStaticData.lastRevision = lastRevision;
@@ -390,26 +393,69 @@ export class GoogleSheetsTrigger implements INodeType {
 		}
 
 		if (event === 'allUpdates') {
-			// const updatedSheetData = await googleSheet.getData(
-			// 	sheetName,
-			// 	options.valueRenderOption as ValueRenderOption,
-			// );
-			// if (workflowStaticData.previousSheetData === undefined) {
-			// 	workflowStaticData.previousSheetData = updatedSheetData;
-			// }
-			// const previousSheetData = workflowStaticData.previousSheetData;
-			// if (updatedSheetData === undefined || updatedSheetData[keyRow - 1] === undefined) {
-			// 	throw new NodeOperationError(
-			// 		this.getNode(),
-			// 		`Could not retrieve the column names from row ${keyRow}`,
-			// 	);
-			// }
-			// const columnNames = updatedSheetData[keyRow - 1];
-			// console.log(columnNames);
-			// console.log(updatedSheetData);
-			// console.log(previousSheetData);
+			const data = await getRevisionFile.call(
+				this,
+				documentId,
+				workflowStaticData.lastRevision as number,
+			);
+
+			if (previousRevision === undefined) {
+				//read binary, select sheet, convert data to json
+				const workbook = XLSX.read(data, { type: 'buffer', sheets: [sheetName] });
+				const sheet = workbook.Sheets[sheetName];
+				// const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+
+				console.log(sheet, Object.keys(workbook.Sheets));
+			}
+
+			// temp --------------------
+			const newItem: INodeExecutionData = {
+				json: {},
+				binary: {},
+			};
+
+			newItem.binary!['data'] = await this.helpers.prepareBinaryData(
+				data as unknown as Buffer,
+				'google-sheets.xlsx',
+				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			);
+
+			return [[newItem]];
+			// temp --------------------
 		}
 
 		return null;
 	}
+}
+
+async function getRevisionFile(this: IPollFunctions, documentId: string, revisionId: number) {
+	const { exportLinks } = await apiRequest.call(
+		this,
+		'GET',
+		``,
+		undefined,
+		{
+			fields: 'exportLinks',
+		},
+		`https://www.googleapis.com/drive/v2/files/${documentId}/revisions/${revisionId}`,
+	);
+	const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+	const exportLink = exportLinks[mimeType];
+
+	const response = await apiRequest.call(
+		this,
+		'GET',
+		``,
+		undefined,
+		{ mimeType },
+		exportLink,
+		undefined,
+		{
+			resolveWithFullResponse: true,
+			encoding: null,
+			json: false,
+		},
+	);
+
+	return Buffer.from(response.body as string);
 }

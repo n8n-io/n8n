@@ -19,6 +19,7 @@ export async function apiRequest(
 	qs: IDataObject = {},
 	uri?: string,
 	headers: IDataObject = {},
+	option: IDataObject = {},
 ) {
 	const authenticationMethod = this.getNodeParameter(
 		'authentication',
@@ -34,6 +35,7 @@ export async function apiRequest(
 		qs,
 		uri: uri || `https://sheets.googleapis.com${resource}`,
 		json: true,
+		...option,
 	};
 	try {
 		if (Object.keys(headers).length !== 0) {
