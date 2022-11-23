@@ -12,7 +12,6 @@
 			v-for="(item, index) in renderedItems"
 			:key="item.key"
 			:class="item.type"
-			:data-key="item.key"
 		>
 			<creator-item
 				:item="item"
@@ -20,7 +19,6 @@
 				:clickable="!disabled"
 				:disabled="disabled"
 				:allow-actions="withActionsGetter && withActionsGetter(item)"
-				:simple-node-style="withActionsGetter && withActionsGetter(item)"
 				:lastNode="
 					index === renderedItems.length - 1 || renderedItems[index + 1].type !== 'node'
 				"
