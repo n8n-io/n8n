@@ -33,11 +33,11 @@ import Telemetry from './components/Telemetry.vue';
 import { HIRING_BANNER, LOCAL_STORAGE_THEME, VIEWS } from './constants';
 
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './components/mixins/showMessage';
-import { userHelpers } from './components/mixins/userHelpers';
+import { showMessage } from '@/mixins/showMessage';
+import { userHelpers } from '@/mixins/userHelpers';
 import { loadLanguage } from './plugins/i18n';
-import { restApi } from '@/components/mixins/restApi';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import { restApi } from '@/mixins/restApi';
+import { globalLinkActions } from '@/mixins/globalLinkActions';
 import { mapStores } from 'pinia';
 import { useUIStore } from './stores/ui';
 import { useSettingsStore } from './stores/settings';

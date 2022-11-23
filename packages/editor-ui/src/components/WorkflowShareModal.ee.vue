@@ -105,7 +105,7 @@ import {
 import {IFakeDoor, IUser, IWorkflowDb} from "@/Interface";
 import { getWorkflowPermissions, IPermissions } from "@/permissions";
 import mixins from "vue-typed-mixins";
-import {showMessage} from "@/components/mixins/showMessage";
+import {showMessage} from "@/mixins/showMessage";
 import {nodeViewEventBus} from "@/event-bus/node-view-event-bus";
 import {mapStores} from "pinia";
 import {useSettingsStore} from "@/stores/settings";

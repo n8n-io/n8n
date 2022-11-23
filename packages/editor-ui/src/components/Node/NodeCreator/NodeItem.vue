@@ -58,12 +58,11 @@
 import Vue, { PropType } from 'vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
+import { isCommunityPackageName, getNewNodePosition, NODE_SIZE } from '@/utils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import TriggerIcon from '@/components/TriggerIcon.vue';
-import { isCommunityPackageName } from '@/components/helpers';
 
 Vue.component('node-icon', NodeIcon);
 Vue.component('trigger-icon', TriggerIcon);

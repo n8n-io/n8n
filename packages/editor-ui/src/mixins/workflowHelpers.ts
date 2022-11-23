@@ -47,16 +47,16 @@ import {
 	TargetItem,
 } from '../../Interface';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { restApi } from '@/components/mixins/restApi';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { externalHooks } from '@/mixins/externalHooks';
+import { restApi } from '@/mixins/restApi';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
 
 import { isEqual } from 'lodash';
 
 import mixins from 'vue-typed-mixins';
 import { v4 as uuid } from 'uuid';
-import { getSourceItems } from '@/pairedItemUtils';
+import { getSourceItems } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';

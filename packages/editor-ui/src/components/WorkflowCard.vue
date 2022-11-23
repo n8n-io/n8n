@@ -60,10 +60,10 @@
 import mixins from 'vue-typed-mixins';
 import {IWorkflowDb, IUser, ITag} from "@/Interface";
 import {DUPLICATE_MODAL_KEY, EnterpriseEditionFeature, VIEWS, WORKFLOW_SHARE_MODAL_KEY} from '@/constants';
-import {showMessage} from "@/components/mixins/showMessage";
+import {showMessage} from "@/mixins/showMessage";
 import {getWorkflowPermissions, IPermissions} from "@/permissions";
 import dateformat from "dateformat";
-import { restApi } from '@/components/mixins/restApi';
+import { restApi } from '@/mixins/restApi';
 import WorkflowActivator from '@/components/WorkflowActivator.vue';
 import Vue from "vue";
 import { mapStores } from 'pinia';

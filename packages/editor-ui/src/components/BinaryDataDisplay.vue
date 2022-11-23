@@ -23,15 +23,14 @@
 import {
 	IBinaryData,
 	IRunData,
-	IRunExecutionData,
 } from 'n8n-workflow';
 
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
+import { restApi } from '@/mixins/restApi';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 

@@ -37,13 +37,13 @@
 
 <script lang="ts">
 
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowActivate } from '@/components/mixins/workflowActivate';
+import { showMessage } from '@/mixins/showMessage';
+import { workflowActivate } from '@/mixins/workflowActivate';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { getActivatableTriggerNodes } from './helpers';
+import { getActivatableTriggerNodes } from '@/utils';
 
 export default mixins(
 	showMessage,
