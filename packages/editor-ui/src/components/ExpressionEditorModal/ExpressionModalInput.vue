@@ -47,7 +47,6 @@ export default mixins(workflowHelpers).extend({
 			// 	override: [resolvableCompletions],
 			// }),
 			EditorView.lineWrapping,
-			EditorState.transactionFilter.of((tx) => (tx.newDoc.lines > 1 ? [] : tx)), // forbid newlines
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
 
@@ -77,13 +76,15 @@ export default mixins(workflowHelpers).extend({
 				// console.log(`content: ${this.unresolvedExpression} // delay: ${delay} // errorsInSuccession: ${this.errorsInSuccession}`);
 
 				setTimeout(() => {
+					this.editor?.focus();
+				});
+
+				setTimeout(() => {
 					this.$emit('change', {
 						value: this.unresolvedExpression,
 						segments: this.displayableSegments,
 					});
 				}, delay);
-
-				this.$nextTick(() => this.editor?.focus());
 			}),
 		];
 
@@ -98,6 +99,10 @@ export default mixins(workflowHelpers).extend({
 		this.editor.focus();
 
 		addColor(this.editor, this.resolvableSegments);
+
+		this.editor.dispatch({
+			selection: { anchor: this.editor.state.doc.length },
+		});
 
 		this.$emit('change', { value: this.unresolvedExpression, segments: this.displayableSegments });
 	},
