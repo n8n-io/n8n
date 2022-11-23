@@ -203,9 +203,7 @@ export const mergeDeep = <T extends object | Primitives>(sources: T[], options?:
 	}
 }, (Array.isArray(sources[0]) ? [] : {}) as T);
 
-export const isSchemaTypeObjectOrList = (type: string) => ['object', 'list'].includes(type);
-
-export const getJsonSchema = (input: Optional<Primitives | object>, path = '', key?: string): JsonSchema => {
+export const getJsonSchema = (input: Optional<Primitives | object>, path = ''): JsonSchema => {
 	let schema:JsonSchema = { type: 'undefined', value: 'undefined', path };
 	switch (typeof input) {
 		case 'object':
@@ -216,13 +214,13 @@ export const getJsonSchema = (input: Optional<Primitives | object>, path = '', k
 			} else if (Array.isArray(input)) {
 				schema = {
 					type: 'list',
-					value: input.map((item, index) => ({key: index.toString(), ...getJsonSchema(item,`${path}[${index}]`, index.toString())})),
+					value: input.map((item, index) => ({key: index.toString(), ...getJsonSchema(item,`${path}[${index}]`)})),
 					path,
 				};
 			} else if (isObj(input)) {
 				schema = {
 					type: 'object',
-					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getJsonSchema(v, path + `["${ k }"]`, k)})),
+					value: Object.entries(input).map(([k, v]) => ({ key: k, ...getJsonSchema(v, path + `["${ k }"]`)})),
 					path,
 				};
 			}
@@ -235,10 +233,6 @@ export const getJsonSchema = (input: Optional<Primitives | object>, path = '', k
 			break;
 		default:
 			schema =  { type: typeof input, value: String(input), path };
-	}
-
-	if (!isSchemaTypeObjectOrList(schema.type)) {
-		schema.path = path;
 	}
 
 	return schema;
