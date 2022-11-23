@@ -39,7 +39,7 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import { ITemplatesCategory } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 

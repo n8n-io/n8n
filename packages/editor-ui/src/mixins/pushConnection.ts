@@ -4,11 +4,11 @@ import {
 	IPushData,
 } from '../../Interface';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
-import { titleChange } from '@/components/mixins/titleChange';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { showMessage } from '@/mixins/showMessage';
+import { titleChange } from '@/mixins/titleChange';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import {
 	ExpressionError,
@@ -21,7 +21,7 @@ import {
 
 import mixins from 'vue-typed-mixins';
 import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/constants';
-import { getTriggerNodeServiceName } from '../helpers';
+import { getTriggerNodeServiceName } from '@/utils';
 import { codeNodeEditorEventBus } from '@/event-bus/code-node-editor-event-bus';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
@@ -446,7 +446,7 @@ export const pushConnection = mixins(
 					const nodesToBeRemoved: INodeTypeNameVersion[] = [pushData];
 
 					// Force reload of all credential types
-					this.credentialsStore.fetchCredentialTypes()
+					this.credentialsStore.fetchCredentialTypes(false)
 						.then(() => {
 							this.nodeTypesStore.removeNodeTypes(nodesToBeRemoved);
 						});

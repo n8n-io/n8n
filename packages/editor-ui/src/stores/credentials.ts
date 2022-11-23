@@ -1,6 +1,6 @@
 import { createNewCredential, deleteCredential, getAllCredentials, getCredentialData, getCredentialsNewName, getCredentialTypes, oAuth1CredentialAuthorize, oAuth2CredentialAuthorize, testCredential, updateCredential } from "@/api/credentials";
 import { setCredentialSharedWith } from "@/api/credentials.ee";
-import { getAppNameFromCredType } from "@/components/helpers";
+import { getAppNameFromCredType } from "@/utils";
 import { EnterpriseEditionFeature, STORES } from "@/constants";
 import { ICredentialMap, ICredentialsDecryptedResponse, ICredentialsResponse, ICredentialsState, ICredentialTypeMap } from "@/Interface";
 import { i18n } from "@/plugins/i18n";

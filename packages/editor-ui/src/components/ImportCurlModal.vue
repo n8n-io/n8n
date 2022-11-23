@@ -47,7 +47,7 @@ import {
 	CURL_IMPORT_NOT_SUPPORTED_PROTOCOLS,
 	CURL_IMPORT_NODES_PROTOCOLS,
 } from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import mixins from 'vue-typed-mixins';
 import { INodeUi } from '@/Interface';
 import { mapStores } from 'pinia';

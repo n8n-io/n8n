@@ -69,7 +69,7 @@ import {
 	NPM_PACKAGE_DOCS_BASE_URL,
 	COMMUNITY_PACKAGE_MANAGE_ACTIONS,
 } from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 
 export default mixins(
 	showMessage,
