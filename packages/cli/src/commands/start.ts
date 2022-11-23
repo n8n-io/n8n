@@ -9,7 +9,6 @@
 import localtunnel from 'localtunnel';
 import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
@@ -115,7 +114,7 @@ export class Start extends Command {
 			await InternalHooksManager.getInstance().onN8nStop();
 
 			const skipWebhookDeregistration = config.getEnv(
-				'endpoints.skipWebhoooksDeregistrationOnShutdown',
+				'endpoints.skipWebhooksDeregistrationOnShutdown',
 			);
 
 			const removePromises = [];
@@ -210,14 +209,13 @@ export class Start extends Command {
 				await externalHooks.init();
 
 				// Add the found types to an instance other parts of the application can use
-				const nodeTypes = NodeTypes();
-				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
-				const credentialTypes = CredentialTypes();
-				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
+				const nodeTypes = NodeTypes(loadNodesAndCredentials);
+				const credentialTypes = CredentialTypes(loadNodesAndCredentials);
 
 				// Load the credentials overwrites if any exist
-				const credentialsOverwrites = CredentialsOverwrites();
-				await credentialsOverwrites.init();
+				await CredentialsOverwrites(credentialTypes).init();
+
+				await loadNodesAndCredentials.generateTypesForFrontend();
 
 				// Wait till the database is ready
 				await startDbInitPromise;
@@ -227,13 +225,13 @@ export class Start extends Command {
 					packageName: string;
 					version: string;
 				}>();
-				installedPackages.forEach((installedpackage) => {
-					installedpackage.installedNodes.forEach((installedNode) => {
-						if (!loadNodesAndCredentials.nodeTypes[installedNode.type]) {
+				installedPackages.forEach((installedPackage) => {
+					installedPackage.installedNodes.forEach((installedNode) => {
+						if (!loadNodesAndCredentials.known.nodes[installedNode.type]) {
 							// Leave the list ready for installing in case we need.
 							missingPackages.add({
-								packageName: installedpackage.packageName,
-								version: installedpackage.installedVersion,
+								packageName: installedPackage.packageName,
+								version: installedPackage.installedVersion,
 							});
 						}
 					});

@@ -154,7 +154,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				return;
 			}
 			const rootStore = useRootStore();
-			const credentialTypes = await getCredentialTypes(rootStore.getRestApiContext);
+			const credentialTypes = await getCredentialTypes(rootStore.getBaseUrl);
 			this.setCredentialTypes(credentialTypes);
 		},
 		async fetchAllCredentials(): Promise<ICredentialsResponse[]> {

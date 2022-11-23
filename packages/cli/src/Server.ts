@@ -9,7 +9,6 @@
 /* eslint-disable no-return-assign */
 /* eslint-disable no-param-reassign */
 /* eslint-disable consistent-return */
-/* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable id-denylist */
@@ -29,7 +28,7 @@
 /* eslint-disable no-await-in-loop */
 
 import { exec as callbackExec } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
 import os from 'os';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -38,7 +37,6 @@ import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
@@ -54,22 +52,20 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialType,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeListSearchResult,
 	INodeParameters,
 	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
 	LoggerProxy,
-	NodeHelpers,
 	jsonParse,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
 	ErrorReporterProxy as ErrorReporter,
+	INodeTypes,
+	ICredentialTypes,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -95,6 +91,7 @@ import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	AUTH_COOKIE_NAME,
+	GENERATED_STATIC_DIR,
 	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -151,6 +148,7 @@ import { ExternalHooks } from '@/ExternalHooks';
 import * as GenericHelpers from '@/GenericHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as TestWebhooks from '@/TestWebhooks';
 import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
@@ -226,6 +224,10 @@ class App {
 
 	webhookMethods: WebhookHttpMethod[];
 
+	nodeTypes: INodeTypes;
+
+	credentialTypes: ICredentialTypes;
+
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -250,6 +252,9 @@ class App {
 		this.activeWorkflowRunner = ActiveWorkflowRunner.getInstance();
 		this.testWebhooks = TestWebhooks.getInstance();
 		this.push = Push.getInstance();
+
+		this.nodeTypes = NodeTypes();
+		this.credentialTypes = CredentialTypes();
 
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
@@ -424,6 +429,8 @@ class App {
 			'assets',
 			'healthz',
 			'metrics',
+			'icons',
+			'types',
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
@@ -824,7 +831,7 @@ class App {
 
 					const loadDataInstance = new LoadNodeParameterOptions(
 						nodeTypeAndVersion,
-						NodeTypes(),
+						this.nodeTypes,
 						path,
 						currentNodeParameters,
 						credentials,
@@ -885,7 +892,7 @@ class App {
 
 					const listSearchInstance = new LoadNodeListSearch(
 						nodeTypeAndVersion,
-						NodeTypes(),
+						this.nodeTypes,
 						path,
 						currentNodeParameters,
 						credentials,
@@ -906,47 +913,6 @@ class App {
 					}
 
 					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
-				},
-			),
-		);
-
-		// Returns all the node-types
-		this.app.get(
-			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const returnData: INodeTypeDescription[] = [];
-					const onlyLatest = req.query.onlyLatest === 'true';
-
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
-
-					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
-						if (req.query.includeProperties !== 'true') {
-							// @ts-ignore
-							delete nodeInfo.properties;
-						}
-						return nodeInfo;
-					};
-
-					if (onlyLatest) {
-						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-							returnData.push(nodeInfo);
-						});
-					} else {
-						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-							allNodeTypes.forEach((element) => {
-								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-								returnData.push(nodeInfo);
-							});
-						});
-					}
-
-					return returnData;
 				},
 			),
 		);
@@ -998,49 +964,6 @@ class App {
 		// ----------------------------------------
 
 		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
-
-		// Returns the node icon
-		this.app.get(
-			[
-				`/${this.restEndpoint}/node-icon/:nodeType`,
-				`/${this.restEndpoint}/node-icon/:scope/:nodeType`,
-			],
-			async (req: express.Request, res: express.Response): Promise<void> => {
-				try {
-					const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${
-						req.params.nodeType
-					}`;
-
-					const nodeTypes = NodeTypes();
-					const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
-
-					if (nodeType === undefined) {
-						res.status(404).send('The nodeType is not known.');
-						return;
-					}
-
-					if (nodeType.description.icon === undefined) {
-						res.status(404).send('No icon found for node.');
-						return;
-					}
-
-					if (!nodeType.description.icon.startsWith('file:')) {
-						res.status(404).send('Node does not have a file icon.');
-						return;
-					}
-
-					const filepath = nodeType.description.icon.substr(5);
-
-					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-					res.setHeader('Cache-control', `private max-age=${maxAge}`);
-
-					res.sendFile(filepath);
-				} catch (error) {
-					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-			},
-		);
 
 		// ----------------------------------------
 		// Active Workflows
@@ -1106,63 +1029,6 @@ class App {
 					}
 				},
 			),
-		);
-		// ----------------------------------------
-		// Credential-Types
-		// ----------------------------------------
-
-		// Returns all the credential types which are defined in the loaded n8n-modules
-		this.app.get(
-			`/${this.restEndpoint}/credential-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialType[]> => {
-					const returnData: ICredentialType[] = [];
-
-					const credentialTypes = CredentialTypes();
-
-					credentialTypes.getAll().forEach((credentialData) => {
-						returnData.push(credentialData);
-					});
-
-					return returnData;
-				},
-			),
-		);
-
-		this.app.get(
-			`/${this.restEndpoint}/credential-icon/:credentialType`,
-			async (req: express.Request, res: express.Response): Promise<void> => {
-				try {
-					const credentialName = req.params.credentialType;
-
-					const credentialType = CredentialTypes().getByName(credentialName);
-
-					if (credentialType === undefined) {
-						res.status(404).send('The credentialType is not known.');
-						return;
-					}
-
-					if (credentialType.icon === undefined) {
-						res.status(404).send('No icon found for credential.');
-						return;
-					}
-
-					if (!credentialType.icon.startsWith('file:')) {
-						res.status(404).send('Credential does not have a file icon.');
-						return;
-					}
-
-					const filepath = credentialType.icon.substr(5);
-
-					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-					res.setHeader('Cache-control', `private max-age=${maxAge}`);
-
-					res.sendFile(filepath);
-				} catch (error) {
-					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-			},
 		);
 
 		// ----------------------------------------
@@ -1750,9 +1616,9 @@ class App {
 							return;
 						}
 
-						const credentialsOverwrites = CredentialsOverwrites();
+						CredentialsOverwrites().setData(body);
 
-						await credentialsOverwrites.init(body);
+						await LoadNodesAndCredentials().generateTypesForFrontend();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1792,7 +1658,6 @@ class App {
 			}
 
 			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
-			const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
 
 			const closingTitleTag = '</title>';
 			const compileFile = async (fileName: string) => {
@@ -1805,7 +1670,7 @@ class App {
 					if (filePath.endsWith('index.html')) {
 						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
-					const destFile = pathJoin(generatedStaticDir, fileName);
+					const destFile = pathJoin(GENERATED_STATIC_DIR, fileName);
 					await mkdir(pathDirname(destFile), { recursive: true });
 					await writeFile(destFile, payload, 'utf-8');
 				}
@@ -1815,13 +1680,15 @@ class App {
 			const files = await glob('**/*.{css,js}', { cwd: editorUiDistDir });
 			await Promise.all(files.map(compileFile));
 
-			this.app.use('/', express.static(generatedStaticDir), express.static(editorUiDistDir));
+			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(editorUiDistDir));
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
 				res.setHeader('Last-Modified', startTime);
 				next();
 			});
+		} else {
+			this.app.use('/', express.static(GENERATED_STATIC_DIR));
 		}
 	}
 }
