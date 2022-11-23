@@ -9,7 +9,7 @@ import { useUsersStore } from '@/stores/users';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { externalHooks } from './mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
 	name: 'Telemetry',

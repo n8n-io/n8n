@@ -18,7 +18,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import * as CanvasHelpers from "@/views/canvasHelpers";
+import { getMidCanvasPosition } from '@/utils';
 import {DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE} from "@/constants";
 import { mapStores } from "pinia";
 import { useUIStore } from "@/stores/ui";
@@ -80,7 +80,7 @@ export default Vue.extend({
 
 			const offset: [number, number] = [...(this.uiStore.nodeViewOffsetPosition)];
 
-			const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
+			const position = getMidCanvasPosition(this.nodeViewScale, offset);
 			position[0] -= DEFAULT_STICKY_WIDTH / 2;
 			position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 

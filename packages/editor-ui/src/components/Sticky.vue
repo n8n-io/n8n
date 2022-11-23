@@ -45,11 +45,11 @@
 import Vue from 'vue';
 
 import mixins from 'vue-typed-mixins';
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeBase } from '@/components/mixins/nodeBase';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { getStyleTokenValue, isNumber, isString } from './helpers';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeBase } from '@/mixins/nodeBase';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { getStyleTokenValue, isNumber, isString } from '@/utils';
 import { INodeUi, INodeUpdatePropertiesInformation, IUpdateInformation, XYPosition } from '@/Interface';
 
 import {

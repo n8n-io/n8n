@@ -1,5 +1,5 @@
 import { ICredentialsDecryptedResponse, ICredentialsResponse, IRestApiContext } from '@/Interface';
-import { makeRestApiRequest } from './helpers';
+import { makeRestApiRequest } from '@/utils';
 import {
 	ICredentialsDecrypted,
 	ICredentialType,
