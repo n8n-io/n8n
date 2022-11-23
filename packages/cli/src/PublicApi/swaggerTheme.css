@@ -1,5 +1,5 @@
 .swagger-ui .info .title small:last-child {
-	background-color: #ff6d5a !important
+	background-color: #ff6d5a !important;
 }
 
 .swagger-ui .topbar {
@@ -18,7 +18,7 @@
 }
 
 .swagger-ui .btn.authorize svg {
-	fill: #7d8492
+	fill: #7d8492;
 }
 
 .swagger-ui select {

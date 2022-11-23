@@ -172,10 +172,8 @@ executionsController.get(
 					userId: req.user.id,
 					filter: req.query.filter,
 				});
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					`Parameter "filter" contained invalid JSON string.`,
-					500,
-					500,
 				);
 			}
 		}
@@ -363,10 +361,8 @@ executionsController.post(
 					executionId,
 				},
 			);
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`The execution with the ID "${executionId}" does not exist.`,
-				404,
-				404,
 			);
 		}
 
@@ -485,10 +481,8 @@ executionsController.post(
 					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
 				}
 			} catch (error) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					`Parameter "filter" contained invalid JSON string.`,
-					500,
-					500,
 				);
 			}
 		}

@@ -5,7 +5,8 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
 import { Request, Response } from 'express';
 import { parse, stringify } from 'flatted';
-import { ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
+import picocolors from 'picocolors';
+import { ErrorReporterProxy as ErrorReporter, NodeApiError } from 'n8n-workflow';
 
 import type {
 	IExecutionDb,
@@ -15,44 +16,69 @@ import type {
 	IWorkflowDb,
 } from './Interfaces';
 
+const inDevelopment = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+
 /**
  * Special Error which allows to return also an error code and http status code
- *
- * @class ResponseError
- * @extends {Error}
  */
-export class ResponseError extends Error {
-	// The HTTP status code of  response
-	httpStatusCode?: number;
-
-	// The error code in the response
-	errorCode?: number;
-
-	// The error hint the response
-	hint?: string;
-
+abstract class ResponseError extends Error {
 	/**
 	 * Creates an instance of ResponseError.
 	 * Must be used inside a block with `ResponseHelper.send()`.
-	 *
-	 * @param {string} message The error message
-	 * @param {number} [errorCode] The error code which can be used by frontend to identify the actual error
-	 * @param {number} [httpStatusCode] The HTTP status code the response should have
-	 * @param {string} [hint] The error hint to provide a context (webhook related)
 	 */
-	constructor(message: string, errorCode?: number, httpStatusCode?: number, hint?: string) {
+	constructor(
+		message: string,
+		// The HTTP status code of  response
+		readonly httpStatusCode: number,
+		// The error code in the response
+		readonly errorCode: number = httpStatusCode,
+		// The error hint the response
+		readonly hint: string | undefined = undefined,
+	) {
 		super(message);
 		this.name = 'ResponseError';
+	}
+}
 
-		if (errorCode) {
-			this.errorCode = errorCode;
-		}
-		if (httpStatusCode) {
-			this.httpStatusCode = httpStatusCode;
-		}
-		if (hint) {
-			this.hint = hint;
-		}
+export class BadRequestError extends ResponseError {
+	constructor(message: string) {
+		super(message, 400);
+	}
+}
+
+export class AuthError extends ResponseError {
+	constructor(message: string) {
+		super(message, 401);
+	}
+}
+
+export class UnauthorizedError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 403, 403, hint);
+	}
+}
+
+export class NotFoundError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 404, 404, hint);
+	}
+}
+
+export class ConflictError extends ResponseError {
+	constructor(message: string, hint: string | undefined = undefined) {
+		super(message, 409, 409, hint);
+	}
+}
+
+export class InternalServerError extends ResponseError {
+	constructor(message: string, errorCode = 500) {
+		super(message, 500, errorCode);
+	}
+}
+
+export class ServiceUnavailableError extends ResponseError {
+	constructor(message: string, errorCode = 503) {
+		super(message, 503, errorCode);
 	}
 }
 
@@ -95,40 +121,49 @@ export function sendSuccessResponse(
 	}
 }
 
-export function sendErrorResponse(res: Response, error: ResponseError) {
+interface ErrorResponse {
+	code: number;
+	message: string;
+	hint?: string;
+	stacktrace?: string;
+}
+
+export function sendErrorResponse(res: Response, error: Error) {
 	let httpStatusCode = 500;
-	if (error.httpStatusCode) {
-		httpStatusCode = error.httpStatusCode;
-	}
 
-	if (!process.env.NODE_ENV || process.env.NODE_ENV === 'development') {
-		console.error('ERROR RESPONSE');
-		console.error(error);
-	}
-
-	const response = {
+	const response: ErrorResponse = {
 		code: 0,
 		message: 'Unknown error',
-		hint: '',
 	};
 
-	if (error.name === 'NodeApiError') {
+	if (error instanceof ResponseError) {
+		if (inDevelopment) {
+			console.error(picocolors.red(error.httpStatusCode), error.message);
+		}
+
+		response.message = error.message;
+		httpStatusCode = error.httpStatusCode;
+
+		if (error.errorCode) {
+			response.code = error.errorCode;
+		}
+		if (error.hint) {
+			response.hint = error.hint;
+		}
+	}
+
+	if (error instanceof NodeApiError) {
+		if (inDevelopment) {
+			console.error(picocolors.red(error.name), error.message);
+		}
+
 		Object.assign(response, error);
 	}
 
-	if (error.errorCode) {
-		response.code = error.errorCode;
+	if (error.stack && inDevelopment) {
+		response.stacktrace = error.stack;
 	}
-	if (error.message) {
-		response.message = error.message;
-	}
-	if (error.hint) {
-		response.hint = error.hint;
-	}
-	if (error.stack && process.env.NODE_ENV !== 'production') {
-		// @ts-ignore
-		response.stack = error.stack;
-	}
+
 	res.status(httpStatusCode).json(response);
 }
 
@@ -154,7 +189,9 @@ export function send<T, R extends Request, S extends Response>(
 			sendSuccessResponse(res, data, raw);
 		} catch (error) {
 			if (error instanceof Error) {
-				ErrorReporter.error(error);
+				if (!(error instanceof ResponseError) || error.httpStatusCode > 404) {
+					ErrorReporter.error(error);
+				}
 
 				if (isUniqueConstraintError(error)) {
 					error.message = 'There is already an entry with this name';

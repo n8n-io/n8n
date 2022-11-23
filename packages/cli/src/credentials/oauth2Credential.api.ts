@@ -58,7 +58,7 @@ oauth2CredentialController.get(
 		const { id: credentialId } = req.query;
 
 		if (!credentialId) {
-			throw new ResponseHelper.ResponseError('Required credential ID is missing', undefined, 400);
+			throw new ResponseHelper.BadRequestError('Required credential ID is missing');
 		}
 
 		const credential = await getCredentialForUser(credentialId, req.user);
@@ -68,14 +68,14 @@ oauth2CredentialController.get(
 				userId: req.user.id,
 				credentialId,
 			});
-			throw new ResponseHelper.ResponseError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL, undefined, 404);
+			throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
 		let encryptionKey: string;
 		try {
 			encryptionKey = await UserSettings.getEncryptionKey();
 		} catch (error) {
-			throw new ResponseHelper.ResponseError((error as Error).message, undefined, 500);
+			throw new ResponseHelper.InternalServerError((error as Error).message);
 		}
 
 		const mode: WorkflowExecuteMode = 'internal';
@@ -173,12 +173,10 @@ oauth2CredentialController.get(
 			const { code, state: stateEncoded } = req.query;
 
 			if (!code || !stateEncoded) {
-				const errorResponse = new ResponseHelper.ResponseError(
+				const errorResponse = new ResponseHelper.ServiceUnavailableError(
 					`Insufficient parameters for OAuth2 callback. Received following query parameters: ${JSON.stringify(
 						req.query,
 					)}`,
-					undefined,
-					503,
 				);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
@@ -190,10 +188,8 @@ oauth2CredentialController.get(
 					token: string;
 				};
 			} catch (error) {
-				const errorResponse = new ResponseHelper.ResponseError(
+				const errorResponse = new ResponseHelper.ServiceUnavailableError(
 					'Invalid state format returned',
-					undefined,
-					503,
 				);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
@@ -205,10 +201,8 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.ResponseError(
+				const errorResponse = new ResponseHelper.NotFoundError(
 					RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-					undefined,
-					404,
 				);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
@@ -217,11 +211,7 @@ oauth2CredentialController.get(
 			try {
 				encryptionKey = await UserSettings.getEncryptionKey();
 			} catch (error) {
-				throw new ResponseHelper.ResponseError(
-					(error as IDataObject).message as string,
-					undefined,
-					500,
-				);
+				throw new ResponseHelper.InternalServerError((error as IDataObject).message as string);
 			}
 
 			const mode: WorkflowExecuteMode = 'internal';
@@ -250,10 +240,8 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.ResponseError(
+				const errorResponse = new ResponseHelper.NotFoundError(
 					'The OAuth2 callback state is invalid!',
-					undefined,
-					404,
 				);
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
@@ -299,11 +287,7 @@ oauth2CredentialController.get(
 					userId: req.user?.id,
 					credentialId: state.cid,
 				});
-				const errorResponse = new ResponseHelper.ResponseError(
-					'Unable to get access tokens!',
-					undefined,
-					404,
-				);
+				const errorResponse = new ResponseHelper.NotFoundError('Unable to get access tokens!');
 				return ResponseHelper.sendErrorResponse(res, errorResponse);
 			}
 

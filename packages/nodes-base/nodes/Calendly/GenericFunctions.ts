@@ -52,7 +52,7 @@ export async function calendlyApiRequest(
 		delete options.qs;
 	}
 	options = Object.assign({}, options, option);
-	return await this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'calendlyApi', options);
 }
 
 export function getAuthenticationType(data: string): 'accessToken' | 'apiKey' {
