@@ -75,6 +75,12 @@ export const schema = {
 				default: 'public',
 				env: 'DB_POSTGRESDB_SCHEMA',
 			},
+			migrationsRun: {
+				doc: 'PostgresDB Run Migrations',
+				format: Boolean,
+				default: true,
+				env: 'DB_POSTGRESDB_RUN_MIGRATIONS',
+			},
 
 			ssl: {
 				ca: {
@@ -133,6 +139,12 @@ export const schema = {
 				format: String,
 				default: 'root',
 				env: 'DB_MYSQLDB_USER',
+			},
+			migrationsRun: {
+				doc: 'MySQL Run Migrations',
+				format: Boolean,
+				default: true,
+				env: 'DB_MYSQLDB_RUN_MIGRATIONS',
 			},
 		},
 		sqlite: {
