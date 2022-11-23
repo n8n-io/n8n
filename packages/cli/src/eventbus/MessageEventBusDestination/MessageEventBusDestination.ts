@@ -11,6 +11,8 @@ import { MessageEventBusDestinationTypeNames } from '.';
 export interface MessageEventBusDestinationOptions {
 	__type?: string;
 	id?: string;
+
+	label?: string;
 	enabled?: boolean;
 	subscribedEvents?: string[];
 	subscribedLevels?: EventMessageLevel[];
@@ -23,6 +25,8 @@ export abstract class MessageEventBusDestination {
 
 	__type: string;
 
+	label: string;
+
 	enabled: boolean;
 
 	subscribedEvents: string[];
@@ -32,7 +36,8 @@ export abstract class MessageEventBusDestination {
 	constructor(options: MessageEventBusDestinationOptions) {
 		this.id = options.id ?? uuid();
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.abstract;
-		this.enabled = options.enabled ?? true;
+		this.label = options.label ?? 'Log Destination';
+		this.enabled = options.enabled ?? false;
 		this.subscribedEvents = options.subscribedEvents ?? [];
 		this.subscribedLevels = options.subscribedLevels ?? [
 			EventMessageLevel.log,
@@ -107,8 +112,8 @@ export abstract class MessageEventBusDestination {
 		return {
 			__type: this.__type,
 			id: this.getId(),
+			label: this.label,
 			enabled: this.enabled,
-			// name: this.getName(),
 			subscribedEvents: this.subscribedEvents,
 			subscribedLevels: this.subscribedLevels,
 		};

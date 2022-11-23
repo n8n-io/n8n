@@ -110,6 +110,7 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 	constructor(options: MessageEventBusDestinationWebhookOptions) {
 		super(options);
 		this.url = options.url;
+		this.label = options.label ?? 'Webhook Endpoint';
 		if (options.__type) this.__type = options.__type;
 		if (options.responseCodeMustMatch) this.responseCodeMustMatch = options.responseCodeMustMatch;
 		if (options.expectedStatusCode) this.expectedStatusCode = options.expectedStatusCode;

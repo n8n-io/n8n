@@ -5,7 +5,7 @@
 </template>
 
 <script lang="ts">
-	import {CheckboxGroup as ElCheckboxGroup} from 'element-ui';
+	import { CheckboxGroup as ElCheckboxGroup} from 'element-ui';
 	import { mapStores } from 'pinia';
 	import { useEventTreeStore } from '../../stores/eventTreeStore';
 

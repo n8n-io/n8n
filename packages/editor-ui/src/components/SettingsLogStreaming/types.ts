@@ -22,7 +22,8 @@ export class MessageEventBusDestinationTypeNames {
 export class AbstractMessageEventBusDestination {
 	__type = '';
 	id = '';
-	enabled = true;
+	label = 'Log Destination';
+	enabled = false;
 	subscribedEvents: string[] = [];
 	subscribedLevels: string[] = [
 		EventMessageLevel.log,
@@ -37,6 +38,7 @@ export class AbstractMessageEventBusDestination {
 }
 
 export class MessageEventBusDestinationSyslog extends AbstractMessageEventBusDestination {
+	label = 'Syslog Server';
 	expectedStatusCode = 200;
 	host = '127.0.0.1';
 	port = 514;
@@ -50,6 +52,7 @@ export class MessageEventBusDestinationSyslog extends AbstractMessageEventBusDes
 }
 
 export class MessageEventBusDestinationWebhook extends AbstractMessageEventBusDestination {
+	label = 'Webhook Endpoint';
 	expectedStatusCode = 200;
 	responseCodeMustMatch = false;
 	url = 'https://';

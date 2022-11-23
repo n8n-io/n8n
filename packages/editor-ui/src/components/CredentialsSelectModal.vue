@@ -49,13 +49,12 @@
 </template>
 
 <script lang="ts">
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
-
 import Modal from './Modal.vue';
 import { CREDENTIAL_SELECT_MODAL_KEY } from '../constants';
 import { externalHooks } from '@/components/mixins/externalHooks';
-import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useCredentialsStore } from '@/stores/credentials';

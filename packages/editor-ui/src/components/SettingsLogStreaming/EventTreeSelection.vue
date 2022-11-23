@@ -12,7 +12,6 @@
 				@change="onCheckboxChecked">
 						{{ item?.label }}
 			</el-checkbox>
-			<Transition name="slide-fade">
 			<ul v-show="isOpen" v-if="isFolder">
 				<event-tree-selection
 					class="item"
@@ -24,23 +23,16 @@
 					@input="onInput"
 				/>
 			</ul>
-			</Transition>
 		</div>
 	</div>
 </template>
 
 <script lang="ts">
-	import ElCheckbox from 'element-ui/lib/checkbox';
+	import { Checkbox as ElCheckbox} from 'element-ui';
 	import { mapStores } from 'pinia';
-	import { useEventTreeStore } from '../../stores/eventTreeStore';
+	import { EventNamesTreeCollection, useEventTreeStore } from '../../stores/eventTreeStore';
 
-	export class EventNamesTreeCollection {
-		label = '';
-		_selected? = false;
-		_indeterminate? = false;
-		_name = '';
-		children: EventNamesTreeCollection[] = [];
-	}
+
 
 	interface ParentEventTree extends Vue {
 		tellParentChildCheckChanged(checked:boolean):void
@@ -59,6 +51,9 @@
 				type: Number,
 				default: 0,
 			},
+		},
+		components: {
+			ElCheckbox,
 		},
 		data() {
 			return {

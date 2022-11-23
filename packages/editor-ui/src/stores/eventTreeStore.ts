@@ -1,10 +1,17 @@
 import { defineStore } from "pinia";
-import { EventNamesTreeCollection } from '@/components/SettingsLogStreaming/EventTreeSelection.vue';
 import { AbstractMessageEventBusDestination } from "../components/SettingsLogStreaming/types";
 
+export class EventNamesTreeCollection {
+	label = '';
+	_selected? = false;
+	_indeterminate? = false;
+	_name = '';
+	children: EventNamesTreeCollection[] = [];
+}
+
 export interface TreeAndSelectionStoreItem {
+		destination: AbstractMessageEventBusDestination,
 		tree: EventNamesTreeCollection,
-		// elTree: Tree,
 		selectedEvents: Set<string>,
 		selectedLevels: Set<string>,
 }
@@ -15,6 +22,7 @@ export interface TreeAndSelectionStore {
 
 export const useEventTreeStore = defineStore('eventTree', {
   state: () => ({
+		destinations: [] as AbstractMessageEventBusDestination[],
 		items: {} as TreeAndSelectionStore,
 		eventNames: new Set<string>(),
 		eventLevels: new Set<string>(),
@@ -22,6 +30,28 @@ export const useEventTreeStore = defineStore('eventTree', {
   getters: {
   },
   actions: {
+		addDestination(destination: AbstractMessageEventBusDestination) {
+			this.destinations.push(destination);
+		},
+		getDestination(destinationId: string) {
+			return this.destinations.find(e=>e.id === destinationId);
+		},
+		updateDestination(destination: AbstractMessageEventBusDestination) {
+			const index = this.destinations.findIndex(e=>e.id === destination.id);
+			if (index > -1) {
+				this.destinations[index] = destination;
+			}
+		},
+		removeDestination(destinationId: string) {
+			const index = this.destinations.findIndex(e=>e.id === destinationId);
+			if (index > -1) {
+				this.removeDestinationItemTree(destinationId);
+				this.destinations.splice(index, 1);
+			}
+		},
+		clearDestinations() {
+			this.destinations = [];
+		},
 		addEventName(name: string) {
 			this.eventNames.add(name);
 		},
@@ -101,18 +131,16 @@ export const useEventTreeStore = defineStore('eventTree', {
 		getEventTree(id:string): EventNamesTreeCollection {
 			return this.items[id]?.tree ?? {};
 		},
-		// getElEventTree(id:string) {
-		// 	return this.items[id]?.elTree;
-		// },
-		removeDestination(id: string) {
+		removeDestinationItemTree(id: string) {
 			delete this.items[id];
 		},
-		clearDestinations() {
+		clearDestinationItemTrees() {
 			this.items = {} as TreeAndSelectionStore;
 		},
 		setSelectionAndBuildItems(destination: AbstractMessageEventBusDestination) {
 			if (!(destination.id in this.items)) {
 				this.items[destination.id] = {
+					destination,
 					tree: new EventNamesTreeCollection(),
 					selectedEvents: new Set<string>(),
 					selectedLevels: new Set<string>(),
@@ -130,48 +158,6 @@ export const useEventTreeStore = defineStore('eventTree', {
 		},
 	},
 });
-
-// export interface ElTreeData {
-//   label: string
-// 	name: string,
-//   children?: ElTreeData[]
-// }
-
-// export function elTreeFromStringList(dottedList: Set<string>) {
-// 	const conversionResult = {
-// 		label: 'root',
-// 		name: 'root',
-// 		children: [],
-// 	} as ElTreeData;
-// 	dottedList.forEach((dottedString: string) => {
-// 		const parts = dottedString.split('.');
-
-// 		let part: string | undefined;
-// 		let children = conversionResult.children;
-// 		let partialName = '';
-// 		while ((part = parts.shift())) {
-// 			if (part) {
-// 				const foundChild = children?.find((e) => e.label === part);
-// 				partialName += part;
-// 				if (foundChild) {
-// 					children = foundChild.children;
-// 				} else {
-// 					const newChild: ElTreeData = {
-// 						label: part,
-// 						name: partialName,
-// 						children: [],
-// 					};
-// 					if (!children) children = [];
-// 					children.push(newChild);
-// 					children = newChild.children;
-// 				}
-// 			}
-// 			partialName += '.';
-// 		}
-// 	});
-// 	return conversionResult;
-// };
-
 
 export function treeCollectionFromStringList(dottedList: Set<string>, selectionList: Set<string> = new Set()) {
 	const conversionResult = new EventNamesTreeCollection();

@@ -1,76 +1,31 @@
 <template>
-	<div>
-		<el-card class="box-card">
-			<template #header>
-				<div class="card-header">
-					<el-row :gutter="20" justify="start">
-						<el-col :span="12">
-							<strong>Webhook Endpoint</strong>
-						</el-col>
-						<el-col :span="12" style="text-align: right">
-							<span v-if="showRemoveConfirm">
-								<el-button class="button" text @click="removeThis">Confirm</el-button>
-								<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
-							</span>
-							<span v-else>
-								<el-button class="button" text @click="toggleRemoveConfirm">Remove</el-button>
-							</span>
-							<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
-						</el-col>
-					</el-row>
-				</div>
-			</template>
-			<template>
-				<div :class="$style.narrowCardBody">
-					<parameter-input-list
-						:parameters="uiDescription"
-						:hideDelete="true"
-						:nodeValues="nodeParameters"
-						:isReadOnly="false"
-						path=""
-						@valueChanged="valueChanged"
-					>
-						<node-credentials
-						:node="node"
-						:readonly="false"
-						@credentialSelected="credentialSelected" />
-					</parameter-input-list>
-					<div class="multi-parameter">
-						<n8n-input-label
-							:class="$style.labelMargins"
-							label="Levels"
-							tooltipText="Select event levels you want to listen to"
-							:bold="true"
-							size="small"
-							:underline="true"
-						></n8n-input-label>
-						<event-level-selection
-							class="collection-parameter"
-							:destinationId="destination.id"
-							@input="onInput"
+	<el-card class="box-card" :class="$style.destinationCard">
+		<div style="padding: 10px">
+				<el-switch
+						v-model="destination.enabled"
+						size="large"
+						@input="onEnabledSwitched($event, destination.id)"
 						/>
-						<n8n-input-label
-							:class="$style.labelMargins"
-							label="Events"
-							tooltipText="Select event names and groups you want to listen to"
-							:bold="true"
-							size="small"
-							:underline="true"
-						></n8n-input-label>
-							<event-tree-selection
-								v-for="(child, index) in treeData.children"
-								class="item collection-parameter"
-								:key="index"
-								:item="child"
-								:destinationId="destination.id"
-								:depth="0"
-								@input="onInput"
-							></event-tree-selection>
-					</div>
-				</div>
-			</template>
+				&nbsp;
+				<span @click="editThis(destination.id)">{{ destination.label }}</span>
+			<div>
+			<el-row :gutter="20" style="margin-top: 20px;">
+				<el-col style="text-align: left;" :span="8">
+					<el-button class="button" text @click="editThis(destination.id)">Edit</el-button>
+				</el-col>
+				<el-col style="text-align: right;" :span="16">
+					<span v-if="showRemoveConfirm">
+						<el-button class="button" text @click="removeThis">Confirm</el-button>
+						<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
+					</span>
+					<span v-else>
+						<el-button class="button" text @click="toggleRemoveConfirm">Remove</el-button>
+					</span>
+				</el-col>
+			</el-row>
+			</div>
+		</div>
 	</el-card>
-	</div>
 </template>
 
 <script lang="ts">
@@ -90,19 +45,21 @@ import { useWorkflowsStore } from '../../stores/workflows';
 import { restApi } from '../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
 import EventLevelSelection from './EventLevelSelection.vue';
-import { MessageEventBusDestinationTypeNames, MessageEventBusDestinationWebhook } from './types';
+import { AbstractMessageEventBusDestination, MessageEventBusDestinationTypeNames, MessageEventBusDestinationWebhook } from './types';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
 import { deepCopy, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import { useUIStore } from '../../stores/ui';
 import Vue from 'vue';
+import { WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY } from '../../constants';
 
 export default mixins(
 	restApi,
 ).extend({
-	name: 'event-destination-settings-webhook',
+	name: 'event-destination-settings-card',
 	props: {
-		destination: MessageEventBusDestinationWebhook,
+		destination: AbstractMessageEventBusDestination,
 	},
 	data() {
 		return {
@@ -127,6 +84,7 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useUIStore,
 			useNDVStore,
 			useWorkflowsStore,
 			useEventTreeStore,
@@ -158,10 +116,19 @@ export default mixins(
 		onInput() {
 			this.unchanged = false;
 		},
+		editThis(destinationId: string) {
+			this.$emit('edit', destinationId);
+		},
+		onEnabledSwitched(state: boolean, destinationId: string) {
+			console.log(state, destinationId);
+			this.valueChanged({name: 'enabled', value: state});
+			this.saveDestination();
+		},
 		valueChanged(parameterData: IUpdateInformation) {
 			this.unchanged = false;
 			const newValue: NodeParameterValue = parameterData.value as string | number;
 			const parameterPath = parameterData.name.startsWith('parameters.') ? parameterData.name.split('.').slice(1).join('.') : parameterData.name;
+			console.log(parameterData, newValue);
 
 			const nodeParameters = deepCopy(this.nodeParameters);
 
@@ -205,11 +172,9 @@ export default mixins(
 		},
 		async removeThis() {
 			this.$emit('remove', this.destination.id);
+			this.uiStore.closeModal(WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 		async saveDestination() {
-			if (this.unchanged) {
-				return;
-			}
 			const data: MessageEventBusDestinationWebhook = {
 				...this.nodeParameters,
 				subscribedEvents: Array.from(this.eventTreeStore.items[this.destination.id].selectedEvents.values()),
@@ -732,6 +697,10 @@ const description = [
 .labelMargins {
 	margin-bottom: 1em;
 	margin-top: 1em;
+}
+
+.destinationCard {
+  width: 340px;
 }
 
 .narrowCardBody {

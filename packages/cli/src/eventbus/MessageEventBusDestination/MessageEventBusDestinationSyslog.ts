@@ -55,6 +55,7 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 	constructor(options: MessageEventBusDestinationSyslogOptions) {
 		super(options);
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.syslog;
+		this.label = options.label ?? 'Syslog Server';
 
 		this.sysLogOptions = {
 			host: options.host ?? 'localhost',

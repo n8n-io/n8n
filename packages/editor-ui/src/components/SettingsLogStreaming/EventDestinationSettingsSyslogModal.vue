@@ -1,12 +1,20 @@
 <template>
-  <el-card class="box-card">
-    <template #header>
-      <div class="card-header">
-				<el-row :gutter="20" justify="start">
+	<Modal
+		:name="modalName"
+		:eventBus="modalBus"
+		width="50%"
+		:center="true"
+		:loading="loading"
+		maxWidth="800px"
+		minHeight="500px"
+		maxHeight="700px"
+	>
+		<template slot="header">
+			<el-row :gutter="20" justify="start">
 					<el-col :span="12">
-						<strong>Syslog Server</strong>
+						Edit &nbsp;<strong>{{ destination.label }}</strong> settings
 					</el-col>
-					<el-col :span="12" style="text-align: right">
+					<el-col :span="11" style="text-align: right">
 						<span v-if="showRemoveConfirm">
 							<el-button class="button" text @click="removeThis">Confirm</el-button>
 							<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
@@ -17,9 +25,8 @@
 						<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
 					</el-col>
 				</el-row>
-      </div>
-    </template>
-		<template>
+		</template>
+		<template slot="content">
 			<div :class="$style.narrowCardBody">
 					<parameter-input-list
 						:parameters="uiDescription"
@@ -29,10 +36,6 @@
 						path=""
 						@valueChanged="valueChanged"
 					>
-						<node-credentials
-						:node="node"
-						:readonly="false"
-						@credentialSelected="credentialSelected" />
 					</parameter-input-list>
 					<div class="multi-parameter">
 						<n8n-input-label
@@ -67,49 +70,8 @@
 							></event-tree-selection>
 					</div>
 				</div>
-			<!-- <el-form :model="form" label-width="120px">
-				<el-form-item label="Enabled">
-					<el-switch v-model="form.enabled" @input="onInput"/>
-				</el-form-item>
-				<el-form-item label="Id" size="small">
-					<el-input v-model="form.id" disabled placeholder="Destination Id" size="small" @input="onInput"/>
-				</el-form-item>
-				<el-form-item label="Host">
-					<el-input v-model="form.host" placeholder="127.0.0.1" @input="onInput"/>
-				</el-form-item>
-				<el-form-item label="Port">
-					<el-input v-model="form.port" placeholder="514" @input="onInput"/>
-				</el-form-item>
-				<el-form-item label="Protocol">
-					<el-radio-group v-model="form.protocol" class="ml-4" @input="onInput">
-						<el-radio label="udp" size="large">UDP</el-radio>
-						<el-radio label="tcp" size="large">TCP</el-radio>
-					</el-radio-group>
-				</el-form-item>
-				<el-form-item label="Levels">
-					<event-level-selection
-					:destinationId="destination.id"
-					@input="onInput"
-				/>
-				</el-form-item>
-				<el-form-item label="Events">
-					<event-tree-selection
-						v-for="(child, index) in treeData.children"
-						class="item"
-						:key="index"
-						:item="child"
-						:destinationId="destination.id"
-						:depth="0"
-						@input="onInput"
-					/>
-				</el-form-item>
-			</el-form>
-			<el-row :gutter="20">
-				<el-col :span="21">&nbsp;</el-col>
-				<el-col :span="2"><el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button></el-col>
-			</el-row> -->
 		</template>
-</el-card>
+	</Modal>
 </template>
 
 <script lang="ts">
@@ -120,7 +82,6 @@ import {
 	Collapse as ElCollapse,
 	CollapseItem as ElCollapseItem,
 } from 'element-ui';
-import Vue from 'vue';
 import { get, set, unset } from 'lodash';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
@@ -129,32 +90,42 @@ import { useNDVStore } from '../../stores/ndv';
 import { useWorkflowsStore } from '../../stores/workflows';
 import { restApi } from '../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
-import ParameterInputList from '@/components/ParameterInputList.vue';
-import NodeCredentials from '@/components/NodeCredentials.vue';
 import EventLevelSelection from './EventLevelSelection.vue';
 import { MessageEventBusDestinationSyslog, MessageEventBusDestinationTypeNames } from './types';
+import ParameterInputList from '@/components/ParameterInputList.vue';
+import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
 import { deepCopy, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import Vue from 'vue';
+import {SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY} from '../../constants';
+import Modal from '@/components/Modal.vue';
+import { useUIStore } from '../../stores/ui';
 
 export default mixins(
 	restApi,
 ).extend({
-	name: 'event-destination-settings-syslog',
+	name: 'event-destination-settings-syslog-modal',
 	props: {
+		modalName: String,
 		destination: MessageEventBusDestinationSyslog,
+		isNew: Boolean,
 	},
 	data() {
 		return {
-			unchanged: true,
+			unchanged: !this.$props.isNew,
 			isOpen: false,
-			// form: this.$props.destination,
+			loading: false,
 			showRemoveConfirm: false,
 			treeData: {} as EventNamesTreeCollection,
 			nodeParameters: {} as MessageEventBusDestinationSyslog,
 			uiDescription: description,
+			modalBus: new Vue(),
+			SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
+			destinationTypeNames: MessageEventBusDestinationTypeNames,
 		};
 	},
 	components: {
+		Modal,
 		ParameterInputList,
 		NodeCredentials,
 		EventTreeSelection,
@@ -167,9 +138,10 @@ export default mixins(
 	},
 	computed: {
 		...mapStores(
+			useUIStore,
+			useEventTreeStore,
 			useNDVStore,
 			useWorkflowsStore,
-			useEventTreeStore,
 		),
 		isFolder() {
 			return true;
@@ -190,7 +162,7 @@ export default mixins(
 	mounted() {
 			// merge destination data with defaults
 			this.nodeParameters = Object.assign(new MessageEventBusDestinationSyslog(), this.destination);
-			// this.ndvStore.activeNodeName = this.destination.id;
+			this.ndvStore.activeNodeName = this.destination.id;
 			this.workflowsStore.addNode(this.node);
 			this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
 		},
@@ -237,11 +209,11 @@ export default mixins(
 			});
 			// console.log(this.node.parameters?.url, this.ndvStore.activeNode?.parameters?.url);
 		},
-		credentialSelected() {
-			this.unchanged = false;
-		},
 		toggleRemoveConfirm() {
 			this.showRemoveConfirm = !this.showRemoveConfirm;
+		},
+		async onRemove(id: string) {
+			this.$emit('remove', this.destination);
 		},
 		async removeThis() {
 			this.$emit('remove', this.destination.id);
@@ -257,6 +229,8 @@ export default mixins(
 			};
 			await this.restApi().makeRestApiRequest('POST', '/eventbus/destination', data);
 			this.unchanged = true;
+			this.eventTreeStore.updateDestination(this.nodeParameters);
+			this.uiStore.closeModal(SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 	},
 });
@@ -358,5 +332,7 @@ const description = [
 
 .narrowCardBody {
 	padding: 0 70px 20px 70px;
+	overflow: auto;
+	max-height: 600px;
 }
 </style>

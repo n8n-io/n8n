@@ -1,27 +1,34 @@
 <template>
-	<div>
-		<el-card class="box-card">
-			<template #header>
-				<div class="card-header">
-					<el-row :gutter="20" justify="start">
-						<el-col :span="12">
-							<strong>Webhook Endpoint</strong>
-						</el-col>
-						<el-col :span="12" style="text-align: right">
-							<span v-if="showRemoveConfirm">
-								<el-button class="button" text @click="removeThis">Confirm</el-button>
-								<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
-							</span>
-							<span v-else>
-								<el-button class="button" text @click="toggleRemoveConfirm">Remove</el-button>
-							</span>
-							<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
-						</el-col>
-					</el-row>
-				</div>
-			</template>
-			<template>
-				<div :class="$style.narrowCardBody">
+	<Modal
+		:name="modalName"
+		:eventBus="modalBus"
+		width="50%"
+		:center="true"
+		:loading="loading"
+		maxWidth="800px"
+		minHeight="500px"
+		maxHeight="700px"
+	>
+		<template slot="header">
+			<!-- <h2 :class="$style.title">Edit Log Destination Settings</h2> -->
+			<el-row :gutter="20" justify="start">
+					<el-col :span="12">
+						Edit &nbsp;<strong>{{ destination.label }}</strong> settings
+					</el-col>
+					<el-col :span="11" style="text-align: right">
+						<span v-if="showRemoveConfirm">
+							<el-button class="button" text @click="removeThis">Confirm</el-button>
+							<el-button class="button" text @click="toggleRemoveConfirm">No, sorry.</el-button>
+						</span>
+						<span v-else>
+							<el-button class="button" text @click="toggleRemoveConfirm">Remove</el-button>
+						</span>
+						<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
+					</el-col>
+				</el-row>
+		</template>
+		<template slot="content">
+			<div :class="$style.narrowCardBody">
 					<parameter-input-list
 						:parameters="uiDescription"
 						:hideDelete="true"
@@ -68,9 +75,8 @@
 							></event-tree-selection>
 					</div>
 				</div>
-			</template>
-	</el-card>
-	</div>
+		</template>
+	</Modal>
 </template>
 
 <script lang="ts">
@@ -96,25 +102,21 @@ import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
 import { deepCopy, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import Vue from 'vue';
+import {WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY} from '../../constants';
+import Modal from '@/components/Modal.vue';
+import { useUIStore } from '../../stores/ui';
 
 export default mixins(
 	restApi,
 ).extend({
-	name: 'event-destination-settings-webhook',
+	name: 'event-destination-settings-webhook-modal',
 	props: {
+		modalName: String,
 		destination: MessageEventBusDestinationWebhook,
-	},
-	data() {
-		return {
-			unchanged: true,
-			isOpen: false,
-			showRemoveConfirm: false,
-			treeData: {} as EventNamesTreeCollection,
-			nodeParameters: {} as MessageEventBusDestinationWebhook,
-			uiDescription: description,
-		};
+		isNew: Boolean,
 	},
 	components: {
+		Modal,
 		ParameterInputList,
 		NodeCredentials,
 		EventTreeSelection,
@@ -125,11 +127,26 @@ export default mixins(
 		ElCollapse,
 		ElCollapseItem,
 	},
+	data() {
+		return {
+			unchanged: !this.$props.isNew,
+			isOpen: false,
+			loading: false,
+			showRemoveConfirm: false,
+			treeData: {} as EventNamesTreeCollection,
+			nodeParameters: {} as MessageEventBusDestinationWebhook,
+			uiDescription: description,
+			modalBus: new Vue(),
+			WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY,
+			destinationTypeNames: MessageEventBusDestinationTypeNames,
+		};
+	},
 	computed: {
 		...mapStores(
+			useUIStore,
+			useEventTreeStore,
 			useNDVStore,
 			useWorkflowsStore,
-			useEventTreeStore,
 		),
 		isFolder() {
 			return true;
@@ -148,9 +165,10 @@ export default mixins(
 		},
 	},
 	mounted() {
+		console.log(this.modalName, this.destination, this.eventTreeStore.eventNames);
 			// merge destination data with defaults
 			this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), this.destination);
-			// this.ndvStore.activeNodeName = this.destination.id;
+			this.ndvStore.activeNodeName = this.destination.id;
 			this.workflowsStore.addNode(this.node);
 			this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
 		},
@@ -188,17 +206,17 @@ export default mixins(
 				}
 			}
 
-			// console.log(parameterData);
-
 			this.nodeParameters = nodeParameters;
 			this.workflowsStore.updateNodeProperties({
 				name: this.node.name,
 				properties: {parameters: this.node.parameters},
 			});
-			// console.log(this.node.parameters?.url, this.ndvStore.activeNode?.parameters?.url);
 		},
 		credentialSelected() {
 			this.unchanged = false;
+		},
+		async onRemove(id: string) {
+			this.$emit('remove', this.destination);
 		},
 		toggleRemoveConfirm() {
 			this.showRemoveConfirm = !this.showRemoveConfirm;
@@ -217,18 +235,29 @@ export default mixins(
 			};
 			await this.restApi().makeRestApiRequest('POST', '/eventbus/destination', data);
 			this.unchanged = true;
+			this.eventTreeStore.updateDestination(this.nodeParameters);
+			this.uiStore.closeModal(WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 	},
 });
+
 
 const description = [
 				{
 					displayName: 'Enabled',
 					name: 'enabled',
 					type: 'boolean',
-					default: true,
+					default: false,
 					noDataExpression: true,
 					description: 'Whether events are actually sent to the destination',
+				},
+				{
+					displayName: 'Label',
+					name: 'label',
+					type: 'string',
+					default: 'Webhook Endpoint',
+					noDataExpression: true,
+					description: 'Custom label',
 				},
 				{
 					displayName: 'Method',
@@ -736,5 +765,17 @@ const description = [
 
 .narrowCardBody {
 	padding: 0 70px 20px 70px;
+	overflow: auto;
+	max-height: 600px;
+}
+.title {
+	font-size: var(--font-size-xl);
+	line-height: var(--font-line-height-regular);
+}
+
+.subtitle {
+	margin-bottom: var(--spacing-s);
+	font-size: var(--font-size-m);
+	line-height: var(--font-line-height-xloose);
 }
 </style>

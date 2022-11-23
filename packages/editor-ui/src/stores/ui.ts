@@ -21,10 +21,12 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
+	SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	VALUE_SURVEY_MODAL_KEY,
 	VERSIONS_MODAL_KEY,
 	VIEWS,
+	WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY,
 	WORKFLOW_ACTIVE_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY, WORKFLOW_SHARE_MODAL_KEY,
 } from "@/constants";
@@ -115,6 +117,14 @@ export const useUIStore = defineStore(STORES.UI, {
 				open: false,
 				curlCommand: '',
 				httpNodeParameters: '',
+			},
+			[WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY]: {
+				open: false,
+				data: undefined,
+			},
+			[SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY]: {
+				open: false,
+				data: undefined,
 			},
 		},
 		modalStack: [],
