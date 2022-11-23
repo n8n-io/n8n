@@ -98,6 +98,10 @@ export default mixins(workflowHelpers).extend({
 
 		addColor(this.editor, this.resolvableSegments);
 
+		this.editor.dispatch({
+			selection: { anchor: this.editor.state.doc.length },
+		});
+
 		this.$emit('change', { value: this.unresolvedExpression, segments: this.displayableSegments });
 	},
 	destroyed() {
