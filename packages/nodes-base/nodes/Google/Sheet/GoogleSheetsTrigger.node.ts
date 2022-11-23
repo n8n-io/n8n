@@ -278,7 +278,7 @@ export class GoogleSheetsTrigger implements INodeType {
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
-		const webhookData = this.getWorkflowStaticData('node');
+		const workflowStaticData = this.getWorkflowStaticData('node');
 		const event = this.getNodeParameter('event', 0) as string;
 
 		const documentId = this.getNodeParameter('documentId', undefined, {
@@ -307,10 +307,10 @@ export class GoogleSheetsTrigger implements INodeType {
 				pageToken = undefined;
 				const lastRevision = +revisions[revisions.length - 1];
 
-				if (lastRevision <= (webhookData.lastRevision as number)) {
+				if (lastRevision <= (workflowStaticData.lastRevision as number)) {
 					return null;
 				} else {
-					webhookData.lastRevision = lastRevision;
+					workflowStaticData.lastRevision = lastRevision;
 				}
 			}
 		} while (pageToken);
@@ -337,11 +337,11 @@ export class GoogleSheetsTrigger implements INodeType {
 			const [rangeFrom, rangeTo] = range.split(':');
 			const keyRange = `${rangeFrom}${keyRow}:${rangeTo}${keyRow}`;
 
-			if (webhookData.lastIndexChecked === undefined) {
+			if (workflowStaticData.lastIndexChecked === undefined) {
 				rangeToCheck = `${rangeFrom}${startIndex}:${rangeTo}`;
-				webhookData.lastIndexChecked = startIndex;
+				workflowStaticData.lastIndexChecked = startIndex;
 			} else {
-				rangeToCheck = `${rangeFrom}${webhookData.lastIndexChecked}:${rangeTo}`;
+				rangeToCheck = `${rangeFrom}${workflowStaticData.lastIndexChecked}:${rangeTo}`;
 			}
 
 			const [columns] = (
@@ -380,7 +380,8 @@ export class GoogleSheetsTrigger implements INodeType {
 					returnData.push(rowData);
 				}
 
-				webhookData.lastIndexChecked = (webhookData.lastIndexChecked as number) + sheetData.length;
+				workflowStaticData.lastIndexChecked =
+					(workflowStaticData.lastIndexChecked as number) + sheetData.length;
 
 				if (Array.isArray(returnData) && returnData.length !== 0) {
 					return [this.helpers.returnJsonArray(returnData)];
@@ -389,6 +390,24 @@ export class GoogleSheetsTrigger implements INodeType {
 		}
 
 		if (event === 'allUpdates') {
+			// const updatedSheetData = await googleSheet.getData(
+			// 	sheetName,
+			// 	options.valueRenderOption as ValueRenderOption,
+			// );
+			// if (workflowStaticData.previousSheetData === undefined) {
+			// 	workflowStaticData.previousSheetData = updatedSheetData;
+			// }
+			// const previousSheetData = workflowStaticData.previousSheetData;
+			// if (updatedSheetData === undefined || updatedSheetData[keyRow - 1] === undefined) {
+			// 	throw new NodeOperationError(
+			// 		this.getNode(),
+			// 		`Could not retrieve the column names from row ${keyRow}`,
+			// 	);
+			// }
+			// const columnNames = updatedSheetData[keyRow - 1];
+			// console.log(columnNames);
+			// console.log(updatedSheetData);
+			// console.log(previousSheetData);
 		}
 
 		return null;
