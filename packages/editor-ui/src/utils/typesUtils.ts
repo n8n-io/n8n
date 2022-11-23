@@ -203,7 +203,6 @@ export const mergeDeep = <T extends object | Primitives>(sources: T[], options?:
 	}
 }, (Array.isArray(sources[0]) ? [] : {}) as T);
 
-
 export const isSchemaTypeObjectOrList = (type: string) => ['object', 'list'].includes(type);
 
 export const getJsonSchema = (input: Optional<Primitives | object>, path = '', key?: string): JsonSchema => {
