@@ -249,7 +249,7 @@ const { subtractedCategories, search } = toRefs(state);
 	justify-content: space-between;
 }
 .categoryTitle {
-	font-weight: 700;
+	font-weight: var(--font-weight-bold);
 	font-size: 11px;
 	line-height: 11px;
 	letter-spacing: 1px;
@@ -303,5 +303,7 @@ const { subtractedCategories, search } = toRefs(state);
 	line-height: var(--font-line-height-regular);
 	border-top: 1px solid #DBDFE7;
 	z-index: 1;
+	// Prevent double borders when the last category is collapsed
+	margin-top: -1px;
 }
 </style>
