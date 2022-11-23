@@ -20,7 +20,7 @@
 
 
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
+import { restApi } from '@/mixins/restApi';
 
 export default mixins(
 	restApi,

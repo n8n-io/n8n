@@ -113,12 +113,12 @@ import {
 	USAGE_MODE_BUILD_BE_SERVICES,
 	USAGE_MODE_CONNECT_TO_DB,
 } from '../constants';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { showMessage } from '@/components/mixins/showMessage';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { showMessage } from '@/mixins/showMessage';
 import Modal from './Modal.vue';
 import { IFormInputs, IPersonalizationLatestVersion, IPersonalizationSurveyAnswersV3, IUser } from '@/Interface';
 import Vue from 'vue';
-import { getAccountAge } from '@/stores/userHelpers';
+import { getAccountAge } from '@/utils';
 import { GenericValue } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';

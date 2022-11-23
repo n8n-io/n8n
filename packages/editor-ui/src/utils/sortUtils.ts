@@ -1,3 +1,7 @@
+/*
+	Constants and utility functions used for searching for node types in node creator component
+*/
+
 // based on https://github.com/forrestthewoods/lib_fts/blob/master/code/fts_fuzzy_match.js
 
 const SEQUENTIAL_BONUS = 30; // bonus for adjacent matches

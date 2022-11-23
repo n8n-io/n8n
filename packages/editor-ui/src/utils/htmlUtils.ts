@@ -1,51 +1,9 @@
 import xss, { friendlyAttrValue } from 'xss';
 import { Primitives, Optional, JsonSchema } from "@/Interface";
 
-// Holds weird date formats that we encounter when working with strings
-// Should be extended as new cases are found
-const CUSTOM_DATE_FORMATS = [
-	/\d{1,2}-\d{1,2}-\d{4}/, // Should handle dash separated dates with year at the end
-	/\d{1,2}\.\d{1,2}\.\d{4}/, // Should handle comma separated dates
-];
-
-export const isValidDate = (input: string | number | Date): boolean => {
-	try {
-		// Try to construct date object using input
-		const date = new Date(input);
-		// This will not fail for wrong dates so have to check like this:
-		if (date.getTime() < 0) {
-			return false;
-		} else if (date.toString() !== 'Invalid Date') {
-			return true;
-		} else if (typeof input === 'string') {
-			// Try to cover edge cases with regex
-			for (const regex of CUSTOM_DATE_FORMATS) {
-				if (input.match(regex)) {
-					return true;
-				}
-			}
-			return false;
-		}
-		return false;
-	} catch (e) {
-		return false;
-	}
-};
-
-export const omit = (keyToOmit: string, { [keyToOmit]: _, ...remainder }) => remainder;
-
-export function isObjectLiteral(maybeObject: unknown): maybeObject is { [key: string]: string } {
-	return typeof maybeObject === 'object' && maybeObject !== null && !Array.isArray(maybeObject);
-}
-
-export function isJsonKeyObject(item: unknown): item is {
-	json: unknown;
-	[otherKeys: string]: unknown;
-} {
-	if (!isObjectLiteral(item)) return false;
-
-	return Object.keys(item).includes('json');
-}
+/*
+	Constants and utility functions that help in HTML, CSS and DOM manipulation
+*/
 
 export function sanitizeHtml(dirtyHtml: string) {
 	const allowedAttributes = ['href','name', 'target', 'title', 'class', 'id'];
@@ -77,22 +35,59 @@ export function sanitizeHtml(dirtyHtml: string) {
 	return sanitizedHtml;
 }
 
-export const isEmpty = (value?: unknown): boolean => {
-	if (!value && value !== 0) return true;
-	if(Array.isArray(value)){
-		if(!value.length) return true;
-		return value.every(isEmpty);
-	}
-	if (typeof value === 'object') {
-		return Object.values(value).every(isEmpty);
-	}
-	return false;
-};
+export function getStyleTokenValue(name: string): string {
+	const style = getComputedStyle(document.body);
+	return style.getPropertyValue(name);
+}
 
-export const intersection = <T>(...arrays: T[][]): T[] => {
-	const [a, b, ...rest] = arrays;
-	const ab = a.filter(v => b.includes(v));
-	return [...new Set(rest.length ? intersection(ab, ...rest) : ab)];
+export function setPageTitle(title: string) {
+	window.document.title = title;
+}
+
+export function convertRemToPixels(rem: string) {
+	return parseInt(rem, 10) * parseFloat(getComputedStyle(document.documentElement).fontSize);
+}
+
+export function isChildOf(parent: Element, child: Element): boolean {
+	if (child.parentElement === null) {
+		return false;
+	}
+	if (child.parentElement === parent) {
+		return true;
+	}
+
+	return isChildOf(parent, child.parentElement);
+}
+
+// Holds weird date formats that we encounter when working with strings
+// Should be extended as new cases are found
+const CUSTOM_DATE_FORMATS = [
+	/\d{1,2}-\d{1,2}-\d{4}/, // Should handle dash separated dates with year at the end
+	/\d{1,2}\.\d{1,2}\.\d{4}/, // Should handle comma separated dates
+];
+
+export const isValidDate = (input: string | number | Date): boolean => {
+	try {
+		// Try to construct date object using input
+		const date = new Date(input);
+		// This will not fail for wrong dates so have to check like this:
+		if (date.getTime() < 0) {
+			return false;
+		} else if (date.toString() !== 'Invalid Date') {
+			return true;
+		} else if (typeof input === 'string') {
+			// Try to cover edge cases with regex
+			for (const regex of CUSTOM_DATE_FORMATS) {
+				if (input.match(regex)) {
+					return true;
+				}
+			}
+			return false;
+		}
+		return false;
+	} catch (e) {
+		return false;
+	}
 };
 
 export const checkExhaustive = (value: never): never => {
