@@ -24,7 +24,7 @@ export async function rocketchatApiRequest(
 	if (Object.keys(options.body).length === 0) {
 		delete options.body;
 	}
-	return await this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'rocketchatApi', options);
 }
 
 // tslint:disable-next-line:no-any
