@@ -46,10 +46,12 @@
 					>"{{ node.key }}"</span>
 					</template>
 					<template #nodeValue="{ node }">
+						<span v-if="isNaN(node.index)">{{ getContent(node.content) }}</span>
 						<span
+							v-else
 							data-target="mappable"
 							:data-value="getJsonParameterPath(node.path)"
-							:data-name="node.key"
+							:data-name="getListItemName(node.path)"
 							:data-path="node.path"
 							:data-depth="node.level"
 							:class="{
@@ -202,6 +204,9 @@ export default mixins(externalHooks).extend({
 		},
 		getContent(value: unknown): string {
 			return isString(value) ? `"${ value }"` : JSON.stringify(value);
+		},
+		getListItemName(path: string): string {
+			return path.replace(/^(\["?\d"?]\.?)/g, '');
 		},
 	},
 });
