@@ -62,69 +62,71 @@
 					/>
 				</div>
 			</div>
-			<n8n-heading tag="h1" class="mb-2xl mt-3xl" size="medium">User synchronization</n8n-heading>
-			<div :class="$style.syncTable">
-				<el-table
-					v-loading="loadingTable"
-					:border="true"
-					:stripe="true"
-					:data="dataTable"
-					:cell-style="cellClassStyle"
-					style="width: 100%"
-					height="250"
-					:key="tableKey"
-				>
-					<el-table-column
-						prop="status"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.status')"
+			<div v-show="loginEnabled && syncEnabled">
+				<n8n-heading tag="h1" class="mb-2xl mt-3xl" size="medium">User synchronization</n8n-heading>
+				<div :class="$style.syncTable">
+					<el-table
+						v-loading="loadingTable"
+						:border="true"
+						:stripe="true"
+						:data="dataTable"
+						:cell-style="cellClassStyle"
+						style="width: 100%"
+						height="250"
+						:key="tableKey"
 					>
-					</el-table-column>
-					<el-table-column
-						prop="endedAt"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.endedAt')"
-					>
-					</el-table-column>
-					<el-table-column
-						prop="runMode"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.runMode')"
-					>
-					</el-table-column>
-					<el-table-column
-						prop="runTime"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.runTime')"
-					>
-					</el-table-column>
-					<el-table-column
-						prop="details"
-						:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
-					>
-					</el-table-column>
-					<template #append>
-					<infinite-loading
-						@infinite="getLdapSyncronizations"
-						force-use-infinite-wrapper=".el-table__body-wrapper"
-					>
-					</infinite-loading>
-				</template>
-				</el-table>
-			</div>
-			<div class="pb-3xl">
-				<n8n-button
-					:label="$locale.baseText('settings.ldap.dryRun')"
-					type="secondary"
-					size="large"
-					class="mr-s"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingDryRun"
-					@click="onDryRunClick"
-				/>
-				<n8n-button
-					:label="$locale.baseText('settings.ldap.synchronizeNow')"
-					size="large"
-					:disabled="hasAnyChanges || !readyToSubmit"
-					:loading="loadingLiveRun"
-					@click="onLiveRunClick"
-				/>
+						<el-table-column
+							prop="status"
+							:label="$locale.baseText('settings.ldap.syncronizationTable.column.status')"
+						>
+						</el-table-column>
+						<el-table-column
+							prop="endedAt"
+							:label="$locale.baseText('settings.ldap.syncronizationTable.column.endedAt')"
+						>
+						</el-table-column>
+						<el-table-column
+							prop="runMode"
+							:label="$locale.baseText('settings.ldap.syncronizationTable.column.runMode')"
+						>
+						</el-table-column>
+						<el-table-column
+							prop="runTime"
+							:label="$locale.baseText('settings.ldap.syncronizationTable.column.runTime')"
+						>
+						</el-table-column>
+						<el-table-column
+							prop="details"
+							:label="$locale.baseText('settings.ldap.syncronizationTable.column.details')"
+						>
+						</el-table-column>
+						<template #append>
+						<infinite-loading
+							@infinite="getLdapSyncronizations"
+							force-use-infinite-wrapper=".el-table__body-wrapper"
+						>
+						</infinite-loading>
+					</template>
+					</el-table>
+				</div>
+				<div class="pb-3xl">
+					<n8n-button
+						:label="$locale.baseText('settings.ldap.dryRun')"
+						type="secondary"
+						size="large"
+						class="mr-s"
+						:disabled="hasAnyChanges || !readyToSubmit"
+						:loading="loadingDryRun"
+						@click="onDryRunClick"
+					/>
+					<n8n-button
+						:label="$locale.baseText('settings.ldap.synchronizeNow')"
+						size="large"
+						:disabled="hasAnyChanges || !readyToSubmit"
+						:loading="loadingLiveRun"
+						@click="onLiveRunClick"
+					/>
+				</div>
 			</div>
 		</div>
 </template>
@@ -199,6 +201,7 @@ export default mixins(showMessage).extend({
 			readyToSubmit: false,
 			page: 0,
 			loginEnabled: false,
+			syncEnabled: false,
 		};
 	},
 	async mounted() {
@@ -237,6 +240,9 @@ export default mixins(showMessage).extend({
 		onInput(input: { name: string, value: string | number | boolean }) {
 			if (input.name === 'loginEnabled' && typeof input.value === 'boolean') {
 				this.loginEnabled = input.value;
+			}
+			if (input.name === 'syncronizationEnabled' && typeof input.value === 'boolean') {
+				this.syncEnabled = input.value;
 			}
 			this.hasAnyChanges = true;
 		},
@@ -378,6 +384,7 @@ export default mixins(showMessage).extend({
 			try {
 				this.adConfig = await this.settingsStore.getLdapConfig();
 				this.loginEnabled = this.adConfig.loginEnabled;
+				this.syncEnabled = this.adConfig.syncronizationEnabled;
 				this.formInputs = [
 					{
 						name: 'loginEnabled',
