@@ -76,13 +76,15 @@ export default mixins(workflowHelpers).extend({
 				// console.log(`content: ${this.unresolvedExpression} // delay: ${delay} // errorsInSuccession: ${this.errorsInSuccession}`);
 
 				setTimeout(() => {
+					this.editor?.focus();
+				});
+
+				setTimeout(() => {
 					this.$emit('change', {
 						value: this.unresolvedExpression,
 						segments: this.displayableSegments,
 					});
 				}, delay);
-
-				this.$nextTick(() => this.editor?.focus());
 			}),
 		];
 
