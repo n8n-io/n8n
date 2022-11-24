@@ -36,7 +36,7 @@ export async function twilioApiRequest(
 		json: true,
 	};
 
-	return await this.helpers.requestWithAuthentication.call(this, 'twilioApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'twilioApi', options);
 }
 
 const XML_CHAR_MAP: { [key: string]: string } = {

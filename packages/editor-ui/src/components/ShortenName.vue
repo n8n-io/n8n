@@ -6,7 +6,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import { shorten } from "./helpers";
+import { shorten } from "@/utils";
 
 const DEFAULT_WORKFLOW_NAME_LIMIT = 25;
 const WORKFLOW_NAME_END_COUNT_TO_KEEP = 4;

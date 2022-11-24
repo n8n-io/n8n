@@ -45,7 +45,7 @@ import mixins from "vue-typed-mixins";
 
 import { IExecutionResponse, IExecutionsSummary } from "../../../Interface";
 
-import { titleChange } from "@/components/mixins/titleChange";
+import { titleChange } from "@/mixins/titleChange";
 
 import ShortenName from "@/components/ShortenName.vue";
 import ReadOnly from "@/components/MainHeader/ExecutionDetails/ReadOnly.vue";

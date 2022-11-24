@@ -1,5 +1,4 @@
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -9,9 +8,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import express from 'express';
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import _, { cloneDeep } from 'lodash';
 import { BinaryDataManager } from 'n8n-core';
 import {
+	deepCopy,
 	IDataObject,
 	IWorkflowBase,
 	JsonObject,
@@ -172,10 +171,8 @@ executionsController.get(
 					userId: req.user.id,
 					filter: req.query.filter,
 				});
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					`Parameter "filter" contained invalid JSON string.`,
-					500,
-					500,
 				);
 			}
 		}
@@ -261,7 +258,7 @@ executionsController.get(
 			query = query.andWhere(filter);
 		}
 
-		const countFilter = cloneDeep(filter ?? {});
+		const countFilter = deepCopy(filter ?? {});
 		countFilter.id = Not(In(executingWorkflowIds));
 
 		const executions = await query.getMany();
@@ -363,10 +360,8 @@ executionsController.post(
 					executionId,
 				},
 			);
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.NotFoundError(
 				`The execution with the ID "${executionId}" does not exist.`,
-				404,
-				404,
 			);
 		}
 
@@ -485,10 +480,8 @@ executionsController.post(
 					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
 				}
 			} catch (error) {
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					`Parameter "filter" contained invalid JSON string.`,
-					500,
-					500,
 				);
 			}
 		}

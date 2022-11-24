@@ -60,9 +60,9 @@ import TemplatesView from './TemplatesView.vue';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
 
 import { ITemplatesWorkflow, ITemplatesWorkflowFull } from '@/Interface';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import mixins from 'vue-typed-mixins';
-import { setPageTitle } from '@/components/helpers';
+import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useTemplatesStore } from '@/stores/templates';

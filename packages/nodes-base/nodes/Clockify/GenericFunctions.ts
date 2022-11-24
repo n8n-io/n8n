@@ -28,7 +28,7 @@ export async function clockifyApiRequest(
 		json: true,
 		useQuerystring: true,
 	};
-	return await this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'clockifyApi', options);
 }
 
 export async function clockifyApiRequestAllItems(

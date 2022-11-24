@@ -65,7 +65,7 @@
 </template>
 
 <script lang="ts">
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { IUser } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 

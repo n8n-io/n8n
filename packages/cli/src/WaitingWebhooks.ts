@@ -44,21 +44,13 @@ export class WaitingWebhooks {
 		const execution = await Db.collections.Execution.findOne(executionId);
 
 		if (execution === undefined) {
-			throw new ResponseHelper.ResponseError(
-				`The execution "${executionId} does not exist.`,
-				404,
-				404,
-			);
+			throw new ResponseHelper.NotFoundError(`The execution "${executionId} does not exist.`);
 		}
 
 		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
 
 		if (fullExecutionData.finished || fullExecutionData.data.resultData.error) {
-			throw new ResponseHelper.ResponseError(
-				`The execution "${executionId} has finished already.`,
-				409,
-				409,
-			);
+			throw new ResponseHelper.ConflictError(`The execution "${executionId} has finished already.`);
 		}
 
 		return this.startExecution(httpMethod, path, fullExecutionData, req, res);
@@ -107,7 +99,7 @@ export class WaitingWebhooks {
 		try {
 			workflowOwner = await getWorkflowOwner(workflowData.id!.toString());
 		} catch (error) {
-			throw new ResponseHelper.ResponseError('Could not find workflow', undefined, 404);
+			throw new ResponseHelper.NotFoundError('Could not find workflow');
 		}
 
 		const additionalData = await WorkflowExecuteAdditionalData.getBase(workflowOwner.id);
@@ -128,13 +120,13 @@ export class WaitingWebhooks {
 			// If no data got found it means that the execution can not be started via a webhook.
 			// Return 404 because we do not want to give any data if the execution exists or not.
 			const errorMessage = `The execution "${executionId}" with webhook suffix path "${path}" is not known.`;
-			throw new ResponseHelper.ResponseError(errorMessage, 404, 404);
+			throw new ResponseHelper.NotFoundError(errorMessage);
 		}
 
 		const workflowStartNode = workflow.getNode(lastNodeExecuted);
 
 		if (workflowStartNode === null) {
-			throw new ResponseHelper.ResponseError('Could not find node to process webhook.', 404, 404);
+			throw new ResponseHelper.NotFoundError('Could not find node to process webhook.');
 		}
 
 		const runExecutionData = fullExecutionData.data;

@@ -1,16 +1,10 @@
 import { Application } from 'express';
-import { JwtFromRequestFunction } from 'passport-jwt';
 import type { ActiveWorkflowRunner } from '@/ActiveWorkflowRunner';
 import type { IExternalHooksClass, IPersonalizationSurveyAnswers } from '@/Interfaces';
 
 export interface JwtToken {
 	token: string;
 	expiresIn: number;
-}
-
-export interface JwtOptions {
-	secretOrKey: string;
-	jwtFromRequest: JwtFromRequestFunction;
 }
 
 export interface JwtPayload {

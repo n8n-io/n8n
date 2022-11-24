@@ -6,8 +6,8 @@ const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
 
-describe('Authentication flow', () => {
-	it('should sign user up', () => {
+describe('Authentication', () => {
+	it('should setup owner', () => {
 		cy.signup(username, firstName, lastName, password);
 	});
 

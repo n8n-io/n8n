@@ -23,7 +23,7 @@
     "dev": "pnpm watch",
     "build": "tsc --noEmit",
     "build-node-dev": "tsc",
-    "format": "prettier **/**.ts --write",
+    "format": "prettier --write . --ignore-path ../../.prettierignore",
     "lint": "eslint .",
     "lintfix": "eslint . --fix",
     "postpack": "rm -f oclif.manifest.json",

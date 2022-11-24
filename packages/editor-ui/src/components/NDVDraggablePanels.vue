@@ -48,7 +48,7 @@ import {
 	MAIN_NODE_PANEL_WIDTH,
 } from '@/constants';
 import mixins from 'vue-typed-mixins';
-import { debounceHelper } from './mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useNDVStore } from '@/stores/ndv';
 import { nodePanelType } from '@/Interface';

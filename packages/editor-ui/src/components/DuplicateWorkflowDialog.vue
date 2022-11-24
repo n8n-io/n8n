@@ -42,11 +42,11 @@ import Vue from "vue";
 import mixins from "vue-typed-mixins";
 
 import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from "@/constants";
-import { workflowHelpers } from "@/components/mixins/workflowHelpers";
-import { showMessage } from "@/components/mixins/showMessage";
+import { workflowHelpers } from "@/mixins/workflowHelpers";
+import { showMessage } from "@/mixins/showMessage";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import Modal from "./Modal.vue";
-import {restApi} from "@/components/mixins/restApi";
+import {restApi} from "@/mixins/restApi";
 import { mapStores } from "pinia";
 import { useSettingsStore } from "@/stores/settings";
 import { useWorkflowsStore } from "@/stores/workflows";

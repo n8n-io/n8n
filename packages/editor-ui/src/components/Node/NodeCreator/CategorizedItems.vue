@@ -94,8 +94,8 @@
 import Vue, { PropType } from 'vue';
 import camelcase from 'lodash.camelcase';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { globalLinkActions } from '@/components/mixins/globalLinkActions';
+import { externalHooks } from '@/mixins/externalHooks';
+import { globalLinkActions } from '@/mixins/globalLinkActions';
 
 import mixins from 'vue-typed-mixins';
 import ItemIterator from './ItemIterator.vue';
@@ -103,10 +103,8 @@ import NoResults from './NoResults.vue';
 import SearchBar from './SearchBar.vue';
 import { INodeCreateElement, INodeItemProps, ISubcategoryItemProps, ICategoriesWithNodes, ICategoryItemProps, INodeFilterType } from '@/Interface';
 import { WEBHOOK_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, ALL_NODE_FILTER, TRIGGER_NODE_FILTER, REGULAR_NODE_FILTER, NODE_TYPE_COUNT_MAPPER } from '@/constants';
-import { matchesNodeType, matchesSelectType } from './helpers';
 import { BaseTextKey } from '@/plugins/i18n';
-import { intersection } from '@/utils';
-import { sublimeSearch } from './sortUtils';
+import { intersection, sublimeSearch, matchesNodeType, matchesSelectType  } from '@/utils';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useRootStore } from '@/stores/n8nRootStore';
