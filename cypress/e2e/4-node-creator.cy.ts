@@ -1,6 +1,7 @@
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from "../constants";
 import { randFirstName, randLastName } from "@ngneat/falso";
 import { NodeCreator } from '../pages/features/nodeCreator';
+import { INodeTypeDescription } from '../../packages/workflow';
 
 const username = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
@@ -10,6 +11,10 @@ const nodeCreatorFeature = new NodeCreator();
 
 describe('Node Creator', () => {
 	beforeEach(() => {
+		cy.intercept('GET', '/types/nodes.json', req => {
+			['etag', 'if-none-match', 'if-modified-since'].forEach(header => {delete req.headers[header]});
+		}).as('nodesIntercept')
+
 		cy.signup(username, firstName, lastName, password);
 
 		cy.on('uncaught:exception', (err, runnable) => {
@@ -24,7 +29,6 @@ describe('Node Creator', () => {
 
 	it('should open node creator on trigger tab if no trigger is on canvas', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
-		nodeCreatorFeature.getters.nodeCreator().parent('.node-creator-scrim').should('have.class', 'node-creator-scrim');
 
 		nodeCreatorFeature.getters.nodeCreator().contains('When should this workflow run?').should('be.visible');
 
@@ -69,7 +73,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.searchBar().find('input').should('be.empty')
 	})
 
-	it.only('should add manul trigger node', () => {
+	it('should add manul trigger node', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 		nodeCreatorFeature.getters.getCreatorItem('Manually').click();
 
@@ -81,5 +85,31 @@ describe('Node Creator', () => {
 
 		// TODO: Replace once we have canvas feature utils
 		cy.get('div').contains("On clicking 'execute'").should('exist');
+	})
+
+	it('check if non-core nodes are rendered all nodes', () => {
+		cy.wait('@nodesIntercept').then((interception) => {
+			const nodes = interception.response?.body as INodeTypeDescription[];
+
+			const categorizedNodes = nodeCreatorFeature.actions.categorizeNodes(nodes);
+			nodeCreatorFeature.getters.plusButton().click();
+			nodeCreatorFeature.getters.nodeCreatorTabs().contains('All').click();
+
+			const categories = Object.keys(categorizedNodes);
+			categories.forEach((category: string) => {
+				// Core Nodes contains subcategories which we'll test separately
+				if(category === 'Core Nodes') return;
+
+				nodeCreatorFeature.getters.categorizedItems().contains(category).click()
+
+				// Check if all nodes are present
+				categorizedNodes[category].forEach((node: INodeTypeDescription) => {
+					if(node.hidden) return;
+					nodeCreatorFeature.getters.categorizedItems().contains(node.displayName).should('exist');
+				})
+
+				nodeCreatorFeature.getters.categorizedItems().contains(category).click()
+			})
+		})
 	})
 });

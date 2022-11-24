@@ -1,4 +1,5 @@
 import { BasePage } from "../base";
+import { INodeTypeDescription } from '../../packages/workflow';
 
 export class NodeCreator extends BasePage {
 	url = '/workflow/new';
@@ -24,5 +25,23 @@ export class NodeCreator extends BasePage {
 		selectNthNode: (n: number) => {
 			this.getters.getNthCreatorItem(n).click();
 		},
+		categorizeNodes: (nodes: INodeTypeDescription[]) => {
+			const categorizedNodes = nodes.reduce((acc, node) => {
+				const categories = (node?.codex?.categories || []).map((category: string) => category.trim());
+
+				categories.forEach((category: {[key: string]: INodeTypeDescription[]}) => {
+					// Node creator should show only the latest version of a node
+					const newerVersion = nodes.find((n: INodeTypeDescription) => n.name === node.name && (n.version > node.version || Array.isArray(n.version)));
+
+					if (acc[category] === undefined) {
+						acc[category] = [];
+					}
+					acc[category].push(newerVersion ?? node);
+				});
+				return acc;
+			}, {})
+
+			return categorizedNodes;
+		}
 	};
 }
