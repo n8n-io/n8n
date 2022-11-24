@@ -15,7 +15,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "vite build",
-    "build:vue:typecheck": "vue-tsc --emitDeclarationOnly",
+    "typecheck": "vue-tsc --emitDeclarationOnly",
     "test": "vitest run",
     "test:ci": "vitest run --coverage",
     "test:dev": "vitest",
@@ -69,7 +69,7 @@
     "vue-loader": "^15.9.7",
     "vue-property-decorator": "^9.1.2",
     "vue-template-compiler": "^2.7",
-    "vue-tsc": "^0.34.8",
+    "vue-tsc": "^0.35.0",
     "vue2-boring-avatars": "0.3.4",
     "webpack": "^4.46.0"
   },
