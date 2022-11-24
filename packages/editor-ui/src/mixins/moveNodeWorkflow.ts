@@ -1,6 +1,6 @@
 import mixins from 'vue-typed-mixins';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
-import { getMousePosition } from '@/utils';
+import { getMousePosition } from '@/utils/nodeViewUtils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 
