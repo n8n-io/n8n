@@ -10,8 +10,10 @@ import {
 import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
+import { SheetRangeData, ValueRenderOption } from './v2/helpers/GoogleSheets.types';
 
 import * as XLSX from 'xlsx';
+import { isEqual } from 'lodash';
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -309,7 +311,6 @@ export class GoogleSheetsTrigger implements INodeType {
 			} else {
 				pageToken = undefined;
 				const lastRevision = +revisions[revisions.length - 1]['id'];
-				console.log(lastRevision, previousRevision);
 				if (lastRevision <= previousRevision) {
 					return null;
 				} else {
@@ -368,20 +369,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			);
 
 			if (Array.isArray(sheetData)) {
-				const returnData: IDataObject[] = [];
-
-				for (let rowIndex = 0; rowIndex < sheetData.length; rowIndex++) {
-					const rowData: IDataObject = {};
-
-					for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
-						const columnName = columns[columnIndex];
-						const cellValue = sheetData[rowIndex][columnIndex] || '';
-
-						rowData[columnName] = cellValue;
-					}
-
-					returnData.push(rowData);
-				}
+				const returnData = arrayOfArraysToJson(sheetData, columns);
 
 				workflowStaticData.lastIndexChecked =
 					(workflowStaticData.lastIndexChecked as number) + sheetData.length;
@@ -393,35 +381,87 @@ export class GoogleSheetsTrigger implements INodeType {
 		}
 
 		if (event === 'allUpdates') {
-			const data = await getRevisionFile.call(
+			const currentData = (await googleSheet.getData(
+				sheetName,
+				options.valueRenderOption as ValueRenderOption,
+			)) as string[][];
+
+			// const currentData = [
+			// 	['id', 'name', 'data'],
+			// 	[1, 'Jon', 'A'],
+			// 	[2, 'Ian', 'B'],
+			// 	[3, 'Ron', 'C'],
+			// 	[4, 'Sem', 'D'],
+			// 	[5, 'Hanna', 'A'],
+			// 	[6, 'Ian', 'B'],
+			// 	[7, 'Ron', 'C'],
+			// 	[8, 'Sem', 'D'],
+			// 	[9, 'Anna', 'E'],
+			// ];
+
+			if (previousRevision === undefined) {
+				const zeroBasedKeyRow = keyRow - 1;
+				const columns = currentData[zeroBasedKeyRow];
+				currentData.splice(zeroBasedKeyRow, 1); // Remove key row
+				const returnData = arrayOfArraysToJson(currentData, columns);
+
+				if (Array.isArray(returnData) && returnData.length !== 0) {
+					return [this.helpers.returnJsonArray(returnData)];
+				}
+			}
+
+			const previousRevisionBinaryData = await getRevisionFile.call(
 				this,
 				documentId,
 				workflowStaticData.lastRevision as number,
 			);
 
-			if (previousRevision === undefined) {
-				//read binary, select sheet, convert data to json
-				const workbook = XLSX.read(data, { type: 'buffer', sheets: [sheetName] });
-				const sheet = workbook.Sheets[sheetName];
-				// const sheetData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
-
-				console.log(sheet, Object.keys(workbook.Sheets));
-			}
-
-			// temp --------------------
-			const newItem: INodeExecutionData = {
-				json: {},
-				binary: {},
-			};
-
-			newItem.binary!['data'] = await this.helpers.prepareBinaryData(
-				data as unknown as Buffer,
-				'google-sheets.xlsx',
-				'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			const previousRevisionSheetData = sheetBinaryToArrayOfArrays(
+				previousRevisionBinaryData,
+				sheetName,
 			);
+			// const previousRevisionSheetData = [
+			// 	['id', 'name', 'data', 'gg'],
+			// 	[1, 'Jon', 'A'],
+			// 	[2, 'Ian', 'B'],
+			// 	[3, 'Ron', 'CCC'],
+			// 	[4, 'Sem', 'D'],
+			// 	[1, 'testing', 'A'],
+			// 	[2, 'Ian', 'B'],
+			// 	[3, 'Ron', 'C'],
+			// 	[4, 'Sem', 'D'],
+			// 	[5, 'Anna', 'E'],
+			// 	[6, 'Paula', 'F'],
+			// 	[7, 'Sem', 'G'],
+			// 	[8, 'Miriam', 'H'],
+			// 	[9, 'henry', 'HH'],
+			// 	[10, 'mmm', 'l'],
+			// 	[11, 'kkk', 1, '', ''],
+			// 	[12, 'mine', 1112, '', ''],
+			// 	[444, 'rta', 5, '', ''],
+			// 	[5, 'tt', 't', 'gg', ''],
+			// 	[8, 'ttt', 'yy', 'jj', ''],
+			// ];
 
-			return [[newItem]];
 			// temp --------------------
+			// const newItem: INodeExecutionData = {
+			// 	json: { data: previousRevisionSheetData },
+			// 	binary: {},
+			// };
+
+			// potentialy return previous revision file
+			// newItem.binary!['data'] = await this.helpers.prepareBinaryData(
+			// 	previousRevisionBinaryData,
+			// 	'google-sheets.xlsx',
+			// 	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+			// );
+			// temp --------------------
+
+			return [
+				this.helpers.returnJsonArray(
+					compareRevisions(previousRevisionSheetData, currentData, keyRow),
+				),
+			];
 		}
 
 		return null;
@@ -458,4 +498,57 @@ async function getRevisionFile(this: IPollFunctions, documentId: string, revisio
 	);
 
 	return Buffer.from(response.body as string);
+}
+
+function sheetBinaryToArrayOfArrays(data: Buffer, sheetName: string) {
+	const workbook = XLSX.read(data, { type: 'buffer', sheets: [sheetName] });
+	const sheet = workbook.Sheets[sheetName];
+	const sheetData: string[][] = sheet['!ref']
+		? XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false })
+		: [];
+
+	return sheetData.filter((row) => row.filter((cell) => cell !== '').length);
+}
+
+function arrayOfArraysToJson(sheetData: SheetRangeData, columns: (string | number)[]) {
+	const returnData: IDataObject[] = [];
+
+	for (let rowIndex = 0; rowIndex < sheetData.length; rowIndex++) {
+		const rowData: IDataObject = {};
+
+		for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
+			const columnName = columns[columnIndex];
+			const cellValue = sheetData[rowIndex][columnIndex] || '';
+
+			rowData[columnName] = cellValue;
+		}
+
+		returnData.push(rowData);
+	}
+
+	return returnData;
+}
+
+function compareRevisions(previous: SheetRangeData, current: SheetRangeData, keyRow: number) {
+	const [dataLength, columns] =
+		current.length > previous.length
+			? [current.length, ['row_number', ...current[keyRow - 1]]]
+			: [previous.length, ['row_number', ...previous[keyRow - 1]]];
+	const diffData: SheetRangeData = [];
+
+	for (let i = 0; i < dataLength; i++) {
+		if (i === keyRow - 1) {
+			continue;
+		}
+		if (isEqual(previous[i], current[i])) {
+			continue;
+		}
+		if (current[i] === undefined) {
+			diffData.push([i]);
+		} else {
+			diffData.push([i, ...current[i]]);
+		}
+	}
+
+	return arrayOfArraysToJson(diffData, columns);
 }
