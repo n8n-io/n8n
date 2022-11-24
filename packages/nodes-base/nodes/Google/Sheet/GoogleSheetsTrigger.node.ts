@@ -10,10 +10,14 @@ import {
 import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
-import { SheetDataRow, SheetRangeData } from './v2/helpers/GoogleSheets.types';
 
-import * as XLSX from 'xlsx';
-import { isEqual } from 'lodash';
+import {
+	arrayOfArraysToJson,
+	compareRevisions,
+	getRevisionFile,
+	sheetBinaryToArrayOfArrays,
+} from './GoogleSheetsTrigger.utils';
+import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
 
 const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -71,21 +75,42 @@ export class GoogleSheetsTrigger implements INodeType {
 				default: 'oAuth2',
 			},
 			{
-				displayName: 'Event',
+				displayName: 'Watch for ...',
 				name: 'event',
 				type: 'options',
 				options: [
 					{
-						name: 'Row Added',
-						value: 'rowAdded',
-					},
-					{
 						name: 'All Updates',
 						value: 'allUpdates',
+					},
+					{
+						name: 'Column Changes',
+						value: 'columnChanges',
+					},
+					{
+						name: 'Row Added',
+						value: 'rowAdded',
 					},
 				],
 				default: 'rowAdded',
 				required: true,
+			},
+			{
+				displayName: 'Column Names or IDs',
+				name: 'fieldId',
+				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsDependsOn: ['sheetName.value'],
+					loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
+				},
+				default: [],
+				displayOptions: {
+					show: {
+						event: ['columnChanges'],
+					},
+				},
 			},
 			{
 				displayName: 'Document',
@@ -142,7 +167,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			},
 			{
 				displayName: 'Sheet',
-				name: 'sheetId',
+				name: 'sheetName',
 				type: 'resourceLocator',
 				default: { mode: 'list', value: '' },
 				// default: '', //empty string set to progresivly reveal fields
@@ -192,42 +217,59 @@ export class GoogleSheetsTrigger implements INodeType {
 				],
 			},
 			{
-				displayName: 'Range',
-				name: 'range',
-				type: 'string',
-				default: 'A:Z',
-				required: true,
-				description: 'The table range to read from',
-			},
-			{
-				displayName: 'Key Row',
-				name: 'keyRow',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				default: 1,
-				description:
-					'Index of the row which contains the keys. Starts at 1.The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
-			},
-			{
-				displayName: 'Start Index',
-				name: 'startIndex',
-				type: 'number',
-				typeOptions: {
-					minValue: 1,
-				},
-				default: 2,
-				required: true,
-				description: 'Index where to start looking for new data',
-			},
-			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
 				options: [
+					{
+						displayName: 'Data Location on Sheet',
+						name: 'locationDefine',
+						type: 'fixedCollection',
+						placeholder: 'Select Range',
+						default: { values: {} },
+						options: [
+							{
+								displayName: 'Values',
+								name: 'values',
+								values: [
+									{
+										displayName: 'Range',
+										name: 'range',
+										type: 'string',
+										default: 'A:Z',
+										required: true,
+										description: 'The table range to read from',
+									},
+									{
+										displayName: 'Header Row',
+										name: 'headerRow',
+										type: 'number',
+										typeOptions: {
+											minValue: 1,
+										},
+										default: 1,
+										description:
+											'Index of the row which contains the keys. Starts at 1. The incoming node data is matched to the keys for assignment. The matching is case sensitive.',
+										hint: 'From start of range. First row is row 1',
+									},
+									{
+										displayName: 'First Data Row',
+										name: 'firstDataRow',
+										type: 'number',
+										typeOptions: {
+											minValue: 1,
+										},
+										default: 2,
+										description:
+											'Index of the first row which contains the actual data and not the keys. Starts with 1.',
+										hint: 'From start of range. First row is row 1',
+									},
+								],
+							},
+						],
+					},
 					{
 						displayName: 'Value Render Option',
 						name: 'valueRenderOption',
@@ -281,6 +323,7 @@ export class GoogleSheetsTrigger implements INodeType {
 
 	methods = {
 		listSearch: { spreadSheetsSearch, sheetsSearch },
+		loadOptions: { getSheetHeaderRowAndSkipEmpty },
 	};
 
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
@@ -323,19 +366,34 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 		} while (pageToken);
 
-		const sheetId = this.getNodeParameter('sheetId', undefined, {
+		const sheetId = this.getNodeParameter('sheetName', undefined, {
 			extractValue: true,
 		}) as string;
 
 		const googleSheet = new GoogleSheet(documentId, this);
-
 		const sheetName = await googleSheet.spreadsheetGetSheetNameById(sheetId);
-
-		const range = this.getNodeParameter('range') as string;
-		const startIndex = this.getNodeParameter('startIndex') as number;
-		const keyRow = this.getNodeParameter('keyRow') as number;
-
 		const options = this.getNodeParameter('options') as IDataObject;
+
+		const locationDefine = ((options.locationDefine as IDataObject) || {}).values as IDataObject;
+
+		let range = 'A:Z';
+		let keyRow = 1;
+		let startIndex = 2;
+
+		if (locationDefine) {
+			if (locationDefine.range) {
+				range = locationDefine.range as string;
+			}
+			if (locationDefine.headerRow) {
+				keyRow = parseInt(locationDefine.headerRow as string, 10);
+			}
+			if (locationDefine.firstDataRow) {
+				startIndex = parseInt(locationDefine.firstDataRow as string, 10);
+			}
+
+			delete options.locationDefine;
+		}
+
 		const qs: IDataObject = {};
 
 		Object.assign(qs, options);
@@ -384,7 +442,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			}
 		}
 
-		if (event === 'allUpdates') {
+		if (event === 'allUpdates' || event === 'columnChanges') {
 			const currentData = (await googleSheet.getData(sheetName, 'UNFORMATTED_VALUE')) as string[][];
 
 			if (previousRevision === undefined) {
@@ -414,78 +472,4 @@ export class GoogleSheetsTrigger implements INodeType {
 
 		return null;
 	}
-}
-
-async function getRevisionFile(this: IPollFunctions, exportLink: string) {
-	const mimeType = BINARY_MIME_TYPE;
-
-	const response = await apiRequest.call(
-		this,
-		'GET',
-		``,
-		undefined,
-		{ mimeType },
-		exportLink,
-		undefined,
-		{
-			resolveWithFullResponse: true,
-			encoding: null,
-			json: false,
-		},
-	);
-
-	return Buffer.from(response.body as string);
-}
-
-function sheetBinaryToArrayOfArrays(data: Buffer, sheetName: string) {
-	const workbook = XLSX.read(data, { type: 'buffer', sheets: [sheetName] });
-	const sheet = workbook.Sheets[sheetName];
-	const sheetData: string[][] = sheet['!ref']
-		? XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false })
-		: [];
-
-	return sheetData.filter((row) => row.filter((cell) => cell !== '').length);
-}
-
-function arrayOfArraysToJson(sheetData: SheetRangeData, columns: SheetDataRow) {
-	const returnData: IDataObject[] = [];
-
-	for (let rowIndex = 0; rowIndex < sheetData.length; rowIndex++) {
-		const rowData: IDataObject = {};
-
-		for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
-			const columnName = columns[columnIndex];
-			const cellValue = sheetData[rowIndex][columnIndex] || '';
-
-			rowData[columnName] = cellValue;
-		}
-
-		returnData.push(rowData);
-	}
-
-	return returnData;
-}
-
-function compareRevisions(previous: SheetRangeData, current: SheetRangeData, keyRow: number) {
-	const [dataLength, columns] =
-		current.length > previous.length
-			? [current.length, ['row_number', ...current[keyRow - 1]]]
-			: [previous.length, ['row_number', ...previous[keyRow - 1]]];
-	const diffData: SheetRangeData = [];
-
-	for (let i = 0; i < dataLength; i++) {
-		if (i === keyRow - 1) {
-			continue;
-		}
-		if (isEqual(previous[i], current[i])) {
-			continue;
-		}
-		if (current[i] === undefined) {
-			diffData.push([i + 1]);
-		} else {
-			diffData.push([i + 1, ...current[i]]);
-		}
-	}
-
-	return arrayOfArraysToJson(diffData, columns);
 }
