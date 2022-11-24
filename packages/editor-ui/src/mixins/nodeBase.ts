@@ -3,17 +3,6 @@ import mixins from 'vue-typed-mixins';
 import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
 import { deviceSupportHelpers } from '@/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
-import {
-	ANCHOR_POSITIONS,
-	GRID_SIZE,
-	getInputEndpointUUID,
-	getOutputEndpointUUID,
-	getInputEndpointStyle,
-	getOutputEndpointStyle,
-	getInputNameOverlay,
-	getOutputNameOverlay,
-	getStyleTokenValue,
-} from '@/utils';
 
 import {
 	INodeTypeDescription,
@@ -22,6 +11,8 @@ import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { useNodeTypesStore } from "@/stores/nodeTypes";
+import * as NodeViewUtils from '@/utils/nodeViewUtils';
+import { getStyleTokenValue } from "@/utils";
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -91,15 +82,15 @@ export const nodeBase = mixins(
 				index = indexData[inputName];
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition = ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
+				const anchorPosition = NodeViewUtils.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: getInputEndpointUUID(this.nodeId, index),
+					uuid:NodeViewUtils. getInputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
-					endpointStyle: getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
-					endpointHoverStyle: getInputEndpointStyle(nodeTypeData, '--color-primary'),
+					endpointStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					endpointHoverStyle: NodeViewUtils.getInputEndpointStyle(nodeTypeData, '--color-primary'),
 					isSource: false,
 					isTarget: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
@@ -119,7 +110,7 @@ export const nodeBase = mixins(
 				if (nodeTypeData.inputNames) {
 					// Apply input names if they got set
 					newEndpointData.overlays = [
-						getInputNameOverlay(nodeTypeData.inputNames[index]),
+						NodeViewUtils.getInputNameOverlay(nodeTypeData.inputNames[index]),
 					];
 				}
 
@@ -161,15 +152,15 @@ export const nodeBase = mixins(
 				index = indexData[inputName];
 
 				// Get the position of the anchor depending on how many it has
-				const anchorPosition = ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
+				const anchorPosition = NodeViewUtils.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
 
 				const newEndpointData: IEndpointOptions = {
-					uuid: getOutputEndpointUUID(this.nodeId, index),
+					uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Dot',
-					endpointStyle: getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
-					endpointHoverStyle: getOutputEndpointStyle(nodeTypeData, '--color-primary'),
+					endpointStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					endpointHoverStyle: NodeViewUtils.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
 					isSource: true,
 					isTarget: false,
 					enabled: !this.isReadOnly,
@@ -186,7 +177,7 @@ export const nodeBase = mixins(
 				if (nodeTypeData.outputNames) {
 					// Apply output names if they got set
 					newEndpointData.overlays = [
-						getOutputNameOverlay(nodeTypeData.outputNames[index]),
+						NodeViewUtils.getOutputNameOverlay(nodeTypeData.outputNames[index]),
 					];
 				}
 
@@ -202,7 +193,7 @@ export const nodeBase = mixins(
 
 				if (!this.isReadOnly) {
 					const plusEndpointData: IEndpointOptions = {
-						uuid: getOutputEndpointUUID(this.nodeId, index),
+						uuid: NodeViewUtils.getOutputEndpointUUID(this.nodeId, index),
 						anchor: anchorPosition,
 						maxConnections: -1,
 						endpoint: 'N8nPlus',
@@ -250,7 +241,7 @@ export const nodeBase = mixins(
 			//       https://jsplumb.github.io/jsplumb/home.html
 			// Make nodes draggable
 			this.instance.draggable(this.nodeId, {
-				grid: [GRID_SIZE, GRID_SIZE],
+				grid: [NodeViewUtils.GRID_SIZE, NodeViewUtils.GRID_SIZE],
 				start: (params: { e: MouseEvent }) => {
 					if (this.isReadOnly === true) {
 						// Do not allow to move nodes in readOnly mode

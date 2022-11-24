@@ -58,7 +58,8 @@
 import Vue, { PropType } from 'vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-import { isCommunityPackageName, getNewNodePosition, NODE_SIZE } from '@/utils';
+import { isCommunityPackageName } from '@/utils';
+import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';
