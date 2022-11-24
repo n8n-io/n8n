@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.dataDisplay" data-test-id="ndv-run-data-table">
+	<div :class="$style.dataDisplay">
 		<table :class="$style.table" v-if="tableData.columns && tableData.columns.length === 0">
 			<tr>
 				<th :class="$style.emptyCell"></th>

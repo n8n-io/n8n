@@ -1,9 +1,8 @@
-import { WorkflowsPage, WorkflowPage, NDV } from '../pages';
+import { WorkflowsPage, WorkflowPage } from '../pages';
 import {v4 as uuid} from 'uuid';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
-const ndv = new NDV();
 
 describe('NDV', () => {
 	const workflowName = `Webhook Code Set ${uuid()}`;
@@ -26,7 +25,7 @@ describe('NDV', () => {
 		webhookNode.should('be.visible');
 		webhookNode.dblclick();
 
-		ndv.getters.modal().should('be.visible');
+		cy.getByTestId('ndv').should('be.visible');
 
 		cy.getByTestId('node-execute-button').first().click();
 		cy.getByTestId('copy-input').click();

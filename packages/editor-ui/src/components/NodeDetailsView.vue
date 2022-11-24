@@ -71,7 +71,6 @@
 				</template>
 				<template #output>
 					<OutputPanel
-						data-test-id="ndv-output-panel"
 						:canLinkRuns="canLinkRuns"
 						:runIndex="outputRun"
 						:linkedRuns="linked"
