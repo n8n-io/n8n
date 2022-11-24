@@ -7,7 +7,7 @@ const firstName = randFirstName();
 const lastName = randLastName();
 
 describe('Authentication', () => {
-	it('should sign user up', () => {
+	it('should setup owner', () => {
 		cy.signup(username, firstName, lastName, password);
 	});
 
