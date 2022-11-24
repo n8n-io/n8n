@@ -27,13 +27,16 @@ export type IAllExecuteFunctions =
 	| ITriggerFunctions
 	| IWebhookFunctions;
 
+export type BinaryFileType = 'text' | 'image' | 'video';
 export interface IBinaryData {
 	[key: string]: string | undefined;
 	data: string;
 	mimeType: string;
+	fileType?: BinaryFileType;
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
+	fileSize?: string;
 	id?: string;
 }
 
