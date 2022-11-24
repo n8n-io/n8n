@@ -17,7 +17,7 @@ describe('NDV', () => {
 	});
 
 	afterEach(() => {
-		cy.deleteWorkflow(workflowName);
+		cy.deleteWorkflowByName(workflowName);
 	});
 
 	it('should should check nodes', () => {
