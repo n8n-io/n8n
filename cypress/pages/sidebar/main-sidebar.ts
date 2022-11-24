@@ -2,11 +2,11 @@ import { BasePage } from "../base";
 
 export class MainSidebar extends BasePage {
 	getters = {
-		settings: () => cy.getByTestId('menuitem-settings', { timeout: 5000 }),
-		templates: () => cy.getByTestId('menuitem-templates'),
-		workflows: () => cy.getByTestId('menuitem-workflows'),
-		credentials: () => cy.getByTestId('menuitem-credentials'),
-		executions: () => cy.getByTestId('menuitem-executions'),
+		settings: () => cy.getByTestId('menu-item-settings', { timeout: 5000 }),
+		templates: () => cy.getByTestId('menu-item-templates'),
+		workflows: () => cy.getByTestId('menu-item-workflows'),
+		credentials: () => cy.getByTestId('menu-item-credentials'),
+		executions: () => cy.getByTestId('menu-item-executions'),
 	};
 	actions = {
 		goToSettings: () => this.getters.settings().click(),
