@@ -120,3 +120,13 @@ Cypress.Commands.add('skipSetup', () => {
 		});
 	});
 })
+
+Cypress.Commands.add('deleteWorkflow', (workflowName: string) => {
+	const workflowsPage = new WorkflowsPage();
+
+	cy.visit(workflowsPage.url);
+	workflowsPage.getters.workflowCardActions(workflowName).click();
+	workflowsPage.getters.workflowDeleteButton().click();
+
+	cy.get('button').contains('delete').click();
+})

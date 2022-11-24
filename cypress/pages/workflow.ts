@@ -8,5 +8,6 @@ export class WorkflowPage extends BasePage {
 		workflowTags: () => cy.getByTestId('workflow-tags'),
 		saveButton: () => cy.getByTestId('save-button'),
 		nodes: () => cy.getByTestId('node'),
+		nodeByName: (nodeName: string) => this.getters.nodes().filter(`:contains("${nodeName}")`),
 	};
 }
