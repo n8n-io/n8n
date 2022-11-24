@@ -29,6 +29,7 @@ importers:
       jest-environment-jsdom: ^29.3.1
       jest-mock: ^29.3.1
       n8n: '*'
+      node-fetch: ^2.6.7
       prettier: ^2.3.2
       rimraf: ^3.0.2
       run-script-os: ^1.0.7
@@ -50,6 +51,7 @@ importers:
       jest: 29.3.1_@types+node@16.11.65
       jest-environment-jsdom: 29.3.1
       jest-mock: 29.3.1
+      node-fetch: 2.6.7
       prettier: 2.7.1
       rimraf: 3.0.2
       run-script-os: 1.1.6
