@@ -30,13 +30,11 @@ describe('Default owner', () => {
 		cy.task('db:reset');
 	});
 
-	it('should be able to use n8n without user management', () => {
+	it('should be able to use n8n without user management and setup UM', () => {
 		describe('should skip owner setup', () => {
 			cy.skipSetup();
 			cy.url().should('include', workflowsPage.url);
 		});
-
-		// todo blocked by db reseting
 
 		describe('should be able to create workflows', () => {
 			workflowsPage.getters.newWorkflowButtonCard().should('be.visible');
