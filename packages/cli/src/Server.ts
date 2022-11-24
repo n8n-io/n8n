@@ -1497,18 +1497,22 @@ class App {
 		// Binary data
 		// ----------------------------------------
 
-		// Returns binary buffer
+		// Download binary
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+			async (req: express.Request, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
-				const dataPath = req.params.path;
-				return BinaryDataManager.getInstance()
-					.retrieveBinaryDataByIdentifier(dataPath)
-					.then((buffer: Buffer) => {
-						return buffer.toString('base64');
-					});
-			}),
+				const identifier = req.params.path;
+				const binaryDataManager = BinaryDataManager.getInstance();
+				const binaryPath = binaryDataManager.getBinaryPath(identifier);
+				const { mimeType, fileName, fileSize } = await binaryDataManager.getBinaryMetadata(
+					identifier,
+				);
+				if (mimeType) res.setHeader('Content-Type', mimeType);
+				if (fileName) res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				res.setHeader('Content-Length', fileSize);
+				res.sendFile(binaryPath);
+			},
 		);
 
 		// ----------------------------------------

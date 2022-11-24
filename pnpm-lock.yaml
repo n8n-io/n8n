@@ -349,6 +349,7 @@ importers:
       n8n-workflow: ~0.126.0
       oauth-1.0a: ^2.2.6
       p-cancelable: ^2.0.0
+      pretty-bytes: ^5.6.0
       qs: ^6.10.1
       request: ^2.88.2
       request-promise-native: ^1.0.7
@@ -367,6 +368,7 @@ importers:
       n8n-workflow: link:../workflow
       oauth-1.0a: 2.2.6
       p-cancelable: 2.1.1
+      pretty-bytes: 5.6.0
       qs: 6.11.0
       request: 2.88.2
       request-promise-native: 1.0.9_request@2.88.2
@@ -17465,7 +17467,6 @@ packages:
   /pretty-bytes/5.6.0:
     resolution: {integrity: sha512-FFw039TmrBqFK8ma/7OL3sDz/VytdtJr044/QUJtH0wK9lb9jLq9tJyIxUwtQJHwar2BqtiA4iCWSwo9JLkzFg==}
     engines: {node: '>=6'}
-    dev: true
 
   /pretty-error/2.1.2:
     resolution: {integrity: sha512-EY5oDzmsX5wvuynAByrmY0P0hcp+QpnAKbJng2A2MPjVKXCxrDSUkzghVJ4ZGPIv+JC4gX8fPUWscC0RtjsWGw==}
