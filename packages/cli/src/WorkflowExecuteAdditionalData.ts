@@ -207,16 +207,21 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
-		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) })
-			.then((data) =>
-				setTimeout(() => {
-					throttling = false;
-				}, timeout * 1000),
-			)
+		Db.collections.Execution.find({ stoppedAt: LessThanOrEqual(utcDate) })
+			.then(async (executions) => {
+				// throttle just on success to allow for self healing on failure
+				Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) }).then(async () => {
+					setTimeout(() => {
+						throttling = false;
+					}, timeout * 1000);
+					// Mark binary data for deletion for all executions
+					BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
+						executions.map(({ id }) => id.toString()),
+					);
+				});
+			})
 			.catch((error) => {
 				ErrorReporter.error(error);
-
 				throttling = false;
 				Logger.error(
 					`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
