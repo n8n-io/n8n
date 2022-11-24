@@ -32,18 +32,24 @@ export default mixins(externalHooks).extend({
 		value: {
 			type: String,
 		},
+		eventBus: {
+			type: Object as PropType<Vue>,
+		},
 	},
 	mounted() {
-		// setTimeout(this.focus, 0);
+		if (this.eventBus) {
+			this.eventBus.$on("focus", this.focus);
+		}
+		setTimeout(this.focus, 0);
 
-		// this.$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: this.$refs['input'] });
+		this.$externalHooks().run('nodeCreator_searchBar.mount', { inputRef: this.$refs['input'] });
 	},
 	methods: {
 		focus() {
-			// const input = this.$refs.input as HTMLInputElement;
-			// if (input) {
-				// input.focus();
-			// }
+			const input = this.$refs.input as HTMLInputElement;
+			if (input) {
+				input.focus();
+			}
 		},
 		onInput(event: InputEvent) {
 			const input = event.target as HTMLInputElement;
@@ -54,6 +60,9 @@ export default mixins(externalHooks).extend({
 		},
 	},
 	beforeDestroy() {
+		if (this.eventBus) {
+			this.eventBus.$off("focus", this.focus);
+		}
 	},
 });
 </script>
