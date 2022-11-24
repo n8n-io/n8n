@@ -73,7 +73,7 @@ describe('Node Creator', () => {
 		nodeCreatorFeature.getters.searchBar().find('input').should('be.empty')
 	})
 
-	it('should add manul trigger node', () => {
+	it('should add manual trigger node', () => {
 		nodeCreatorFeature.getters.canvasAddButton().click();
 		nodeCreatorFeature.getters.getCreatorItem('Manually').click();
 
