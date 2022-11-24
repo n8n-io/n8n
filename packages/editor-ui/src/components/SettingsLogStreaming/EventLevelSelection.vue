@@ -38,7 +38,6 @@
 		methods: {
 			onGroupChange() {
 				this.$emit('input');
-				console.log(this.destinationId, this.levelCheckList);
 				this.eventTreeStore.setSelectedLevels(this.destinationId, this.levelCheckList);
 			},
 		},

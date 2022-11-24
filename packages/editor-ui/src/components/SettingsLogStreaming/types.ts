@@ -94,9 +94,13 @@ export class MessageEventBusDestinationWebhook extends AbstractMessageEventBusDe
 				outputPropertyName?: string;
 			};
 		},
+		proxy?: {
+			protocol: 'https'|'http';
+			host: string;
+			port: number;
+		};
+		timeout?: number;
 	} = {};
-	proxy = '';
-	timeout = 10000;
 	constructor() {
 		super(MessageEventBusDestinationTypeNames.webhook);
 	}

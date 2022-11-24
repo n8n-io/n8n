@@ -22,7 +22,6 @@ export interface TreeAndSelectionStore {
 
 export const useEventTreeStore = defineStore('eventTree', {
   state: () => ({
-		destinations: [] as AbstractMessageEventBusDestination[],
 		items: {} as TreeAndSelectionStore,
 		eventNames: new Set<string>(),
 		eventLevels: new Set<string>(),
@@ -31,26 +30,34 @@ export const useEventTreeStore = defineStore('eventTree', {
   },
   actions: {
 		addDestination(destination: AbstractMessageEventBusDestination) {
-			this.destinations.push(destination);
+			if (destination.id in this.items) {
+				this.items[destination.id].destination = destination;
+			} else {
+				this.setSelectionAndBuildItems(destination);
+			}
 		},
-		getDestination(destinationId: string) {
-			return this.destinations.find(e=>e.id === destinationId);
+		getDestination(destinationId: string): AbstractMessageEventBusDestination | undefined {
+			if (destinationId in this.items) {
+				return this.items[destinationId].destination;
+			} else {
+				return;
+			}
 		},
 		updateDestination(destination: AbstractMessageEventBusDestination) {
-			const index = this.destinations.findIndex(e=>e.id === destination.id);
-			if (index > -1) {
-				this.destinations[index] = destination;
+			if (destination.id in this.items) {
+				this.items[destination.id].destination = destination;
 			}
 		},
 		removeDestination(destinationId: string) {
-			const index = this.destinations.findIndex(e=>e.id === destinationId);
-			if (index > -1) {
-				this.removeDestinationItemTree(destinationId);
-				this.destinations.splice(index, 1);
+			delete this.items[destinationId];
+			if (destinationId in this.items) {
+				this.$patch({items: {
+					...this.items,
+				}});
 			}
 		},
 		clearDestinations() {
-			this.destinations = [];
+			this.items = {};
 		},
 		addEventName(name: string) {
 			this.eventNames.add(name);
@@ -176,7 +183,6 @@ export function treeCollectionFromStringList(dottedList: Set<string>, selectionL
 				} else {
 					let _indeterminate = false;
 					selectionList.forEach((e)=>{if (e.startsWith(partialName)) _indeterminate = true;});
-					console.log(partialName);
 					const newChild: EventNamesTreeCollection = {
 						label: part,
 						_name: partialName,

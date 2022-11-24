@@ -2,12 +2,12 @@
 	<el-card class="box-card" :class="$style.destinationCard">
 		<div style="padding: 10px">
 				<el-switch
-						v-model="destination.enabled"
+						v-model="nodeParameters.enabled"
 						size="large"
 						@input="onEnabledSwitched($event, destination.id)"
 						/>
 				&nbsp;
-				<span @click="editThis(destination.id)">{{ destination.label }}</span>
+				<span @click="editThis(destination.id)">{{ nodeParameters.label }}</span>
 			<div>
 			<el-row :gutter="20" style="margin-top: 20px;">
 				<el-col style="text-align: left;" :span="8">
@@ -60,6 +60,9 @@ export default mixins(
 	name: 'event-destination-settings-card',
 	props: {
 		destination: AbstractMessageEventBusDestination,
+		eventBus: {
+			type: Vue,
+		},
 	},
 	data() {
 		return {
@@ -108,9 +111,14 @@ export default mixins(
 	mounted() {
 			// merge destination data with defaults
 			this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), this.destination);
-			// this.ndvStore.activeNodeName = this.destination.id;
 			this.workflowsStore.addNode(this.node);
 			this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
+			this.eventBus.$on('destinationEditModalClosing', () => {
+				const updatedDestination = this.eventTreeStore.getDestination(this.destination.id);
+				if (updatedDestination) {
+					this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), updatedDestination);
+				}
+			});
 		},
 	methods: {
 		onInput() {

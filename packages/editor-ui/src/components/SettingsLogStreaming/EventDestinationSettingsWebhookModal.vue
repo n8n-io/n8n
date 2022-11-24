@@ -40,6 +40,7 @@
 						<node-credentials
 						:node="node"
 						:readonly="false"
+						:isReadOnly="false"
 						@credentialSelected="credentialSelected" />
 					</parameter-input-list>
 					<div class="multi-parameter">
@@ -100,7 +101,7 @@ import { MessageEventBusDestinationTypeNames, MessageEventBusDestinationWebhook 
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
-import { deepCopy, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import { deepCopy, INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import Vue from 'vue';
 import {WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY} from '../../constants';
 import Modal from '@/components/Modal.vue';
@@ -114,6 +115,9 @@ export default mixins(
 		modalName: String,
 		destination: MessageEventBusDestinationWebhook,
 		isNew: Boolean,
+		eventBus: {
+			type: Vue,
+		},
 	},
 	components: {
 		Modal,
@@ -165,18 +169,25 @@ export default mixins(
 		},
 	},
 	mounted() {
-		console.log(this.modalName, this.destination, this.eventTreeStore.eventNames);
 			// merge destination data with defaults
 			this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), this.destination);
 			this.ndvStore.activeNodeName = this.destination.id;
 			this.workflowsStore.addNode(this.node);
+			this.workflowsStore.updateNodeProperties({
+				name: this.destination.id,
+				properties: {parameters: this.nodeParameters as unknown as INodeParameters},
+			});
 			this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
 		},
+	beforeDestroy() {
+			this.$props.eventBus.$emit('destinationEditModalClosing', this.destination.id);
+	},
 	methods: {
 		onInput() {
 			this.unchanged = false;
 		},
 		valueChanged(parameterData: IUpdateInformation) {
+			console.log(parameterData);
 			this.unchanged = false;
 			const newValue: NodeParameterValue = parameterData.value as string | number;
 			const parameterPath = parameterData.name.startsWith('parameters.') ? parameterData.name.split('.').slice(1).join('.') : parameterData.name;
@@ -206,13 +217,12 @@ export default mixins(
 				}
 			}
 
-			this.nodeParameters = nodeParameters;
-			this.workflowsStore.updateNodeProperties({
-				name: this.node.name,
-				properties: {parameters: this.node.parameters},
-			});
+			this.nodeParameters = deepCopy(nodeParameters);
+			this.workflowsStore.removeNode(this.node);
+			this.workflowsStore.addNode(this.node);
 		},
-		credentialSelected() {
+		credentialSelected(a,b,c) {
+			console.log(a,b,c);
 			this.unchanged = false;
 		},
 		async onRemove(id: string) {
@@ -537,48 +547,6 @@ const description = [
 					default: {},
 					options: [
 						{
-							displayName: 'Batching',
-							name: 'batching',
-							placeholder: 'Add Batching',
-							type: 'fixedCollection',
-							typeOptions: {
-								multipleValues: false,
-							},
-							default: {
-								batch: {},
-							},
-							options: [
-								{
-									displayName: 'Batching',
-									name: 'batch',
-									values: [
-										{
-											displayName: 'Items per Batch',
-											name: 'batchSize',
-											type: 'number',
-											typeOptions: {
-												minValue: -1,
-											},
-											default: 50,
-											description:
-												'Input will be split in batches to throttle requests. -1 for disabled. 0 will be treated as 1.',
-										},
-										{
-											displayName: 'Batch Interval (ms)',
-											name: 'batchInterval',
-											type: 'number',
-											typeOptions: {
-												minValue: 0,
-											},
-											default: 1000,
-											description:
-												'Time (in milliseconds) between each batch of requests. 0 for disabled.',
-										},
-									],
-								},
-							],
-						},
-						{
 							displayName: 'Ignore SSL Issues',
 							name: 'allowUnauthorizedCerts',
 							type: 'boolean',
@@ -732,10 +700,54 @@ const description = [
 						{
 							displayName: 'Proxy',
 							name: 'proxy',
-							type: 'string',
-							default: '',
-							placeholder: 'e.g. http://myproxy:3128',
-							description: 'HTTP proxy to use',
+							description: 'Add Proxy',
+							type: 'fixedCollection',
+							typeOptions: {
+								multipleValues: false,
+							},
+							default: {
+								proxy: {},
+							},
+							options: [
+								{
+									displayName: 'Proxy',
+									name: 'proxy',
+									values: [
+										{
+											displayName: 'Protocol',
+											name: 'protocol',
+											type: 'options',
+											default: 'https',
+											options: [
+												{
+													name: 'HTTPS',
+													value: 'https',
+												},
+												{
+													name: 'HTTP',
+													value: 'http',
+												},
+											],
+										},
+										{
+											displayName: 'Host',
+											name: 'host',
+											type: 'string',
+											default: '127.0.0.1',
+											description:
+												'Proxy Host (without protocol or port)',
+										},
+										{
+											displayName: 'Port',
+											name: 'port',
+											type: 'number',
+											default: 9000,
+											description:
+												'Proxy Port',
+										},
+									],
+								},
+							],
 						},
 						{
 							displayName: 'Timeout',

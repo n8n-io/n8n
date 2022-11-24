@@ -11,7 +11,7 @@ export const genericHelpers = mixins(showMessage).extend({
 	},
 	computed: {
 		isReadOnly (): boolean {
-			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW].includes(this.$route.name as VIEWS);
+			return ![VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.LOGSTREAMING_SETTINGS].includes(this.$route.name as VIEWS);
 		},
 	},
 	methods: {

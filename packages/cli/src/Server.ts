@@ -1679,7 +1679,8 @@ class App {
 			}
 			// add Event Bus REST endpoints
 			this.app.use(`/${this.restEndpoint}/eventbus`, eventBusRouter);
-			// subscribe to emitters and generate eventMessages from them
+
+			// NOTE: subscribe to emitters and generate eventMessages from them
 			// something.subscribe('event', (event)=>eventBus.send(new EventMessage({
 			// 	eventName: event.name,
 			// 	level: 'debug',

@@ -109,6 +109,9 @@ export default mixins(
 		modalName: String,
 		destination: MessageEventBusDestinationSyslog,
 		isNew: Boolean,
+		eventBus: {
+			type: Vue,
+		},
 	},
 	data() {
 		return {
@@ -116,10 +119,10 @@ export default mixins(
 			isOpen: false,
 			loading: false,
 			showRemoveConfirm: false,
+			modalBus: new Vue(),
 			treeData: {} as EventNamesTreeCollection,
 			nodeParameters: {} as MessageEventBusDestinationSyslog,
 			uiDescription: description,
-			modalBus: new Vue(),
 			SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
 			destinationTypeNames: MessageEventBusDestinationTypeNames,
 		};
@@ -160,12 +163,16 @@ export default mixins(
 		},
 	},
 	mounted() {
+		console.log(this.$props.eventBus);
 			// merge destination data with defaults
 			this.nodeParameters = Object.assign(new MessageEventBusDestinationSyslog(), this.destination);
 			this.ndvStore.activeNodeName = this.destination.id;
 			this.workflowsStore.addNode(this.node);
 			this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
 		},
+	beforeDestroy() {
+			this.$props.eventBus.$emit('destinationEditModalClosing', this.destination.id);
+	},
 	methods: {
 		onInput() {
 			this.unchanged = false;

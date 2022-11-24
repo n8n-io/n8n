@@ -114,6 +114,7 @@
 				:modalName="modalName"
 				:destination="data.destination"
 				:isNew="data.isNew"
+				:eventBus="data.eventBus"
 				/>
 			</template>
 		</ModalRoot>
@@ -124,6 +125,7 @@
 				:modalName="modalName"
 				:destination="data.destination"
 				:isNew="data.isNew"
+				:eventBus="data.eventBus"
 				/>
 			</template>
 		</ModalRoot>
