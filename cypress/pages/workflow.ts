@@ -9,9 +9,13 @@ export class WorkflowPage extends BasePage {
 		saveButton: () => cy.getByTestId('wf-save-button').children().first(),
 		activatorSwitch: () => cy.getByTestId('wf-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
-		nodeViewLoader: () => cy.getByTestId('node-view-loader'),
 	};
 	actions = {
+		visit: () => {
+			cy.visit(this.url);
+			cy.get('[data-test-id=node-view-loader]', { timeout: 5000 }).should('not.exist');
+			cy.get('.el-loading-mask', { timeout: 5000 }).should('not.exist');
+		},
 		openWorkflowMenu: () => {
 			this.getters.workflowMenu().click();
 		},

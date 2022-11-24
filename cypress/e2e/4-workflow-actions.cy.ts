@@ -18,22 +18,30 @@ describe('Workflow Actions', () => {
 		})
 
 		cy.signin(username, password);
-		cy.visit(WorkflowPage.url);
-	});
-
-	it('should not be able to activate unsaved workflow', () => {
-		WorkflowPage.getters.activatorSwitch().find('input').first().should('be.disabled');
 	});
 
 	it('should be able to save on button slick', () => {
+		WorkflowPage.actions.visit();
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		// In Element UI, disabled button turn into spans
 		WorkflowPage.getters.saveButton().should('match', 'span');
 	});
 
 	it('should save workflow on keyboard shortcut', () => {
-		cy.wait(2000);
+		WorkflowPage.actions.visit();
 		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
 		WorkflowPage.getters.saveButton().should('match', 'span');
 	});
+
+	it('should not be able to activate unsaved workflow', () => {
+		WorkflowPage.actions.visit();
+		WorkflowPage.getters.activatorSwitch().find('input').first().should('be.disabled');
+	});
+
+	it('should not be able to activate workflow without trigger node', () => {
+		WorkflowPage.actions.visit();
+		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		WorkflowPage.getters.activatorSwitch().find('input').first().should('be.disabled');
+	});
+
 });
