@@ -16,7 +16,14 @@ LoggerProxy.init({
 	const credentialTypes = Object.values(loader.credentialTypes).map((data) => data.type);
 
 	const nodeTypes = Object.values(loader.nodeTypes)
-		.map((data) => data.type)
+		.map((data) => {
+			const nodeType = NodeHelpers.getVersionedNodeType(data.type);
+			const applyParameters = NodeHelpers.getSpecialNodeParameters(nodeType);
+			if (applyParameters.length) {
+				nodeType.description.properties.unshift(...applyParameters);
+			}
+			return data.type;
+		})
 		.flatMap((nodeData) => {
 			const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
 			return allNodeTypes.map((element) => element.description);
