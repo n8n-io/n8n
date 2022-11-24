@@ -7,6 +7,7 @@
 		class="ndv-wrapper"
 		width="auto"
 		append-to-body
+		data-test-id="ndv"
 	>
 		<n8n-tooltip
 			placement="bottom-start"
@@ -70,6 +71,7 @@
 				</template>
 				<template #output>
 					<OutputPanel
+						data-test-id="ndv-output-panel"
 						:canLinkRuns="canLinkRuns"
 						:runIndex="outputRun"
 						:linkedRuns="linked"

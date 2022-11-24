@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.container">
+	<div :class="$style.container" data-test-id="trigger-panel">
 		<transition name="fade" mode="out-in">
 			<div key="empty" v-if="hasIssues"></div>
 			<div key="listening" v-else-if="isListeningForEvents">
