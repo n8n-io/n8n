@@ -68,7 +68,10 @@ describe('Workflows', () => {
 		WorkflowsPage.getters.workflowCards().each(($el) => {
 			const workflowName = $el.find('[data-test-id="workflow-card-name"]').text();
 
-			cy.deleteWorkflowByName(workflowName);
+			WorkflowsPage.getters.workflowCardActions(workflowName).click();
+			WorkflowsPage.getters.workflowDeleteButton().click();
+
+			cy.get('button').contains('delete').click();
 		})
 
 		WorkflowsPage.getters.newWorkflowButtonCard().should('be.visible');
