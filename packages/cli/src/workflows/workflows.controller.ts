@@ -248,7 +248,7 @@ workflowsController.patch(
 			updateData,
 			workflowId,
 			tags,
-			false,
+			true,
 			['owner'],
 		);
 
