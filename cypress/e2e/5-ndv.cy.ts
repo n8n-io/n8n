@@ -1,5 +1,5 @@
 import { WorkflowsPage, WorkflowPage, NDV } from '../pages';
-import { v4 as uuid } from 'uuid';
+import {v4 as uuid} from 'uuid';
 
 const workflowsPage = new WorkflowsPage();
 const workflowPage = new WorkflowPage();
@@ -26,41 +26,32 @@ describe('NDV', () => {
 		webhookNode.should('be.visible');
 		webhookNode.dblclick();
 
-		ndv.getters.triggerPanel().within(() => {
-			cy.getByTestId('node-execute-button').focus().click();
+		ndv.getters.modal().should('be.visible');
 
-			cy.getByTestId('copy-input').then($el => {
-				$el[0].click();
+		cy.getByTestId('node-execute-button').first().click();
+		cy.getByTestId('copy-input').click();
 
-				cy.wrap(Cypress.automation('remote:debugger:protocol', {
-					command: 'Browser.grantPermissions',
-					params: {
-						permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'],
-						origin: window.location.origin,
-					},
-				}));
+		cy.wrap(Cypress.automation('remote:debugger:protocol', {
+			command: 'Browser.grantPermissions',
+			params: {
+				permissions: ['clipboardReadWrite', 'clipboardSanitizedWrite'],
+				origin: window.location.origin,
+			},
+		}));
 
-				cy.get('button').then($button =>{
-					$button[0].focus();
+		cy.window().its('navigator.permissions')
+			.invoke('query', {name: 'clipboard-read'})
+			.its('state').should('equal', 'granted');
 
-					cy.window().its('navigator.permissions')
-						.invoke('query', { name: 'clipboard-read' })
-						.its('state').should('equal', 'granted');
-
-					cy.window().its('navigator.clipboard').invoke('readText').then(url => {
-						cy.request({
-							method: 'GET',
-							url,
-						}).then((resp) => {
-							expect(resp.status).to.eq(200)
-						})
-					});
-				});
-			});
+		cy.window().its('navigator.clipboard').invoke('readText').then(url => {
+			cy.request({
+				method: 'GET',
+				url,
+			}).then((resp) => {
+				expect(resp.status).to.eq(200)
+			})
 		});
 
-		ndv.getters.modal().within(() => {
-		  cy.getByTestId('ndv-run-data-display-mode').should('have.length.at.least', 1);
-		})
+		cy.getByTestId('ndv-run-data-display-mode').should('have.length.at.least', 1);
 	});
 });
