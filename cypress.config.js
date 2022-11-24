@@ -1,11 +1,11 @@
 const fetch = require('node-fetch');
 const { defineConfig } = require('cypress');
 
-const baseUrl = 'http://localhost:5678';
+const BASE_URL = 'http://localhost:5678';
 
 module.exports = defineConfig({
 	e2e: {
-		baseUrl,
+		baseUrl: BASE_URL,
 		video: false,
 		screenshotOnRunFailure: true,
 		experimentalSessionAndOrigin: true,
@@ -13,9 +13,9 @@ module.exports = defineConfig({
 
 		setupNodeEvents(on) {
 			on('task', {
-				'db:reset': () => fetch(baseUrl + '/e2e/db/reset', { method: 'POST' }),
+				'db:reset': () => fetch(BASE_URL + '/e2e/db/reset', { method: 'POST' }),
 				'db:setup-owner': (payload) =>
-					fetch(baseUrl + '/e2e/db/setup-owner', {
+					fetch(BASE_URL + '/e2e/db/setup-owner', {
 						method: 'POST',
 						body: JSON.stringify(payload),
 						headers: { 'Content-Type': 'application/json' },

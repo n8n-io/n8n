@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -7,7 +9,7 @@ import bodyParser from 'body-parser';
 import { v4 as uuid } from 'uuid';
 import config from '@/config';
 import * as Db from '@/Db';
-import { RoleNames, RoleScopes } from '@/databases/entities/Role';
+import { Role } from '@/databases/entities/Role';
 import { hashPassword } from '@/UserManagement/UserManagementHelper';
 
 if (process.env.E2E_TESTS !== 'true') {
@@ -48,7 +50,7 @@ const setupUserManagement = async () => {
 		'SELECT last_insert_rowid() as insertId',
 	)) as Array<{ insertId: number }>;
 
-	const roles: Array<[RoleNames, RoleScopes]> = [
+	const roles: Array<[Role['name'], Role['scope']]> = [
 		['member', 'global'],
 		['owner', 'workflow'],
 		['owner', 'credential'],
@@ -84,22 +86,24 @@ e2eController.post('/db/setup-owner', bodyParser.json(), async (req, res) => {
 		return;
 	}
 
-	const { Role, User, Settings } = Db.collections;
-	const globalRole = await Role.findOneOrFail({
+	const globalRole = await Db.collections.Role.findOneOrFail({
 		name: 'owner',
 		scope: 'global',
 	});
 
-	const owner = await User.findOneOrFail({ globalRole });
+	const owner = await Db.collections.User.findOneOrFail({ globalRole });
 
-	await User.update(owner.id, {
+	await Db.collections.User.update(owner.id, {
 		email: req.body.email,
 		password: await hashPassword(req.body.password),
 		firstName: req.body.firstName,
 		lastName: req.body.lastName,
 	});
 
-	await Settings.update({ key: 'userManagement.isInstanceOwnerSetUp' }, { value: 'true' });
+	await Db.collections.Settings.update(
+		{ key: 'userManagement.isInstanceOwnerSetUp' },
+		{ value: 'true' },
+	);
 
 	config.set('userManagement.isInstanceOwnerSetUp', true);
 

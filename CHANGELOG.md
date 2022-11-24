@@ -1,3 +1,43 @@
+# [0.204.0](https://github.com/n8n-io/n8n/compare/n8n@0.203.1...n8n@0.204.0) (2022-11-24)
+
+
+### Bug Fixes
+
+* **core:** Fix `$items().length` behavior in `executeOnce` mode ([#4694](https://github.com/n8n-io/n8n/issues/4694)) ([b87c122](https://github.com/n8n-io/n8n/commit/b87c12285fa2b339e726f81e271715e258b6a075))
+* **core:** Fix for unused imports ([a6df51b](https://github.com/n8n-io/n8n/commit/a6df51b6e83fa25dad962ab212123edb3c055cac))
+* **core:** Use CredentialsOverwrites when testing credentials ([#4675](https://github.com/n8n-io/n8n/issues/4675)) ([772ec78](https://github.com/n8n-io/n8n/commit/772ec78349b5b6877bf681f3262951e3a4e34fe4))
+* Disable workflow locking due to issues ([#4708](https://github.com/n8n-io/n8n/issues/4708)) ([ee6ac5d](https://github.com/n8n-io/n8n/commit/ee6ac5d3417a2f308a7f4a3cda18c01fcec57faf))
+* **editor:** Fix for missing node connections in dev environment ([#4707](https://github.com/n8n-io/n8n/issues/4707)) ([b18ae18](https://github.com/n8n-io/n8n/commit/b18ae18a6b10fb125f3eed73103e33e3519cd82c))
+* **editor:** Fix missing resource locator component ([#4649](https://github.com/n8n-io/n8n/issues/4649)) ([44182f2](https://github.com/n8n-io/n8n/commit/44182f23a5e62c53209b3fa19edd1727586551ff))
+* **editor:** Prevent node-creator tabs from showing when toggled by CanvasAddButton ([#4661](https://github.com/n8n-io/n8n/issues/4661)) ([60746dc](https://github.com/n8n-io/n8n/commit/60746dc92ee1b6c33015e2a6a0d34bc981aa1dd5))
+* **editor:** Table view column limit tooltip ([#4655](https://github.com/n8n-io/n8n/issues/4655)) ([3ac9ba3](https://github.com/n8n-io/n8n/commit/3ac9ba3491c0dc1de283bc4285a243e02747f971))
+* Fix broken n8n-info-tip slots ([#4665](https://github.com/n8n-io/n8n/issues/4665)) ([6c99223](https://github.com/n8n-io/n8n/commit/6c992233a053db1ea235f785a52a754c1e694555))
+* **IF Node:** Fix "Is Empty" and "Is Not Empty" operation fails for date objects ([#4670](https://github.com/n8n-io/n8n/issues/4670)) ([753f4c9](https://github.com/n8n-io/n8n/commit/753f4c9a7d34c8d3329d4dc024fcf272f6f47ff3))
+* Remove redundant await in node's api request functions without try/catch ([#4639](https://github.com/n8n-io/n8n/issues/4639)) ([67983e8](https://github.com/n8n-io/n8n/commit/67983e8f945397d3fb0be55fdeb47609be92b2cb))
+* **Schedule Trigger Node:** Fixes inconsitent behavior with cron and weekly intervals ([#4558](https://github.com/n8n-io/n8n/issues/4558)) ([2fb8ed8](https://github.com/n8n-io/n8n/commit/2fb8ed825b18118fc0783e95d1551ee2ce8c3a38))
+* Workflow activation should not crash if one of the credential is invalid ([#4671](https://github.com/n8n-io/n8n/issues/4671)) ([c0e13c2](https://github.com/n8n-io/n8n/commit/c0e13c2a8f9374e9c65aae3ce4102e37c993cf74))
+
+
+### Features
+
+* Add credentials E2E test suite and page object ([#4596](https://github.com/n8n-io/n8n/issues/4596)) ([b5b44d1](https://github.com/n8n-io/n8n/commit/b5b44d1b598e67ef7e735d7cdfb5233ca72caca6))
+* Add save confirmation modal when leaving sharing modal ([#4683](https://github.com/n8n-io/n8n/issues/4683)) ([173badc](https://github.com/n8n-io/n8n/commit/173badc4e099ebb818686dc5a25c2192c138bcd9))
+* Add share button to workflows list ([#4681](https://github.com/n8n-io/n8n/issues/4681)) ([a356d7b](https://github.com/n8n-io/n8n/commit/a356d7bdbadd5a4c69c61c5a5a30e75e9765e3d2))
+* **core:** Add license support to n8n ([#4566](https://github.com/n8n-io/n8n/issues/4566)) ([30e5d3d](https://github.com/n8n-io/n8n/commit/30e5d3d04c3457780875cc36637c8c1ea14ec783))
+* **core:** Lazy-load nodes and credentials to reduce baseline memory usage ([#4577](https://github.com/n8n-io/n8n/issues/4577)) ([b6c57e1](https://github.com/n8n-io/n8n/commit/b6c57e19fc5683dd7fb9eabb60ec4e89359c59eb))
+* **editor:** Add workflows list status filter ([#4690](https://github.com/n8n-io/n8n/issues/4690)) ([5364e7f](https://github.com/n8n-io/n8n/commit/5364e7fc9250421b799adc28b3e47dc75819ec7d))
+* Show delete button based on workflow permissions ([#4686](https://github.com/n8n-io/n8n/issues/4686)) ([4f64e26](https://github.com/n8n-io/n8n/commit/4f64e26a83c7e62c98d93c38bf3dcb6cdfaadb58))
+* Show toast when saving workflow sharing settings ([#4684](https://github.com/n8n-io/n8n/issues/4684)) ([6f8d0de](https://github.com/n8n-io/n8n/commit/6f8d0de55dc9c3c1cdb17329a8560ee8453c639a))
+* Switch owner subview to all subview if has shared resources ([#4672](https://github.com/n8n-io/n8n/issues/4672)) ([e3e17e5](https://github.com/n8n-io/n8n/commit/e3e17e5dac685b1230e39bbef247312419b71f9b))
+* Use longer stack-traces when error-reporting is enabled ([#4674](https://github.com/n8n-io/n8n/issues/4674)) ([de5b0b0](https://github.com/n8n-io/n8n/commit/de5b0b03fedede680f5a6e0f4dc73770b888bf46))
+
+
+### Performance Improvements
+
+* **Code Node:** Improve n8n item key validation performance ([#4669](https://github.com/n8n-io/n8n/issues/4669)) ([740513b](https://github.com/n8n-io/n8n/commit/740513b42440b8760cd488659e92abe9951462b0))
+
+
+
 ## [0.203.1](https://github.com/n8n-io/n8n/compare/n8n@0.203.0...n8n@0.203.1) (2022-11-18)
 
 ### Bug Fixes
@@ -9,7 +49,6 @@
 ### Bug Fixes
 
 - Add back mapping hint when parameter is focused ([#4634](https://github.com/n8n-io/n8n/issues/4634)) ([b35172e](https://github.com/n8n-io/n8n/commit/b35172e442a131f76c2d902d451356ab937bba48))
-- Change feature flag for starting at empty WF state for PH experiments (no-changelog) ([#4606](https://github.com/n8n-io/n8n/issues/4606)) ([d1ffc58](https://github.com/n8n-io/n8n/commit/d1ffc58aa4947e5b9f956568061a981c8ab37e65))
 - **core:** Deduplicate error handling in nodes ([#4319](https://github.com/n8n-io/n8n/issues/4319)) ([c7133ec](https://github.com/n8n-io/n8n/commit/c7133ecd3fe6f022a537b6edb4c006d6786efad2))
 - **editor:** Add 'Stop execution' button to execution preview ([#4632](https://github.com/n8n-io/n8n/issues/4632)) ([be7672a](https://github.com/n8n-io/n8n/commit/be7672a177bfcf997ec241af7c628a90312849b1))
 - **editor:** Curb direct item access linting ([#4591](https://github.com/n8n-io/n8n/issues/4591)) ([271cd06](https://github.com/n8n-io/n8n/commit/271cd06a6ac6274a83a6a71fe76072281edf3724))
