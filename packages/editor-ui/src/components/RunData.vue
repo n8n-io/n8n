@@ -43,6 +43,7 @@
 					:value="displayMode"
 					:options="buttons"
 					@input="onDisplayModeChange"
+					data-test-id="ndv-run-data-display-mode"
 				/>
 				<n8n-icon-button
 					v-if="canPinData && !isReadOnly"

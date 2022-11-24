@@ -60,7 +60,7 @@ describe('NDV', () => {
 		});
 
 		ndv.getters.modal().within(() => {
-		  cy.getByTestId('ndv-run-data-table').should('be.visible');
+		  cy.getByTestId('ndv-run-data-display-mode').should('have.length.at.least', 1);
 		})
 	});
 });
