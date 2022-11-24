@@ -28,7 +28,7 @@ export class TiDBCloud implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'TiDB Cloud',
 		name: 'tiDBCloud',
-		icon: 'file:tiDBCloud.svg',
+		icon: 'file:TiDBCloud.svg',
 		group: ['input'],
 		version: 1,
 		description: 'Use TiDB Cloud',
