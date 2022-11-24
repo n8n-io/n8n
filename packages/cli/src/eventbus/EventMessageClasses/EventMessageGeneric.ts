@@ -4,16 +4,26 @@ import { EventMessageTypeNames } from './Enums';
 import {
 	AbstractEventMessage,
 	// EventMessageSerialized,
-	isEventMessageSerialized,
+	isEventMessageOptionsWithType,
 } from './AbstractEventMessage';
 import { AbstractEventPayload } from './AbstractEventPayload';
+import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
 export class EventPayloadGeneric extends AbstractEventPayload {}
 
+export class EventMessageGenericOptions extends AbstractEventMessageOptions {
+	payload?: EventPayloadGeneric;
+}
+
 export class EventMessageGeneric extends AbstractEventMessage {
-	readonly __type: string = EventMessageTypeNames.eventMessage;
+	readonly __type: string = EventMessageTypeNames.generic;
 
 	payload: EventPayloadGeneric;
+
+	constructor(options: EventMessageGenericOptions) {
+		super(options);
+		if (options.payload) this.setPayload(options.payload);
+	}
 
 	setPayload(payload: EventPayloadGeneric): this {
 		this.payload = payload;
@@ -24,21 +34,8 @@ export class EventMessageGeneric extends AbstractEventMessage {
 		return this;
 	}
 
-	// serialize(): EventMessageSerialized {
-	// 	// TODO: filter payload for sensitive info here?
-	// 	return {
-	// 		__type: this.__type,
-	// 		id: this.id,
-	// 		ts: this.ts.toISO(),
-	// 		eventName: this.eventName,
-	// 		message: this.message,
-	// 		level: this.level,
-	// 		payload: this.payload ?? new EventPayloadGeneric(),
-	// 	};
-	// }
-
 	deserialize(data: JsonObject): this {
-		if (isEventMessageSerialized(data, this.__type)) {
+		if (isEventMessageOptionsWithType(data, this.__type)) {
 			this.setOptionsOrDefault(data);
 			if (data.payload) this.setPayload(data.payload as EventPayloadGeneric);
 		}

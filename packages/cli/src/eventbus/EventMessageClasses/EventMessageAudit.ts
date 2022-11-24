@@ -1,11 +1,8 @@
-import {
-	AbstractEventMessage,
-	EventMessageSerialized,
-	isEventMessageSerialized,
-} from './AbstractEventMessage';
+import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
 import { JsonObject } from 'n8n-workflow';
 import { EventMessageTypeNames } from './Enums';
 import { AbstractEventPayload } from './AbstractEventPayload';
+import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
 export const eventNamesAudit = [
 	'n8n.audit.created',
@@ -23,12 +20,21 @@ export class EventPayloadAudit extends AbstractEventPayload {
 	msg: string;
 }
 
+export class EventMessageAuditOptions extends AbstractEventMessageOptions {
+	payload?: EventPayloadAudit;
+}
+
 export class EventMessageAudit extends AbstractEventMessage {
-	readonly __type: string = EventMessageTypeNames.eventMessageAudit;
+	readonly __type: string = EventMessageTypeNames.audit;
 
 	eventName: EventNamesAuditType;
 
 	payload: EventPayloadAudit;
+
+	constructor(options: EventMessageAuditOptions) {
+		super(options);
+		if (options.payload) this.setPayload(options.payload);
+	}
 
 	setPayload(payload: EventPayloadAudit): this {
 		this.payload = payload;
@@ -39,21 +45,8 @@ export class EventMessageAudit extends AbstractEventMessage {
 		return this;
 	}
 
-	serialize(): EventMessageSerialized {
-		// TODO: filter payload for sensitive info here?
-		return {
-			__type: this.__type,
-			id: this.id,
-			ts: this.ts.toISO(),
-			eventName: this.eventName,
-			message: this.message,
-			level: this.level,
-			payload: this.payload ?? new EventPayloadAudit(),
-		};
-	}
-
 	deserialize(data: JsonObject): this {
-		if (isEventMessageSerialized(data, this.__type)) {
+		if (isEventMessageOptionsWithType(data, this.__type)) {
 			this.setOptionsOrDefault(data);
 			if (data.payload) this.setPayload(data.payload as EventPayloadAudit);
 		}

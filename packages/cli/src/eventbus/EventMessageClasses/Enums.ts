@@ -1,8 +1,8 @@
 export enum EventMessageTypeNames {
-	eventMessage = '$$EventMessage',
-	eventMessageAudit = '$$EventMessageAudit',
-	eventMessageConfirm = '$$EventMessageConfirm',
-	eventMessageWorkflow = '$$EventMessageWorkflow',
+	generic = '$$EventMessage',
+	audit = '$$EventMessageAudit',
+	confirm = '$$EventMessageConfirm',
+	workflow = '$$EventMessageWorkflow',
 }
 
 // Uses same logging levels as LoggerProxy

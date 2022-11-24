@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { isEventMessageSerialized } from '../EventMessageClasses/AbstractEventMessage';
+import { isEventMessageOptions } from '../EventMessageClasses/AbstractEventMessage';
 import { UserSettings } from 'n8n-core';
 import path, { parse } from 'path';
 import { ModuleThread, spawn, Thread, Worker } from 'threads';
@@ -11,7 +11,7 @@ import events from 'events';
 import { jsonParse, JsonValue } from 'n8n-workflow';
 import remove from 'lodash.remove';
 import config from '../../config';
-import { getEventMessageByType } from '../EventMessageClasses/Helpers';
+import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';
 import { DateTime } from 'luxon';
@@ -26,7 +26,7 @@ interface MessageEventBusLogWriterOptions {
 }
 
 class EventMessageConfirm {
-	readonly __type = EventMessageTypeNames.eventMessageConfirm;
+	readonly __type = EventMessageTypeNames.confirm;
 
 	readonly confirm: string;
 
@@ -212,8 +212,8 @@ export class MessageEventBusLogWriter {
 				});
 				rl.on('line', (line) => {
 					const json = jsonParse(line);
-					if (isEventMessageSerialized(json)) {
-						const msg = getEventMessageByType(json);
+					if (isEventMessageOptions(json) && json.__type !== undefined) {
+						const msg = getEventMessageObjectByType(json);
 						if (msg !== null) results.loggedMessages.push(msg);
 					}
 					if (isEventMessageConfirm(json) && mode !== 'all') {

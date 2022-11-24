@@ -4,23 +4,7 @@ import { JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { AbstractEventPayload } from './AbstractEventPayload';
 import { EventMessageLevel } from './Enums';
-
-export interface EventMessageOptions {
-	id?: string;
-	ts?: DateTime;
-	eventName: string;
-	message?: string;
-	level?: EventMessageLevel;
-	payload?: AbstractEventPayload;
-}
-
-// export interface EventMessageSerialized extends Required<Omit<EventMessageOptions, 'payload'>> {
-export interface EventMessageSerialized extends Required<Omit<EventMessageOptions, 'ts'>> {
-	[key: string]: any | undefined;
-	__type: string;
-	ts: string;
-	payload: AbstractEventPayload;
-}
+import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
 export const isEventMessage = (candidate: unknown): candidate is AbstractEventMessage => {
 	const o = candidate as AbstractEventMessage;
@@ -33,8 +17,10 @@ export const isEventMessage = (candidate: unknown): candidate is AbstractEventMe
 	);
 };
 
-export const isEventMessageOptions = (candidate: unknown): candidate is EventMessageOptions => {
-	const o = candidate as EventMessageOptions;
+export const isEventMessageOptions = (
+	candidate: unknown,
+): candidate is AbstractEventMessageOptions => {
+	const o = candidate as AbstractEventMessageOptions;
 	if (!o) return false;
 	if (o.eventName !== undefined) {
 		if (o.eventName.match(/^[\w\s]+\.[\w\s]+\.[\w\s]+/)) {
@@ -44,17 +30,13 @@ export const isEventMessageOptions = (candidate: unknown): candidate is EventMes
 	return false;
 };
 
-export const isEventMessageSerialized = (
+export const isEventMessageOptionsWithType = (
 	candidate: unknown,
-	expectedType?: string | undefined,
-): candidate is EventMessageSerialized => {
-	const o = candidate as EventMessageSerialized;
+	expectedType: string,
+): candidate is AbstractEventMessageOptions => {
+	const o = candidate as AbstractEventMessageOptions;
 	if (!o) return false;
-	if (expectedType) {
-		return o.eventName !== undefined && o.__type !== undefined && o.__type === expectedType;
-	} else {
-		return o.eventName !== undefined && o.__type !== undefined;
-	}
+	return o.eventName !== undefined && o.__type !== undefined && o.__type === expectedType;
 };
 
 export abstract class AbstractEventMessage {
@@ -79,7 +61,7 @@ export abstract class AbstractEventMessage {
 	 * @param props.severity The severity of the event e.g. "normal"
 	 * @returns instance of EventMessage
 	 */
-	constructor(options: EventMessageOptions | EventMessageSerialized) {
+	constructor(options: AbstractEventMessageOptions) {
 		this.setOptionsOrDefault(options);
 	}
 
@@ -88,7 +70,7 @@ export abstract class AbstractEventMessage {
 	abstract setPayload(payload: AbstractEventPayload): this;
 	abstract anonymize(): this;
 
-	serialize(): EventMessageSerialized {
+	serialize(): AbstractEventMessageOptions {
 		return {
 			__type: this.__type,
 			id: this.id,
@@ -100,7 +82,7 @@ export abstract class AbstractEventMessage {
 		};
 	}
 
-	setOptionsOrDefault(options: EventMessageOptions | EventMessageSerialized) {
+	setOptionsOrDefault(options: AbstractEventMessageOptions) {
 		this.id = options.id ?? uuid();
 		this.eventName = options.eventName;
 		this.message = options.message ?? options.eventName;

@@ -1,17 +1,17 @@
 import { EventMessageTypes } from '.';
-import { EventMessageSerialized } from './AbstractEventMessage';
 import { EventMessageTypeNames } from './Enums';
-import { EventMessageGeneric } from './EventMessageGeneric';
-import { EventMessageWorkflow } from './EventMessageWorkflow';
+import { EventMessageGeneric, EventMessageGenericOptions } from './EventMessageGeneric';
+import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
+import { EventMessageWorkflow, EventMessageWorkflowOptions } from './EventMessageWorkflow';
 
-export const getEventMessageByType = (
-	message: EventMessageSerialized,
+export const getEventMessageObjectByType = (
+	message: AbstractEventMessageOptions,
 ): EventMessageTypes | null => {
 	switch (message.__type as EventMessageTypeNames) {
-		case EventMessageTypeNames.eventMessage:
-			return new EventMessageGeneric(message);
-		case EventMessageTypeNames.eventMessageWorkflow:
-			return new EventMessageWorkflow(message);
+		case EventMessageTypeNames.generic:
+			return new EventMessageGeneric(message as EventMessageGenericOptions);
+		case EventMessageTypeNames.workflow:
+			return new EventMessageWorkflow(message as EventMessageWorkflowOptions);
 		default:
 			return null;
 	}

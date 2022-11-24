@@ -1,4 +1,5 @@
-import { AbstractEventMessage, isEventMessageSerialized } from './AbstractEventMessage';
+import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
+import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 import { JsonObject } from 'n8n-workflow';
 import { EventMessageTypeNames } from './Enums';
 import { AbstractEventPayload } from './AbstractEventPayload';
@@ -19,12 +20,21 @@ export class EventPayloadWorkflow extends AbstractEventPayload {
 	msg: string;
 }
 
+export class EventMessageWorkflowOptions extends AbstractEventMessageOptions {
+	payload?: EventPayloadWorkflow | undefined;
+}
+
 export class EventMessageWorkflow extends AbstractEventMessage {
-	readonly __type: string = EventMessageTypeNames.eventMessageWorkflow;
+	readonly __type: string = EventMessageTypeNames.workflow;
 
 	eventName: EventNamesWorkflowType;
 
 	payload: EventPayloadWorkflow;
+
+	constructor(options: EventMessageWorkflowOptions) {
+		super(options);
+		if (options.payload) this.setPayload(options.payload);
+	}
 
 	setPayload(payload: EventPayloadWorkflow): this {
 		this.payload = payload;
@@ -36,7 +46,7 @@ export class EventMessageWorkflow extends AbstractEventMessage {
 	}
 
 	deserialize(data: JsonObject): this {
-		if (isEventMessageSerialized(data, this.__type)) {
+		if (isEventMessageOptionsWithType(data, this.__type)) {
 			this.setOptionsOrDefault(data);
 			if (data.payload) this.setPayload(data.payload as EventPayloadWorkflow);
 		}

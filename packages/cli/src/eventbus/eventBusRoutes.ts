@@ -2,9 +2,15 @@
 import express from 'express';
 import { ResponseHelper } from '..';
 import { ResponseError } from '../ResponseHelper';
-import { isEventMessageOptions } from './EventMessageClasses/AbstractEventMessage';
+import {
+	isEventMessageOptions,
+	isEventMessageOptionsWithType,
+} from './EventMessageClasses/AbstractEventMessage';
 import { EventMessageGeneric } from './EventMessageClasses/EventMessageGeneric';
-import { EventMessageWorkflow } from './EventMessageClasses/EventMessageWorkflow';
+import {
+	EventMessageWorkflow,
+	EventMessageWorkflowOptions,
+} from './EventMessageClasses/EventMessageWorkflow';
 import { eventBus, EventMessageReturnMode } from './MessageEventBus/MessageEventBus';
 import {
 	isMessageEventBusDestinationSentryOptions,
@@ -21,7 +27,7 @@ import {
 	MessageEventBusDestinationWebhookOptions,
 } from './MessageEventBusDestination/MessageEventBusDestinationWebhook';
 import { eventNamesAll } from './EventMessageClasses';
-import { EventMessageLevel } from './EventMessageClasses/Enums';
+import { EventMessageLevel, EventMessageTypeNames } from './EventMessageClasses/Enums';
 import { MessageEventBusDestinationTypeNames } from './MessageEventBusDestination';
 
 export const eventBusRouter = express.Router();
@@ -110,10 +116,10 @@ eventBusRouter.post(
 eventBusRouter.post(
 	`/event/addmany/:count`,
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
-		if (isEventMessageOptions(req.body)) {
+		if (isEventMessageOptionsWithType(req.body, EventMessageTypeNames.workflow)) {
 			const count: number = parseInt(req.params.count) ?? 100;
 			for (let i = 0; i < count; i++) {
-				const msg = new EventMessageWorkflow(req.body);
+				const msg = new EventMessageWorkflow(req.body as EventMessageWorkflowOptions);
 				msg.setPayload({
 					id: i,
 					msg: 'REST test',
