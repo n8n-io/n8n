@@ -10,10 +10,12 @@ import {
 import { apiRequest } from './v2/transport';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
-import { SheetRangeData, ValueRenderOption } from './v2/helpers/GoogleSheets.types';
+import { SheetDataRow, SheetRangeData } from './v2/helpers/GoogleSheets.types';
 
 import * as XLSX from 'xlsx';
 import { isEqual } from 'lodash';
+
+const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 export class GoogleSheetsTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -289,9 +291,9 @@ export class GoogleSheetsTrigger implements INodeType {
 			extractValue: true,
 		}) as string;
 
-		// Check if new revision is available, if not return
 		let pageToken;
 		const previousRevision = workflowStaticData.lastRevision as number;
+		const previousRevisionLink = workflowStaticData.lastRevisionLink as string;
 		do {
 			const { revisions, nextPageToken } = await apiRequest.call(
 				this,
@@ -299,7 +301,7 @@ export class GoogleSheetsTrigger implements INodeType {
 				``,
 				undefined,
 				{
-					fields: 'revisions(id), nextPageToken',
+					fields: 'revisions(id, exportLinks), nextPageToken',
 					pageToken,
 					pageSize: 1000,
 				},
@@ -315,6 +317,8 @@ export class GoogleSheetsTrigger implements INodeType {
 					return null;
 				} else {
 					workflowStaticData.lastRevision = lastRevision;
+					workflowStaticData.lastRevisionLink =
+						revisions[revisions.length - 1]['exportLinks'][BINARY_MIME_TYPE];
 				}
 			}
 		} while (pageToken);
@@ -381,23 +385,7 @@ export class GoogleSheetsTrigger implements INodeType {
 		}
 
 		if (event === 'allUpdates') {
-			const currentData = (await googleSheet.getData(
-				sheetName,
-				options.valueRenderOption as ValueRenderOption,
-			)) as string[][];
-
-			// const currentData = [
-			// 	['id', 'name', 'data'],
-			// 	[1, 'Jon', 'A'],
-			// 	[2, 'Ian', 'B'],
-			// 	[3, 'Ron', 'C'],
-			// 	[4, 'Sem', 'D'],
-			// 	[5, 'Hanna', 'A'],
-			// 	[6, 'Ian', 'B'],
-			// 	[7, 'Ron', 'C'],
-			// 	[8, 'Sem', 'D'],
-			// 	[9, 'Anna', 'E'],
-			// ];
+			const currentData = (await googleSheet.getData(sheetName, 'UNFORMATTED_VALUE')) as string[][];
 
 			if (previousRevision === undefined) {
 				const zeroBasedKeyRow = keyRow - 1;
@@ -410,77 +398,26 @@ export class GoogleSheetsTrigger implements INodeType {
 				}
 			}
 
-			const previousRevisionBinaryData = await getRevisionFile.call(
-				this,
-				documentId,
-				workflowStaticData.lastRevision as number,
-			);
+			const previousRevisionBinaryData = await getRevisionFile.call(this, previousRevisionLink);
 
 			const previousRevisionSheetData = sheetBinaryToArrayOfArrays(
 				previousRevisionBinaryData,
 				sheetName,
 			);
-			// const previousRevisionSheetData = [
-			// 	['id', 'name', 'data', 'gg'],
-			// 	[1, 'Jon', 'A'],
-			// 	[2, 'Ian', 'B'],
-			// 	[3, 'Ron', 'CCC'],
-			// 	[4, 'Sem', 'D'],
-			// 	[1, 'testing', 'A'],
-			// 	[2, 'Ian', 'B'],
-			// 	[3, 'Ron', 'C'],
-			// 	[4, 'Sem', 'D'],
-			// 	[5, 'Anna', 'E'],
-			// 	[6, 'Paula', 'F'],
-			// 	[7, 'Sem', 'G'],
-			// 	[8, 'Miriam', 'H'],
-			// 	[9, 'henry', 'HH'],
-			// 	[10, 'mmm', 'l'],
-			// 	[11, 'kkk', 1, '', ''],
-			// 	[12, 'mine', 1112, '', ''],
-			// 	[444, 'rta', 5, '', ''],
-			// 	[5, 'tt', 't', 'gg', ''],
-			// 	[8, 'ttt', 'yy', 'jj', ''],
-			// ];
 
-			// temp --------------------
-			// const newItem: INodeExecutionData = {
-			// 	json: { data: previousRevisionSheetData },
-			// 	binary: {},
-			// };
+			const returnData = compareRevisions(previousRevisionSheetData, currentData, keyRow);
 
-			// potentialy return previous revision file
-			// newItem.binary!['data'] = await this.helpers.prepareBinaryData(
-			// 	previousRevisionBinaryData,
-			// 	'google-sheets.xlsx',
-			// 	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-			// );
-			// temp --------------------
-
-			return [
-				this.helpers.returnJsonArray(
-					compareRevisions(previousRevisionSheetData, currentData, keyRow),
-				),
-			];
+			if (Array.isArray(returnData) && returnData.length !== 0) {
+				return [this.helpers.returnJsonArray(returnData)];
+			}
 		}
 
 		return null;
 	}
 }
 
-async function getRevisionFile(this: IPollFunctions, documentId: string, revisionId: number) {
-	const { exportLinks } = await apiRequest.call(
-		this,
-		'GET',
-		``,
-		undefined,
-		{
-			fields: 'exportLinks',
-		},
-		`https://www.googleapis.com/drive/v2/files/${documentId}/revisions/${revisionId}`,
-	);
-	const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-	const exportLink = exportLinks[mimeType];
+async function getRevisionFile(this: IPollFunctions, exportLink: string) {
+	const mimeType = BINARY_MIME_TYPE;
 
 	const response = await apiRequest.call(
 		this,
@@ -510,7 +447,7 @@ function sheetBinaryToArrayOfArrays(data: Buffer, sheetName: string) {
 	return sheetData.filter((row) => row.filter((cell) => cell !== '').length);
 }
 
-function arrayOfArraysToJson(sheetData: SheetRangeData, columns: (string | number)[]) {
+function arrayOfArraysToJson(sheetData: SheetRangeData, columns: SheetDataRow) {
 	const returnData: IDataObject[] = [];
 
 	for (let rowIndex = 0; rowIndex < sheetData.length; rowIndex++) {
@@ -544,9 +481,9 @@ function compareRevisions(previous: SheetRangeData, current: SheetRangeData, key
 			continue;
 		}
 		if (current[i] === undefined) {
-			diffData.push([i]);
+			diffData.push([i + 1]);
 		} else {
-			diffData.push([i, ...current[i]]);
+			diffData.push([i + 1, ...current[i]]);
 		}
 	}
 
