@@ -211,7 +211,7 @@ EEWorkflowController.patch(
 	'/:id(\\d+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
-		// const forceSave = req.query.forceSave === 'true'; // disabled temporarily
+		// const forceSave = req.query.forceSave === 'true'; // disabled temporarily - tests were also disabled
 
 		const updateData = new WorkflowEntity();
 		const { tags, ...rest } = req.body;
