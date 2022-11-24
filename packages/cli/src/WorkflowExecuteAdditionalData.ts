@@ -210,15 +210,21 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		Db.collections.Execution.find({ stoppedAt: LessThanOrEqual(utcDate) })
 			.then(async (executions) => {
 				// throttle just on success to allow for self healing on failure
-				Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) }).then(async () => {
-					setTimeout(() => {
-						throttling = false;
-					}, timeout * 1000);
-					// Mark binary data for deletion for all executions
-					BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
-						executions.map(({ id }) => id.toString()),
-					);
-				});
+				Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) })
+					.then(async () => {
+						setTimeout(() => {
+							throttling = false;
+						}, timeout * 1000);
+						// Mark binary data for deletion for all executions
+						BinaryDataManager.getInstance()
+							.markDataForDeletionByExecutionIds(executions.map(({ id }) => id.toString()))
+							.catch((error) => {
+								throw error;
+							});
+					})
+					.catch((error) => {
+						throw error;
+					});
 			})
 			.catch((error) => {
 				ErrorReporter.error(error);
