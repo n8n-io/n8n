@@ -27,6 +27,7 @@
 import { WorkflowsPage, SigninPage, SignupPage } from "../pages";
 import { N8N_AUTH_COOKIE } from "../constants";
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { MessageBox } from '../pages/modals/message-box';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args)
@@ -74,6 +75,7 @@ Cypress.Commands.add(
 		});
 });
 
+// todo rename to setup
 Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
 	const signupPage = new SignupPage();
 
@@ -87,6 +89,31 @@ Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
 				signupPage.getters.lastName().type(lastName);
 				signupPage.getters.password().type(password);
 				signupPage.getters.submit().click();
+			} else {
+				cy.log('User already signed up');
+			}
+		});
+	});
+})
+
+Cypress.Commands.add('skipSetup', () => {
+	const signupPage = new SignupPage();
+	const workflowsPage = new WorkflowsPage();
+	const Confirmation = new MessageBox();
+
+	cy.visit(signupPage.url);
+
+	signupPage.getters.form().within(() => {
+		cy.url().then((url) => {
+			if (url.endsWith(signupPage.url)) {
+				signupPage.getters.skip().click();
+
+
+				Confirmation.getters.header().should('contain.text', 'Skip owner account setup?');
+				Confirmation.actions.confirm();
+
+				// we should be redirected to /workflows
+				cy.url().should('include', workflowsPage.url);
 			} else {
 				cy.log('User already signed up');
 			}
