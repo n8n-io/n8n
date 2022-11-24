@@ -9,8 +9,7 @@ export class MainSidebar extends BasePage {
 		executions: () => cy.getByTestId('menuitem-executions'),
 	};
 	actions = {
-		goToSettings: () => {
-			this.getters.settings().click();
-		},
+		goToSettings: () => this.getters.settings().click(),
+		goToCredentials: () => this.getters.credentials().click(),
 	};
 }

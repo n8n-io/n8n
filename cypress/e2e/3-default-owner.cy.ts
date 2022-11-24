@@ -2,9 +2,10 @@ import { randFirstName, randLastName } from '@ngneat/falso';
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from '../constants';
 import { SettingsUsersPage, SignupPage, WorkflowsPage, WorkflowPage, CredentialsPage, CredentialsModal, MessageBox } from '../pages';
 
-import { MainSidebar } from "../pages/sidebar";
+import { MainSidebar, SettingsSidebar } from "../pages/sidebar";
 
 const mainSidebar = new MainSidebar();
+const settingsSidebar = new SettingsSidebar();
 
 const workflowsPage = new WorkflowsPage();
 const signupPage = new SignupPage();
@@ -24,6 +25,10 @@ const lastName = randLastName();
 
 describe('Default owner', () => {
 	// todo test should redirect to setup if have not skipped
+
+	beforeEach(() => {
+		cy.task('db:reset');
+	});
 
 	it('should be able to use n8n without user management', () => {
 		describe('should skip owner setup', () => {
@@ -83,6 +88,29 @@ describe('Default owner', () => {
 			cy.signup(username, firstName, lastName, password);
 
 			messageBox.getters.content().should('contain.text', '1 existing workflow and 1 credential')
+
+			messageBox.actions.confirm();
+		});
+
+		describe('should be redirected back to users page after setup', () => {
+			cy.url().should('include', settingsUsersPage.url);
+			// todo test users and that owner exist
+		});
+
+		describe('can click back to workflows and have migrated workflow after setup', () => {
+			settingsSidebar.actions.back();
+
+			cy.url().should('include', workflowsPage.url);
+
+			workflowsPage.getters.workflowCards().should('have.length', 1);
+		});
+
+		describe('can click back to main menu and have migrated credential after setup', () => {
+			mainSidebar.actions.goToCredentials();
+
+			cy.url().should('include', workflowsPage.url);
+
+			workflowsPage.getters.workflowCards().should('have.length', 1);
 		});
 	});
 });
