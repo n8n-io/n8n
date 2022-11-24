@@ -15,7 +15,7 @@ export class CredentialsPage extends BasePage {
 			.findChildByTestId('credential-card-actions'),
 		credentialDeleteButton: () => cy.getByTestId('action-toggle-dropdown').filter(':visible').contains('Delete'),
 		sort: () => cy.getByTestId('resources-list-sort'),
-		sortOption: (label: string) => cy.getByTestId('resources-list-sort').contains(label).first(),
+		sortOption: (label: string) => this.getters.sort().contains(label).first(),
 		filtersTrigger: () => cy.getByTestId('resources-list-filters-trigger'),
 		filtersDropdown: () => cy.getByTestId('resources-list-filters-dropdown'),
 	};
