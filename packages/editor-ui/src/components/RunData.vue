@@ -282,9 +282,13 @@
 									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.mimeType') }}: </n8n-text></div>
 									<div :class="$style.binaryValue">{{binaryData.mimeType}}</div>
 								</div>
+								<div v-if="binaryData.fileSize">
+									<div><n8n-text size="small" :bold="true">{{ $locale.baseText('runData.fileSize') }}: </n8n-text></div>
+									<div :class="$style.binaryValue">{{binaryData.fileSize}}</div>
+								</div>
 
 								<div :class="$style.binaryButtonContainer">
-									<n8n-button size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
+									<n8n-button v-if="isViewable(index, key)" size="small" :label="$locale.baseText('runData.showBinaryData')" class="binary-data-show-data-button" @click="displayBinaryData(index, key)" />
 									<n8n-button v-if="isDownloadable(index, key)" size="small" type="secondary" :label="$locale.baseText('runData.downloadBinaryData')" class="binary-data-show-data-button" @click="downloadBinaryData(index, key)" />
 								</div>
 							</div>
@@ -341,7 +345,6 @@ import {
 } from 'n8n-workflow';
 
 import {
-	IBinaryDisplayData,
 	IExecutionResponse,
 	INodeUi,
 	INodeUpdatePropertiesInformation,
@@ -363,7 +366,6 @@ import BinaryDataDisplay from '@/components/BinaryDataDisplay.vue';
 import WarningTooltip from '@/components/WarningTooltip.vue';
 import NodeErrorView from '@/components/Error/NodeErrorView.vue';
 
-import { copyPaste } from '@/mixins/copyPaste';
 import { externalHooks } from "@/mixins/externalHooks";
 import { genericHelpers } from '@/mixins/genericHelpers';
 import { nodeHelpers } from '@/mixins/nodeHelpers';
@@ -385,7 +387,6 @@ export type EnterEditModeArgs = {
 };
 
 export default mixins(
-	copyPaste,
 	externalHooks,
 	genericHelpers,
 	nodeHelpers,
@@ -460,7 +461,7 @@ export default mixins(
 				showData: false,
 				outputIndex: 0,
 				binaryDataDisplayVisible: false,
-				binaryDataDisplayData: null as IBinaryDisplayData | null,
+				binaryDataDisplayData: null as IBinaryData | null,
 
 				MAX_DISPLAY_DATA_SIZE,
 				MAX_DISPLAY_ITEMS_AUTO_ALL,
@@ -1041,23 +1042,26 @@ export default mixins(
 				this.workflowsStore.setWorkflowExecutionData(null);
 				this.updateNodesExecutionIssues();
 			},
+			isViewable (index: number, key: string): boolean {
+				const { fileType }: IBinaryData = this.binaryData[index][key];
+				return !!fileType && ['image', 'video'].includes(fileType);
+			},
 			isDownloadable (index: number, key: string): boolean {
-				const binaryDataItem: IBinaryData = this.binaryData[index][key];
-				return !!(binaryDataItem.mimeType && binaryDataItem.fileName);
+				const { mimeType, fileName }: IBinaryData = this.binaryData[index][key];
+				return !!(mimeType && fileName);
 			},
 			async downloadBinaryData (index: number, key: string) {
-				const binaryDataItem: IBinaryData = this.binaryData[index][key];
+				const { id, data, fileName, fileExtension, mimeType }: IBinaryData = this.binaryData[index][key];
 
-				let bufferString = 'data:' + binaryDataItem.mimeType + ';base64,';
-				if(binaryDataItem.id) {
-					bufferString += await this.restApi().getBinaryBufferString(binaryDataItem.id);
+				if(id) {
+					const url = this.restApi().getBinaryUrl(id);
+					saveAs(url, [fileName, fileExtension].join('.'));
+					return;
 				} else {
-					bufferString += binaryDataItem.data;
+					const bufferString = 'data:' + mimeType + ';base64,' + data;
+					const blob = await fetch(bufferString).then(d => d.blob());
+					saveAs(blob, fileName);
 				}
-
-				const data = await fetch(bufferString);
-				const blob = await data.blob();
-				saveAs(blob, binaryDataItem.fileName);
 			},
 			displayBinaryData (index: number, key: string) {
 				this.binaryDataDisplayVisible = true;
