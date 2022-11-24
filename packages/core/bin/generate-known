@@ -2,25 +2,23 @@
 
 const path = require('path');
 const glob = require('fast-glob');
-const { createContext, Script } = require('vm');
 const { LoggerProxy } = require('n8n-workflow');
 const { packageDir, writeJSON } = require('./common');
+const { loadClassInIsolation } = require('../dist/ClassLoader');
 
 LoggerProxy.init({
 	log: console.log.bind(console),
 	warn: console.warn.bind(console),
 });
 
-const context = Object.freeze(createContext({ require }));
 const loadClass = (sourcePath) => {
 	try {
 		const [className] = path.parse(sourcePath).name.split('.');
-		const absolutePath = path.resolve(packageDir, sourcePath);
-		const script = new Script(`new (require('${absolutePath}').${className})()`);
-		const instance = script.runInContext(context);
+		const filePath = path.resolve(packageDir, sourcePath);
+		const instance = loadClassInIsolation(filePath, className);
 		return { instance, sourcePath, className };
 	} catch (e) {
-		LoggerProxy.warn('Failed to load %s: %s', sourcePath, e.message);
+		LoggerProxy.warn(`Failed to load ${sourcePath}: ${e.message}`);
 	}
 };
 
