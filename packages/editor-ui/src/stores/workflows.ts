@@ -282,7 +282,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 			}
 			this.workflow.name = data.newName;
 
-			if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+			if (this.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID && this.workflowsById[this.workflow.id]) {
 				this.workflowsById[this.workflow.id].name = data.newName;
 			}
 		},
