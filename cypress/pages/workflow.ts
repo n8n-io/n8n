@@ -7,5 +7,6 @@ export class WorkflowPage extends BasePage {
 		workflowImportInput: () => cy.getByTestId('workflow-import-input'),
 		workflowTags: () => cy.getByTestId('workflow-tags'),
 		saveButton: () => cy.getByTestId('save-button'),
+		nodes: () => cy.getByTestId('node'),
 	};
 }
