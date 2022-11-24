@@ -80,11 +80,12 @@
 					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
+					data-test-id="wf-save-button"
 					@click="onSaveButtonClick"
 				/>
 				<div :class="$style.workflowMenuContainer">
 					<input :class="$style.hiddenInput" type="file" ref="importFile" data-test-id="workflow-import-input" @change="handleFileImport()">
-					<n8n-action-dropdown :items="workflowMenuItems" @select="onWorkflowMenuSelect" />
+					<n8n-action-dropdown :items="workflowMenuItems" data-test-id="workflow-menu" @select="onWorkflowMenuSelect" />
 				</div>
 			</template>
 		</PushConnectionTracker>
