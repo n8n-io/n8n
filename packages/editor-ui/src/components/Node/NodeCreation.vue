@@ -2,7 +2,7 @@
 	<div>
 		<div v-if="!createNodeActive" :class="[$style.nodeButtonsWrapper, showStickyButton ? $style.noEvents : '']" @mouseenter="onCreateMenuHoverIn">
 			<div :class="$style.nodeCreatorButton">
-				<n8n-icon-button size="xlarge" icon="plus" type="tertiary" :class="$style.nodeCreatorPlus" @click="openNodeCreator" :title="$locale.baseText('nodeView.addNode')"/>
+				<n8n-icon-button size="xlarge" icon="plus" type="tertiary" :class="$style.nodeCreatorPlus" @click="openNodeCreator" :title="$locale.baseText('nodeView.addNode')" data-test-id="node-creation-plus"/>
 				<div :class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']" @click="addStickyNote">
 					<n8n-icon-button size="medium" type="tertiary" :icon="['far', 'note-sticky']" :title="$locale.baseText('nodeView.addSticky')"/>
 				</div>
