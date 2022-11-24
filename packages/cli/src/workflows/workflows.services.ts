@@ -199,11 +199,11 @@ export class WorkflowsService {
 			);
 		}
 
-		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
-			throw new ResponseHelper.BadRequestError(
-				'We are sorry, but the workflow has been changed in the meantime. Please reload the workflow and try again.',
-			);
-		}
+		// if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
+		// 	throw new ResponseHelper.BadRequestError(
+		// 		'We are sorry, but the workflow has been changed in the meantime. Please reload the workflow and try again.',
+		// 	);
+		// }
 
 		// check credentials for old format
 		await WorkflowHelpers.replaceInvalidCredentials(workflow);
