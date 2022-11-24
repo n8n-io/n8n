@@ -3,13 +3,7 @@ describe('Authentication', () => {
 		cy.skipSetup();
 	});
 
-	// it('should sign user in', () => {
-	// 	cy.on('uncaught:exception', (err, runnable) => {
-	// 		expect(err.message).to.include('Not logged in');
-
-	// 		return false;
-	// 	})
-
-	// 	cy.signin(username, password);
-	// });
+	// todo test for adding workflow
+	// todo test for setting up UM again through settings
+	// todo test that workflows migrated successfully
 });
