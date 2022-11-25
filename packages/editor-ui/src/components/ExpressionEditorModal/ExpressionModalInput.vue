@@ -11,7 +11,7 @@ import { history } from '@codemirror/commands';
 import { syntaxTree } from '@codemirror/language';
 import { mapStores } from 'pinia';
 
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv';
 import { n8nLanguageSupport } from './n8nLanguageSupport';
 import { braceHandler } from './braceHandler';
