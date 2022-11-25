@@ -1,6 +1,7 @@
 import N8nTabs from './Tabs.vue';
 
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Tabs',
@@ -15,7 +16,7 @@ const methods = {
 	onInput: action('input'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nTabs,

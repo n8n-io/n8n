@@ -1,5 +1,6 @@
 import N8nLink from './Link.vue';
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Link',
@@ -18,7 +19,7 @@ const methods = {
 	onClick: action('click'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nLink,
