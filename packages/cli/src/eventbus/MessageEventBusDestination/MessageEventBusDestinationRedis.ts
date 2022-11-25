@@ -11,7 +11,7 @@ import {
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 // eslint-disable-next-line import/no-extraneous-dependencies
 import Redis, { RedisOptions } from 'ioredis';
-import { JsonObject, jsonParse, JsonValue } from 'n8n-workflow';
+import { JsonObject, jsonParse } from 'n8n-workflow';
 import { MessageEventBusDestinationTypeNames } from '.';
 
 export const isMessageEventBusDestinationRedisOptions = (
@@ -65,13 +65,13 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 		}
 	}
 
-	serialize(): { __type: string; [key: string]: JsonValue } {
+	serialize(): MessageEventBusDestinationRedisOptions {
 		const abstractSerialized = super.serialize();
 		return {
 			...abstractSerialized,
 			channelName: this.#channelName,
 			redisOptions: this.redisOptions as JsonObject,
-		} as { __type: string; [key: string]: JsonValue };
+		};
 	}
 
 	static deserialize(

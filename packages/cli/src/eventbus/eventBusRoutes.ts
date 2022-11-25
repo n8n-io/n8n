@@ -29,6 +29,10 @@ import {
 import { eventNamesAll } from './EventMessageClasses';
 import { EventMessageLevel, EventMessageTypeNames } from './EventMessageClasses/Enums';
 import { MessageEventBusDestinationTypeNames } from './MessageEventBusDestination';
+import {
+	EventMessageAudit,
+	EventMessageAuditOptions,
+} from './EventMessageClasses/EventMessageAudit';
 
 export const eventBusRouter = express.Router();
 
@@ -102,7 +106,19 @@ eventBusRouter.post(
 	`/event`,
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
 		if (isEventMessageOptions(req.body)) {
-			await eventBus.send(new EventMessageGeneric(req.body));
+			let msg;
+			switch (req.body.__type) {
+				case EventMessageTypeNames.workflow:
+					msg = new EventMessageWorkflow(req.body as EventMessageWorkflowOptions);
+					break;
+				case EventMessageTypeNames.audit:
+					msg = new EventMessageAudit(req.body as EventMessageAuditOptions);
+					break;
+				case EventMessageTypeNames.generic:
+				default:
+					msg = new EventMessageGeneric(req.body);
+			}
+			await eventBus.send(msg);
 		} else {
 			throw new ResponseError(
 				'Body is not a serialized EventMessage or eventName does not match format {namespace}.{domain}.{event}',

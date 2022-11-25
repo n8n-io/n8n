@@ -1,5 +1,5 @@
 import { v4 as uuid } from 'uuid';
-import { LoggerProxy } from 'n8n-workflow';
+import { INodeCredentials, LoggerProxy } from 'n8n-workflow';
 import { Db } from '../..';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import { EventMessageTypes } from '../EventMessageClasses';
@@ -11,11 +11,11 @@ import { MessageEventBusDestinationTypeNames } from '.';
 export interface MessageEventBusDestinationOptions {
 	__type?: string;
 	id?: string;
-
 	label?: string;
 	enabled?: boolean;
 	subscribedEvents?: string[];
 	subscribedLevels?: EventMessageLevel[];
+	credentials?: INodeCredentials;
 }
 
 export abstract class MessageEventBusDestination {
@@ -33,6 +33,8 @@ export abstract class MessageEventBusDestination {
 
 	subscribedLevels: EventMessageLevel[];
 
+	credentials: INodeCredentials = {};
+
 	constructor(options: MessageEventBusDestinationOptions) {
 		this.id = options.id ?? uuid();
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.abstract;
@@ -45,6 +47,7 @@ export abstract class MessageEventBusDestination {
 			EventMessageLevel.warn,
 			EventMessageLevel.info,
 		];
+		if (options.credentials) this.credentials = options.credentials;
 		LoggerProxy.debug(`${this.__type}(${this.id}) event destination initialized`);
 	}
 

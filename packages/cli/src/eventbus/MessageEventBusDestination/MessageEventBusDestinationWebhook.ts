@@ -12,6 +12,7 @@ import { INodeCredentials, jsonParse } from 'n8n-workflow';
 import { CredentialsHelper } from '../../CredentialsHelper';
 import { UserSettings, requestOAuth1, requestOAuth2, requestWithAuthentication } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
+import config from '../../config';
 
 export const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
@@ -74,7 +75,6 @@ export interface MessageEventBusDestinationWebhookOptions
 	queryParameters?: ParameterItem;
 	sendPayload?: boolean;
 	options?: ParameterOptions;
-	credentials?: INodeCredentials;
 }
 
 export class MessageEventBusDestinationWebhook extends MessageEventBusDestination {
@@ -114,9 +114,9 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 
 	sendPayload = true;
 
-	credentials: INodeCredentials = {};
-
 	credentialsHelper?: CredentialsHelper;
+
+	axiosRequestOptions: AxiosRequestConfig;
 
 	constructor(options: MessageEventBusDestinationWebhookOptions) {
 		super(options);
@@ -139,7 +139,194 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 		if (options.queryParameters) this.queryParameters = options.queryParameters;
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
-		if (options.credentials) this.credentials = options.credentials;
+	}
+
+	async matchDecryptedCredentialType(credentialType: string) {
+		const foundCredential = Object.entries(this.credentials).find((e) => e[0] === credentialType);
+		if (foundCredential) {
+			const timezone = config.getEnv('generic.timezone');
+			const credentialsDecrypted = await this.credentialsHelper?.getDecrypted(
+				foundCredential[1],
+				foundCredential[0],
+				'internal',
+				timezone,
+				true,
+			);
+			return credentialsDecrypted;
+		}
+		return null;
+	}
+
+	async generateAxiosOptions() {
+		if (this.axiosRequestOptions?.url) {
+			return;
+		}
+
+		this.axiosRequestOptions = {
+			headers: {},
+			method: this.method as Method,
+			url: this.url,
+			maxRedirects: 0,
+		} as AxiosRequestConfig;
+
+		if (this.credentialsHelper === undefined) {
+			let encryptionKey: string | undefined;
+			try {
+				encryptionKey = await UserSettings.getEncryptionKey();
+			} catch (_) {}
+			if (encryptionKey) {
+				this.credentialsHelper = new CredentialsHelper(encryptionKey);
+			}
+		}
+
+		let httpBasicAuth;
+		let httpDigestAuth;
+		let httpHeaderAuth;
+		let httpQueryAuth;
+		let oAuth1Api;
+		let oAuth2Api;
+
+		if (this.authentication === 'genericCredentialType') {
+			if (this.genericAuthType === 'httpBasicAuth') {
+				try {
+					httpBasicAuth = await this.matchDecryptedCredentialType('httpBasicAuth');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'httpDigestAuth') {
+				try {
+					httpDigestAuth = await this.matchDecryptedCredentialType('httpDigestAuth');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'httpHeaderAuth') {
+				try {
+					httpHeaderAuth = await this.matchDecryptedCredentialType('httpHeaderAuth');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'httpQueryAuth') {
+				try {
+					httpQueryAuth = await this.matchDecryptedCredentialType('httpQueryAuth');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'oAuth1Api') {
+				try {
+					oAuth1Api = await this.matchDecryptedCredentialType('oAuth1Api');
+				} catch (_) {}
+			} else if (this.genericAuthType === 'oAuth2Api') {
+				try {
+					oAuth2Api = await this.matchDecryptedCredentialType('oAuth2Api');
+				} catch (_) {}
+			}
+			// } else if (this.authentication === 'predefinedCredentialType') {
+			// 	try {
+			// 		nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
+			// 	} catch (_) {}
+		}
+
+		const sendQuery = this.sendQuery;
+		const specifyQuery = this.specifyQuery;
+		const sendPayload = this.sendPayload;
+		const sendHeaders = this.sendHeaders;
+		const specifyHeaders = this.specifyHeaders;
+
+		if (this.options.allowUnauthorizedCerts) {
+			this.axiosRequestOptions.httpsAgent = new HTTPSAgent({ rejectUnauthorized: false });
+		}
+
+		if (this.options.redirect?.followRedirects) {
+			this.axiosRequestOptions.maxRedirects = this.options.redirect?.maxRedirects;
+		}
+
+		// if (response?.response?.neverError === true) {
+		// 	this.axiosRequestOptions.simple = false;
+		// }
+
+		if (this.options.proxy) {
+			this.axiosRequestOptions.proxy = this.options.proxy;
+		}
+
+		if (this.options.timeout) {
+			this.axiosRequestOptions.timeout = this.options.timeout;
+		} else {
+			this.axiosRequestOptions.timeout = 10000;
+		}
+
+		if (this.sendQuery && this.options.queryParameterArrays) {
+			Object.assign(this.axiosRequestOptions, {
+				qsStringifyOptions: { arrayFormat: this.options.queryParameterArrays },
+			});
+		}
+
+		const parametersToKeyValue = async (
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			acc: Promise<{ [key: string]: any }>,
+			cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
+		) => {
+			const acumulator = await acc;
+			acumulator[cur.name] = cur.value;
+			return acumulator;
+		};
+
+		// Get parameters defined in the UI
+		if (sendQuery && this.queryParameters.parameters) {
+			if (specifyQuery === 'keypair') {
+				this.axiosRequestOptions.params = this.queryParameters.parameters.reduce(
+					parametersToKeyValue,
+					Promise.resolve({}),
+				);
+			} else if (specifyQuery === 'json') {
+				// query is specified using JSON
+				try {
+					JSON.parse(this.jsonQuery);
+				} catch (_) {
+					console.log(`JSON parameter need to be an valid JSON`);
+				}
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				this.axiosRequestOptions.params = jsonParse(this.jsonQuery);
+			}
+		}
+
+		// Get parameters defined in the UI
+		if (sendHeaders && this.headerParameters.parameters) {
+			if (specifyHeaders === 'keypair') {
+				this.axiosRequestOptions.headers = this.headerParameters.parameters.reduce(
+					parametersToKeyValue,
+					Promise.resolve({}),
+				);
+			} else if (specifyHeaders === 'json') {
+				// body is specified using JSON
+				try {
+					JSON.parse(this.jsonHeaders);
+				} catch (_) {
+					console.log(`JSON parameter need to be an valid JSON`);
+				}
+
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				this.axiosRequestOptions.headers = jsonParse(this.jsonHeaders);
+			}
+		}
+
+		// default for bodyContentType.raw
+		if (this.axiosRequestOptions.headers === undefined) {
+			this.axiosRequestOptions.headers = {};
+		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		this.axiosRequestOptions.headers['Content-Type'] = 'application/json';
+
+		// Add credentials if any are set
+		if (httpBasicAuth) {
+			this.axiosRequestOptions.auth = {
+				username: httpBasicAuth.user as string,
+				password: httpBasicAuth.password as string,
+			};
+		} else if (httpHeaderAuth) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			this.axiosRequestOptions.headers[httpHeaderAuth.name as string] = httpHeaderAuth.value;
+		} else if (httpQueryAuth) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			this.axiosRequestOptions.params[httpQueryAuth.name as string] = httpQueryAuth.value;
+		} else if (httpDigestAuth) {
+			this.axiosRequestOptions.auth = {
+				username: httpDigestAuth.user as string,
+				password: httpDigestAuth.password as string,
+			};
+		}
 	}
 
 	// async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
@@ -200,294 +387,58 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 	}
 
 	async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
-		if (this.credentialsHelper === undefined) {
-			let encryptionKey: string | undefined;
-			try {
-				encryptionKey = await UserSettings.getEncryptionKey();
-			} catch (_) {}
-			if (encryptionKey) {
-				this.credentialsHelper = new CredentialsHelper(encryptionKey);
-			}
-		}
-
-		// const items = this.getInputData();
-
-		// const fullReponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
-
-		let httpBasicAuth;
-		let httpDigestAuth;
-		let httpHeaderAuth;
-		let httpQueryAuth;
-		let oAuth1Api;
-		let oAuth2Api;
-		let nodeCredentialType;
-
-		if (this.authentication === 'genericCredentialType') {
-			// const genericAuthType = this.genericAuthType;
-			// 	if (genericAuthType === 'httpBasicAuth') {
-			// 		try {
-			// 			httpBasicAuth = await this.getCredentials('httpBasicAuth');
-			// 		} catch (_) {}
-			// 	} else if (genericAuthType === 'httpDigestAuth') {
-			// 		try {
-			// 			httpDigestAuth = await this.getCredentials('httpDigestAuth');
-			// 		} catch (_) {}
-			// 	} else if (genericAuthType === 'httpHeaderAuth') {
-			// 		try {
-			// 			httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-			// 		} catch (_) {}
-			// 	} else if (genericAuthType === 'httpQueryAuth') {
-			// 		try {
-			// 			httpQueryAuth = await this.getCredentials('httpQueryAuth');
-			// 		} catch (_) {}
-			// 	} else if (genericAuthType === 'oAuth1Api') {
-			// 		try {
-			// 			oAuth1Api = await this.getCredentials('oAuth1Api');
-			// 		} catch (_) {}
-			// 	} else if (genericAuthType === 'oAuth2Api') {
-			// 		try {
-			// 			oAuth2Api = await this.getCredentials('oAuth2Api');
-			// 		} catch (_) {}
-			// 	}
-			// } else if (authentication === 'predefinedCredentialType') {
-			// 	try {
-			// 		nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
-			// 	} catch (_) {}
-		}
-
-		let requestPromise: Promise<AxiosResponse>;
-
-		// let fullResponse = false;
-
-		// let autoDetectResponseFormat = false;
-
-		const sendQuery = this.sendQuery;
-		// const queryParameters = this.queryParameters.parameters;
-		const specifyQuery = this.specifyQuery;
-		// const jsonQueryParameter = this.jsonQuery;
-
-		const sendPayload = this.sendPayload;
-
-		const sendHeaders = this.sendHeaders;
-		// const headerParameters = this.headerParameters.parameters;
-		const specifyHeaders = this.specifyHeaders;
-		// const jsonHeadersParameter = this.jsonHeaders;
-
-		// const { proxy, timeout, queryParameterArrays, response } = this.options as {
-		// 	proxy: string;
-		// 	timeout: number;
-		// 	queryParameterArrays: 'indices' | 'brackets' | 'repeat';
-		// 	response: {
-		// 		response: { neverError: boolean; responseFormat: string; fullResponse: boolean };
-		// 	};
-		// };
-
-		// const responseFormat = this.options.response?.response?.responseFormat ?? 'autodetect';
-
-		// fullResponse = this.options.response?.response?.fullResponse ?? false;
-
-		// autoDetectResponseFormat = responseFormat === 'autodetect';
-
-		const requestOptions: AxiosRequestConfig = {
-			headers: {},
-			method: this.method as Method,
-			url: this.url,
-			maxRedirects: 0,
-		};
-
-		if (this.options.allowUnauthorizedCerts) {
-			requestOptions.httpsAgent = new HTTPSAgent({ rejectUnauthorized: false });
-		}
-
-		// When response format is set to auto-detect,
-		// we need to access to response header content-type
-		// and the only way is using "resolveWithFullResponse"
-		// if (autoDetectResponseFormat || fullResponse) {
-		// 	requestOptions.resolveWithFullResponse = true;
-		// }
-
-		if (this.options.redirect?.followRedirects) {
-			requestOptions.maxRedirects = this.options.redirect?.maxRedirects;
-		}
-
-		// if (redirect?.redirect?.maxRedirects) {
-		// 	requestOptions.maxRedirects = redirect?.redirect?.maxRedirects;
-		// }
-
-		// if (response?.response?.neverError === true) {
-		// 	requestOptions.simple = false;
-		// }
-
-		// TODO: very simplistic parsing, adjust input for to match axios proxy fields
-		if (this.options.proxy) {
-			requestOptions.proxy = this.options.proxy;
-		}
-
-		if (this.options.timeout) {
-			requestOptions.timeout = this.options.timeout;
-		} else {
-			requestOptions.timeout = 10000;
-		}
-
-		if (this.sendQuery && this.options.queryParameterArrays) {
-			Object.assign(requestOptions, {
-				qsStringifyOptions: { arrayFormat: this.options.queryParameterArrays },
-			});
-		}
+		// at first run, build this.requestOptions with the destination settings
+		await this.generateAxiosOptions();
 
 		if (['PATCH', 'POST', 'PUT', 'GET'].includes(this.method.toUpperCase())) {
-			if (sendPayload) {
-				requestOptions.data = {
+			if (this.sendPayload) {
+				this.axiosRequestOptions.data = {
 					...msg,
+					ts: msg.ts.toISO(),
 				};
 			} else {
-				requestOptions.data = {
+				this.axiosRequestOptions.data = {
 					...msg,
+					ts: msg.ts.toISO(),
 					payload: undefined,
 				};
 			}
 		}
 
-		const parmetersToKeyValue = async (
-			// tslint:disable-next-line: no-any
-			acc: Promise<{ [key: string]: any }>,
-			cur: { name: string; value: string; parameterType?: string; inputDataFieldName?: string },
-		) => {
-			const acumulator = await acc;
-			acumulator[cur.name] = cur.value;
-			return acumulator;
-		};
+		// TODO: implement extra auth requests
 
-		// Get parameters defined in the UI
-		if (sendQuery && this.queryParameters.parameters) {
-			if (specifyQuery === 'keypair') {
-				requestOptions.params = this.queryParameters.parameters.reduce(
-					parmetersToKeyValue,
-					Promise.resolve({}),
-				);
-			} else if (specifyQuery === 'json') {
-				// query is specified using JSON
-				try {
-					JSON.parse(this.jsonQuery);
-				} catch (_) {
-					console.log(`JSON parameter need to be an valid JSON`);
-				}
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				requestOptions.params = jsonParse(this.jsonQuery);
-			}
-		}
-
-		// Get parameters defined in the UI
-		if (sendHeaders && this.headerParameters.parameters) {
-			if (specifyHeaders === 'keypair') {
-				requestOptions.headers = this.headerParameters.parameters.reduce(
-					parmetersToKeyValue,
-					Promise.resolve({}),
-				);
-			} else if (specifyHeaders === 'json') {
-				// body is specified using JSON
-				try {
-					JSON.parse(this.jsonHeaders);
-				} catch (_) {
-					console.log(`JSON parameter need to be an valid JSON`);
-				}
-
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				requestOptions.headers = jsonParse(this.jsonHeaders);
-			}
-		}
-
-		// default for bodyContentType.raw
-		// requestOptions.json = false;
-		if (requestOptions.headers === undefined) {
-			requestOptions.headers = {};
-		}
-		const rawContentType = 'application/json';
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		requestOptions.headers['Content-Type'] = rawContentType;
-
-		//TODO
-		// Add credentials if any are set
-		// if (httpBasicAuth !== undefined) {
-		// 	requestOptions.auth = {
-		// 		user: httpBasicAuth.user as string,
-		// 		pass: httpBasicAuth.password as string,
-		// 	};
+		// if (this.authentication === 'genericCredentialType' || this.authentication === 'none') {
+		// if (oAuth1Api) {
+		// const requestOAuth1Request = requestOAuth1.call(this, 'oAuth1Api', requestOptions);
+		// requestOAuth1Request.catch(() => {});
+		// requestPromise = requestOAuth1Request;
+		// } else if (oAuth2Api) {
+		// const requestOAuth2Request = requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
+		// 	tokenType: 'Bearer',
+		// });
+		// requestOAuth2Request.catch(() => {});
+		// requestPromise = requestOAuth2Request;
+		// } else {
+		// bearerAuth, queryAuth, headerAuth, digestAuth, none
+		// const request = this.helpers.request(requestOptions);
+		// requestPromise = axios.request(requestOptions);
+		// requestPromise.catch(() => {});
 		// }
-		// if (httpHeaderAuth !== undefined) {
-		// 	requestOptions.headers![httpHeaderAuth.name as string] = httpHeaderAuth.value;
+		// } else if (this.authentication === 'predefinedCredentialType' && this.nodeCredentialType) {
+		// const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
+		// // service-specific cred: OAuth1, OAuth2, plain
+		// const requestWithAuthenticationRequest = requestWithAuthentication.call(
+		// 	this,
+		// 	nodeCredentialType,
+		// 	requestOptions,
+		// 	additionalOAuth2Options && { oauth2: additionalOAuth2Options },
+		// );
+		// requestWithAuthenticationRequest.catch(() => {});
+		// requestPromise = requestWithAuthenticationRequest;
 		// }
-		// if (httpQueryAuth !== undefined) {
-		// 	if (!requestOptions.qs) {
-		// 		requestOptions.qs = {};
-		// 	}
-		// 	requestOptions.qs![httpQueryAuth.name as string] = httpQueryAuth.value;
-		// }
-		// if (httpDigestAuth !== undefined) {
-		// 	requestOptions.auth = {
-		// 		user: httpDigestAuth.user as string,
-		// 		pass: httpDigestAuth.password as string,
-		// 		sendImmediately: false,
-		// 	};
 		// }
 
-		// if (requestOptions.headers.accept === undefined) {
-		// 	if (responseFormat === 'json') {
-		// 		requestOptions.headers.accept = 'application/json,text/*;q=0.99';
-		// 	} else if (responseFormat === 'text') {
-		// 		requestOptions.headers.accept =
-		// 			'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, */*;q=0.1';
-		// 	} else {
-		// 		requestOptions.headers.accept =
-		// 			'application/json,text/html,application/xhtml+xml,application/xml,text/*;q=0.9, image/*;q=0.8, */*;q=0.7';
-		// 	}
-		// }
-
-		// try {
-		// 	let sendRequest: any = requestOptions; // tslint:disable-line:no-any
-		// 	// Protect browser from sending large binary data
-		// 	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
-		// 		sendRequest = {
-		// 			...requestOptions,
-		// 			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${requestOptions.body.length} byte.`,
-		// 		};
-		// 	}
-		// } catch (e) {}
-
-		if (this.authentication === 'genericCredentialType' || this.authentication === 'none') {
-			if (oAuth1Api) {
-				// const requestOAuth1Request = requestOAuth1.call(this, 'oAuth1Api', requestOptions);
-				// requestOAuth1Request.catch(() => {});
-				// requestPromise = requestOAuth1Request;
-			} else if (oAuth2Api) {
-				// const requestOAuth2Request = requestOAuth2.call(this, 'oAuth2Api', requestOptions, {
-				// 	tokenType: 'Bearer',
-				// });
-				// requestOAuth2Request.catch(() => {});
-				// requestPromise = requestOAuth2Request;
-			} else {
-				// bearerAuth, queryAuth, headerAuth, digestAuth, none
-				// const request = this.helpers.request(requestOptions);
-				//TODO:
-				requestPromise = axios.request(requestOptions);
-				requestPromise.catch(() => {});
-			}
-		} else if (this.authentication === 'predefinedCredentialType' && nodeCredentialType) {
-			// const additionalOAuth2Options = getOAuth2AdditionalParameters(nodeCredentialType);
-			// // service-specific cred: OAuth1, OAuth2, plain
-			// const requestWithAuthenticationRequest = requestWithAuthentication.call(
-			// 	this,
-			// 	nodeCredentialType,
-			// 	requestOptions,
-			// 	additionalOAuth2Options && { oauth2: additionalOAuth2Options },
-			// );
-			// requestWithAuthenticationRequest.catch(() => {});
-			// requestPromise = requestWithAuthenticationRequest;
-		}
-		// }
-		// TODO: auth
-		requestPromise = axios.request(requestOptions);
+		const requestPromise: Promise<AxiosResponse> = axios.request(this.axiosRequestOptions);
 		requestPromise.catch(() => {});
 		const requestResponse = await requestPromise;
 
@@ -495,10 +446,5 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 			return requestResponse.status === this.expectedStatusCode;
 		}
 		return true;
-
-		// let response: any; // tslint:disable-line:no-any
-		// for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
-		// @ts-ignore
-		// response = promisesResponses.shift();
 	}
 }
