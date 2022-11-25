@@ -24,6 +24,9 @@ export class WorkflowPage extends BasePage {
 		ndvParameterInput: (parameterName: string) =>
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
+		ndvRunDataPaneHeader: () => cy.getByTestId('run-data-pane-header'),
+
+		successToast: () => cy.get('.el-notification__title'),
 	};
 
 	actions = {
@@ -42,6 +45,13 @@ export class WorkflowPage extends BasePage {
 		},
 		typeIntoParameterInput: (parameterName: string, content: string) => {
 			this.getters.ndvParameterInput(parameterName).type(content);
+		},
+		selectOptionInParameterDropdown: (parameterName: string, content: string) => {
+			this.getters
+				.ndvParameterInput(parameterName)
+				.find('.option-headline')
+				.contains(content)
+				.click();
 		},
 		executeNodeFromNdv: () => {
 			cy.contains('Execute node').click();
