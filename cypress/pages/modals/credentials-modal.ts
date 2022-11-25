@@ -24,17 +24,10 @@ export class CredentialsModal extends BasePage {
 		},
 		save: () => {
 			this.getters.saveButton().click();
-<<<<<<< HEAD
 			this.getters.saveButton().should('contain.text', 'Saved');
 		},
 		close: () => {
 			this.getters.closeButton().click();
-		}
-=======
 		},
-		close: () => {
-			this.getters.closeButton().click();
-		},
->>>>>>> master
 	};
 }
