@@ -80,7 +80,7 @@
 					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
-					data-test-id="wf-save-button"
+					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
 				<div :class="$style.workflowMenuContainer">

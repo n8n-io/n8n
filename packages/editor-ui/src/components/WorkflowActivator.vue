@@ -21,7 +21,7 @@
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
 				element-loading-spinner="el-icon-loading"
-				data-test-id="wf-activate-switch"
+				data-test-id="workflow-activate-switch"
 			>
 			</el-switch>
 		</n8n-tooltip>

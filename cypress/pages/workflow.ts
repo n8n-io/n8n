@@ -6,7 +6,7 @@ export class WorkflowPage extends BasePage {
 		workflowNameInput: () => cy.getByTestId('workflow-name-input'),
 		workflowImportInput: () => cy.getByTestId('workflow-import-input'),
 		workflowTags: () => cy.getByTestId('workflow-tags'),
-		saveButton: () => cy.getByTestId('save-button'),
+		saveButton: () => cy.getByTestId('workflow-save-button'),
 
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
@@ -21,10 +21,9 @@ export class WorkflowPage extends BasePage {
 		ndvParameterInput: (parameterName: string) =>
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
-		activatorSwitch: () => cy.getByTestId('wf-activate-switch'),
+		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
-		triggerNodeItem: (name: string) => cy.getByTestId(name),
 	};
 
 	actions = {
@@ -49,7 +48,8 @@ export class WorkflowPage extends BasePage {
 		},
 		visit: () => {
 			cy.visit(this.url);
-			cy.get('[data-test-id=node-view-loader]', { timeout: 5000 }).should('not.exist');
+			// cy.get('[data-test-id=node-view-loader]', { timeout: 5000 }).should('not.exist');
+			cy.getByTestId('node-view-loader', { timeout: 5000 }).should('not.exist');
 			cy.get('.el-loading-mask', { timeout: 5000 }).should('not.exist');
 		},
 		openWorkflowMenu: () => {
@@ -60,11 +60,6 @@ export class WorkflowPage extends BasePage {
 		},
 		saveWorkflowUsingKeyboardShortcut: () => {
 			cy.get('body').type('{meta}', { release: false }).type('s');
-		},
-		addTriggerNode: (name: string) => {
-			this.getters.firstStepButton().click();
-			this.getters.triggerNodeItem(name).click();
-			cy.get('body').type('{esc}');
 		},
 		activateWorkflow: () => {
 			this.getters.activatorSwitch().find('input').first().should('be.enabled');
