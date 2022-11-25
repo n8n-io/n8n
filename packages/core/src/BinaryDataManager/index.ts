@@ -144,6 +144,18 @@ export class BinaryDataManager {
 		return Promise.resolve();
 	}
 
+	async markDataForDeletionByExecutionIds(executionIds: string[]): Promise<void> {
+		if (this.managers[this.binaryDataMode]) {
+			return Promise.all(
+				executionIds.map(async (id) =>
+					this.managers[this.binaryDataMode].markDataForDeletionByExecutionId(id),
+				),
+			).then(() => {});
+		}
+
+		return Promise.resolve();
+	}
+
 	async persistBinaryDataForExecutionId(executionId: string): Promise<void> {
 		if (this.managers[this.binaryDataMode]) {
 			return this.managers[this.binaryDataMode].persistBinaryDataForExecutionId(executionId);
