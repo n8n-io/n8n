@@ -1476,13 +1476,13 @@
 	"settings.ldap.form.lastName.label": "Last Name",
 	"settings.ldap.form.lastName.placeholder": "sn",
 	"settings.ldap.form.lastName.infoText": "The attribute in the LDAP server used to populate the last name in n8n",
-	"settings.ldap.form.synchronizationInfo.label": "Synchronization",
-	"settings.ldap.form.syncronizationEnabled.label": "Enable LDAP Synchronization",
+	"settings.ldap.form.syncronizationEnabled.label": "Enable periodic LDAP synchronization",
 	"settings.ldap.form.syncronizationEnabled.tooltip": "Enable users to be synchronized periodically",
 	"settings.ldap.form.syncronizationInterval.label": "Synchronization Interval (Minutes)",
 	"settings.ldap.form.syncronizationInterval.infoText": "How often the synchronization should run",
 	"settings.ldap.form.pageSize.label": "Page Size",
 	"settings.ldap.form.pageSize.infoText": "Max number of records to return per page during synchronization. 0 for unlimited",
 	"settings.ldap.form.searchTimeout.label": "Search Timeout (Seconds)",
-	"settings.ldap.form.searchTimeout.infoText": "The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server"
+	"settings.ldap.form.searchTimeout.infoText": "The timeout value for queries to the AD/LDAP server. Increase if you are getting timeout errors caused by a slow AD/LDAP server",
+	"settings.ldap.section.synchronization.title": "Synchronization"
 }

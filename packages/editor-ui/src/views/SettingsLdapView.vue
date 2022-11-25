@@ -22,11 +22,13 @@
 						{{ $locale.baseText('settings.ldap') }}
 					</n8n-heading>
 				</div>
-				<n8n-info-tip theme="info" type="note">
-					<template>
-						<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
-					</template>
-				</n8n-info-tip>
+				<div :class="$style.docsInfoTip">
+					<n8n-info-tip theme="info" type="note">
+						<template>
+							<span v-html="$locale.baseText('settings.ldap.infoTip')"></span>
+						</template>
+					</n8n-info-tip>
+				</div>
 				<div :class="$style.settingsForm">
 					<n8n-form-inputs
 						v-if="formInputs"
@@ -63,6 +65,7 @@
 				</div>
 			</div>
 			<div v-show="loginEnabled">
+				<n8n-heading tag="h1" class="mb-2xl mt-3xl" size="medium">{{ $locale.baseText('settings.ldap.section.synchronization.title') }}</n8n-heading>
 				<div :class="$style.syncTable">
 					<el-table
 						v-loading="loadingTable"
@@ -644,18 +647,6 @@ export default mixins(showMessage).extend({
 						},
 					},
 					{
-						name: 'synchronizationInfo',
-						properties: {
-							label: this.$locale.baseText('settings.ldap.form.synchronizationInfo.label'),
-							type: 'info',
-							labelSize: 'large',
-							labelAlignment: 'left',
-						},
-						shouldDisplay(values): boolean {
-							return values['loginEnabled'] === true;
-						},
-					},
-					{
 						name: 'syncronizationEnabled',
 						initialValue: this.adConfig.syncronizationEnabled,
 						properties: {
@@ -792,6 +783,12 @@ export default mixins(showMessage).extend({
 .settingsForm {
 	:global(.form-text) {
 		margin-top: var(--spacing-xl);
+	}
+}
+
+.docsInfoTip {
+	&, & > div {
+		margin-bottom: var(--spacing-xl);
 	}
 }
 </style>
