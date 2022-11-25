@@ -80,7 +80,7 @@
 		</div>
 		<div class="node-description">
 			<div class="node-name ph-no-capture" :title="nodeTitle">
-				<p data-test-id="node-box-title">
+				<p data-test-id="canvas-node-box-title">
 					{{ nodeTitle }}
 				</p>
 				<p v-if="data.disabled">

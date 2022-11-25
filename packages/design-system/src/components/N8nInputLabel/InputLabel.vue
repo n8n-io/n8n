@@ -2,7 +2,6 @@
 	<div :class="$style.container">
 		<label
 			v-if="label || $slots.options"
-			:data-test-id="inputName"
 			:for="inputName"
 			:class="{
 				[$style.inputLabel]: true,

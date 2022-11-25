@@ -16,7 +16,7 @@ export class WorkflowPage extends BasePage {
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
 		canvasNodeBox: (nodeDisplayName: string) => {
 			return cy
-				.getByTestId('node-box-title')
+				.getByTestId('canvas-node-box-title')
 				.contains(nodeDisplayName)
 				.parents('[data-test-id="canvas-node-box"]');
 		},
