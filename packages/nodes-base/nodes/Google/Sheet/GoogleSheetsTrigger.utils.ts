@@ -3,7 +3,7 @@ import { apiRequest } from './v2/transport';
 import { SheetDataRow, SheetRangeData } from './v2/helpers/GoogleSheets.types';
 
 import * as XLSX from 'xlsx';
-import { isEqual } from 'lodash';
+import { isEqual, zip } from 'lodash';
 
 const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -61,13 +61,19 @@ export function compareRevisions(
 	previous: SheetRangeData,
 	current: SheetRangeData,
 	keyRow: number,
+	includeInOutput: string,
 	columnsToWatch?: string[],
 ) {
 	const [dataLength, columns] =
 		current.length > previous.length
 			? [current.length, ['row_number', ...current[keyRow - 1]]]
 			: [previous.length, ['row_number', ...previous[keyRow - 1]]];
-	const diffData: SheetRangeData = [];
+
+	const diffData: Array<{
+		rowIndex: number;
+		previous: SheetDataRow;
+		current: SheetDataRow;
+	}> = [];
 
 	for (let i = 0; i < dataLength; i++) {
 		// columns row, continue
@@ -89,14 +95,35 @@ export function compareRevisions(
 			if (isEqual(current[i], previous[i])) continue;
 		}
 
-		// if current row is empty, it means that row was deleted, else it was updated
-		if (current[i] === undefined) {
-			diffData.push([i + 1]);
-		} else {
-			diffData.push([i + 1, ...current[i]]);
-		}
+		diffData.push({
+			rowIndex: i + 1,
+			previous: previous[i],
+			current: current[i],
+		});
 	}
 
-	// transform array of arrays to array of objects
-	return arrayOfArraysToJson(diffData, columns);
+	if (includeInOutput === 'previousVersion') {
+		return arrayOfArraysToJson(
+			diffData.map(({ previous, rowIndex }) => (previous ? [rowIndex, ...previous] : [rowIndex])),
+			columns,
+		);
+	}
+	if (includeInOutput === 'bothVersions') {
+		const previousData = arrayOfArraysToJson(
+			diffData.map(({ previous, rowIndex }) => (previous ? [rowIndex, ...previous] : [rowIndex])),
+			columns,
+		).map((row) => ({ previous: row }));
+
+		const currentData = arrayOfArraysToJson(
+			diffData.map(({ current, rowIndex }) => (current ? [rowIndex, ...current] : [rowIndex])),
+			columns,
+		).map((row) => ({ current: row }));
+
+		return zip(previousData, currentData).map((row) => Object.assign({}, ...row));
+	}
+
+	return arrayOfArraysToJson(
+		diffData.map(({ current, rowIndex }) => (current ? [rowIndex, ...current] : [rowIndex])),
+		columns,
+	);
 }

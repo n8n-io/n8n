@@ -75,44 +75,6 @@ export class GoogleSheetsTrigger implements INodeType {
 				default: 'oAuth2',
 			},
 			{
-				displayName: 'Watch for ...',
-				name: 'event',
-				type: 'options',
-				options: [
-					{
-						name: 'All Updates',
-						value: 'allUpdates',
-					},
-					{
-						name: 'Column Changes',
-						value: 'columnChanges',
-					},
-					{
-						name: 'Row Added',
-						value: 'rowAdded',
-					},
-				],
-				default: 'rowAdded',
-				required: true,
-			},
-			{
-				displayName: 'Column Names or IDs',
-				name: 'columnsToWatch',
-				type: 'multiOptions',
-				description:
-					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
-				typeOptions: {
-					loadOptionsDependsOn: ['sheetName.value'],
-					loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
-				},
-				default: [],
-				displayOptions: {
-					show: {
-						event: ['columnChanges'],
-					},
-				},
-			},
-			{
 				displayName: 'Document',
 				name: 'documentId',
 				type: 'resourceLocator',
@@ -213,6 +175,64 @@ export class GoogleSheetsTrigger implements INodeType {
 								},
 							},
 						],
+					},
+				],
+			},
+			{
+				displayName: 'Watch for ...',
+				name: 'event',
+				type: 'options',
+				options: [
+					{
+						name: 'All Updates',
+						value: 'allUpdates',
+					},
+					{
+						name: 'Column Changes',
+						value: 'columnChanges',
+					},
+					{
+						name: 'Row Added',
+						value: 'rowAdded',
+					},
+				],
+				default: 'rowAdded',
+				required: true,
+			},
+			{
+				displayName: 'Column Names or IDs',
+				name: 'columnsToWatch',
+				type: 'multiOptions',
+				description:
+					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+				typeOptions: {
+					loadOptionsDependsOn: ['sheetName.value'],
+					loadOptionsMethod: 'getSheetHeaderRowAndSkipEmpty',
+				},
+				default: [],
+				displayOptions: {
+					show: {
+						event: ['columnChanges'],
+					},
+				},
+			},
+			{
+				displayName: 'Include in Output',
+				name: 'includeInOutput',
+				type: 'options',
+				default: 'currentVersion',
+				options: [
+					{
+						name: 'Current Version',
+						value: 'currentVersion',
+					},
+					{
+						name: 'Previous Version',
+						value: 'previousVersion',
+					},
+					{
+						name: 'Both Versions',
+						value: 'bothVersions',
 					},
 				],
 			},
@@ -463,6 +483,8 @@ export class GoogleSheetsTrigger implements INodeType {
 				sheetName,
 			);
 
+			const includeInOutput = this.getNodeParameter('includeInOutput', 'currentVersion') as string;
+
 			let returnData;
 			if (event === 'columnChanges') {
 				const columnsToWatch = this.getNodeParameter('columnsToWatch', undefined) as string[];
@@ -470,10 +492,16 @@ export class GoogleSheetsTrigger implements INodeType {
 					previousRevisionSheetData,
 					currentData,
 					keyRow,
+					includeInOutput,
 					columnsToWatch,
 				);
 			} else {
-				returnData = compareRevisions(previousRevisionSheetData, currentData, keyRow);
+				returnData = compareRevisions(
+					previousRevisionSheetData,
+					currentData,
+					keyRow,
+					includeInOutput,
+				);
 			}
 
 			if (Array.isArray(returnData) && returnData.length !== 0) {
