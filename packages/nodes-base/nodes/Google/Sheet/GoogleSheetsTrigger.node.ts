@@ -97,7 +97,7 @@ export class GoogleSheetsTrigger implements INodeType {
 			},
 			{
 				displayName: 'Column Names or IDs',
-				name: 'fieldId',
+				name: 'columnsToWatch',
 				type: 'multiOptions',
 				description:
 					'Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
@@ -463,7 +463,18 @@ export class GoogleSheetsTrigger implements INodeType {
 				sheetName,
 			);
 
-			const returnData = compareRevisions(previousRevisionSheetData, currentData, keyRow);
+			let returnData;
+			if (event === 'columnChanges') {
+				const columnsToWatch = this.getNodeParameter('columnsToWatch', undefined) as string[];
+				returnData = compareRevisions(
+					previousRevisionSheetData,
+					currentData,
+					keyRow,
+					columnsToWatch,
+				);
+			} else {
+				returnData = compareRevisions(previousRevisionSheetData, currentData, keyRow);
+			}
 
 			if (Array.isArray(returnData) && returnData.length !== 0) {
 				return [this.helpers.returnJsonArray(returnData)];

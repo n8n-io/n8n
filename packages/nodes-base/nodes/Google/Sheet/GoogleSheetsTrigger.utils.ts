@@ -61,6 +61,7 @@ export function compareRevisions(
 	previous: SheetRangeData,
 	current: SheetRangeData,
 	keyRow: number,
+	columnsToWatch?: string[],
 ) {
 	const [dataLength, columns] =
 		current.length > previous.length
@@ -69,15 +70,26 @@ export function compareRevisions(
 	const diffData: SheetRangeData = [];
 
 	for (let i = 0; i < dataLength; i++) {
+		// columns row, continue
 		if (i === keyRow - 1) {
 			continue;
 		}
+		// sheets API omits trailing empty columns, xlsx does not - so we need to pad the shorter array
 		while (current[i].length < previous[i].length) {
 			current[i].push('');
 		}
-		if (isEqual(previous[i], current[i])) {
-			continue;
+
+		// if columnsToWatch is defined, only compare those columns
+		if (columnsToWatch && columnsToWatch.length) {
+			const currentRow = columnsToWatch.map((column) => current[i][columns.indexOf(column) - 1]);
+			const previousRow = columnsToWatch.map((column) => previous[i][columns.indexOf(column) - 1]);
+
+			if (isEqual(currentRow, previousRow)) continue;
+		} else {
+			if (isEqual(current[i], previous[i])) continue;
 		}
+
+		// if current row is empty, it means that row was deleted, else it was updated
 		if (current[i] === undefined) {
 			diffData.push([i + 1]);
 		} else {
@@ -85,5 +97,6 @@ export function compareRevisions(
 		}
 	}
 
+	// transform array of arrays to array of objects
 	return arrayOfArraysToJson(diffData, columns);
 }
