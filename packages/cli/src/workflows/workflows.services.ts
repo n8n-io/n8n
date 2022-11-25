@@ -140,26 +140,27 @@ export class WorkflowsService {
 		}
 
 		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+		const relations: string[] = [];
 
-		const query: FindManyOptions<WorkflowEntity> = {
-			select: config.get('enterprise.features.sharing') ? [...fields, 'nodes'] : fields,
-			relations: config.get('enterprise.features.sharing')
-				? ['tags', 'shared', 'shared.user', 'shared.role']
-				: ['tags'],
-		};
-
-		if (config.getEnv('workflowTagsDisabled')) {
-			delete query.relations;
+		if (!config.getEnv('workflowTagsDisabled')) {
+			relations.push('tags');
 		}
 
-		const workflows = await Db.collections.Workflow.find(
-			Object.assign(query, {
-				where: {
-					id: In(sharedWorkflowIds),
-					...filter,
-				},
-			}),
-		);
+		const isSharingEnabled = config.getEnv('enterprise.features.sharing');
+		if (isSharingEnabled) {
+			relations.push('shared', 'shared.user', 'shared.role');
+		}
+
+		const query: FindManyOptions<WorkflowEntity> = {
+			select: isSharingEnabled ? [...fields, 'nodes'] : fields,
+			relations,
+			where: {
+				id: In(sharedWorkflowIds),
+				...filter,
+			},
+		};
+
+		const workflows = await Db.collections.Workflow.find(query);
 
 		return workflows.map((workflow) => {
 			const { id, ...rest } = workflow;
