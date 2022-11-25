@@ -27,7 +27,7 @@ export async function urlScanIoApiRequest(
 		delete options.qs;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'urlScanIoApi', options);
 }
 
 export async function handleListing(
@@ -41,7 +41,7 @@ export async function handleListing(
 	qs.size = 100;
 
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const limit = this.getNodeParameter('limit', 0, 0);
 
 	do {
 		responseData = await urlScanIoApiRequest.call(this, 'GET', endpoint, {}, qs);

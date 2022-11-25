@@ -212,7 +212,7 @@ export class Stripe implements INodeType {
 							source: this.getNodeParameter('source', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, adjustChargeFields(additionalFields));
@@ -239,7 +239,7 @@ export class Stripe implements INodeType {
 
 						const body = {} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -309,7 +309,7 @@ export class Stripe implements INodeType {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, adjustCustomerFields(additionalFields));
@@ -348,7 +348,7 @@ export class Stripe implements INodeType {
 						// ----------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (!isEmpty(filters)) {
 							qs.email = filters.email;
@@ -362,7 +362,7 @@ export class Stripe implements INodeType {
 
 						const body = {} as IDataObject;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (isEmpty(updateFields)) {
 							throw new NodeOperationError(
@@ -403,7 +403,7 @@ export class Stripe implements INodeType {
 							currency: this.getNodeParameter('currency', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(body, adjustMetadata(additionalFields));

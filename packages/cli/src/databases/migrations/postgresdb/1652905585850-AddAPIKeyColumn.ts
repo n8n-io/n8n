@@ -1,5 +1,5 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
-import config from '@/config';;
+import config from '@/config';
 
 export class AddAPIKeyColumn1652905585850 implements MigrationInterface {
 	name = 'AddAPIKeyColumn1652905585850';

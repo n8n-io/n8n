@@ -7,7 +7,7 @@
 		minWidth="620px"
 		minHeight="420px"
 	>
-		<template v-slot:content>
+		<template #content>
 			<el-row>
 				<TagsView
 					v-if="hasTags || isCreating"
@@ -24,7 +24,7 @@
 					v-else />
 			</el-row>
 		</template>
-		<template v-slot:footer="{ close }">
+		<template #footer="{ close }">
 			<n8n-button :label="$locale.baseText('tagsManager.done')" @click="close" float="right" />
 		</template>
 	</Modal>
@@ -36,7 +36,7 @@ import mixins from "vue-typed-mixins";
 
 import { ITag } from "@/Interface";
 
-import { showMessage } from "@/components/mixins/showMessage";
+import { showMessage } from "@/mixins/showMessage";
 import TagsView from "@/components/TagsManager/TagsView/TagsView.vue";
 import NoTagsView from "@/components/TagsManager/NoTagsView.vue";
 import Modal from "@/components/Modal.vue";

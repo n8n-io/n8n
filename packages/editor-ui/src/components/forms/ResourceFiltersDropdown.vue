@@ -2,7 +2,7 @@
 	<n8n-popover
 		trigger="click"
 	>
-		<template slot="reference">
+		<template #reference>
 			<n8n-button
 				icon="filter"
 				type="tertiary"

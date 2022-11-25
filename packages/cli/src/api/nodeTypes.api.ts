@@ -1,15 +1,8 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import express from 'express';
 import { readFile } from 'fs/promises';
-import _ from 'lodash';
+import get from 'lodash.get';
 
-import {
-	ICredentialType,
-	INodeType,
-	INodeTypeDescription,
-	INodeTypeNameVersion,
-	NodeHelpers,
-} from 'n8n-workflow';
+import type { ICredentialType, INodeTypeDescription, INodeTypeNameVersion } from 'n8n-workflow';
 
 import { CredentialTypes } from '@/CredentialTypes';
 import config from '@/config';
@@ -74,50 +67,11 @@ function injectCustomApiCallOption(description: INodeTypeDescription) {
 
 export const nodeTypesController = express.Router();
 
-// Returns all the node-types
-nodeTypesController.get(
-	'/',
-	ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
-		const returnData: INodeTypeDescription[] = [];
-		const onlyLatest = req.query.onlyLatest === 'true';
-
-		const nodeTypes = NodeTypes();
-		const allNodes = nodeTypes.getAll();
-
-		const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-			const nodeInfo: INodeTypeDescription = { ...nodeType.description };
-			if (req.query.includeProperties !== 'true') {
-				// @ts-ignore
-				delete nodeInfo.properties;
-			}
-			return nodeInfo;
-		};
-
-		if (onlyLatest) {
-			allNodes.forEach((nodeData) => {
-				const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-				const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-				returnData.push(nodeInfo);
-			});
-		} else {
-			allNodes.forEach((nodeData) => {
-				const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-				allNodeTypes.forEach((element) => {
-					const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-					returnData.push(nodeInfo);
-				});
-			});
-		}
-
-		return returnData;
-	}),
-);
-
 // Returns node information based on node names and versions
 nodeTypesController.post(
 	'/',
 	ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
-		const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
+		const nodeInfos = get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
 
 		const defaultLocale = config.getEnv('defaultLocale');
 

@@ -1186,7 +1186,7 @@ export class Onfleet {
 					if (byLocation) {
 						const longitude = this.getNodeParameter('longitude', index) as string;
 						const latitude = this.getNodeParameter('latitude', index) as number;
-						const filters = this.getNodeParameter('filters', index) as IDataObject;
+						const filters = this.getNodeParameter('filters', index);
 						const path = `${resource}/location`;
 						workers = await onfleetApiRequest.call(
 							this,
@@ -1206,7 +1206,7 @@ export class Onfleet {
 					}
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', index) as number;
+						const limit = this.getNodeParameter('limit', index);
 						workers = workers.slice(0, limit);
 					}
 
@@ -1355,7 +1355,7 @@ export class Onfleet {
 					/* -------------------------------------------------------------------------- */
 					const containerId = this.getNodeParameter('containerId', index) as string;
 					const containerType = this.getNodeParameter('containerType', index, 'workers') as string;
-					const options = this.getNodeParameter('options', index) as IDataObject;
+					const options = this.getNodeParameter('options', index);
 
 					const tasks = this.getNodeParameter('tasks', index) as Array<string | number>;
 					if (operation === 'addTask') {
@@ -1406,7 +1406,7 @@ export class Onfleet {
 					const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
 					let teams = await onfleetApiRequest.call(this, 'GET', resource);
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', 0) as number;
+						const limit = this.getNodeParameter('limit', 0);
 						teams = teams.slice(0, limit);
 					}
 

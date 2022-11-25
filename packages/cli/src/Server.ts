@@ -9,7 +9,6 @@
 /* eslint-disable no-return-assign */
 /* eslint-disable no-param-reassign */
 /* eslint-disable consistent-return */
-/* eslint-disable import/no-extraneous-dependencies */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable id-denylist */
@@ -29,7 +28,7 @@
 /* eslint-disable no-await-in-loop */
 
 import { exec as callbackExec } from 'child_process';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
 import os from 'os';
 import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
@@ -38,7 +37,6 @@ import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import { FindManyOptions, getConnectionManager, In } from 'typeorm';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import axios, { AxiosRequestConfig } from 'axios';
 import clientOAuth1, { RequestOptions } from 'oauth-1.0a';
 // IMPORTANT! Do not switch to anther bcrypt library unless really necessary and
@@ -54,22 +52,20 @@ import {
 } from 'n8n-core';
 
 import {
-	ICredentialType,
 	INodeCredentials,
 	INodeCredentialsDetails,
 	INodeListSearchResult,
 	INodeParameters,
 	INodePropertyOptions,
-	INodeType,
-	INodeTypeDescription,
 	INodeTypeNameVersion,
 	ITelemetrySettings,
 	LoggerProxy,
-	NodeHelpers,
 	jsonParse,
 	WebhookHttpMethod,
 	WorkflowExecuteMode,
 	ErrorReporterProxy as ErrorReporter,
+	INodeTypes,
+	ICredentialTypes,
 } from 'n8n-workflow';
 
 import basicAuth from 'basic-auth';
@@ -89,12 +85,13 @@ import * as Queue from '@/Queue';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import { getCredentialTranslationPath } from '@/TranslationHelpers';
 import { WEBHOOK_METHODS } from '@/WebhookHelpers';
-import { getSharedWorkflowIds, whereClause } from '@/WorkflowHelpers';
+import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 
 import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	AUTH_COOKIE_NAME,
+	GENERATED_STATIC_DIR,
 	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
 	TEMPLATES_DIR,
@@ -122,6 +119,7 @@ import {
 	isEmailSetUp,
 	isSharingEnabled,
 	isUserManagementEnabled,
+	whereClause,
 } from '@/UserManagement/UserManagementHelper';
 import * as Db from '@/Db';
 import {
@@ -150,18 +148,19 @@ import { ExternalHooks } from '@/ExternalHooks';
 import * as GenericHelpers from '@/GenericHelpers';
 import { NodeTypes } from '@/NodeTypes';
 import * as Push from '@/Push';
+import { LoadNodesAndCredentials } from '@/LoadNodesAndCredentials';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as TestWebhooks from '@/TestWebhooks';
 import { WaitTracker, WaitTrackerClass } from '@/WaitTracker';
 import * as WebhookHelpers from '@/WebhookHelpers';
 import * as WebhookServer from '@/WebhookServer';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
-import { ResponseError } from '@/ResponseHelper';
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { eventBus } from './eventbus';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
 import { messageEventBusDestinationFromDb } from './eventbus/MessageEventBusDestination/Helpers';
+import { getLicense } from '@/License';
 
 require('body-parser-xml')(bodyParser);
 
@@ -228,6 +227,10 @@ class App {
 
 	webhookMethods: WebhookHttpMethod[];
 
+	nodeTypes: INodeTypes;
+
+	credentialTypes: ICredentialTypes;
+
 	constructor() {
 		this.app = express();
 		this.app.disable('x-powered-by');
@@ -253,6 +256,9 @@ class App {
 		this.testWebhooks = TestWebhooks.getInstance();
 		this.push = Push.getInstance();
 
+		this.nodeTypes = NodeTypes();
+		this.credentialTypes = CredentialTypes();
+
 		this.activeExecutionsInstance = ActiveExecutions.getInstance();
 		this.waitTracker = WaitTracker();
 
@@ -266,6 +272,10 @@ class App {
 		this.endpointPresetCredentials = config.getEnv('credentials.overwrite.endpoint');
 
 		setupErrorMiddleware(this.app);
+
+		if (process.env.E2E_TESTS === 'true') {
+			this.app.use('/e2e', require('./api/e2e.api').e2eController);
+		}
 
 		const urlBaseWebhook = WebhookHelpers.getWebhookBaseUrl();
 		const telemetrySettings: ITelemetrySettings = {
@@ -386,6 +396,16 @@ class App {
 		return this.frontendSettings;
 	}
 
+	async initLicense(): Promise<void> {
+		const license = getLicense();
+		await license.init(this.frontendSettings.instanceId, this.frontendSettings.versionCli);
+
+		const activationKey = config.getEnv('license.activationKey');
+		if (activationKey) {
+			await license.activate(activationKey);
+		}
+	}
+
 	async config(): Promise<void> {
 		const enableMetrics = config.getEnv('endpoints.metrics.enable');
 		let register: Registry;
@@ -408,12 +428,17 @@ class App {
 
 		await this.externalHooks.run('frontend.settings', [this.frontendSettings]);
 
+		await this.initLicense();
+
 		const excludeEndpoints = config.getEnv('security.excludeEndpoints');
 
 		const ignoredEndpoints = [
 			'assets',
 			'healthz',
 			'metrics',
+			'icons',
+			'types',
+			'e2e',
 			this.endpointWebhook,
 			this.endpointWebhookTest,
 			this.endpointPresetCredentials,
@@ -714,7 +739,7 @@ class App {
 		// eslint-disable-next-line consistent-return
 		this.app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
 			if (!Db.isInitialized) {
-				const error = new ResponseHelper.ResponseError('Database is not ready!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('Database is not ready!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -755,7 +780,7 @@ class App {
 			} catch (err) {
 				ErrorReporter.error(err);
 				LoggerProxy.error('No Database connection!', err);
-				const error = new ResponseHelper.ResponseError('No Database connection!', undefined, 503);
+				const error = new ResponseHelper.ServiceUnavailableError('No Database connection!');
 				return ResponseHelper.sendErrorResponse(res, error);
 			}
 
@@ -814,7 +839,7 @@ class App {
 
 					const loadDataInstance = new LoadNodeParameterOptions(
 						nodeTypeAndVersion,
-						NodeTypes(),
+						this.nodeTypes,
 						path,
 						currentNodeParameters,
 						credentials,
@@ -858,7 +883,9 @@ class App {
 					const { path, methodName } = req.query;
 
 					if (!req.query.currentNodeParameters) {
-						throw new ResponseError('Parameter currentNodeParameters is required.', undefined, 400);
+						throw new ResponseHelper.BadRequestError(
+							'Parameter currentNodeParameters is required.',
+						);
 					}
 
 					const currentNodeParameters = jsonParse(
@@ -873,7 +900,7 @@ class App {
 
 					const listSearchInstance = new LoadNodeListSearch(
 						nodeTypeAndVersion,
-						NodeTypes(),
+						this.nodeTypes,
 						path,
 						currentNodeParameters,
 						credentials,
@@ -893,48 +920,7 @@ class App {
 						);
 					}
 
-					throw new ResponseError('Parameter methodName is required.', undefined, 400);
-				},
-			),
-		);
-
-		// Returns all the node-types
-		this.app.get(
-			`/${this.restEndpoint}/node-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<INodeTypeDescription[]> => {
-					const returnData: INodeTypeDescription[] = [];
-					const onlyLatest = req.query.onlyLatest === 'true';
-
-					const nodeTypes = NodeTypes();
-					const allNodes = nodeTypes.getAll();
-
-					const getNodeDescription = (nodeType: INodeType): INodeTypeDescription => {
-						const nodeInfo: INodeTypeDescription = { ...nodeType.description };
-						if (req.query.includeProperties !== 'true') {
-							// @ts-ignore
-							delete nodeInfo.properties;
-						}
-						return nodeInfo;
-					};
-
-					if (onlyLatest) {
-						allNodes.forEach((nodeData) => {
-							const nodeType = NodeHelpers.getVersionedNodeType(nodeData);
-							const nodeInfo: INodeTypeDescription = getNodeDescription(nodeType);
-							returnData.push(nodeInfo);
-						});
-					} else {
-						allNodes.forEach((nodeData) => {
-							const allNodeTypes = NodeHelpers.getVersionedNodeTypeAll(nodeData);
-							allNodeTypes.forEach((element) => {
-								const nodeInfo: INodeTypeDescription = getNodeDescription(element);
-								returnData.push(nodeInfo);
-							});
-						});
-					}
-
-					return returnData;
+					throw new ResponseHelper.BadRequestError('Parameter methodName is required.');
 				},
 			),
 		);
@@ -987,49 +973,6 @@ class App {
 
 		this.app.use(`/${this.restEndpoint}/node-types`, nodeTypesController);
 
-		// Returns the node icon
-		this.app.get(
-			[
-				`/${this.restEndpoint}/node-icon/:nodeType`,
-				`/${this.restEndpoint}/node-icon/:scope/:nodeType`,
-			],
-			async (req: express.Request, res: express.Response): Promise<void> => {
-				try {
-					const nodeTypeName = `${req.params.scope ? `${req.params.scope}/` : ''}${
-						req.params.nodeType
-					}`;
-
-					const nodeTypes = NodeTypes();
-					const nodeType = nodeTypes.getByNameAndVersion(nodeTypeName);
-
-					if (nodeType === undefined) {
-						res.status(404).send('The nodeType is not known.');
-						return;
-					}
-
-					if (nodeType.description.icon === undefined) {
-						res.status(404).send('No icon found for node.');
-						return;
-					}
-
-					if (!nodeType.description.icon.startsWith('file:')) {
-						res.status(404).send('Node does not have a file icon.');
-						return;
-					}
-
-					const filepath = nodeType.description.icon.substr(5);
-
-					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-					res.setHeader('Cache-control', `private max-age=${maxAge}`);
-
-					res.sendFile(filepath);
-				} catch (error) {
-					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-			},
-		);
-
 		// ----------------------------------------
 		// Active Workflows
 		// ----------------------------------------
@@ -1065,10 +1008,8 @@ class App {
 						userId: req.user.id,
 					});
 
-					throw new ResponseHelper.ResponseError(
+					throw new ResponseHelper.BadRequestError(
 						`Workflow with ID "${workflowId}" could not be found.`,
-						undefined,
-						400,
 					);
 				}
 
@@ -1092,67 +1033,10 @@ class App {
 						const parameters = toHttpNodeParameters(curlCommand);
 						return ResponseHelper.flattenObject(parameters, 'parameters');
 					} catch (e) {
-						throw new ResponseHelper.ResponseError(`Invalid cURL command`, undefined, 400);
+						throw new ResponseHelper.BadRequestError(`Invalid cURL command`);
 					}
 				},
 			),
-		);
-		// ----------------------------------------
-		// Credential-Types
-		// ----------------------------------------
-
-		// Returns all the credential types which are defined in the loaded n8n-modules
-		this.app.get(
-			`/${this.restEndpoint}/credential-types`,
-			ResponseHelper.send(
-				async (req: express.Request, res: express.Response): Promise<ICredentialType[]> => {
-					const returnData: ICredentialType[] = [];
-
-					const credentialTypes = CredentialTypes();
-
-					credentialTypes.getAll().forEach((credentialData) => {
-						returnData.push(credentialData);
-					});
-
-					return returnData;
-				},
-			),
-		);
-
-		this.app.get(
-			`/${this.restEndpoint}/credential-icon/:credentialType`,
-			async (req: express.Request, res: express.Response): Promise<void> => {
-				try {
-					const credentialName = req.params.credentialType;
-
-					const credentialType = CredentialTypes().getByName(credentialName);
-
-					if (credentialType === undefined) {
-						res.status(404).send('The credentialType is not known.');
-						return;
-					}
-
-					if (credentialType.icon === undefined) {
-						res.status(404).send('No icon found for credential.');
-						return;
-					}
-
-					if (!credentialType.icon.startsWith('file:')) {
-						res.status(404).send('Credential does not have a file icon.');
-						return;
-					}
-
-					const filepath = credentialType.icon.substr(5);
-
-					const maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days
-					res.setHeader('Cache-control', `private max-age=${maxAge}`);
-
-					res.sendFile(filepath);
-				} catch (error) {
-					// Error response
-					return ResponseHelper.sendErrorResponse(res, error);
-				}
-			},
 		);
 
 		// ----------------------------------------
@@ -1167,11 +1051,7 @@ class App {
 
 				if (!credentialId) {
 					LoggerProxy.error('OAuth1 credential authorization failed due to missing credential ID');
-					throw new ResponseHelper.ResponseError(
-						'Required credential ID is missing',
-						undefined,
-						400,
-					);
+					throw new ResponseHelper.BadRequestError('Required credential ID is missing');
 				}
 
 				const credential = await getCredentialForUser(credentialId, req.user);
@@ -1181,18 +1061,14 @@ class App {
 						'OAuth1 credential authorization failed because the current user does not have the correct permissions',
 						{ userId: req.user.id },
 					);
-					throw new ResponseHelper.ResponseError(
-						RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-						undefined,
-						404,
-					);
+					throw new ResponseHelper.NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 				}
 
 				let encryptionKey: string;
 				try {
 					encryptionKey = await UserSettings.getEncryptionKey();
 				} catch (error) {
-					throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+					throw new ResponseHelper.InternalServerError(error.message);
 				}
 
 				const mode: WorkflowExecuteMode = 'internal';
@@ -1293,12 +1169,10 @@ class App {
 					const { oauth_verifier, oauth_token, cid: credentialId } = req.query;
 
 					if (!oauth_verifier || !oauth_token) {
-						const errorResponse = new ResponseHelper.ResponseError(
+						const errorResponse = new ResponseHelper.ServiceUnavailableError(
 							`Insufficient parameters for OAuth1 callback. Received following query parameters: ${JSON.stringify(
 								req.query,
 							)}`,
-							undefined,
-							503,
 						);
 						LoggerProxy.error(
 							'OAuth1 callback failed because of insufficient parameters received',
@@ -1317,10 +1191,8 @@ class App {
 							userId: req.user?.id,
 							credentialId,
 						});
-						const errorResponse = new ResponseHelper.ResponseError(
+						const errorResponse = new ResponseHelper.NotFoundError(
 							RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL,
-							undefined,
-							404,
 						);
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
@@ -1329,7 +1201,7 @@ class App {
 					try {
 						encryptionKey = await UserSettings.getEncryptionKey();
 					} catch (error) {
-						throw new ResponseHelper.ResponseError(error.message, undefined, 500);
+						throw new ResponseHelper.InternalServerError(error.message);
 					}
 
 					const mode: WorkflowExecuteMode = 'internal';
@@ -1367,11 +1239,7 @@ class App {
 							userId: req.user?.id,
 							credentialId,
 						});
-						const errorResponse = new ResponseHelper.ResponseError(
-							'Unable to get access tokens!',
-							undefined,
-							404,
-						);
+						const errorResponse = new ResponseHelper.NotFoundError('Unable to get access tokens!');
 						return ResponseHelper.sendErrorResponse(res, errorResponse);
 					}
 
@@ -1528,7 +1396,7 @@ class App {
 				const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
 
 				if (!sharedWorkflowIds.length) {
-					throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
+					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
 				const execution = await Db.collections.Execution.findOne({
@@ -1539,7 +1407,7 @@ class App {
 				});
 
 				if (!execution) {
-					throw new ResponseHelper.ResponseError('Execution not found', undefined, 404);
+					throw new ResponseHelper.NotFoundError('Execution not found');
 				}
 
 				if (config.getEnv('executions.mode') === 'queue') {
@@ -1637,18 +1505,22 @@ class App {
 		// Binary data
 		// ----------------------------------------
 
-		// Returns binary buffer
+		// Download binary
 		this.app.get(
 			`/${this.restEndpoint}/data/:path`,
-			ResponseHelper.send(async (req: express.Request, res: express.Response): Promise<string> => {
+			async (req: express.Request, res: express.Response): Promise<void> => {
 				// TODO UM: check if this needs permission check for UM
-				const dataPath = req.params.path;
-				return BinaryDataManager.getInstance()
-					.retrieveBinaryDataByIdentifier(dataPath)
-					.then((buffer: Buffer) => {
-						return buffer.toString('base64');
-					});
-			}),
+				const identifier = req.params.path;
+				const binaryDataManager = BinaryDataManager.getInstance();
+				const binaryPath = binaryDataManager.getBinaryPath(identifier);
+				const { mimeType, fileName, fileSize } = await binaryDataManager.getBinaryMetadata(
+					identifier,
+				);
+				if (mimeType) res.setHeader('Content-Type', mimeType);
+				if (fileName) res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+				res.setHeader('Content-Length', fileSize);
+				res.sendFile(binaryPath);
+			},
 		);
 
 		// ----------------------------------------
@@ -1775,9 +1647,9 @@ class App {
 							return;
 						}
 
-						const credentialsOverwrites = CredentialsOverwrites();
+						CredentialsOverwrites().setData(body);
 
-						await credentialsOverwrites.init(body);
+						await LoadNodesAndCredentials().generateTypesForFrontend();
 
 						this.presetCredentialsLoaded = true;
 
@@ -1817,7 +1689,6 @@ class App {
 			}
 
 			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
-			const generatedStaticDir = pathJoin(UserSettings.getUserHome(), '.cache/n8n/public');
 
 			const closingTitleTag = '</title>';
 			const compileFile = async (fileName: string) => {
@@ -1830,7 +1701,7 @@ class App {
 					if (filePath.endsWith('index.html')) {
 						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
 					}
-					const destFile = pathJoin(generatedStaticDir, fileName);
+					const destFile = pathJoin(GENERATED_STATIC_DIR, fileName);
 					await mkdir(pathDirname(destFile), { recursive: true });
 					await writeFile(destFile, payload, 'utf-8');
 				}
@@ -1840,13 +1711,15 @@ class App {
 			const files = await glob('**/*.{css,js}', { cwd: editorUiDistDir });
 			await Promise.all(files.map(compileFile));
 
-			this.app.use('/', express.static(generatedStaticDir), express.static(editorUiDistDir));
+			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(editorUiDistDir));
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
 				res.setHeader('Last-Modified', startTime);
 				next();
 			});
+		} else {
+			this.app.use('/', express.static(GENERATED_STATIC_DIR));
 		}
 	}
 }

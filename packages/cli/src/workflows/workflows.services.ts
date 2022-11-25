@@ -1,12 +1,12 @@
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import { INode, IPinData, JsonObject, jsonParse, LoggerProxy, Workflow } from 'n8n-workflow';
 import { FindManyOptions, FindOneOptions, In, ObjectLiteral } from 'typeorm';
+import pick from 'lodash.pick';
 import * as ActiveWorkflowRunner from '@/ActiveWorkflowRunner';
 import * as Db from '@/Db';
 import { InternalHooksManager } from '@/InternalHooksManager';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { whereClause } from '@/CredentialsHelper';
 import config from '@/config';
 import { SharedWorkflow } from '@db/entities/SharedWorkflow';
 import { User } from '@db/entities/User';
@@ -21,6 +21,7 @@ import { WorkflowRunner } from '@/WorkflowRunner';
 import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
 import * as TestWebhooks from '@/TestWebhooks';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+import { whereClause } from '@/UserManagement/UserManagementHelper';
 
 export interface IGetWorkflowsQueryFilter {
 	id?: number | string;
@@ -93,8 +94,13 @@ export class WorkflowsService {
 		return Db.collections.Workflow.findOne(workflow, options);
 	}
 
+	// Warning: this function is overriden by EE to disregard role list.
+	static async getWorkflowIdsForUser(user: User, roles?: string[]) {
+		return getSharedWorkflowIds(user, roles);
+	}
+
 	static async getMany(user: User, rawFilter: string) {
-		const sharedWorkflowIds = await getSharedWorkflowIds(user);
+		const sharedWorkflowIds = await this.getWorkflowIdsForUser(user, ['owner']);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
@@ -118,10 +124,8 @@ export class WorkflowsService {
 					userId: user.id,
 					filter,
 				});
-				throw new ResponseHelper.ResponseError(
+				throw new ResponseHelper.InternalServerError(
 					`Parameter "filter" contained invalid JSON string.`,
-					500,
-					500,
 				);
 			}
 		}
@@ -136,26 +140,27 @@ export class WorkflowsService {
 		}
 
 		const fields: Array<keyof WorkflowEntity> = ['id', 'name', 'active', 'createdAt', 'updatedAt'];
+		const relations: string[] = [];
 
-		const query: FindManyOptions<WorkflowEntity> = {
-			select: config.get('enterprise.features.sharing') ? [...fields, 'nodes'] : fields,
-			relations: config.get('enterprise.features.sharing')
-				? ['tags', 'shared', 'shared.user', 'shared.role']
-				: ['tags'],
-		};
-
-		if (config.getEnv('workflowTagsDisabled')) {
-			delete query.relations;
+		if (!config.getEnv('workflowTagsDisabled')) {
+			relations.push('tags');
 		}
 
-		const workflows = await Db.collections.Workflow.find(
-			Object.assign(query, {
-				where: {
-					id: In(sharedWorkflowIds),
-					...filter,
-				},
-			}),
-		);
+		const isSharingEnabled = config.getEnv('enterprise.features.sharing');
+		if (isSharingEnabled) {
+			relations.push('shared', 'shared.user', 'shared.role');
+		}
+
+		const query: FindManyOptions<WorkflowEntity> = {
+			select: isSharingEnabled ? [...fields, 'nodes'] : fields,
+			relations,
+			where: {
+				id: In(sharedWorkflowIds),
+				...filter,
+			},
+		};
+
+		const workflows = await Db.collections.Workflow.find(query);
 
 		return workflows.map((workflow) => {
 			const { id, ...rest } = workflow;
@@ -172,15 +177,16 @@ export class WorkflowsService {
 		workflow: WorkflowEntity,
 		workflowId: string,
 		tags?: string[],
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		forceSave?: boolean,
+		roles?: string[],
 	): Promise<WorkflowEntity> {
 		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow'],
+			relations: ['workflow', 'role'],
 			where: whereClause({
 				user,
 				entityType: 'workflow',
 				entityId: workflowId,
+				roles,
 			}),
 		});
 
@@ -189,18 +195,14 @@ export class WorkflowsService {
 				workflowId,
 				userId: user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be updated.`,
-				undefined,
-				404,
+			throw new ResponseHelper.NotFoundError(
+				'You do not have permission to update this workflow. Ask the owner to share it with you.',
 			);
 		}
 
 		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
-			throw new ResponseHelper.ResponseError(
-				`Workflow ID ${workflowId} cannot be saved because it was changed by another user.`,
-				undefined,
-				400,
+			throw new ResponseHelper.BadRequestError(
+				'We are sorry, but the workflow has been changed in the meantime. Please reload the workflow and try again.',
 			);
 		}
 
@@ -248,9 +250,18 @@ export class WorkflowsService {
 			await validateEntity(workflow);
 		}
 
-		const { hash, ...rest } = workflow;
-
-		await Db.collections.Workflow.update(workflowId, rest);
+		await Db.collections.Workflow.update(
+			workflowId,
+			pick(workflow, [
+				'name',
+				'active',
+				'nodes',
+				'connections',
+				'settings',
+				'staticData',
+				'pinData',
+			]),
+		);
 
 		if (tags && !config.getEnv('workflowTagsDisabled')) {
 			const tablePrefix = config.getEnv('database.tablePrefix');
@@ -274,10 +285,8 @@ export class WorkflowsService {
 		const updatedWorkflow = await Db.collections.Workflow.findOne(workflowId, options);
 
 		if (updatedWorkflow === undefined) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`Workflow with ID "${workflowId}" could not be found to be updated.`,
-				undefined,
-				400,
 			);
 		}
 
@@ -300,8 +309,7 @@ export class WorkflowsService {
 				);
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
-				workflow.active = false;
-				await Db.collections.Workflow.update(workflowId, workflow);
+				await Db.collections.Workflow.update(workflowId, { active: false });
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;

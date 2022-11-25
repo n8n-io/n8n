@@ -471,7 +471,7 @@ describe('POST /workflows', () => {
 
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
-			'The workflow contains credentials that you do not have access to',
+			'The workflow you are trying to save contains credentials that are not shared with you',
 		);
 	});
 
@@ -731,7 +731,7 @@ describe('PATCH /workflows/:id - validate credential permissions to user', () =>
 });
 
 describe('PATCH /workflows/:id - validate interim updates', () => {
-	it('should block owner updating workflow nodes on interim update by member', async () => {
+	xit('should block owner updating workflow nodes on interim update by member', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -760,11 +760,11 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block member updating workflow nodes on interim update by owner', async () => {
+	xit('should block member updating workflow nodes on interim update by owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -802,11 +802,11 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block owner activation on interim activation by member', async () => {
+	xit('should block owner activation on interim activation by member', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -832,11 +832,11 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(activationAttemptResponse.status).toBe(400);
 		expect(activationAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block member activation on interim activation by owner', async () => {
+	xit('should block member activation on interim activation by owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -871,11 +871,11 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block member updating workflow settings on interim update by owner', async () => {
+	xit('should block member updating workflow settings on interim update by owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -906,11 +906,11 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 
-	it('should block member updating workflow name on interim update by owner', async () => {
+	xit('should block member updating workflow name on interim update by owner', async () => {
 		const owner = await testDb.createUser({ globalRole: globalOwnerRole });
 		const member = await testDb.createUser({ globalRole: globalMemberRole });
 
@@ -941,7 +941,7 @@ describe('PATCH /workflows/:id - validate interim updates', () => {
 
 		expect(updateAttemptResponse.status).toBe(400);
 		expect(updateAttemptResponse.body.message).toContain(
-			'cannot be saved because it was changed by another user',
+			'the workflow has been changed in the meantime',
 		);
 	});
 });

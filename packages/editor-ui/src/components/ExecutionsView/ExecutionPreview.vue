@@ -1,11 +1,14 @@
 <template>
 	<div v-if="executionUIDetails && executionUIDetails.name === 'running'" :class="$style.runningInfo">
 		<div :class="$style.spinner">
-			<font-awesome-icon icon="spinner" spin />
+			<n8n-spinner type="ring" />
 		</div>
-		<n8n-text :class="$style.runningMessage">
+		<n8n-text :class="$style.runningMessage" color="text-light">
 			{{ $locale.baseText('executionDetails.runningMessage') }}
 		</n8n-text>
+		<n8n-button class="mt-l" type="tertiary" size="medium" @click="handleStopClick">
+			{{ $locale.baseText('executionsList.stopExecution') }}
+		</n8n-button>
 	</div>
 	<div v-else :class="$style.previewContainer">
 		<div :class="{[$style.executionDetails]: true, [$style.sidebarCollapsed]: sidebarCollapsed }" v-if="activeExecution">
@@ -43,14 +46,16 @@
 							@blur="onRetryButtonBlur"
 						/>
 					</span>
-					<el-dropdown-menu slot="dropdown">
-						<el-dropdown-item command="current-workflow">
-							{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-						</el-dropdown-item>
-						<el-dropdown-item command="original-workflow">
-							{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
-						</el-dropdown-item>
-					</el-dropdown-menu>
+					<template #dropdown>
+						<el-dropdown-menu>
+							<el-dropdown-item command="current-workflow">
+								{{ $locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
+							</el-dropdown-item>
+							<el-dropdown-item command="original-workflow">
+								{{ $locale.baseText('executionsList.retryWithOriginalWorkflow') }}
+							</el-dropdown-item>
+						</el-dropdown-menu>
+					</template>
 				</el-dropdown>
 				<n8n-icon-button :title="$locale.baseText('executionDetails.deleteExecution')" icon="trash" size="large" type="tertiary" @click="onDeleteExecution" />
 			</div>
@@ -61,18 +66,19 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
-import { showMessage } from '../mixins/showMessage';
+import { restApi } from '@/mixins/restApi';
+import { showMessage } from '@/mixins/showMessage';
 import WorkflowPreview from '@/components/WorkflowPreview.vue';
-import { executionHelpers, IExecutionUIData } from '../mixins/executionsHelpers';
-import { VIEWS } from '../../constants';
+import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
+import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
-import ElDropdown from 'element-ui/lib/dropdown';
+import { Dropdown as ElDropdown } from 'element-ui';
 
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
 	components: {
+		ElDropdown,
 		WorkflowPreview,
 	},
 	data() {
@@ -111,6 +117,9 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 		handleRetryClick(command: string): void {
 			this.$emit('retryExecution', { execution: this.activeExecution, command });
 		},
+		handleStopClick(): void {
+			this.$emit('stopExecution');
+		},
 		onRetryButtonBlur(event: FocusEvent): void {
 			// Hide dropdown when clicking outside of current document
 			const retryDropdown = this.$refs.retryDropdown as Vue & { hide: () => void } | undefined;
@@ -146,6 +155,14 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	}
 }
 
+.spinner {
+	div div {
+		width: 30px;
+		height: 30px;
+		border-width: 2px;
+	}
+}
+
 .running, .spinner { color: var(--color-warning); }
 .waiting { color: var(--color-secondary); }
 .success { color: var(--color-success); }
@@ -156,11 +173,6 @@ export default mixins(restApi, showMessage, executionHelpers).extend({
 	flex-direction: column;
 	align-items: center;
 	margin-top: var(--spacing-4xl);
-}
-
-.spinner {
-	font-size: var(--font-size-2xl);
-	color: var(--color-primary);
 }
 
 .runningMessage {

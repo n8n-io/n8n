@@ -9,12 +9,12 @@
 		width="120px"
 		class="value-survey"
 	>
-		<template slot="header">
+		<template #header>
 			<div :class="$style.title">
 				<n8n-heading tag="h2" size="medium" color="text-xlight">{{ getTitle }}</n8n-heading>
 			</div>
 		</template>
-		<template slot="content">
+		<template #content>
 			<section :class="$style.content">
 				<div v-if="showButtons" :class="$style.wrapper">
 					<div :class="$style.buttons">
@@ -62,7 +62,7 @@ import { IN8nPromptResponse } from '@/Interface';
 import ModalDrawer from './ModalDrawer.vue';
 
 import mixins from 'vue-typed-mixins';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';

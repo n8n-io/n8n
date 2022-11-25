@@ -215,6 +215,7 @@ export interface IRestApi {
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 	getBinaryBufferString(dataPath: string): Promise<string>;
+	getBinaryUrl(dataPath: string): string;
 }
 
 export interface INodeTranslationHeaders {
@@ -224,14 +225,6 @@ export interface INodeTranslationHeaders {
 			description: string;
 		},
 	};
-}
-
-export interface IBinaryDisplayData {
-	index: number;
-	key: string;
-	node: string;
-	outputIndex: number;
-	runIndex: number;
 }
 
 export interface IStartRunData {
@@ -887,6 +880,7 @@ export interface IVersionNode {
 	name: string;
 	displayName: string;
 	icon: string;
+	iconUrl?: string;
 	defaults: INodeParameters;
 	iconData: {
 		type: string;
@@ -904,6 +898,13 @@ export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
 }
 
+export interface IUsedCredential {
+	id: string;
+	name: string;
+	credentialType: string;
+	currentUserHasAccess: boolean;
+}
+
 export interface WorkflowsState {
 	activeExecutions: IExecutionsCurrentSummaryExtended[];
 	activeWorkflows: string[];
@@ -915,6 +916,7 @@ export interface WorkflowsState {
 	finishedExecutionsCount: number;
 	nodeMetadata: NodeMetadataMap;
 	subWorkflowExecutionError: Error | null;
+	usedCredentials: Record<string, IUsedCredential>;
 	workflow: IWorkflowDb;
 	workflowExecutionData: IExecutionResponse | null;
 	workflowExecutionPairedItemMappings: {[itemId: string]: Set<string>};

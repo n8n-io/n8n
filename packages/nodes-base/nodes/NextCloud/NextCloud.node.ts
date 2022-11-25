@@ -982,7 +982,7 @@ export class NextCloud implements INodeType {
 						headers['OCS-APIRequest'] = true;
 						headers['Content-Type'] = 'application/x-www-form-urlencoded';
 
-						const bodyParameters = this.getNodeParameter('options', i) as IDataObject;
+						const bodyParameters = this.getNodeParameter('options', i);
 
 						bodyParameters.path = this.getNodeParameter('path', i) as string;
 						bodyParameters.shareType = this.getNodeParameter('shareType', i) as number;
@@ -1018,7 +1018,7 @@ export class NextCloud implements INodeType {
 
 						body = `userid=${userid}&email=${email}`;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.displayName) {
 							body += `&displayName=${additionalFields.displayName}`;
@@ -1056,10 +1056,10 @@ export class NextCloud implements INodeType {
 						// ----------------------------------
 
 						requestMethod = 'GET';
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						qs = this.getNodeParameter('options', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						qs = this.getNodeParameter('options', i);
 						if (!returnAll) {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 						}
 						endpoint = `ocs/v1.php/cloud/users`;
 

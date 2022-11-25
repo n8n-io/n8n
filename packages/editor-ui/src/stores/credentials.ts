@@ -1,6 +1,6 @@
 import { createNewCredential, deleteCredential, getAllCredentials, getCredentialData, getCredentialsNewName, getCredentialTypes, oAuth1CredentialAuthorize, oAuth2CredentialAuthorize, testCredential, updateCredential } from "@/api/credentials";
 import { setCredentialSharedWith } from "@/api/credentials.ee";
-import { getAppNameFromCredType } from "@/components/helpers";
+import { getAppNameFromCredType } from "@/utils";
 import { EnterpriseEditionFeature, STORES } from "@/constants";
 import { ICredentialMap, ICredentialsDecryptedResponse, ICredentialsResponse, ICredentialsState, ICredentialTypeMap } from "@/Interface";
 import { i18n } from "@/plugins/i18n";
@@ -48,9 +48,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		getCredentialById() {
 			return (id: string): ICredentialsResponse => this.credentials[id];
-		},
-		foreignCredentialsById(): ICredentialMap {
-			return Object.fromEntries(Object.entries(this.credentials).filter(([_, credential]) => credential.hasOwnProperty('currentUserHasAccess')));
 		},
 		getCredentialByIdAndType() {
 			return (id: string, type: string): ICredentialsResponse | undefined => {
@@ -157,7 +154,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				return;
 			}
 			const rootStore = useRootStore();
-			const credentialTypes = await getCredentialTypes(rootStore.getRestApiContext);
+			const credentialTypes = await getCredentialTypes(rootStore.getBaseUrl);
 			this.setCredentialTypes(credentialTypes);
 		},
 		async fetchAllCredentials(): Promise<ICredentialsResponse[]> {
@@ -226,7 +223,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 			return credential;
 		},
-		async deleteCredential({ id }: {id: string}): void {
+		async deleteCredential({ id }: {id: string}) {
 			const rootStore = useRootStore();
 			const deleted = await deleteCredential(rootStore.getRestApiContext, id);
 			if (deleted) {
@@ -263,10 +260,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 
 		// Enterprise edition actions
-		setCredentialOwnedBy(payload: { credentialId: string, ownedBy: Partial<IUser> }): void {
+		setCredentialOwnedBy(payload: { credentialId: string, ownedBy: Partial<IUser> }) {
 			Vue.set(this.credentials[payload.credentialId], 'ownedBy', payload.ownedBy);
 		},
-		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string; }): void {
+		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string; }) {
 			if(useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(
 					useRootStore().getRestApiContext,

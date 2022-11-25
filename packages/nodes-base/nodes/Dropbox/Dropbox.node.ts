@@ -802,9 +802,9 @@ export class Dropbox implements INodeType {
 						//         list
 						// ----------------------------------
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						property = 'entries';
 
@@ -815,7 +815,7 @@ export class Dropbox implements INodeType {
 						};
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							body.limit = limit;
 						}
 
@@ -829,11 +829,11 @@ export class Dropbox implements INodeType {
 						//         query
 						// ----------------------------------
 
-						returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						returnAll = this.getNodeParameter('returnAll', 0);
 
 						simple = this.getNodeParameter('simple', 0) as boolean;
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						property = 'matches';
 
@@ -852,7 +852,7 @@ export class Dropbox implements INodeType {
 						Object.assign(body.options!, filters);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							Object.assign(body.options!, { max_results: limit });
 						}
 
@@ -942,7 +942,7 @@ export class Dropbox implements INodeType {
 					const newItem: INodeExecutionData = {
 						json: items[i].json,
 						binary: {},
-						pairedItem: {item: i},
+						pairedItem: { item: i },
 					};
 
 					if (items[i].binary !== undefined) {
@@ -1000,9 +1000,9 @@ export class Dropbox implements INodeType {
 				} else if (resource === 'search' && operation === 'query') {
 					let data = responseData;
 					if (returnAll === true) {
-							data = (simple === true) ? simplify(responseData) : responseData;
+						data = simple === true ? simplify(responseData) : responseData;
 					} else {
-							data = (simple === true) ? simplify(responseData[property]) : responseData[property];
+						data = simple === true ? simplify(responseData[property]) : responseData[property];
 					}
 
 					const executionData = this.helpers.constructExecutionMetaData(
@@ -1023,7 +1023,7 @@ export class Dropbox implements INodeType {
 					if (resource === 'file' && operation === 'download') {
 						items[i].json = { error: error.message };
 					} else {
-						returnData.push({json: { error: error.message }});
+						returnData.push({ json: { error: error.message } });
 					}
 					continue;
 				}

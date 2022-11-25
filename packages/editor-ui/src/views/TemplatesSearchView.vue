@@ -1,6 +1,6 @@
 <template>
 	<TemplatesView>
-		<template v-slot:header>
+		<template #header>
 			<div :class="$style.wrapper">
 				<div :class="$style.title">
 					<n8n-heading tag="h1" size="2xlarge">
@@ -16,7 +16,7 @@
 				</div>
 			</div>
 		</template>
-		<template v-slot:content>
+		<template #content>
 			<div :class="$style.contentWrapper">
 				<div :class="$style.filters">
 					<TemplateFilters
@@ -37,7 +37,9 @@
 						@blur="trackSearch"
 						clearable
 					>
-						<font-awesome-icon icon="search" slot="prefix" />
+						<template #prefix>
+							<font-awesome-icon icon="search" />
+						</template>
 					</n8n-input>
 					<div :class="$style.carouselContainer" v-show="collections.length || loadingCollections">
 						<div :class="$style.header">
@@ -78,13 +80,13 @@ import TemplateFilters from '@/components/TemplateFilters.vue';
 import TemplateList from '@/components/TemplateList.vue';
 import TemplatesView from './TemplatesView.vue';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import { ITemplatesCollection, ITemplatesWorkflow, ITemplatesQuery, ITemplatesCategory } from '@/Interface';
 import mixins from 'vue-typed-mixins';
 import { IDataObject } from 'n8n-workflow';
-import { setPageTitle } from '@/components/helpers';
+import { setPageTitle } from '@/utils';
 import { VIEWS } from '@/constants';
-import { debounceHelper } from '@/components/mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';
 import { useUsersStore } from '@/stores/users';

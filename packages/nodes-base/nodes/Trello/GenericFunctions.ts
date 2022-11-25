@@ -26,7 +26,7 @@ export async function apiRequest(
 		json: true,
 	};
 
-	return await this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'trelloApi', options);
 }
 
 export async function apiRequestAllItems(
