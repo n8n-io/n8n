@@ -71,8 +71,7 @@
 </template>
 
 <script lang="ts">
-import ElSubmenu from 'element-ui/lib/submenu';
-import ElMenuItem from 'element-ui/lib/menu-item';
+import { Submenu as ElSubmenu, MenuItem as ElMenuItem } from 'element-ui';
 import N8nTooltip from '../N8nTooltip';
 import N8nIcon from '../N8nIcon';
 import { IMenuItem } from '../../types';
@@ -81,8 +80,8 @@ import Vue, { PropType } from 'vue';
 export default Vue.extend({
 	name: 'n8n-menu-item',
 	components: {
-		ElSubmenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElMenuItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElSubmenu,
+		ElMenuItem,
 		N8nIcon,
 		N8nTooltip,
 	},
