@@ -1,7 +1,5 @@
-import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 
-const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Code node', () => {
@@ -11,7 +9,7 @@ describe('Code node', () => {
 	});
 
 	it('should execute the placeholder in all-items mode successfully', () => {
-		WorkflowsPage.actions.createWorkflowFromCard();
+		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('Code');
 		WorkflowPage.actions.openNodeNdv('Code');
@@ -22,7 +20,7 @@ describe('Code node', () => {
 	});
 
 	it('should execute the placeholder in each-item mode successfully', () => {
-		WorkflowsPage.actions.createWorkflowFromCard();
+		WorkflowPage.actions.visit();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('Code');
 		WorkflowPage.actions.openNodeNdv('Code');

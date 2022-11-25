@@ -56,5 +56,10 @@ export class WorkflowPage extends BasePage {
 		executeNodeFromNdv: () => {
 			cy.contains('Execute node').click();
 		},
+		visit: () => {
+			cy.visit(this.url);
+			cy.getByTestId('node-view-loader').should('not.exist');
+			cy.get('.el-loading-mask').should('not.exist');
+		},
 	};
 }
