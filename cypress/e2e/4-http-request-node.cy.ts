@@ -10,14 +10,14 @@ describe('HTTP Request node', () => {
 	});
 
 	it('should make a request with a URL and receive a response', () => {
-		WorkflowsPage.getters.newWorkflowButtonCard().click();
-		WorkflowPage.getters.canvas.addButton().click();
-		WorkflowPage.getters.nodeCreator.searchBar().type('Manual Trigger{enter}{esc}');
-		WorkflowPage.getters.nodeCreator.addNodeButton().click();
-		WorkflowPage.getters.nodeCreator.searchBar().type('HTTP{enter}{esc}');
-		WorkflowPage.getters.canvas.nodeBox('n8n-nodes-base.httpRequest').dblclick();
-		WorkflowPage.getters.ndv.parameterInput('url').type('https://google.com');
-		WorkflowPage.getters.ndv.executeNodeButton().click();
-		WorkflowPage.getters.ndv.outputPanel().contains('<!doctype html>');
+		WorkflowsPage.actions.createWorkflowFromCard();
+		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
+		WorkflowPage.actions.addNodeToCanvas('HTTP Request');
+		WorkflowPage.actions.openNodeNdv('n8n-nodes-base.httpRequest');
+		WorkflowPage.actions.typeIntoParameterInput('url', 'https://google.com');
+
+		WorkflowPage.actions.executeNodeFromNdv();
+
+		WorkflowPage.getters.ndvOutputPanel().contains('<!doctype html>');
 	});
 });

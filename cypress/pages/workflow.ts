@@ -11,20 +11,35 @@ export class WorkflowPage extends BasePage {
 		workflowTags: () => cy.getByTestId('workflow-tags'),
 		saveButton: () => cy.getByTestId('save-button'),
 
-		nodeCreator: {
-			addNodeButton: () => cy.getByTestId('node-creator-add-node-button'),
-			searchBar: () => cy.getByTestId('node-creator-search-bar'),
-		},
+		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
+		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
+		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
+		canvasNodeBox: (nodeTypeName: string) => cy.getByTestId(`canvas-node-box-${nodeTypeName}`),
 
-		canvas: {
-			addButton: () => cy.getByTestId('canvas-add-button'),
-			nodeBox: (nodeTypeName: string) => cy.getByTestId(`canvas-node-box-${nodeTypeName}`),
-		},
+		ndvParameterInput: (parameterName: string) =>
+			cy.getByTestId(`parameter-input-${parameterName}`),
+		ndvOutputPanel: () => cy.getByTestId('output-panel'),
+	};
 
-		ndv: {
-			parameterInput: (parameterName: string) => cy.getByTestId(`parameter-input-${parameterName}`),
-			executeNodeButton: () => cy.contains('Execute node'),
-			outputPanel: () => cy.getByTestId('output-panel'),
+	actions = {
+		addInitialNodeToCanvas: (nodeDisplayName: string) => {
+			this.getters.canvasPlusButton().click();
+			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
+			this.getters.nodeCreatorSearchBar().type('{enter}{esc}');
+		},
+		addNodeToCanvas: (nodeDisplayName: string) => {
+			this.getters.nodeCreatorPlusButton().click();
+			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
+			this.getters.nodeCreatorSearchBar().type('{enter}{esc}');
+		},
+		openNodeNdv: (nodeTypeName: string) => {
+			this.getters.canvasNodeBox(nodeTypeName).dblclick();
+		},
+		typeIntoParameterInput: (parameterName: string, content: string) => {
+			this.getters.ndvParameterInput(parameterName).type(content);
+		},
+		executeNodeFromNdv: () => {
+			cy.contains('Execute node').click();
 		},
 	};
 }
