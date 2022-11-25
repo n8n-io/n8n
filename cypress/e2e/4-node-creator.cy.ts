@@ -22,7 +22,6 @@ describe('Node Creator', () => {
 				res.send(nodes)
 			})
 		}).as('nodesIntercept')
-		cy.task('db:reset');
 		cy.visit(nodeCreatorFeature.url);
 	});
 
