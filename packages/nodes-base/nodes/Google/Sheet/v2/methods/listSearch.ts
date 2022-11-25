@@ -16,20 +16,25 @@ export async function spreadSheetsSearch(
 ): Promise<INodeListSearchResult> {
 	const query: string[] = [];
 	if (filter) {
-		query.push(`name contains '${filter.replace("'", "\\'")}'`);
+		// query.push(`name contains '${filter.replace("'", "\\'")}'`);
 	}
 	query.push("mimeType = 'application/vnd.google-apps.spreadsheet'");
+
+	const qs = {
+		q: query.join(' and '),
+		pageToken: (paginationToken as string) || undefined,
+		fields: 'nextPageToken, files(id, name, webViewLink)',
+		orderBy: 'name_natural',
+		includeItemsFromAllDrives: true,
+		supportsAllDrives: true,
+	};
+
 	const res = await apiRequest.call(
 		this,
 		'GET',
 		'',
 		{},
-		{
-			q: query.join(' and '),
-			pageToken: paginationToken as string | undefined,
-			fields: 'nextPageToken, files(id, name, webViewLink)',
-			orderBy: 'name_natural',
-		},
+		qs,
 		'https://www.googleapis.com/drive/v3/files',
 	);
 	return {
