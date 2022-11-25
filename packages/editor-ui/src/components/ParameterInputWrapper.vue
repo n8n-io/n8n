@@ -20,7 +20,9 @@
 				@blur="onBlur"
 				@drop="onDrop"
 				@textInput="onTextInput"
-				@valueChanged="onValueChanged" />
+				@valueChanged="onValueChanged"
+				:data-test-id="`parameter-input-${parameter.name}`"
+			/>
 		<input-hint v-if="expressionOutput" :class="$style.hint" :highlight="!!(expressionOutput && targetItem)" :hint="expressionOutput" />
 		<input-hint v-else-if="parameterHint" :class="$style.hint" :renderHTML="true" :hint="parameterHint" />
 	</div>
