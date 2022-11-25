@@ -18,6 +18,7 @@ import {
 	sheetBinaryToArrayOfArrays,
 } from './GoogleSheetsTrigger.utils';
 import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
+import { ValueRenderOption } from './v1/GoogleSheet';
 
 const BINARY_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
@@ -235,6 +236,11 @@ export class GoogleSheetsTrigger implements INodeType {
 						value: 'bothVersions',
 					},
 				],
+				displayOptions: {
+					hide: {
+						event: ['rowAdded'],
+					},
+				},
 			},
 			{
 				displayName: 'Options',
@@ -442,12 +448,9 @@ export class GoogleSheetsTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'Could not retrieve the columns from key row');
 			}
 
-			const { values: sheetData } = await apiRequest.call(
-				this,
-				'GET',
-				`/v4/spreadsheets/${documentId}/values/${sheetName}!${rangeToCheck}`,
-				{},
-				qs,
+			const sheetData = await googleSheet.getData(
+				`${sheetName}!${rangeToCheck}`,
+				options.valueRenderOption as ValueRenderOption,
 			);
 
 			if (Array.isArray(sheetData)) {
