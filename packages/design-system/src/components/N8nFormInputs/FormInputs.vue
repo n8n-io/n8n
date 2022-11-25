@@ -13,6 +13,7 @@
 						tag="div"
 						:size="input.properties.labelSize"
 						:align="input.properties.labelAlignment"
+						class="form-text"
 					>
 						{{ input.properties.label }}
 					</n8n-text>
