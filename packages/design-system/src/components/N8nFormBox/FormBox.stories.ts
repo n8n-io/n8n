@@ -1,5 +1,6 @@
 import N8nFormBox from './FormBox.vue';
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Modules/FormBox',
@@ -15,7 +16,7 @@ const methods = {
 	onInput: action('input'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nFormBox,

@@ -1,4 +1,5 @@
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 import N8nSticky from './Sticky.vue';
 
 export default {
@@ -45,7 +46,7 @@ const methods = {
 	onResizeStart: action('resizestart'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nSticky,
