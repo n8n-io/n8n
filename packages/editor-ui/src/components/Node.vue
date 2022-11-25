@@ -1,8 +1,8 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition" :id="nodeId">
+	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node-box">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
-			<div :class="nodeClass" :style="nodeStyle" @click.left="onClick" v-touch:start="touchStart" v-touch:end="touchEnd" :data-test-id="`canvas-node-box-${nodeType.name}`">
+			<div :class="nodeClass" :style="nodeStyle" @click.left="onClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
@@ -80,7 +80,7 @@
 		</div>
 		<div class="node-description">
 			<div class="node-name ph-no-capture" :title="nodeTitle">
-				<p>
+				<p data-test-id="node-box-title">
 					{{ nodeTitle }}
 				</p>
 				<p v-if="data.disabled">

@@ -14,7 +14,12 @@ export class WorkflowPage extends BasePage {
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
-		canvasNodeBox: (nodeTypeName: string) => cy.getByTestId(`canvas-node-box-${nodeTypeName}`),
+		canvasNodeBox: (nodeDisplayName: string) => {
+			return cy
+				.getByTestId('node-box-title')
+				.contains(nodeDisplayName)
+				.parents('[data-test-id="canvas-node-box"]');
+		},
 
 		ndvParameterInput: (parameterName: string) =>
 			cy.getByTestId(`parameter-input-${parameterName}`),

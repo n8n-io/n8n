@@ -13,7 +13,7 @@ describe('HTTP Request node', () => {
 		WorkflowsPage.actions.createWorkflowFromCard();
 		WorkflowPage.actions.addInitialNodeToCanvas('Manual Trigger');
 		WorkflowPage.actions.addNodeToCanvas('HTTP Request');
-		WorkflowPage.actions.openNodeNdv('n8n-nodes-base.httpRequest');
+		WorkflowPage.actions.openNodeNdv('HTTP Request');
 		WorkflowPage.actions.typeIntoParameterInput('url', 'https://google.com');
 
 		WorkflowPage.actions.executeNodeFromNdv();
