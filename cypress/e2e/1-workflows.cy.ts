@@ -13,6 +13,8 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflows', () => {
 	beforeEach(() => {
+		cy.task('db:reset');
+		
 		cy.signup(username, firstName, lastName, password);
 
 		cy.on('uncaught:exception', (err, runnable) => {
