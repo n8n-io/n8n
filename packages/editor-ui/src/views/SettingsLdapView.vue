@@ -65,7 +65,7 @@
 				</div>
 			</div>
 			<div v-show="loginEnabled">
-				<n8n-heading tag="h1" class="mb-2xl mt-3xl" size="medium">{{ $locale.baseText('settings.ldap.section.synchronization.title') }}</n8n-heading>
+				<n8n-heading tag="h1" class="mb-xl mt-3xl" size="medium">{{ $locale.baseText('settings.ldap.section.synchronization.title') }}</n8n-heading>
 				<div :class="$style.syncTable">
 					<el-table
 						v-loading="loadingTable"
@@ -746,7 +746,6 @@ export default mixins(showMessage).extend({
 }
 
 .syncTable {
-	margin-top: var(--spacing-3xl);
 	margin-bottom: var(--spacing-2xl);
 }
 

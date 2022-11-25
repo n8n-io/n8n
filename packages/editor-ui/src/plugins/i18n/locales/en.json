@@ -1437,7 +1437,7 @@
 	"settings.ldap.form.loginEnabled.label": "Enable LDAP Login",
 	"settings.ldap.form.loginEnabled.tooltip": "Connection settings and data will still be saved if you disable LDAP Login",
 	"settings.ldap.form.loginLabel.label": "LDAP Login",
-	"settings.ldap.form.loginLabel.placeholder": "E.g.: LDAP Username or Email",
+	"settings.ldap.form.loginLabel.placeholder": "e.g. LDAP Username or email address",
 	"settings.ldap.form.loginLabel.infoText": "The placeholder text that appears in the login field on the login page",
 	"settings.ldap.form.serverAddress.label": "LDAP Server Address",
 	"settings.ldap.form.serverAddress.placeholder": "123.123.123.123",
