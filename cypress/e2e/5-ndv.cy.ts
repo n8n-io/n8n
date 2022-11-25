@@ -11,8 +11,8 @@ describe('NDV', () => {
 		cy.task('db:reset');
 		cy.skipSetup();
 		workflowsPage.actions.createWorkflowFromCard();
-		workflowPage.actions.renameWorkFlow(workflowName);
-		workflowPage.actions.saveWorkFlow();
+		workflowPage.actions.renameWorkflow(workflowName);
+		workflowPage.actions.saveWorkflowOnButtonClick();
 	});
 
 	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
@@ -51,6 +51,6 @@ describe('NDV', () => {
 			})
 		});
 
-		cy.getByTestId('ndv-run-data-display-mode').should('have.length.at.least', 1);
+		cy.getByTestId('ndv-run-data-display-mode').should('have.length.at.least', 1).and('be.visible');
 	});
 });
