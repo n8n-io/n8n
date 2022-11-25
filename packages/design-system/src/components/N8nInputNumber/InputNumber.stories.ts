@@ -1,5 +1,6 @@
 import N8nInputNumber from './InputNumber.vue';
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Input Number',
@@ -51,7 +52,7 @@ const methods = {
 	onInput: action('input'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nInputNumber,
@@ -71,7 +72,7 @@ Input.args = {
 	controls: false,
 };
 
-const ManyTemplate = (args, { argTypes }) => ({
+const ManyTemplate: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nInputNumber,

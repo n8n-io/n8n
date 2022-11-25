@@ -18,7 +18,7 @@
 				<span v-if="isTrigger" :class="$style['trigger-icon']">
 					<trigger-icon />
 				</span>
-				<n8n-tooltip v-if="isCommunityNode" placement="top">
+				<n8n-tooltip v-if="isCommunityNode" placement="top" data-test-id="node-item-community-tooltip">
 					<template #content>
 						<div
 							:class="$style['community-node-icon']"

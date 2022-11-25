@@ -24,4 +24,10 @@ export class WorkflowsPage extends BasePage {
 		// myWorkflows: () => cy.getByTestId('my-workflows'),
 		// allWorkflows: () => cy.getByTestId('all-workflows'),
 	};
+
+	actions = {
+		createWorkflowFromCard: () => {
+			this.getters.newWorkflowButtonCard().click();
+		},
+	}
 }

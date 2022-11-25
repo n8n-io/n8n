@@ -5,6 +5,7 @@
 		:required="parameter.required"
 		:showTooltip="focused"
 		:showOptions="menuExpanded"
+		:data-test-id="parameter.name"
 	>
 		<template #options>
 			<parameter-options
