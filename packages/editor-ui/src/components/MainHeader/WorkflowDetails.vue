@@ -24,9 +24,8 @@
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="settingsStore.areTagsEnabled" class="tags">
-			<div
-				v-if="isTagsEditEnabled">
+		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
+			<div v-if="isTagsEditEnabled">
 				<TagsDropdown
 					:createEnabled="true"
 					:currentTagIds="appliedTagIds"
@@ -45,6 +44,7 @@
 			>
 				<span
 					class="add-tag clickable"
+					data-test-id="new-tag-link"
 					@click="onTagsEditEnable"
 				>
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
