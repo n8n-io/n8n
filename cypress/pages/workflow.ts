@@ -48,7 +48,6 @@ export class WorkflowPage extends BasePage {
 		},
 		visit: () => {
 			cy.visit(this.url);
-			// cy.get('[data-test-id=node-view-loader]', { timeout: 5000 }).should('not.exist');
 			cy.getByTestId('node-view-loader', { timeout: 5000 }).should('not.exist');
 			cy.get('.el-loading-mask', { timeout: 5000 }).should('not.exist');
 		},
