@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.searchContainer">
+	<div :class="$style.searchContainer" data-test-id="search-bar">
 		<div :class="{ [$style.prefix]: true, [$style.active]: value.length > 0 }">
 			<font-awesome-icon icon="search" size="sm" />
 		</div>
