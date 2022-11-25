@@ -6,6 +6,7 @@
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
+					testId="workflow-name-input"
 				>
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
@@ -17,7 +18,6 @@
 							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
 							class="name"
-							data-test-id="workflow-name-input"
 						/>
 					</template>
 				</ShortenName>

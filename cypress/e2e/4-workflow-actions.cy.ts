@@ -6,6 +6,7 @@ const username = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
+const newWorkflowName = 'Something else';
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Actions', () => {
@@ -23,7 +24,7 @@ describe('Workflow Actions', () => {
 	it('should be able to save on button slick', () => {
 		WorkflowPage.actions.visit();
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		// In Element UI, disabled button turn into spans
+		// In Element UI, disabled button turn into spans 🤷‍♂️
 		WorkflowPage.getters.saveButton().should('match', 'span');
 	});
 
@@ -40,8 +41,32 @@ describe('Workflow Actions', () => {
 
 	it('should not be able to activate workflow without trigger node', () => {
 		WorkflowPage.actions.visit();
-		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
+		// Manual trigger is not enough to activate the workflow
+		WorkflowPage.actions.addTriggerNode('n8n-nodes-base.manualTrigger');
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		WorkflowPage.getters.activatorSwitch().find('input').first().should('be.disabled');
 	});
 
+	it('should be able to activate workflow', () => {
+		WorkflowPage.actions.visit();
+		WorkflowPage.actions.addTriggerNode('n8n-nodes-base.scheduleTrigger');
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.activateWorkflow();
+		WorkflowPage.getters.activatorSwitch().should('have.class', 'is-checked');
+	});
+
+	it('should save new workflow after renaming', () => {
+		WorkflowPage.actions.visit();
+		WorkflowPage.actions.renameWorkflow(newWorkflowName);
+		WorkflowPage.getters.saveButton().should('match', 'span');
+	});
+
+	it('should rename workflow', () => {
+		WorkflowPage.actions.visit();
+		WorkflowPage.actions.addTriggerNode('n8n-nodes-base.scheduleTrigger');
+		WorkflowPage.actions.saveWorkflowOnButtonClick();
+		WorkflowPage.actions.renameWorkflow(newWorkflowName);
+		WorkflowPage.getters.saveButton().should('match', 'span');
+		WorkflowPage.getters.workflowNameInput().invoke('attr', 'title').should('eq', newWorkflowName);
+	});
 });
