@@ -20,9 +20,11 @@ describe('NDV', () => {
 		cy.deleteWorkflowByName(workflowName);
 	});
 
-	it('should show up when double clicked on a node', () => {
+	it('should show up when double clicked on a node and close when Back to canvas clicked', () => {
 		workflowPage.getters.nodes().first().dblclick();
 		cy.getByTestId('ndv').should('be.visible');
+		cy.getByTestId('back-to-canvas').click()
+		cy.getByTestId('ndv').should('not.be.visible');
 	});
 
 	it('should test webhook node', () => {
