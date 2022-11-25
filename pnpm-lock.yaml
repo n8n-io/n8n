@@ -403,7 +403,7 @@ importers:
       '@vitejs/plugin-vue2': ^1.1.2
       c8: 7.11.0
       core-js: ^3.6.5
-      element-ui: ~2.15.7
+      element-ui: ~2.15.12
       jsdom: 19.0.0
       markdown-it: ^12.3.2
       markdown-it-emoji: ^2.0.0
@@ -429,7 +429,7 @@ importers:
       webpack: ^4.46.0
       xss: ^1.0.10
     dependencies:
-      element-ui: 2.15.10_vue@2.7.13
+      element-ui: 2.15.12_vue@2.7.13
       markdown-it: 12.3.2
       markdown-it-emoji: 2.0.2
       markdown-it-link-attributes: 4.0.1
@@ -10441,8 +10441,8 @@ packages:
     resolution: {integrity: sha512-xs7vEuSZ84+JsHSTFqqG0TE3i8EAivHomRQZhhcRvsmnjsh5C2KdhwNKf4ZRYtzq75wojpFyqb62m32Oam57wA==}
     dev: true
 
-  /element-ui/2.15.10_vue@2.7.13:
-    resolution: {integrity: sha512-jmD++mU2wKXbisvx4fxOl2mHaU+HWHTAq/3Wf8x9Bwyu4GdDZPLABb+CGi3DWN6fPqdgRcd74aX39DO+YHObLw==}
+  /element-ui/2.15.12_vue@2.7.13:
+    resolution: {integrity: sha512-Y5FMT2BPOindU2GkDEQ5ZKUVxDawKONRNMh2eL3uBx1FOtvUJ+L6IxXLVsNxq4WnaX/UnVNgWXebl7DobygZMg==}
     peerDependencies:
       vue: ^2.5.17
     dependencies:
