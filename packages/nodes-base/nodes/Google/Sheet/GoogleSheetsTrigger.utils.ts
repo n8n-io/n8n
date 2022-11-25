@@ -32,7 +32,7 @@ export function sheetBinaryToArrayOfArrays(data: Buffer, sheetName: string) {
 	const workbook = XLSX.read(data, { type: 'buffer', sheets: [sheetName] });
 	const sheet = workbook.Sheets[sheetName];
 	const sheetData: string[][] = sheet['!ref']
-		? XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false })
+		? XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, defval: '' })
 		: [];
 
 	return sheetData.filter((row) => row.filter((cell) => cell !== '').length);
@@ -71,6 +71,9 @@ export function compareRevisions(
 	for (let i = 0; i < dataLength; i++) {
 		if (i === keyRow - 1) {
 			continue;
+		}
+		while (current[i].length < previous[i].length) {
+			current[i].push('');
 		}
 		if (isEqual(previous[i], current[i])) {
 			continue;
