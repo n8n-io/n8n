@@ -21,7 +21,7 @@
 
 <script lang="ts">
 import Vue, { PropType } from 'vue';
-import ElTooltip from 'element-ui/lib/tooltip';
+import { Tooltip as ElTooltip } from 'element-ui';
 import type { IN8nButton } from '@/types';
 import N8nButton from '../N8nButton';
 
@@ -29,7 +29,7 @@ export default Vue.extend({
 	name: 'n8n-tooltip',
 	inheritAttrs: false,
 	components: {
-		ElTooltip, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElTooltip,
 		N8nButton,
 	},
 	props: {
