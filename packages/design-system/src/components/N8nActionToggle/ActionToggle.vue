@@ -13,7 +13,7 @@
 			</span>
 
 			<template #dropdown>
-				<el-dropdown-menu :data-test-id="testId">
+				<el-dropdown-menu data-test-id="action-toggle-dropdown">
 					<el-dropdown-item
 						v-for="action in actions"
 						:key="action.value"
@@ -84,10 +84,6 @@ export default Vue.extend({
 			type: String,
 			default: 'default',
 			validator: (value: string): boolean => ['default', 'dark'].includes(value),
-		},
-		testId: {
-			type: String,
-			required: false,
 		},
 	},
 	methods: {
