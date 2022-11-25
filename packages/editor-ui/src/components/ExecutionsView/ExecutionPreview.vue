@@ -73,11 +73,12 @@ import { executionHelpers, IExecutionUIData } from '@/mixins/executionsHelpers';
 import { VIEWS } from '@/constants';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
-import ElDropdown from 'element-ui/lib/dropdown';
+import { Dropdown as ElDropdown } from 'element-ui';
 
 export default mixins(restApi, showMessage, executionHelpers).extend({
 	name: 'execution-preview',
 	components: {
+		ElDropdown,
 		WorkflowPreview,
 	},
 	data() {
