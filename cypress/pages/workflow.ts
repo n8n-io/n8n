@@ -3,9 +3,13 @@ import { BasePage } from './base';
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
 	getters = {
-		workflowNameInput: () => cy.getByTestId('workflow-name-input'),
+		workflowNameInputContainer: () => cy
+		.getByTestId('workflow-name-input', { timeout: 5000 }),
+		workflowNameInput: () => this.getters.workflowNameInputContainer().then(($el) => cy.wrap($el.find('input'))),
 		workflowImportInput: () => cy.getByTestId('workflow-import-input'),
 		workflowTags: () => cy.getByTestId('workflow-tags'),
+		workflowTagsContainer: () => cy.getByTestId('workflow-tags-container'),
+		newTagLink: () => cy.getByTestId('new-tag-link'),
 		saveButton: () => cy.getByTestId('workflow-save-button'),
 
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
@@ -24,9 +28,15 @@ export class WorkflowPage extends BasePage {
 		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
 		workflowMenu: () => cy.getByTestId('workflow-menu'),
 		firstStepButton: () => cy.getByTestId('canvas-add-button'),
+		isWorkflowSaved: () => this.getters.saveButton().should('match', 'span'), // In Element UI, disabled button turn into spans 🤷‍♂️
+		isWorkflowActivated: () => this.getters.activatorSwitch().should('have.class', 'is-checked'),
 	};
-
 	actions = {
+		visit: () => {
+			cy.visit(this.url);
+			cy.getByTestId('node-view-loader', { timeout: 5000 }).should('not.exist');
+			cy.get('.el-loading-mask', { timeout: 5000 }).should('not.exist');
+		},
 		addInitialNodeToCanvas: (nodeDisplayName: string) => {
 			this.getters.canvasPlusButton().click();
 			this.getters.nodeCreatorSearchBar().type(nodeDisplayName);
@@ -46,11 +56,6 @@ export class WorkflowPage extends BasePage {
 		executeNodeFromNdv: () => {
 			cy.contains('Execute node').click();
 		},
-		visit: () => {
-			cy.visit(this.url);
-			cy.getByTestId('node-view-loader', { timeout: 5000 }).should('not.exist');
-			cy.get('.el-loading-mask', { timeout: 5000 }).should('not.exist');
-		},
 		openWorkflowMenu: () => {
 			this.getters.workflowMenu().click();
 		},
@@ -66,9 +71,17 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type('{esc}');
 		},
 		renameWorkflow: (newName: string) => {
-			this.getters.workflowNameInput().click();
+			this.getters.workflowNameInputContainer().click();
 			cy.get('body').type('{selectall}');
 			cy.get('body').type(newName);
+			cy.get('body').type('{enter}');
+		},
+		addTags: (tags: string[]) => {
+			this.getters.newTagLink().click();
+			tags.forEach(tag => {
+				cy.get('body').type(tag);
+				cy.get('body').type('{enter}');
+			});
 			cy.get('body').type('{enter}');
 		},
 	};
