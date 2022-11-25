@@ -7,7 +7,6 @@ export class CredentialsModal extends BasePage {
 		newCredentialTypeSelect: () => cy.getByTestId('new-credential-type-select'),
 		newCredentialTypeOption: (credentialType: string) => cy.getByTestId('new-credential-type-select-option').contains(credentialType),
 		newCredentialTypeButton: () => cy.getByTestId('new-credential-type-button'),
-		editCredentialModal: () => cy.getByTestId('editCredential-modal', { timeout: 5000 }),
 		connectionParameters: () => cy.getByTestId('credential-connection-parameter'),
 		connectionParameter: (fieldName: string) => this.getters.connectionParameters().contains(fieldName)
 			.parents('[data-test-id="credential-connection-parameter"]')
