@@ -38,23 +38,32 @@
 </template>
 
 <script lang="ts">
-import ElDropdown from 'element-ui/lib/dropdown';
-import ElDropdownMenu from 'element-ui/lib/dropdown-menu';
-import ElDropdownItem from 'element-ui/lib/dropdown-item';
-import N8nIcon from '../N8nIcon';
 import Vue from 'vue';
+import {
+	Dropdown as ElDropdown,
+	DropdownMenu as ElDropdownMenu,
+	DropdownItem as ElDropdownItem,
+} from 'element-ui';
+import N8nIcon from '../N8nIcon';
+
+interface Action {
+	label: string;
+	value: string;
+	disabled: boolean;
+	type?: 'external-link';
+}
 
 export default Vue.extend({
 	name: 'n8n-action-toggle',
 	components: {
-		ElDropdown, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdownMenu, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
-		ElDropdownItem, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElDropdown,
+		ElDropdownMenu,
+		ElDropdownItem,
 		N8nIcon,
 	},
 	props: {
 		actions: {
-			type: Array,
+			type: Array<Action>,
 			default: () => [],
 		},
 		placement: {
