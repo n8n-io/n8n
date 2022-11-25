@@ -65,5 +65,8 @@ export class WorkflowPage extends BasePage {
 			cy.get('body').type(newName);
 			cy.get('body').type('{enter}');
 		},
+		zoomToFit: () => {
+			cy.getByTestId('zoom-to-fit').click();
+		},
 	};
 }

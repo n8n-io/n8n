@@ -23,7 +23,7 @@
 		>
 		<template #header>
 			<div :class="$style.titleSection">
-				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable>
+				<n8n-select v-if="parentNodes.length" :popper-append-to-body="true" size="small" :value="currentNodeName" @input="onSelect" :no-data-text="$locale.baseText('ndv.input.noNodesFound')" :placeholder="$locale.baseText('ndv.input.parentNodes')" filterable data-test-id="ndv-input-select">
 					<template #prepend>
 						<span :class="$style.title">{{ $locale.baseText('ndv.input') }}</span>
 					</template>
