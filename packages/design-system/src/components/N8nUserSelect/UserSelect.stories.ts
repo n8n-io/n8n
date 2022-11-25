@@ -1,9 +1,10 @@
-import N8nUsersList from './UsersList.vue';
+import N8nUserSelect from './UserSelect.vue';
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
-	title: 'Modules/UsersList',
-	component: N8nUsersList,
+	title: 'Modules/UserSelect',
+	component: N8nUserSelect,
 	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-light' },
@@ -11,45 +12,44 @@ export default {
 };
 
 const methods = {
-	onReinvite: action('reinvite'),
-	onDelete: action('delete'),
+	onChange: action('change'),
+	onBlur: action('blur'),
+	onFocus: action('focus'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
-		N8nUsersList,
+		N8nUserSelect,
 	},
-	template: '<n8n-users-list v-bind="$props" @reinvite="onReinvite" @delete="onDelete" />',
+	template:
+		'<n8n-user-select v-bind="$props" v-model="val" @change="onChange" @blur="onBlur" @focus="onFocus" />',
 	methods,
+	data() {
+		return {
+			val: '',
+		};
+	},
 });
 
-export const UsersList = Template.bind({});
-UsersList.args = {
+export const UserSelect = Template.bind({});
+UserSelect.args = {
 	users: [
 		{
 			id: '1',
 			firstName: 'Sunny',
 			lastName: 'Side',
-			fullName: 'Sunny Side',
 			email: 'sunny@n8n.io',
-			isDefaultUser: false,
-			isPendingUser: false,
-			isOwner: true,
 			globalRole: {
 				name: 'owner',
-				id: 1,
+				id: '1',
 			},
 		},
 		{
 			id: '2',
 			firstName: 'Kobi',
 			lastName: 'Dog',
-			fullName: 'Kobi Dog',
 			email: 'kobi@n8n.io',
-			isDefaultUser: false,
-			isPendingUser: false,
-			isOwner: false,
 			globalRole: {
 				name: 'member',
 				id: '2',
@@ -58,14 +58,12 @@ UsersList.args = {
 		{
 			id: '3',
 			email: 'invited@n8n.io',
-			isDefaultUser: false,
-			isPendingUser: true,
-			isOwner: false,
 			globalRole: {
 				name: 'member',
 				id: '2',
 			},
 		},
 	],
+	placeholder: 'Select user to transfer to',
 	currentUserId: '1',
 };

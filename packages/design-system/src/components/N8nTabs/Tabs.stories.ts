@@ -1,16 +1,12 @@
-import N8nRadioButtons from './RadioButtons.vue';
+import N8nTabs from './Tabs.vue';
 
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
-	title: 'Atoms/RadioButtons',
-	component: N8nRadioButtons,
-	argTypes: {
-		size: {
-			type: 'select',
-			options: ['small', 'medium'],
-		},
-	},
+	title: 'Atoms/Tabs',
+	component: N8nTabs,
+	argTypes: {},
 	parameters: {
 		backgrounds: { default: '--color-background-xlight' },
 	},
@@ -20,13 +16,13 @@ const methods = {
 	onInput: action('input'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
-		N8nRadioButtons,
+		N8nTabs,
 	},
-	template: `<n8n-radio-buttons v-model="val" v-bind="$props" @input="onInput">
-		</n8n-radio-buttons>`,
+	template: `<n8n-tabs v-model="val" v-bind="$props" @input="onInput">
+		</n8n-tabs>`,
 	methods,
 	data() {
 		return {
@@ -43,12 +39,15 @@ Example.args = {
 			value: 'test',
 		},
 		{
-			label: 'World',
-			value: 'world',
+			label: 'Github',
+			value: 'github',
+			href: 'https://github.com/',
 		},
 		{
-			label: 'Hello',
-			value: 'hello',
+			label: 'Settings',
+			value: 'settings',
+			icon: 'cog',
+			align: 'right',
 		},
 	],
 };
