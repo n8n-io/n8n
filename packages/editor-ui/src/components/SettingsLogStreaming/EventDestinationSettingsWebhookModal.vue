@@ -10,7 +10,6 @@
 		maxHeight="700px"
 	>
 		<template slot="header">
-			<!-- <h2 :class="$style.title">Edit Log Destination Settings</h2> -->
 			<el-row :gutter="20" justify="start">
 					<el-col :span="12">
 						Edit &nbsp;<strong>{{ destination.label }}</strong> settings
@@ -36,13 +35,7 @@
 						:isReadOnly="false"
 						path=""
 						@valueChanged="valueChanged"
-					>
-						<node-credentials
-						:node="node"
-						:readonly="false"
-						:isReadOnly="false"
-						@credentialSelected="credentialSelected" />
-					</parameter-input-list>
+					/>
 					<div class="multi-parameter">
 						<n8n-input-label
 							:class="$style.labelMargins"
@@ -101,11 +94,12 @@ import { MessageEventBusDestinationTypeNames, MessageEventBusDestinationWebhook 
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
-import { deepCopy, INodeParameters, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import { deepCopy, IDataObject, INodeCredentials, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import Vue from 'vue';
 import {WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY} from '../../constants';
 import Modal from '@/components/Modal.vue';
 import { useUIStore } from '../../stores/ui';
+import { destinationToFakeINodeUi } from './Helpers';
 
 export default mixins(
 	restApi,
@@ -152,35 +146,31 @@ export default mixins(
 			useNDVStore,
 			useWorkflowsStore,
 		),
-		isFolder() {
-			return true;
-		},
 		node(): INodeUi {
-			return {
-				id: this.destination.id,
-				name: this.destination.id,
-				typeVersion: 1,
-				type: MessageEventBusDestinationTypeNames.webhook,
-				position: [0, 0],
-				parameters: {
-					...this.nodeParameters,
-				},
-			} as INodeUi;
+			return destinationToFakeINodeUi(this.nodeParameters);
 		},
 	},
 	mounted() {
-			// merge destination data with defaults
-			this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), this.destination);
-			this.ndvStore.activeNodeName = this.destination.id;
-			this.workflowsStore.addNode(this.node);
-			this.workflowsStore.updateNodeProperties({
-				name: this.destination.id,
-				properties: {parameters: this.nodeParameters as unknown as INodeParameters},
-			});
-			this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
-		},
-	beforeDestroy() {
-			this.$props.eventBus.$emit('destinationEditModalClosing', this.destination.id);
+		this.ndvStore.activeNodeName = this.destination.id;
+		// merge destination data with defaults
+		this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), this.destination);
+		this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
+		this.workflowsStore.$onAction(
+		({
+			name, // name of the action
+			args, // array of parameters passed to the action
+		}) => {
+			if (name === 'updateNodeProperties') {
+				for (const arg of args) {
+					if (arg.name === this.destination.id) {
+						if ('credentials' in arg.properties) {
+							this.unchanged = false;
+							this.nodeParameters.credentials = arg.properties.credentials as INodeCredentials;
+						}
+					}
+				}
+			}
+		});
 	},
 	methods: {
 		onInput() {
@@ -218,21 +208,17 @@ export default mixins(
 			}
 
 			this.nodeParameters = deepCopy(nodeParameters);
-			this.workflowsStore.removeNode(this.node);
-			this.workflowsStore.addNode(this.node);
-		},
-		credentialSelected(a,b,c) {
-			console.log(a,b,c);
-			this.unchanged = false;
-		},
-		async onRemove(id: string) {
-			this.$emit('remove', this.destination);
+			this.workflowsStore.updateNodeProperties({
+				name: this.node.name,
+				properties: { parameters: this.nodeParameters as unknown as IDataObject },
+			});
 		},
 		toggleRemoveConfirm() {
 			this.showRemoveConfirm = !this.showRemoveConfirm;
 		},
-		async removeThis() {
-			this.$emit('remove', this.destination.id);
+		removeThis() {
+			this.$props.eventBus.$emit('remove', this.destination.id);
+			this.uiStore.closeModal(WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 		async saveDestination() {
 			if (this.unchanged) {
@@ -246,11 +232,11 @@ export default mixins(
 			await this.restApi().makeRestApiRequest('POST', '/eventbus/destination', data);
 			this.unchanged = true;
 			this.eventTreeStore.updateDestination(this.nodeParameters);
+			this.$props.eventBus.$emit('destinationWasUpdated', this.destination.id);
 			this.uiStore.closeModal(WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 	},
 });
-
 
 const description = [
 				{
@@ -766,28 +752,14 @@ const description = [
 </script>
 
 <style lang="scss" module>
-.item {
-  cursor: pointer;
-}
+	.labelMargins {
+		margin-bottom: 1em;
+		margin-top: 1em;
+	}
 
-.labelMargins {
-	margin-bottom: 1em;
-	margin-top: 1em;
-}
-
-.narrowCardBody {
-	padding: 0 70px 20px 70px;
-	overflow: auto;
-	max-height: 600px;
-}
-.title {
-	font-size: var(--font-size-xl);
-	line-height: var(--font-line-height-regular);
-}
-
-.subtitle {
-	margin-bottom: var(--spacing-s);
-	font-size: var(--font-size-m);
-	line-height: var(--font-line-height-xloose);
-}
+	.narrowCardBody {
+		padding: 0 70px 20px 70px;
+		overflow: auto;
+		max-height: 600px;
+	}
 </style>

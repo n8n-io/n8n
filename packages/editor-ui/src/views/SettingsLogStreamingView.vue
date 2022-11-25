@@ -49,6 +49,7 @@ import {
 import { useUIStore } from '../stores/ui';
 import { WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY, SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY } from '../constants';
 import Vue from 'vue';
+import { destinationToFakeINodeUi } from '../components/SettingsLogStreaming/Helpers';
 
 export default mixins(
 	restApi,
@@ -62,17 +63,29 @@ export default mixins(
 		};
 	},
 	async mounted() {
+		// Prepare credentialsStore so modals can pick up credentials
 		await this.credentialsStore.fetchCredentialTypes(false);
 		const result = await this.credentialsStore.fetchAllCredentials();
-		console.log(result);
-		this.getDestinationDataFromREST();
-		this.eventTreeStore.$onAction(({name})=>{
+
+		// fetch Destination data from the backend
+		await this.getDestinationDataFromREST();
+
+		// since we are not really integrated into the hooks, we listen to the store and refresh the destinations
+		this.eventTreeStore.$onAction(({name, after})=>{
 			if (name==='removeDestination') {
-				this.getDestinationDataFromREST();
+				after(async () => {
+					await this.getDestinationDataFromREST();
+    	});
 			}
 		});
-		this.eventBus.$on('destinationEditModalClosing', () => {
-			this.getDestinationDataFromREST();
+
+		// refresh when a modal closes
+		this.eventBus.$on('destinationWasUpdated', async () => {
+			await this.getDestinationDataFromREST();
+		});
+		// listen to remove emission
+		this.eventBus.$on('remove', async (destinationId: string) => {
+			await this.onRemove(destinationId);
 		});
 	},
 	components: {
@@ -89,22 +102,36 @@ export default mixins(
 	},
 	methods: {
 		async getDestinationDataFromREST(): Promise<any> {
-			const backendConstants = await this.restApi().makeRestApiRequest('get', '/eventbus/constants');
 			this.eventTreeStore.clearEventNames();
-			if ('eventNames' in backendConstants && Array.isArray(backendConstants['eventNames'])) {
-				backendConstants['eventNames'].forEach(e=>this.eventTreeStore.addEventName(e));
-			}
 			this.eventTreeStore.clearEventLevels();
-			if ('eventLevels' in backendConstants && Array.isArray(backendConstants['eventLevels'])) {
-				backendConstants['eventLevels'].forEach(e=>this.eventTreeStore.addEventLevel(e));
+			this.eventTreeStore.clearDestinationItemTrees();
+			this.workflowsStore.removeAllNodes({setStateDirty: true, removePinData: true});
+			const backendConstantsData = await this.restApi().makeRestApiRequest('get', '/eventbus/constants');
+			if ('eventNames' in backendConstantsData && Array.isArray(backendConstantsData['eventNames'])) {
+				backendConstantsData['eventNames'].forEach(e=>this.eventTreeStore.addEventName(e));
+			}
+			if ('eventLevels' in backendConstantsData && Array.isArray(backendConstantsData['eventLevels'])) {
+				backendConstantsData['eventLevels'].forEach(e=>this.eventTreeStore.addEventLevel(e));
 			}
 			const destinationData: AbstractMessageEventBusDestination[] = await this.restApi().makeRestApiRequest('get', '/eventbus/destination');
-			this.eventTreeStore.clearDestinationItemTrees();
 			if (destinationData) {
 				for (const destination of destinationData) {
+					let nodeWithDefaults;
+					switch (destination.__type) {
+						case MessageEventBusDestinationTypeNames.webhook:
+							nodeWithDefaults = Object.assign(new MessageEventBusDestinationWebhook(), destination);
+							break;
+						case MessageEventBusDestinationTypeNames.syslog:
+							nodeWithDefaults = Object.assign(new MessageEventBusDestinationSyslog(), destination);
+							break;
+						default:
+						nodeWithDefaults = Object.assign(new MessageEventBusDestinationWebhook(), destination);
+					}
+					this.workflowsStore.addNode(destinationToFakeINodeUi(nodeWithDefaults));
 					this.eventTreeStore.addDestination(destination);
 				}
 			}
+			this.$forceUpdate();
 		},
 		addDestinationSyslog() {
 			const newDestination = new MessageEventBusDestinationSyslog();
@@ -119,6 +146,10 @@ export default mixins(
 		async onRemove(destinationId: string) {
 			await this.restApi().makeRestApiRequest('DELETE', `/eventbus/destination?id=${destinationId}`);
 			this.eventTreeStore.removeDestination(destinationId);
+			const foundNode = this.workflowsStore.getNodeByName(destinationId);
+			if (foundNode) {
+				this.workflowsStore.removeNode(foundNode);
+			}
 		},
 		async onEdit(destinationId: string) {
 			const destination = this.eventTreeStore.getDestination(destinationId);

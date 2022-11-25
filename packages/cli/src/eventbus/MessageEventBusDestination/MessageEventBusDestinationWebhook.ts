@@ -8,7 +8,7 @@ import axios, { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';
 import { MessageEventBusDestinationTypeNames } from '.';
-import { jsonParse } from 'n8n-workflow';
+import { INodeCredentials, jsonParse } from 'n8n-workflow';
 import { CredentialsHelper } from '../../CredentialsHelper';
 import { UserSettings, requestOAuth1, requestOAuth2, requestWithAuthentication } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
@@ -74,6 +74,7 @@ export interface MessageEventBusDestinationWebhookOptions
 	queryParameters?: ParameterItem;
 	sendPayload?: boolean;
 	options?: ParameterOptions;
+	credentials?: INodeCredentials;
 }
 
 export class MessageEventBusDestinationWebhook extends MessageEventBusDestination {
@@ -113,6 +114,8 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 
 	sendPayload = true;
 
+	credentials: INodeCredentials = {};
+
 	credentialsHelper?: CredentialsHelper;
 
 	constructor(options: MessageEventBusDestinationWebhookOptions) {
@@ -136,6 +139,7 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 		if (options.queryParameters) this.queryParameters = options.queryParameters;
 		if (options.sendPayload) this.sendPayload = options.sendPayload;
 		if (options.options) this.options = options.options;
+		if (options.credentials) this.credentials = options.credentials;
 	}
 
 	// async receiveFromEventBus(msg: EventMessageTypes): Promise<boolean> {
@@ -178,6 +182,7 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 			queryParameters: this.queryParameters,
 			sendPayload: this.sendPayload,
 			options: this.options,
+			credentials: this.credentials,
 		};
 	}
 

@@ -53,6 +53,7 @@ import { deepCopy, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import { useUIStore } from '../../stores/ui';
 import Vue from 'vue';
 import { WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY } from '../../constants';
+import { destinationToFakeINodeUi } from './Helpers';
 
 export default mixins(
 	restApi,
@@ -96,24 +97,15 @@ export default mixins(
 			return true;
 		},
 		node(): INodeUi {
-			return {
-				id: this.destination.id,
-				name: this.destination.id,
-				typeVersion: 1,
-				type: MessageEventBusDestinationTypeNames.webhook,
-				position: [0, 0],
-				parameters: {
-					...this.nodeParameters,
-				},
-			} as INodeUi;
+			return this.workflowsStore.getNodeByName(this.destination.id) ?? {} as INodeUi;
 		},
 	},
 	mounted() {
 			// merge destination data with defaults
 			this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), this.destination);
-			this.workflowsStore.addNode(this.node);
+			// this.workflowsStore.addNode(this.node);
 			this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
-			this.eventBus.$on('destinationEditModalClosing', () => {
+			this.eventBus.$on('destinationWasUpdated', () => {
 				const updatedDestination = this.eventTreeStore.getDestination(this.destination.id);
 				if (updatedDestination) {
 					this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), updatedDestination);
@@ -178,7 +170,7 @@ export default mixins(
 		toggleRemoveConfirm() {
 			this.showRemoveConfirm = !this.showRemoveConfirm;
 		},
-		async removeThis() {
+		removeThis() {
 			this.$emit('remove', this.destination.id);
 			this.uiStore.closeModal(WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},

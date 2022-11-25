@@ -95,11 +95,12 @@ import { MessageEventBusDestinationSyslog, MessageEventBusDestinationTypeNames }
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
-import { deepCopy, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import { deepCopy, IDataObject, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import Vue from 'vue';
 import {SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY} from '../../constants';
 import Modal from '@/components/Modal.vue';
 import { useUIStore } from '../../stores/ui';
+import { destinationToFakeINodeUi } from './Helpers';
 
 export default mixins(
 	restApi,
@@ -146,32 +147,15 @@ export default mixins(
 			useNDVStore,
 			useWorkflowsStore,
 		),
-		isFolder() {
-			return true;
-		},
 		node(): INodeUi {
-			return {
-				id: this.destination.id,
-				name: this.destination.id,
-				typeVersion: 1,
-				type: MessageEventBusDestinationTypeNames.syslog,
-				position: [0, 0],
-				parameters: {
-					...this.nodeParameters,
-				},
-			} as INodeUi;
+			return destinationToFakeINodeUi(this.nodeParameters);
 		},
 	},
 	mounted() {
-		console.log(this.$props.eventBus);
-			// merge destination data with defaults
-			this.nodeParameters = Object.assign(new MessageEventBusDestinationSyslog(), this.destination);
-			this.ndvStore.activeNodeName = this.destination.id;
-			this.workflowsStore.addNode(this.node);
-			this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
-		},
-	beforeDestroy() {
-			this.$props.eventBus.$emit('destinationEditModalClosing', this.destination.id);
+		this.ndvStore.activeNodeName = this.destination.id;
+		// merge destination data with defaults
+		this.nodeParameters = Object.assign(new MessageEventBusDestinationSyslog(), this.destination);
+		this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
 	},
 	methods: {
 		onInput() {
@@ -207,23 +191,18 @@ export default mixins(
 				}
 			}
 
-			// console.log(parameterData);
-
-			this.nodeParameters = nodeParameters;
+			this.nodeParameters = deepCopy(nodeParameters);
 			this.workflowsStore.updateNodeProperties({
 				name: this.node.name,
-				properties: {parameters: this.node.parameters},
+				properties: { parameters: this.nodeParameters as unknown as IDataObject },
 			});
-			// console.log(this.node.parameters?.url, this.ndvStore.activeNode?.parameters?.url);
 		},
 		toggleRemoveConfirm() {
 			this.showRemoveConfirm = !this.showRemoveConfirm;
 		},
-		async onRemove(id: string) {
-			this.$emit('remove', this.destination);
-		},
-		async removeThis() {
-			this.$emit('remove', this.destination.id);
+		removeThis() {
+			this.$props.eventBus.$emit('remove', this.destination.id);
+			this.uiStore.closeModal(SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 		async saveDestination() {
 			if (this.unchanged) {
@@ -237,6 +216,7 @@ export default mixins(
 			await this.restApi().makeRestApiRequest('POST', '/eventbus/destination', data);
 			this.unchanged = true;
 			this.eventTreeStore.updateDestination(this.nodeParameters);
+			this.$props.eventBus.$emit('destinationWasUpdated', this.destination.id);
 			this.uiStore.closeModal(SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 	},
@@ -322,24 +302,19 @@ const description = [
 					placeholder: 'n8n',
 					description: 'Syslog app name parameter',
 				},
-			];
+			] as INodeProperties[];
 
 </script>
 
 <style lang="scss" module>
+	.labelMargins {
+		margin-bottom: 1em;
+		margin-top: 1em;
+	}
 
-.item {
-  cursor: pointer;
-}
-
-.labelMargins {
-	margin-bottom: 1em;
-	margin-top: 1em;
-}
-
-.narrowCardBody {
-	padding: 0 70px 20px 70px;
-	overflow: auto;
-	max-height: 600px;
-}
+	.narrowCardBody {
+		padding: 0 70px 20px 70px;
+		overflow: auto;
+		max-height: 600px;
+	}
 </style>

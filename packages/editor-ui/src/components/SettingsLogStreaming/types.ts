@@ -1,4 +1,4 @@
-import { NodeParameterValue } from 'n8n-workflow';
+import { ICredentialDataDecryptedObject, INodeCredentials, NodeParameterValue } from 'n8n-workflow';
 import {v4 as uuid} from 'uuid';
 
 export enum EventMessageLevel {
@@ -20,6 +20,7 @@ export class MessageEventBusDestinationTypeNames {
 
 
 export class AbstractMessageEventBusDestination {
+	credentials: INodeCredentials = {};
 	__type = '';
 	id = '';
 	label = 'Log Destination';
