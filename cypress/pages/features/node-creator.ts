@@ -14,8 +14,10 @@ export class NodeCreator extends BasePage {
 		selectedTab: () => this.getters.nodeCreatorTabs().find('.is-active'),
 		categorizedItems: () => cy.getByTestId('categorized-items'),
 		creatorItem: () => cy.getByTestId('item-iterator-item'),
+		communityNodeTooltip: () => cy.getByTestId('node-item-community-tooltip'),
 		noResults: () => cy.getByTestId('categorized-no-results'),
 		activeSubcategory: () => cy.getByTestId('categorized-items-subcategory'),
+		expandedCategories: () => this.getters.creatorItem().find('>div').filter('.active').invoke('text'),
 	};
 	actions = {
 		openNodeCreator: () => {
@@ -24,6 +26,15 @@ export class NodeCreator extends BasePage {
 		},
 		selectNthNode: (n: number) => {
 			this.getters.getNthCreatorItem(n).click();
+		},
+		selectNode: (displayName: string) => {
+			this.getters.getCreatorItem(displayName).click();
+		},
+		selectTab: (tab: string) => {
+			this.getters.nodeCreatorTabs().contains(tab).click();
+		},
+		toggleCategory: (category: string) => {
+			this.getters.getCreatorItem(category).click()
 		},
 		categorizeNodes: (nodes: INodeTypeDescription[]) => {
 			const categorizedNodes = nodes.reduce((acc, node) => {
