@@ -1,5 +1,6 @@
 import N8nUsersList from './UsersList.vue';
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Modules/UsersList',
@@ -15,7 +16,7 @@ const methods = {
 	onDelete: action('delete'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nUsersList,

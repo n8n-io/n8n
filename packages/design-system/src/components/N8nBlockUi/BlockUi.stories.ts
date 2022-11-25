@@ -1,3 +1,4 @@
+import type { StoryFn } from '@storybook/vue';
 import N8nBlockUi from './BlockUi.vue';
 
 export default {
@@ -5,7 +6,7 @@ export default {
 	component: N8nBlockUi,
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nBlockUi,
