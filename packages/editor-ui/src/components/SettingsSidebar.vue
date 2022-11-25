@@ -2,7 +2,7 @@
 	<div :class="$style.container">
 		<n8n-menu :items="sidebarMenuItems" @select="handleSelect">
 			<template #header>
-				<div :class="$style.returnButton" @click="$emit('return')">
+				<div :class="$style.returnButton" @click="$emit('return')" data-test-id="settings-back">
 					<i class="mr-xs">
 						<font-awesome-icon icon="arrow-left" />
 					</i>
