@@ -24,8 +24,6 @@ export class NodeCreator extends BasePage {
 			this.getters.plusButton().click();
 			this.getters.nodeCreator().should('be.visible')
 		},
-			this.getters.getNthCreatorItem(n).click();
-		},
 		selectNode: (displayName: string) => {
 			this.getters.getCreatorItem(displayName).click();
 		},
