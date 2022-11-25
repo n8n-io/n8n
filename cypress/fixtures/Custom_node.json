@@ -38,7 +38,7 @@
     "transform"
   ],
 	"codex": {
-		"categories": ["CustomCategory"]
+		"categories": ["Custom Category"]
 	},
   "version": 1,
   "description": "Demonstrate rendering of node",
