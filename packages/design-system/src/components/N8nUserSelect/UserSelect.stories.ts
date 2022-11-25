@@ -1,5 +1,6 @@
 import N8nUserSelect from './UserSelect.vue';
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Modules/UserSelect',
@@ -16,7 +17,7 @@ const methods = {
 	onFocus: action('focus'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nUserSelect,

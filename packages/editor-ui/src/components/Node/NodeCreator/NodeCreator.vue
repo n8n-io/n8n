@@ -10,6 +10,7 @@
 			 	v-click-outside="onClickOutside"
 			 	@dragover="onDragOver"
 			 	@drop="onDrop"
+				data-test-id="node-creator"
 			>
 				<main-panel
 					@nodeTypeSelected="nodeTypeSelected"
