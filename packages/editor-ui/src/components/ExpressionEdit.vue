@@ -40,6 +40,7 @@
 								:value="value"
 								@change="valueChanged"
 								ref="inputFieldExpression"
+								data-test-id="expression-modal-input"
 							/>
 						</div>
 					</div>
@@ -52,6 +53,7 @@
 							<expression-modal-output
 								:segments="segments"
 								ref="expressionResult"
+								data-test-id="expression-modal-output"
 							/>
 						</div>
 					</div>
