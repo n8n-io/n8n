@@ -1,5 +1,5 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition" :id="nodeId">
+	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node-box">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle" @click.left="onClick" v-touch:start="touchStart" v-touch:end="touchEnd">
@@ -80,7 +80,7 @@
 		</div>
 		<div class="node-description">
 			<div class="node-name ph-no-capture" :title="nodeTitle">
-				<p>
+				<p data-test-id="canvas-node-box-title">
 					{{ nodeTitle }}
 				</p>
 				<p v-if="data.disabled">
