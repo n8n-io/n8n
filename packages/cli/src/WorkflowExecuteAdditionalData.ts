@@ -193,7 +193,7 @@ export function executeErrorWorkflow(
  *
  */
 let throttling = false;
-function pruneExecutionData(this: WorkflowHooks): void {
+async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 	if (!throttling) {
 		Logger.verbose('Pruning execution data from database');
 
@@ -207,27 +207,31 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
-		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) })
-			.then((data) =>
-				setTimeout(() => {
-					throttling = false;
-				}, timeout * 1000),
-			)
-			.catch((error) => {
-				ErrorReporter.error(error);
-
-				throttling = false;
-				Logger.error(
-					`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
-					{
-						...error,
-						executionId: this.executionId,
-						sessionId: this.sessionId,
-						workflowId: this.workflowData.id,
-					},
-				);
+		try {
+			const executions = await Db.collections.Execution.find({
+				stoppedAt: LessThanOrEqual(utcDate),
 			});
+			await Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) });
+			setTimeout(() => {
+				throttling = false;
+			}, timeout * 1000);
+			// Mark binary data for deletion for all executions
+			await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
+				executions.map(({ id }) => id.toString()),
+			);
+		} catch (error) {
+			ErrorReporter.error(error);
+			throttling = false;
+			Logger.error(
+				`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
+				{
+					...error,
+					executionId: this.executionId,
+					sessionId: this.sessionId,
+					workflowId: this.workflowData.id,
+				},
+			);
+		}
 	}
 }
 
@@ -491,7 +495,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 				// Prune old execution data
 				if (config.getEnv('executions.pruneData')) {
-					pruneExecutionData.call(this);
+					await pruneExecutionData.call(this);
 				}
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
