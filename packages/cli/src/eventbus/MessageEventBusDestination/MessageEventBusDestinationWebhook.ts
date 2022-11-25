@@ -443,8 +443,15 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 		const requestResponse = await requestPromise;
 
 		if (this.responseCodeMustMatch) {
-			return requestResponse.status === this.expectedStatusCode;
+			if (requestResponse.status === this.expectedStatusCode) {
+				await eventBus.confirmSent(msg);
+				return true;
+			} else {
+				return false;
+			}
 		}
+
+		await eventBus.confirmSent(msg);
 		return true;
 	}
 }
