@@ -1,4 +1,4 @@
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 import N8nSpinner from './Spinner.vue';
 
 export default {

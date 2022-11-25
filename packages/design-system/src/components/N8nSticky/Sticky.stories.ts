@@ -1,5 +1,5 @@
 import { action } from '@storybook/addon-actions';
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 import N8nSticky from './Sticky.vue';
 
 export default {

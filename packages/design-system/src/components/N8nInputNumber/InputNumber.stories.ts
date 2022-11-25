@@ -1,6 +1,6 @@
 import N8nInputNumber from './InputNumber.vue';
 import { action } from '@storybook/addon-actions';
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Input Number',

@@ -1,7 +1,7 @@
 import N8nTabs from './Tabs.vue';
 
 import { action } from '@storybook/addon-actions';
-import { StoryFn } from '@storybook/vue';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Tabs',
