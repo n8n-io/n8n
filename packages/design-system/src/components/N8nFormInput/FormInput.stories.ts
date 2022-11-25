@@ -1,5 +1,6 @@
 import N8nFormInput from './FormInput.vue';
 import { action } from '@storybook/addon-actions';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Modules/FormInput',
@@ -13,7 +14,7 @@ const methods = {
 	onChange: action('change'),
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nFormInput,

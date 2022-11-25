@@ -7,12 +7,13 @@
 			tabindex="0"
 			@keydown.capture="nodeFilterKeyDown"
 			:key="`${activeSubcategoryTitle}_transition`"
+			data-test-id="categorized-items"
 		>
 			<div class="header" v-if="$slots.header">
 				<slot name="header" />
 			</div>
 
-			<div :class="$style.subcategoryHeader" v-if="activeSubcategory">
+			<div :class="$style.subcategoryHeader" v-if="activeSubcategory" data-test-id="categorized-items-subcategory">
 				<button :class="$style.subcategoryBackButton" @click="onSubcategoryClose">
 					<font-awesome-icon :class="$style.subcategoryBackIcon" icon="arrow-left" size="2x" />
 				</button>
@@ -43,48 +44,42 @@
 					@selected="selected"
 				/>
 			</div>
-			<no-results v-else :showRequest="filteredAllNodeTypes.length === 0" :show-icon="filteredAllNodeTypes.length === 0">
-				<!-- There are results in other sub-categories/tabs  -->
-				<template #title>
-					<p v-if="filteredAllNodeTypes.length === 0" v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
-					<p v-else v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')" />
-				</template>
-
-				<!-- Regular Search -->
-				<template v-if="filteredAllNodeTypes.length === 0" #action>
-					{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-					<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
-						{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
-					</n8n-link>
-					<template v-if="selectedType === ALL_NODE_FILTER">
-						{{ $locale.baseText('nodeCreator.noResults.or') }}
+			<no-results
+				v-else
+				data-test-id="categorized-no-results"
+				:showRequest="filteredAllNodeTypes.length === 0"
+				:show-icon="filteredAllNodeTypes.length === 0"
+			>
+					<!-- There are results in other sub-categories/tabs  -->
+					<template v-if="filteredAllNodeTypes.length > 0" #title>
+						<p v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')" />
 					</template>
 
-					<no-results v-else :showRequest="filteredAllNodeTypes.length === 0" :show-icon="filteredAllNodeTypes.length === 0">
-						<!-- There are results in other sub-categories/tabs  -->
-						<template #title>
-							<p v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')" />
-							<p v-if="filteredAllNodeTypes.length === 0" v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
-							<p v-else v-html="$locale.baseText('nodeCreator.noResults.clickToSeeResults')" />
+					<!-- Regular Search -->
+					<template v-else  #title>
+						<p v-text="$locale.baseText('nodeCreator.noResults.weDidntMakeThatYet')" />
+					</template>
+
+					<template v-if="filteredAllNodeTypes.length === 0" #action>
+						{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
+						<n8n-link
+							@click="selectHttpRequest"
+							v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedType)"
+						>
+							{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
+						</n8n-link>
+						<template v-if="nodeCreatorStore.selectedType === ALL_NODE_FILTER">
+							{{ $locale.baseText('nodeCreator.noResults.or') }}
 						</template>
 
-						<!-- Regular Search -->
-						<template v-if="filteredAllNodeTypes.length === 0" #action>
-							{{ $locale.baseText('nodeCreator.noResults.dontWorryYouCanProbablyDoItWithThe') }}
-							<n8n-link @click="selectHttpRequest" v-if="[REGULAR_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
-								{{ $locale.baseText('nodeCreator.noResults.httpRequest') }}
-							</n8n-link>
-							<template v-if="selectedType === ALL_NODE_FILTER">
-								{{ $locale.baseText('nodeCreator.noResults.or') }}
-							</template>
-
-							<n8n-link @click="selectWebhook" v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(selectedType)">
-								{{ $locale.baseText('nodeCreator.noResults.webhook') }}
-							</n8n-link>
+						<n8n-link
+							@click="selectWebhook"
+							v-if="[TRIGGER_NODE_FILTER, ALL_NODE_FILTER].includes(nodeCreatorStore.selectedType)"
+						>
+							{{ $locale.baseText('nodeCreator.noResults.webhook') }}
 							{{ $locale.baseText('nodeCreator.noResults.node') }}
-						</template>
-					</no-results>
-				</template>
+						</n8n-link>
+					</template>
 			</no-results>
 		</div>
 	</transition>
