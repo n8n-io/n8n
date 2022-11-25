@@ -100,6 +100,7 @@ export class WorkflowEntity extends AbstractEntity implements IWorkflowDb {
 	@AfterInsert()
 	setHash(): void {
 		const { name, active, nodes, connections, settings, staticData, pinData } = this;
+		if (!connections) return;
 
 		const state = JSON.stringify({
 			name,

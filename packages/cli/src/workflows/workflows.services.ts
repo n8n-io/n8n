@@ -146,20 +146,17 @@ export class WorkflowsService {
 			relations: config.get('enterprise.features.sharing')
 				? ['tags', 'shared', 'shared.user', 'shared.role']
 				: ['tags'],
+			where: {
+				id: In(sharedWorkflowIds),
+				...filter,
+			},
 		};
 
 		if (config.getEnv('workflowTagsDisabled')) {
 			delete query.relations;
 		}
 
-		const workflows = await Db.collections.Workflow.find(
-			Object.assign(query, {
-				where: {
-					id: In(sharedWorkflowIds),
-					...filter,
-				},
-			}),
-		);
+		const workflows = await Db.collections.Workflow.find(query);
 
 		return workflows.map((workflow) => {
 			const { id, ...rest } = workflow;
