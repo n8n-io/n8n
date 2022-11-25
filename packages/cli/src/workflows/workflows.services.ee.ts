@@ -85,9 +85,7 @@ export class EEWorkflowsService extends WorkflowsService {
 		return transaction.save(newSharedWorkflows);
 	}
 
-	static addOwnerAndSharings(
-		workflow: WorkflowWithSharingsAndCredentials,
-	): WorkflowWithSharingsAndCredentials {
+	static addOwnerAndSharings(workflow: WorkflowWithSharingsAndCredentials): void {
 		workflow.ownedBy = null;
 		workflow.sharedWith = [];
 		workflow.usedCredentials = [];
@@ -104,14 +102,12 @@ export class EEWorkflowsService extends WorkflowsService {
 		});
 
 		delete workflow.shared;
-
-		return workflow;
 	}
 
 	static async addCredentialsToWorkflow(
 		workflow: WorkflowWithSharingsAndCredentials,
 		currentUser: User,
-	): Promise<WorkflowWithSharingsAndCredentials> {
+	): Promise<void> {
 		workflow.usedCredentials = [];
 		const userCredentials = await EECredentials.getAll(currentUser);
 		const credentialIdsUsedByWorkflow = new Set<number>();
@@ -155,8 +151,6 @@ export class EEWorkflowsService extends WorkflowsService {
 			});
 			workflow.usedCredentials?.push(workflowCredential);
 		});
-
-		return workflow;
 	}
 
 	static validateCredentialPermissionsToUser(
