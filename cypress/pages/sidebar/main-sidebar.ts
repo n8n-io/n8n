@@ -10,6 +10,12 @@ export class MainSidebar extends BasePage {
 	};
 	actions = {
 		goToSettings: () => this.getters.settings().click(),
-		goToCredentials: () => this.getters.credentials().click(),
+		goToCredentials: () =>
+			this.getters
+				.credentials()
+				.should(($el) => {
+					expect(Cypress.dom.isDetached($el)).to.eq(false);
+				})
+				.click(),
 	};
 }
