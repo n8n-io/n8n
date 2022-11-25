@@ -26,15 +26,14 @@ describe('Workflow Actions', () => {
 		WorkflowPage.actions.visit();
 	});
 
-	it('should be able to save on button slick', () => {
+	it('should be able to save on button click', () => {
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
-		// In Element UI, disabled button turn into spans 🤷‍♂️
-		WorkflowPage.getters.saveButton().should('match', 'span');
+		WorkflowPage.getters.isWorkflowSaved();
 	});
 
 	it('should save workflow on keyboard shortcut', () => {
 		WorkflowPage.actions.saveWorkflowUsingKeyboardShortcut();
-		WorkflowPage.getters.saveButton().should('match', 'span');
+		WorkflowPage.getters.isWorkflowSaved();
 	});
 
 	it('should not be able to activate unsaved workflow', () => {
@@ -52,19 +51,20 @@ describe('Workflow Actions', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		WorkflowPage.actions.activateWorkflow();
-		WorkflowPage.getters.activatorSwitch().should('have.class', 'is-checked');
+		WorkflowPage.getters.isWorkflowActivated();
 	});
 
 	it('should save new workflow after renaming', () => {
 		WorkflowPage.actions.renameWorkflow(NEW_WORKFLOW_NAME);
-		WorkflowPage.getters.saveButton().should('match', 'span');
+		WorkflowPage.getters.isWorkflowSaved();
 	});
 
 	it('should rename workflow', () => {
 		WorkflowPage.actions.addNodeToCanvas(SCHEDULE_TRIGGER_NODE_NAME);
 		WorkflowPage.actions.saveWorkflowOnButtonClick();
 		WorkflowPage.actions.renameWorkflow(NEW_WORKFLOW_NAME);
-		WorkflowPage.getters.saveButton().should('match', 'span');
-		WorkflowPage.getters.workflowNameInput().invoke('attr', 'title').should('eq', NEW_WORKFLOW_NAME);
+		WorkflowPage.getters.isWorkflowSaved();
+		WorkflowPage.getters.workflowNameInputContainer().invoke('attr', 'title').should('eq', NEW_WORKFLOW_NAME);
 	});
+
 });
