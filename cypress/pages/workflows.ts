@@ -29,5 +29,12 @@ export class WorkflowsPage extends BasePage {
 		createWorkflowFromCard: () => {
 			this.getters.newWorkflowButtonCard().click();
 		},
+		deleteWorkFlow: (name: string) => {
+			cy.visit(this.url);
+			this.getters.workflowCardActions(name).click();
+			this.getters.workflowDeleteButton().click();
+
+			cy.get('button').contains('delete').click();
+		}
 	}
 }

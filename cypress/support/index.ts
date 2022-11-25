@@ -11,7 +11,6 @@ declare global {
 			// todo: rename to setup
 			signup(email: string,  firstName: string, lastName: string, password: string): void;
 			skipSetup(): void;
-			deleteWorkflowByName(workflowName: string): void;
 		}
 	}
 }

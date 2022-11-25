@@ -10,17 +10,11 @@ export class WorkflowPage extends BasePage {
 		workflowImportInput: () => cy.getByTestId('workflow-import-input'),
 		workflowTags: () => cy.getByTestId('workflow-tags'),
 		saveButton: () => cy.getByTestId('save-button'),
-
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
-		canvasNodeBox: (nodeDisplayName: string) => {
-			return cy
-				.getByTestId('canvas-node-box-title')
-				.contains(nodeDisplayName)
-				.parents('[data-test-id="canvas-node-box"]');
-		},
-
+		canvasNodes: () => cy.getByTestId('canvas-node'),
+		canvasNodeByName: (nodeName: string) => this.getters.canvasNodes().filter(`:contains("${nodeName}")`),
 		ndvParameterInput: (parameterName: string) =>
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
@@ -38,7 +32,7 @@ export class WorkflowPage extends BasePage {
 			this.getters.nodeCreatorSearchBar().type('{enter}{esc}');
 		},
 		openNodeNdv: (nodeTypeName: string) => {
-			this.getters.canvasNodeBox(nodeTypeName).dblclick();
+			this.getters.canvasNodeByName(nodeTypeName).dblclick();
 		},
 		typeIntoParameterInput: (parameterName: string, content: string) => {
 			this.getters.ndvParameterInput(parameterName).type(content);
@@ -46,7 +40,13 @@ export class WorkflowPage extends BasePage {
 		executeNodeFromNdv: () => {
 			cy.contains('Execute node').click();
 		},
-		nodes: () => cy.getByTestId('node'),
-		nodeByName: (nodeName: string) => this.getters.nodes().filter(`:contains("${nodeName}")`),
+		renameWorkFlow: (newName: string) => {
+			this.getters.workflowNameInput().parent().click()
+			this.getters.workflowNameInput().clear().type(newName).type('{enter}');
+			this.actions.saveWorkFlow();
+		},
+		saveWorkFlow: () => {
+			this.getters.saveButton().click();
+		}
 	};
 }
