@@ -97,10 +97,9 @@ EEWorkflowController.get(
 			);
 		}
 
-		return EEWorkflows.addCredentialsToWorkflow(
-			EEWorkflows.addOwnerAndSharings(workflow),
-			req.user,
-		);
+		EEWorkflows.addOwnerAndSharings(workflow);
+		await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
+		return workflow;
 	}),
 );
 
@@ -200,9 +199,12 @@ EEWorkflowController.get(
 		)) as unknown as WorkflowEntity[];
 
 		return Promise.all(
-			workflows.map(async (workflow) =>
-				EEWorkflows.addCredentialsToWorkflow(EEWorkflows.addOwnerAndSharings(workflow), req.user),
-			),
+			workflows.map(async (workflow) => {
+				EEWorkflows.addOwnerAndSharings(workflow);
+				await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
+				workflow.nodes = [];
+				return workflow;
+			}),
 		);
 	}),
 );

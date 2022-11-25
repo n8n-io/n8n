@@ -70,6 +70,7 @@
 				</template>
 				<template #output>
 					<OutputPanel
+						data-test-id="output-panel"
 						:canLinkRuns="canLinkRuns"
 						:runIndex="outputRun"
 						:linkedRuns="linked"
