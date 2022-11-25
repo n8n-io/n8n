@@ -47,8 +47,8 @@
 		</template>
 
 		<template #node-not-run>
-			<n8n-text v-if="workflowRunning && !isTriggerNode">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
-			<n8n-text v-if="!workflowRunning">
+			<n8n-text v-if="workflowRunning && !isTriggerNode" data-test-id="ndv-output-waiting">{{ $locale.baseText('ndv.output.waitingToRun') }}</n8n-text>
+			<n8n-text v-if="!workflowRunning" data-test-id="ndv-output-run-node-hint">
 				{{ $locale.baseText('ndv.output.runNodeHint') }}
 				<span @click="insertTestData" v-if="canPinData">
 					<br>

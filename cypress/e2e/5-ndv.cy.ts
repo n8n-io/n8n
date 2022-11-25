@@ -13,19 +13,20 @@ describe('NDV', () => {
 		workflowsPage.getters.newWorkflowButtonCard().click();
 
 		cy.createFixtureWorkflow('Webhook-Code-Set-nodes.json', workflowName);
+		cy.getByTestId('zoom-to-fit').click();
 	});
 
 	afterEach(() => {
 		cy.deleteWorkflowByName(workflowName);
 	});
 
-	it('should test webhook node', () => {
-		const webhookNode = workflowPage.getters.nodeByName('Webhook')
-
-		webhookNode.should('be.visible');
-		webhookNode.dblclick();
-
+	it('should show up when double clicked on a node', () => {
+		workflowPage.getters.nodes().first().dblclick();
 		cy.getByTestId('ndv').should('be.visible');
+	});
+
+	it('should test webhook node', () => {
+		workflowPage.getters.nodeByName('Webhook').dblclick();
 
 		cy.getByTestId('node-execute-button').first().click();
 		cy.getByTestId('copy-input').click();
@@ -52,5 +53,15 @@ describe('NDV', () => {
 		});
 
 		cy.getByTestId('ndv-run-data-display-mode').should('have.length.at.least', 1);
+	});
+
+	it('should test code node', () => {
+		workflowPage.getters.nodeByName('Code').dblclick();
+
+		cy.getByTestId('ndv-output-run-node-hint').should('be.visible');
+		cy.getByTestId('node-execute-button').first().click();
+
+		cy.getByTestId('ndv-run-data-display-mode').should('have.length.at.least', 1);
+		cy.getByTestId('ndv-output-run-node-hint').should('not.be.visible');
 	});
 });
