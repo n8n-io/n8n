@@ -3,13 +3,10 @@ import { BasePage } from './base';
 export class WorkflowPage extends BasePage {
 	url = '/workflow/new';
 	getters = {
-		workflowNameInput: () =>
-			cy
-				.getByTestId('workflow-name-input', { timeout: 5000 })
-				.then(($el) => cy.wrap($el.find('input'))),
+		workflowNameInput: () => cy.getByTestId('workflow-name-input'),
 		workflowImportInput: () => cy.getByTestId('workflow-import-input'),
 		workflowTags: () => cy.getByTestId('workflow-tags'),
-		saveButton: () => cy.getByTestId('save-button'),
+		saveButton: () => cy.getByTestId('workflow-save-button'),
 		nodeCreatorSearchBar: () => cy.getByTestId('node-creator-search-bar'),
 		nodeCreatorPlusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasPlusButton: () => cy.getByTestId('canvas-plus-button'),
@@ -18,6 +15,9 @@ export class WorkflowPage extends BasePage {
 		ndvParameterInput: (parameterName: string) =>
 			cy.getByTestId(`parameter-input-${parameterName}`),
 		ndvOutputPanel: () => cy.getByTestId('output-panel'),
+		activatorSwitch: () => cy.getByTestId('workflow-activate-switch'),
+		workflowMenu: () => cy.getByTestId('workflow-menu'),
+		firstStepButton: () => cy.getByTestId('canvas-add-button'),
 	};
 
 	actions = {
@@ -40,13 +40,30 @@ export class WorkflowPage extends BasePage {
 		executeNodeFromNdv: () => {
 			cy.contains('Execute node').click();
 		},
-		renameWorkFlow: (newName: string) => {
-			this.getters.workflowNameInput().parent().click()
-			this.getters.workflowNameInput().clear().type(newName).type('{enter}');
-			this.actions.saveWorkFlow();
+		visit: () => {
+			cy.visit(this.url);
+			cy.getByTestId('node-view-loader', { timeout: 5000 }).should('not.exist');
+			cy.get('.el-loading-mask', { timeout: 5000 }).should('not.exist');
 		},
-		saveWorkFlow: () => {
+		openWorkflowMenu: () => {
+			this.getters.workflowMenu().click();
+		},
+		saveWorkflowOnButtonClick: () => {
 			this.getters.saveButton().click();
-		}
+		},
+		saveWorkflowUsingKeyboardShortcut: () => {
+			cy.get('body').type('{meta}', { release: false }).type('s');
+		},
+		activateWorkflow: () => {
+			this.getters.activatorSwitch().find('input').first().should('be.enabled');
+			this.getters.activatorSwitch().click();
+			cy.get('body').type('{esc}');
+		},
+		renameWorkflow: (newName: string) => {
+			this.getters.workflowNameInput().click();
+			cy.get('body').type('{selectall}');
+			cy.get('body').type(newName);
+			cy.get('body').type('{enter}');
+		},
 	};
 }
