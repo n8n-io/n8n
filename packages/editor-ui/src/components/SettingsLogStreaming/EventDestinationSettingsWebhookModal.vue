@@ -9,7 +9,7 @@
 		minHeight="500px"
 		maxHeight="700px"
 	>
-		<template slot="header">
+		<header>
 			<el-row :gutter="20" justify="start">
 					<el-col :span="12">
 						Edit &nbsp;<strong>{{ destination.label }}</strong> settings
@@ -25,8 +25,8 @@
 						<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
 					</el-col>
 				</el-row>
-		</template>
-		<template slot="content">
+		</header>
+		<content>
 			<div :class="$style.narrowCardBody">
 					<parameter-input-list
 						:parameters="uiDescription"
@@ -69,7 +69,7 @@
 							></event-tree-selection>
 					</div>
 				</div>
-		</template>
+		</content>
 	</Modal>
 </template>
 
@@ -87,7 +87,7 @@ import mixins from 'vue-typed-mixins';
 import { EventNamesTreeCollection, useEventTreeStore } from '../../stores/eventTreeStore';
 import { useNDVStore } from '../../stores/ndv';
 import { useWorkflowsStore } from '../../stores/workflows';
-import { restApi } from '../mixins/restApi';
+import { restApi } from '../../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
 import EventLevelSelection from './EventLevelSelection.vue';
 import { MessageEventBusDestinationTypeNames, MessageEventBusDestinationWebhook } from './types';

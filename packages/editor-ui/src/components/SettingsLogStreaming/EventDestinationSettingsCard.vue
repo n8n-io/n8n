@@ -42,10 +42,9 @@ import mixins from 'vue-typed-mixins';
 import { EventNamesTreeCollection, useEventTreeStore } from '../../stores/eventTreeStore';
 import { useNDVStore } from '../../stores/ndv';
 import { useWorkflowsStore } from '../../stores/workflows';
-import { restApi } from '../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
 import EventLevelSelection from './EventLevelSelection.vue';
-import { AbstractMessageEventBusDestination, MessageEventBusDestinationTypeNames, MessageEventBusDestinationWebhook } from './types';
+import { AbstractMessageEventBusDestination, MessageEventBusDestinationWebhook } from './types';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
@@ -53,7 +52,7 @@ import { deepCopy, INodeProperties, NodeParameterValue } from 'n8n-workflow';
 import { useUIStore } from '../../stores/ui';
 import Vue from 'vue';
 import { WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY } from '../../constants';
-import { destinationToFakeINodeUi } from './Helpers';
+import { restApi } from '../../mixins/restApi';
 
 export default mixins(
 	restApi,

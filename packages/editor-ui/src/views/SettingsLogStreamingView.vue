@@ -35,7 +35,6 @@
 <script lang="ts">
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
 import { useWorkflowsStore } from '../stores/workflows';
 import { useCredentialsStore } from '../stores/credentials';
 import EventTree from '@/components/SettingsLogStreaming/EventTreeSelection.vue';
@@ -50,6 +49,7 @@ import { useUIStore } from '../stores/ui';
 import { WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY, SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY } from '../constants';
 import Vue from 'vue';
 import { destinationToFakeINodeUi } from '../components/SettingsLogStreaming/Helpers';
+import { restApi } from '../mixins/restApi';
 
 export default mixins(
 	restApi,

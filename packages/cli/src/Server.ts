@@ -159,7 +159,6 @@ import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { eventBus } from './eventbus';
 import { eventBusRouter } from './eventbus/eventBusRoutes';
-import { messageEventBusDestinationFromDb } from './eventbus/MessageEventBusDestination/Helpers';
 import { getLicense } from '@/License';
 
 require('body-parser-xml')(bodyParser);

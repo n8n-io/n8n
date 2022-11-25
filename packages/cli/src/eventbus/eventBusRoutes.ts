@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express from 'express';
 import { ResponseHelper } from '..';
-import { ResponseError } from '../ResponseHelper';
 import {
 	isEventMessageOptions,
 	isEventMessageOptionsWithType,
@@ -33,6 +32,7 @@ import {
 	EventMessageAudit,
 	EventMessageAuditOptions,
 } from './EventMessageClasses/EventMessageAudit';
+import { BadRequestError } from '../ResponseHelper';
 
 export const eventBusRouter = express.Router();
 
@@ -120,10 +120,8 @@ eventBusRouter.post(
 			}
 			await eventBus.send(msg);
 		} else {
-			throw new ResponseError(
+			throw new BadRequestError(
 				'Body is not a serialized EventMessage or eventName does not match format {namespace}.{domain}.{event}',
-				undefined,
-				400,
 			);
 		}
 	}),
@@ -143,10 +141,8 @@ eventBusRouter.post(
 				await eventBus.send(msg);
 			}
 		} else {
-			throw new ResponseError(
+			throw new BadRequestError(
 				'Body is not a serialized EventMessage or eventName does not match format {namespace}.{domain}.{event}',
-				undefined,
-				400,
 			);
 		}
 	}),
@@ -193,10 +189,8 @@ eventBusRouter.post(
 					}
 					break;
 				default:
-					throw new ResponseError(
+					throw new BadRequestError(
 						`Body is missing ${req.body.__type} options or type ${req.body.__type} is unknown`,
-						undefined,
-						400,
 					);
 			}
 			if (result) {
@@ -204,11 +198,7 @@ eventBusRouter.post(
 			}
 			return result;
 		}
-		throw new ResponseError(
-			`Body is not configuring MessageEventBusDestinationOptions`,
-			undefined,
-			400,
-		);
+		throw new BadRequestError(`Body is not configuring MessageEventBusDestinationOptions`);
 	}),
 );
 
@@ -222,7 +212,7 @@ eventBusRouter.delete(
 				return result;
 			}
 		} else {
-			throw new ResponseError('Query is missing id', undefined, 400);
+			throw new BadRequestError('Query is missing id');
 		}
 	}),
 );
@@ -237,7 +227,7 @@ eventBusRouter.get(
 		if (isWithDestinationIdString(req.query)) {
 			return eventBus.getDestinationSubscriptionSet(req.query.destinationId);
 		} else {
-			throw new ResponseError('Query is missing destination id', undefined, 400);
+			throw new BadRequestError('Query is missing destination id');
 		}
 	}),
 );
