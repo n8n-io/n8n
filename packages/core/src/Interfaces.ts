@@ -260,6 +260,7 @@ export interface IWebhookFunctions extends IWebhookFunctionsBase {
 			filePath?: string,
 			mimeType?: string,
 		): Promise<IBinaryData>;
+		copyBinaryFile(filePath: string, fileName: string, mimeType?: string): Promise<IBinaryData>;
 		request: (uriOrObject: string | IDataObject | any, options?: IDataObject) => Promise<any>;
 		requestWithAuthentication(
 			this: IAllExecuteFunctions,
@@ -306,14 +307,40 @@ export interface IBinaryDataConfig {
 	persistedBinaryDataTTL: number;
 }
 
+export interface BinaryMetadata {
+	fileName?: string;
+	mimeType?: string;
+	fileSize: number;
+}
+
 export interface IBinaryDataManager {
 	init(startPurger: boolean): Promise<void>;
+	getFileSize(filePath: string): Promise<number>;
+	copyBinaryFile(filePath: string, executionId: string): Promise<string>;
+	storeBinaryMetadata(identifier: string, metadata: BinaryMetadata): Promise<void>;
+	getBinaryMetadata(identifier: string): Promise<BinaryMetadata>;
 	storeBinaryData(binaryBuffer: Buffer, executionId: string): Promise<string>;
 	retrieveBinaryDataByIdentifier(identifier: string): Promise<Buffer>;
+	getBinaryPath(identifier: string): string;
 	markDataForDeletionByExecutionId(executionId: string): Promise<void>;
 	deleteMarkedFiles(): Promise<unknown>;
 	deleteBinaryDataByIdentifier(identifier: string): Promise<void>;
 	duplicateBinaryDataByIdentifier(binaryDataId: string, prefix: string): Promise<string>;
 	deleteBinaryDataByExecutionId(executionId: string): Promise<void>;
 	persistBinaryDataForExecutionId(executionId: string): Promise<void>;
+}
+
+export namespace n8n {
+	export interface PackageJson {
+		name: string;
+		version: string;
+		n8n?: {
+			credentials?: string[];
+			nodes?: string[];
+		};
+		author?: {
+			name?: string;
+			email?: string;
+		};
+	}
 }

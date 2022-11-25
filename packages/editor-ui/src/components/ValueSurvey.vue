@@ -62,7 +62,7 @@ import { IN8nPromptResponse } from '@/Interface';
 import ModalDrawer from './ModalDrawer.vue';
 
 import mixins from 'vue-typed-mixins';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Vue from 'vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';

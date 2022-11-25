@@ -26,12 +26,12 @@
 <script lang="ts">
 import mixins from "vue-typed-mixins";
 
-import { showMessage } from "@/components/mixins/showMessage";
+import { showMessage } from "@/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IFormInputs, IInviteResponse } from "@/Interface";
 import { VALID_EMAIL_REGEX, INVITE_USER_MODAL_KEY } from "@/constants";
-import { ROLE } from "@/stores/userHelpers";
+import { ROLE } from '@/utils';
 import { mapStores } from "pinia";
 import { useUsersStore } from "@/stores/users";
 

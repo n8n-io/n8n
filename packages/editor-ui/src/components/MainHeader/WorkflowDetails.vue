@@ -108,7 +108,7 @@ import ShortenName from "@/components/ShortenName.vue";
 import TagsContainer from "@/components/TagsContainer.vue";
 import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
 import WorkflowActivator from "@/components/WorkflowActivator.vue";
-import { workflowHelpers } from "@/components/mixins/workflowHelpers";
+import { workflowHelpers } from "@/mixins/workflowHelpers";
 import SaveButton from "@/components/SaveButton.vue";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import InlineTextEdit from "@/components/InlineTextEdit.vue";
@@ -116,7 +116,7 @@ import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
 import {IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare} from "@/Interface";
 
 import { saveAs } from 'file-saver';
-import { titleChange } from "../mixins/titleChange";
+import { titleChange } from "@/mixins/titleChange";
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { mapStores } from "pinia";
 import { useUIStore } from "@/stores/ui";
