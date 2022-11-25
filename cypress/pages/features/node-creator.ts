@@ -4,7 +4,7 @@ import { INodeTypeDescription } from '../../packages/workflow';
 export class NodeCreator extends BasePage {
 	url = '/workflow/new';
 	getters = {
-		plusButton: () => cy.getByTestId('node-creation-plus'),
+		plusButton: () => cy.getByTestId('node-creator-plus-button'),
 		canvasAddButton: () => cy.getByTestId('canvas-add-button'),
 		searchBar: () => cy.getByTestId('search-bar'),
 		getCreatorItem: (label: string) => this.getters.creatorItem().contains(label).parents('[data-test-id="item-iterator-item"]'),
@@ -24,7 +24,6 @@ export class NodeCreator extends BasePage {
 			this.getters.plusButton().click();
 			this.getters.nodeCreator().should('be.visible')
 		},
-		selectNthNode: (n: number) => {
 			this.getters.getNthCreatorItem(n).click();
 		},
 		selectNode: (displayName: string) => {

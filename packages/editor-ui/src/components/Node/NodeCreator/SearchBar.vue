@@ -10,6 +10,7 @@
 				:value="value"
 				@input="onInput"
 				:class="$style.input"
+				data-test-id="node-creator-search-bar"
 			/>
 		</div>
 		<div :class="$style.suffix" v-if="value.length > 0" @click="clear">

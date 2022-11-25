@@ -1,5 +1,6 @@
 import N8nInputLabel from './InputLabel.vue';
 import N8nInput from '../N8nInput';
+import type { StoryFn } from '@storybook/vue';
 
 export default {
 	title: 'Atoms/Input Label',
@@ -10,7 +11,7 @@ export default {
 	},
 };
 
-const Template = (args, { argTypes }) => ({
+const Template: StoryFn = (args, { argTypes }) => ({
 	props: Object.keys(argTypes),
 	components: {
 		N8nInputLabel,
