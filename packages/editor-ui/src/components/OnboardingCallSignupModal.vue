@@ -8,7 +8,7 @@
 		:beforeClose="onModalClose"
 		width="460px"
 	>
-		<template slot="content">
+		<template #content>
 			<div class="pb-m">
 				<n8n-text>
 					{{ $locale.baseText('onboardingCallSignupModal.description') }}
@@ -21,7 +21,7 @@
 				</n8n-text>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<div :class="$style.buttonsContainer">
 				<n8n-button
 					:label="$locale.baseText('onboardingCallSignupModal.cancelButton.label')"
@@ -54,7 +54,7 @@ import {
 import Modal from './Modal.vue';
 
 import mixins from 'vue-typed-mixins';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 

@@ -64,6 +64,7 @@ import {
 	NodeExecutionWithMetadata,
 	IPairedItemData,
 	deepCopy,
+	BinaryFileType,
 } from 'n8n-workflow';
 
 import { Agent } from 'https';
@@ -71,16 +72,14 @@ import { stringify } from 'qs';
 import clientOAuth1, { Token } from 'oauth-1.0a';
 import clientOAuth2 from 'client-oauth2';
 import crypto, { createHmac } from 'crypto';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { get } from 'lodash';
-// eslint-disable-next-line import/no-extraneous-dependencies
+import get from 'lodash.get';
 import type { Request, Response } from 'express';
 import FormData from 'form-data';
 import path from 'path';
 import { OptionsWithUri, OptionsWithUrl, RequestCallback, RequiredUriUrl } from 'request';
 import requestPromise, { RequestPromiseOptions } from 'request-promise-native';
-import { fromBuffer } from 'file-type';
-import { lookup } from 'mime-types';
+import FileType from 'file-type';
+import { lookup, extension } from 'mime-types';
 import { IncomingHttpHeaders } from 'http';
 import axios, {
 	AxiosError,
@@ -563,7 +562,6 @@ async function proxyRequestToAxios(
 	node: INode,
 	uriOrObject: string | IDataObject,
 	options?: IDataObject,
-	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	// Check if there's a better way of getting this config here
 	if (process.env.N8N_USE_DEPRECATED_REQUEST_LIB) {
@@ -839,6 +837,13 @@ export async function getBinaryDataBuffer(
 	return BinaryDataManager.getInstance().retrieveBinaryData(binaryData);
 }
 
+function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
+	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('video/')) return 'video';
+	if (mimeType.startsWith('text/') || mimeType.startsWith('application/json')) return 'text';
+	return;
+}
+
 /**
  * Store an incoming IBinaryData & related buffer using the configured binary data manager.
  *
@@ -855,10 +860,60 @@ export async function setBinaryDataBuffer(
 	return BinaryDataManager.getInstance().storeBinaryData(data, binaryData, executionId);
 }
 
+export async function copyBinaryFile(
+	executionId: string,
+	filePath: string,
+	fileName: string,
+	mimeType?: string,
+): Promise<IBinaryData> {
+	let fileExtension: string | undefined;
+	if (!mimeType) {
+		// If no mime type is given figure it out
+
+		if (filePath) {
+			// Use file path to guess mime type
+			const mimeTypeLookup = lookup(filePath);
+			if (mimeTypeLookup) {
+				mimeType = mimeTypeLookup;
+			}
+		}
+
+		if (!mimeType) {
+			// read the first bytes of the file to guess mime type
+			const fileTypeData = await FileType.fromFile(filePath);
+			if (fileTypeData) {
+				mimeType = fileTypeData.mime;
+				fileExtension = fileTypeData.ext;
+			}
+		}
+
+		if (!mimeType) {
+			// Fall back to text
+			mimeType = 'text/plain';
+		}
+	} else if (!fileExtension) {
+		fileExtension = extension(mimeType) || undefined;
+	}
+
+	const returnData: IBinaryData = {
+		mimeType,
+		fileType: fileTypeFromMimeType(mimeType),
+		fileExtension,
+		data: '',
+	};
+
+	if (fileName) {
+		returnData.fileName = fileName;
+	} else if (filePath) {
+		returnData.fileName = path.parse(filePath).base;
+	}
+
+	return BinaryDataManager.getInstance().copyBinaryFile(returnData, filePath, executionId);
+}
+
 /**
  * Takes a buffer and converts it into the format n8n uses. It encodes the binary data as
  * base64 and adds metadata.
- *
  */
 export async function prepareBinaryData(
 	binaryData: Buffer,
@@ -880,7 +935,7 @@ export async function prepareBinaryData(
 
 		if (!mimeType) {
 			// Use buffer to guess mime type
-			const fileTypeData = await fromBuffer(binaryData);
+			const fileTypeData = await FileType.fromBuffer(binaryData);
 			if (fileTypeData) {
 				mimeType = fileTypeData.mime;
 				fileExtension = fileTypeData.ext;
@@ -891,10 +946,13 @@ export async function prepareBinaryData(
 			// Fall back to text
 			mimeType = 'text/plain';
 		}
+	} else if (!fileExtension) {
+		fileExtension = extension(mimeType) || undefined;
 	}
 
 	const returnData: IBinaryData = {
 		mimeType,
+		fileType: fileTypeFromMimeType(mimeType),
 		fileExtension,
 		data: '',
 	};
@@ -2441,7 +2499,7 @@ export function getExecuteFunctions(
 				constructExecutionMetaData,
 			},
 		};
-	})(workflow, runExecutionData, connectionInputData, inputData, node);
+	})(workflow, runExecutionData, connectionInputData, inputData, node) as IExecuteFunctions;
 }
 
 /**
@@ -2693,6 +2751,7 @@ export function getLoadOptionsFunctions(
 			},
 			getCurrentNodeParameter: (
 				parameterPath: string,
+				options?: IGetNodeParameterOptions,
 			): NodeParameterValueType | object | undefined => {
 				const nodeParameters = additionalData.currentNodeParameters;
 
@@ -2700,7 +2759,25 @@ export function getLoadOptionsFunctions(
 					parameterPath = `${path.split('.').slice(1, -1).join('.')}.${parameterPath.slice(1)}`;
 				}
 
-				return get(nodeParameters, parameterPath);
+				let returnData = get(nodeParameters, parameterPath);
+
+				// This is outside the try/catch because it throws errors with proper messages
+				if (options?.extractValue) {
+					const nodeType = workflow.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+					if (nodeType === undefined) {
+						throw new Error(
+							`Node type "${node.type}" is not known so can not return parameter value!`,
+						);
+					}
+					returnData = extractValue(
+						returnData,
+						parameterPath,
+						node,
+						nodeType,
+					) as NodeParameterValueType;
+				}
+
+				return returnData;
 			},
 			getCurrentNodeParameters: (): INodeParameters | undefined => {
 				return additionalData.currentNodeParameters;
@@ -3082,6 +3159,19 @@ export function getExecuteWebhookFunctions(
 				},
 				async setBinaryDataBuffer(data: IBinaryData, binaryData: Buffer): Promise<IBinaryData> {
 					return setBinaryDataBuffer.call(this, data, binaryData, additionalData.executionId!);
+				},
+				async copyBinaryFile(
+					filePath: string,
+					fileName: string,
+					mimeType?: string,
+				): Promise<IBinaryData> {
+					return copyBinaryFile.call(
+						this,
+						additionalData.executionId!,
+						filePath,
+						fileName,
+						mimeType,
+					);
 				},
 				async prepareBinaryData(
 					binaryData: Buffer,

@@ -342,7 +342,7 @@ export class AwsRekognition implements INodeType {
 				if (resource === 'image') {
 					//https://docs.aws.amazon.com/rekognition/latest/dg/API_DetectModerationLabels.html#API_DetectModerationLabels_RequestSyntax
 					if (operation === 'analyze') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						let action = undefined;
 
@@ -412,7 +412,7 @@ export class AwsRekognition implements INodeType {
 								body.Filters.WordFilter = keysTPascalCase(wordFilter);
 							}
 
-							const binaryData = this.getNodeParameter('binaryData', 0) as boolean;
+							const binaryData = this.getNodeParameter('binaryData', 0);
 
 							if (binaryData) {
 								const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0) as string;

@@ -32,7 +32,7 @@ import {
 export let isInitialized = false;
 export const collections = {} as IDatabaseCollections;
 
-let connection: Connection;
+export let connection: Connection;
 
 export async function transaction<T>(fn: (entityManager: EntityManager) => Promise<T>): Promise<T> {
 	return connection.transaction(fn);

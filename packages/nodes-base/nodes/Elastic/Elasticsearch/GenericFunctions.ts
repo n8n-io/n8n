@@ -46,7 +46,8 @@ export async function elasticsearchApiRequestAllItems(
 	indexId: string,
 	body: IDataObject = {},
 	qs: IDataObject = {},
-): Promise<any> { //tslint:disable-line:no-any
+	// tslint:disable-next-line:no-any
+): Promise<any> {
 	//https://www.elastic.co/guide/en/elasticsearch/reference/7.16/paginate-search-results.html#search-after
 	try {
 		//create a point in time (PIT) to preserve the current index state over your searches

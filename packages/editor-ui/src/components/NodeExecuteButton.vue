@@ -1,6 +1,8 @@
 <template>
 	<n8n-tooltip placement="bottom" :disabled="!disabledHint">
-		<div slot="content">{{ disabledHint }}</div>
+		<template #content>
+			<div>{{ disabledHint }}</div>
+		</template>
 		<div>
 			<n8n-button
 				:loading="nodeRunning && !isListeningForEvents && !isListeningForWorkflowEvents"
@@ -20,8 +22,8 @@ import { WEBHOOK_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { INodeUi } from '@/Interface';
 import { INodeTypeDescription } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
-import { workflowRun } from './mixins/workflowRun';
-import { pinData } from './mixins/pinData';
+import { workflowRun } from '@/mixins/workflowRun';
+import { pinData } from '@/mixins/pinData';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';

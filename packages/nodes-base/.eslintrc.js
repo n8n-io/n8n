@@ -2,9 +2,10 @@
  * @type {import('@types/eslint').ESLint.ConfigData}
  */
 module.exports = {
-	extends: ['@n8n_io/eslint-config/base'],
+	extends: ['@n8n_io/eslint-config/node'],
 	parserOptions: {
 		project: ['./tsconfig.json'],
+		tsconfigRootDir: __dirname,
 	},
 
 	rules: {
@@ -15,7 +16,6 @@ module.exports = {
 		'import/order': 'off',
 		'prefer-const': 'off',
 		'prefer-spread': 'off',
-		'prettier/prettier': 'off',
 		'import/no-extraneous-dependencies': 'off',
 
 		'@typescript-eslint/array-type': 'off',

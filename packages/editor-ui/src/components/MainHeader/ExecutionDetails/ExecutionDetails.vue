@@ -27,7 +27,7 @@
 			{{ $locale.baseText('executionDetails.of') }}
 			<span class="primary-color clickable" :title="$locale.baseText('executionDetails.openWorkflow')">
 				<ShortenName :name="workflowName">
-					<template v-slot="{ shortenedName }">
+					<template #default="{ shortenedName }">
 						<span @click="openWorkflow(workflowExecution.workflowId)">
 							"{{ shortenedName }}"
 						</span>
@@ -45,7 +45,7 @@ import mixins from "vue-typed-mixins";
 
 import { IExecutionResponse, IExecutionsSummary } from "../../../Interface";
 
-import { titleChange } from "@/components/mixins/titleChange";
+import { titleChange } from "@/mixins/titleChange";
 
 import ShortenName from "@/components/ShortenName.vue";
 import ReadOnly from "@/components/MainHeader/ExecutionDetails/ReadOnly.vue";

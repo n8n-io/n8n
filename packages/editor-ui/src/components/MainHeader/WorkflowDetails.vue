@@ -1,13 +1,14 @@
 <template>
 	<div class="container" v-if="workflowName">
 		<BreakpointsObserver :valueXS="15" :valueSM="25" :valueMD="50" class="name-container">
-			<template v-slot="{ value }">
+			<template #default="{ value }">
 				<ShortenName
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
+					testId="workflow-name-input"
 				>
-					<template v-slot="{ shortenedName }">
+					<template #default="{ shortenedName }">
 						<InlineTextEdit
 							:value="workflowName"
 							:previewValue="shortenedName"
@@ -36,6 +37,7 @@
 					:placeholder="$locale.baseText('workflowDetails.chooseOrCreateATag')"
 					ref="dropdown"
 					class="tags-edit"
+					data-test-id="workflow-tags-dropdown"
 				/>
 			</div>
 			<div
@@ -55,6 +57,7 @@
 				:responsive="true"
 				:key="currentWorkflowId"
 				@click="onTagsEditEnable"
+				data-test-id="workflow-tags"
 			/>
 		</span>
 		<span v-else class="tags"></span>
@@ -64,15 +67,25 @@
 				<span class="activator">
 					<WorkflowActivator :workflow-active="isWorkflowActive" :workflow-id="currentWorkflowId" />
 				</span>
+				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
+					<n8n-button
+						type="tertiary"
+						class="mr-2xs"
+						@click="onShareButtonClick"
+					>
+						{{ $locale.baseText('workflowDetails.share') }}
+					</n8n-button>
+				</enterprise-edition>
 				<SaveButton
 					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
+					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
 				<div :class="$style.workflowMenuContainer">
-					<input :class="$style.hiddenInput" type="file" ref="importFile" @change="handleFileImport()">
-					<n8n-action-dropdown :items="workflowMenuItems" @select="onWorkflowMenuSelect" />
+					<input :class="$style.hiddenInput" type="file" ref="importFile" data-test-id="workflow-import-input" @change="handleFileImport()">
+					<n8n-action-dropdown :items="workflowMenuItems" data-test-id="workflow-menu" @select="onWorkflowMenuSelect" />
 				</div>
 			</template>
 		</PushConnectionTracker>
@@ -84,25 +97,27 @@ import Vue from "vue";
 import mixins from "vue-typed-mixins";
 import {
 	DUPLICATE_MODAL_KEY,
+	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	WORKFLOW_SHARE_MODAL_KEY,
 } from "@/constants";
 
 import ShortenName from "@/components/ShortenName.vue";
 import TagsContainer from "@/components/TagsContainer.vue";
 import PushConnectionTracker from "@/components/PushConnectionTracker.vue";
 import WorkflowActivator from "@/components/WorkflowActivator.vue";
-import { workflowHelpers } from "@/components/mixins/workflowHelpers";
+import { workflowHelpers } from "@/mixins/workflowHelpers";
 import SaveButton from "@/components/SaveButton.vue";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import InlineTextEdit from "@/components/InlineTextEdit.vue";
 import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
-import { IWorkflowDataUpdate, IWorkflowToShare } from "@/Interface";
+import {IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare} from "@/Interface";
 
 import { saveAs } from 'file-saver';
-import { titleChange } from "../mixins/titleChange";
+import { titleChange } from "@/mixins/titleChange";
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { mapStores } from "pinia";
 import { useUIStore } from "@/stores/ui";
@@ -110,6 +125,8 @@ import { useSettingsStore } from "@/stores/settings";
 import { useWorkflowsStore } from "@/stores/workflows";
 import { useRootStore } from "@/stores/n8nRootStore";
 import { useTagsStore } from "@/stores/tags";
+import {getWorkflowPermissions, IPermissions} from "@/permissions";
+import {useUsersStore} from "@/stores/users";
 
 const hasChanged = (prev: string[], curr: string[]) => {
 	if (prev.length !== curr.length) {
@@ -140,6 +157,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			tagsEditBus: new Vue(),
 			MAX_WORKFLOW_NAME_LENGTH,
 			tagsSaving: false,
+			EnterpriseEditionFeature,
 		};
 	},
 	computed: {
@@ -149,6 +167,7 @@ export default mixins(workflowHelpers, titleChange).extend({
 			useSettingsStore,
 			useUIStore,
 			useWorkflowsStore,
+			useUsersStore,
 		),
 		isWorkflowActive(): boolean {
 			return this.workflowsStore.isWorkflowActive;
@@ -168,6 +187,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 		isWorkflowSaving(): boolean {
 			return this.uiStore.isActionActive('workflowSaving');
 		},
+		workflow(): IWorkflowDb {
+			return this.workflowsStore.workflow;
+		},
 		currentWorkflowId(): string {
 			return this.workflowsStore.workflowId;
 		},
@@ -176,6 +198,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 		},
 		onExecutionsTab(): boolean {
 			return [ VIEWS.EXECUTION_HOME.toString(), VIEWS.EXECUTIONS.toString(), VIEWS.EXECUTION_PREVIEW ].includes(this.$route.name || '');
+		},
+		workflowPermissions(): IPermissions {
+			return getWorkflowPermissions(this.usersStore.currentUser, this.workflow);
 		},
 		workflowMenuItems(): Array<{}> {
 			return [
@@ -204,13 +229,15 @@ export default mixins(workflowHelpers, titleChange).extend({
 					label: this.$locale.baseText('generic.settings'),
 					disabled: !this.onWorkflowPage || this.isNewWorkflow,
 				},
-				{
-					id: WORKFLOW_MENU_ACTIONS.DELETE,
-					label: this.$locale.baseText('menuActions.delete'),
-					disabled: !this.onWorkflowPage || this.isNewWorkflow,
-					customClass: this.$style.deleteItem,
-					divided: true,
-				},
+				...(this.workflowPermissions.delete ? [
+					{
+						id: WORKFLOW_MENU_ACTIONS.DELETE,
+						label: this.$locale.baseText('menuActions.delete'),
+						disabled: !this.onWorkflowPage || this.isNewWorkflow,
+						customClass: this.$style.deleteItem,
+						divided: true,
+					},
+				] : []),
 			];
 		},
 	},
@@ -224,6 +251,9 @@ export default mixins(workflowHelpers, titleChange).extend({
 			}
 			const saved = await this.saveCurrentWorkflow({ id: currentId, name: this.workflowName, tags: this.currentWorkflowTagIds });
 			if (saved) await this.settingsStore.fetchPromptsData();
+		},
+		onShareButtonClick() {
+			this.uiStore.openModalWithData({ name: WORKFLOW_SHARE_MODAL_KEY, data: { id: this.currentWorkflowId } });
 		},
 		onTagsEditEnable() {
 			this.$data.appliedTagIds = this.currentWorkflowTagIds;

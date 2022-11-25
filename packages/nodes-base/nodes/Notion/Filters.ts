@@ -101,6 +101,22 @@ export const filters = (conditions: any) => [
 		default: '',
 	},
 	{
+		displayName: 'Status Name or ID',
+		name: 'statusValue',
+		type: 'options',
+		typeOptions: {
+			loadOptionsMethod: 'getPropertySelectValues',
+		},
+		displayOptions: {
+			show: {
+				type: ['status'],
+			},
+		},
+		default: '',
+		description:
+			'Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>',
+	},
+	{
 		displayName: 'Email',
 		name: 'emailValue',
 		type: 'string',
