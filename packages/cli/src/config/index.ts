@@ -13,6 +13,7 @@ const inE2ETests = process.env.E2E_TESTS === 'true';
 if (inE2ETests) {
 	// Skip loading config from env variables in end-to-end tests
 	process.env = {
+		E2E_TESTS: 'true',
 		N8N_USER_FOLDER: mkdtempSync(join(tmpdir(), 'n8n-e2e-')),
 		N8N_DIAGNOSTICS_ENABLED: 'false',
 		N8N_PUBLIC_API_DISABLED: 'true',
