@@ -16,7 +16,7 @@ export async function spreadSheetsSearch(
 ): Promise<INodeListSearchResult> {
 	const query: string[] = [];
 	if (filter) {
-		// query.push(`name contains '${filter.replace("'", "\\'")}'`);
+		query.push(`name contains '${filter.replace("'", "\\'")}'`);
 	}
 	query.push("mimeType = 'application/vnd.google-apps.spreadsheet'");
 

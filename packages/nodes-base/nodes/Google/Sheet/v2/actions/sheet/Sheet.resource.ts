@@ -87,7 +87,7 @@ export const descriptions: INodeProperties[] = [
 				type: 'list',
 				typeOptions: {
 					searchListMethod: 'spreadSheetsSearch',
-					searchable: false,
+					searchable: true,
 				},
 			},
 			{
