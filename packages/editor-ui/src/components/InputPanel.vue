@@ -20,6 +20,7 @@
 		@unlinkRun="onUnlinkRun"
 		@runChange="onRunIndexChange"
 		@tableMounted="$emit('tableMounted', $event)"
+		data-test-id="ndv-input-panel"
 		>
 		<template #header>
 			<div :class="$style.titleSection">

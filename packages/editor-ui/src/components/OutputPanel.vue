@@ -19,6 +19,7 @@
 		@tableMounted="$emit('tableMounted', $event)"
 		@itemHover="$emit('itemHover', $event)"
 		ref="runData"
+		data-test-id="ndv-output-panel"
 	>
 		<template #header>
 			<div :class="$style.titleSection">

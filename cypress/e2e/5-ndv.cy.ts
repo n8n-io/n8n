@@ -58,6 +58,8 @@ describe('NDV', () => {
 		workflowPage.getters.canvasNodes().last().dblclick();
 		cy.getByTestId('ndv-input-select').click();
 		cy.getByTestId('ndv-input-option').last().click();
-		cy.getByTestId('ndv-data-container').should('contain', 'start');
+		cy.getByTestId('ndv-input-panel').within(() => {
+			cy.getByTestId('ndv-data-container').should('contain', 'start');
+		});
 	});
 });
