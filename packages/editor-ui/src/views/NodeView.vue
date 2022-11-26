@@ -31,6 +31,7 @@
 					:showTooltip="!containsTrigger && showTriggerMissingTooltip"
 					:position="canvasStore.canvasAddButtonPosition"
 					@hook:mounted="canvasStore.setRecenteredCanvasAddButtonPosition"
+					data-test-id="canvas-add-button"
 				/>
 				<div v-for="nodeData in nodes" :key="nodeData.id">
 					<node
