@@ -6,6 +6,7 @@
 					:name="workflowName"
 					:limit="value"
 					:custom="true"
+					testId="workflow-name-input"
 				>
 					<template #default="{ shortenedName }">
 						<InlineTextEdit
@@ -17,16 +18,14 @@
 							@submit="onNameSubmit"
 							placeholder="Enter workflow name"
 							class="name"
-							data-test-id="workflow-name-input"
 						/>
 					</template>
 				</ShortenName>
 			</template>
 		</BreakpointsObserver>
 
-		<span v-if="settingsStore.areTagsEnabled" class="tags">
-			<div
-				v-if="isTagsEditEnabled">
+		<span v-if="settingsStore.areTagsEnabled" class="tags" data-test-id="workflow-tags-container">
+			<div v-if="isTagsEditEnabled">
 				<TagsDropdown
 					:createEnabled="true"
 					:currentTagIds="appliedTagIds"
@@ -45,6 +44,7 @@
 			>
 				<span
 					class="add-tag clickable"
+					data-test-id="new-tag-link"
 					@click="onTagsEditEnable"
 				>
 					+ {{ $locale.baseText('workflowDetails.addTag') }}
@@ -80,11 +80,12 @@
 					type="secondary"
 					:saved="!this.isDirty && !this.isNewWorkflow"
 					:disabled="isWorkflowSaving"
+					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
 				<div :class="$style.workflowMenuContainer">
 					<input :class="$style.hiddenInput" type="file" ref="importFile" data-test-id="workflow-import-input" @change="handleFileImport()">
-					<n8n-action-dropdown :items="workflowMenuItems" @select="onWorkflowMenuSelect" />
+					<n8n-action-dropdown :items="workflowMenuItems" data-test-id="workflow-menu" @select="onWorkflowMenuSelect" />
 				</div>
 			</template>
 		</PushConnectionTracker>
