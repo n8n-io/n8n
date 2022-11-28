@@ -1,0 +1,19 @@
+version: '3.9'
+
+services:
+  mysql:
+    image: mysql:5.7-debian
+    environment:
+      - MYSQL_DATABASE=n8n
+      - MYSQL_ROOT_PASSWORD=password
+    ports:
+      - 3306:3306
+
+  postgres:
+    image: postgres:11
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=root
+      - POSTGRES_PASSWORD=password
+    ports:
+      - 5432:5432

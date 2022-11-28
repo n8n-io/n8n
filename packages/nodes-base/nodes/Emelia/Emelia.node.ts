@@ -6,7 +6,6 @@ import {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
-	JsonObject,
 } from 'n8n-workflow';
 
 import { emeliaApiTest, emeliaGraphqlRequest, loadResource } from './GenericFunctions';
@@ -103,7 +102,7 @@ export class Emelia implements INodeType {
 							email: this.getNodeParameter('contactEmail', i) as string,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(contact, additionalFields);
@@ -248,7 +247,7 @@ export class Emelia implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							campaigns = campaigns.slice(0, limit);
 						}
 
@@ -304,7 +303,7 @@ export class Emelia implements INodeType {
 						//        campaign: duplicate
 						// ----------------------------------
 
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const variables = {
 							fromId: this.getNodeParameter('campaignId', i),
 							name: this.getNodeParameter('campaignName', i),
@@ -359,7 +358,7 @@ export class Emelia implements INodeType {
 							email: this.getNodeParameter('contactEmail', i) as string,
 						};
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (!isEmpty(additionalFields)) {
 							Object.assign(contact, additionalFields);
@@ -419,7 +418,7 @@ export class Emelia implements INodeType {
 						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							contactLists = contactLists.slice(0, limit);
 						}
 

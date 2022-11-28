@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
-/* eslint-disable import/no-cycle */
 /* eslint-disable no-restricted-syntax */
 /* eslint-disable @typescript-eslint/restrict-plus-operands */
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
@@ -22,7 +21,6 @@ import {
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
-	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRun,
@@ -32,7 +30,9 @@ import {
 	IWorkflowExecuteHooks,
 	IWorkflowHooksOptionalParameters,
 	IWorkflowSettings,
+	ErrorReporterProxy as ErrorReporter,
 	LoggerProxy as Logger,
+	SubworkflowOperationError,
 	Workflow,
 	WorkflowExecuteMode,
 	WorkflowHooks,
@@ -40,33 +40,30 @@ import {
 
 import { LessThanOrEqual } from 'typeorm';
 import { DateUtils } from 'typeorm/util/DateUtils';
-import config from '../config';
+import config from '@/config';
+import * as Db from '@/Db';
+import * as ActiveExecutions from '@/ActiveExecutions';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { ExternalHooks } from '@/ExternalHooks';
 import {
-	ActiveExecutions,
-	CredentialsHelper,
-	Db,
-	ExternalHooks,
 	IExecutionDb,
 	IExecutionFlattedDb,
 	IExecutionResponse,
-	InternalHooksManager,
 	IPushDataExecutionFinished,
 	IWorkflowBase,
 	IWorkflowExecuteProcess,
 	IWorkflowExecutionDataProcess,
-	NodeTypes,
-	Push,
-	ResponseHelper,
-	WebhookHelpers,
-	WorkflowHelpers,
-} from '.';
-import {
-	checkPermissionsForExecution,
-	getUserById,
-	getWorkflowOwner,
-} from './UserManagement/UserManagementHelper';
-import { whereClause } from './WorkflowHelpers';
-import { IWorkflowErrorData } from './Interfaces';
+	IWorkflowErrorData,
+} from '@/Interfaces';
+import { InternalHooksManager } from '@/InternalHooksManager';
+import { NodeTypes } from '@/NodeTypes';
+import * as Push from '@/Push';
+import * as ResponseHelper from '@/ResponseHelper';
+import * as WebhookHelpers from '@/WebhookHelpers';
+import * as WorkflowHelpers from '@/WorkflowHelpers';
+import { getUserById, getWorkflowOwner, whereClause } from '@/UserManagement/UserManagementHelper';
+import { findSubworkflowStart } from '@/utils';
+import { PermissionChecker } from './UserManagement/PermissionChecker';
 
 const ERROR_TRIGGER_TYPE = config.getEnv('nodes.errorTriggerType');
 
@@ -160,7 +157,8 @@ export function executeErrorWorkflow(
 						user,
 					);
 				})
-				.catch((error) => {
+				.catch((error: Error) => {
+					ErrorReporter.error(error);
 					Logger.error(
 						`Could not execute ErrorWorkflow for execution ID ${this.executionId} because of error querying the workflow owner`,
 						{
@@ -195,7 +193,7 @@ export function executeErrorWorkflow(
  *
  */
 let throttling = false;
-function pruneExecutionData(this: WorkflowHooks): void {
+async function pruneExecutionData(this: WorkflowHooks): Promise<void> {
 	if (!throttling) {
 		Logger.verbose('Pruning execution data from database');
 
@@ -209,26 +207,31 @@ function pruneExecutionData(this: WorkflowHooks): void {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 		const utcDate = DateUtils.mixedDateToUtcDatetimeString(date);
 
-		// throttle just on success to allow for self healing on failure
-		Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) })
-			.then((data) =>
-				setTimeout(() => {
-					throttling = false;
-				}, timeout * 1000),
-			)
-			.catch((error) => {
-				throttling = false;
-
-				Logger.error(
-					`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
-					{
-						...error,
-						executionId: this.executionId,
-						sessionId: this.sessionId,
-						workflowId: this.workflowData.id,
-					},
-				);
+		try {
+			const executions = await Db.collections.Execution.find({
+				stoppedAt: LessThanOrEqual(utcDate),
 			});
+			await Db.collections.Execution.delete({ stoppedAt: LessThanOrEqual(utcDate) });
+			setTimeout(() => {
+				throttling = false;
+			}, timeout * 1000);
+			// Mark binary data for deletion for all executions
+			await BinaryDataManager.getInstance().markDataForDeletionByExecutionIds(
+				executions.map(({ id }) => id.toString()),
+			);
+		} catch (error) {
+			ErrorReporter.error(error);
+			throttling = false;
+			Logger.error(
+				`Failed pruning execution data from database for execution ID ${this.executionId} (hookFunctionsSave)`,
+				{
+					...error,
+					executionId: this.executionId,
+					sessionId: this.sessionId,
+					workflowId: this.workflowData.id,
+				},
+			);
+		}
 	}
 }
 
@@ -449,6 +452,7 @@ export function hookFunctionsPreExecute(parentProcessMode?: string): IWorkflowEx
 						flattenedExecutionData as IExecutionFlattedDb,
 					);
 				} catch (err) {
+					ErrorReporter.error(err);
 					// TODO: Improve in the future!
 					// Errors here might happen because of database access
 					// For busy machines, we may get "Database is locked" errors.
@@ -491,7 +495,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 
 				// Prune old execution data
 				if (config.getEnv('executions.pruneData')) {
-					pruneExecutionData.call(this);
+					await pruneExecutionData.call(this);
 				}
 
 				const isManualMode = [this.mode, parentProcessMode].includes('manual');
@@ -509,6 +513,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
+							ErrorReporter.error(e);
 							Logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (hookFunctionsSave)`,
 								{ executionId: this.executionId, workflowId: this.workflowData.id },
@@ -627,6 +632,7 @@ function hookFunctionsSave(parentProcessMode?: string): IWorkflowExecuteHooks {
 						);
 					}
 				} catch (error) {
+					ErrorReporter.error(error);
 					Logger.error(`Failed saving execution data to DB on execution ID ${this.executionId}`, {
 						executionId: this.executionId,
 						workflowId: this.workflowData.id,
@@ -674,6 +680,7 @@ function hookFunctionsSaveWorker(): IWorkflowExecuteHooks {
 								newStaticData,
 							);
 						} catch (e) {
+							ErrorReporter.error(e);
 							Logger.error(
 								`There was a problem saving the workflow with id "${this.workflowData.id}" to save changed staticData: "${e.message}" (workflowExecuteAfter)`,
 								{ sessionId: this.sessionId, workflowId: this.workflowData.id },
@@ -745,24 +752,39 @@ export async function getRunData(
 	workflowData: IWorkflowBase,
 	userId: string,
 	inputData?: INodeExecutionData[],
+	parentWorkflowId?: string,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
-	// Find Start-Node
-	const requiredNodeTypes = ['n8n-nodes-base.start'];
-	let startNode: INode | undefined;
-	// eslint-disable-next-line no-restricted-syntax
-	for (const node of workflowData.nodes) {
-		if (requiredNodeTypes.includes(node.type)) {
-			startNode = node;
-			break;
+	const policy =
+		workflowData.settings?.callerPolicy ?? config.getEnv('workflows.callerPolicyDefaultOption');
+
+	if (policy === 'none') {
+		throw new SubworkflowOperationError(
+			`Target workflow ID ${workflowData.id} may not be called by other workflows.`,
+			'Please update the settings of the target workflow or ask its owner to do so.',
+		);
+	}
+
+	if (
+		policy === 'workflowsFromAList' &&
+		typeof workflowData.settings?.callerIds === 'string' &&
+		parentWorkflowId !== undefined
+	) {
+		const allowedCallerIds = workflowData.settings.callerIds
+			.split(',')
+			.map((id) => id.trim())
+			.filter((id) => id !== '');
+
+		if (!allowedCallerIds.includes(parentWorkflowId)) {
+			throw new SubworkflowOperationError(
+				`Target workflow ID ${workflowData.id} may only be called by a list of workflows, which does not include current workflow ID ${parentWorkflowId}.`,
+				'Please update the settings of the target workflow or ask its owner to do so.',
+			);
 		}
 	}
-	if (startNode === undefined) {
-		// If the workflow does not contain a start-node we can not know what
-		// should be executed and with what data to start.
-		throw new Error(`The workflow does not contain a "Start" node and can so not be executed.`);
-	}
+
+	const startingNode = findSubworkflowStart(workflowData.nodes);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [
@@ -774,7 +796,7 @@ export async function getRunData(
 	// Initialize the incoming data
 	const nodeExecutionStack: IExecuteData[] = [];
 	nodeExecutionStack.push({
-		node: startNode,
+		node: startingNode,
 		data: {
 			main: [inputData],
 		},
@@ -862,10 +884,8 @@ export async function getWorkflowData(
 
 /**
  * Executes the workflow with the given ID
- *
- * @param {string} workflowId The id of the workflow to execute
  */
-export async function executeWorkflow(
+async function executeWorkflow(
 	workflowInfo: IExecuteWorkflowInfo,
 	additionalData: IWorkflowExecuteAdditionalData,
 	options?: {
@@ -920,7 +940,7 @@ export async function executeWorkflow(
 
 	let data;
 	try {
-		await checkPermissionsForExecution(workflow, additionalData.userId);
+		await PermissionChecker.check(workflow, additionalData.userId);
 
 		// Create new additionalData to have different workflow loaded and to call
 		// different webhooks
@@ -1046,7 +1066,7 @@ export function sendMessageToUI(source: string, messages: any[]) {
 		pushInstance.send(
 			'sendConsoleMessage',
 			{
-				source: `Node: "${source}"`,
+				source: `[Node: "${source}"]`,
 				messages,
 			},
 			this.sessionId,
@@ -1093,7 +1113,7 @@ export async function getBase(
  * Returns WorkflowHooks instance for running integrated workflows
  * (Workflows which get started inside of another workflow)
  */
-export function getWorkflowHooksIntegrated(
+function getWorkflowHooksIntegrated(
 	mode: WorkflowExecuteMode,
 	executionId: string,
 	workflowData: IWorkflowBase,

@@ -1,11 +1,6 @@
 <template>
-	<n8n-route :to="to" :newWindow="newWindow"
-		v-on="$listeners"
-		class="n8n-link"
-	>
-		<span
-			:class="$style[`${underline ? `${theme}-underline` : theme}`]"
-		>
+	<n8n-route :to="to" :newWindow="newWindow" v-on="$listeners" class="n8n-link">
+		<span :class="$style[`${underline ? `${theme}-underline` : theme}`]">
 			<n8n-text :size="size" :bold="bold">
 				<slot></slot>
 			</n8n-text>
@@ -54,18 +49,13 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-@import "../../utils";
+@import '../../utils';
 
 .primary {
 	color: var(--color-primary);
 
 	&:active {
-		color: saturation(
-				--color-primary-h,
-				--color-primary-s,
-				--color-primary-l,
-				-(30%)
-		);
+		color: saturation(--color-primary-h, --color-primary-s, --color-primary-l, -(30%));
 	}
 }
 
@@ -107,6 +97,11 @@ export default Vue.extend({
 	text-decoration: underline;
 }
 
+.text-underline {
+	composes: text;
+	text-decoration: underline;
+}
+
 .danger-underline {
 	composes: danger;
 	text-decoration: underline;
@@ -116,5 +111,4 @@ export default Vue.extend({
 	composes: secondary;
 	text-decoration: underline;
 }
-
 </style>

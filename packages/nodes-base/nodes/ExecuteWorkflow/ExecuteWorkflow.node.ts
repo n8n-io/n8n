@@ -14,7 +14,7 @@ export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Execute Workflow',
 		name: 'executeWorkflow',
-		icon: 'fa:network-wired',
+		icon: 'fa:sign-in-alt',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{"Workflow: " + $parameter["workflowId"]}}',

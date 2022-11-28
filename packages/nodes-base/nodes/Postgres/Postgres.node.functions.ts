@@ -161,7 +161,7 @@ export async function pgQueryV2(
 	continueOnFail: boolean,
 	overrideMode?: string,
 ): Promise<IDataObject[]> {
-	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', 0);
 
 	let valuesArray = [] as string[][];
 	if (additionalFields.queryParams) {
@@ -361,7 +361,7 @@ export async function pgInsertV2(
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });
 
-	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', 0);
 	const mode = overrideMode ? overrideMode : ((additionalFields.mode ?? 'multiple') as string);
 
 	const returning = generateReturning(pgp, this.getNodeParameter('returnFields', 0) as string);
@@ -598,7 +598,7 @@ export async function pgUpdateV2(
 		return updateColumn;
 	});
 
-	const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', 0);
 	const mode = additionalFields.mode ?? ('multiple' as string);
 
 	const cs = new pgp.helpers.ColumnSet(columns, { table: { table, schema } });

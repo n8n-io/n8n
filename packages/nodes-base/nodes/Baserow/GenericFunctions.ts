@@ -2,7 +2,7 @@ import { IExecuteFunctions } from 'n8n-core';
 
 import { OptionsWithUri } from 'request';
 
-import { IDataObject, ILoadOptionsFunctions, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, ILoadOptionsFunctions, NodeApiError } from 'n8n-workflow';
 
 import { Accumulator, BaserowCredentials, LoadedResource } from './types';
 
@@ -63,7 +63,7 @@ export async function baserowApiRequestAllItems(
 	qs.size = 100;
 
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const limit = this.getNodeParameter('limit', 0, 0);
 
 	do {
 		responseData = await baserowApiRequest.call(this, method, endpoint, body, qs, jwtToken);

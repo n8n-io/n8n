@@ -49,13 +49,31 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Mode',
 			name: 'mode',
 			type: 'options',
-			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
 					name: 'Append',
 					value: 'append',
 					description: 'All items of input 1, then all items of input 2',
 				},
+				{
+					name: 'Combine',
+					value: 'combine',
+					description: 'Merge matching items together',
+				},
+				{
+					name: 'Choose Branch',
+					value: 'chooseBranch',
+					description: 'Output input data, without modifying it',
+				},
+			],
+			default: 'append',
+			description: 'How data of branches should be merged',
+		},
+		{
+			displayName: 'Combination Mode',
+			name: 'combinationMode',
+			type: 'options',
+			options: [
 				{
 					name: 'Merge By Fields',
 					value: 'mergeByFields',
@@ -71,16 +89,14 @@ const versionDescription: INodeTypeDescription = {
 					value: 'multiplex',
 					description: 'All possible item combinations (cross join)',
 				},
-				{
-					name: 'Choose Branch',
-					value: 'chooseBranch',
-					description: 'Output input data, without modifying it',
-				},
 			],
-			default: 'append',
-			description: 'How data of branches should be merged',
+			default: 'mergeByFields',
+			displayOptions: {
+				show: {
+					mode: ['combine'],
+				},
+			},
 		},
-
 		// mergeByFields ------------------------------------------------------------------
 		{
 			displayName: 'Fields to Match',
@@ -119,7 +135,8 @@ const versionDescription: INodeTypeDescription = {
 			],
 			displayOptions: {
 				show: {
-					mode: ['mergeByFields'],
+					mode: ['combine'],
+					combinationMode: ['mergeByFields'],
 				},
 			},
 		},
@@ -127,6 +144,7 @@ const versionDescription: INodeTypeDescription = {
 			displayName: 'Output Type',
 			name: 'joinMode',
 			type: 'options',
+			// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 			options: [
 				{
 					name: 'Keep Matches',
@@ -136,7 +154,12 @@ const versionDescription: INodeTypeDescription = {
 				{
 					name: 'Keep Non-Matches',
 					value: 'keepNonMatches',
-					description: "Items that don't match (outer join)",
+					description: "Items that don't match",
+				},
+				{
+					name: 'Keep Everything',
+					value: 'keepEverything',
+					description: "Items that match merged together, plus items that don't match (outer join)",
 				},
 				{
 					name: 'Enrich Input 1',
@@ -152,7 +175,8 @@ const versionDescription: INodeTypeDescription = {
 			default: 'keepMatches',
 			displayOptions: {
 				show: {
-					mode: ['mergeByFields'],
+					mode: ['combine'],
+					combinationMode: ['mergeByFields'],
 				},
 			},
 		},
@@ -177,7 +201,8 @@ const versionDescription: INodeTypeDescription = {
 			default: 'both',
 			displayOptions: {
 				show: {
-					mode: ['mergeByFields'],
+					mode: ['combine'],
+					combinationMode: ['mergeByFields'],
 					joinMode: ['keepMatches'],
 				},
 			},
@@ -203,7 +228,8 @@ const versionDescription: INodeTypeDescription = {
 			default: 'both',
 			displayOptions: {
 				show: {
-					mode: ['mergeByFields'],
+					mode: ['combine'],
+					combinationMode: ['mergeByFields'],
 					joinMode: ['keepNonMatches'],
 				},
 			},
@@ -219,11 +245,6 @@ const versionDescription: INodeTypeDescription = {
 					name: 'Wait for Both Inputs to Arrive',
 					value: 'waitForBoth',
 				},
-				// not MVP
-				// {
-				// 	name: 'Immediately Pass the First Input to Arrive',
-				// 	value: 'passFirst',
-				// },
 			],
 			default: 'waitForBoth',
 			displayOptions: {
@@ -284,36 +305,116 @@ export class MergeV2 implements INodeType {
 			}
 		}
 
-		if (mode === 'multiplex') {
-			const clashHandling = this.getNodeParameter(
-				'options.clashHandling.values',
-				0,
-				{},
-			) as ClashResolveOptions;
+		if (mode === 'combine') {
+			const combinationMode = this.getNodeParameter('combinationMode', 0) as string;
 
-			let input1 = this.getInputData(0);
-			let input2 = this.getInputData(1);
+			if (combinationMode === 'multiplex') {
+				const clashHandling = this.getNodeParameter(
+					'options.clashHandling.values',
+					0,
+					{},
+				) as ClashResolveOptions;
 
-			if (clashHandling.resolveClash === 'preferInput1') {
-				[input1, input2] = [input2, input1];
-			}
+				let input1 = this.getInputData(0);
+				let input2 = this.getInputData(1);
 
-			if (clashHandling.resolveClash === 'addSuffix') {
-				input1 = addSuffixToEntriesKeys(input1, '1');
-				input2 = addSuffixToEntriesKeys(input2, '2');
-			}
+				if (clashHandling.resolveClash === 'preferInput1') {
+					[input1, input2] = [input2, input1];
+				}
 
-			const mergeIntoSingleObject = selectMergeMethod(clashHandling);
+				if (clashHandling.resolveClash === 'addSuffix') {
+					input1 = addSuffixToEntriesKeys(input1, '1');
+					input2 = addSuffixToEntriesKeys(input2, '2');
+				}
 
-			if (!input1 || !input2) {
+				const mergeIntoSingleObject = selectMergeMethod(clashHandling);
+
+				if (!input1 || !input2) {
+					return [returnData];
+				}
+
+				let entry1: INodeExecutionData;
+				let entry2: INodeExecutionData;
+
+				for (entry1 of input1) {
+					for (entry2 of input2) {
+						returnData.push({
+							json: {
+								...mergeIntoSingleObject(entry1.json, entry2.json),
+							},
+							binary: {
+								...merge({}, entry1.binary, entry2.binary),
+							},
+							pairedItem: [
+								entry1.pairedItem as IPairedItemData,
+								entry2.pairedItem as IPairedItemData,
+							],
+						});
+					}
+				}
 				return [returnData];
 			}
 
-			let entry1: INodeExecutionData;
-			let entry2: INodeExecutionData;
+			if (combinationMode === 'mergeByPosition') {
+				const clashHandling = this.getNodeParameter(
+					'options.clashHandling.values',
+					0,
+					{},
+				) as ClashResolveOptions;
+				const includeUnpaired = this.getNodeParameter(
+					'options.includeUnpaired',
+					0,
+					false,
+				) as boolean;
 
-			for (entry1 of input1) {
-				for (entry2 of input2) {
+				let input1 = this.getInputData(0);
+				let input2 = this.getInputData(1);
+
+				if (clashHandling.resolveClash === 'preferInput1') {
+					[input1, input2] = [input2, input1];
+				}
+
+				if (clashHandling.resolveClash === 'addSuffix') {
+					input1 = addSuffixToEntriesKeys(input1, '1');
+					input2 = addSuffixToEntriesKeys(input2, '2');
+				}
+
+				if (input1 === undefined || input1.length === 0) {
+					if (includeUnpaired) {
+						return [input2];
+					}
+					return [returnData];
+				}
+
+				if (input2 === undefined || input2.length === 0) {
+					if (includeUnpaired) {
+						return [input1];
+					}
+					return [returnData];
+				}
+
+				let numEntries: number;
+				if (includeUnpaired) {
+					numEntries = Math.max(input1.length, input2.length);
+				} else {
+					numEntries = Math.min(input1.length, input2.length);
+				}
+
+				const mergeIntoSingleObject = selectMergeMethod(clashHandling);
+
+				for (let i = 0; i < numEntries; i++) {
+					if (i >= input1.length) {
+						returnData.push(input2[i]);
+						continue;
+					}
+					if (i >= input2.length) {
+						returnData.push(input1[i]);
+						continue;
+					}
+
+					const entry1 = input1[i];
+					const entry2 = input2[i];
+
 					returnData.push({
 						json: {
 							...mergeIntoSingleObject(entry1.json, entry2.json),
@@ -328,162 +429,115 @@ export class MergeV2 implements INodeType {
 					});
 				}
 			}
-			return [returnData];
-		}
 
-		if (mode === 'mergeByPosition') {
-			const clashHandling = this.getNodeParameter(
-				'options.clashHandling.values',
-				0,
-				{},
-			) as ClashResolveOptions;
-			const includeUnpaired = this.getNodeParameter('options.includeUnpaired', 0, false) as boolean;
+			if (combinationMode === 'mergeByFields') {
+				const matchFields = checkMatchFieldsInput(
+					this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
+				);
 
-			let input1 = this.getInputData(0);
-			let input2 = this.getInputData(1);
+				const joinMode = this.getNodeParameter('joinMode', 0) as MatchFieldsJoinMode;
+				const outputDataFrom = this.getNodeParameter(
+					'outputDataFrom',
+					0,
+					'both',
+				) as MatchFieldsOutput;
+				const options = this.getNodeParameter('options', 0, {}) as MatchFieldsOptions;
 
-			if (clashHandling.resolveClash === 'preferInput1') {
-				[input1, input2] = [input2, input1];
-			}
+				options.joinMode = joinMode;
+				options.outputDataFrom = outputDataFrom;
 
-			if (clashHandling.resolveClash === 'addSuffix') {
-				input1 = addSuffixToEntriesKeys(input1, '1');
-				input2 = addSuffixToEntriesKeys(input2, '2');
-			}
+				const input1 = checkInput(
+					this.getInputData(0),
+					matchFields.map((pair) => pair.field1 as string),
+					(options.disableDotNotation as boolean) || false,
+					'Input 1',
+				);
+				if (!input1) return [returnData];
 
-			if (input1 === undefined || input1.length === 0) {
-				if (includeUnpaired) {
-					return [input2];
-				}
-				return [returnData];
-			}
+				const input2 = checkInput(
+					this.getInputData(1),
+					matchFields.map((pair) => pair.field2 as string),
+					(options.disableDotNotation as boolean) || false,
+					'Input 2',
+				);
 
-			if (input2 === undefined || input2.length === 0) {
-				if (includeUnpaired) {
+				if (!input2 || !matchFields.length) {
+					if (
+						joinMode === 'keepMatches' ||
+						joinMode === 'keepEverything' ||
+						joinMode === 'enrichInput2'
+					) {
+						return [returnData];
+					}
 					return [input1];
 				}
-				return [returnData];
-			}
 
-			let numEntries: number;
-			if (includeUnpaired) {
-				numEntries = Math.max(input1.length, input2.length);
-			} else {
-				numEntries = Math.min(input1.length, input2.length);
-			}
+				const matches = findMatches(input1, input2, matchFields, options);
 
-			const mergeIntoSingleObject = selectMergeMethod(clashHandling);
-
-			for (let i = 0; i < numEntries; i++) {
-				if (i >= input1.length) {
-					returnData.push(input2[i]);
-					continue;
-				}
-				if (i >= input2.length) {
-					returnData.push(input1[i]);
-					continue;
-				}
-
-				const entry1 = input1[i];
-				const entry2 = input2[i];
-
-				returnData.push({
-					json: {
-						...mergeIntoSingleObject(entry1.json, entry2.json),
-					},
-					binary: {
-						...merge({}, entry1.binary, entry2.binary),
-					},
-					pairedItem: [entry1.pairedItem as IPairedItemData, entry2.pairedItem as IPairedItemData],
-				});
-			}
-		}
-
-		if (mode === 'mergeByFields') {
-			const matchFields = checkMatchFieldsInput(
-				this.getNodeParameter('mergeByFields.values', 0, []) as IDataObject[],
-			);
-
-			const joinMode = this.getNodeParameter('joinMode', 0) as MatchFieldsJoinMode;
-			const outputDataFrom = this.getNodeParameter('outputDataFrom', 0, '') as MatchFieldsOutput;
-			const options = this.getNodeParameter('options', 0, {}) as MatchFieldsOptions;
-
-			options.joinMode = joinMode;
-			options.outputDataFrom = outputDataFrom;
-
-			const input1 = checkInput(
-				this.getInputData(0),
-				matchFields.map((pair) => pair.field1 as string),
-				(options.disableDotNotation as boolean) || false,
-				'Input 1',
-			);
-			if (!input1) return [returnData];
-
-			const input2 = checkInput(
-				this.getInputData(1),
-				matchFields.map((pair) => pair.field2 as string),
-				(options.disableDotNotation as boolean) || false,
-				'Input 2',
-			);
-
-			if (!input2 || !matchFields.length) {
-				if (joinMode === 'keepMatches' || joinMode === 'enrichInput2') {
-					return [returnData];
-				}
-				return [input1];
-			}
-
-			const matches = findMatches(input1, input2, matchFields, options);
-
-			if (joinMode === 'keepMatches') {
-				if (outputDataFrom === 'input1') {
-					return [matches.matched.map((match) => match.entry)];
-				}
-				if (outputDataFrom === 'input2') {
-					return [matches.matched2];
-				}
-				if (outputDataFrom === 'both') {
+				if (joinMode === 'keepMatches' || joinMode === 'keepEverything') {
+					let output: INodeExecutionData[] = [];
 					const clashResolveOptions = this.getNodeParameter(
 						'options.clashHandling.values',
 						0,
 						{},
 					) as ClashResolveOptions;
 
-					const mergedEntries = mergeMatched(matches.matched, clashResolveOptions);
+					if (outputDataFrom === 'input1') {
+						output = matches.matched.map((match) => match.entry);
+					}
+					if (outputDataFrom === 'input2') {
+						output = matches.matched2;
+					}
+					if (outputDataFrom === 'both') {
+						output = mergeMatched(matches.matched, clashResolveOptions);
+					}
 
-					returnData.push(...mergedEntries);
+					if (joinMode === 'keepEverything') {
+						let unmatched1 = matches.unmatched1;
+						let unmatched2 = matches.unmatched2;
+						if (clashResolveOptions.resolveClash === 'addSuffix') {
+							unmatched1 = addSuffixToEntriesKeys(unmatched1, '1');
+							unmatched2 = addSuffixToEntriesKeys(unmatched2, '2');
+						}
+						output = [...output, ...unmatched1, ...unmatched2];
+					}
+
+					returnData.push(...output);
 				}
-			}
 
-			if (joinMode === 'keepNonMatches') {
-				if (outputDataFrom === 'input1') {
-					return [matches.unmatched1];
+				if (joinMode === 'keepNonMatches') {
+					if (outputDataFrom === 'input1') {
+						return [matches.unmatched1];
+					}
+					if (outputDataFrom === 'input2') {
+						return [matches.unmatched2];
+					}
+					if (outputDataFrom === 'both') {
+						let output: INodeExecutionData[] = [];
+						output = output.concat(addSourceField(matches.unmatched1, 'input1'));
+						output = output.concat(addSourceField(matches.unmatched2, 'input2'));
+						return [output];
+					}
 				}
-				if (outputDataFrom === 'input2') {
-					return [matches.unmatched2];
-				}
-				if (outputDataFrom === 'both') {
-					let output: INodeExecutionData[] = [];
-					output = output.concat(addSourceField(matches.unmatched1, 'input1'));
-					output = output.concat(addSourceField(matches.unmatched2, 'input2'));
-					return [output];
-				}
-			}
 
-			if (joinMode === 'enrichInput1' || joinMode === 'enrichInput2') {
-				const clashResolveOptions = this.getNodeParameter(
-					'options.clashHandling.values',
-					0,
-					{},
-				) as ClashResolveOptions;
+				if (joinMode === 'enrichInput1' || joinMode === 'enrichInput2') {
+					const clashResolveOptions = this.getNodeParameter(
+						'options.clashHandling.values',
+						0,
+						{},
+					) as ClashResolveOptions;
 
-				const mergedEntries = mergeMatched(matches.matched, clashResolveOptions, joinMode);
+					const mergedEntries = mergeMatched(matches.matched, clashResolveOptions, joinMode);
 
-				if (clashResolveOptions.resolveClash === 'addSuffix') {
-					const suffix = joinMode === 'enrichInput1' ? '1' : '2';
-					returnData.push(...mergedEntries, ...addSuffixToEntriesKeys(matches.unmatched1, suffix));
-				} else {
-					returnData.push(...mergedEntries, ...matches.unmatched1);
+					if (clashResolveOptions.resolveClash === 'addSuffix') {
+						const suffix = joinMode === 'enrichInput1' ? '1' : '2';
+						returnData.push(
+							...mergedEntries,
+							...addSuffixToEntriesKeys(matches.unmatched1, suffix),
+						);
+					} else {
+						returnData.push(...mergedEntries, ...matches.unmatched1);
+					}
 				}
 			}
 		}

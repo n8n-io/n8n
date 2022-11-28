@@ -7,9 +7,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 
 import { Credentials, NodeExecuteFunctions } from 'n8n-core';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { get } from 'lodash';
-import { NodeVersionedType } from 'n8n-nodes-base';
+import get from 'lodash.get';
 
 import {
 	ICredentialDataDecryptedObject,
@@ -26,9 +24,8 @@ import {
 	INodeParameters,
 	INodeProperties,
 	INodeType,
-	INodeTypeData,
-	INodeTypes,
-	INodeVersionedType,
+	IVersionedNodeType,
+	VersionedNodeType,
 	IRequestOptionsSimplified,
 	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -38,37 +35,32 @@ import {
 	WorkflowExecuteMode,
 	ITaskDataConnections,
 	LoggerProxy as Logger,
+	ErrorReporterProxy as ErrorReporter,
 	IHttpRequestHelper,
+	INodeTypeData,
+	INodeTypes,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-cycle
-import {
-	CredentialsOverwrites,
-	CredentialTypes,
-	Db,
-	ICredentialsDb,
-	NodeTypes,
-	WhereClause,
-	WorkflowExecuteAdditionalData,
-} from '.';
-// eslint-disable-next-line import/no-cycle
-import { User } from './databases/entities/User';
-// eslint-disable-next-line import/no-cycle
-import { CredentialsEntity } from './databases/entities/CredentialsEntity';
+import * as Db from '@/Db';
+import { ICredentialsDb } from '@/Interfaces';
+import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData';
+import { User } from '@db/entities/User';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { NodeTypes } from '@/NodeTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
+import { CredentialTypes } from '@/CredentialTypes';
+import { whereClause } from './UserManagement/UserManagementHelper';
 
+const mockNodesData: INodeTypeData = {};
 const mockNodeTypes: INodeTypes = {
-	nodeTypes: {} as INodeTypeData,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	init: async (nodeTypes?: INodeTypeData): Promise<void> => {},
-	getAll(): Array<INodeType | INodeVersionedType> {
-		// @ts-ignore
-		return Object.values(this.nodeTypes).map((data) => data.type);
+	getAll(): Array<INodeType | IVersionedNodeType> {
+		return Object.values(mockNodesData).map((data) => data.type);
 	},
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
-		if (this.nodeTypes[nodeType] === undefined) {
+		if (mockNodesData[nodeType] === undefined) {
 			return undefined;
 		}
-		return NodeHelpers.getVersionedNodeType(this.nodeTypes[nodeType].type, version);
+		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
 };
 
@@ -484,9 +476,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 			// Always set to an array even if node is not versioned to not having
 			// to duplicate the logic
 			const allNodeTypes: INodeType[] = [];
-			if (node instanceof NodeVersionedType) {
+			if (node instanceof VersionedNodeType) {
 				// Node is versioned
-				allNodeTypes.push(...Object.values((node as INodeVersionedType).nodeVersions));
+				allNodeTypes.push(...Object.values((node as IVersionedNodeType).nodeVersions));
 			} else {
 				// Node is not versioned
 				allNodeTypes.push(node as INodeType);
@@ -501,11 +493,11 @@ export class CredentialsHelper extends ICredentialsHelper {
 							if (Object.prototype.hasOwnProperty.call(node, 'nodeVersions')) {
 								// The node is versioned. So check all versions for test function
 								// starting with the latest
-								const versions = Object.keys((node as INodeVersionedType).nodeVersions)
+								const versions = Object.keys((node as IVersionedNodeType).nodeVersions)
 									.sort()
 									.reverse();
 								for (const version of versions) {
-									const versionedNode = (node as INodeVersionedType).nodeVersions[
+									const versionedNode = (node as IVersionedNodeType).nodeVersions[
 										parseInt(version, 10)
 									];
 									if (
@@ -553,6 +545,13 @@ export class CredentialsHelper extends ICredentialsHelper {
 				status: 'Error',
 				message: 'No testing function found for this credential.',
 			});
+		}
+
+		if (credentialsDecrypted.data) {
+			credentialsDecrypted.data = CredentialsOverwrites().applyOverwrite(
+				credentialType,
+				credentialsDecrypted.data,
+			);
 		}
 
 		if (typeof credentialTestFunction === 'function') {
@@ -620,21 +619,16 @@ export class CredentialsHelper extends ICredentialsHelper {
 			},
 		};
 
-		const nodeTypes: INodeTypes = {
-			...mockNodeTypes,
-			nodeTypes: {
-				[nodeTypeCopy.description.name]: {
-					sourcePath: '',
-					type: nodeTypeCopy,
-				},
-			},
+		mockNodesData[nodeTypeCopy.description.name] = {
+			sourcePath: '',
+			type: nodeTypeCopy,
 		};
 
 		const workflow = new Workflow({
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			active: false,
-			nodeTypes,
+			nodeTypes: mockNodeTypes,
 		});
 
 		const mode = 'internal';
@@ -672,6 +666,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 				credentialsDecrypted,
 			);
 		} catch (error) {
+			ErrorReporter.error(error);
 			// Do not fail any requests to allow custom error messages and
 			// make logic easier
 			if (error.cause?.response) {
@@ -715,6 +710,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 				status: 'Error',
 				message: error.message.toString(),
 			};
+		} finally {
+			delete mockNodesData[nodeTypeCopy.description.name];
 		}
 
 		if (
@@ -740,28 +737,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			message: 'Connection successful!',
 		};
 	}
-}
-
-/**
- * Build a `where` clause for a `find()` or `findOne()` operation
- * in the `shared_workflow` or `shared_credentials` tables.
- */
-export function whereClause({
-	user,
-	entityType,
-	entityId = '',
-}: {
-	user: User;
-	entityType: 'workflow' | 'credentials';
-	entityId?: string;
-}): WhereClause {
-	const where: WhereClause = entityId ? { [entityType]: { id: entityId } } : {};
-
-	if (user.globalRole.name !== 'owner') {
-		where.user = { id: user.id };
-	}
-
-	return where;
 }
 
 /**

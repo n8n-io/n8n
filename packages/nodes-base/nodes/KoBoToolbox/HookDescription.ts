@@ -22,25 +22,25 @@ export const hookOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getAll',
 				description: 'List many hooks on a form',
-				action: 'Get many hooks',
+				action: 'Get Many hooks',
 			},
 			{
 				name: 'Logs',
 				value: 'getLogs',
 				description: 'Get hook logs',
-				action: 'Logs a hook',
+				action: 'Get Logs for a hook',
 			},
 			{
 				name: 'Retry All',
 				value: 'retryAll',
 				description: 'Retry all failed attempts for a given hook',
-				action: 'Retry all hooks',
+				action: 'Retry All hooks',
 			},
 			{
 				name: 'Retry One',
 				value: 'retryOne',
 				description: 'Retry a specific hook',
-				action: 'Retry one hook',
+				action: 'Retry One hook',
 			},
 		],
 		default: 'getAll',
@@ -127,7 +127,7 @@ export const hookFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['hook'],
-				operation: ['getAll', 'getLogs'],
+				operation: ['getAll'],
 			},
 		},
 		description: 'Whether to return all results or only up to a given limit',
@@ -142,11 +142,71 @@ export const hookFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['hook'],
-				operation: ['getAll', 'getLogs'],
+				operation: ['getAll'],
 				returnAll: [false],
 			},
 		},
 		default: 1000,
 		description: 'Max number of results to return',
+	},
+	/* -------------------------------------------------------------------------- */
+	/*                                hook:getLogs                                 */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Log Status',
+		name: 'status',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['hook'],
+				operation: ['getLogs'],
+			},
+		},
+		default: '',
+		description: 'Only retrieve logs with a specific status',
+		options: [
+			{
+				name: 'All',
+				value: '',
+			},
+			{
+				name: 'Failed',
+				value: '0',
+			},
+			{
+				name: 'Pending',
+				value: '1',
+			},
+			{
+				name: 'Success',
+				value: '2',
+			},
+		],
+	},
+	{
+		displayName: 'Start Date',
+		name: 'startDate',
+		type: 'dateTime',
+		displayOptions: {
+			show: {
+				resource: ['hook'],
+				operation: ['getLogs'],
+			},
+		},
+		default: '',
+		description: 'Minimum date for the hook log to retrieve',
+	},
+	{
+		displayName: 'End Date',
+		name: 'endDate',
+		type: 'dateTime',
+		displayOptions: {
+			show: {
+				resource: ['hook'],
+				operation: ['getLogs'],
+			},
+		},
+		default: '',
+		description: 'Maximum date for the hook log to retrieve',
 	},
 ];

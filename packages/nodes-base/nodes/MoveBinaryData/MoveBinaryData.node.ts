@@ -4,12 +4,14 @@ import { BINARY_ENCODING } from 'n8n-core';
 
 import { IExecuteFunctions } from 'n8n-core';
 import {
+	deepCopy,
 	IBinaryData,
 	IDataObject,
 	INodeExecutionData,
 	INodePropertyOptions,
 	INodeType,
 	INodeTypeDescription,
+	jsonParse,
 	NodeOperationError,
 } from 'n8n-workflow';
 
@@ -361,10 +363,10 @@ export class MoveBinaryData implements INodeType {
 					convertedValue = iconv.decode(buffer, encoding, {
 						stripBOM: options.stripBOM as boolean,
 					});
-					newItem.json = JSON.parse(convertedValue);
+					newItem.json = jsonParse(convertedValue);
 				} else {
 					// Does get added to existing data so copy it first
-					newItem.json = JSON.parse(JSON.stringify(item.json));
+					newItem.json = deepCopy(item.json);
 
 					if (options.keepAsBase64 !== true) {
 						convertedValue = iconv.decode(buffer, encoding, {
@@ -375,7 +377,7 @@ export class MoveBinaryData implements INodeType {
 					}
 
 					if (options.jsonParse) {
-						convertedValue = JSON.parse(convertedValue);
+						convertedValue = jsonParse(convertedValue);
 					}
 
 					const destinationKey = this.getNodeParameter('destinationKey', itemIndex, '') as string;
@@ -387,7 +389,7 @@ export class MoveBinaryData implements INodeType {
 					newItem.binary = item.binary;
 				} else {
 					// Binary data will change so copy it
-					newItem.binary = JSON.parse(JSON.stringify(item.binary));
+					newItem.binary = deepCopy(item.binary);
 					unset(newItem.binary, sourceKey);
 				}
 			} else if (mode === 'jsonToBinary') {
@@ -408,7 +410,7 @@ export class MoveBinaryData implements INodeType {
 
 				if (item.binary !== undefined) {
 					// Item already has binary data so copy it
-					newItem.binary = JSON.parse(JSON.stringify(item.binary));
+					newItem.binary = deepCopy(item.binary);
 				} else {
 					// Item does not have binary data yet so initialize empty
 					newItem.binary = {};
@@ -447,7 +449,7 @@ export class MoveBinaryData implements INodeType {
 					} else {
 						// Data should not be kept and only one key has to get removed. So copy all
 						// data and then remove the not needed one
-						newItem.json = JSON.parse(JSON.stringify(item.json));
+						newItem.json = deepCopy(item.json);
 						const sourceKey = this.getNodeParameter('sourceKey', itemIndex) as string;
 
 						unset(newItem.json, sourceKey);

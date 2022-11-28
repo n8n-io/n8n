@@ -43,7 +43,7 @@ import {
 import { NodeApiError, NodeOperationError } from './NodeErrors';
 import * as NodeHelpers from './NodeHelpers';
 
-import type { Workflow } from '.';
+import type { Workflow } from './Workflow';
 
 export class RoutingNode {
 	additionalData: IWorkflowExecuteAdditionalData;
@@ -277,12 +277,12 @@ export class RoutingNode {
 						};
 					});
 				});
-			} catch (e) {
-				throw new NodeOperationError(
-					this.node,
-					`The rootProperty "${action.properties.property}" could not be found on item.`,
-					{ runIndex, itemIndex },
-				);
+			} catch (error) {
+				throw new NodeOperationError(this.node, error, {
+					runIndex,
+					itemIndex,
+					description: `The rootProperty "${action.properties.property}" could not be found on item.`,
+				});
 			}
 		}
 		if (action.type === 'limit') {

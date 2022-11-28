@@ -7,21 +7,12 @@ import {
 	INodeType,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import {
-	companyFields,
-	contactFields,
-	dealFields,
-	hubspotApiRequest,
-	propertyEvents,
-} from './GenericFunctions';
+import { hubspotApiRequest, propertyEvents } from './GenericFunctions';
 
 import { createHash } from 'crypto';
-
-import { capitalCase } from 'change-case';
 
 export class HubspotTrigger implements INodeType {
 	description: INodeTypeDescription = {

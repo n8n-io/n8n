@@ -9,10 +9,12 @@ const config = (module.exports = {
 	},
 
 	ignorePatterns: [
-		'.eslintrc.js', // TODO: remove this
 		'node_modules/**',
 		'dist/**',
-		'test/**', // TODO: remove this
+		// TODO: remove these
+		'test/**',
+		'.eslintrc.js',
+		'jest.config.js',
 	],
 
 	plugins: [
@@ -136,7 +138,7 @@ const config = (module.exports = {
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-ts-comment.md
 		 */
-		'@typescript-eslint/ban-ts-comment': 'off',
+		'@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true }],
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/ban-types.md
@@ -283,11 +285,6 @@ const config = (module.exports = {
 		'@typescript-eslint/no-unused-expressions': 'error',
 
 		/**
-		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 */
-		'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '_' }],
-
-		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/master/packages/eslint-plugin/docs/rules/prefer-nullish-coalescing.md
 		 */
 		'@typescript-eslint/prefer-nullish-coalescing': 'error',
@@ -319,9 +316,9 @@ const config = (module.exports = {
 		// ----------------------------------
 		//   eslint-plugin-n8n-local-rules
 		// ----------------------------------
+		'n8n-local-rules/no-uncaught-json-parse': 'error',
 
-		// TODO: set to `error` and fix offenses
-		'n8n-local-rules/no-uncaught-json-parse': 'warn',
+		'n8n-local-rules/no-json-parse-json-stringify': 'error',
 
 		// ******************************************************************
 		//                    overrides to base ruleset
@@ -363,10 +360,17 @@ const config = (module.exports = {
 
 		/**
 		 * https://github.com/typescript-eslint/typescript-eslint/blob/main/packages/eslint-plugin/docs/rules/no-unused-vars.md
-		 *
-		 * Disabled because eslint-plugin-diff fails to catch it. TODO: Revisit.
 		 */
-		'@typescript-eslint/no-unused-vars': 'warn',
+		'no-unused-vars': 'off',
+		'@typescript-eslint/no-unused-vars': [
+			process.env.CI_LINT_MASTER ? 'warn' : 'error',
+			{
+				argsIgnorePattern: '^_',
+				destructuredArrayIgnorePattern: '^_',
+				varsIgnorePattern: '^_',
+				ignoreRestSiblings: true,
+			},
+		],
 
 		// ----------------------------------
 		//              import

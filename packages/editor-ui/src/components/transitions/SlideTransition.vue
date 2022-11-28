@@ -1,6 +1,6 @@
 <template>
 	<transition name="slide">
-		<slot></slot>
+		<slot />
 	</transition>
 </template>
 
@@ -21,4 +21,5 @@ export default Vue.extend({
 .slide-enter {
 	transform: translateX(100%);
 }
+
 </style>

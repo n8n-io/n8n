@@ -8,5 +8,6 @@ module.exports = {
 	],
 	rules: {
 		'import/order': 'off', // TODO: remove this
+		'@typescript-eslint/ban-ts-comment': ['warn', { 'ts-ignore': true }],
 	},
 };

@@ -32,8 +32,6 @@ import {
 	agentRoleOperations,
 	announcementFields,
 	announcementOperations,
-	assetFields,
-	assetOperations,
 	assetTypeFields,
 	assetTypeOperations,
 	changeFields,
@@ -304,7 +302,7 @@ export class Freshservice implements INodeType {
 
 						Object.assign(body, adjustAgentRoles(roles));
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -331,7 +329,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, formatFilters(filters));
@@ -344,7 +342,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 
@@ -372,7 +370,7 @@ export class Freshservice implements INodeType {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -407,7 +405,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 
@@ -575,7 +573,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, formatFilters(filters));
@@ -588,7 +586,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 
@@ -616,7 +614,7 @@ export class Freshservice implements INodeType {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -652,7 +650,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 
@@ -684,7 +682,7 @@ export class Freshservice implements INodeType {
 							change_type: 1,
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -715,7 +713,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, formatFilters(filters));
@@ -728,7 +726,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 
@@ -791,7 +789,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, formatFilters(filters));
@@ -870,7 +868,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 
@@ -899,7 +897,7 @@ export class Freshservice implements INodeType {
 							impact: 1,
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -934,7 +932,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 
@@ -959,7 +957,7 @@ export class Freshservice implements INodeType {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -995,7 +993,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						Object.assign(body, updateFields);
 
@@ -1022,7 +1020,7 @@ export class Freshservice implements INodeType {
 							planned_end_date: this.getNodeParameter('plannedEndDate', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -1057,7 +1055,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						Object.assign(body, updateFields);
 
@@ -1116,7 +1114,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						if (Object.keys(filters).length) {
 							Object.assign(qs, formatFilters(filters));
@@ -1160,7 +1158,7 @@ export class Freshservice implements INodeType {
 							name: this.getNodeParameter('name', i),
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body, additionalFields);
@@ -1200,7 +1198,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 
@@ -1227,7 +1225,7 @@ export class Freshservice implements INodeType {
 							},
 						} as IDataObject;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (Object.keys(additionalFields).length) {
 							Object.assign(body.application!, additionalFields);
@@ -1262,7 +1260,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = { application: {} } as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 
@@ -1328,7 +1326,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const qs = {} as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 						let endpoint = '';
 
 						if (Object.keys(filters).length) {
@@ -1345,7 +1343,7 @@ export class Freshservice implements INodeType {
 						// ----------------------------------------
 
 						const body = {} as IDataObject;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						validateUpdateFields.call(this, updateFields, resource);
 

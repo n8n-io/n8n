@@ -17,10 +17,9 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 		icon: 'file:../venafi.svg',
 		group: ['trigger'],
 		version: 1,
-		description: 'Starts the workflow when Venafi events occure',
+		description: 'Starts the workflow when Venafi events occur',
 		defaults: {
 			name: 'Venafi TLS Protect Cloud​ Trigger',
-			color: '#000000',
 		},
 		credentials: [
 			{
@@ -87,7 +86,10 @@ export class VenafiTlsProtectCloudTrigger implements INodeType {
 				const activity = activitytypes.find(({ key }: { key: string }) => key === resource) as {
 					values: [{ key: string; readableName: string }];
 				};
-				const subActivities = activity.values.map(({ key, readableName }) => ({ name: readableName, value: key }));
+				const subActivities = activity.values.map(({ key, readableName }) => ({
+					name: readableName,
+					value: key,
+				}));
 				subActivities.unshift({ name: '[All]', value: '*' });
 				return subActivities;
 			},

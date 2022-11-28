@@ -87,7 +87,8 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
 					},
 					hide: {
 						'/joinMode': ['keepMatches', 'keepNonMatches'],
@@ -98,7 +99,8 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
 						'/joinMode': ['keepMatches'],
 						'/outputDataFrom': ['both'],
 					},
@@ -108,7 +110,8 @@ export const optionsDescription: INodeProperties[] = [
 				...clashHandlingProperties,
 				displayOptions: {
 					show: {
-						'/mode': ['multiplex', 'mergeByPosition'],
+						'/mode': ['combine'],
+						'/combinationMode': ['multiplex', 'mergeByPosition'],
 					},
 				},
 			},
@@ -121,7 +124,8 @@ export const optionsDescription: INodeProperties[] = [
 					'Whether to disallow referencing child fields using `parent.child` in the field name',
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
 					},
 				},
 			},
@@ -135,7 +139,8 @@ export const optionsDescription: INodeProperties[] = [
 					'If there are different numbers of items in input 1 and input 2, whether to include the ones at the end with nothing to pair with',
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByPosition'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByPosition'],
 					},
 				},
 			},
@@ -158,7 +163,8 @@ export const optionsDescription: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
 						'/joinMode': ['keepMatches'],
 						'/outputDataFrom': ['both'],
 					},
@@ -183,8 +189,9 @@ export const optionsDescription: INodeProperties[] = [
 				],
 				displayOptions: {
 					show: {
-						'/mode': ['mergeByFields'],
-						'/joinMode': ['enrichInput1', 'enrichInput2'],
+						'/mode': ['combine'],
+						'/combinationMode': ['mergeByFields'],
+						'/joinMode': ['enrichInput1', 'enrichInput2', 'keepEverything'],
 					},
 				},
 			},

@@ -37,10 +37,8 @@ import {
 	WorkflowExecuteMode,
 	WorkflowOperationError,
 } from 'n8n-workflow';
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { get } from 'lodash';
-// eslint-disable-next-line import/no-cycle
-import { NodeExecuteFunctions } from '.';
+import get from 'lodash.get';
+import * as NodeExecuteFunctions from './NodeExecuteFunctions';
 
 export class WorkflowExecute {
 	runExecutionData: IRunExecutionData;
@@ -156,7 +154,6 @@ export class WorkflowExecute {
 		startNodes: string[],
 		destinationNode: string,
 		pinData?: IPinData,
-		// @ts-ignore
 	): PCancelable<IRun> {
 		let incomingNodeConnections: INodeConnections | undefined;
 		let connection: IConnection;
@@ -188,12 +185,19 @@ export class WorkflowExecute {
 					for (let inputIndex = 0; inputIndex < connections.length; inputIndex++) {
 						connection = connections[inputIndex];
 
-						if (workflow.getNode(connection.node)?.disabled) continue;
+						const node = workflow.getNode(connection.node);
 
-						incomingData.push(
-							// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-							runData[connection.node][runIndex].data![connection.type][connection.index]!,
-						);
+						if (node?.disabled) continue;
+
+						if (node && pinData && pinData[node.name]) {
+							incomingData.push(pinData[node.name]);
+						} else {
+							incomingData.push(
+								// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+								runData[connection.node][runIndex].data![connection.type][connection.index]!,
+							);
+						}
+
 						incomingSourceData.main.push({
 							previousNode: connection.node,
 						});
@@ -287,7 +291,6 @@ export class WorkflowExecute {
 	 */
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	async executeHook(hookName: string, parameters: any[]): Promise<void> {
-		// tslint:disable-line:no-any
 		if (this.additionalData.hooks === undefined) {
 			return;
 		}
@@ -776,7 +779,6 @@ export class WorkflowExecute {
 						gotCancel = true;
 					}
 
-					// @ts-ignore
 					if (gotCancel) {
 						return Promise.resolve();
 					}
@@ -904,7 +906,6 @@ export class WorkflowExecute {
 					}
 
 					for (let tryIndex = 0; tryIndex < maxTries; tryIndex++) {
-						// @ts-ignore
 						if (gotCancel) {
 							return Promise.resolve();
 						}

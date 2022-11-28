@@ -10,7 +10,7 @@ const scopes = [
 export class GSuiteAdminOAuth2Api implements ICredentialType {
 	name = 'gSuiteAdminOAuth2Api';
 	extends = ['googleOAuth2Api'];
-	displayName = 'G Suite Admin OAuth2 API';
+	displayName = 'Google Workspace Admin OAuth2 API';
 	documentationUrl = 'google';
 	properties: INodeProperties[] = [
 		{

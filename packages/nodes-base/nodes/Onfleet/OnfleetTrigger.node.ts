@@ -25,7 +25,6 @@ export class OnfleetTrigger implements INodeType {
 		description: 'Starts the workflow when Onfleet events occur',
 		defaults: {
 			name: 'Onfleet Trigger',
-			color: '#AA81F3',
 		},
 		inputs: [],
 		outputs: ['main'],

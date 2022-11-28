@@ -1,7 +1,6 @@
 import { Column, Entity, Index, PrimaryColumn } from 'typeorm';
 
-// eslint-disable-next-line import/no-cycle
-import { IWebhookDb } from '../../Interfaces';
+import { IWebhookDb } from '@/Interfaces';
 
 @Entity()
 @Index(['webhookId', 'method', 'pathLength'])

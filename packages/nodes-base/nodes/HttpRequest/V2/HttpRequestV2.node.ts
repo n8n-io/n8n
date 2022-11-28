@@ -8,6 +8,7 @@ import {
 	INodeTypeDescription,
 	NodeApiError,
 	NodeOperationError,
+	sleep,
 } from 'n8n-workflow';
 
 import { OptionsWithUri } from 'request';
@@ -627,24 +628,33 @@ export class HttpRequestV2 implements INodeType {
 		let nodeCredentialType;
 
 		if (authentication === 'genericCredentialType') {
-			try {
-				httpBasicAuth = await this.getCredentials('httpBasicAuth');
-			} catch (_) {}
-			try {
-				httpDigestAuth = await this.getCredentials('httpDigestAuth');
-			} catch (_) {}
-			try {
-				httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
-			} catch (_) {}
-			try {
-				httpQueryAuth = await this.getCredentials('httpQueryAuth');
-			} catch (_) {}
-			try {
-				oAuth1Api = await this.getCredentials('oAuth1Api');
-			} catch (_) {}
-			try {
-				oAuth2Api = await this.getCredentials('oAuth2Api');
-			} catch (_) {}
+			const genericAuthType = this.getNodeParameter('genericAuthType', 0) as string;
+
+			if (genericAuthType === 'httpBasicAuth') {
+				try {
+					httpBasicAuth = await this.getCredentials('httpBasicAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpDigestAuth') {
+				try {
+					httpDigestAuth = await this.getCredentials('httpDigestAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpHeaderAuth') {
+				try {
+					httpHeaderAuth = await this.getCredentials('httpHeaderAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'httpQueryAuth') {
+				try {
+					httpQueryAuth = await this.getCredentials('httpQueryAuth');
+				} catch (_) {}
+			} else if (genericAuthType === 'oAuth1Api') {
+				try {
+					oAuth1Api = await this.getCredentials('oAuth1Api');
+				} catch (_) {}
+			} else if (genericAuthType === 'oAuth2Api') {
+				try {
+					oAuth2Api = await this.getCredentials('oAuth2Api');
+				} catch (_) {}
+			}
 		} else if (authentication === 'predefinedCredentialType') {
 			try {
 				nodeCredentialType = this.getNodeParameter('nodeCredentialType', 0) as string;
@@ -692,7 +702,7 @@ export class HttpRequestV2 implements INodeType {
 				const batchSize: number =
 					(options.batchSize as number) > 0 ? (options.batchSize as number) : 1;
 				if (itemIndex % batchSize === 0) {
-					await new Promise((resolve) => setTimeout(resolve, options.batchInterval as number));
+					await sleep(options.batchInterval as number);
 				}
 			}
 

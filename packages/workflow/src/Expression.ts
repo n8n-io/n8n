@@ -104,7 +104,7 @@ export class Expression {
 			typeof process !== 'undefined'
 				? {
 						arch: process.arch,
-						env: process.env,
+						env: process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true' ? {} : process.env,
 						platform: process.platform,
 						pid: process.pid,
 						ppid: process.ppid,
@@ -157,7 +157,6 @@ export class Expression {
 		data.Reflect = {};
 		data.Proxy = {};
 
-		// @ts-ignore
 		data.constructor = {};
 
 		// Deprecated

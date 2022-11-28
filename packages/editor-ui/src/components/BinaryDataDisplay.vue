@@ -20,18 +20,16 @@
 </template>
 
 <script lang="ts">
-import {
-	IBinaryData,
-	IRunData,
-	IRunExecutionData,
-} from 'n8n-workflow';
+import type { IBinaryData, IRunData } from 'n8n-workflow';
 
 import BinaryDataDisplayEmbed from '@/components/BinaryDataDisplayEmbed.vue';
 
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
-import { restApi } from '@/components/mixins/restApi';
+import { restApi } from '@/mixins/restApi';
+import { mapStores } from 'pinia';
+import { useWorkflowsStore } from '@/stores/workflows';
 
 export default mixins(
 	nodeHelpers,
@@ -43,10 +41,13 @@ export default mixins(
 			BinaryDataDisplayEmbed,
 		},
 		props: [
-			'displayData', // IBinaryDisplayData
+			'displayData', // IBinaryData
 			'windowVisible', // boolean
 		],
 		computed: {
+			...mapStores(
+				useWorkflowsStore,
+			),
 			binaryData (): IBinaryData | null {
 				const binaryData = this.getBinaryData(this.workflowRunData, this.displayData.node, this.displayData.runIndex, this.displayData.outputIndex);
 
@@ -63,21 +64,13 @@ export default mixins(
 				return binaryDataItem;
 			},
 
-			embedClass (): string[] {
-				// @ts-ignore
-				if (this.binaryData! !== null && this.binaryData!.mimeType! !== undefined && (this.binaryData!.mimeType! as string).startsWith('image')) {
-					return ['image'];
-				}
-				return ['other'];
-			},
-
 			workflowRunData (): IRunData | null {
-				const workflowExecution = this.$store.getters.getWorkflowExecution;
+				const workflowExecution = this.workflowsStore.getWorkflowExecution;
 				if (workflowExecution === null) {
 					return null;
 				}
-				const executionData: IRunExecutionData = workflowExecution.data;
-				return executionData.resultData.runData;
+				const executionData = workflowExecution.data;
+				return executionData? executionData.resultData.runData : null;
 			},
 
 		},

@@ -1,5 +1,3 @@
-import { CredentialsHelper, CredentialTypes } from '../../src';
-import * as Helpers from './Helpers';
 import {
 	IAuthenticateGeneric,
 	ICredentialDataDecryptedObject,
@@ -8,10 +6,18 @@ import {
 	IHttpRequestOptions,
 	INode,
 	INodeProperties,
+	INodesAndCredentials,
 	Workflow,
 } from 'n8n-workflow';
+import { CredentialsHelper } from '@/CredentialsHelper';
+import { CredentialTypes } from '@/CredentialTypes';
+import * as Helpers from './Helpers';
 
 const TEST_ENCRYPTION_KEY = 'test';
+const mockNodesAndCredentials: INodesAndCredentials = {
+	loaded: { nodes: {}, credentials: {} },
+	known: { nodes: {}, credentials: {} },
+};
 
 describe('CredentialsHelper', () => {
 	describe('authenticate', () => {
@@ -221,14 +227,14 @@ describe('CredentialsHelper', () => {
 
 		for (const testData of tests) {
 			test(testData.description, async () => {
-				const credentialTypes: ICredentialTypeData = {
+				mockNodesAndCredentials.loaded.credentials = {
 					[testData.input.credentialType.name]: {
 						type: testData.input.credentialType,
 						sourcePath: '',
 					},
 				};
 
-				await CredentialTypes().init(credentialTypes);
+				CredentialTypes(mockNodesAndCredentials);
 
 				const credentialsHelper = new CredentialsHelper(TEST_ENCRYPTION_KEY);
 

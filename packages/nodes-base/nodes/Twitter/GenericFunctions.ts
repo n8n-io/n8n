@@ -13,6 +13,7 @@ import {
 	INodeExecutionData,
 	NodeApiError,
 	NodeOperationError,
+	sleep,
 } from 'n8n-workflow';
 
 export async function twitterApiRequest(
@@ -193,12 +194,7 @@ export async function uploadAttachments(
 			// data has not been uploaded yet, so wait for it to be ready
 			if (response.processing_info) {
 				const { check_after_secs } = response.processing_info as IDataObject;
-				await new Promise((resolve, reject) => {
-					setTimeout(() => {
-						// @ts-ignore
-						resolve();
-					}, (check_after_secs as number) * 1000);
-				});
+				await sleep((check_after_secs as number) * 1000);
 			}
 
 			media.push(response);

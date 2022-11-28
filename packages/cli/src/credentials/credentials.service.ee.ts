@@ -1,14 +1,12 @@
-/* eslint-disable import/no-cycle */
 /* eslint-disable no-param-reassign */
-import { DeleteResult, EntityManager, In, Not } from 'typeorm';
-import { Db } from '..';
-import { RoleService } from '../role/role.service';
+import { DeleteResult, EntityManager, FindOneOptions, In, Not, ObjectLiteral } from 'typeorm';
+import * as Db from '@/Db';
+import { RoleService } from '@/role/role.service';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { User } from '@db/entities/User';
+import { UserService } from '@/user/user.service';
 import { CredentialsService } from './credentials.service';
-
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { User } from '../databases/entities/User';
-import { UserService } from '../user/user.service';
 import type { CredentialWithSharings } from './credentials.types';
 
 export class EECredentialsService extends CredentialsService {
@@ -25,6 +23,35 @@ export class EECredentialsService extends CredentialsService {
 		const { credentials: credential } = sharing;
 
 		return { ownsCredential: true, credential };
+	}
+
+	/**
+	 * Retrieve the sharing that matches a user and a credential.
+	 */
+	static async getSharing(
+		user: User,
+		credentialId: number | string,
+		relations: string[] = ['credentials'],
+		{ allowGlobalOwner } = { allowGlobalOwner: true },
+	): Promise<SharedCredentials | undefined> {
+		const options: FindOneOptions<SharedCredentials> & { where: ObjectLiteral } = {
+			where: {
+				credentials: { id: credentialId },
+			},
+		};
+
+		// Omit user from where if the requesting user is the global
+		// owner. This allows the global owner to view and delete
+		// credentials they don't own.
+		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
+			options.where.user = { id: user.id };
+		}
+
+		if (relations?.length) {
+			options.relations = relations;
+		}
+
+		return Db.collections.SharedCredentials.findOne(options);
 	}
 
 	static async getSharings(

@@ -98,6 +98,27 @@ export class Kafka implements INodeType {
 				description: 'URL of the schema registry',
 			},
 			{
+				displayName: 'Use Key',
+				name: 'useKey',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to use a message key',
+			},
+			{
+				displayName: 'Key',
+				name: 'key',
+				type: 'string',
+				required: true,
+				displayOptions: {
+					show: {
+						useKey: [true],
+					},
+				},
+				placeholder: '',
+				default: '',
+				description: 'The message key',
+			},
+			{
 				displayName: 'Event Name',
 				name: 'eventName',
 				type: 'string',
@@ -329,7 +350,11 @@ export class Kafka implements INodeType {
 
 				const topic = this.getNodeParameter('topic', i) as string;
 
-				const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+				const jsonParameters = this.getNodeParameter('jsonParameters', i);
+
+				const useKey = this.getNodeParameter('useKey', i) as boolean;
+
+				const key = useKey ? (this.getNodeParameter('key', i) as string) : null;
 
 				let headers;
 
@@ -358,6 +383,7 @@ export class Kafka implements INodeType {
 						{
 							value: message,
 							headers,
+							key,
 						},
 					],
 				});

@@ -2,13 +2,13 @@ import express from 'express';
 
 import * as utils from './shared/utils';
 import * as testDb from './shared/testDb';
-import { WorkflowEntity } from '../../src/databases/entities/WorkflowEntity';
-import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
+import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
 
-import type { Role } from '../../src/databases/entities/Role';
+import type { Role } from '@db/entities/Role';
 import type { IPinData } from 'n8n-workflow';
+import { makeWorkflow, MOCK_PINDATA } from './shared/utils';
 
-jest.mock('../../src/telemetry');
+jest.mock('@/telemetry');
 
 let app: express.Application;
 let testDbName = '';
@@ -87,29 +87,3 @@ test('GET /workflows/:id should return pin data', async () => {
 
 	expect(pinData).toMatchObject(MOCK_PINDATA);
 });
-
-function makeWorkflow({ withPinData }: { withPinData: boolean }) {
-	const workflow = new WorkflowEntity();
-
-	workflow.name = 'My Workflow';
-	workflow.active = false;
-	workflow.connections = {};
-	workflow.nodes = [
-		{
-			id: 'uuid-1234',
-			name: 'Spotify',
-			type: 'n8n-nodes-base.spotify',
-			parameters: { resource: 'track', operation: 'get', id: '123' },
-			typeVersion: 1,
-			position: [740, 240],
-		},
-	];
-
-	if (withPinData) {
-		workflow.pinData = MOCK_PINDATA;
-	}
-
-	return workflow;
-}
-
-const MOCK_PINDATA = { Spotify: [{ json: { myKey: 'myValue' } }] };

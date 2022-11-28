@@ -23,7 +23,7 @@ export async function clickupApiRequest(
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
-	option: IDataObject = {},
+	_option: IDataObject = {},
 	// tslint:disable-next-line:no-any
 ): Promise<any> {
 	const options: OptionsWithUri = {

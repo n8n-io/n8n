@@ -11,7 +11,7 @@ export async function microsoftApiRequest(
 	body: IDataObject = {},
 	qs: IDataObject = {},
 	uri?: string,
-	headers: IDataObject = {},
+	_headers: IDataObject = {},
 	option: IDataObject = { json: true },
 ) {
 	const options: OptionsWithUri = {

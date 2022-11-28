@@ -1,7 +1,7 @@
-@use "mixins/mixins";
-@use "mixins/utils";
-@use "./common/var";
-@use "common/popup";
+@use 'mixins/mixins';
+@use 'mixins/utils';
+@use './common/var';
+@use 'common/popup';
 
 @include mixins.b(dialog) {
 	position: relative;

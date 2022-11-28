@@ -9,6 +9,7 @@ export class CircleCiApi implements ICredentialType {
 			displayName: 'Personal API Token',
 			name: 'apiKey',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

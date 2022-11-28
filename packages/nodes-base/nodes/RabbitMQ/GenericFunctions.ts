@@ -1,4 +1,4 @@
-import { IDataObject, IExecuteFunctions, ITriggerFunctions } from 'n8n-workflow';
+import { IDataObject, IExecuteFunctions, ITriggerFunctions, sleep } from 'n8n-workflow';
 
 import * as amqplib from 'amqplib';
 
@@ -138,9 +138,7 @@ export class MessageTracker {
 		// when for example a new version of the workflow got saved. That would lead to
 		// them getting delivered and processed again.
 		while (unansweredMessages !== 0 && count++ <= 300) {
-			await new Promise((resolve) => {
-				setTimeout(resolve, 1000);
-			});
+			await sleep(1000);
 			unansweredMessages = this.unansweredMessages();
 		}
 

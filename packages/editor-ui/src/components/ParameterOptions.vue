@@ -25,10 +25,9 @@
 </template>
 
 <script lang="ts">
-import { isResourceLocatorValue } from '@/typeGuards';
 import { NodeParameterValueType } from 'n8n-workflow';
 import Vue, { PropType } from 'vue';
-import { isValueExpression } from './helpers';
+import { isValueExpression, isResourceLocatorValue } from '@/utils';
 
 export default Vue.extend({
 	name: 'parameter-options',
@@ -64,6 +63,14 @@ export default Vue.extend({
 			}
 
 			if (this.parameter.type === 'collection' || this.parameter.type === 'credentialsSelect') {
+				return false;
+			}
+
+			if (
+				this.parameter.typeOptions &&
+				this.parameter.typeOptions.editor &&
+				this.parameter.typeOptions.editor === 'codeNodeEditor'
+			) {
 				return false;
 			}
 

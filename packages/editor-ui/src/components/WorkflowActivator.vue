@@ -1,22 +1,36 @@
 <template>
 	<div class="workflow-activator">
+		<div :class="$style.activeStatusText" data-test-id="workflow-activator-status">
+			<n8n-text v-if="workflowActive" :color="couldNotBeStarted ? 'danger' : 'success'" size="small" bold>
+				{{ $locale.baseText('workflowActivator.active') }}
+			</n8n-text>
+			<n8n-text v-else color="text-base" size="small" bold>
+				{{ $locale.baseText('workflowActivator.inactive') }}
+			</n8n-text>
+		</div>
 		<n8n-tooltip :disabled="!disabled" placement="bottom">
-			<div slot="content">{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+			<template #content>
+				<div>{{ $locale.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes') }}</div>
+			</template>
 			<el-switch
 				v-loading="updatingWorkflowActivation"
 				:value="workflowActive"
 				@change="activeChanged"
-			  :title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
+			  	:title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
 				:disabled="disabled || updatingWorkflowActivation"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
-				element-loading-spinner="el-icon-loading">
+				element-loading-spinner="el-icon-loading"
+				data-test-id="workflow-activate-switch"
+			>
 			</el-switch>
 		</n8n-tooltip>
 
 		<div class="could-not-be-started" v-if="couldNotBeStarted">
 			<n8n-tooltip placement="top">
-				<div @click="displayActivationError" slot="content" v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"></div>
+				<template #content>
+					<div @click="displayActivationError" v-html="$locale.baseText('workflowActivator.theWorkflowIsSetToBeActiveBut')"></div>
+				</template>
 				<font-awesome-icon @click="displayActivationError" icon="exclamation-triangle" />
 			</n8n-tooltip>
 		</div>
@@ -25,13 +39,13 @@
 
 <script lang="ts">
 
-import { showMessage } from '@/components/mixins/showMessage';
-import { workflowActivate } from '@/components/mixins/workflowActivate';
-
+import { showMessage } from '@/mixins/showMessage';
+import { workflowActivate } from '@/mixins/workflowActivate';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { mapGetters } from "vuex";
-
-import { getActivatableTriggerNodes } from './helpers';
+import { getActivatableTriggerNodes } from '@/utils';
 
 export default mixins(
 	showMessage,
@@ -45,14 +59,18 @@ export default mixins(
 				'workflowId',
 			],
 			computed: {
-				...mapGetters({
-					dirtyState: "getStateIsDirty",
-				}),
+				...mapStores(
+					useUIStore,
+					useWorkflowsStore,
+				),
+				getStateIsDirty (): boolean {
+					return this.uiStore.stateIsDirty;
+				},
 				nodesIssuesExist (): boolean {
-					return this.$store.getters.nodesIssuesExist;
+					return this.workflowsStore.nodesIssuesExist;
 				},
 				isWorkflowActive (): boolean {
-					const activeWorkflows = this.$store.getters.getActiveWorkflows;
+					const activeWorkflows =  this.workflowsStore.activeWorkflows;
 					return activeWorkflows.includes(this.workflowId);
 				},
 				couldNotBeStarted (): boolean {
@@ -65,7 +83,7 @@ export default mixins(
 					return '#13ce66';
 				},
 				isCurrentWorkflow(): boolean {
-					return this.$store.getters['workflowId'] === this.workflowId;
+					return this.workflowsStore.workflowId === this.workflowId;
 				},
 				disabled(): boolean {
 					const isNewWorkflow = !this.workflowId;
@@ -76,13 +94,13 @@ export default mixins(
 					return false;
 				},
 				containsTrigger(): boolean {
-					const foundTriggers = getActivatableTriggerNodes(this.$store.getters.workflowTriggerNodes);
+					const foundTriggers = getActivatableTriggerNodes(this.workflowsStore.workflowTriggerNodes);
 					return foundTriggers.length > 0;
 				},
 			},
 			methods: {
 				async activeChanged (newActiveState: boolean) {
-					return this.updateWorkflowActivation(this.workflowId, newActiveState);
+					return await this.updateWorkflowActivation(this.workflowId, newActiveState);
 				},
 				async displayActivationError () {
 					let errorMessage: string;
@@ -113,10 +131,21 @@ export default mixins(
 	);
 </script>
 
-<style lang="scss" scoped>
-
-.workflow-activator {
+<style lang="scss" module>
+.activeStatusText {
+	width: 64px; // Required to avoid jumping when changing active state
+	padding-right: var(--spacing-2xs);
+	box-sizing: border-box;
 	display: inline-block;
+	text-align: right;
+}
+</style>
+
+<style lang="scss" scoped>
+.workflow-activator {
+	display: inline-flex;
+	flex-wrap: nowrap;
+	align-items: center;
 }
 
 .could-not-be-started {
@@ -128,5 +157,4 @@ export default mixins(
 ::v-deep .el-loading-spinner {
 	margin-top: -10px;
 }
-
 </style>

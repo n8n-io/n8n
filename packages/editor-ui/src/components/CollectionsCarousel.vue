@@ -21,11 +21,11 @@
 <script lang="ts">
 import { PropType } from "vue";
 import { ITemplatesCollection } from "@/Interface";
-import Card from '@/components/WorkflowCard.vue';
+import Card from '@/components/CollectionWorkflowCard.vue';
 import CollectionCard from '@/components/CollectionCard.vue';
 import VueAgile from 'vue-agile';
 
-import { genericHelpers } from '@/components/mixins/genericHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
 import mixins from 'vue-typed-mixins';
 
 export default mixins(genericHelpers).extend({

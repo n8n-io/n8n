@@ -212,11 +212,11 @@ export class Git implements INodeType {
 		};
 
 		const operation = this.getNodeParameter('operation', 0) as string;
-		let item: INodeExecutionData;
+		let _item: INodeExecutionData;
 		const returnItems: INodeExecutionData[] = [];
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
-				item = items[itemIndex];
+				_item = items[itemIndex];
 
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
 				const options = this.getNodeParameter('options', itemIndex, {}) as IDataObject;
@@ -342,7 +342,7 @@ export class Git implements INodeType {
 
 					const returnAll = this.getNodeParameter('returnAll', itemIndex, false) as boolean;
 					if (returnAll === false) {
-						logOptions.maxCount = this.getNodeParameter('limit', itemIndex, 100) as number;
+						logOptions.maxCount = this.getNodeParameter('limit', itemIndex, 100);
 					}
 					if (options.file) {
 						logOptions.file = options.file as string;
