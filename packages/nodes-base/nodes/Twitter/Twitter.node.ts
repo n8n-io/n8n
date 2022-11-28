@@ -9,7 +9,8 @@ import {
 	JsonObject,
 } from 'n8n-workflow';
 
-import { directMessageFields, directMessageOperations } from './DirectMessageDescription';
+import { userOperations, userFields } from './UserDescription';
+import { listOperations, listFields } from './ListDescription';
 
 import { tweetFields, tweetOperations } from './TweetDescription';
 
@@ -25,12 +26,12 @@ const ISO6391 = require('iso-639-1');
 
 export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Twitter',
+		displayName: 'Twitter (v2)',
 		name: 'twitter',
 		icon: 'file:twitter.svg',
 		group: ['input', 'output'],
-		version: 1,
-		description: 'Consume Twitter API',
+		version: 2,
+		description: 'Post, like, and search tweets, search users, add users to lists, and call custom APIs',
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Twitter',
@@ -51,22 +52,37 @@ export class Twitter implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
-						name: 'Direct Message',
-						value: 'directMessage',
-					},
-					{
 						name: 'Tweet',
 						value: 'tweet',
+						description: 'Create, reply, delete, like, or search a tweet',
+					},
+					{
+						name: 'User',
+						value: 'user',
+						description: 'Search users by username',
+					},
+					{
+						name: 'List',
+						value: 'list',
+						description: 'Add a member to a list',
+					},
+					{
+						name: 'Authorized API Call',
+						value: 'api',
+						description: 'Call any Twitter API',
 					},
 				],
 				default: 'tweet',
 			},
-			// DIRECT MESSAGE
-			...directMessageOperations,
-			...directMessageFields,
 			// TWEET
 			...tweetOperations,
 			...tweetFields,
+			// LIST
+			...listOperations,
+			...listFields,
+			// USER
+			...userOperations,
+			...userFields,
 		],
 	};
 
@@ -104,7 +120,7 @@ export class Twitter implements INodeType {
 					if (operation === 'create') {
 						const userId = this.getNodeParameter('userId', i) as string;
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const body: IDataObject = {
 							type: 'message_create',
 							message_create: {
@@ -151,7 +167,7 @@ export class Twitter implements INodeType {
 					// https://developer.twitter.com/en/docs/tweets/post-and-engage/api-reference/post-statuses-update
 					if (operation === 'create') {
 						const text = this.getNodeParameter('text', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const body: ITweet = {
 							status: text,
 						};
@@ -215,8 +231,8 @@ export class Twitter implements INodeType {
 					// https://developer.twitter.com/en/docs/tweets/search/api-reference/get-search-tweets
 					if (operation === 'search') {
 						const q = this.getNodeParameter('searchText', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 						const qs: IDataObject = {
 							q,
 						};
@@ -259,7 +275,7 @@ export class Twitter implements INodeType {
 								qs,
 							);
 						} else {
-							qs.count = this.getNodeParameter('limit', 0);
+							qs.count = this.getNodeParameter('limit', 0) as number;
 							responseData = await twitterApiRequest.call(
 								this,
 								'GET',
@@ -273,7 +289,7 @@ export class Twitter implements INodeType {
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-favorites-create
 					if (operation === 'like') {
 						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const qs: IDataObject = {
 							id: tweetId,
@@ -294,7 +310,7 @@ export class Twitter implements INodeType {
 					//https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/post-statuses-retweet-id
 					if (operation === 'retweet') {
 						const tweetId = this.getNodeParameter('tweetId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
 
 						const qs: IDataObject = {
 							id: tweetId,
