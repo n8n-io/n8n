@@ -2,6 +2,7 @@
 	<div :class="$style.item">
 		<div
 			v-if="level > 0 || level === 0 && !isSchemaValueArray"
+			:title="schema.type"
 			:class="{
 				[$style.pill]: true,
 				[$style.mappable]: mappingEnabled,
@@ -17,8 +18,8 @@
 				data-target="mappable"
 			>
 				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm"/>
-				<span v-if="isSchemaParentTypeList">{{ parent.key }}</span>
-				<span v-if="key" :class="{[$style.listKey]: isSchemaParentTypeList}">{{ key }}</span>
+				<span v-if="isSchemaParentTypeArray">{{ parent.key }}</span>
+				<span v-if="key" :class="{[$style.arrayIndex]: isSchemaParentTypeArray}">{{ key }}</span>
 			</span>
 		</div>
 		<span v-if="text" :class="$style.text">{{ text }}</span>
@@ -61,9 +62,9 @@ type Props = {
 const props = defineProps<Props>();
 
 const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
-const isSchemaParentTypeList = computed(() => props.parent?.type === 'list');
-const key = computed((): string | undefined => isSchemaParentTypeList.value ? `[${props.schema.key}]` : props.schema.key);
-const schemaName = computed(() => isSchemaParentTypeList.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key);
+const isSchemaParentTypeArray = computed(() => props.parent?.type === 'array');
+const key = computed((): string | undefined => isSchemaParentTypeArray.value ? `[${props.schema.key}]` : props.schema.key);
+const schemaName = computed(() => isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key);
 const text = computed(() => Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0));
 
 const getJsonParameterPath = (path: string): string => `{{ ${props.distanceFromActive ? '$json' : `$node["${ props.node!.name }"].json`}${path} }}`;
@@ -73,7 +74,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	switch (type) {
 		case 'object':
 			return 'cube';
-		case 'list':
+		case 'array':
 			return 'list';
 		case 'string':
 		case 'null':
@@ -177,6 +178,34 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			}
 		}
 	}
+
+	&.mappable {
+		cursor: grab;
+
+		&:hover {
+			&,
+			span span {
+				background-color: var(--color-background-light);
+				border-color: var(--color-foreground-base);
+			}
+		}
+	}
+
+	&.dragged {
+		&,
+		&:hover,
+		span {
+			color: var(--color-primary);
+			border-color: var(--color-primary-tint-1);
+			background: var(--color-primary-tint-3);
+
+			svg {
+				path {
+					fill: var(--color-primary);
+				}
+			}
+		}
+	}
 }
 
 .label {
@@ -185,7 +214,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 		padding-left: var(--spacing-3xs);
 		border-left: 1px solid var(--color-foreground-light);
 
-		&.listKey {
+		&.arrayIndex {
 			border: 0;
 			padding-left: 0;
 			margin-left: 0;
@@ -218,28 +247,6 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 
 	svg {
 		transition: all 0.3s $ease-out-expo;
-	}
-}
-
-.mappable {
-	cursor: grab;
-
-	&:hover {
-		&,
-		span span {
-			background-color: var(--color-background-light);
-			border-color: var(--color-foreground-base);
-		}
-	}
-}
-
-.dragged {
-	&,
-	&:hover,
-	span span {
-		color: var(--color-primary);
-		border-color: var(--color-primary-tint-1);
-		background: var(--color-primary-tint-3);
 	}
 }
 </style>

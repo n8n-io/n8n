@@ -208,12 +208,12 @@ export const getSchema = (input: Optional<Primitives | object>, path = ''): Sche
 	switch (typeof input) {
 		case 'object':
 			if (input === null) {
-				schema = { type: 'string', value: '[null]', path };
+				schema = { type: 'null', value: '[null]', path };
 			} else if (input instanceof Date) {
 				schema = { type: 'string', value: input.toISOString(), path };
 			} else if (Array.isArray(input)) {
 				schema = {
-					type: 'list',
+					type: 'array',
 					value: input.map((item, index) => ({key: index.toString(), ...getSchema(item,`${path}[${index}]`)})),
 					path,
 				};
