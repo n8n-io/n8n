@@ -8,8 +8,7 @@ const lastName = randLastName();
 
 describe('Authentication', () => {
 	beforeEach(() => {
-		cy.task('db:reset');
-		Cypress.session.clearAllSavedSessions();
+		cy.task('reset');
 	});
 
 	it('should setup owner', () => {
@@ -17,7 +16,7 @@ describe('Authentication', () => {
 	});
 
 	it('should sign user in', () => {
-		cy.task('db:setup-owner', { email, password, firstName, lastName });
+		cy.task('setup-owner', { email, password, firstName, lastName });
 		cy.on('uncaught:exception', (err, runnable) => {
 			expect(err.message).to.include('Not logged in');
 

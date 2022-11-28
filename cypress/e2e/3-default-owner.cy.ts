@@ -27,7 +27,7 @@ describe('Default owner', () => {
 	// todo test should redirect to setup if have not skipped
 
 	beforeEach(() => {
-		cy.task('db:reset');
+		cy.task('reset');
 		Cypress.session.clearAllSavedSessions();
 	});
 

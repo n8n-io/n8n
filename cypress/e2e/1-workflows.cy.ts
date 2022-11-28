@@ -13,7 +13,7 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflows', () => {
 	before(() => {
-		cy.task('db:reset');
+		cy.task('reset');
 		Cypress.session.clearAllSavedSessions();
 		cy.signup(username, firstName, lastName, password);
 	});

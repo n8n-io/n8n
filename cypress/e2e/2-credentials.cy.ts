@@ -11,7 +11,7 @@ const credentialsModal = new CredentialsModal();
 
 describe('Credentials', () => {
 	before(() => {
-		cy.task('db:reset');
+		cy.task('reset');
 		Cypress.session.clearAllSavedSessions();
 		cy.signup(username, firstName, lastName, password);
 	});

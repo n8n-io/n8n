@@ -12,7 +12,7 @@ const nodeCreatorFeature = new NodeCreator();
 
 describe('Node Creator', () => {
 	before(() => {
-		cy.task('db:reset');
+		cy.task('reset');
 		Cypress.session.clearAllSavedSessions();
 		cy.signup(username, firstName, lastName, password);
 	});
