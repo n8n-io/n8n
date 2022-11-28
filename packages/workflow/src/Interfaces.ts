@@ -1,9 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-/* eslint-disable import/no-extraneous-dependencies */
-// eslint-disable-next-line import/no-extraneous-dependencies
 // eslint-disable-next-line max-classes-per-file
-import * as express from 'express';
-import * as FormData from 'form-data';
+import type * as express from 'express';
+import type * as FormData from 'form-data';
 import type { IncomingHttpHeaders } from 'http';
 import type { URLSearchParams } from 'url';
 import type { IDeferredPromise } from './DeferredPromise';
@@ -29,13 +27,16 @@ export type IAllExecuteFunctions =
 	| ITriggerFunctions
 	| IWebhookFunctions;
 
+export type BinaryFileType = 'text' | 'image' | 'video';
 export interface IBinaryData {
 	[key: string]: string | undefined;
 	data: string;
 	mimeType: string;
+	fileType?: BinaryFileType;
 	fileName?: string;
 	directory?: string;
 	fileExtension?: string;
+	fileSize?: string;
 	id?: string;
 }
 
@@ -311,6 +312,7 @@ export interface ICredentialType {
 	name: string;
 	displayName: string;
 	icon?: string;
+	iconUrl?: string;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
@@ -325,9 +327,7 @@ export interface ICredentialType {
 }
 
 export interface ICredentialTypes {
-	credentialTypes?: ICredentialTypeData;
-	init(credentialTypes?: ICredentialTypeData): Promise<void>;
-	getAll(): ICredentialType[];
+	recognizes(credentialType: string): boolean;
 	getByName(credentialType: string): ICredentialType;
 }
 
@@ -564,6 +564,10 @@ namespace ExecuteFunctions {
 			| 'resolveData';
 	}
 
+	namespace RecordReturning {
+		export type NodeParameter = 'additionalFields' | 'filters' | 'options' | 'updateFields';
+	}
+
 	export type GetNodeParameterFn = {
 		// @TECH_DEBT: Refactor to remove this barely used overload - N8N-5632
 		getNodeParameter<T extends { resource: string }>(
@@ -571,6 +575,12 @@ namespace ExecuteFunctions {
 			itemIndex?: number,
 		): T['resource'];
 
+		getNodeParameter(
+			parameterName: RecordReturning.NodeParameter,
+			itemIndex: number,
+			fallbackValue?: IDataObject,
+			options?: IGetNodeParameterOptions,
+		): IDataObject;
 		getNodeParameter(
 			parameterName: BooleanReturning.NodeParameter,
 			itemIndex: number,
@@ -1247,6 +1257,7 @@ export interface INodeTypeBaseDescription {
 	displayName: string;
 	name: string;
 	icon?: string;
+	iconUrl?: string;
 	group: string[];
 	description: string;
 	documentationUrl?: string;
@@ -1463,24 +1474,37 @@ export type WebhookResponseData = 'allEntries' | 'firstEntryJson' | 'firstEntryB
 export type WebhookResponseMode = 'onReceived' | 'lastNode';
 
 export interface INodeTypes {
-	nodeTypes: INodeTypeData;
-	init(nodeTypes?: INodeTypeData): Promise<void>;
 	getAll(): Array<INodeType | IVersionedNodeType>;
 	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined;
 }
 
-export interface ICredentialTypeData {
-	[key: string]: {
-		type: ICredentialType;
-		sourcePath: string;
-	};
+export type LoadingDetails = {
+	className: string;
+	sourcePath: string;
+};
+
+export type KnownNodesAndCredentials = {
+	nodes: Record<string, LoadingDetails>;
+	credentials: Record<string, LoadingDetails>;
+};
+
+export interface LoadedClass<T> {
+	sourcePath: string;
+	type: T;
 }
 
-export interface INodeTypeData {
-	[key: string]: {
-		type: INodeType | IVersionedNodeType;
-		sourcePath: string;
-	};
+type LoadedData<T> = Record<string, LoadedClass<T>>;
+export type ICredentialTypeData = LoadedData<ICredentialType>;
+export type INodeTypeData = LoadedData<INodeType | IVersionedNodeType>;
+
+export type LoadedNodesAndCredentials = {
+	nodes: INodeTypeData;
+	credentials: ICredentialTypeData;
+};
+
+export interface INodesAndCredentials {
+	known: KnownNodesAndCredentials;
+	loaded: LoadedNodesAndCredentials;
 }
 
 export interface IRun {

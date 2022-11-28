@@ -214,7 +214,7 @@ export class AgileCrm implements INodeType {
 							}
 						}
 					} else {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						// if company, add 'company' as type. default is person
 						if (resource === 'company') {
@@ -366,7 +366,7 @@ export class AgileCrm implements INodeType {
 							}
 						}
 					} else {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.starValue) {
 							body.star_value = additionalFields.starValue as string;
@@ -544,7 +544,7 @@ export class AgileCrm implements INodeType {
 							}
 						}
 					} else {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						body.close_date = new Date(this.getNodeParameter('closeDate', i) as string).getTime();
 						body.expected_value = this.getNodeParameter('expectedValue', i) as number;
@@ -584,7 +584,7 @@ export class AgileCrm implements INodeType {
 							}
 						}
 					} else {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						body.id = this.getNodeParameter('dealId', i) as number;
 
 						if (additionalFields.expectedValue) {

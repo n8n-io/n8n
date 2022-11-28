@@ -94,7 +94,7 @@ export class GoogleTasks implements INodeType {
 						//https://developers.google.com/tasks/v1/reference/tasks/insert
 						const taskId = this.getNodeParameter('task', i) as string;
 						body.title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.parent) {
 							qs.parent = additionalFields.parent as string;
@@ -164,7 +164,7 @@ export class GoogleTasks implements INodeType {
 							showDeleted = false,
 							showHidden = false,
 							...options
-						} = this.getNodeParameter('additionalFields', i) as IDataObject;
+						} = this.getNodeParameter('additionalFields', i);
 						if (options.completedMax) {
 							qs.completedMax = options.completedMax as string;
 						}
@@ -212,7 +212,7 @@ export class GoogleTasks implements INodeType {
 						//https://developers.google.com/tasks/v1/reference/tasks/patch
 						const taskListId = this.getNodeParameter('task', i) as string;
 						const taskId = this.getNodeParameter('taskId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						if (updateFields.previous) {
 							qs.previous = updateFields.previous as string;

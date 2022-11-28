@@ -1,6 +1,6 @@
 {
   "name": "n8n-editor-ui",
-  "version": "0.169.0",
+  "version": "0.170.0",
   "description": "Workflow Editor UI for n8n",
   "license": "SEE LICENSE IN LICENSE.md",
   "homepage": "https://n8n.io",
@@ -16,6 +16,7 @@
   "scripts": {
     "clean": "rimraf dist .turbo",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
+    "typecheck": "vue-tsc --emitDeclarationOnly",
     "dev": "pnpm serve",
     "lint": "tslint -p tsconfig.json -c tslint.json && eslint --ext .js,.ts,.vue src",
     "lintfix": "tslint --fix -p tsconfig.json -c tslint.json && eslint --ext .js,.ts,.vue src --fix",
@@ -55,8 +56,8 @@
     "lodash.set": "^4.3.2",
     "luxon": "^2.3.0",
     "monaco-editor": "^0.33.0",
-    "n8n-design-system": "~0.43.0",
-    "n8n-workflow": "~0.125.0",
+    "n8n-design-system": "~0.44.0",
+    "n8n-workflow": "~0.126.0",
     "normalize-wheel": "^1.0.1",
     "pinia": "^2.0.22",
     "prismjs": "^1.17.1",
@@ -104,6 +105,6 @@
     "vite-plugin-html": "^3.2.0",
     "vite-plugin-monaco-editor": "^1.0.10",
     "vitest": "0.9.3",
-    "vue-tsc": "^0.34.15"
+    "vue-tsc": "^0.35.0"
   }
 }

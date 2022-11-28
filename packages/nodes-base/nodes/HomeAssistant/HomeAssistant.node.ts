@@ -326,7 +326,7 @@ export class HomeAssistant implements INodeType {
 							};
 						}
 					} else if (operation === 'getLogbookEntries') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let endpoint = '/logbook';
 
 						if (Object.entries(additionalFields).length) {
@@ -356,7 +356,7 @@ export class HomeAssistant implements INodeType {
 				} else if (resource === 'history') {
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						let endpoint = '/history/period';
 
 						if (Object.entries(additionalFields).length) {

@@ -14,4 +14,6 @@ export interface CredentialUsedByWorkflow {
 	name: string;
 	type?: string;
 	currentUserHasAccess: boolean;
+	ownedBy?: IUser | null;
+	sharedWith?: IUser[];
 }

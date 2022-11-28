@@ -2,9 +2,7 @@
 	"node": "n8n-nodes-base.executeWorkflowTrigger",
 	"nodeVersion": "1.0",
 	"codexVersion": "1.0",
-	"categories": [
-		"Core Nodes"
-	],
+	"categories": ["Core Nodes"],
 	"resources": {
 		"primaryDocumentation": [
 			{
@@ -14,8 +12,6 @@
 		"generic": []
 	},
 	"subcategories": {
-		"Core Nodes": [
-			"Helpers"
-		]
+		"Core Nodes": ["Helpers"]
 	}
 }

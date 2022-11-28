@@ -804,7 +804,7 @@ export class Dropbox implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						property = 'entries';
 
@@ -833,7 +833,7 @@ export class Dropbox implements INodeType {
 
 						simple = this.getNodeParameter('simple', 0) as boolean;
 
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						property = 'matches';
 

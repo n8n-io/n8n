@@ -27,6 +27,7 @@
 import { WorkflowsPage, SigninPage, SignupPage } from "../pages";
 import { N8N_AUTH_COOKIE } from "../constants";
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
+import { MessageBox } from '../pages/modals/message-box';
 
 Cypress.Commands.add('getByTestId', (selector, ...args) => {
 	return cy.get(`[data-test-id="${selector}"]`, ...args)
@@ -36,13 +37,13 @@ Cypress.Commands.add('createFixtureWorkflow', (fixtureKey, workflowName) => {
 	const WorkflowPage = new WorkflowPageClass()
 
 	// We need to force the click because the input is hidden
-	WorkflowPage.get('workflowImportInput').selectFile(`cypress/fixtures/${fixtureKey}`, { force: true});
-	WorkflowPage.get('workflowNameInput').should('be.disabled');
-	WorkflowPage.get('workflowNameInput').parent().click()
-	WorkflowPage.get('workflowNameInput').should('be.enabled');
-	WorkflowPage.get('workflowNameInput').clear().type(workflowName).type('{enter}');
+	WorkflowPage.getters.workflowImportInput().selectFile(`cypress/fixtures/${fixtureKey}`, { force: true});
+	WorkflowPage.getters.workflowNameInput().should('be.disabled');
+	WorkflowPage.getters.workflowNameInput().parent().click()
+	WorkflowPage.getters.workflowNameInput().should('be.enabled');
+	WorkflowPage.getters.workflowNameInput().clear().type(workflowName).type('{enter}');
 
-	WorkflowPage.get('saveButton').should('contain', 'Saved');
+	WorkflowPage.getters.saveButton().should('contain', 'Saved');
 })
 
 Cypress.Commands.add('findChildByTestId', { prevSubject: true }, (subject: Cypress.Chainable<JQuery<HTMLElement>>, childTestId) => {
@@ -58,10 +59,10 @@ Cypress.Commands.add(
 		cy.session([email, password], () => {
 			cy.visit(signinPage.url);
 
-			signinPage.get('form').within(() => {
-				signinPage.get('email').type(email);
-				signinPage.get('password').type(password);
-				signinPage.get('submit').click();
+			signinPage.getters.form().within(() => {
+				signinPage.getters.email().type(email);
+				signinPage.getters.password().type(password);
+				signinPage.getters.submit().click();
 			});
 
 			// we should be redirected to /workflows
@@ -74,19 +75,45 @@ Cypress.Commands.add(
 		});
 });
 
+// todo rename to setup
 Cypress.Commands.add('signup', (email, firstName, lastName, password) => {
 	const signupPage = new SignupPage();
 
 	cy.visit(signupPage.url);
 
-	signupPage.get('form').within(() => {
+	signupPage.getters.form().within(() => {
 		cy.url().then((url) => {
 			if (url.endsWith(signupPage.url)) {
-				signupPage.get('email').type(email);
-				signupPage.get('firstName').type(firstName);
-				signupPage.get('lastName').type(lastName);
-				signupPage.get('password').type(password);
-				signupPage.get('submit').click();
+				signupPage.getters.email().type(email);
+				signupPage.getters.firstName().type(firstName);
+				signupPage.getters.lastName().type(lastName);
+				signupPage.getters.password().type(password);
+				signupPage.getters.submit().click();
+			} else {
+				cy.log('User already signed up');
+			}
+		});
+	});
+})
+
+Cypress.Commands.add('skipSetup', () => {
+	const signupPage = new SignupPage();
+	const workflowsPage = new WorkflowsPage();
+	const Confirmation = new MessageBox();
+
+	cy.visit(signupPage.url);
+
+	signupPage.getters.form().within(() => {
+		cy.url().then((url) => {
+			if (url.endsWith(signupPage.url)) {
+				signupPage.getters.skip().click();
+
+
+				Confirmation.getters.header().should('contain.text', 'Skip owner account setup?');
+				Confirmation.actions.confirm();
+
+				// we should be redirected to /workflows
+				cy.url().should('include', workflowsPage.url);
 			} else {
 				cy.log('User already signed up');
 			}

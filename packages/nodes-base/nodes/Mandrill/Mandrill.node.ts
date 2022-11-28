@@ -67,7 +67,7 @@ interface Body {
 	send_at?: string;
 }
 
-interface Options {
+type Options = IDataObject & {
 	html: string;
 	fromName?: string;
 	text: string;
@@ -92,7 +92,7 @@ interface Options {
 	signingDomain: string;
 	returnPathDomain: string;
 	sendAt: string;
-}
+};
 
 export class Mandrill implements INodeType {
 	description: INodeTypeDescription = {

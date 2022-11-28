@@ -172,7 +172,7 @@ export class Shopify implements INodeType {
 				if (resource === 'order') {
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#create-2020-04
 					if (operation === 'create') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const discount = additionalFields.discountCodesUi as IDataObject;
 						const billing = additionalFields.billingAddressUi as IDataObject;
 						const shipping = additionalFields.shippingAddressUi as IDataObject;
@@ -249,7 +249,7 @@ export class Shopify implements INodeType {
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#show-2020-04
 					if (operation === 'get') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.fields) {
 							qs.fields = options.fields as string;
 						}
@@ -265,7 +265,7 @@ export class Shopify implements INodeType {
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#index-2020-04
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.fields) {
 							qs.fields = options.fields as string;
 						}
@@ -324,7 +324,7 @@ export class Shopify implements INodeType {
 					//https://shopify.dev/docs/admin-api/rest/reference/orders/order#update-2019-10
 					if (operation === 'update') {
 						const orderId = this.getNodeParameter('orderId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const shipping = updateFields.shippingAddressUi as IDataObject;
 						const body: IOrder = {};
 						if (updateFields.locationId) {

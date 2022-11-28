@@ -50,7 +50,9 @@
 				</div>
 			</div>
 		</div>
-		<slot name="reference" />
+		<template #reference>
+    		<slot />
+		</template>
 	</n8n-popover>
 </template>
 

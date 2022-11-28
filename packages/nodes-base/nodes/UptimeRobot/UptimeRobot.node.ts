@@ -162,7 +162,7 @@ export class UptimeRobot implements INodeType {
 
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const filters = this.getNodeParameter('filters', i);
 
 						body = {
 							...filters,

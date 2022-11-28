@@ -38,7 +38,7 @@ import mixins from 'vue-typed-mixins';
 
 import { IN8nPromptResponse } from '@/Interface';
 import { VALID_EMAIL_REGEX } from '@/constants';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import Modal from './Modal.vue';
 import { mapStores } from 'pinia';
 import { useSettingsStore } from '@/stores/settings';

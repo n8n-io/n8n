@@ -162,7 +162,7 @@ export class Zulip implements INodeType {
 					//https://zulipchat.com/api/update-message
 					if (operation === 'update') {
 						const messageId = this.getNodeParameter('messageId', i) as string;
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 						const body: IMessage = {};
 						if (updateFields.content) {
 							body.content = updateFields.content as string;
@@ -236,7 +236,7 @@ export class Zulip implements INodeType {
 					const body: IStream = {};
 
 					if (operation === 'getAll') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.includePublic) {
 							body.include_public = additionalFields.includePublic as boolean;
@@ -259,7 +259,7 @@ export class Zulip implements INodeType {
 					}
 
 					if (operation === 'getSubscribed') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.includeSubscribers) {
 							body.include_subscribers = additionalFields.includeSubscribers as boolean;
@@ -293,7 +293,7 @@ export class Zulip implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							const subscriptions = this.getNodeParameter('subscriptions', i) as IDataObject;
 							body.subscriptions = JSON.stringify(subscriptions.properties);
@@ -362,7 +362,7 @@ export class Zulip implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.description) {
 								body.description = JSON.stringify(additionalFields.description as string);
@@ -399,7 +399,7 @@ export class Zulip implements INodeType {
 
 					if (operation === 'get') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.clientGravatar) {
 							body.client_gravatar = additionalFields.client_gravatar as boolean;
@@ -413,7 +413,7 @@ export class Zulip implements INodeType {
 					}
 
 					if (operation === 'getAll') {
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.clientGravatar) {
 							body.client_gravatar = additionalFields.client_gravatar as boolean;
@@ -438,7 +438,7 @@ export class Zulip implements INodeType {
 
 					if (operation === 'update') {
 						const userId = this.getNodeParameter('userId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						if (additionalFields.fullName) {
 							body.full_name = JSON.stringify(additionalFields.fullName as string);
