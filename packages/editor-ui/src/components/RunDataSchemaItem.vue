@@ -27,7 +27,7 @@
 			<font-awesome-icon icon="angle-down" />
 		</label>
 		<div v-if="isSchemaValueArray" :class="$style.sub">
-			<run-data-json-schema-item v-for="(s, i) in schema.value"
+			<run-data-schema-item v-for="(s, i) in schema.value"
 				:key="`${s.type}-${level}-${i}`"
 				:schema="s"
 				:level="level + 1"
