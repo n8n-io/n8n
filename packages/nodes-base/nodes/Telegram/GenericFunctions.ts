@@ -65,7 +65,7 @@ export interface IMarkupReplyKeyboardRemove {
  */
 export function addAdditionalFields(this: IExecuteFunctions, body: IDataObject, index: number) {
 	// Add the additional fields
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	Object.assign(body, additionalFields);
 
 	const operation = this.getNodeParameter('operation', index) as string;

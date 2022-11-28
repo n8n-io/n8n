@@ -1,5 +1,5 @@
 import { IRestApiContext, IN8nPrompts, IN8nValueSurveyData, IN8nUISettings, IN8nPromptResponse } from '../Interface';
-import { makeRestApiRequest, get, post } from './helpers';
+import { makeRestApiRequest, get, post } from '@/utils';
 import { N8N_IO_BASE_URL, NPM_COMMUNITY_NODE_SEARCH_API_URL  } from '@/constants';
 
 export function getSettings(context: IRestApiContext): Promise<IN8nUISettings> {

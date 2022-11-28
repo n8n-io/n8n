@@ -27,7 +27,7 @@ export async function stripeApiRequest(
 		delete options.qs;
 	}
 
-	return await this.helpers.requestWithAuthentication.call(this, 'stripeApi', options);
+	return this.helpers.requestWithAuthentication.call(this, 'stripeApi', options);
 }
 
 /**
@@ -118,7 +118,7 @@ export async function handleListing(
 	const returnData: IDataObject[] = [];
 	let responseData;
 
-	const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+	const returnAll = this.getNodeParameter('returnAll', i);
 	const limit = this.getNodeParameter('limit', i, 0) as number;
 
 	do {

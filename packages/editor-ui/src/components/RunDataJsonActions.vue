@@ -9,17 +9,19 @@
 					:circle="false"
 				/>
 			</span>
-			<el-dropdown-menu slot="dropdown">
-				<el-dropdown-item :command="{command: 'value'}">
-					{{ $locale.baseText('runData.copyValue') }}
-				</el-dropdown-item>
-				<el-dropdown-item :command="{command: 'itemPath'}" divided>
-					{{ $locale.baseText('runData.copyItemPath') }}
-				</el-dropdown-item>
-				<el-dropdown-item :command="{command: 'parameterPath'}">
-					{{ $locale.baseText('runData.copyParameterPath') }}
-				</el-dropdown-item>
-			</el-dropdown-menu>
+			<template #dropdown>
+				<el-dropdown-menu>
+					<el-dropdown-item :command="{command: 'value'}">
+						{{ $locale.baseText('runData.copyValue') }}
+					</el-dropdown-item>
+					<el-dropdown-item :command="{command: 'itemPath'}" divided>
+						{{ $locale.baseText('runData.copyItemPath') }}
+					</el-dropdown-item>
+					<el-dropdown-item :command="{command: 'parameterPath'}">
+						{{ $locale.baseText('runData.copyParameterPath') }}
+					</el-dropdown-item>
+				</el-dropdown-menu>
+			</template>
 		</el-dropdown>
 	</div>
 </template>
@@ -30,11 +32,11 @@ import mixins from "vue-typed-mixins";
 import jp from "jsonpath";
 import { INodeUi } from "@/Interface";
 import { IDataObject } from "n8n-workflow";
-import { copyPaste } from "@/components/mixins/copyPaste";
-import { pinData } from "@/components/mixins/pinData";
-import { nodeHelpers } from "@/components/mixins/nodeHelpers";
-import { genericHelpers } from "@/components/mixins/genericHelpers";
-import { clearJsonKey, convertPath, executionDataToJson } from "@/components/helpers";
+import { copyPaste } from "@/mixins/copyPaste";
+import { pinData } from "@/mixins/pinData";
+import { nodeHelpers } from "@/mixins/nodeHelpers";
+import { genericHelpers } from "@/mixins/genericHelpers";
+import { clearJsonKey, convertPath, executionDataToJson } from '@/utils';
 import { mapStores } from "pinia";
 import { useWorkflowsStore } from "@/stores/workflows";
 import { useNDVStore } from "@/stores/ndv";

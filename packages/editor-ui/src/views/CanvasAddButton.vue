@@ -1,7 +1,7 @@
 <template>
-	<div :class="$style.container" :style="containerCssVars" ref="container">
+	<div :class="$style.container" :style="containerCssVars" ref="container" data-test-id="canvas-add-button">
 		<n8n-tooltip placement="top" :value="showTooltip" manual :disabled="isScrimActive" :popper-class="$style.tooltip" :open-delay="700">
-			<button :class="$style.button" @click="$emit('click')">
+			<button :class="$style.button" @click="$emit('click')" data-test-id="canvas-plus-button">
 				<font-awesome-icon icon="plus" size="lg" />
 			</button>
 			<template #content>

@@ -111,7 +111,7 @@ export class Contentful implements INodeType {
 
 						const id = this.getNodeParameter('contentTypeId', 0) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						responseData = await contentfulApiRequest.call(
 							this,
@@ -132,7 +132,7 @@ export class Contentful implements INodeType {
 
 						const id = this.getNodeParameter('entryId', 0) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						responseData = await contentfulApiRequest.call(
 							this,
@@ -148,9 +148,9 @@ export class Contentful implements INodeType {
 					} else if (operation === 'getAll') {
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const rawData = additionalFields.rawData;
 						additionalFields.rawData = undefined;
 
@@ -201,7 +201,7 @@ export class Contentful implements INodeType {
 								responseData = assets;
 							}
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.limit = limit;
 							responseData = await contentfulApiRequest.call(
 								this,
@@ -231,7 +231,7 @@ export class Contentful implements INodeType {
 
 						const id = this.getNodeParameter('assetId', 0) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						responseData = await contentfulApiRequest.call(
 							this,
@@ -247,9 +247,9 @@ export class Contentful implements INodeType {
 					} else if (operation === 'getAll') {
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const rawData = additionalFields.rawData;
 						additionalFields.rawData = undefined;
 
@@ -300,7 +300,7 @@ export class Contentful implements INodeType {
 								responseData = assets;
 							}
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							qs.limit = limit;
 							responseData = await contentfulApiRequest.call(
 								this,
@@ -326,7 +326,7 @@ export class Contentful implements INodeType {
 					if (operation === 'getAll') {
 						const credentials = await this.getCredentials('contentfulApi');
 
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 
 						const env = this.getNodeParameter('environmentId', i) as string;
 
@@ -340,7 +340,7 @@ export class Contentful implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', 0) as number;
+							const limit = this.getNodeParameter('limit', 0);
 							qs.limit = limit;
 							responseData = await contentfulApiRequest.call(
 								this,

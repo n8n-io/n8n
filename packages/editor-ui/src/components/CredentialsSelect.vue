@@ -13,12 +13,14 @@
 				@keydown.stop
 				@focus="$emit('setFocus')"
 				@blur="$emit('onBlur')"
+				data-test-id="credential-select"
 			>
 				<n8n-option
 					v-for="credType in supportedCredentialTypes"
 					:value="credType.name"
 					:key="credType.name"
 					:label="credType.displayName"
+					data-test-id="credential-select-option"
 				>
 					<div class="list-option">
 						<div class="option-headline">

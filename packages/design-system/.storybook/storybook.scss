@@ -1,11 +1,11 @@
-@use "./fonts.scss";
+@use './fonts.scss';
 
-@use "~/src/css/base.scss" with (
-	$font-path: '~element-ui/lib/theme-chalk/fonts',
+@use '~/src/css/base.scss' with (
+	$font-path: '~element-ui/lib/theme-chalk/fonts'
 );
 
-@use "~/src/css/reset.scss";
-@use "~/src/css/index.scss";
+@use '~/src/css/reset.scss';
+@use '~/src/css/index.scss';
 
 .multi-container > * {
 	margin-bottom: 10px;

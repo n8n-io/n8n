@@ -44,7 +44,7 @@ export async function ghostApiRequest(
 		json: true,
 	};
 
-	return await this.helpers.requestWithAuthentication.call(this, credentialType, options);
+	return this.helpers.requestWithAuthentication.call(this, credentialType, options);
 }
 
 export async function ghostApiRequestAllItems(

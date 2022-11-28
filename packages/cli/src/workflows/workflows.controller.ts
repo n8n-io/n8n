@@ -9,7 +9,6 @@ import * as Db from '@/Db';
 import * as GenericHelpers from '@/GenericHelpers';
 import * as ResponseHelper from '@/ResponseHelper';
 import * as WorkflowHelpers from '@/WorkflowHelpers';
-import { whereClause } from '@/CredentialsHelper';
 import { IWorkflowResponse, IExecutionPushResponse } from '@/Interfaces';
 import config from '@/config';
 import * as TagHelpers from '@/TagHelpers';
@@ -23,6 +22,7 @@ import type { WorkflowRequest } from '@/requests';
 import { isBelowOnboardingThreshold } from '@/WorkflowHelpers';
 import { EEWorkflowController } from './workflows.controller.ee';
 import { WorkflowsService } from './workflows.services';
+import { whereClause } from '@/UserManagement/UserManagementHelper';
 
 export const workflowsController = express.Router();
 
@@ -91,7 +91,7 @@ workflowsController.post(
 
 		if (!savedWorkflow) {
 			LoggerProxy.error('Failed to create workflow', { userId: req.user.id });
-			throw new ResponseHelper.ResponseError('Failed to save workflow');
+			throw new ResponseHelper.InternalServerError('Failed to save workflow');
 		}
 
 		if (tagIds && !config.getEnv('workflowTagsDisabled') && savedWorkflow.tags) {
@@ -152,13 +152,11 @@ workflowsController.get(
 	`/from-url`,
 	ResponseHelper.send(async (req: express.Request): Promise<IWorkflowResponse> => {
 		if (req.query.url === undefined) {
-			throw new ResponseHelper.ResponseError(`The parameter "url" is missing!`, undefined, 400);
+			throw new ResponseHelper.BadRequestError(`The parameter "url" is missing!`);
 		}
 		if (!/^http[s]?:\/\/.*\.json$/i.exec(req.query.url as string)) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`The parameter "url" is not valid! It does not seem to be a URL pointing to a n8n workflow JSON file.`,
-				undefined,
-				400,
 			);
 		}
 		let workflowData: IWorkflowResponse | undefined;
@@ -166,11 +164,7 @@ workflowsController.get(
 			const { data } = await axios.get<IWorkflowResponse>(req.query.url as string);
 			workflowData = data;
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				`The URL does not point to valid JSON file!`,
-				undefined,
-				400,
-			);
+			throw new ResponseHelper.BadRequestError(`The URL does not point to valid JSON file!`);
 		}
 
 		// Do a very basic check if it is really a n8n-workflow-json
@@ -182,10 +176,8 @@ workflowsController.get(
 			typeof workflowData.connections !== 'object' ||
 			Array.isArray(workflowData.connections)
 		) {
-			throw new ResponseHelper.ResponseError(
+			throw new ResponseHelper.BadRequestError(
 				`The data in the file does not seem to be a n8n workflow JSON file!`,
-				undefined,
-				400,
 			);
 		}
 
@@ -201,7 +193,7 @@ workflowsController.get(
 	ResponseHelper.send(async (req: WorkflowRequest.Get) => {
 		const { id: workflowId } = req.params;
 
-		let relations = ['workflow', 'workflow.tags'];
+		let relations = ['workflow', 'workflow.tags', 'role'];
 
 		if (config.getEnv('workflowTagsDisabled')) {
 			relations = relations.filter((relation) => relation !== 'workflow.tags');
@@ -213,6 +205,7 @@ workflowsController.get(
 				user: req.user,
 				entityType: 'workflow',
 				entityId: workflowId,
+				roles: ['owner'],
 			}),
 		});
 
@@ -221,10 +214,8 @@ workflowsController.get(
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found.`,
-				undefined,
-				404,
+			throw new ResponseHelper.NotFoundError(
+				'Could not load the workflow - you can only access workflows owned by you',
 			);
 		}
 
@@ -252,7 +243,14 @@ workflowsController.patch(
 		const { tags, ...rest } = req.body;
 		Object.assign(updateData, rest);
 
-		const updatedWorkflow = await WorkflowsService.update(req.user, updateData, workflowId, tags);
+		const updatedWorkflow = await WorkflowsService.update(
+			req.user,
+			updateData,
+			workflowId,
+			tags,
+			true,
+			['owner'],
+		);
 
 		const { id, ...remainder } = updatedWorkflow;
 
@@ -275,11 +273,12 @@ workflowsController.delete(
 		await externalHooks.run('workflow.delete', [workflowId]);
 
 		const shared = await Db.collections.SharedWorkflow.findOne({
-			relations: ['workflow'],
+			relations: ['workflow', 'role'],
 			where: whereClause({
 				user: req.user,
 				entityType: 'workflow',
 				entityId: workflowId,
+				roles: ['owner'],
 			}),
 		});
 
@@ -288,10 +287,8 @@ workflowsController.delete(
 				workflowId,
 				userId: req.user.id,
 			});
-			throw new ResponseHelper.ResponseError(
-				`Workflow with ID "${workflowId}" could not be found to be deleted.`,
-				undefined,
-				400,
+			throw new ResponseHelper.BadRequestError(
+				'Could not delete the workflow - you can only remove workflows owned by you',
 			);
 		}
 

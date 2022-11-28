@@ -108,7 +108,7 @@ export class Iterable implements INodeType {
 				for (let i = 0; i < length; i++) {
 					const name = this.getNodeParameter('name', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (!additionalFields.email && !additionalFields.id) {
 						throw new NodeOperationError(
@@ -155,7 +155,7 @@ export class Iterable implements INodeType {
 
 					const value = this.getNodeParameter('value', i) as string;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body: IDataObject = {};
 
@@ -293,7 +293,7 @@ export class Iterable implements INodeType {
 
 				const identifier = this.getNodeParameter('identifier', 0) as string;
 
-				const additionalFields = this.getNodeParameter('additionalFields', 0) as IDataObject;
+				const additionalFields = this.getNodeParameter('additionalFields', 0);
 
 				const body: IDataObject = {
 					listId: parseInt(listId, 10),

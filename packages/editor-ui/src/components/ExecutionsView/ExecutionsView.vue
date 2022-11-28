@@ -12,7 +12,12 @@
 			@refresh="loadAutoRefresh"
 		/>
 		<div :class="$style.content" v-if="!hidePreview">
-			<router-view name="executionPreview" @deleteCurrentExecution="onDeleteCurrentExecution" @retryExecution="onRetryExecution"/>
+			<router-view
+				name="executionPreview"
+				@deleteCurrentExecution="onDeleteCurrentExecution"
+				@retryExecution="onRetryExecution"
+				@stopExecution="onStopExecution"
+			/>
 		</div>
 		<div v-if="executions.length === 0 && filterApplied" :class="$style.noResultsContainer">
 			<n8n-text color="text-base" size="medium" align="center">
@@ -28,15 +33,15 @@ import { MODAL_CANCEL, MODAL_CLOSE, MODAL_CONFIRMED, PLACEHOLDER_EMPTY_WORKFLOW_
 import { IExecutionsListResponse, IExecutionsSummary, INodeUi, ITag, IWorkflowDb } from '@/Interface';
 import { IConnection, IConnections, IDataObject, INodeTypeDescription, INodeTypeNameVersion, NodeHelpers } from 'n8n-workflow';
 import mixins from 'vue-typed-mixins';
-import { restApi } from '../mixins/restApi';
-import { showMessage } from '../mixins/showMessage';
+import { restApi } from '@/mixins/restApi';
+import { showMessage } from '@/mixins/showMessage';
 import { v4 as uuid } from 'uuid';
 import { Route } from 'vue-router';
-import { executionHelpers } from '../mixins/executionsHelpers';
+import { executionHelpers } from '@/mixins/executionsHelpers';
 import { range as _range } from 'lodash';
-import { debounceHelper } from '../mixins/debounce';
-import { getNodeViewTab } from '../helpers';
-import { workflowHelpers } from '../mixins/workflowHelpers';
+import { debounceHelper } from '@/mixins/debounce';
+import { getNodeViewTab } from '@/utils';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useUIStore } from '@/stores/ui';
@@ -240,6 +245,29 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				type: 'success',
 			});
 		},
+		async onStopExecution(): Promise<void> {
+			const activeExecutionId = this.$route.params.executionId;
+
+			try {
+				await this.restApi().stopCurrentExecution(activeExecutionId);
+
+				this.$showMessage({
+					title: this.$locale.baseText('executionsList.showMessage.stopExecution.title'),
+					message: this.$locale.baseText(
+						'executionsList.showMessage.stopExecution.message',
+						{ interpolate: { activeExecutionId } },
+					),
+					type: 'success',
+				});
+
+				this.loadAutoRefresh();
+			} catch (error) {
+				this.$showError(
+					error,
+					this.$locale.baseText('executionsList.showError.stopExecution.title'),
+				);
+			}
+		},
 		onFilterUpdated(newFilter: { finished: boolean, status: string }): void {
 			this.filter = newFilter;
 			this.setExecutions();
@@ -304,9 +332,12 @@ export default mixins(restApi, showMessage, executionHelpers, debounceHelper, wo
 				const activeNotInTheList = existingExecutions.find(ex => ex.id === this.activeExecution.id) === undefined;
 				if (activeNotInTheList && this.executions.length > 0) {
 					this.$router.push({
-					name: VIEWS.EXECUTION_PREVIEW,
-					params: { name: this.currentWorkflow, executionId: this.executions[0].id },
-				}).catch(()=>{});;
+						name: VIEWS.EXECUTION_PREVIEW,
+						params: { name: this.currentWorkflow, executionId: this.executions[0].id },
+					}).catch(()=>{});
+				} else if (this.executions.length === 0) {
+					this.$router.push({ name: VIEWS.EXECUTION_HOME }).catch(()=>{});
+					this.workflowsStore.activeWorkflowExecution = null;
 				}
 			}
 		},

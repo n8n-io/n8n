@@ -8,7 +8,7 @@
 
 <script lang="ts">
 import AuthView from './AuthView.vue';
-import { showMessage } from '@/components/mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 
 import mixins from 'vue-typed-mixins';
 import { IFormBoxConfig } from '@/Interface';

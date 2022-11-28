@@ -580,9 +580,9 @@ export const schema = {
 			env: 'N8N_DISABLE_PRODUCTION_MAIN_PROCESS',
 			doc: 'Disable production webhooks from main process. This helps ensures no http traffic load to main process when using webhook-specific processes.',
 		},
-		skipWebhoooksDeregistrationOnShutdown: {
+		skipWebhooksDeregistrationOnShutdown: {
 			/**
-			 * Longer explanation: n8n deregisters webhooks on shutdown / deactivation
+			 * Longer explanation: n8n de-registers webhooks on shutdown / deactivation
 			 * and registers on startup / activation. If we skip
 			 * deactivation on shutdown, webhooks will remain active on 3rd party services.
 			 * We don't have to worry about startup as it always
@@ -985,6 +985,33 @@ export const schema = {
 			format: Boolean,
 			default: true,
 			env: 'N8N_ONBOARDING_CALL_PROMPTS_ENABLED',
+		},
+	},
+
+	license: {
+		serverUrl: {
+			format: String,
+			default: 'https://license.n8n.io/v1',
+			env: 'N8N_LICENSE_SERVER_URL',
+			doc: 'License server url to retrieve license.',
+		},
+		autoRenewEnabled: {
+			format: Boolean,
+			default: true,
+			env: 'N8N_LICENSE_AUTO_RENEW_ENABLED',
+			doc: 'Whether autorenew for licenses is enabled.',
+		},
+		autoRenewOffset: {
+			format: Number,
+			default: 60 * 60 * 72, // 72 hours
+			env: 'N8N_LICENSE_AUTO_RENEW_OFFSET',
+			doc: 'How many seconds before expiry a license should get automatically renewed. ',
+		},
+		activationKey: {
+			format: String,
+			default: '',
+			env: 'N8N_LICENSE_ACTIVATION_KEY',
+			doc: 'Activation key to initialize license',
 		},
 	},
 };

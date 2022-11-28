@@ -1,18 +1,22 @@
 <template>
-	<div class="node-wrapper" :style="nodePosition" :id="nodeId">
+	<div class="node-wrapper" :style="nodePosition" :id="nodeId" data-test-id="canvas-node-box">
 		<div class="select-background" v-show="isSelected"></div>
 		<div :class="{'node-default': true, 'touch-active': isTouchActive, 'is-touch-device': isTouchDevice}" :data-name="data.name" :ref="data.name">
 			<div :class="nodeClass" :style="nodeStyle" @click.left="onClick" v-touch:start="touchStart" v-touch:end="touchEnd">
 				<div v-if="!data.disabled" :class="{'node-info-icon': true, 'shift-icon': shiftOutputCount}">
 					<div v-if="hasIssues" class="node-issues">
 						<n8n-tooltip placement="bottom" >
-							<titled-list slot="content" :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
+							<template #content>
+								<titled-list :title="`${$locale.baseText('node.issues')}:`" :items="nodeIssues" />
+							</template>
 							<font-awesome-icon icon="exclamation-triangle" />
 						</n8n-tooltip>
 					</div>
 					<div v-else-if="waiting" class="waiting">
 						<n8n-tooltip placement="bottom">
-							<div slot="content" v-text="waiting"></div>
+							<template #content>
+								<div v-text="waiting"></div>
+							</template>
 							<font-awesome-icon icon="clock" />
 						</n8n-tooltip>
 					</div>
@@ -32,7 +36,9 @@
 
 				<div class="node-trigger-tooltip__wrapper">
 					<n8n-tooltip placement="top" manual :value="showTriggerNodeTooltip" popper-class="node-trigger-tooltip__wrapper--item">
-						<div slot="content" v-text="getTriggerNodeTooltip"></div>
+						<template #content>
+							<div v-text="getTriggerNodeTooltip"></div>
+						</template>
 						<span />
 					</n8n-tooltip>
 					<n8n-tooltip
@@ -74,7 +80,7 @@
 		</div>
 		<div class="node-description">
 			<div class="node-name ph-no-capture" :title="nodeTitle">
-				<p>
+				<p data-test-id="canvas-node-box-title">
 					{{ nodeTitle }}
 				</p>
 				<p v-if="data.disabled">
@@ -92,11 +98,11 @@
 
 import Vue from 'vue';
 import { CUSTOM_API_CALL_KEY, LOCAL_STORAGE_PIN_DATA_DISCOVERY_CANVAS_FLAG, WAIT_TIME_UNLIMITED, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeBase } from '@/components/mixins/nodeBase';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
-import { pinData } from '@/components/mixins/pinData';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeBase } from '@/mixins/nodeBase';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { pinData } from '@/mixins/pinData';
 
 import {
 	INodeTypeDescription,
@@ -110,9 +116,9 @@ import TitledList from '@/components/TitledList.vue';
 import mixins from 'vue-typed-mixins';
 
 import { get } from 'lodash';
-import { getStyleTokenValue, getTriggerNodeServiceName } from './helpers';
+import { getStyleTokenValue, getTriggerNodeServiceName } from '@/utils';
 import { IExecutionsSummary, INodeUi, XYPosition } from '@/Interface';
-import { debounceHelper } from './mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
