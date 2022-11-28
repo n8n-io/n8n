@@ -8,21 +8,21 @@ const lastName = randLastName();
 
 describe('Authentication', () => {
 	beforeEach(() => {
-		cy.task('db:reset');
+		cy.resetAll();
 	});
 
 	it('should setup owner', () => {
-		cy.signup(email, firstName, lastName, password);
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	it('should sign user in', () => {
-		cy.task('db:setup-owner', { email, password, firstName, lastName });
+		cy.setupOwner({ email, password, firstName, lastName });
 		cy.on('uncaught:exception', (err, runnable) => {
 			expect(err.message).to.include('Not logged in');
 
 			return false;
 		});
 
-		cy.signin(email, password);
+		cy.signin({ email, password });
 	});
 });
