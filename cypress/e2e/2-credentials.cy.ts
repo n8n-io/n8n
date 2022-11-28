@@ -1,7 +1,6 @@
 import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from "../constants";
 import { randFirstName, randLastName } from "@ngneat/falso";
 import { CredentialsPage, CredentialsModal } from '../pages';
-// import { v4 as uuid } from 'uuid';
 
 const username = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
@@ -11,6 +10,11 @@ const credentialsPage = new CredentialsPage();
 const credentialsModal = new CredentialsModal();
 
 describe('Credentials', () => {
+	before(() => {
+		cy.task('db:reset');
+		Cypress.session.clearAllSavedSessions();
+	});
+
 	beforeEach(() => {
 		cy.signup(username, firstName, lastName, password);
 
