@@ -9,7 +9,7 @@
 		minHeight="500px"
 		maxHeight="700px"
 	>
-		<header>
+	<template #header>
 			<el-row :gutter="20" justify="start">
 					<el-col :span="12">
 						Edit &nbsp;<strong>{{ destination.label }}</strong> settings
@@ -25,8 +25,8 @@
 						<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
 					</el-col>
 				</el-row>
-		</header>
-		<content>
+	</template>
+	<template #content>
 			<div :class="$style.narrowCardBody">
 					<parameter-input-list
 						:parameters="uiDescription"
@@ -69,7 +69,7 @@
 							></event-tree-selection>
 					</div>
 				</div>
-		</content>
+		</template>
 	</Modal>
 </template>
 
@@ -90,11 +90,10 @@ import { useWorkflowsStore } from '../../stores/workflows';
 import { restApi } from '../../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
 import EventLevelSelection from './EventLevelSelection.vue';
-import { MessageEventBusDestinationTypeNames, MessageEventBusDestinationWebhook } from './types';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
 import { INodeUi, IUpdateInformation } from '../../Interface';
-import { deepCopy, IDataObject, INodeCredentials, INodeProperties, NodeParameterValue } from 'n8n-workflow';
+import { deepCopy, defaultMessageEventBusDestinationWebhookOptions, IDataObject, INodeCredentials, INodeParameters, INodeProperties, MessageEventBusDestinationTypeNames, MessageEventBusDestinationWebhookOptions, NodeParameterValue } from 'n8n-workflow';
 import Vue from 'vue';
 import {WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY} from '../../constants';
 import Modal from '@/components/Modal.vue';
@@ -107,7 +106,10 @@ export default mixins(
 	name: 'event-destination-settings-webhook-modal',
 	props: {
 		modalName: String,
-		destination: MessageEventBusDestinationWebhook,
+		destination: {
+			type: Object,
+			default: deepCopy(defaultMessageEventBusDestinationWebhookOptions),
+		},
 		isNew: Boolean,
 		eventBus: {
 			type: Vue,
@@ -132,7 +134,7 @@ export default mixins(
 			loading: false,
 			showRemoveConfirm: false,
 			treeData: {} as EventNamesTreeCollection,
-			nodeParameters: {} as MessageEventBusDestinationWebhook,
+			nodeParameters:  deepCopy(defaultMessageEventBusDestinationWebhookOptions),
 			uiDescription: description,
 			modalBus: new Vue(),
 			WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY,
@@ -151,10 +153,11 @@ export default mixins(
 		},
 	},
 	mounted() {
-		this.ndvStore.activeNodeName = this.destination.id;
+		this.ndvStore.activeNodeName = this.destination.id ?? 'thisshouldnothappen';
 		// merge destination data with defaults
-		this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), this.destination);
-		this.treeData = this.eventTreeStore.getEventTree(this.destination.id);
+		// this.nodeParameters = Object.assign(new MessageEventBusDestinationWebhook(), this.destination);
+		this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationWebhookOptions), this.destination);
+		this.treeData = this.eventTreeStore.getEventTree(this.destination.id ?? 'thisshouldnothappen');
 		this.workflowsStore.$onAction(
 		({
 			name, // name of the action
@@ -221,10 +224,10 @@ export default mixins(
 			this.uiStore.closeModal(WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 		async saveDestination() {
-			if (this.unchanged) {
+			if (this.unchanged || !this.destination.id) {
 				return;
 			}
-			const data: MessageEventBusDestinationWebhook = {
+			const data: MessageEventBusDestinationWebhookOptions = {
 				...this.nodeParameters,
 				subscribedEvents: Array.from(this.eventTreeStore.items[this.destination.id].selectedEvents.values()),
 				subscribedLevels: Array.from(this.eventTreeStore.items[this.destination.id].selectedLevels.values()),

@@ -1,14 +1,17 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
-import {
-	MessageEventBusDestination,
-	MessageEventBusDestinationOptions,
-} from './MessageEventBusDestination';
+import { MessageEventBusDestination } from './MessageEventBusDestination';
 import * as Sentry from '@sentry/node';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { getInstanceOwner } from '../../UserManagement/UserManagementHelper';
-import { EventMessageLevel } from '../EventMessageClasses/Enums';
-import { MessageEventBusDestinationTypeNames } from '.';
-import { User } from '../../databases/entities/User';
+import {
+	EventMessageLevel,
+	MessageEventBusDestinationOptions,
+	MessageEventBusDestinationSentryOptions,
+	MessageEventBusDestinationTypeNames,
+} from 'n8n-workflow';
 
 export const isMessageEventBusDestinationSentryOptions = (
 	candidate: unknown,
@@ -37,18 +40,25 @@ function eventMessageLevelToSentrySeverity(emLevel: EventMessageLevel): Sentry.S
 	}
 }
 
-export interface MessageEventBusDestinationSentryOptions extends MessageEventBusDestinationOptions {
+export class MessageEventBusDestinationSentry
+	extends MessageEventBusDestination
+	implements MessageEventBusDestinationSentryOptions
+{
 	dsn: string;
-	tracesSampleRate?: number;
-}
-
-export class MessageEventBusDestinationSentry extends MessageEventBusDestination {
-	readonly dsn: string;
 
 	tracesSampleRate: number;
 
+	resource: string;
+
+	sendPayload: boolean;
+
+	authentication: 'none' | 'predefinedCredentialType';
+
+	nodeCredentialType: 'sentryIoApi';
+
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.sentry;
 		this.dsn = options.dsn;
 		this.tracesSampleRate = options.tracesSampleRate ?? 1.0;
@@ -66,7 +76,7 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 	//TODO: fill all event fields
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
 		try {
-			const user = (await getInstanceOwner()) as User;
+			const user = await getInstanceOwner();
 			const context = {
 				level: eventMessageLevelToSentrySeverity(msg.level),
 				user: {
@@ -98,6 +108,10 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 			...abstractSerialized,
 			dsn: this.dsn,
 			tracesSampleRate: this.tracesSampleRate,
+			authentication: this.authentication,
+			nodeCredentialType: this.nodeCredentialType,
+			sendPayload: this.sendPayload,
+			resource: this.resource,
 		};
 	}
 
@@ -106,6 +120,7 @@ export class MessageEventBusDestinationSentry extends MessageEventBusDestination
 	): MessageEventBusDestinationSentry | null {
 		if (
 			'__type' in data &&
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			data.__type === MessageEventBusDestinationTypeNames.sentry &&
 			isMessageEventBusDestinationSentryOptions(data)
 		) {

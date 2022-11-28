@@ -1,24 +1,20 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { v4 as uuid } from 'uuid';
-import { INodeCredentials, LoggerProxy } from 'n8n-workflow';
+import {
+	INodeCredentials,
+	LoggerProxy,
+	MessageEventBusDestinationOptions,
+	MessageEventBusDestinationTypeNames,
+	EventMessageLevel,
+} from 'n8n-workflow';
 import { Db } from '../..';
 import { AbstractEventMessage } from '../EventMessageClasses/AbstractEventMessage';
 import { EventMessageTypes } from '../EventMessageClasses';
 import { eventBus } from '..';
 import { DeleteResult, InsertResult } from 'typeorm';
-import { EventMessageLevel } from '../EventMessageClasses/Enums';
-import { MessageEventBusDestinationTypeNames } from '.';
 
-export interface MessageEventBusDestinationOptions {
-	__type?: string;
-	id?: string;
-	label?: string;
-	enabled?: boolean;
-	subscribedEvents?: string[];
-	subscribedLevels?: EventMessageLevel[];
-	credentials?: INodeCredentials;
-}
-
-export abstract class MessageEventBusDestination {
+export abstract class MessageEventBusDestination implements MessageEventBusDestinationOptions {
 	// Since you can't have static abstract functions - this just serves as a reminder that you need to implement these. Please.
 	// static abstract deserialize(): MessageEventBusDestination | null;
 	readonly id: string;
@@ -108,7 +104,7 @@ export abstract class MessageEventBusDestination {
 	static async deleteFromDb(id: string): Promise<DeleteResult> {
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
 		const dbResult = await Db.collections.EventDestinations.delete({ id });
-		return dbResult as DeleteResult;
+		return dbResult;
 	}
 
 	serialize(): MessageEventBusDestinationOptions {

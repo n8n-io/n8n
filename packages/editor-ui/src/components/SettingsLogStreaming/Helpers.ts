@@ -1,13 +1,12 @@
-import { INode, INodeCredentials, INodeParameters } from "n8n-workflow";
+import { INodeCredentials, INodeParameters, MessageEventBusDestinationOptions } from "n8n-workflow";
 import { INodeUi } from "../../Interface";
-import { AbstractMessageEventBusDestination, MessageEventBusDestinationTypeNames } from "./types";
 
-export function destinationToFakeINodeUi(destination: AbstractMessageEventBusDestination): INodeUi {
+export function destinationToFakeINodeUi(destination: MessageEventBusDestinationOptions, fakeType = 'n8n-nodes-base.httpRequest'): INodeUi {
 	return {
 		id: destination.id,
 		name: destination.id,
 		typeVersion: 1,
-		type: MessageEventBusDestinationTypeNames.webhook,
+		type: fakeType,
 		position: [0, 0],
 		credentials: {
 			...destination.credentials as INodeCredentials,

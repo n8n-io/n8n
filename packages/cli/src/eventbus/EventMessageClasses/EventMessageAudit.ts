@@ -1,6 +1,5 @@
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
-import { JsonObject } from 'n8n-workflow';
-import { EventMessageTypeNames } from './Enums';
+import { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import { AbstractEventPayload } from './AbstractEventPayload';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
@@ -25,6 +24,7 @@ export class EventMessageAuditOptions extends AbstractEventMessageOptions {
 }
 
 export class EventMessageAudit extends AbstractEventMessage {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 	readonly __type: string = EventMessageTypeNames.audit;
 
 	eventName: EventNamesAuditType;

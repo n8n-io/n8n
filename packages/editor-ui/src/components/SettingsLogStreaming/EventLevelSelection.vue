@@ -6,6 +6,7 @@
 
 <script lang="ts">
 	import { CheckboxGroup as ElCheckboxGroup} from 'element-ui';
+import { EventMessageLevel } from 'n8n-workflow';
 	import { mapStores } from 'pinia';
 	import { useEventTreeStore } from '../../stores/eventTreeStore';
 
@@ -23,14 +24,17 @@
 		data() {
 			return {
 				unchanged: true,
-				levelCheckList: [] as string[],
+				levelCheckList: [] as EventMessageLevel[],
 			};
 		},
 		computed: {
 			...mapStores(
 				useEventTreeStore,
 			),
-			storedEventLevels() {return Array.from(this.eventTreeStore.eventLevels.values());},
+			storedEventLevels() {
+				console.log(Object.values(EventMessageLevel), this.levelCheckList, this.eventTreeStore.getSelectedLevels(this.destinationId));
+				return Object.values(EventMessageLevel);
+			},
 		},
 		mounted() {
 			this.levelCheckList = this.eventTreeStore.getSelectedLevels(this.destinationId);

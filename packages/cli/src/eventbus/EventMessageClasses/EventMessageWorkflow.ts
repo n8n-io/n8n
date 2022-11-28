@@ -1,7 +1,6 @@
 import { AbstractEventMessage, isEventMessageOptionsWithType } from './AbstractEventMessage';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
-import { JsonObject } from 'n8n-workflow';
-import { EventMessageTypeNames } from './Enums';
+import { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import { AbstractEventPayload } from './AbstractEventPayload';
 
 export const eventNamesWorkflow = [
@@ -25,6 +24,7 @@ export class EventMessageWorkflowOptions extends AbstractEventMessageOptions {
 }
 
 export class EventMessageWorkflow extends AbstractEventMessage {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 	readonly __type: string = EventMessageTypeNames.workflow;
 
 	eventName: EventNamesWorkflowType;

@@ -44,6 +44,7 @@ export const COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY = 'communityPackageManageConfir
 export const IMPORT_CURL_MODAL_KEY = 'importCurl';
 export const WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY = 'settingsLogStreamWebhook';
 export const SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY = 'settingsLogStreamSyslog';
+export const SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY = 'settingsLogStreamSentry';
 
 export const COMMUNITY_PACKAGE_MANAGE_ACTIONS = {
 	UNINSTALL: 'uninstall',

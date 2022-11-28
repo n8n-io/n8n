@@ -1,14 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
-import {
-	MessageEventBusDestination,
-	MessageEventBusDestinationOptions,
-} from './MessageEventBusDestination';
 import syslog from 'syslog-client';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
-import { EventMessageLevel } from '../EventMessageClasses/Enums';
-import { MessageEventBusDestinationTypeNames } from '.';
+import {
+	MessageEventBusDestinationOptions,
+	MessageEventBusDestinationSyslogOptions,
+	MessageEventBusDestinationTypeNames,
+	EventMessageLevel,
+} from 'n8n-workflow';
+import { MessageEventBusDestination } from './MessageEventBusDestination';
 
 export const isMessageEventBusDestinationSyslogOptions = (
 	candidate: unknown,
@@ -17,16 +19,6 @@ export const isMessageEventBusDestinationSyslogOptions = (
 	if (!o) return false;
 	return o.host !== undefined;
 };
-
-export interface MessageEventBusDestinationSyslogOptions extends MessageEventBusDestinationOptions {
-	expectedStatusCode?: number;
-	host: string;
-	port?: number;
-	protocol?: 'udp' | 'tcp';
-	facility?: syslog.Facility;
-	app_name?: string;
-	eol?: string;
-}
 
 function eventMessageLevelToSyslogSeverity(emLevel: EventMessageLevel) {
 	switch (emLevel) {
@@ -47,31 +39,44 @@ function eventMessageLevelToSyslogSeverity(emLevel: EventMessageLevel) {
 	}
 }
 
-export class MessageEventBusDestinationSyslog extends MessageEventBusDestination {
+export class MessageEventBusDestinationSyslog
+	extends MessageEventBusDestination
+	implements MessageEventBusDestinationSyslogOptions
+{
 	client: syslog.Client;
 
-	sysLogOptions: MessageEventBusDestinationSyslogOptions;
+	expectedStatusCode?: number;
+
+	host: string;
+
+	port: number;
+
+	protocol: 'udp' | 'tcp';
+
+	facility: syslog.Facility;
+
+	app_name: string;
+
+	eol: string;
 
 	constructor(options: MessageEventBusDestinationSyslogOptions) {
 		super(options);
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.syslog;
 		this.label = options.label ?? 'Syslog Server';
 
-		this.sysLogOptions = {
-			host: options.host ?? 'localhost',
-			port: options.port ?? 514,
-			protocol: options.protocol ?? 'udp',
-			facility: options.facility ?? syslog.Facility.Local0,
-			app_name: options.app_name ?? 'n8n',
-			eol: options.eol ?? '\n',
-			expectedStatusCode: options.expectedStatusCode ?? 200,
-		};
+		this.host = options.host ?? 'localhost';
+		this.port = options.port ?? 514;
+		this.protocol = options.protocol ?? 'udp';
+		this.facility = options.facility ?? syslog.Facility.Local0;
+		this.app_name = options.app_name ?? 'n8n';
+		this.eol = options.eol ?? '\n';
+		this.expectedStatusCode = options.expectedStatusCode ?? 200;
 
-		this.client = syslog.createClient(this.sysLogOptions.host, {
-			appName: this.sysLogOptions.app_name,
+		this.client = syslog.createClient(this.host, {
+			appName: this.app_name,
 			facility: syslog.Facility.Local0,
 			// severity: syslog.Severity.Error,
-			port: this.sysLogOptions.port,
+			port: this.port,
 			transport:
 				options.protocol !== undefined && options.protocol === 'tcp'
 					? syslog.Transport.Tcp
@@ -81,10 +86,6 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 		this.client.on('error', function (error) {
 			console.error(error);
 		});
-	}
-
-	getConfig(): MessageEventBusDestinationSyslogOptions {
-		return this.sysLogOptions;
 	}
 
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
@@ -115,15 +116,16 @@ export class MessageEventBusDestinationSyslog extends MessageEventBusDestination
 
 	serialize(): MessageEventBusDestinationSyslogOptions {
 		const abstractSerialized = super.serialize();
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return {
 			...abstractSerialized,
-			expectedStatusCode: this.sysLogOptions.expectedStatusCode!,
-			host: this.sysLogOptions.host,
-			port: this.sysLogOptions.port!,
-			protocol: this.sysLogOptions.protocol!,
-			facility: this.sysLogOptions.facility!,
-			app_name: this.sysLogOptions.app_name!,
-			eol: this.sysLogOptions.eol!,
+			expectedStatusCode: this.expectedStatusCode,
+			host: this.host,
+			port: this.port,
+			protocol: this.protocol,
+			facility: this.facility,
+			app_name: this.app_name,
+			eol: this.eol,
 		};
 	}
 

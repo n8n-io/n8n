@@ -1,17 +1,13 @@
-import { JsonValue, LoggerProxy } from 'n8n-workflow';
+import { JsonValue, LoggerProxy, MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { DeleteResult } from 'typeorm';
 import { EventMessageTypes } from '../EventMessageClasses/';
-import {
-	MessageEventBusDestination,
-	MessageEventBusDestinationOptions,
-} from '../MessageEventBusDestination/MessageEventBusDestination';
+import { MessageEventBusDestination } from '../MessageEventBusDestination/MessageEventBusDestination';
 import { MessageEventBusLogWriter } from '../MessageEventBusWriter/MessageEventBusLogWriter';
 import EventEmitter from 'node:events';
 import config from '../../config';
 import { Db } from '../..';
 import { messageEventBusDestinationFromDb } from '../MessageEventBusDestination/Helpers';
 import uniqby from 'lodash.uniqby';
-import { EventDestinations } from '../../databases/entities/MessageEventBusDestinationEntity';
 
 export type EventMessageReturnMode = 'sent' | 'unsent' | 'all';
 
@@ -65,9 +61,7 @@ class MessageEventBus extends EventEmitter {
 		if (config.getEnv('eventBus.destinations.loadAtStart')) {
 			LoggerProxy.debug('Restoring event destinations');
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-			const savedEventDestinations = (await Db.collections.EventDestinations.find(
-				{},
-			)) as EventDestinations[];
+			const savedEventDestinations = await Db.collections.EventDestinations.find({});
 			if (savedEventDestinations.length > 0) {
 				for (const destinationData of savedEventDestinations) {
 					try {
@@ -125,8 +119,10 @@ class MessageEventBus extends EventEmitter {
 		if (id && Object.keys(this.destinations).includes(id)) {
 			result = [this.destinations[id].serialize()];
 		} else {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 			result = Object.keys(this.destinations).map((e) => this.destinations[e].serialize());
 		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		return result.sort((a, b) => (a.__type ?? '').localeCompare(b.__type ?? ''));
 	}
 

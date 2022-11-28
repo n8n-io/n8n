@@ -1,9 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { DateTime } from 'luxon';
-import { JsonObject } from 'n8n-workflow';
+import { EventMessageLevel, JsonObject } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { AbstractEventPayload } from './AbstractEventPayload';
-import { EventMessageLevel } from './Enums';
 import { AbstractEventMessageOptions } from './AbstractEventMessageOptions';
 
 export const isEventMessage = (candidate: unknown): candidate is AbstractEventMessage => {
@@ -77,6 +76,7 @@ export abstract class AbstractEventMessage {
 			ts: this.ts.toISO(),
 			eventName: this.eventName,
 			message: this.message,
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			level: this.level,
 			payload: this.payload,
 		};
@@ -86,6 +86,7 @@ export abstract class AbstractEventMessage {
 		this.id = options.id ?? uuid();
 		this.eventName = options.eventName;
 		this.message = options.message ?? options.eventName;
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 		this.level = options.level ?? EventMessageLevel.log;
 		if (typeof options.ts === 'string') {
 			this.ts = DateTime.fromISO(options.ts) ?? DateTime.now();

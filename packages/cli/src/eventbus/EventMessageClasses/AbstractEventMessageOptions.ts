@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
+import { EventMessageLevel } from 'n8n-workflow';
 import { AbstractEventPayload } from './AbstractEventPayload';
-import { EventMessageLevel } from './Enums';
 
 export abstract class AbstractEventMessageOptions {
 	__type?: string;

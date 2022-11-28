@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import express from 'express';
 import { ResponseHelper } from '..';
@@ -14,25 +16,24 @@ import { eventBus, EventMessageReturnMode } from './MessageEventBus/MessageEvent
 import {
 	isMessageEventBusDestinationSentryOptions,
 	MessageEventBusDestinationSentry,
-	MessageEventBusDestinationSentryOptions,
 } from './MessageEventBusDestination/MessageEventBusDestinationSentry';
 import {
 	isMessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationSyslog,
-	MessageEventBusDestinationSyslogOptions,
 } from './MessageEventBusDestination/MessageEventBusDestinationSyslog';
-import {
-	MessageEventBusDestinationWebhook,
-	MessageEventBusDestinationWebhookOptions,
-} from './MessageEventBusDestination/MessageEventBusDestinationWebhook';
+import { MessageEventBusDestinationWebhook } from './MessageEventBusDestination/MessageEventBusDestinationWebhook';
 import { eventNamesAll } from './EventMessageClasses';
-import { EventMessageLevel, EventMessageTypeNames } from './EventMessageClasses/Enums';
-import { MessageEventBusDestinationTypeNames } from './MessageEventBusDestination';
 import {
 	EventMessageAudit,
 	EventMessageAuditOptions,
 } from './EventMessageClasses/EventMessageAudit';
 import { BadRequestError } from '../ResponseHelper';
+import {
+	MessageEventBusDestinationTypeNames,
+	MessageEventBusDestinationWebhookOptions,
+	EventMessageTypeNames,
+	MessageEventBusDestinationOptions,
+} from 'n8n-workflow';
 
 export const eventBusRouter = express.Router();
 
@@ -52,31 +53,21 @@ const isWithQueryString = (candidate: unknown): candidate is { query: string } =
 	return o.query !== undefined;
 };
 
-const isWithDestinationIdString = (candidate: unknown): candidate is { destinationId: string } => {
-	const o = candidate as { destinationId: string };
-	if (!o) return false;
-	return o.destinationId !== undefined;
-};
-
 // TODO: add credentials
 const isMessageEventBusDestinationWebhookOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationWebhookOptions => {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const o = candidate as MessageEventBusDestinationWebhookOptions;
 	if (!o) return false;
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 	return o.url !== undefined;
 };
-
-interface MessageEventBusDestinationOptions
-	extends MessageEventBusDestinationWebhookOptions,
-		MessageEventBusDestinationSentryOptions,
-		MessageEventBusDestinationSyslogOptions {
-	__type: MessageEventBusDestinationTypeNames;
-}
 
 const isMessageEventBusDestinationOptions = (
 	candidate: unknown,
 ): candidate is MessageEventBusDestinationOptions => {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const o = candidate as MessageEventBusDestinationOptions;
 	if (!o) return false;
 	return o.__type !== undefined;
@@ -130,6 +121,7 @@ eventBusRouter.post(
 eventBusRouter.post(
 	`/event/addmany/:count`,
 	ResponseHelper.send(async (req: express.Request): Promise<any> => {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		if (isEventMessageOptionsWithType(req.body, EventMessageTypeNames.workflow)) {
 			const count: number = parseInt(req.params.count) ?? 100;
 			for (let i = 0; i < count; i++) {
@@ -162,6 +154,7 @@ eventBusRouter.get(
 		} else {
 			result = await eventBus.findDestination();
 		}
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
 		return result;
 	}),
 );
@@ -190,6 +183,7 @@ eventBusRouter.post(
 					break;
 				default:
 					throw new BadRequestError(
+						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 						`Body is missing ${req.body.__type} options or type ${req.body.__type} is unknown`,
 					);
 			}
@@ -218,30 +212,12 @@ eventBusRouter.delete(
 );
 
 // ----------------------------------------
-// Subscriptions
-// ----------------------------------------
-
-eventBusRouter.get(
-	`/subscription`,
-	ResponseHelper.send(async (req: express.Request): Promise<any> => {
-		if (isWithDestinationIdString(req.query)) {
-			return eventBus.getDestinationSubscriptionSet(req.query.destinationId);
-		} else {
-			throw new BadRequestError('Query is missing destination id');
-		}
-	}),
-);
-
-// ----------------------------------------
 // Utilities
 // ----------------------------------------
 
 eventBusRouter.get(
-	`/constants`,
+	`/eventnames`,
 	ResponseHelper.send(async (): Promise<any> => {
-		return {
-			eventLevels: Object.values(EventMessageLevel),
-			eventNames: eventNamesAll,
-		};
+		return { eventnames: eventNamesAll };
 	}),
 );

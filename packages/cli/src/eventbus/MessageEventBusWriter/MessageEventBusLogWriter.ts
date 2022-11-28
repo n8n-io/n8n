@@ -8,14 +8,13 @@ import { MessageEventBusLogWriterWorker } from './MessageEventBusLogWriterWorker
 import { createReadStream, existsSync } from 'fs';
 import readline from 'readline';
 import events from 'events';
-import { jsonParse, JsonValue } from 'n8n-workflow';
+import { EventMessageTypeNames, jsonParse, JsonValue } from 'n8n-workflow';
 import remove from 'lodash.remove';
 import config from '../../config';
 import { getEventMessageObjectByType } from '../EventMessageClasses/Helpers';
 import { EventMessageReturnMode } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';
 import { DateTime } from 'luxon';
-import { EventMessageTypeNames } from '../EventMessageClasses/Enums';
 
 interface MessageEventBusLogWriterOptions {
 	syncFileAccess?: boolean;
@@ -26,6 +25,7 @@ interface MessageEventBusLogWriterOptions {
 }
 
 class EventMessageConfirm {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	readonly __type = EventMessageTypeNames.confirm;
 
 	readonly confirm: string;
@@ -40,6 +40,7 @@ class EventMessageConfirm {
 	serialize(): JsonValue {
 		// TODO: filter payload for sensitive info here?
 		return {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			__type: this.__type,
 			confirm: this.confirm,
 			ts: this.ts.toISO(),

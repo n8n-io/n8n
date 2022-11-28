@@ -1,14 +1,21 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable @typescript-eslint/no-unnecessary-boolean-literal-compare */
-import {
-	MessageEventBusDestination,
-	MessageEventBusDestinationOptions,
-} from './MessageEventBusDestination';
+import { MessageEventBusDestination } from './MessageEventBusDestination';
 import axios, { AxiosRequestConfig, AxiosResponse, Method } from 'axios';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import { EventMessageTypes } from '../EventMessageClasses';
-import { MessageEventBusDestinationTypeNames } from '.';
-import { INodeCredentials, jsonParse } from 'n8n-workflow';
+import {
+	jsonParse,
+	MessageEventBusDestinationOptions,
+	MessageEventBusDestinationTypeNames,
+	MessageEventBusDestinationWebhookOptions,
+	MessageEventBusDestinationWebhookParameterItem,
+	MessageEventBusDestinationWebhookParameterOptions,
+} from 'n8n-workflow';
 import { CredentialsHelper } from '../../CredentialsHelper';
 import { UserSettings, requestOAuth1, requestOAuth2, requestWithAuthentication } from 'n8n-core';
 import { Agent as HTTPSAgent } from 'https';
@@ -22,62 +29,10 @@ export const isMessageEventBusDestinationWebhookOptions = (
 	return o.url !== undefined;
 };
 
-interface ParameterItem {
-	parameters: Array<{
-		name: string;
-		value: string | number | boolean | null | undefined;
-	}>;
-}
-
-interface ParameterOptions {
-	batch?: {
-		batchSize?: number;
-		batchInterval?: number;
-	};
-	allowUnauthorizedCerts?: boolean;
-	queryParameterArrays?: 'indices' | 'brackets' | 'repeat';
-	redirect?: {
-		followRedirects?: boolean;
-		maxRedirects?: number;
-	};
-	response?: {
-		response?: {
-			fullResponse?: boolean;
-			neverError?: boolean;
-			responseFormat?: string;
-			outputPropertyName?: string;
-		};
-	};
-	proxy?: {
-		protocol: 'https' | 'http';
-		host: string;
-		port: number;
-	};
-	timeout?: number;
-}
-
-export interface MessageEventBusDestinationWebhookOptions
-	extends MessageEventBusDestinationOptions {
-	url: string;
-	responseCodeMustMatch?: boolean;
-	expectedStatusCode?: number;
-	method?: string;
-	authentication?: 'predefinedCredentialType' | 'genericCredentialType' | 'none';
-	sendQuery?: boolean;
-	sendHeaders?: boolean;
-	genericAuthType?: string;
-	nodeCredentialType?: string;
-	specifyHeaders?: string;
-	specifyQuery?: string;
-	jsonQuery?: string;
-	jsonHeaders?: string;
-	headerParameters?: ParameterItem;
-	queryParameters?: ParameterItem;
-	sendPayload?: boolean;
-	options?: ParameterOptions;
-}
-
-export class MessageEventBusDestinationWebhook extends MessageEventBusDestination {
+export class MessageEventBusDestinationWebhook
+	extends MessageEventBusDestination
+	implements MessageEventBusDestinationWebhookOptions
+{
 	__type: string = MessageEventBusDestinationTypeNames.webhook;
 
 	url: string;
@@ -106,11 +61,11 @@ export class MessageEventBusDestinationWebhook extends MessageEventBusDestinatio
 
 	jsonHeaders = '';
 
-	headerParameters: ParameterItem = { parameters: [] };
+	headerParameters: MessageEventBusDestinationWebhookParameterItem = { parameters: [] };
 
-	queryParameters: ParameterItem = { parameters: [] };
+	queryParameters: MessageEventBusDestinationWebhookParameterItem = { parameters: [] };
 
-	options: ParameterOptions = {};
+	options: MessageEventBusDestinationWebhookParameterOptions = {};
 
 	sendPayload = true;
 

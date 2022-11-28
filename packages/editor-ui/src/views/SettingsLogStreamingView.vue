@@ -11,6 +11,9 @@
 			<el-button class="button" :class="$style.buttonInRow" type="success" icon="plus" @click="addDestinationWebhook">
 				Webhook Endpoint
 			</el-button>
+			<el-button class="button" :class="$style.buttonInRow" type="success" icon="plus" @click="addDestinationSentry">
+				Sentry Endpoint
+			</el-button>
 		</div>
 		<template>
 			<el-row>
@@ -33,6 +36,7 @@
 
 
 <script lang="ts">
+import {v4 as uuid} from 'uuid';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { useWorkflowsStore } from '../stores/workflows';
@@ -40,16 +44,12 @@ import { useCredentialsStore } from '../stores/credentials';
 import EventTree from '@/components/SettingsLogStreaming/EventTreeSelection.vue';
 import EventDestinationSettingsCard from '@/components/SettingsLogStreaming/EventDestinationSettingsCard.vue';
 import { useEventTreeStore } from '../stores/eventTreeStore';
-import {
-	AbstractMessageEventBusDestination,
-	MessageEventBusDestinationSyslog,
-	MessageEventBusDestinationWebhook,
-	MessageEventBusDestinationTypeNames } from '../components/SettingsLogStreaming/types';
 import { useUIStore } from '../stores/ui';
-import { WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY, SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY } from '../constants';
+import { WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY, SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY, SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY } from '../constants';
 import Vue from 'vue';
 import { destinationToFakeINodeUi } from '../components/SettingsLogStreaming/Helpers';
 import { restApi } from '../mixins/restApi';
+import { deepCopy, defaultMessageEventBusDestinationSentryOptions, defaultMessageEventBusDestinationSyslogOptions, defaultMessageEventBusDestinationWebhookOptions, MessageEventBusDestinationOptions, MessageEventBusDestinationTypeNames } from 'n8n-workflow';
 
 export default mixins(
 	restApi,
@@ -59,7 +59,7 @@ export default mixins(
 	data() {
 		return {
 			eventBus: new Vue(),
-			destinations: Array<AbstractMessageEventBusDestination>,
+			destinations: Array<MessageEventBusDestinationOptions>,
 		};
 	},
 	async mounted() {
@@ -75,7 +75,7 @@ export default mixins(
 			if (name==='removeDestination') {
 				after(async () => {
 					await this.getDestinationDataFromREST();
-    	});
+    		});
 			}
 		});
 
@@ -103,29 +103,26 @@ export default mixins(
 	methods: {
 		async getDestinationDataFromREST(): Promise<any> {
 			this.eventTreeStore.clearEventNames();
-			this.eventTreeStore.clearEventLevels();
 			this.eventTreeStore.clearDestinationItemTrees();
 			this.workflowsStore.removeAllNodes({setStateDirty: true, removePinData: true});
-			const backendConstantsData = await this.restApi().makeRestApiRequest('get', '/eventbus/constants');
-			if ('eventNames' in backendConstantsData && Array.isArray(backendConstantsData['eventNames'])) {
-				backendConstantsData['eventNames'].forEach(e=>this.eventTreeStore.addEventName(e));
+			const backendConstantsData = await this.restApi().makeRestApiRequest('get', '/eventbus/eventnames');
+			if ('eventnames' in backendConstantsData && Array.isArray(backendConstantsData['eventnames'])) {
+				backendConstantsData['eventnames'].forEach(e=>this.eventTreeStore.addEventName(e));
 			}
-			if ('eventLevels' in backendConstantsData && Array.isArray(backendConstantsData['eventLevels'])) {
-				backendConstantsData['eventLevels'].forEach(e=>this.eventTreeStore.addEventLevel(e));
-			}
-			const destinationData: AbstractMessageEventBusDestination[] = await this.restApi().makeRestApiRequest('get', '/eventbus/destination');
+			const destinationData: MessageEventBusDestinationOptions[] = await this.restApi().makeRestApiRequest('get', '/eventbus/destination');
 			if (destinationData) {
 				for (const destination of destinationData) {
 					let nodeWithDefaults;
 					switch (destination.__type) {
-						case MessageEventBusDestinationTypeNames.webhook:
-							nodeWithDefaults = Object.assign(new MessageEventBusDestinationWebhook(), destination);
-							break;
 						case MessageEventBusDestinationTypeNames.syslog:
-							nodeWithDefaults = Object.assign(new MessageEventBusDestinationSyslog(), destination);
+							nodeWithDefaults = Object.assign(deepCopy(defaultMessageEventBusDestinationSyslogOptions), destination);
 							break;
-						default:
-						nodeWithDefaults = Object.assign(new MessageEventBusDestinationWebhook(), destination);
+						case MessageEventBusDestinationTypeNames.sentry:
+							nodeWithDefaults = Object.assign(deepCopy(defaultMessageEventBusDestinationSentryOptions), destination);
+							break;
+						case MessageEventBusDestinationTypeNames.webhook:
+							default:
+							nodeWithDefaults = Object.assign(deepCopy(defaultMessageEventBusDestinationWebhookOptions), destination);
 					}
 					this.workflowsStore.addNode(destinationToFakeINodeUi(nodeWithDefaults));
 					this.eventTreeStore.addDestination(destination);
@@ -133,17 +130,37 @@ export default mixins(
 			}
 			this.$forceUpdate();
 		},
-		addDestinationSyslog() {
-			const newDestination = new MessageEventBusDestinationSyslog();
-			this.eventTreeStore.addDestination(newDestination);
-			this.uiStore.openModalWithData({ name: WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY, data: { destination: newDestination, isNew: true, eventBus: this.eventBus } });
+		async addDestinationSyslog() {
+			await this.onAdd(MessageEventBusDestinationTypeNames.syslog, SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
-		addDestinationWebhook() {
-			const newDestination = new MessageEventBusDestinationWebhook();
-			this.eventTreeStore.addDestination(newDestination);
-			this.uiStore.openModalWithData({ name: SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY, data: { destination: newDestination, isNew: true, eventBus: this.eventBus } });
+		async addDestinationWebhook() {
+			await this.onAdd(MessageEventBusDestinationTypeNames.webhook, WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
-		async onRemove(destinationId: string) {
+		async addDestinationSentry() {
+			await this.onAdd(MessageEventBusDestinationTypeNames.sentry, SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY);
+		},
+		async onAdd(destinationType: MessageEventBusDestinationTypeNames, modalKey: string) {
+			let newDestination;
+			switch(destinationType) {
+					case MessageEventBusDestinationTypeNames.syslog:
+						newDestination = deepCopy(defaultMessageEventBusDestinationSyslogOptions);
+						break;
+					case MessageEventBusDestinationTypeNames.sentry:
+						newDestination = deepCopy(defaultMessageEventBusDestinationSentryOptions);
+						break;
+					case MessageEventBusDestinationTypeNames.webhook:
+						newDestination = deepCopy(defaultMessageEventBusDestinationWebhookOptions);
+						break;
+			}
+			if (newDestination) {
+				newDestination.id = uuid();
+				this.eventTreeStore.addDestination(newDestination);
+				this.workflowsStore.addNode(destinationToFakeINodeUi(newDestination));
+				this.uiStore.openModalWithData({ name: modalKey, data: { newDestination, isNew: false, eventBus: this.eventBus } });
+			}
+		},
+		async onRemove(destinationId?: string) {
+			if (!destinationId) return;
 			await this.restApi().makeRestApiRequest('DELETE', `/eventbus/destination?id=${destinationId}`);
 			this.eventTreeStore.removeDestination(destinationId);
 			const foundNode = this.workflowsStore.getNodeByName(destinationId);
@@ -151,12 +168,16 @@ export default mixins(
 				this.workflowsStore.removeNode(foundNode);
 			}
 		},
-		async onEdit(destinationId: string) {
+		async onEdit(destinationId?: string) {
+			if (!destinationId) return;
 			const destination = this.eventTreeStore.getDestination(destinationId);
 			if (destination) {
 				switch(destination.__type) {
 					case MessageEventBusDestinationTypeNames.syslog:
 						this.uiStore.openModalWithData({ name: SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY, data: { destination, isNew: false, eventBus: this.eventBus } });
+						break;
+					case MessageEventBusDestinationTypeNames.sentry:
+						this.uiStore.openModalWithData({ name: SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY, data: { destination, isNew: false, eventBus: this.eventBus } });
 						break;
 					case MessageEventBusDestinationTypeNames.webhook:
 						this.uiStore.openModalWithData({ name: WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY, data: { destination, isNew: false, eventBus: this.eventBus } });
@@ -170,16 +191,6 @@ export default mixins(
 
 <style lang="scss" module>
 
-.item {
-  cursor: pointer;
-}
-
-ul {
-  padding-left: 1em;
-  line-height: 1.5em;
-  list-style-type: dot;
-	margin-bottom: 0;
-}
 
 .container {
 	> * {
@@ -196,9 +207,6 @@ ul {
 	*:first-child {
 		flex-grow: 1;
 	}
-}
-.sectionHeader {
-	margin-bottom: var(--spacing-s);
 }
 
 .buttonInRow {

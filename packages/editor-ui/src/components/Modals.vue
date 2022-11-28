@@ -115,7 +115,7 @@
 		</ModalRoot>
 
 		<ModalRoot :name="WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY">
-			<template v-slot="{ modalName, data }">
+			<template #default="{ modalName, data }">
 				<EventDestinationSettingsWebhookModal
 				:modalName="modalName"
 				:destination="data.destination"
@@ -126,8 +126,19 @@
 		</ModalRoot>
 
 		<ModalRoot :name="SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY">
-			<template v-slot="{ modalName, data }">
+			<template #default="{ modalName, data }">
 				<EventDestinationSettingsSyslogModal
+				:modalName="modalName"
+				:destination="data.destination"
+				:isNew="data.isNew"
+				:eventBus="data.eventBus"
+				/>
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<EventDestinationSettingsSentryModal
 				:modalName="modalName"
 				:destination="data.destination"
 				:isNew="data.isNew"
@@ -164,6 +175,7 @@ import {
 	IMPORT_CURL_MODAL_KEY,
 	WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY,
 	SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
+	SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY,
 } from '@/constants';
 
 import AboutModal from './AboutModal.vue';
@@ -189,6 +201,7 @@ import ImportCurlModal from './ImportCurlModal.vue';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
 import EventDestinationSettingsWebhookModal from '@/components/SettingsLogStreaming/EventDestinationSettingsWebhookModal.vue';
 import EventDestinationSettingsSyslogModal from '@/components/SettingsLogStreaming/EventDestinationSettingsSyslogModal.vue';
+import EventDestinationSettingsSentryModal from '@/components/SettingsLogStreaming/EventDestinationSettingsSentryModal.vue';
 
 export default Vue.extend({
 	name: "Modals",
@@ -216,6 +229,7 @@ export default Vue.extend({
 		ImportCurlModal,
 		EventDestinationSettingsWebhookModal,
 		EventDestinationSettingsSyslogModal,
+		EventDestinationSettingsSentryModal,
 	},
 	data: () => ({
 		COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY,
@@ -240,6 +254,7 @@ export default Vue.extend({
 		IMPORT_CURL_MODAL_KEY,
 		WEBHOOK_LOGSTREAM_SETTINGS_MODAL_KEY,
 		SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
+		SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY,
 	}),
 });
 </script>

@@ -1,17 +1,19 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 /* eslint-disable @typescript-eslint/no-floating-promises */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { EventMessageGeneric } from '../EventMessageClasses/EventMessageGeneric';
-import {
-	MessageEventBusDestination,
-	MessageEventBusDestinationOptions,
-} from './MessageEventBusDestination';
+import { MessageEventBusDestination } from './MessageEventBusDestination';
 import { eventBus } from '../MessageEventBus/MessageEventBus';
 import Redis, { RedisOptions } from 'ioredis';
-import { JsonObject, jsonParse } from 'n8n-workflow';
-import { MessageEventBusDestinationTypeNames } from '.';
+import {
+	JsonObject,
+	jsonParse,
+	MessageEventBusDestinationOptions,
+	MessageEventBusDestinationTypeNames,
+} from 'n8n-workflow';
 
 export const isMessageEventBusDestinationRedisOptions = (
 	candidate: unknown,
@@ -26,10 +28,13 @@ interface MessageEventBusDestinationRedisOptions extends MessageEventBusDestinat
 	redisOptions?: RedisOptions;
 }
 
-export class MessageEventBusDestinationRedis extends MessageEventBusDestination {
-	#client: Redis.Redis | undefined;
+export class MessageEventBusDestinationRedis
+	extends MessageEventBusDestination
+	implements MessageEventBusDestinationRedisOptions
+{
+	client: Redis.Redis | undefined;
 
-	#channelName: string;
+	channelName: string;
 
 	redisOptions: RedisOptions;
 
@@ -41,8 +46,8 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 			host: '127.0.0.1', // Redis host
 			db: 0, // Defaults to 0
 		};
-		this.#channelName = options.channelName;
-		this.#client = new Redis(this.redisOptions);
+		this.channelName = options.channelName;
+		this.client = new Redis(this.redisOptions);
 		// this.#client?.monitor((error, monitor) => {
 		// 	monitor?.on('monitor', (time, args, source, database) => {
 		// 		console.log(time, args, source, database);
@@ -52,8 +57,8 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 	}
 
 	async receiveFromEventBus(msg: EventMessageGeneric): Promise<boolean> {
-		if (this.#client?.status === 'ready') {
-			const publishResult = await this.#client?.publish(this.#channelName, msg.toString());
+		if (this.client?.status === 'ready') {
+			const publishResult = await this.client?.publish(this.channelName, msg.toString());
 			console.log(publishResult);
 			console.debug(`MessageEventBusDestinationRedis forwarded  ${msg.eventName} - ${msg.id}`);
 			await eventBus.confirmSent(msg);
@@ -68,7 +73,7 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 		const abstractSerialized = super.serialize();
 		return {
 			...abstractSerialized,
-			channelName: this.#channelName,
+			channelName: this.channelName,
 			redisOptions: this.redisOptions as JsonObject,
 		};
 	}
@@ -96,7 +101,7 @@ export class MessageEventBusDestinationRedis extends MessageEventBusDestination 
 	}
 
 	async close() {
-		this.#client?.disconnect();
-		this.#client = undefined;
+		this.client?.disconnect();
+		this.client = undefined;
 	}
 }

@@ -9,7 +9,7 @@
 		minHeight="500px"
 		maxHeight="700px"
 	>
-		<template #header>
+	<template #header>
 			<el-row :gutter="20" justify="start">
 					<el-col :span="12">
 						Edit &nbsp;<strong>{{ destination.label }}</strong> settings
@@ -25,8 +25,8 @@
 						<el-button type="primary" @click="saveDestination" :disabled="unchanged">Save</el-button>
 					</el-col>
 				</el-row>
-		</template>
-		<template #content>
+	</template>
+	<template #content>
 			<div :class="$style.narrowCardBody">
 					<parameter-input-list
 						:parameters="uiDescription"
@@ -35,8 +35,7 @@
 						:isReadOnly="false"
 						path=""
 						@valueChanged="valueChanged"
-					>
-					</parameter-input-list>
+					/>
 					<div class="multi-parameter">
 						<n8n-input-label
 							:class="$style.labelMargins"
@@ -86,46 +85,35 @@ import { get, set, unset } from 'lodash';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
 import { EventNamesTreeCollection, useEventTreeStore } from '../../stores/eventTreeStore';
+import { useNDVStore } from '../../stores/ndv';
+import { useWorkflowsStore } from '../../stores/workflows';
 import { restApi } from '../../mixins/restApi';
 import EventTreeSelection from './EventTreeSelection.vue';
 import EventLevelSelection from './EventLevelSelection.vue';
 import ParameterInputList from '@/components/ParameterInputList.vue';
 import NodeCredentials from '@/components/NodeCredentials.vue';
-import { IUpdateInformation } from '../../Interface';
-import { deepCopy, defaultMessageEventBusDestinationSyslogOptions, INodeProperties, MessageEventBusDestinationSyslogOptions, MessageEventBusDestinationTypeNames, NodeParameterValue } from 'n8n-workflow';
+import { INodeUi, IUpdateInformation } from '../../Interface';
+import { deepCopy, defaultMessageEventBusDestinationSentryOptions, IDataObject, INodeCredentials, INodeProperties, MessageEventBusDestinationTypeNames, MessageEventBusDestinationSentryOptions, NodeParameterValue } from 'n8n-workflow';
 import Vue from 'vue';
-import {SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY} from '../../constants';
+import {SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY} from '../../constants';
 import Modal from '@/components/Modal.vue';
 import { useUIStore } from '../../stores/ui';
+import { destinationToFakeINodeUi } from './Helpers';
 
 export default mixins(
 	restApi,
 ).extend({
-	name: 'event-destination-settings-syslog-modal',
+	name: 'event-destination-settings-sentry-modal',
 	props: {
 		modalName: String,
 		destination: {
 			type: Object,
-			default: deepCopy(defaultMessageEventBusDestinationSyslogOptions),
+			default: deepCopy(defaultMessageEventBusDestinationSentryOptions),
 		},
 		isNew: Boolean,
 		eventBus: {
 			type: Vue,
 		},
-	},
-	data() {
-		return {
-			unchanged: !this.$props.isNew,
-			isOpen: false,
-			loading: false,
-			showRemoveConfirm: false,
-			modalBus: new Vue(),
-			treeData: {} as EventNamesTreeCollection,
-			nodeParameters: deepCopy(defaultMessageEventBusDestinationSyslogOptions),
-			uiDescription: description,
-			SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
-			destinationTypeNames: MessageEventBusDestinationTypeNames,
-		};
 	},
 	components: {
 		Modal,
@@ -139,23 +127,59 @@ export default mixins(
 		ElCollapse,
 		ElCollapseItem,
 	},
+	data() {
+		return {
+			unchanged: !this.$props.isNew,
+			isOpen: false,
+			loading: false,
+			showRemoveConfirm: false,
+			treeData: {} as EventNamesTreeCollection,
+			nodeParameters:  deepCopy(defaultMessageEventBusDestinationSentryOptions),
+			uiDescription: description,
+			modalBus: new Vue(),
+			SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY,
+			destinationTypeNames: MessageEventBusDestinationTypeNames,
+		};
+	},
 	computed: {
 		...mapStores(
 			useUIStore,
 			useEventTreeStore,
+			useNDVStore,
+			useWorkflowsStore,
 		),
+		node(): INodeUi {
+			return destinationToFakeINodeUi(this.nodeParameters);
+		},
 	},
 	mounted() {
+		this.ndvStore.activeNodeName = this.destination.id ?? 'thisshouldnothappen';
 		// merge destination data with defaults
-		// this.nodeParameters = Object.assign(new MessageEventBusDestinationSyslog(), this.destination);
-		this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationSyslogOptions), this.destination);
-		this.treeData = this.eventTreeStore.getEventTree(this.destination.id ?? '');
+		this.nodeParameters = Object.assign(deepCopy(defaultMessageEventBusDestinationSentryOptions), this.destination);
+		this.treeData = this.eventTreeStore.getEventTree(this.destination.id ?? 'thisshouldnothappen');
+		this.workflowsStore.$onAction(
+		({
+			name, // name of the action
+			args, // array of parameters passed to the action
+		}) => {
+			if (name === 'updateNodeProperties') {
+				for (const arg of args) {
+					if (arg.name === this.destination.id) {
+						if ('credentials' in arg.properties) {
+							this.unchanged = false;
+							this.nodeParameters.credentials = arg.properties.credentials as INodeCredentials;
+						}
+					}
+				}
+			}
+		});
 	},
 	methods: {
 		onInput() {
 			this.unchanged = false;
 		},
 		valueChanged(parameterData: IUpdateInformation) {
+			console.log(parameterData);
 			this.unchanged = false;
 			const newValue: NodeParameterValue = parameterData.value as string | number;
 			const parameterPath = parameterData.name.startsWith('parameters.') ? parameterData.name.split('.').slice(1).join('.') : parameterData.name;
@@ -186,19 +210,23 @@ export default mixins(
 			}
 
 			this.nodeParameters = deepCopy(nodeParameters);
+			this.workflowsStore.updateNodeProperties({
+				name: this.node.name,
+				properties: { parameters: this.nodeParameters as unknown as IDataObject },
+			});
 		},
 		toggleRemoveConfirm() {
 			this.showRemoveConfirm = !this.showRemoveConfirm;
 		},
 		removeThis() {
 			this.$props.eventBus.$emit('remove', this.destination.id);
-			this.uiStore.closeModal(SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY);
+			this.uiStore.closeModal(SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 		async saveDestination() {
 			if (this.unchanged || !this.destination.id) {
 				return;
 			}
-			const data: MessageEventBusDestinationSyslogOptions = {
+			const data: MessageEventBusDestinationSentryOptions = {
 				...this.nodeParameters,
 				subscribedEvents: Array.from(this.eventTreeStore.items[this.destination.id].selectedEvents.values()),
 				subscribedLevels: Array.from(this.eventTreeStore.items[this.destination.id].selectedLevels.values()),
@@ -207,7 +235,7 @@ export default mixins(
 			this.unchanged = true;
 			this.eventTreeStore.updateDestination(this.nodeParameters);
 			this.$props.eventBus.$emit('destinationWasUpdated', this.destination.id);
-			this.uiStore.closeModal(SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY);
+			this.uiStore.closeModal(SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY);
 		},
 	},
 });
@@ -225,75 +253,92 @@ const description = [
 					displayName: 'Label',
 					name: 'label',
 					type: 'string',
-					default: 'Syslog Server',
+					default: 'Sentry DSN',
 					noDataExpression: true,
 					description: 'Custom label',
 				},
 				{
-					displayName: 'Host',
-					name: 'host',
+					displayName: 'DSN',
+					name: 'dsn',
 					type: 'string',
-					default: '127.0.0.1',
-					placeholder: '127.0.0.1',
-					description: 'The IP or host name to make the request to',
+					default: 'https://',
+					noDataExpression: true,
+					description: 'Your Sentry DSN Client Key',
 				},
+				// {
+				// 	displayName: 'Authentication',
+				// 	name: 'authentication',
+				// 	noDataExpression: true,
+				// 	type: 'options',
+				// 	default: 'none',
+				// 	options: [
+				// 		{
+				// 			name: 'None',
+				// 			value: 'none',
+				// 		},
+				// 		{
+				// 			name: 'Predefined Credential Type',
+				// 			value: 'predefinedCredentialType',
+				// 			description:
+				// 				"We've already implemented auth for many services so that you don't have to set it up manually",
+				// 		},
+				// 	],
+				// },
+				// {
+				// 	displayName: 'Credential Type',
+				// 	name: 'nodeCredentialType',
+				// 	type: 'credentialsSelect',
+				// 	noDataExpression: true,
+				// 	default: '',
+				// 	credentialTypes: ['sentryIoApi'],
+				// 	displayOptions: {
+				// 		show: {
+				// 			authentication: ['predefinedCredentialType'],
+				// 		},
+				// 	},
+				// },
 				{
-					displayName: 'Port',
-					name: 'port',
-					type: 'number',
-					default: '514',
-					placeholder: '514',
-					description: 'The port number to make the request to',
-				},
+				displayName: 'Resource',
+				name: 'resource',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Event',
+						value: 'event',
+					},
+					{
+						name: 'Issue',
+						value: 'issue',
+					},
+					{
+						name: 'Organization',
+						value: 'organization',
+					},
+					{
+						name: 'Project',
+						value: 'project',
+					},
+					{
+						name: 'Release',
+						value: 'release',
+					},
+					{
+						name: 'Team',
+						value: 'team',
+					},
+				],
+				default: 'event',
+			},
 				{
-					displayName: 'Protocol',
-					name: 'protocol',
-					type: 'options',
-					options: [
-						{
-							name: 'TCP',
-							value: 'tcp',
-						},
-						{
-							name: 'UDP',
-							value: 'udp',
-						},
-					],
-					default: 'udp',
-					description: 'The protocol to use for the connection',
-				},
-				{
-					displayName: 'Facility',
-					name: 'facility',
-					type: 'options',
-					options: [
-						{name: 'Kernel', value:  0},
-						{name: 'User',   value:  1},
-						{name: 'System', value:  3},
-						{name: 'Audit',  value: 13},
-						{name: 'Alert',  value: 14},
-						{name: 'Local0', value: 16},
-						{name: 'Local1', value: 17},
-						{name: 'Local2', value: 18},
-						{name: 'Local3', value: 19},
-						{name: 'Local4', value: 20},
-						{name: 'Local5', value: 21},
-						{name: 'Local6', value: 22},
-						{name: 'Local7', value: 23},
-					],
-					default: '16',
-					description: 'Syslog facility parameter',
-				},
-				{
-					displayName: 'App Name',
-					name: 'app_name',
-					type: 'string',
-					default: 'n8n',
-					placeholder: 'n8n',
-					description: 'Syslog app name parameter',
+					displayName: 'Send Payload',
+					name: 'sendPayload',
+					type: 'boolean',
+					default: true,
+					noDataExpression: true,
+					description: 'Whether the events payload (if any) is sent or not (to reduce bandwidth)',
 				},
 			] as INodeProperties[];
-
 </script>
 
 <style lang="scss" module>

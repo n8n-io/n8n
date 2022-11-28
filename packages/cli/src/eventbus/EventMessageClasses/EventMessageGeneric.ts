@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { JsonObject } from 'n8n-workflow';
-import { EventMessageTypeNames } from './Enums';
+import { EventMessageTypeNames, JsonObject } from 'n8n-workflow';
 import {
 	AbstractEventMessage,
 	// EventMessageSerialized,
@@ -16,6 +15,7 @@ export class EventMessageGenericOptions extends AbstractEventMessageOptions {
 }
 
 export class EventMessageGeneric extends AbstractEventMessage {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
 	readonly __type: string = EventMessageTypeNames.generic;
 
 	payload: EventPayloadGeneric;

@@ -21,6 +21,7 @@ import {
 	ONBOARDING_CALL_SIGNUP_MODAL_KEY,
 	PERSONALIZATION_MODAL_KEY,
 	STORES,
+	SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY,
 	SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY,
 	TAGS_MANAGER_MODAL_KEY,
 	VALUE_SURVEY_MODAL_KEY,
@@ -123,6 +124,10 @@ export const useUIStore = defineStore(STORES.UI, {
 				data: undefined,
 			},
 			[SYSLOG_LOGSTREAM_SETTINGS_MODAL_KEY]: {
+				open: false,
+				data: undefined,
+			},
+			[SENTRY_LOGSTREAM_SETTINGS_MODAL_KEY]: {
 				open: false,
 				data: undefined,
 			},

@@ -1,5 +1,5 @@
+import { MessageEventBusDestinationOptions } from 'n8n-workflow';
 import { Column, Entity, PrimaryColumn } from 'typeorm';
-import { MessageEventBusDestinationOptions } from '../../eventbus/MessageEventBusDestination/MessageEventBusDestination';
 import { AbstractEntity, jsonColumnType } from './AbstractEntity';
 
 @Entity({ name: 'eventdestinations_entity' })
