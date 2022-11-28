@@ -12,9 +12,13 @@ const WorkflowsPage = new WorkflowsPageClass();
 const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflows', () => {
-	beforeEach(() => {
+	before(() => {
+		cy.task('db:reset');
+		Cypress.session.clearAllSavedSessions();
 		cy.signup(username, firstName, lastName, password);
+	});
 
+	beforeEach(() => {
 		cy.on('uncaught:exception', (err, runnable) => {
 			expect(err.message).to.include('Not logged in');
 

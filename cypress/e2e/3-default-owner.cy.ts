@@ -28,6 +28,7 @@ describe('Default owner', () => {
 
 	beforeEach(() => {
 		cy.task('db:reset');
+		Cypress.session.clearAllSavedSessions();
 	});
 
 	it('should be able to use n8n without user management and setup UM', () => {

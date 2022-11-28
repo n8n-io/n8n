@@ -1,15 +1,25 @@
 import { NodeCreator } from '../pages/features/node-creator';
 import { INodeTypeDescription } from '../../packages/workflow';
 import CustomNodeFixture from '../fixtures/Custom_node.json';
+import {DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD} from "../constants";
+import {randFirstName, randLastName} from "@ngneat/falso";
 
+const username = DEFAULT_USER_EMAIL;
+const password = DEFAULT_USER_PASSWORD;
+const firstName = randFirstName();
+const lastName = randLastName();
 const nodeCreatorFeature = new NodeCreator();
 
 describe('Node Creator', () => {
 	before(() => {
 		cy.task('db:reset');
-	})
+		Cypress.session.clearAllSavedSessions();
+		cy.signup(username, firstName, lastName, password);
+	});
 
 	beforeEach(() => {
+		cy.signin(username, password);
+
 		cy.intercept('GET', '/types/nodes.json', (req) => {
 			// Delete caching headers so that we can intercept the request
 			['etag', 'if-none-match', 'if-modified-since'].forEach(header => {delete req.headers[header]});
@@ -21,7 +31,8 @@ describe('Node Creator', () => {
 				nodes.push(CustomNodeFixture as INodeTypeDescription);
 				res.send(nodes)
 			})
-		}).as('nodesIntercept')
+		}).as('nodesIntercept');
+
 		cy.visit(nodeCreatorFeature.url);
 	});
 

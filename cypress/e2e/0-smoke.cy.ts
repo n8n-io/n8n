@@ -9,6 +9,7 @@ const lastName = randLastName();
 describe('Authentication', () => {
 	beforeEach(() => {
 		cy.task('db:reset');
+		Cypress.session.clearAllSavedSessions();
 	});
 
 	it('should setup owner', () => {
