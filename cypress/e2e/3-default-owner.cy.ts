@@ -18,7 +18,7 @@ const settingsUsersPage = new SettingsUsersPage();
 
 const messageBox = new MessageBox();
 
-const username = DEFAULT_USER_EMAIL;
+const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
@@ -27,7 +27,7 @@ describe('Default owner', () => {
 	// todo test should redirect to setup if have not skipped
 
 	beforeEach(() => {
-		cy.task('db:reset');
+		cy.resetAll();
 	});
 
 	it('should be able to use n8n without user management and setup UM', () => {
@@ -83,7 +83,7 @@ describe('Default owner', () => {
 		});
 
 		describe('should be able to setup instance and migrate workflows and credentials', () => {
-			cy.signup(username, firstName, lastName, password);
+			cy.setup({ email, firstName, lastName, password });
 
 			messageBox.getters.content().should('contain.text', '1 existing workflow and 1 credential')
 
