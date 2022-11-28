@@ -1,16 +1,14 @@
-import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from "../constants";
-import { randFirstName, randLastName } from "@ngneat/falso";
 import { NodeCreator } from '../pages/features/node-creator';
 import { INodeTypeDescription } from '../../packages/workflow';
 import CustomNodeFixture from '../fixtures/Custom_node.json';
 
-const username = DEFAULT_USER_EMAIL;
-const password = DEFAULT_USER_PASSWORD;
-const firstName = randFirstName();
-const lastName = randLastName();
 const nodeCreatorFeature = new NodeCreator();
 
 describe('Node Creator', () => {
+	before(() => {
+		cy.task('db:reset');
+	})
+
 	beforeEach(() => {
 		cy.intercept('GET', '/types/nodes.json', (req) => {
 			// Delete caching headers so that we can intercept the request
@@ -24,16 +22,6 @@ describe('Node Creator', () => {
 				res.send(nodes)
 			})
 		}).as('nodesIntercept')
-
-		cy.signup(username, firstName, lastName, password);
-
-		cy.on('uncaught:exception', (err, runnable) => {
-			expect(err.message).to.include('Not logged in');
-
-			return false;
-		})
-
-		cy.signin(username, password);
 		cy.visit(nodeCreatorFeature.url);
 	});
 
@@ -100,7 +88,7 @@ describe('Node Creator', () => {
 		cy.get('div').contains("On clicking 'execute'").should('exist');
 	})
 
-	it('check if non-core nodes are rendered all nodes', () => {
+	it('check if non-core nodes are rendered', () => {
 		cy.wait('@nodesIntercept').then((interception) => {
 			const nodes = interception.response?.body as INodeTypeDescription[];
 
@@ -126,9 +114,9 @@ describe('Node Creator', () => {
 		})
 	})
 
-	it.only('should render and select community node', () => {
+	it('should render and select community node', () => {
 		cy.wait('@nodesIntercept').then(() => {
-			const customCategory = 'customCategory';
+			const customCategory = 'Custom Category';
 			const customNode = 'E2E Node';
 			const customNodeDescription = 'Demonstrate rendering of node';
 
