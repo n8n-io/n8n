@@ -12,7 +12,7 @@ const nodeCreatorFeature = new NodeCreator();
 
 describe('Node Creator', () => {
 	before(() => {
-		cy.resetDatabase();
+		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
 	});
 

@@ -6,7 +6,7 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('HTTP Request node', () => {
 	before(() => {
-		cy.resetDatabase();
+		cy.resetAll();
 		cy.skipSetup();
 	});
 

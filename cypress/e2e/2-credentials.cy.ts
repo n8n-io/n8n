@@ -11,7 +11,7 @@ const credentialsModal = new CredentialsModal();
 
 describe('Credentials', () => {
 	before(() => {
-		cy.resetDatabase();
+		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
 	});
 

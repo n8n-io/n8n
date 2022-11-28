@@ -8,7 +8,7 @@ const lastName = randLastName();
 
 describe('Authentication', () => {
 	beforeEach(() => {
-		cy.resetDatabase();
+		cy.resetAll();
 	});
 
 	it('should setup owner', () => {

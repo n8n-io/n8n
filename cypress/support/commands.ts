@@ -120,7 +120,7 @@ Cypress.Commands.add('skipSetup', () => {
 	});
 })
 
-Cypress.Commands.add('resetDatabase', () => {
+Cypress.Commands.add('resetAll', () => {
 	cy.task('reset');
 	Cypress.session.clearAllSavedSessions();
 });

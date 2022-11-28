@@ -23,7 +23,7 @@ declare global {
 			setup(payload: SetupPayload): void;
 			setupOwner(payload: SetupPayload): void;
 			skipSetup(): void;
-			resetDatabase(): void;
+			resetAll(): void;
 		}
 	}
 }

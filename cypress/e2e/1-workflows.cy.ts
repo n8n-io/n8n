@@ -13,7 +13,7 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflows', () => {
 	before(() => {
-		cy.resetDatabase();
+		cy.resetAll();
 		cy.setup({ email, firstName, lastName, password });
 	});
 

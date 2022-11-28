@@ -27,7 +27,7 @@ describe('Default owner', () => {
 	// todo test should redirect to setup if have not skipped
 
 	beforeEach(() => {
-		cy.resetDatabase();
+		cy.resetAll();
 	});
 
 	it('should be able to use n8n without user management and setup UM', () => {
