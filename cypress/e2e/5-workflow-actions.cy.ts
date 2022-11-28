@@ -6,7 +6,7 @@ const NEW_WORKFLOW_NAME = 'Something else';
 const MANUAL_TRIGGER_NODE_NAME = 'Manual Trigger';
 const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 
-const username = DEFAULT_USER_EMAIL;
+const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
@@ -14,9 +14,8 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflow Actions', () => {
 	before(() => {
-		cy.task('reset');
-		Cypress.session.clearAllSavedSessions();
-		cy.signup(username, firstName, lastName, password);
+		cy.resetDatabase();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
@@ -26,7 +25,7 @@ describe('Workflow Actions', () => {
 			return false;
 		})
 
-		cy.signin(username, password);
+		cy.signin({ email, password });
 
 		WorkflowPage.actions.visit();
 	});

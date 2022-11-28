@@ -4,7 +4,7 @@ import { WorkflowsPage as WorkflowsPageClass } from '../pages/workflows';
 import { WorkflowPage as WorkflowPageClass } from '../pages/workflow';
 import { v4 as uuid } from 'uuid';
 
-const username = DEFAULT_USER_EMAIL;
+const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
@@ -13,9 +13,8 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Workflows', () => {
 	before(() => {
-		cy.task('reset');
-		Cypress.session.clearAllSavedSessions();
-		cy.signup(username, firstName, lastName, password);
+		cy.resetDatabase();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
@@ -25,7 +24,7 @@ describe('Workflows', () => {
 			return false;
 		})
 
-		cy.signin(username, password);
+		cy.signin({ email, password });
 		cy.visit(WorkflowsPage.url);
 	});
 

@@ -2,7 +2,7 @@ import { DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD } from "../constants";
 import { randFirstName, randLastName } from "@ngneat/falso";
 import { CredentialsPage, CredentialsModal } from '../pages';
 
-const username = DEFAULT_USER_EMAIL;
+const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
@@ -11,9 +11,8 @@ const credentialsModal = new CredentialsModal();
 
 describe('Credentials', () => {
 	before(() => {
-		cy.task('reset');
-		Cypress.session.clearAllSavedSessions();
-		cy.signup(username, firstName, lastName, password);
+		cy.resetDatabase();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
@@ -23,7 +22,7 @@ describe('Credentials', () => {
 			return false;
 		})
 
-		cy.signin(username, password);
+		cy.signin({ email, password });
 		cy.visit(credentialsPage.url);
 	});
 

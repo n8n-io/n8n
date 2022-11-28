@@ -6,8 +6,7 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('HTTP Request node', () => {
 	before(() => {
-		cy.task('reset');
-		Cypress.session.clearAllSavedSessions();
+		cy.resetDatabase();
 		cy.skipSetup();
 	});
 

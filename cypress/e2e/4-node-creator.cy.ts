@@ -4,7 +4,7 @@ import CustomNodeFixture from '../fixtures/Custom_node.json';
 import {DEFAULT_USER_EMAIL, DEFAULT_USER_PASSWORD} from "../constants";
 import {randFirstName, randLastName} from "@ngneat/falso";
 
-const username = DEFAULT_USER_EMAIL;
+const email = DEFAULT_USER_EMAIL;
 const password = DEFAULT_USER_PASSWORD;
 const firstName = randFirstName();
 const lastName = randLastName();
@@ -12,13 +12,12 @@ const nodeCreatorFeature = new NodeCreator();
 
 describe('Node Creator', () => {
 	before(() => {
-		cy.task('reset');
-		Cypress.session.clearAllSavedSessions();
-		cy.signup(username, firstName, lastName, password);
+		cy.resetDatabase();
+		cy.setup({ email, firstName, lastName, password });
 	});
 
 	beforeEach(() => {
-		cy.signin(username, password);
+		cy.signin({ email, password });
 
 		cy.intercept('GET', '/types/nodes.json', (req) => {
 			// Delete caching headers so that we can intercept the request
