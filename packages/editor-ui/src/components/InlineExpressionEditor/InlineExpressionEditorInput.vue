@@ -39,13 +39,6 @@ export default mixins(workflowHelpers).extend({
 			errorsInSuccession: 0,
 		};
 	},
-	watch: {
-		value(newValue) {
-			this.editor?.dispatch({
-				changes: { from: 0, to: this.editor.state.doc.length, insert: newValue },
-			});
-		},
-	},
 	mounted() {
 		const extensions = [
 			EXPRESSION_EDITOR_THEME,
