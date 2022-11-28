@@ -62,7 +62,7 @@
 					color="text-base"
 					class="mb-3xs"
 				/>
-				<n8n-select :value="filters.status" @input="setKeyValue('status', $event)" size="small">
+				<n8n-select :value="filters.status" @input="setKeyValue('status', $event)" size="medium">
 					<n8n-option
 						v-for="option in statusFilterOptions"
 						:key="option.label"
