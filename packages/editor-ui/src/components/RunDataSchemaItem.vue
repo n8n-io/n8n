@@ -21,7 +21,7 @@
 				<span v-if="key" :class="{[$style.listKey]: isSchemaParentTypeList}">{{ key }}</span>
 			</span>
 		</div>
-		<span v-if="!isSchemaValueArray" :class="$style.value">{{ schema.value }}</span>
+		<span v-if="text" :class="$style.text">{{ text }}</span>
 		<input :id="subKey" type="checkbox" checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
 			<font-awesome-icon icon="angle-up" />
@@ -45,7 +45,7 @@
 <script lang="ts" setup>
 import { computed } from 'vue';
 import { INodeUi, Schema } from "@/Interface";
-import { checkExhaustive } from "@/utils";
+import { checkExhaustive, shorten } from "@/utils";
 
 type Props = {
 	schema: Schema
@@ -64,6 +64,7 @@ const isSchemaValueArray = computed(() => Array.isArray(props.schema.value));
 const isSchemaParentTypeList = computed(() => props.parent?.type === 'list');
 const key = computed((): string | undefined => isSchemaParentTypeList.value ? `[${props.schema.key}]` : props.schema.key);
 const schemaName = computed(() => isSchemaParentTypeList.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key);
+const text = computed(() => Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0));
 
 const getJsonParameterPath = (path: string): string => `{{ ${props.distanceFromActive ? '$json' : `$node["${ props.node!.name }"].json`}${path} }}`;
 const transitionDelay = (i:number) => `${i * 0.033}s`;
@@ -192,7 +193,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	}
 }
 
-.value {
+.text {
 	display: block;
 	padding-top: var(--spacing-4xs);
 	padding-left: var(--spacing-2xs);
