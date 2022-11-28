@@ -28,10 +28,10 @@
 /* eslint-disable no-await-in-loop */
 
 import { exec as callbackExec } from 'child_process';
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { access as fsAccess, readFile, writeFile, mkdir } from 'fs/promises';
+import { readFileSync } from 'fs';
+import { access as fsAccess } from 'fs/promises';
 import os from 'os';
-import { dirname as pathDirname, join as pathJoin, resolve as pathResolve } from 'path';
+import { join as pathJoin, resolve as pathResolve } from 'path';
 import { createHmac } from 'crypto';
 import { promisify } from 'util';
 import cookieParser from 'cookie-parser';
@@ -78,7 +78,6 @@ import parseUrl from 'parseurl';
 import promClient, { Registry } from 'prom-client';
 import history from 'connect-history-api-fallback';
 import bodyParser from 'body-parser';
-import glob from 'fast-glob';
 
 import config from '@/config';
 import * as Queue from '@/Queue';
@@ -91,6 +90,7 @@ import { nodesController } from '@/api/nodes.api';
 import { workflowsController } from '@/workflows/workflows.controller';
 import {
 	AUTH_COOKIE_NAME,
+	EDITOR_UI_DIST_DIR,
 	GENERATED_STATIC_DIR,
 	NODES_BASE_DIR,
 	RESPONSE_ERROR_MESSAGES,
@@ -113,7 +113,6 @@ import { executionsController } from '@/api/executions.api';
 import { nodeTypesController } from '@/api/nodeTypes.api';
 import { tagsController } from '@/api/tags.api';
 import { loadPublicApiVersions } from '@/PublicApi';
-import * as telemetryScripts from '@/telemetry/scripts';
 import {
 	getInstanceBaseUrl,
 	isEmailSetUp,
@@ -1640,56 +1639,7 @@ class App {
 		}
 
 		if (!config.getEnv('endpoints.disableUi')) {
-			// Read the index file and replace the path placeholder
-			const n8nPath = config.getEnv('path');
-			const basePathRegEx = /\/{{BASE_PATH}}\//g;
-			const hooksUrls = config.getEnv('externalFrontendHooksUrls');
-
-			let scriptsString = '';
-			if (hooksUrls) {
-				scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
-					return `${acc}<script src="${curr}"></script>`;
-				}, '');
-			}
-
-			if (this.frontendSettings.telemetry.enabled) {
-				const phLoadingScript = telemetryScripts.createPostHogLoadingScript({
-					apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
-					apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
-					autocapture: false,
-					disableSessionRecording: config.getEnv(
-						'diagnostics.config.posthog.disableSessionRecording',
-					),
-					debug: config.getEnv('logs.level') === 'debug',
-				});
-
-				scriptsString += phLoadingScript;
-			}
-
-			const editorUiDistDir = pathJoin(pathDirname(require.resolve('n8n-editor-ui')), 'dist');
-
-			const closingTitleTag = '</title>';
-			const compileFile = async (fileName: string) => {
-				const filePath = pathJoin(editorUiDistDir, fileName);
-				if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
-					const srcFile = await readFile(filePath, 'utf8');
-					let payload = srcFile
-						.replace(basePathRegEx, n8nPath)
-						.replace(/\/static\//g, n8nPath + 'static/');
-					if (filePath.endsWith('index.html')) {
-						payload = payload.replace(closingTitleTag, closingTitleTag + scriptsString);
-					}
-					const destFile = pathJoin(GENERATED_STATIC_DIR, fileName);
-					await mkdir(pathDirname(destFile), { recursive: true });
-					await writeFile(destFile, payload, 'utf-8');
-				}
-			};
-
-			await compileFile('index.html');
-			const files = await glob('**/*.{css,js}', { cwd: editorUiDistDir });
-			await Promise.all(files.map(compileFile));
-
-			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(editorUiDistDir));
+			this.app.use('/', express.static(GENERATED_STATIC_DIR), express.static(EDITOR_UI_DIST_DIR));
 
 			const startTime = new Date().toUTCString();
 			this.app.use('/index.html', (req, res, next) => {
