@@ -163,6 +163,7 @@ export default Vue.extend({
 
 .filters-dropdown {
 	width: 280px;
+	padding-bottom: var(--spacing-s);
 }
 
 .filters-dropdown-footer {
