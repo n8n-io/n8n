@@ -217,6 +217,13 @@ export default mixins(
 				const resolvables = this.segments.filter((s): s is Resolvable => s.kind === 'resolvable');
 				const errorResolvables = resolvables.filter(r => r.error);
 
+				const exposeErrorProperties = (error: Error) => {
+					return Object.getOwnPropertyNames(error).reduce<Record<string, unknown>>((acc, key) => {
+						// @ts-ignore
+						return acc[key] = error[key], acc;
+					}, {});
+				};
+
 				const telemetryPayload = {
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
 					workflow_id: this.workflowsStore.workflowId,
@@ -227,7 +234,11 @@ export default mixins(
 					node_type: this.ndvStore.activeNode?.type ?? '',
 					handlebar_count: resolvables.length,
 					handlebar_error_count: errorResolvables.length,
-					full_errors: errorResolvables.map(r => r.fullError),
+					full_errors: errorResolvables.map(errorResolvable => {
+						return errorResolvable.fullError
+							? { ...exposeErrorProperties(errorResolvable.fullError), stack: errorResolvable.fullError.stack }
+							: null;
+					}),
 					short_errors: errorResolvables.map(r => r.resolved ?? null),
 				};
 
