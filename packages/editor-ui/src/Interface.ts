@@ -1297,7 +1297,6 @@ export type SchemaType =
 	| 'boolean'
 	| 'bigint'
 	| 'symbol'
-	| 'date'
 	| 'list'
 	| 'object'
 	| 'function'

@@ -81,8 +81,6 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 			return 'hashtag';
 		case 'boolean':
 			return 'check-square';
-		case 'date':
-			return 'calendar';
 		case 'function':
 			return 'code';
 		case 'bigint':

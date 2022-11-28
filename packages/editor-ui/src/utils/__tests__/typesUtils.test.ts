@@ -168,7 +168,7 @@ describe("Utils", () => {
 		});
 	});
 
-	describe("getJsonSchema", () => {
+	describe("getSchema", () => {
 		test.each([
 			[
 				,
@@ -208,7 +208,7 @@ describe("Utils", () => {
 			],
 			[
 				new Date('2022-11-22T00:00:00.000Z'),
-				{ type: 'date', value: '2022-11-22T00:00:00.000Z', path: '' },
+				{ type: 'string', value: '2022-11-22T00:00:00.000Z', path: '' },
 			],
 			[
 				Symbol('x'),
@@ -248,7 +248,7 @@ describe("Utils", () => {
 			],
 			[
 				[{ dates: [[new Date('2022-11-22T00:00:00.000Z'), new Date('2022-11-23T00:00:00.000Z')], [new Date('2022-12-22T00:00:00.000Z'), new Date('2022-12-23T00:00:00.000Z')]] }],
-				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'list', key: 'dates', value: [{ type: 'list', key: '0', value: [{type: 'date', key: '0', value: '2022-11-22T00:00:00.000Z', path: '[0]["dates"][0][0]'}, {type: 'date', key: '1', value: '2022-11-23T00:00:00.000Z', path: '[0]["dates"][0][1]'}], path: '[0]["dates"][0]' }, { type: 'list', key: '1', value: [{type: 'date', key: '0', value: '2022-12-22T00:00:00.000Z', path: '[0]["dates"][1][0]'}, {type: 'date', key: '1', value: '2022-12-23T00:00:00.000Z', path: '[0]["dates"][1][1]'}], path: '[0]["dates"][1]' }], path: '[0]["dates"]' }], path: '[0]' }], path: '' },
+				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'list', key: 'dates', value: [{ type: 'list', key: '0', value: [{type: 'string', key: '0', value: '2022-11-22T00:00:00.000Z', path: '[0]["dates"][0][0]'}, {type: 'string', key: '1', value: '2022-11-23T00:00:00.000Z', path: '[0]["dates"][0][1]'}], path: '[0]["dates"][0]' }, { type: 'list', key: '1', value: [{type: 'string', key: '0', value: '2022-12-22T00:00:00.000Z', path: '[0]["dates"][1][0]'}, {type: 'string', key: '1', value: '2022-12-23T00:00:00.000Z', path: '[0]["dates"][1][1]'}], path: '[0]["dates"][1]' }], path: '[0]["dates"]' }], path: '[0]' }], path: '' },
 			],
 		])('should return the correct json schema for %s', (input, schema) => {
 			expect(getSchema(input)).toEqual(schema);
