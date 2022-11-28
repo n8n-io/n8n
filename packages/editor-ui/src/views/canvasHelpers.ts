@@ -1,7 +1,10 @@
 import { getStyleTokenValue, isNumber } from "@/components/helpers";
 import { NODE_OUTPUT_DEFAULT_KEY, START_NODE_TYPE, STICKY_NODE_TYPE, QUICKSTART_NOTE_NAME } from "@/constants";
 import { EndpointStyle, IBounds, INodeUi, IZoomConfig, XYPosition } from "@/Interface";
-import { AnchorArraySpec, Connection, Endpoint, Overlay, OverlaySpec, PaintStyle } from "jsplumb";
+// import { AnchorArraySpec, Connection, Overlay, PaintStyle } from "jsplumb";
+import { ArrayAnchorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
+import { Endpoint, Overlay, Connection } from '@jsplumb/core';
+
 import {
 	IConnection,
 	INode,
@@ -110,9 +113,9 @@ export const CONNECTOR_PAINT_STYLE_SUCCESS = {
 };
 
 export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
-	[
-		'Arrow',
-		{
+	{
+		type: 'Arrow',
+		options: {
 			id: OVERLAY_ENDPOINT_ARROW_ID,
 			location: 1,
 			width: 12,
@@ -120,10 +123,10 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 			length: 10,
 			visible: true,
 		},
-	],
-	[
-		'Arrow',
-		{
+	},
+	{
+		type: 'Arrow',
+		options: {
 			id: OVERLAY_MIDPOINT_ARROW_ID,
 			location: 0.5,
 			width: 12,
@@ -131,12 +134,12 @@ export const CONNECTOR_ARROW_OVERLAYS: OverlaySpec[] = [
 			length: 10,
 			visible: false,
 		},
-	],
+	},
 ];
 
 export const ANCHOR_POSITIONS: {
 	[key: string]: {
-		[key: number]: AnchorArraySpec[];
+		[key: number]: ArrayAnchorSpec[];
 	}
 } = {
 	input: {
@@ -190,16 +193,16 @@ export const getInputEndpointStyle = (nodeTypeData: INodeTypeDescription, color:
 	lineWidth: 0,
 });
 
-export const getInputNameOverlay = (label: string): OverlaySpec => ([
-	'Label',
-	{
+export const getInputNameOverlay = (label: string): OverlaySpec => ({
+	type: 'Label',
+	options: {
 		id: OVERLAY_INPUT_NAME_LABEL,
 		location: OVERLAY_INPUT_NAME_LABEL_POSITION,
 		label,
 		cssClass: 'node-input-endpoint-label',
 		visible: true,
 	},
-]);
+});
 
 export const getOutputEndpointStyle = (nodeTypeData: INodeTypeDescription, color: string) => ({
 	radius: nodeTypeData && nodeTypeData.outputs.length > 2 ? 7 : 9,
@@ -207,22 +210,22 @@ export const getOutputEndpointStyle = (nodeTypeData: INodeTypeDescription, color
 	outlineStroke: 'none',
 });
 
-export const getOutputNameOverlay = (label: string): OverlaySpec => ([
-	'Label',
-	{
+export const getOutputNameOverlay = (label: string): OverlaySpec => ({
+	type: 'Label',
+	options: {
 		id: OVERLAY_OUTPUT_NAME_LABEL,
 		location: [1.9, 0.5],
 		label,
 		cssClass: 'node-output-endpoint-label',
 		visible: true,
 	},
-]);
+});
 
-export const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
-	overlays.forEach((overlay: OverlaySpec) => {
-		connection.addOverlay(overlay);
-	});
-};
+// export const addOverlays = (connection: Connection, overlays: OverlaySpec[]) => {
+// 	overlays.forEach((overlay: OverlaySpec) => {
+// 		connection.addOverlay(overlay);
+// 	});
+// };
 
 export const getLeftmostTopNode = (nodes: INodeUi[]): INodeUi => {
 	return nodes.reduce((leftmostTop, node) => {
@@ -338,7 +341,9 @@ export const showOrHideMidpointArrow = (connection: Connection) => {
 	const hasItemsLabel = !!getOverlay(connection, OVERLAY_RUN_ITEMS_ID);
 
 	const sourceEndpoint = connection.endpoints[0];
+	console.log("🚀 ~ file: canvasHelpers.ts ~ line 344 ~ showOrHideMidpointArrow ~ sourceEndpoint", sourceEndpoint);
 	const targetEndpoint = connection.endpoints[1];
+	console.log("🚀 ~ file: canvasHelpers.ts ~ line 346 ~ showOrHideMidpointArrow ~ targetEndpoint", targetEndpoint);
 
 	const sourcePosition = sourceEndpoint.anchor.lastReturnValue[0];
 	const targetPosition = targetEndpoint.anchor.lastReturnValue ? targetEndpoint.anchor.lastReturnValue[0] : sourcePosition + 1; // lastReturnValue is null when moving connections from node to another
@@ -400,6 +405,7 @@ export const showOrHideItemsLabel = (connection: Connection) => {
 		overlay.setVisible(true);
 	}
 
+	console.log("🚀 ~ file: canvasHelpers.ts ~ line 409 ~ showOrHideItemsLabel ~ innerElement", innerElement);
 	const innerElement = overlay.canvas && overlay.canvas.querySelector('span');
 	if (innerElement) {
 		if (diffY === 0 || isLoopingBackwards(connection)) {
@@ -633,15 +639,15 @@ export const addConnectionOutputSuccess = (connection: Connection, output: {tota
 		connection.removeOverlay(OVERLAY_RUN_ITEMS_ID);
 	}
 
-	connection.addOverlay([
-		'Label',
-		{
+	connection.addOverlay({
+		type: 'Label',
+		options: {
 			id: OVERLAY_RUN_ITEMS_ID,
 			label: `<span>${getRunItemsLabel(output)}</span>`,
 			cssClass: 'connection-run-items-label',
 			location: .5,
 		},
-	]);
+	});
 
 	showOrHideItemsLabel(connection);
 	showOrHideMidpointArrow(connection);
@@ -734,9 +740,9 @@ export const addConnectionActionsOverlay = (connection: Connection, onDelete: Fu
 	if (getOverlay(connection, OVERLAY_CONNECTION_ACTIONS_ID)) {
 		return; // avoid free floating actions when moving connection from one node to another
 	}
-	connection.addOverlay([
-		'Label',
-		{
+	connection.addOverlay({
+		type: 'Label',
+		options: {
 			id: OVERLAY_CONNECTION_ACTIONS_ID,
 			label: `<div class="add">${getIcon('plus')}</div> <div class="delete">${getIcon('trash')}</div>`,
 			cssClass: OVERLAY_CONNECTION_ACTIONS_ID,
@@ -753,7 +759,7 @@ export const addConnectionActionsOverlay = (connection: Connection, onDelete: Fu
 				},
 			},
 		},
-	]);
+	});
 };
 
 export const getOutputEndpointUUID = (nodeId: string, outputIndex: number) => {

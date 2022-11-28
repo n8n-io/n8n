@@ -131,7 +131,9 @@
 <script lang="ts">
 import Vue, { ComponentInstance } from 'vue';
 import { mapStores } from 'pinia';
-import type { OnConnectionBindInfo, Connection, Endpoint, N8nPlusEndpoint, jsPlumbInstance } from 'jsplumb';
+import { OnConnectionBindInfo, N8nPlusEndpoint, jsPlumbInstance } from 'jsplumb';
+import { ArrayAnchorSpec, OverlaySpec, PaintStyle } from '@jsplumb/common';
+import { Endpoint, Overlay, Connection, EVENT_CONNECTION, ConnectionEstablishedParams } from '@jsplumb/core';
 import type { MessageBoxInputData } from 'element-ui/types/message-box';
 import { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
 import once from 'lodash/once';
@@ -1915,11 +1917,11 @@ export default mixins(
 				// only one set of visible actions should be visible at the same time
 				let activeConnection: null | Connection = null;
 
-				this.newInstance?.bind('connection', (info: OnConnectionBindInfo) => {
-					console.log("🚀 ~ file: NodeView.vue ~ line 1917 ~ this.newInstance.bind ~ info", info);
+				this.newInstance?.bind(EVENT_CONNECTION, (info: ConnectionEstablishedParams) => {
+					console.log("🚀 ~ file: NodeView.vue ~ line 1917 ~ this. newInstance.bind ~ info", info);
 					try {
-						const sourceInfo = info.sourceEndpoint.getParameters();
-						const targetInfo = info.targetEndpoint.getParameters();
+						const sourceInfo = info.sourceEndpoint.parameters;
+						const targetInfo = info.targetEndpoint.parameters;
 
 						const sourceNodeName = this.workflowsStore.getNodeById(sourceInfo.nodeId)?.name;
 						const targetNodeName = this.workflowsStore.getNodeById(targetInfo.nodeId)?.name;
@@ -2554,7 +2556,7 @@ export default mixins(
 					endpoints.forEach((endpoint: Endpoint) => {
 						// @ts-ignore
 						if (endpoint.type === 'N8nPlus') {
-							(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
+							// (endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
 						}
 					});
 
@@ -2586,10 +2588,10 @@ export default mixins(
 							if (endpoint && endpoint.endpoint) {
 								const output = outputMap[sourceOutputIndex][NODE_OUTPUT_DEFAULT_KEY][0];
 								if (output && output.total > 0) {
-									(endpoint.endpoint as N8nPlusEndpoint).setSuccessOutput(CanvasHelpers.getRunItemsLabel(output));
+									// (endpoint.endpoint as N8nPlusEndpoint).setSuccessOutput(CanvasHelpers.getRunItemsLabel(output));
 								}
 								else {
-									(endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
+									// (endpoint.endpoint as N8nPlusEndpoint).clearSuccessOutput();
 								}
 							}
 						});

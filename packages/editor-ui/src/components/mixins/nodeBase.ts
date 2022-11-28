@@ -1,6 +1,6 @@
 import { PropType } from "vue";
 import mixins from 'vue-typed-mixins';
-import { IJsPlumbInstance, IEndpointOptions, INodeUi, XYPosition } from '@/Interface';
+import { IJsPlumbInstance, INodeUi, XYPosition } from '@/Interface';
 import { deviceSupportHelpers } from '@/components/mixins/deviceSupportHelpers';
 import { NO_OP_NODE_TYPE, STICKY_NODE_TYPE } from '@/constants';
 import * as CanvasHelpers from '@/views/canvasHelpers';
@@ -14,7 +14,8 @@ import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from "@/stores/workflows";
 import { useNodeTypesStore } from "@/stores/nodeTypes";
 import { BrowserJsPlumbInstance } from '@jsplumb/browser-ui';
-import { SingleAnchorSpec } from '@jsplumb/common';
+// import { SingleAnchorSpec, EndpointOptions } from '@jsplumb/common';
+import { EndpointOptions } from '@jsplumb/core';
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -88,15 +89,15 @@ export const nodeBase = mixins(
 				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.input[nodeTypeData.inputs.length][index];
 				console.log("🚀 ~ file: nodeBase.ts ~ line 87 ~ nodeTypeData.inputs.forEach ~ anchorPosition", anchorPosition);
 
-				const newEndpointData = {
+				const newEndpointData: EndpointOptions = {
 					uuid: CanvasHelpers.getInputEndpointUUID(this.nodeId, index),
-					anchor: [[0.01, 0.5, -1, 0]] as SingleAnchorSpec[],
+					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Rectangle',
-					endpointStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
-					endpointHoverStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-primary'),
-					isSource: false,
-					isTarget: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
+					paintStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					hoverPaintStyle: CanvasHelpers.getInputEndpointStyle(nodeTypeData, '--color-primary'),
+					source: false,
+					target: !this.isReadOnly && nodeTypeData.inputs.length > 1, // only enabled for nodes with multiple inputs.. otherwise attachment handled by connectionDrag event in NodeView,
 					parameters: {
 						nodeId: this.nodeId,
 						type: inputName,
@@ -105,10 +106,10 @@ export const nodeBase = mixins(
 					enabled: !this.isReadOnly, // enabled in default case to allow dragging
 					cssClass: 'rect-input-endpoint',
 					dragAllowedWhenFull: true,
-					dropOptions: {
-						tolerance: 'touch',
-						hoverClass: 'dropHover',
-					},
+					// dropOptions: {
+					// 	tolerance: 'touch',
+					// 	hoverClass: 'dropHover',
+					// },
 				};
 
 				if (nodeTypeData.inputNames) {
@@ -157,16 +158,17 @@ export const nodeBase = mixins(
 
 				// Get the position of the anchor depending on how many it has
 				const anchorPosition = CanvasHelpers.ANCHOR_POSITIONS.output[nodeTypeData.outputs.length][index];
+				console.log("🚀 ~ file: nodeBase.ts ~ line 160 ~ nodeTypeData.outputs.forEach ~ anchorPosition", anchorPosition);
 
-				const newEndpointData: IEndpointOptions = {
+				const newEndpointData: EndpointOptions = {
 					uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
 					anchor: anchorPosition,
 					maxConnections: -1,
 					endpoint: 'Dot',
-					endpointStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
-					endpointHoverStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
-					isSource: true,
-					isTarget: false,
+					paintStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-foreground-xdark'),
+					hoverPaintStyle: CanvasHelpers.getOutputEndpointStyle(nodeTypeData, '--color-primary'),
+					source: true,
+					target: false,
 					enabled: !this.isReadOnly,
 					parameters: {
 						nodeId: this.nodeId,
@@ -175,17 +177,17 @@ export const nodeBase = mixins(
 					},
 					cssClass: 'dot-output-endpoint',
 					dragAllowedWhenFull: false,
-					dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
+					// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
 				};
 
 				if (nodeTypeData.outputNames) {
 					// Apply output names if they got set
-					newEndpointData.overlays = [
+					newEndpointData.connectorOverlays = [
 						CanvasHelpers.getOutputNameOverlay(nodeTypeData.outputNames[index]),
 					];
 				}
 
-				const endpoint = this.instance.addEndpoint(this.nodeId, {...newEndpointData});
+				const endpoint = this.instance.addEndpoint(this.$refs[this.nodeId] as Element, {...newEndpointData});
 					if(!Array.isArray(endpoint)) {
 						endpoint.__meta = {
 							nodeName: node.name,
@@ -196,26 +198,26 @@ export const nodeBase = mixins(
 					}
 
 				if (!this.isReadOnly) {
-					const plusEndpointData: IEndpointOptions = {
+					const plusEndpointData: EndpointOptions = {
 						uuid: CanvasHelpers.getOutputEndpointUUID(this.nodeId, index),
 						anchor: anchorPosition,
 						maxConnections: -1,
 						endpoint: 'N8nPlus',
-						isSource: true,
-						isTarget: false,
+						source: true,
+						target: false,
 						enabled: !this.isReadOnly,
-						endpointStyle: {
+						paintStyle: {
 							fill: getStyleTokenValue('--color-xdark'),
 							outlineStroke: 'none',
-							hover: false,
-							showOutputLabel: nodeTypeData.outputs.length === 1,
-							size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
-							hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
+							// hover: false,
+							// showOutputLabel: nodeTypeData.outputs.length === 1,
+							// size: nodeTypeData.outputs.length >= 3 ? 'small' : 'medium',
+							// hoverMessage: this.$locale.baseText('nodeBase.clickToAddNodeOrDragToConnect'),
 						},
-						endpointHoverStyle: {
+						hoverPaintStyle: {
 							fill: getStyleTokenValue('--color-primary'),
 							outlineStroke: 'none',
-							hover: true, // hack to distinguish hover state
+							// hover: true, // hack to distinguish hover state
 						},
 						parameters: {
 							nodeId: this.nodeId,
@@ -224,10 +226,10 @@ export const nodeBase = mixins(
 						},
 						cssClass: 'plus-draggable-endpoint',
 						dragAllowedWhenFull: false,
-						dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
+						// dragProxy: ['Rectangle', {width: 1, height: 1, strokeWidth: 0}],
 					};
 
-					const plusEndpoint = this.instance.addEndpoint(this.nodeId, plusEndpointData);
+					const plusEndpoint = this.instance.addEndpoint(this.$refs[this.nodeId] as Element, plusEndpointData);
 					if(!Array.isArray(plusEndpoint)) {
 						plusEndpoint.__meta = {
 							nodeName: node.name,
