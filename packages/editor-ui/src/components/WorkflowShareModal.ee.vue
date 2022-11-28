@@ -12,6 +12,7 @@
 				<enterprise-edition :features="[EnterpriseEditionFeature.WorkflowSharing]">
 					<n8n-user-select
 						v-if="workflowPermissions.updateSharing"
+						class="mb-s"
 						size="large"
 						:users="usersList"
 						:currentUserId="currentUser.id"
@@ -287,7 +288,6 @@ export default mixins(
 
 <style module lang="scss">
 .container > * {
-	margin-bottom: var(--spacing-s);
 	overflow-wrap: break-word;
 }
 
