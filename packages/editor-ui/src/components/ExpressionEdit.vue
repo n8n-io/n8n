@@ -84,7 +84,7 @@ import { mapStores } from 'pinia';
 import { useWorkflowsStore } from '@/stores/workflows';
 import { useNDVStore } from '@/stores/ndv';
 
-import type { Segment } from './ExpressionEditorModal/types';
+import type { Resolvable, Segment } from './ExpressionEditorModal/types';
 
 export default mixins(
 	externalHooks,
@@ -214,6 +214,9 @@ export default mixins(
 			this.$externalHooks().run('expressionEdit.dialogVisibleChanged', { dialogVisible: newValue, parameter: this.parameter, value: this.value, resolvedExpressionValue });
 
 			if (!newValue) {
+				const resolvables = this.segments.filter((s): s is Resolvable => s.kind === 'resolvable');
+				const errorResolvables = resolvables.filter(r => r.error);
+
 				const telemetryPayload = {
 					empty_expression: (this.value === '=') || (this.value === '={{}}') || !this.value,
 					workflow_id: this.workflowsStore.workflowId,
@@ -221,7 +224,14 @@ export default mixins(
 					session_id: this.ndvStore.sessionId,
 					has_parameter: this.value.includes('$parameter'),
 					has_mapping: hasExpressionMapping(this.value),
+					node_type: this.ndvStore.activeNode?.type ?? '',
+					handlebar_count: resolvables.length,
+					handlebar_error_count: errorResolvables.length,
+					full_errors: errorResolvables.map(r => r.fullError),
+					short_errors: errorResolvables.map(r => r.resolved ?? null),
 				};
+
+				console.log(telemetryPayload);
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}

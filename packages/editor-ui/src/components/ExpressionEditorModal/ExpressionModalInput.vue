@@ -191,9 +191,9 @@ export default mixins(workflowHelpers).extend({
 				const { from, to, text, type } = segment;
 
 				if (type === 'Resolvable') {
-					const { resolved, error } = this.resolve(text);
+					const { resolved, error, fullError } = this.resolve(text);
 
-					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error });
+					acc.push({ kind: 'resolvable', from, to, resolvable: text, resolved, error, fullError });
 
 					return acc;
 				}
@@ -211,7 +211,11 @@ export default mixins(workflowHelpers).extend({
 			return /\{\{\s*\}\}/.test(resolvable);
 		},
 		resolve(resolvable: string) {
-			const result: { resolved: unknown; error: boolean } = { resolved: undefined, error: false };
+			const result: { resolved: unknown; error: boolean; fullError: Error | null } = {
+				resolved: undefined,
+				error: false,
+				fullError: null,
+			};
 
 			try {
 				result.resolved = this.resolveExpression('=' + resolvable, undefined, {
@@ -222,6 +226,7 @@ export default mixins(workflowHelpers).extend({
 			} catch (error) {
 				result.resolved = `[${error.message}]`;
 				result.error = true;
+				result.fullError = error;
 			}
 
 			if (result.resolved === '') {
