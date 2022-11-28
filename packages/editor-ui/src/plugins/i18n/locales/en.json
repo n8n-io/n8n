@@ -983,6 +983,7 @@
 	"runData.json": "JSON",
 	"runData.jsonSchema": "JSON Schema",
 	"runData.mimeType": "Mime Type",
+	"runData.fileSize": "File Size",
 	"runData.ms": "ms",
 	"runData.noBinaryDataFound": "No binary data found",
 	"runData.noData": "No data",

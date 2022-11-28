@@ -26,22 +26,17 @@ import {
 	WorkflowOperationError,
 } from 'n8n-workflow';
 
-// eslint-disable-next-line import/no-extraneous-dependencies
 import PCancelable from 'p-cancelable';
 import { join as pathJoin } from 'path';
 import { fork } from 'child_process';
 
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import * as Db from '@/Db';
 import { ExternalHooks } from '@/ExternalHooks';
 import {
-	ICredentialsOverwrite,
-	ICredentialsTypeData,
 	IExecutionFlattedDb,
 	IProcessMessageDataHook,
-	ITransferNodeTypes,
 	IWorkflowExecutionDataProcess,
 	IWorkflowExecutionDataProcessWithExecution,
 } from '@/Interfaces';
@@ -60,8 +55,6 @@ import { PermissionChecker } from '@/UserManagement/PermissionChecker';
 export class WorkflowRunner {
 	activeExecutions: ActiveExecutions.ActiveExecutions;
 
-	credentialsOverwrites: ICredentialsOverwrite;
-
 	push: Push.Push;
 
 	jobQueue: Queue.JobQueue;
@@ -69,7 +62,6 @@ export class WorkflowRunner {
 	constructor() {
 		this.push = Push.getInstance();
 		this.activeExecutions = ActiveExecutions.getInstance();
-		this.credentialsOverwrites = CredentialsOverwrites().getAll();
 
 		const executionsMode = config.getEnv('executions.mode');
 
@@ -618,43 +610,7 @@ export class WorkflowRunner {
 		// Register the active execution
 		const executionId = await this.activeExecutions.add(data, subprocess, restartExecutionId);
 
-		// Check if workflow contains a "executeWorkflow" Node as in this
-		// case we can not know which nodeTypes and credentialTypes will
-		// be needed and so have to load all of them in the workflowRunnerProcess
-		let loadAllNodeTypes = false;
-		for (const node of data.workflowData.nodes) {
-			if (node.type === 'n8n-nodes-base.executeWorkflow' && node.disabled !== true) {
-				loadAllNodeTypes = true;
-				break;
-			}
-		}
-		let nodeTypeData: ITransferNodeTypes;
-		let credentialTypeData: ICredentialsTypeData;
-		// eslint-disable-next-line prefer-destructuring
-		let credentialsOverwrites = this.credentialsOverwrites;
-		if (loadAllNodeTypes) {
-			// Supply all nodeTypes and credentialTypes
-			nodeTypeData = WorkflowHelpers.getAllNodeTypeData();
-			credentialTypeData = WorkflowHelpers.getAllCredentalsTypeData();
-		} else {
-			// Supply only nodeTypes, credentialTypes and overwrites that the workflow needs
-			nodeTypeData = WorkflowHelpers.getNodeTypeData(data.workflowData.nodes);
-			credentialTypeData = WorkflowHelpers.getCredentialsDataByNodes(data.workflowData.nodes);
-
-			credentialsOverwrites = {};
-			for (const credentialName of Object.keys(credentialTypeData)) {
-				if (this.credentialsOverwrites[credentialName] !== undefined) {
-					credentialsOverwrites[credentialName] = this.credentialsOverwrites[credentialName];
-				}
-			}
-		}
-
 		(data as unknown as IWorkflowExecutionDataProcessWithExecution).executionId = executionId;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).nodeTypeData = nodeTypeData;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsOverwrite =
-			this.credentialsOverwrites;
-		(data as unknown as IWorkflowExecutionDataProcessWithExecution).credentialsTypeData =
-			credentialTypeData;
 
 		const workflowHooks = WorkflowExecuteAdditionalData.getWorkflowHooksMain(data, executionId);
 

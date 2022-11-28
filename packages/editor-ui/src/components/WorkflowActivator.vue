@@ -16,11 +16,13 @@
 				v-loading="updatingWorkflowActivation"
 				:value="workflowActive"
 				@change="activeChanged"
-			  :title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
+			  	:title="workflowActive ? $locale.baseText('workflowActivator.deactivateWorkflow') : $locale.baseText('workflowActivator.activateWorkflow')"
 				:disabled="disabled || updatingWorkflowActivation"
 				:active-color="getActiveColor"
 				inactive-color="#8899AA"
-				element-loading-spinner="el-icon-loading">
+				element-loading-spinner="el-icon-loading"
+				data-test-id="workflow-activate-switch"
+			>
 			</el-switch>
 		</n8n-tooltip>
 

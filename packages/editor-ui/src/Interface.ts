@@ -215,6 +215,7 @@ export interface IRestApi {
 	retryExecution(id: string, loadWorkflow?: boolean): Promise<boolean>;
 	getTimezones(): Promise<IDataObject>;
 	getBinaryBufferString(dataPath: string): Promise<string>;
+	getBinaryUrl(dataPath: string): string;
 }
 
 export interface INodeTranslationHeaders {
@@ -224,14 +225,6 @@ export interface INodeTranslationHeaders {
 			description: string;
 		},
 	};
-}
-
-export interface IBinaryDisplayData {
-	index: number;
-	key: string;
-	node: string;
-	outputIndex: number;
-	runIndex: number;
 }
 
 export interface IStartRunData {
@@ -887,6 +880,7 @@ export interface IVersionNode {
 	name: string;
 	displayName: string;
 	icon: string;
+	iconUrl?: string;
 	defaults: INodeParameters;
 	iconData: {
 		type: string;

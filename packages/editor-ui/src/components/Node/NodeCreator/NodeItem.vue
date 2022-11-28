@@ -18,7 +18,7 @@
 				<span v-if="isTrigger" :class="$style['trigger-icon']">
 					<trigger-icon />
 				</span>
-				<n8n-tooltip v-if="isCommunityNode" placement="top">
+				<n8n-tooltip v-if="isCommunityNode" placement="top" data-test-id="node-item-community-tooltip">
 					<template #content>
 						<div
 							:class="$style['community-node-icon']"
@@ -58,7 +58,8 @@
 import Vue, { PropType } from 'vue';
 import { INodeTypeDescription } from 'n8n-workflow';
 
-import { isCommunityPackageName, getNewNodePosition, NODE_SIZE } from '@/utils';
+import { isCommunityPackageName } from '@/utils';
+import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL } from '@/constants';
 
 import NodeIcon from '@/components/NodeIcon.vue';
