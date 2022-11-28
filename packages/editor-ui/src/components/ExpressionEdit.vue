@@ -231,7 +231,6 @@ export default mixins(
 					short_errors: errorResolvables.map(r => r.resolved ?? null),
 				};
 
-				console.log(telemetryPayload);
 				this.$telemetry.track('User closed Expression Editor', telemetryPayload);
 				this.$externalHooks().run('expressionEdit.closeDialog', telemetryPayload);
 			}
