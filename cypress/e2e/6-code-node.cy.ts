@@ -4,7 +4,7 @@ const WorkflowPage = new WorkflowPageClass();
 
 describe('Code node', () => {
 	beforeEach(() => {
-		cy.task('db:reset');
+		cy.resetAll();
 		cy.skipSetup();
 	});
 
