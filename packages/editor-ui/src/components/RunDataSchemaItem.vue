@@ -22,9 +22,9 @@
 			</span>
 		</div>
 		<span v-if="!isSchemaValueArray" :class="$style.value">{{ schema.value }}</span>
+		<input :id="subKey" type="checkbox" checked />
 		<label v-if="level > 0 && isSchemaValueArray" :class="$style.toggle" :for="subKey">
-			<input :id="subKey" type="checkbox" checked />
-			<font-awesome-icon icon="angle-down" />
+			<font-awesome-icon icon="angle-up" />
 		</label>
 		<div v-if="isSchemaValueArray" :class="$style.sub">
 			<run-data-schema-item v-for="(s, i) in schema.value"
@@ -108,12 +108,40 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 		padding-top: var(--spacing-2xs);
 		padding-left: var(--spacing-l);
 	}
+
+	input {
+		position: absolute;
+		left: -100%;
+
+		~ .sub {
+			height: 0;
+
+			> .item {
+				transform: translateX(-100%);
+			}
+		}
+
+		&:checked {
+			~ .toggle svg {
+				transform: rotate(180deg);
+			}
+
+			~ .sub {
+				height: auto;
+
+				> .item {
+					transform: translateX(0);
+				}
+			}
+		}
+	}
 }
 
 .sub {
 	display: block;
 	overflow: hidden;
 	transition: all 0.2s $ease-out-expo;
+	clear: both;
 
 	&:nth-of-type(1) {
 		> .item:nth-of-type(1) {
@@ -127,6 +155,7 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 }
 
 .pill {
+	float: left;
 	display: inline-flex;
 	height: 24px;
 	padding: 0 var(--spacing-3xs);
@@ -164,10 +193,12 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 }
 
 .value {
-	display: inline-block;
+	display: block;
+	padding-top: var(--spacing-4xs);
 	padding-left: var(--spacing-2xs);
 	font-weight: var(--font-weight-normal);
 	font-size: var(--font-size-2xs);
+	overflow: hidden;
 }
 
 .toggle {
@@ -182,39 +213,10 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	user-select: none;
 	font-weight: normal;
 	font-size: var(--font-size-s);
+	overflow: hidden;
 
 	svg {
 		transition: all 0.3s $ease-out-expo;
-	}
-
-	input {
-		width: 0;
-		height: 0;
-		bottom: 0;
-		padding: 0;
-		margin: 0;
-
-		&:not(:checked) ~ svg {
-			transform: rotate(180deg);
-		}
-	}
-
-	+ .sub {
-		height: 0;
-
-		> .item {
-			transform: translateX(-100%);
-		}
-	}
-
-	&:has(> input:checked) {
-		+ .sub {
-			height: auto;
-
-      > .item {
-				transform: translateX(0);
-			}
-		}
 	}
 }
 
