@@ -184,7 +184,7 @@ function max(value: unknown[]): number {
 	);
 }
 
-function average(value: unknown[]) {
+export function average(value: unknown[]) {
 	// This would usually be NaN but I don't think users
 	// will expect that
 	if (value.length === 0) {

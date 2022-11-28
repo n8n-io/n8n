@@ -27,6 +27,7 @@ import {
 	splitExpression,
 } from './Extensions/ExpressionParser';
 import { extendTransform } from './Extensions/ExpressionExtension';
+import { extendedFunctions } from './Extensions/ExtendedFunctions';
 
 // Set it to use double curly brackets instead of single ones
 tmpl.brackets.set('{{ }}');
@@ -254,6 +255,8 @@ export class Expression {
 
 		// expression extensions
 		data.extend = extend;
+
+		Object.assign(data, extendedFunctions);
 
 		const constructorValidation = new RegExp(/\.\s*constructor/gm);
 		if (parameterValue.match(constructorValidation)) {
