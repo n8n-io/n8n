@@ -1,6 +1,6 @@
 import jp from "jsonpath";
-import { isEmpty, intersection, mergeDeep, getJsonSchema, isValidDate } from "@/utils";
-import { JsonSchema } from "@/Interface";
+import { isEmpty, intersection, mergeDeep, getSchema, isValidDate } from "@/utils";
+import { Schema } from "@/Interface";
 
 describe("Utils", () => {
 	describe("isEmpty", () => {
@@ -251,41 +251,41 @@ describe("Utils", () => {
 				{ type: 'list', value: [{ type: 'object', key: '0', value: [{ type: 'list', key: 'dates', value: [{ type: 'list', key: '0', value: [{type: 'date', key: '0', value: '2022-11-22T00:00:00.000Z', path: '[0]["dates"][0][0]'}, {type: 'date', key: '1', value: '2022-11-23T00:00:00.000Z', path: '[0]["dates"][0][1]'}], path: '[0]["dates"][0]' }, { type: 'list', key: '1', value: [{type: 'date', key: '0', value: '2022-12-22T00:00:00.000Z', path: '[0]["dates"][1][0]'}, {type: 'date', key: '1', value: '2022-12-23T00:00:00.000Z', path: '[0]["dates"][1][1]'}], path: '[0]["dates"][1]' }], path: '[0]["dates"]' }], path: '[0]' }], path: '' },
 			],
 		])('should return the correct json schema for %s', (input, schema) => {
-			expect(getJsonSchema(input)).toEqual(schema);
+			expect(getSchema(input)).toEqual(schema);
 		});
 
 		it('should return the correct data when using the generated json path on an object', () => {
 			const input = { people: ['Joe', 'John']};
-			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ ((schema.value as JsonSchema[])[0].value as JsonSchema[])[0].path }`);
+			const schema = getSchema(input) as Schema;
+			const pathData = jp.query(input, `$${ ((schema.value as Schema[])[0].value as Schema[])[0].path }`);
 			expect(pathData).toEqual(['Joe']);
 		});
 
 		it('should return the correct data when using the generated json path on a list', () => {
 			const input = [{ name: 'John', age: 22, hobbies: ['surfing', 'traveling'] }, { name: 'Joe', age: 33, hobbies: ['skateboarding', 'gaming'] }];
-			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ (((schema.value as JsonSchema[])[0].value as JsonSchema[])[2].value as JsonSchema[])[1].path }`);
+			const schema = getSchema(input) as Schema;
+			const pathData = jp.query(input, `$${ (((schema.value as Schema[])[0].value as Schema[])[2].value as Schema[])[1].path }`);
 			expect(pathData).toEqual(['traveling']);
 		});
 
 		it('should return the correct data when using the generated json path on a list of list', () => {
 			const input = [[1,2]];
-			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ (((schema.value as JsonSchema[])[0]).value as JsonSchema[])[1].path }`);
+			const schema = getSchema(input) as Schema;
+			const pathData = jp.query(input, `$${ (((schema.value as Schema[])[0]).value as Schema[])[1].path }`);
 			expect(pathData).toEqual([2]);
 		});
 
 		it('should return the correct data when using the generated json path on a list of list of objects', () => {
 			const input = [[{ name: 'John', age: 22 }, { name: 'Joe', age: 33 }]];
-			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ (((schema.value as JsonSchema[])[0].value as JsonSchema[])[1].value as JsonSchema[])[1].path}`);
+			const schema = getSchema(input) as Schema;
+			const pathData = jp.query(input, `$${ (((schema.value as Schema[])[0].value as Schema[])[1].value as Schema[])[1].path}`);
 			expect(pathData).toEqual([33]);
 		});
 
 		it('should return the correct data when using the generated json path on a list of objects with a list of date tuples', () => {
 			const input = [{ dates: [[new Date('2022-11-22T00:00:00.000Z'), new Date('2022-11-23T00:00:00.000Z')], [new Date('2022-12-22T00:00:00.000Z'), new Date('2022-12-23T00:00:00.000Z')]] }];
-			const schema = getJsonSchema(input) as JsonSchema;
-			const pathData = jp.query(input, `$${ ((((schema.value as JsonSchema[])[0].value as JsonSchema[])[0].value as JsonSchema[])[0].value as JsonSchema[])[0].path}`);
+			const schema = getSchema(input) as Schema;
+			const pathData = jp.query(input, `$${ ((((schema.value as Schema[])[0].value as Schema[])[0].value as Schema[])[0].value as Schema[])[0].path}`);
 			expect(pathData).toEqual([new Date('2022-11-22T00:00:00.000Z')]);
 		});
 	});

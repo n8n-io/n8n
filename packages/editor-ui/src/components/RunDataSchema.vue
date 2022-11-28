@@ -1,5 +1,5 @@
 <template>
-	<div :class="$style.jsonSchema">
+	<div :class="$style.schema">
 		<draggable
 			type="mapping"
 			targetDataKey="mappable"
@@ -11,7 +11,7 @@
 				<div v-if="el" :class="[$style.dragPill, canDrop ? $style.droppablePill : $style.defaultPill]" v-html="el.outerHTML" />
 			</template>
 			<template>
-				<run-data-json-schema-item
+				<run-data-schema-item
 					:schema="schema"
 					:level="0"
 					:parent="null"
@@ -27,8 +27,8 @@
 </template>
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { INodeUi, JsonSchema } from "@/Interface";
-import RunDataJsonSchemaItem from "@/components/RunDataJsonSchemaItem.vue";
+import { INodeUi, Schema } from "@/Interface";
+import RunDataSchemaItem from "@/components/RunDataSchemaItem.vue";
 import Draggable from '@/components/Draggable.vue';
 import { useNDVStore } from "@/stores/ndv";
 import { useWebhooksStore } from "@/stores/webhooks";
@@ -36,7 +36,7 @@ import { runExternalHook } from "@/mixins/externalHooks";
 import { telemetry } from "@/plugins/telemetry";
 
 type Props = {
-	schema: JsonSchema
+	schema: Schema
 	mappingEnabled: boolean
 	distanceFromActive: number
 	runIndex: number
@@ -71,7 +71,7 @@ const onDragEnd = (el: HTMLElement) => {
 			src_run_index: props.runIndex,
 			src_runs_total: props.totalRuns,
 			src_field_nest_level: el.dataset.depth || 0,
-			src_view: 'json-schema',
+			src_view: 'schema',
 			src_element: el,
 			success: false,
 			...mappingTelemetry,
@@ -86,7 +86,7 @@ const onDragEnd = (el: HTMLElement) => {
 </script>
 
 <style lang="scss" module>
-.jsonSchema {
+.schema {
 	position: absolute;
 	top: 0;
 	left: 0;

@@ -44,13 +44,13 @@
 </template>
 <script lang="ts" setup>
 import { computed } from 'vue';
-import { INodeUi, JsonSchema } from "@/Interface";
+import { INodeUi, Schema } from "@/Interface";
 import { checkExhaustive } from "@/utils";
 
 type Props = {
-	schema: JsonSchema
+	schema: Schema
 	level: number
-	parent: JsonSchema | null
+	parent: Schema | null
 	subKey: string
 	mappingEnabled: boolean
 	draggingPath: string
@@ -68,7 +68,7 @@ const schemaName = computed(() => isSchemaParentTypeList.value ? `${props.schema
 const getJsonParameterPath = (path: string): string => `{{ ${props.distanceFromActive ? '$json' : `$node["${ props.node!.name }"].json`}${path} }}`;
 const transitionDelay = (i:number) => `${i * 0.033}s`;
 
-const getIconBySchemaType = (type: JsonSchema['type']): string => {
+const getIconBySchemaType = (type: Schema['type']): string => {
 	switch (type) {
 		case 'object':
 			return 'cube';
