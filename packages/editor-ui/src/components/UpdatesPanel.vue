@@ -4,12 +4,12 @@
 		direction="ltr"
 		width="520px"
 	>
-		<template slot="header">
+		<template #header>
 			<span :class="$style.title">
 				{{ $locale.baseText('updatesPanel.weVeBeenBusy') }}
 			</span>
 		</template>
-		<template slot="content">
+		<template #content>
 			<section :class="$style['description']">
 				<p v-if="currentVersion">
 					{{ $locale.baseText(

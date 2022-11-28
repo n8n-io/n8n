@@ -9,10 +9,10 @@
 		@click:add="addCredential"
 		@update:filters="filters = $event"
 	>
-		<template v-slot="{ data }">
+		<template #default="{ data }">
 			<credential-card :data="data"/>
 		</template>
-		<template v-slot:filters="{ setKeyValue }">
+		<template #filters="{ setKeyValue }">
 			<div class="mb-s">
 				<n8n-input-label
 					:label="$locale.baseText('credentials.filters.type')"
@@ -43,7 +43,7 @@
 </template>
 
 <script lang="ts">
-import {showMessage} from '@/components/mixins/showMessage';
+import {showMessage} from '@/mixins/showMessage';
 import {ICredentialsResponse, ICredentialTypeMap, IUser} from '@/Interface';
 import mixins from 'vue-typed-mixins';
 
@@ -54,7 +54,7 @@ import PageViewLayoutList from "@/components/layouts/PageViewLayoutList.vue";
 import CredentialCard from "@/components/CredentialCard.vue";
 import {ICredentialType} from "n8n-workflow";
 import TemplateCard from "@/components/TemplateCard.vue";
-import { debounceHelper } from '@/components/mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import ResourceOwnershipSelect from "@/components/forms/ResourceOwnershipSelect.ee.vue";
 import ResourceFiltersDropdown from "@/components/forms/ResourceFiltersDropdown.vue";
 import {CREDENTIAL_SELECT_MODAL_KEY} from '@/constants';

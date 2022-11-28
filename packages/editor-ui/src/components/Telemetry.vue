@@ -9,7 +9,7 @@ import { useUsersStore } from '@/stores/users';
 import { ITelemetrySettings } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 import mixins from 'vue-typed-mixins';
-import { externalHooks } from './mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 
 export default mixins(externalHooks).extend({
 	name: 'Telemetry',
@@ -33,22 +33,19 @@ export default mixins(externalHooks).extend({
 		telemetry(): ITelemetrySettings {
 			return this.settingsStore.telemetry;
 		},
+		isTelemetryEnabled(): boolean {
+			return !!this.telemetry?.enabled;
+		},
 	},
 	mounted() {
 		this.init();
 	},
 	methods: {
 		init() {
-			if (this.isTelemetryInitialized || !this.isTelemetryEnabledOnRoute) return;
-
-			const telemetrySettings = this.telemetry;
-
-			if (!telemetrySettings || !telemetrySettings.enabled) {
-				return;
-			}
+			if (this.isTelemetryInitialized || !this.isTelemetryEnabledOnRoute || !this.isTelemetryEnabled) return;
 
 			this.$telemetry.init(
-				telemetrySettings,
+				this.telemetry,
 				{
 					instanceId: this.rootStore.instanceId,
 					userId: this.currentUserId,
@@ -69,7 +66,9 @@ export default mixins(externalHooks).extend({
 			this.init();
 		},
 		currentUserId(userId) {
-			this.$telemetry.identify(this.rootStore.instanceId, userId);
+			if (this.isTelemetryEnabled) {
+				this.$telemetry.identify(this.rootStore.instanceId, userId);
+			}
 			this.$externalHooks().run('telemetry.currentUserIdChanged', {
 				instanceId: this.rootStore.instanceId,
 				userId,

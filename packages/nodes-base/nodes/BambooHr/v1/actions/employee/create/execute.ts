@@ -20,7 +20,7 @@ export async function create(
 	body.firstName = this.getNodeParameter('firstName', index) as string;
 	body.lastName = this.getNodeParameter('lastName', index) as string;
 
-	const additionalFields = this.getNodeParameter('additionalFields', index) as IDataObject;
+	const additionalFields = this.getNodeParameter('additionalFields', index);
 	const synced = this.getNodeParameter('synced', index) as boolean;
 
 	if (synced) {

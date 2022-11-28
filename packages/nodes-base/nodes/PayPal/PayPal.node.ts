@@ -144,9 +144,9 @@ export class PayPal implements INodeType {
 					if (operation === 'create') {
 						const body: IPaymentBatch = {};
 						const header: ISenderBatchHeader = {};
-						const jsonActive = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonActive = this.getNodeParameter('jsonParameters', i);
 						const senderBatchId = this.getNodeParameter('senderBatchId', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						header.sender_batch_id = senderBatchId;
 						if (additionalFields.emailSubject) {
 							header.email_subject = additionalFields.emailSubject as string;
@@ -190,7 +190,7 @@ export class PayPal implements INodeType {
 					}
 					if (operation === 'get') {
 						const payoutBatchId = this.getNodeParameter('payoutBatchId', i) as string;
-						const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', 0);
 						if (returnAll === true) {
 							responseData = await payPalApiRequestAllItems.call(
 								this,
@@ -201,7 +201,7 @@ export class PayPal implements INodeType {
 								qs,
 							);
 						} else {
-							qs.page_size = this.getNodeParameter('limit', i) as number;
+							qs.page_size = this.getNodeParameter('limit', i);
 							responseData = await payPalApiRequest.call(
 								this,
 								`/payments/payouts/${payoutBatchId}`,

@@ -1,5 +1,8 @@
 <template>
-	<div role="radiogroup" :class="{'n8n-radio-buttons': true, [$style.radioGroup]: true, [$style.disabled]: disabled}">
+	<div
+		role="radiogroup"
+		:class="{ 'n8n-radio-buttons': true, [$style.radioGroup]: true, [$style.disabled]: disabled }"
+	>
 		<RadioButton
 			v-for="option in options"
 			:key="option.value"
@@ -23,8 +26,7 @@ export default Vue.extend({
 		value: {
 			type: String,
 		},
-		options: {
-		},
+		options: {},
 		size: {
 			type: String,
 		},
@@ -36,7 +38,7 @@ export default Vue.extend({
 		RadioButton,
 	},
 	methods: {
-		onClick(option: {label: string, value: string, disabled?: boolean}) {
+		onClick(option: { label: string; value: string; disabled?: boolean }) {
 			if (this.disabled || option.disabled) {
 				return;
 			}
@@ -47,7 +49,6 @@ export default Vue.extend({
 </script>
 
 <style lang="scss" module>
-
 .radioGroup {
 	display: inline-flex;
 	line-height: 1;
@@ -61,6 +62,4 @@ export default Vue.extend({
 .disabled {
 	cursor: not-allowed;
 }
-
 </style>
-

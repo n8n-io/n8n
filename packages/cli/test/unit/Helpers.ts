@@ -1,4 +1,10 @@
-import { INodeType, INodeTypeData, INodeTypes, NodeHelpers } from 'n8n-workflow';
+import {
+	INodesAndCredentials,
+	INodeType,
+	INodeTypeData,
+	INodeTypes,
+	NodeHelpers,
+} from 'n8n-workflow';
 
 class NodeTypesClass implements INodeTypes {
 	nodeTypes: INodeTypeData = {
@@ -36,7 +42,11 @@ class NodeTypesClass implements INodeTypes {
 		},
 	};
 
-	async init(nodeTypes: INodeTypeData): Promise<void> {}
+	constructor(nodesAndCredentials?: INodesAndCredentials) {
+		if (nodesAndCredentials?.loaded?.nodes) {
+			this.nodeTypes = nodesAndCredentials?.loaded?.nodes;
+		}
+	}
 
 	getAll(): INodeType[] {
 		return Object.values(this.nodeTypes).map((data) => NodeHelpers.getVersionedNodeType(data.type));
@@ -53,9 +63,9 @@ class NodeTypesClass implements INodeTypes {
 
 let nodeTypesInstance: NodeTypesClass | undefined;
 
-export function NodeTypes(): NodeTypesClass {
+export function NodeTypes(nodesAndCredentials?: INodesAndCredentials): NodeTypesClass {
 	if (nodeTypesInstance === undefined) {
-		nodeTypesInstance = new NodeTypesClass();
+		nodeTypesInstance = new NodeTypesClass(nodesAndCredentials);
 	}
 
 	return nodeTypesInstance;

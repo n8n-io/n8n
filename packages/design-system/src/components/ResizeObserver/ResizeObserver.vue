@@ -5,7 +5,6 @@
 </template>
 
 <script lang="ts">
-
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -17,14 +16,18 @@ export default Vue.extend({
 		},
 		breakpoints: {
 			type: Array,
-			validator: (bps: Array<{bp: string, width: number}>) => {
-				return Array.isArray(bps) && bps.reduce(
-					(accu, {width, bp}) => accu && typeof width === 'number' && typeof bp === 'string'
-					, true);
+			validator: (bps: Array<{ bp: string; width: number }>) => {
+				return (
+					Array.isArray(bps) &&
+					bps.reduce(
+						(accu, { width, bp }) => accu && typeof width === 'number' && typeof bp === 'string',
+						true,
+					)
+				);
 			},
 		},
 	},
-	data(): { observer: ResizeObserver | null, bp: string } {
+	data(): { observer: ResizeObserver | null; bp: string } {
 		return {
 			observer: null,
 			bp: '',
@@ -35,7 +38,10 @@ export default Vue.extend({
 			return;
 		}
 
-		const unsortedBreakpoints = [...(this.breakpoints || [])] as Array<{ width: number; bp: string }>;
+		const unsortedBreakpoints = [...(this.breakpoints || [])] as Array<{
+			width: number;
+			bp: string;
+		}>;
 
 		const bps = unsortedBreakpoints.sort((a, b) => a.width - b.width);
 
@@ -52,7 +58,7 @@ export default Vue.extend({
 						}
 					}
 					this.bp = newBP;
-			 });
+				});
 			});
 		});
 

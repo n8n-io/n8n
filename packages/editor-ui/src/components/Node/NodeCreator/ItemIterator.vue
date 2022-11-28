@@ -13,6 +13,7 @@
 			:key="item.key"
 			:class="item.type"
 			:data-key="item.key"
+			data-test-id="item-iterator-item"
 		>
 			<creator-item
 				:item="item"

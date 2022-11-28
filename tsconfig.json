@@ -18,7 +18,6 @@
 		"incremental": true,
 		"declaration": true,
 		"sourceMap": true,
-		"preserveSymlinks": true,
 		"skipLibCheck": true
 	},
 	"exclude": ["**/dist/**/*", "**/node_modules/**/*"]

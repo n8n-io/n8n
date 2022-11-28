@@ -137,14 +137,14 @@ export class Discourse implements INodeType {
 					}
 					//https://docs.discourse.org/#tag/Categories/paths/~1categories.json/get
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await discourseApiRequest.call(this, 'GET', `/categories.json`, {}, qs);
 
 						responseData = responseData.category_list.categories;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -154,7 +154,7 @@ export class Discourse implements INodeType {
 
 						const name = this.getNodeParameter('name', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {
 							name,
@@ -197,14 +197,14 @@ export class Discourse implements INodeType {
 					}
 					//https://docs.discourse.org/#tag/Groups/paths/~1groups.json/get
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						responseData = await discourseApiRequest.call(this, 'GET', `/groups.json`, {}, qs);
 
 						responseData = responseData.groups;
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}
@@ -228,7 +228,7 @@ export class Discourse implements INodeType {
 					if (operation === 'create') {
 						const content = this.getNodeParameter('content', i) as string;
 						const title = this.getNodeParameter('title', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							title,
@@ -247,8 +247,8 @@ export class Discourse implements INodeType {
 					}
 					//https://docs.discourse.org/#tag/Posts/paths/~1posts.json/get
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const limit = this.getNodeParameter('limit', i, 0) as number;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const limit = this.getNodeParameter('limit', i, 0);
 
 						responseData = await discourseApiRequest.call(this, 'GET', `/posts.json`, {}, qs);
 						responseData = responseData.latest_posts;
@@ -283,7 +283,7 @@ export class Discourse implements INodeType {
 
 						const content = this.getNodeParameter('content', i) as string;
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						const body: IDataObject = {
 							raw: content,
@@ -309,7 +309,7 @@ export class Discourse implements INodeType {
 
 				// 		const simple = this.getNodeParameter('simple', i) as boolean;
 
-				// 		const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+				// 		const updateFields = this.getNodeParameter('updateFields', i);
 
 				// 		Object.assign(qs, updateFields);
 
@@ -341,7 +341,7 @@ export class Discourse implements INodeType {
 						const email = this.getNodeParameter('email', i) as string;
 						const password = this.getNodeParameter('password', i) as string;
 						const username = this.getNodeParameter('username', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							name,
@@ -370,7 +370,7 @@ export class Discourse implements INodeType {
 					}
 					//https://docs.discourse.org/#tag/Users/paths/~1admin~1users~1{id}.json/delete
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const flag = this.getNodeParameter('flag', i) as boolean;
 
 						responseData = await discourseApiRequest.call(
@@ -382,7 +382,7 @@ export class Discourse implements INodeType {
 						);
 
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 					}

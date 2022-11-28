@@ -1,6 +1,6 @@
-import {render} from '@testing-library/vue';
-import N8nButton from "../Button.vue";
-import ElButton from "../overrides/ElButton.vue";
+import { render } from '@testing-library/vue';
+import N8nButton from '../Button.vue';
+import ElButton from '../overrides/ElButton.vue';
 
 const slots = {
 	default: 'Button',

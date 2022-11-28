@@ -11,10 +11,9 @@ interface ErrorReporter {
 	report: (error: Error | string, options?: ReportingOptions) => void;
 }
 
-const isProduction = process.env.NODE_ENV === 'production';
-
 const instance: ErrorReporter = {
-	report: (error, options) => isProduction && Logger.error('ERROR', { error, options }),
+	report: (error) =>
+		error instanceof Error && Logger.error(`${error.constructor.name}: ${error.message}`),
 };
 
 export function init(errorReporter: ErrorReporter) {

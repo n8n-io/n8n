@@ -8,9 +8,9 @@
 		:showClose="!loading"
 		:beforeClose="onModalClose"
 	>
-		<template slot="content">
+		<template #content>
 			<n8n-text>{{ getModalContent.message }}</n8n-text>
-			<div :class="$style.descriptionContainer" v-if="this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
+			<div :class="$style.descriptionContainer" v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
 				<n8n-info-tip theme="info" type="note" :bold="false">
 					<template>
 						<span v-text="getModalContent.description"></span>
@@ -18,7 +18,7 @@
 				</n8n-info-tip>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<n8n-button
 				:loading="loading"
 				:disabled="loading"
@@ -36,7 +36,7 @@ import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
 import { mapStores } from 'pinia';
 import { useCommunityNodesStore } from '@/stores/communityNodes';
 

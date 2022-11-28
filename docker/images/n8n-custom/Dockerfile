@@ -4,6 +4,7 @@ ARG NODE_VERSION=16
 FROM n8nio/base:${NODE_VERSION} as builder
 
 COPY turbo.json package.json .npmrc pnpm-lock.yaml pnpm-workspace.yaml tsconfig.json ./
+COPY scripts ./scripts
 COPY packages ./packages
 COPY patches ./patches
 

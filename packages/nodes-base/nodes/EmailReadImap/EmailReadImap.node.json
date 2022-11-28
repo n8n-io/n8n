@@ -23,9 +23,6 @@
 		]
 	},
 	"subcategories": {
-		"Core Nodes": [
-			"Helpers",
-			"Other Trigger Nodes"
-		]
+		"Core Nodes": ["Helpers", "Other Trigger Nodes"]
 	}
 }

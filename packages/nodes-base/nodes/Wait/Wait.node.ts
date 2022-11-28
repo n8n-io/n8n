@@ -11,15 +11,16 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import basicAuth from 'basic-auth';
-
-import { Response } from 'express';
-
 import fs from 'fs';
-
+import stream from 'stream';
+import { promisify } from 'util';
+import basicAuth from 'basic-auth';
+import type { Response } from 'express';
 import formidable from 'formidable';
-
 import isbot from 'isbot';
+import { file as tmpFile } from 'tmp-promise';
+
+const pipeline = promisify(stream.pipeline);
 
 function authorizationError(resp: Response, realm: string, responseCode: number, message?: string) {
 	if (message === undefined) {
@@ -673,10 +674,8 @@ export class Wait implements INodeType {
 			}
 		}
 
-		// @ts-ignore
-		const mimeType = headers['content-type'] || 'application/json';
+		const mimeType = headers['content-type'] ?? 'application/json';
 		if (mimeType.includes('multipart/form-data')) {
-			// @ts-ignore
 			const form = new formidable.IncomingForm({ multiples: true });
 
 			return new Promise((resolve, _reject) => {
@@ -715,12 +714,10 @@ export class Wait implements INodeType {
 								binaryPropertyName = `${options.binaryPropertyName}${count}`;
 							}
 
-							const fileJson = file.toJSON() as unknown as IDataObject;
-							const fileContent = await fs.promises.readFile(file.path);
-
-							returnItem.binary![binaryPropertyName] = await this.helpers.prepareBinaryData(
-								Buffer.from(fileContent),
-								fileJson.name as string,
+							const fileJson = file.toJSON();
+							returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
+								file.path,
+								fileJson.name || fileJson.filename,
 								fileJson.type as string,
 							);
 
@@ -735,38 +732,35 @@ export class Wait implements INodeType {
 		}
 
 		if (options.binaryData === true) {
-			return new Promise((resolve, _reject) => {
-				const binaryPropertyName = options.binaryPropertyName || 'data';
-				const data: Buffer[] = [];
+			const binaryFile = await tmpFile({ prefix: 'n8n-webhook-' });
 
-				req.on('data', (chunk) => {
-					data.push(chunk);
-				});
+			try {
+				await pipeline(req, fs.createWriteStream(binaryFile.path));
 
-				req.on('end', async () => {
-					const returnItem: INodeExecutionData = {
-						binary: {},
-						json: {
-							headers,
-							params: this.getParamsData(),
-							query: this.getQueryData(),
-							body: this.getBodyData(),
-						},
-					};
+				const returnItem: INodeExecutionData = {
+					binary: {},
+					json: {
+						headers,
+						params: this.getParamsData(),
+						query: this.getQueryData(),
+						body: this.getBodyData(),
+					},
+				};
 
-					returnItem.binary![binaryPropertyName as string] = await this.helpers.prepareBinaryData(
-						Buffer.concat(data),
-					);
+				const binaryPropertyName = (options.binaryPropertyName || 'data') as string;
+				returnItem.binary![binaryPropertyName] = await this.helpers.copyBinaryFile(
+					binaryFile.path,
+					mimeType,
+				);
 
-					return resolve({
-						workflowData: [[returnItem]],
-					});
-				});
-
-				req.on('error', (error) => {
-					throw new NodeOperationError(this.getNode(), error);
-				});
-			});
+				return {
+					workflowData: [[returnItem]],
+				};
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error);
+			} finally {
+				await binaryFile.cleanup();
+			}
 		}
 
 		const response: INodeExecutionData = {

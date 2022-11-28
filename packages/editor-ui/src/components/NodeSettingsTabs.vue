@@ -3,7 +3,7 @@
 </template>
 
 <script lang="ts">
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 import { BUILTIN_NODES_DOCS_URL, COMMUNITY_NODES_INSTALLATION_DOCS_URL, NPM_PACKAGE_DOCS_BASE_URL } from '@/constants';
 import { INodeUi, ITab } from '@/Interface';
 import { useNDVStore } from '@/stores/ndv';
@@ -12,7 +12,7 @@ import { INodeTypeDescription } from 'n8n-workflow';
 import { mapStores } from 'pinia';
 
 import mixins from 'vue-typed-mixins';
-import { isCommunityPackageName } from './helpers';
+import { isCommunityPackageName } from '@/utils';
 
 export default mixins(
 	externalHooks,

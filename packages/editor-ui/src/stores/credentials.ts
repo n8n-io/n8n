@@ -1,6 +1,6 @@
-import { createNewCredential, deleteCredential, getAllCredentials, getCredentialData, getCredentialsNewName, getCredentialTypes, getForeignCredentials, oAuth1CredentialAuthorize, oAuth2CredentialAuthorize, testCredential, updateCredential } from "@/api/credentials";
+import { createNewCredential, deleteCredential, getAllCredentials, getCredentialData, getCredentialsNewName, getCredentialTypes, oAuth1CredentialAuthorize, oAuth2CredentialAuthorize, testCredential, updateCredential } from "@/api/credentials";
 import { setCredentialSharedWith } from "@/api/credentials.ee";
-import { getAppNameFromCredType } from "@/components/helpers";
+import { getAppNameFromCredType } from "@/utils";
 import { EnterpriseEditionFeature, STORES } from "@/constants";
 import { ICredentialMap, ICredentialsDecryptedResponse, ICredentialsResponse, ICredentialsState, ICredentialTypeMap } from "@/Interface";
 import { i18n } from "@/plugins/i18n";
@@ -31,10 +31,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 		allCredentials(): ICredentialsResponse[] {
 			return Object.values(this.credentials)
-				.sort((a, b) => a.name.localeCompare(b.name));
-		},
-		allForeignCredentials(): ICredentialsResponse[] {
-			return Object.values(this.foreignCredentials || {})
 				.sort((a, b) => a.name.localeCompare(b.name));
 		},
 		allCredentialsByType(): {[type: string]: ICredentialsResponse[]} {
@@ -138,13 +134,12 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				return accu;
 			}, {});
 		},
-		setForeignCredentials(credentials: ICredentialsResponse[]): void {
-			this.foreignCredentials = credentials.reduce((accu: ICredentialMap, cred: ICredentialsResponse) => {
+		addCredentials(credentials: ICredentialsResponse[]): void {
+			credentials.forEach((cred: ICredentialsResponse) => {
 				if (cred.id) {
-					accu[cred.id] = cred;
+					this.credentials[cred.id] = { ...this.credentials[cred.id], ...cred };
 				}
-				return accu;
-			}, {});
+			});
 		},
 		upsertCredential(credential: ICredentialsResponse): void {
 			if (credential.id) {
@@ -159,19 +154,13 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 				return;
 			}
 			const rootStore = useRootStore();
-			const credentialTypes = await getCredentialTypes(rootStore.getRestApiContext);
+			const credentialTypes = await getCredentialTypes(rootStore.getBaseUrl);
 			this.setCredentialTypes(credentialTypes);
 		},
 		async fetchAllCredentials(): Promise<ICredentialsResponse[]> {
 			const rootStore = useRootStore();
 			const credentials = await getAllCredentials(rootStore.getRestApiContext);
 			this.setCredentials(credentials);
-			return credentials;
-		},
-		async fetchForeignCredentials(): Promise<ICredentialsResponse[]> {
-			const rootStore = useRootStore();
-			const credentials = await getForeignCredentials(rootStore.getRestApiContext);
-			this.setForeignCredentials(credentials);
 			return credentials;
 		},
 		async getCredentialData({ id }: {id: string}): Promise<ICredentialsResponse | ICredentialsDecryptedResponse | undefined> {
@@ -234,7 +223,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 
 			return credential;
 		},
-		async deleteCredential({ id }: {id: string}): void {
+		async deleteCredential({ id }: {id: string}) {
 			const rootStore = useRootStore();
 			const deleted = await deleteCredential(rootStore.getRestApiContext, id);
 			if (deleted) {
@@ -271,10 +260,10 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, {
 		},
 
 		// Enterprise edition actions
-		setCredentialOwnedBy(payload: { credentialId: string, ownedBy: Partial<IUser> }): void {
+		setCredentialOwnedBy(payload: { credentialId: string, ownedBy: Partial<IUser> }) {
 			Vue.set(this.credentials[payload.credentialId], 'ownedBy', payload.ownedBy);
 		},
-		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string; }): void {
+		async setCredentialSharedWith(payload: { sharedWith: IUser[]; credentialId: string; }) {
 			if(useSettingsStore().isEnterpriseFeatureEnabled(EnterpriseEditionFeature.Sharing)) {
 				await setCredentialSharedWith(
 					useRootStore().getRestApiContext,
