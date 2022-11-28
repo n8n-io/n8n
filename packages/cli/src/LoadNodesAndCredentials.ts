@@ -15,13 +15,13 @@ import type {
 } from 'n8n-workflow';
 import { LoggerProxy, ErrorReporterProxy as ErrorReporter } from 'n8n-workflow';
 
+import { createWriteStream } from 'fs';
 import {
 	access as fsAccess,
 	copyFile,
 	mkdir,
 	readdir as fsReaddir,
 	stat as fsStat,
-	writeFile,
 } from 'fs/promises';
 import path from 'path';
 import config from '@/config';
@@ -76,10 +76,17 @@ export class LoadNodesAndCredentialsClass implements INodesAndCredentials {
 		// pre-render all the node and credential types as static json files
 		await mkdir(path.join(GENERATED_STATIC_DIR, 'types'), { recursive: true });
 
-		const writeStaticJSON = async (name: string, data: any[]) => {
+		const writeStaticJSON = async (name: string, data: object[]) => {
 			const filePath = path.join(GENERATED_STATIC_DIR, `types/${name}.json`);
-			const payload = `[\n${data.map((entry) => JSON.stringify(entry)).join(',\n')}\n]`;
-			await writeFile(filePath, payload, { encoding: 'utf-8' });
+			const stream = createWriteStream(filePath, 'utf-8');
+			stream.write('[\n');
+			data.forEach((entry, index) => {
+				stream.write(JSON.stringify(entry));
+				if (index !== data.length - 1) stream.write(',');
+				stream.write('\n');
+			});
+			stream.write(']\n');
+			stream.end();
 		};
 
 		await writeStaticJSON('nodes', this.types.nodes);
