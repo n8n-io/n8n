@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 import { capitalCase } from 'change-case';
 import { NodeTypes } from '@/NodeTypes';
+import { CUSTOM_API_CALL_KEY } from '@/constants';
 
 class NodeTypeActionsClass {
 	customNodeActionsParsers: {
@@ -28,6 +29,7 @@ class NodeTypeActionsClass {
 	#operationsCategory(nodeTypeDescription: INodeTypeDescription): INodeAction | null {
 		const matchingKeys = ['operation'];
 		const excludedKeys = ['resource'];
+
 		if (!!nodeTypeDescription.properties.find((property) => excludedKeys.includes(property.name)))
 			return null;
 
@@ -72,6 +74,8 @@ class NodeTypeActionsClass {
 
 		if (!isTrigger) return null;
 
+		// Inject placeholder action if no events are available
+		// so user is able to add node to the canvas from the actions panel
 		if (!matchedProperty || !matchedProperty.options) {
 			return {
 				key: 'placeholder_recommended',
@@ -131,42 +135,56 @@ class NodeTypeActionsClass {
 		);
 
 		matchedProperties.forEach((property) => {
-			property.options?.forEach((resourceOption: INodePropertyOptions) => {
-				const resourceCategory: INodeAction = {
-					title: resourceOption.name,
-					key: resourceOption.value as string,
-					type: 'category',
-					items: [],
-				};
+			property.options
+				?.filter((option: INodePropertyOptions) => option.value !== CUSTOM_API_CALL_KEY)
+				.forEach((resourceOption: INodePropertyOptions, i, options) => {
+					const isSingleResource = options.length === 1;
+					const resourceCategory: INodeAction = {
+						title: resourceOption.name,
+						key: resourceOption.value as string,
+						type: 'category',
+						items: [],
+					};
 
-				const operations = nodeTypeDescription.properties.find(
-					(operation) =>
-						operation.name === 'operation' &&
-						operation.displayOptions?.show?.resource?.includes(resourceOption.value),
-				);
+					const operations = nodeTypeDescription.properties.find(
+						(operation) =>
+							operation.name === 'operation' &&
+							(operation.displayOptions?.show?.resource?.includes(resourceOption.value) ||
+								isSingleResource),
+					);
 
-				if (!operations?.options) return;
+					if (!operations?.options) return;
 
-				resourceCategory.items = operations.options.map(
-					(operationOption: INodePropertyOptions) => ({
-						nodeName: nodeTypeDescription.name,
-						key: operationOption.value as string,
-						title:
-							operationOption.action ??
-							`${resourceOption.name} ${capitalCase(operationOption.name)}`,
-						description: operationOption?.description,
-						displayOptions: operations?.displayOptions,
-						values: {
-							operation:
-								operations?.type === 'multiOptions'
-									? [operationOption.value]
-									: operationOption.value,
+					resourceCategory.items = operations.options.map(
+						(operationOption: INodePropertyOptions) => {
+							const title =
+								operationOption.action ??
+								`${resourceOption.name} ${capitalCase(operationOption.name)}`;
+
+							// We need to manually populate displayOptions as they are not present in the node description
+							// if the resource has only one option
+							const displayOptions = isSingleResource
+								? { show: { resource: [(options as INodePropertyOptions[])[0]?.value] } }
+								: operations?.displayOptions;
+
+							return {
+								nodeName: nodeTypeDescription.name,
+								key: operationOption.value as string,
+								title,
+								description: operationOption?.description,
+								displayOptions,
+								values: {
+									operation:
+										operations?.type === 'multiOptions'
+											? [operationOption.value]
+											: operationOption.value,
+								},
+							};
 						},
-					}),
-				);
+					);
 
-				if (resourceCategory.items.length > 0) categories.push(resourceCategory);
-			});
+					if (resourceCategory.items.length > 0) categories.push(resourceCategory);
+				});
 		});
 
 		return categories;
