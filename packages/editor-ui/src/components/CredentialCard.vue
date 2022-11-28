@@ -2,7 +2,6 @@
 	<n8n-card
 		:class="$style['card-link']"
 		@click="onClick"
-		data-test-id="credential-card"
 	>
 			<template #prepend>
 				<credential-icon :credential-type-name="credentialType ? credentialType.name : ''" />
