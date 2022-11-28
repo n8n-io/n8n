@@ -46,7 +46,7 @@ export class MessageEventBusDestinationSentry
 {
 	dsn: string;
 
-	tracesSampleRate: number;
+	tracesSampleRate = 1.0;
 
 	resource: string;
 
@@ -59,9 +59,13 @@ export class MessageEventBusDestinationSentry
 	constructor(options: MessageEventBusDestinationSentryOptions) {
 		super(options);
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		this.label = options.label ?? 'Sentry DSN';
 		this.__type = options.__type ?? MessageEventBusDestinationTypeNames.sentry;
 		this.dsn = options.dsn;
-		this.tracesSampleRate = options.tracesSampleRate ?? 1.0;
+		if (options.sendPayload) this.sendPayload = options.sendPayload;
+		if (options.tracesSampleRate) this.tracesSampleRate = options.tracesSampleRate;
+		if (options.authentication) this.authentication = options.authentication;
+		if (options.nodeCredentialType) this.nodeCredentialType = options.nodeCredentialType;
 		const { N8N_VERSION: release, ENVIRONMENT: environment } = process.env;
 
 		Sentry.init({
