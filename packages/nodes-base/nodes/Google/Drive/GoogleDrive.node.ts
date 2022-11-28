@@ -1,8 +1,10 @@
-import { IExecuteFunctions } from 'n8n-core';
+import { ICredentialTestFunctions, IExecuteFunctions } from 'n8n-core';
 
 import {
+	ICredentialsDecrypted,
 	IDataObject,
 	ILoadOptionsFunctions,
+	INodeCredentialTestResult,
 	INodeExecutionData,
 	INodeListSearchResult,
 	INodeType,
@@ -13,6 +15,7 @@ import {
 import { googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
 
 import { v4 as uuid } from 'uuid';
+import { OptionsWithUri } from 'request';
 
 interface GoogleDriveFilesItem {
 	id: string;
@@ -53,6 +56,7 @@ export class GoogleDrive implements INodeType {
 			{
 				name: 'googleDriveOAuth2Api',
 				required: true,
+				testedBy: 'testGoogleDriveCredentials',
 				displayOptions: {
 					show: {
 						authentication: ['oAuth2'],
@@ -2097,6 +2101,36 @@ export class GoogleDrive implements INodeType {
 						value: i.id,
 					})),
 					paginationToken: res.nextPageToken,
+				};
+			},
+		},
+		credentialTest: {
+			async testGoogleDriveCredentials(
+				this: ICredentialTestFunctions,
+				credential: ICredentialsDecrypted,
+			): Promise<INodeCredentialTestResult> {
+				const credentials = credential.data as { oauthTokenData: { access_token: string } };
+
+				const options: OptionsWithUri = {
+					method: 'GET',
+					uri: 'https://www.googleapis.com/drive/v3/files',
+					headers: {
+						Authorization: `Bearer ${credentials.oauthTokenData.access_token}`,
+					},
+					json: true,
+				};
+
+				try {
+					await this.helpers.request(options);
+				} catch (error) {
+					return {
+						status: 'Error',
+						message: error.response.body.error.message,
+					};
+				}
+				return {
+					status: 'OK',
+					message: 'Authentication successful!',
 				};
 			},
 		},

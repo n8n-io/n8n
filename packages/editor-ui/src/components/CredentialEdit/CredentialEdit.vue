@@ -309,7 +309,7 @@ export default mixins(showMessage, nodeHelpers).extend({
 			};
 		},
 		isCredentialTestable (): boolean {
-			if (this.isOAuthType || !this.requiredPropertiesFilled) {
+			if ((this.isOAuthType && !this.isOAuthConnected) || !this.requiredPropertiesFilled) {
 				return false;
 			}
 
