@@ -21,6 +21,7 @@ import {
 	IDataObject,
 	IExecuteData,
 	IExecuteWorkflowInfo,
+	INode,
 	INodeExecutionData,
 	INodeParameters,
 	IRun,

@@ -7,7 +7,6 @@ import {
 	IWorkflowStatisticsDataLoaded,
 	IWorkflowStatisticsTimestamps,
 	ResponseHelper,
-	whereClause,
 } from '..';
 import { WorkflowEntity } from '../databases/entities/WorkflowEntity';
 import { StatisticsNames } from '../databases/entities/WorkflowStatistics';
@@ -32,21 +31,17 @@ workflowStatsController.use((req, res, next) => {
 async function checkWorkflowId(workflowId: string, user: User): Promise<WorkflowEntity> {
 	const workflow = await Db.collections.Workflow.findOne(workflowId);
 	if (!workflow) {
-		throw new ResponseHelper.ResponseError(
-			`Workflow with ID "${workflowId}" could not be found..`,
-			404,
-			404,
-		);
+		throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 	}
 
 	// Check permissions
 	const shared = await Db.collections.SharedWorkflow.findOne({
 		relations: ['workflow'],
-		where: whereClause({
+		where: {
 			user,
 			entityType: 'workflow',
 			entityId: workflowId,
-		}),
+		},
 	});
 
 	if (!shared) {
@@ -54,11 +49,7 @@ async function checkWorkflowId(workflowId: string, user: User): Promise<Workflow
 			workflowId,
 			userId: user.id,
 		});
-		throw new ResponseHelper.ResponseError(
-			`Workflow with ID "${workflowId}" could not be found.`,
-			undefined,
-			400,
-		);
+		throw new ResponseHelper.NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 	}
 	return workflow;
 }
