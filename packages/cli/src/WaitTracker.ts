@@ -44,7 +44,7 @@ export class WaitTrackerClass {
 		// Poll every 60 seconds a list of upcoming executions
 		this.mainTimer = setInterval(() => {
 			this.getWaitingExecutions();
-		}, 60000);
+		}, parseInt(`${process.env.N8N_WAIT_CYCLE_INTERVAL ?? 60000}`));
 
 		this.getWaitingExecutions();
 	}
@@ -56,7 +56,7 @@ export class WaitTrackerClass {
 		const findQuery: FindManyOptions<IExecutionFlattedDb> = {
 			select: ['id', 'waitTill'],
 			where: {
-				waitTill: LessThanOrEqual(new Date(Date.now() + 70000)),
+				waitTill: LessThanOrEqual(new Date(Date.now() + parseInt(`${process.env.N8N_WAIT_CYCLE_INTERVAL ?? 60000}`) + 10000)),
 			},
 			order: {
 				waitTill: 'ASC',
@@ -67,7 +67,7 @@ export class WaitTrackerClass {
 			// This is needed because of issue in TypeORM <> SQLite:
 			// https://github.com/typeorm/typeorm/issues/2286
 			(findQuery.where! as ObjectLiteral).waitTill = LessThanOrEqual(
-				DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + 70000)),
+				DateUtils.mixedDateToUtcDatetimeString(new Date(Date.now() + parseInt(`${process.env.N8N_WAIT_CYCLE_INTERVAL ?? 60000}`) + 10000)),
 			);
 		}
 
