@@ -31,9 +31,9 @@ changes [here](https://github.com/n8n-io/n8n/blob/master/packages/cli/BREAKING-C
 ## Usage
 
 - :books: Learn
-  [how to **install** and **use** it from the command line](https://github.com/n8n-io/n8n/tree/master/packages/cli/README.md)
+  [how to **use** it from the command line](https://docs.n8n.io/reference/cli-commands/)
 - :whale: Learn
-  [how to run n8n in **Docker**](https://github.com/n8n-io/n8n/tree/master/docker/images/n8n/README.md)
+  [how to run n8n in **Docker**](https://docs.n8n.io/hosting/installation/docker/)
 
 ## Start
 
