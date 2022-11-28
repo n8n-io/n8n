@@ -98,7 +98,6 @@ const onDragEnd = (el: HTMLElement) => {
 	height: 100%;
 	padding-bottom: var(--spacing-3xl);
 	background-color: var(--color-background-base);
-	padding-top: var(--spacing-s);
 }
 
 .dragPill {

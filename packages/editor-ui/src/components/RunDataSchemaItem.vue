@@ -17,7 +17,7 @@
 				data-target="mappable"
 			>
 				<font-awesome-icon :icon="getIconBySchemaType(schema.type)" size="sm"/>
-				<span v-if="isSchemaParentTypeList">{{ schema.type }}</span>
+				<span v-if="isSchemaParentTypeList">{{ parent.key }}</span>
 				<span v-if="key" :class="{[$style.listKey]: isSchemaParentTypeList}">{{ key }}</span>
 			</span>
 		</div>
@@ -104,10 +104,10 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 .item {
 	display: block;
 	position: relative;
-	padding-top: var(--spacing-xs);
 	transition: all 0.3s $ease-out-expo;
 
 	.item {
+		padding-top: var(--spacing-2xs);
 		padding-left: var(--spacing-l);
 	}
 }
@@ -116,6 +116,16 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	display: block;
 	overflow: hidden;
 	transition: all 0.2s $ease-out-expo;
+
+	&:nth-of-type(1) {
+		> .item:nth-of-type(1) {
+			padding-top: 0;
+
+			.toggle {
+				top: -2px;
+			}
+		}
+	}
 }
 
 .pill {
@@ -126,16 +136,18 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	border-radius: 4px;
 	background: var(--color-background-xlight);
 	font-size: var(--font-size-2xs);
-	color: var(--color-text-base);
-
-	&:hover {
-		box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
-	}
+	color: var(--color-text-dark);
 
 	span {
 		display: flex;
 		height: 100%;
 		align-items: center;
+
+		svg {
+			path {
+				fill: var(--color-text-light);
+			}
+		}
 	}
 }
 
@@ -164,13 +176,14 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	display: flex;
 	position: absolute;
 	padding: var(--spacing-2xs);
-	left: -8px;
-	top: 9px;
+	left: 0;
+	top: 5px;
 	justify-content: center;
 	align-items: center;
 	cursor: pointer;
 	user-select: none;
 	font-weight: normal;
+	font-size: var(--font-size-s);
 
 	svg {
 		transition: all 0.3s $ease-out-expo;
@@ -179,6 +192,9 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	input {
 		width: 0;
 		height: 0;
+		bottom: 0;
+		padding: 0;
+		margin: 0;
 
 		&:not(:checked) ~ svg {
 			transform: rotate(180deg);
@@ -210,15 +226,13 @@ const getIconBySchemaType = (type: Schema['type']): string => {
 	&:hover {
 		&,
 		span span {
-			background-color: var(--color-foreground-light);
+			background-color: var(--color-background-light);
 			border-color: var(--color-foreground-base);
 		}
 	}
 }
 
 .dragged {
-	box-shadow: 0 2px 6px rgba(68, 28, 23, 0.2);
-
 	&,
 	&:hover,
 	span span {
