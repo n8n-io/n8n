@@ -32,6 +32,7 @@ export const EXPRESSION_EDITOR_THEME = [
 	EditorView.theme({
 		'&': {
 			maxHeight: '112px',
+			width: '100%',
 			fontSize: BASE_STYLING.fontSize,
 			padding: '0 0 0 var(--spacing-2xs)',
 			borderWidth: 'var(--border-width-base)',

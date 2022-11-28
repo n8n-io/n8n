@@ -1,7 +1,7 @@
 <template>
 	<div
 		:class="[$style['expression-parameter-input'], { [$style['pointer']]: openModalOnClick }]"
-		@click="openModalOnClick && $emit('inputClick')"
+
 		v-click-outside="onBlur"
 	>
 		<div :class="[$style['all-sections'], { [$style['focused']]: isFocused }]">
@@ -12,11 +12,14 @@
 					{ [$style['squared']]: squarePrependSection },
 				]"
 			>
-				fx
+				<svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+					<path d="M3.69653 4.35645L3.29907 4.80566L3.33813 4.97559H4.36157C4.15258 6.18457 3.99633 7.27441 3.69653 8.9541C3.33813 11.0967 3.13207 11.623 3.01 11.8154C2.90258 12.0059 2.74829 12.1045 2.5393 12.1045C2.30981 12.1045 1.89477 11.9229 1.67211 11.7168C1.59204 11.6621 1.49731 11.6758 1.39672 11.7422C1.19555 11.9121 1.00024 12.1738 1.00024 12.4082C0.988519 12.7246 1.41137 13 1.81469 13C2.17016 13 2.6936 12.7773 3.24438 12.2539C3.99731 11.54 4.56079 10.5605 5.03149 8.44336C5.33422 7.0918 5.4768 6.21289 5.68969 4.97656L6.96118 4.86133L7.23657 4.35645H5.80493C6.17504 2.02832 6.46411 1.68359 6.81957 1.68359C7.0559 1.68359 7.33129 1.86523 7.6477 2.22266C7.74145 2.35156 7.88207 2.33789 7.9895 2.25C8.17016 2.14258 8.39282 1.86719 8.40747 1.61719C8.41821 1.3418 8.09008 1 7.52563 1C7.01391 1 6.22973 1.3418 5.57055 2.01367C4.99243 2.62598 4.68969 3.39062 4.48071 4.35645H3.69653ZM7.76489 5.91504C8.15942 5.38965 8.39575 5.21484 8.51782 5.21484C8.64379 5.21484 8.74438 5.33887 8.9602 6.03613L9.32934 7.22656C8.61547 8.31836 8.09301 8.92676 7.77563 8.92676C7.67016 8.92676 7.56372 8.89355 7.48852 8.81934C7.4143 8.74512 7.33227 8.68359 7.25219 8.68359C6.99047 8.68359 6.66625 9.00098 6.66039 9.39453C6.65454 9.7959 6.93579 10.083 7.30493 10.083C7.93872 10.083 8.47485 9.46094 9.51 7.81152L9.81274 8.83203C10.0725 9.70898 10.3772 10.083 10.7581 10.083C11.2288 10.083 11.8616 9.68164 12.552 8.59668L12.2629 8.2666C11.8479 8.7666 11.5725 9.00098 11.4094 9.00098C11.2278 9.00098 11.0686 8.72363 10.8586 8.04199L10.4163 6.60352C10.678 6.21777 10.9358 5.89355 11.1623 5.63477C11.4319 5.32715 11.6399 5.19629 11.7815 5.19629C11.9006 5.19629 12.0041 5.24707 12.0686 5.31836C12.1536 5.41211 12.2043 5.45605 12.3049 5.45605C12.5325 5.45605 12.884 5.16699 12.8967 4.78418C12.9084 4.42871 12.6877 4.12598 12.3049 4.12598C11.7268 4.12598 11.217 4.62402 10.2356 6.08301L10.0334 5.45703C9.75024 4.57812 9.56274 4.12598 9.16821 4.12598C8.70922 4.12598 8.07836 4.69043 7.46118 5.58496L7.76489 5.91504Z" fill="#7D838F"/>
+				</svg>
 			</div>
 			<inline-expression-editor-input
 				:value="value"
 				:isReadOnly="isReadOnly"
+				:targetItem="hoveringItem"
 				@focus="onFocus"
 				@blur="onBlur"
 				@change="onChange"
@@ -33,7 +36,7 @@
 
 		<div
 			:class="
-				isFocused && !openModalOnClick
+				isFocused
 					? $style['expression-parameter-input-dropdown']
 					: $style.hidden
 			"
@@ -42,9 +45,11 @@
 				{{ $locale.baseText('parameterInput.resultForItem') }} {{ hoveringItemNumber }}
 			</n8n-text>
 			<n8n-text :class="$style.body">
-				Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque cursus quis dui quis
-				hendrerit. Morbi quis egestas leo. Class aptent taciti sociosqu ad litora torquent per
-				conubia nostra, per inceptos himenaeos.
+				<inline-expression-editor-output
+					:value="value"
+					:isReadOnly="isReadOnly"
+					:segments="segments"
+				/>
 			</n8n-text>
 			<div :class="$style.footer">
 				<n8n-text>
@@ -64,6 +69,7 @@
 
 <script lang="ts">
 import InlineExpressionEditorInput from '@/components/InlineExpressionEditor/InlineExpressionEditorInput.vue';
+import InlineExpressionEditorOutput from '@/components/InlineExpressionEditor/InlineExpressionEditorOutput.vue';
 import { EXPRESSIONS_DOCS_URL } from '@/constants';
 import { useNDVStore } from '@/stores/ndv';
 import { mapStores } from 'pinia';
@@ -74,10 +80,12 @@ export default Vue.extend({
 	name: 'expression-parameter-input',
 	components: {
 		InlineExpressionEditorInput,
+		InlineExpressionEditorOutput,
 	},
 	data() {
 		return {
 			isFocused: false,
+			segments: [] as Segment[],
 		};
 	},
 	props: {
@@ -111,6 +119,9 @@ export default Vue.extend({
 		hoveringItemNumber(): number {
 			return (this.ndvStore.hoveringItem?.itemIndex ?? 0) + 1;
 		},
+		hoveringItem(): object | null {
+			return this.ndvStore.hoveringItem;
+		},
 		isDragging(): boolean {
 			return this.ndvStore.isDraggableDragging;
 		},
@@ -129,8 +140,8 @@ export default Vue.extend({
 
 			this.isFocused = false;
 		},
-		onChange({ value }: { value: string; segments: Segment[] }) {
-			// @TODO: Use segments for inline output
+		onChange({ value, segments }: { value: string; segments: Segment[] }) {
+			this.segments = segments;
 			this.$emit('valueChanged', value);
 		},
 	},
@@ -153,7 +164,10 @@ export default Vue.extend({
 	}
 
 	.prepend-section {
-		font-size: var(--font-size-xs);
+		padding: 0;
+		padding-top: 2px;
+		width: 22px;
+		text-align: center;
 	}
 
 	.squared {
@@ -209,12 +223,17 @@ export default Vue.extend({
 	background: white;
 	border: var(--border-base);
 	border-top: none;
+	width: 100%;
 	// @TODO: shadow
 
 	.header,
 	.body,
 	.footer {
 		padding: var(--spacing-3xs);
+	}
+
+	.body {
+		padding-top: 0;
 	}
 
 	.header {
@@ -226,7 +245,7 @@ export default Vue.extend({
 
 		.expression-syntax-example {
 			display: inline-block;
-			height: 16px;
+			height: 20px;
 			line-height: 1;
 			background-color: #f0f0f0;
 			margin-left: var(--spacing-5xs);

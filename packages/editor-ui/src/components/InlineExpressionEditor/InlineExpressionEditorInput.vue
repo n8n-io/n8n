@@ -14,11 +14,13 @@ import { workflowHelpers } from '@/components/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv';
 import { n8nLanguageSupport } from './n8nLanguageSupport';
 import { braceHandler } from './braceHandler';
-import { EXPRESSION_EDITOR_THEME } from './theme';
+import { EXPRESSION_EDITOR_THEME } from './inputTheme';
 import { addColor, removeColor } from './colorDecorations';
 
 // import type { IVariableItemSelected } from '@/Interface'; // removed
 import type { RawSegment, Segment, Resolvable, Plaintext } from './types';
+import type { TargetItem } from '@/Interface';
+import type { PropType } from 'vue';
 
 const EVALUATION_DELAY = 300; // ms
 
@@ -27,6 +29,9 @@ export default mixins(workflowHelpers).extend({
 	props: {
 		value: {
 			type: String,
+		},
+		targetItem: {
+			type: Object as PropType<TargetItem | null>,
 		},
 		isReadOnly: {
 			type: Boolean,
@@ -37,7 +42,30 @@ export default mixins(workflowHelpers).extend({
 		return {
 			editor: null as EditorView | null,
 			errorsInSuccession: 0,
+			cursor: 0,
 		};
+	},
+	watch: {
+		targetItem() {
+			setTimeout(() => {
+				this.$emit('change', {
+					value: this.unresolvedExpression,
+					segments: this.displayableSegments,
+				});
+			});
+		},
+		value(newValue) {
+			try {
+				this.editor?.dispatch({
+					changes: {
+						from: 0,
+						to: this.editor.state.doc.length,
+						insert: newValue,
+					},
+					selection: { anchor: this.cursor, head: this.cursor },
+				});
+			} catch (_) {} // ignore range error from dropping on prepopulated field
+		},
 	},
 	mounted() {
 		const extensions = [
@@ -84,6 +112,8 @@ export default mixins(workflowHelpers).extend({
 
 				// @TODO: Remove logging after review
 				// console.log(`content: ${this.unresolvedExpression} // delay: ${delay} // errorsInSuccession: ${this.errorsInSuccession}`);
+
+				this.cursor = viewUpdate.view.state.selection.ranges[0].from;
 
 				setTimeout(() => {
 					this.editor?.focus();
@@ -236,6 +266,7 @@ export default mixins(workflowHelpers).extend({
 
 			try {
 				result.resolved = this.resolveExpression('=' + resolvable, undefined, {
+					targetItem: this.targetItem ?? undefined,
 					inputNodeName: this.ndvStore.ndvInputNodeName,
 					inputRunIndex: this.ndvStore.ndvInputRunIndex,
 					inputBranchIndex: this.ndvStore.ndvInputBranchIndex,

@@ -464,8 +464,8 @@ importers:
       '@codemirror/lang-javascript': ^6.0.2
       '@codemirror/language': ^6.2.1
       '@codemirror/lint': ^6.0.0
-      '@codemirror/state': ^6.1.1
-      '@codemirror/view': ^6.2.1
+      '@codemirror/state': ^6.1.4
+      '@codemirror/view': ^6.5.1
       '@fontsource/open-sans': ^4.5.0
       '@fortawesome/fontawesome-svg-core': ^1.2.35
       '@fortawesome/free-regular-svg-icons': ^6.1.1
@@ -537,13 +537,13 @@ importers:
       vue2-touch-events: ^3.2.1
       xss: ^1.0.10
     dependencies:
-      '@codemirror/autocomplete': 6.3.0_2jvnbzbiudbravcwrws2kgi36q
+      '@codemirror/autocomplete': 6.3.0_qwh2yqnufr6rh7irt26elpcjr4
       '@codemirror/commands': 6.1.2
       '@codemirror/lang-javascript': 6.1.0
       '@codemirror/language': 6.2.1
       '@codemirror/lint': 6.0.0
-      '@codemirror/state': 6.1.2
-      '@codemirror/view': 6.3.1
+      '@codemirror/state': 6.1.4
+      '@codemirror/view': 6.6.0
       '@fontsource/open-sans': 4.5.12
       '@fortawesome/fontawesome-svg-core': 1.2.36
       '@fortawesome/free-regular-svg-icons': 6.2.0
@@ -2602,7 +2602,7 @@ packages:
       minimist: 1.2.7
     dev: true
 
-  /@codemirror/autocomplete/6.3.0_2jvnbzbiudbravcwrws2kgi36q:
+  /@codemirror/autocomplete/6.3.0_qwh2yqnufr6rh7irt26elpcjr4:
     resolution: {integrity: sha512-4jEvh3AjJZTDKazd10J6ZsCIqaYxDMCeua5ouQxY8hlFIml+nr7le0SgBhT3SIytFBmdzPK3AUhXGuW3T79nVg==}
     peerDependencies:
       '@codemirror/language': ^6.0.0
@@ -2611,8 +2611,8 @@ packages:
       '@lezer/common': ^1.0.0
     dependencies:
       '@codemirror/language': 6.2.1
-      '@codemirror/state': 6.1.2
-      '@codemirror/view': 6.3.1
+      '@codemirror/state': 6.1.4
+      '@codemirror/view': 6.6.0
       '@lezer/common': 1.0.1
     dev: false
 
@@ -2620,19 +2620,19 @@ packages:
     resolution: {integrity: sha512-sO3jdX1s0pam6lIdeSJLMN3DQ6mPEbM4yLvyKkdqtmd/UDwhXA5+AwFJ89rRXm6vTeOXBsE5cAmlos/t7MJdgg==}
     dependencies:
       '@codemirror/language': 6.2.1
-      '@codemirror/state': 6.1.2
-      '@codemirror/view': 6.3.1
+      '@codemirror/state': 6.1.4
+      '@codemirror/view': 6.6.0
       '@lezer/common': 1.0.1
     dev: false
 
   /@codemirror/lang-javascript/6.1.0:
     resolution: {integrity: sha512-wAWEY1Wdis2cKDy9A5q/rUmzLHFbZgoupJBcGaeMMsDPi68Rm90NsmzAEODE5kW8mYdRKFhQ157WJghOZ3yYdg==}
     dependencies:
-      '@codemirror/autocomplete': 6.3.0_2jvnbzbiudbravcwrws2kgi36q
+      '@codemirror/autocomplete': 6.3.0_qwh2yqnufr6rh7irt26elpcjr4
       '@codemirror/language': 6.2.1
       '@codemirror/lint': 6.0.0
-      '@codemirror/state': 6.1.2
-      '@codemirror/view': 6.3.1
+      '@codemirror/state': 6.1.4
+      '@codemirror/view': 6.6.0
       '@lezer/common': 1.0.1
       '@lezer/javascript': 1.0.2
     dev: false
@@ -2640,8 +2640,8 @@ packages:
   /@codemirror/language/6.2.1:
     resolution: {integrity: sha512-MC3svxuvIj0MRpFlGHxLS6vPyIdbTr2KKPEW46kCoCXw2ktb4NTkpkPBI/lSP/FoNXLCBJ0mrnUi1OoZxtpW1Q==}
     dependencies:
-      '@codemirror/state': 6.1.2
-      '@codemirror/view': 6.3.1
+      '@codemirror/state': 6.1.4
+      '@codemirror/view': 6.6.0
       '@lezer/common': 1.0.1
       '@lezer/highlight': 1.1.1
       '@lezer/lr': 1.2.3
@@ -2651,19 +2651,19 @@ packages:
   /@codemirror/lint/6.0.0:
     resolution: {integrity: sha512-nUUXcJW1Xp54kNs+a1ToPLK8MadO0rMTnJB8Zk4Z8gBdrN0kqV7uvUraU/T2yqg+grDNR38Vmy/MrhQN/RgwiA==}
     dependencies:
-      '@codemirror/state': 6.1.2
-      '@codemirror/view': 6.3.1
+      '@codemirror/state': 6.1.4
+      '@codemirror/view': 6.6.0
       crelt: 1.0.5
     dev: false
 
-  /@codemirror/state/6.1.2:
-    resolution: {integrity: sha512-Mxff85Hp5va+zuj+H748KbubXjrinX/k28lj43H14T2D0+4kuvEFIEIO7hCEcvBT8ubZyIelt9yGOjj2MWOEQA==}
+  /@codemirror/state/6.1.4:
+    resolution: {integrity: sha512-g+3OJuRylV5qsXuuhrc6Cvs1NQluNioepYMM2fhnpYkNk7NgX+j0AFuevKSVKzTDmDyt9+Puju+zPdHNECzCNQ==}
     dev: false
 
-  /@codemirror/view/6.3.1:
-    resolution: {integrity: sha512-NKPBphoV9W2Q6tKXk+ge4q5EhMOOC0rpwdGS80/slNSfsVqkN4gwXIEqSprXJFlf9aUKZU7WhPvqRBMNH+hJkQ==}
+  /@codemirror/view/6.6.0:
+    resolution: {integrity: sha512-40VaFVZI3rkyjO5GHFAbNwaW+YgZexjKyx5gxLU2DvfuXAEZX0kW0apOXb0SBRLnKIQJ+U/n2nPfxgBVFHERrg==}
     dependencies:
-      '@codemirror/state': 6.1.2
+      '@codemirror/state': 6.1.4
       style-mod: 4.0.0
       w3c-keyname: 2.2.6
     dev: false

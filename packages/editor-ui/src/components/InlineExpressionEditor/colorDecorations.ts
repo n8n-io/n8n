@@ -1,6 +1,6 @@
 import { EditorView, Decoration, DecorationSet } from '@codemirror/view';
 import { StateField, StateEffect } from '@codemirror/state';
-import { DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME, SYNTAX_HIGHLIGHTING_CLASSES } from './theme';
+import { DYNAMICALLY_HIGHLIGHTED_RESOLVABLES_THEME, SYNTAX_HIGHLIGHTING_CLASSES } from './inputTheme';
 import type { ColoringStateEffect, Plaintext, Resolvable, Resolved } from './types';
 
 const stateEffects = {
