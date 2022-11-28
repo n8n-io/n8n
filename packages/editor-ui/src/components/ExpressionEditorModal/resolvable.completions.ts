@@ -1,10 +1,10 @@
 import { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 import { syntaxTree } from '@codemirror/language';
 
-// @TODO: Fill in after review
-
 /**
  * Completions available inside the resolvable segment `{{ ... }}` of an n8n expression.
+ *
+ * Currently unused.
  */
 export function resolvableCompletions(context: CompletionContext): CompletionResult | null {
 	const nodeBefore = syntaxTree(context.state).resolveInner(context.pos, -1);
@@ -27,7 +27,7 @@ export function resolvableCompletions(context: CompletionContext): CompletionRes
 		from: preCursor.from,
 		options: [
 			{ label: `${quotedString}.replace()`, info: 'Replace part of a string with another' },
-			{ label: `${quotedString}.slice()`, info: 'Extract part of a string' },
+			{ label: `${quotedString}.slice()`, info: 'Copy part of a string' },
 		],
 	};
 }

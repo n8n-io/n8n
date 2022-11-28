@@ -6,12 +6,14 @@
 import Vue, { PropType } from 'vue';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
+
 import { EXPRESSION_EDITOR_THEME } from './theme';
 import { addColor, removeColor } from './colorDecorations';
+
 import type { Plaintext, Resolved, Segment } from './types';
 
 export default Vue.extend({
-	name: 'ExpressionModalOutput',
+	name: 'expression-modal-output',
 	props: {
 		segments: {
 			type: Array as PropType<Segment[]>,
@@ -72,7 +74,7 @@ export default Vue.extend({
 					cursor +=
 						segment.kind === 'plaintext'
 							? segment.plaintext.length
-							: (segment.resolved as any).toString().length; // @TODO: Typing
+							: (segment.resolved as any).toString().length;
 
 					segment.to = cursor;
 

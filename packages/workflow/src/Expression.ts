@@ -283,7 +283,7 @@ export class Expression {
 				typeof error.message === 'string' &&
 				error.name === 'SyntaxError'
 			) {
-				throw new Error(error.message); // @TODO: Include the category `syntax error`?
+				throw new Error(error.message);
 			}
 		}
 

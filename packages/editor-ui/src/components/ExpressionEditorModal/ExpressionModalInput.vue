@@ -4,12 +4,11 @@
 
 <script lang="ts">
 import mixins from 'vue-typed-mixins';
+import { mapStores } from 'pinia';
 import { EditorView } from '@codemirror/view';
 import { EditorState } from '@codemirror/state';
 import { history } from '@codemirror/commands';
-// import { autocompletion } from '@codemirror/autocomplete';
 import { syntaxTree } from '@codemirror/language';
-import { mapStores } from 'pinia';
 
 import { workflowHelpers } from '@/mixins/workflowHelpers';
 import { useNDVStore } from '@/stores/ndv';
@@ -24,7 +23,7 @@ import type { RawSegment, Segment, Resolvable, Plaintext } from './types';
 const EVALUATION_DELAY = 300; // ms
 
 export default mixins(workflowHelpers).extend({
-	name: 'ExpressionModalInput',
+	name: 'expression-modal-input',
 	props: {
 		value: {
 			type: String,
@@ -42,10 +41,6 @@ export default mixins(workflowHelpers).extend({
 			n8nLanguageSupport(),
 			history(),
 			braceHandler(),
-			// autocompletions disabled until after inlining
-			// autocompletion({
-			// 	override: [resolvableCompletions],
-			// }),
 			EditorView.lineWrapping,
 			EditorView.updateListener.of((viewUpdate) => {
 				if (!this.editor || !viewUpdate.docChanged) return;
@@ -72,12 +67,7 @@ export default mixins(workflowHelpers).extend({
 					delay = 0;
 				}
 
-				// @TODO: Remove logging after review
-				// console.log(`content: ${this.unresolvedExpression} // delay: ${delay} // errorsInSuccession: ${this.errorsInSuccession}`);
-
-				setTimeout(() => {
-					this.editor?.focus();
-				});
+				setTimeout(() => this.editor?.focus()); // prevent blur on paste
 
 				setTimeout(() => {
 					this.$emit('change', {
@@ -182,14 +172,14 @@ export default mixins(workflowHelpers).extend({
 		segments(): Segment[] {
 			if (!this.editor) return [];
 
-			const rawInputSegments: RawSegment[] = [];
+			const rawSegments: RawSegment[] = [];
 
 			syntaxTree(this.editor.state)
 				.cursor()
 				.iterate((node) => {
 					if (!this.editor || node.type.name === 'Program') return;
 
-					rawInputSegments.push({
+					rawSegments.push({
 						from: node.from,
 						to: node.to,
 						text: this.editor.state.sliceDoc(node.from, node.to),
@@ -197,7 +187,7 @@ export default mixins(workflowHelpers).extend({
 					});
 				});
 
-			return rawInputSegments.reduce<Segment[]>((acc, segment) => {
+			return rawSegments.reduce<Segment[]>((acc, segment) => {
 				const { from, to, text, type } = segment;
 
 				if (type === 'Resolvable') {
@@ -260,22 +250,18 @@ export default mixins(workflowHelpers).extend({
 			const CLOSE_MARKER = '}}';
 
 			const { doc, selection } = this.editor.state;
+			const { head } = selection.main;
 
-			const before = doc.toString().slice(0, selection.main.head);
-			const after = doc.toString().slice(selection.main.head, doc.length);
-
-			if (before.includes(OPEN_MARKER) && after.includes(CLOSE_MARKER)) {
-				this.editor.dispatch({
-					changes: { from: selection.main.head, insert: variable },
-				});
-
-				return;
-			}
+			const beforeBraced = doc.toString().slice(0, head).includes(OPEN_MARKER);
+			const afterBraced = doc.toString().slice(head, doc.length).includes(CLOSE_MARKER);
 
 			this.editor.dispatch({
 				changes: {
-					from: selection.main.head,
-					insert: [OPEN_MARKER, variable, CLOSE_MARKER].join(' '),
+					from: head,
+					insert:
+						beforeBraced && afterBraced
+							? variable
+							: [OPEN_MARKER, variable, CLOSE_MARKER].join(' '),
 				},
 			});
 		},
