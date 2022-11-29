@@ -22,9 +22,7 @@ import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 
 import * as ActiveExecutions from '@/ActiveExecutions';
 import * as Db from '@/Db';
-import * as GenericHelpers from '@/GenericHelpers';
 import {
-	DatabaseType,
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
@@ -34,13 +32,12 @@ import { NodeTypes } from '@/NodeTypes';
 import * as ResponseHelper from '@/ResponseHelper';
 import { WorkflowRunner } from '@/WorkflowRunner';
 import config from '@/config';
-import { User } from '@db/entities/User';
 import { DEFAULT_EXECUTIONS_GET_ALL_LIMIT } from '@/GenericHelpers';
 import { getLogger } from '@/Logger';
 import * as Queue from '@/Queue';
 import type { ExecutionRequest } from '@/requests';
-import { getSharedWorkflowIds } from '@/WorkflowHelpers';
 import { EEExecutionsController } from './executions.controller.ee';
+import { ExecutionsService } from './executions.service';
 
 export const executionsController = express.Router();
 
@@ -85,67 +82,12 @@ executionsController.use((req, res, next) => {
 executionsController.use('/', EEExecutionsController);
 
 /**
- * Helper function to retrieve count of Executions
- */
-async function getExecutionsCount(
-	countFilter: IDataObject,
-	user: User,
-): Promise<{ count: number; estimated: boolean }> {
-	const dbType = (await GenericHelpers.getConfigValue('database.type')) as DatabaseType;
-	const filteredFields = Object.keys(countFilter).filter((field) => field !== 'id');
-
-	// For databases other than Postgres, do a regular count
-	// when filtering based on `workflowId` or `finished` fields.
-	if (dbType !== 'postgresdb' || filteredFields.length > 0 || user.globalRole.name !== 'owner') {
-		const sharedWorkflowIds = await getSharedWorkflowIds(user);
-
-		const count = await Db.collections.Execution.count({
-			where: {
-				workflowId: In(sharedWorkflowIds),
-				...countFilter,
-			},
-		});
-
-		return { count, estimated: false };
-	}
-
-	try {
-		// Get an estimate of rows count.
-		const estimateRowsNumberSql =
-			"SELECT n_live_tup FROM pg_stat_all_tables WHERE relname = 'execution_entity';";
-		const rows: Array<{ n_live_tup: string }> = await Db.collections.Execution.query(
-			estimateRowsNumberSql,
-		);
-
-		const estimate = parseInt(rows[0].n_live_tup, 10);
-		// If over 100k, return just an estimate.
-		if (estimate > 100_000) {
-			// if less than 100k, we get the real count as even a full
-			// table scan should not take so long.
-			return { count: estimate, estimated: true };
-		}
-	} catch (error) {
-		LoggerProxy.warn(`Failed to get executions count from Postgres: ${error}`);
-	}
-
-	const sharedWorkflowIds = await getSharedWorkflowIds(user);
-
-	const count = await Db.collections.Execution.count({
-		where: {
-			workflowId: In(sharedWorkflowIds),
-		},
-	});
-
-	return { count, estimated: false };
-}
-
-/**
  * GET /executions
  */
 executionsController.get(
 	'/',
 	ResponseHelper.send(async (req: ExecutionRequest.GetAll): Promise<IExecutionsListResponse> => {
-		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+		const sharedWorkflowIds = await ExecutionsService.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
@@ -266,7 +208,10 @@ executionsController.get(
 
 		const executions = await query.getMany();
 
-		const { count, estimated } = await getExecutionsCount(countFilter as IDataObject, req.user);
+		const { count, estimated } = await ExecutionsService.getExecutionsCount(
+			countFilter as IDataObject,
+			req.user,
+		);
 
 		const formattedExecutions = executions.map((execution) => {
 			return {
@@ -302,7 +247,7 @@ executionsController.get(
 		): Promise<IExecutionResponse | IExecutionFlattedResponse | undefined> => {
 			const { id: executionId } = req.params;
 
-			const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+			const sharedWorkflowIds = await ExecutionsService.getWorkflowIdsForUser(req.user);
 
 			if (!sharedWorkflowIds.length) return undefined;
 
@@ -344,7 +289,7 @@ executionsController.post(
 	ResponseHelper.send(async (req: ExecutionRequest.Retry): Promise<boolean> => {
 		const { id: executionId } = req.params;
 
-		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+		const sharedWorkflowIds = await ExecutionsService.getWorkflowIdsForUser(req.user);
 
 		if (!sharedWorkflowIds.length) return false;
 
@@ -493,7 +438,7 @@ executionsController.post(
 			throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
 		}
 
-		const sharedWorkflowIds = await getSharedWorkflowIds(req.user);
+		const sharedWorkflowIds = await ExecutionsService.getWorkflowIdsForUser(req.user);
 		if (sharedWorkflowIds.length === 0) {
 			// return early since without shared workflows there can be no hits
 			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)

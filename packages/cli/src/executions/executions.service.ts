@@ -1,10 +1,19 @@
-import { User } from '@/../dist/databases/entities/User';
+import { User } from '@/databases/entities/User';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
-import { IDataObject } from 'n8n-workflow';
+import { IDataObject, LoggerProxy } from 'n8n-workflow';
 import { In } from 'typeorm';
 import { DatabaseType, Db, GenericHelpers } from '..';
 
 export class ExecutionsService {
+	/**
+	 * Function to get the workflow Ids for a User
+	 * Overridden in EE version to ignore roles
+	 */
+	 static async getWorkflowIdsForUser(user: User): Promise<number[]> {
+		// Get all workflows using owner role
+		return await getSharedWorkflowIds(user, ['owner']);
+	}
+
 	/**
 	 * Helper function to retrieve count of Executions
 	 */
@@ -18,15 +27,10 @@ export class ExecutionsService {
 		// For databases other than Postgres, do a regular count
 		// when filtering based on `workflowId` or `finished` fields.
 		if (dbType !== 'postgresdb' || filteredFields.length > 0 || user.globalRole.name !== 'owner') {
-			const sharedWorkflowIds = await getSharedWorkflowIds(user);
+			const sharedWorkflowIds = await this.getWorkflowIdsForUser(user);
 
-			const count = await Db.collections.Execution.count({
-				where: {
-					workflowId: In(sharedWorkflowIds),
-					...countFilter,
-				},
-			});
-
+			const countParams = { where: { workflowId: In(sharedWorkflowIds), ...countFilter } }
+			const count = await Db.collections.Execution.count(countParams);
 			return { count, estimated: false };
 		}
 
