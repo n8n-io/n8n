@@ -61,14 +61,15 @@ export class GoogleCalendarTrigger implements INodeType {
 								type: 'regex',
 								properties: {
 									// calendar ids are emails. W3C email regex with optional trailing whitespace.
-									regex: '(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*(?:[ \t]+)*$)',
+									regex:
+										'(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*(?:[ \t]+)*$)',
 									errorMessage: 'Not a valid Google Calendar ID',
 								},
 							},
 						],
 						extractValue: {
 							type: 'regex',
-							regex: '(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*)',
+							regex: '(^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*)',
 						},
 						placeholder: 'name@google.com',
 					},

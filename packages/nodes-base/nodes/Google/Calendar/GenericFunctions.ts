@@ -2,7 +2,13 @@ import { OptionsWithUri } from 'request';
 
 import { IExecuteFunctions, IExecuteSingleFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import { IDataObject, INodeListSearchItems, INodeListSearchResult, IPollFunctions, NodeApiError } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeListSearchItems,
+	INodeListSearchResult,
+	IPollFunctions,
+	NodeApiError,
+} from 'n8n-workflow';
 
 import moment from 'moment-timezone';
 
@@ -74,15 +80,15 @@ export async function getCalendars(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const calendars = await googleApiRequestAllItems.call(
+	const calendars = (await googleApiRequestAllItems.call(
 		this,
 		'items',
 		'GET',
 		'/calendar/v3/users/me/calendarList',
-	) as Array<{ id: string, summary: string }>;
+	)) as Array<{ id: string; summary: string }>;
 
 	const results: INodeListSearchItems[] = calendars
-		.map(c => ({
+		.map((c) => ({
 			name: c.summary,
 			value: c.id,
 		}))
@@ -100,14 +106,18 @@ export async function getCalendars(
 	return { results };
 }
 
-export const TIMEZONE_VALIDATION_REGEX = `(${moment.tz.names().map(t => t.replace('+', '\\+')).join('|')})[ \t]*`;
+export const TIMEZONE_VALIDATION_REGEX = `(${moment.tz
+	.names()
+	.map((t) => t.replace('+', '\\+'))
+	.join('|')})[ \t]*`;
 
 export async function getTimezones(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const results: INodeListSearchItems[] = moment.tz.names()
-		.map(timezone => ({
+	const results: INodeListSearchItems[] = moment.tz
+		.names()
+		.map((timezone) => ({
 			name: timezone,
 			value: timezone,
 		}))

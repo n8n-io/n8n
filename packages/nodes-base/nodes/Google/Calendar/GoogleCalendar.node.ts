@@ -11,7 +11,13 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { encodeURIComponentOnce, getCalendars, getTimezones, googleApiRequest, googleApiRequestAllItems } from './GenericFunctions';
+import {
+	encodeURIComponentOnce,
+	getCalendars,
+	getTimezones,
+	googleApiRequest,
+	googleApiRequestAllItems,
+} from './GenericFunctions';
 
 import { eventFields, eventOperations } from './EventDescription';
 
@@ -132,12 +138,16 @@ export class GoogleCalendar implements INodeType {
 					//https://developers.google.com/calendar/v3/reference/freebusy/query
 					if (operation === 'availability') {
 						// we need to decode once because calendar used to be saved encoded
-						const calendarId = decodeURIComponent(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
+						const calendarId = decodeURIComponent(
+							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
+						);
 						const timeMin = this.getNodeParameter('timeMin', i) as string;
 						const timeMax = this.getNodeParameter('timeMax', i) as string;
 						const options = this.getNodeParameter('options', i);
 						const outputFormat = options.outputFormat || 'availability';
-						const tz = this.getNodeParameter('options.timezone', i, '', { extractValue: true }) as string;
+						const tz = this.getNodeParameter('options.timezone', i, '', {
+							extractValue: true,
+						}) as string;
 
 						const body: IDataObject = {
 							timeMin: moment(timeMin).utc().format(),
@@ -176,7 +186,9 @@ export class GoogleCalendar implements INodeType {
 				if (resource === 'event') {
 					//https://developers.google.com/calendar/v3/reference/events/insert
 					if (operation === 'create') {
-						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
+						const calendarId = encodeURIComponentOnce(
+							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
+						);
 						const start = this.getNodeParameter('start', i) as string;
 						const end = this.getNodeParameter('end', i) as string;
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
@@ -323,7 +335,9 @@ export class GoogleCalendar implements INodeType {
 					}
 					//https://developers.google.com/calendar/v3/reference/events/delete
 					if (operation === 'delete') {
-						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
+						const calendarId = encodeURIComponentOnce(
+							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
+						);
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const options = this.getNodeParameter('options', i);
 						if (options.sendUpdates) {
@@ -339,10 +353,14 @@ export class GoogleCalendar implements INodeType {
 					}
 					//https://developers.google.com/calendar/v3/reference/events/get
 					if (operation === 'get') {
-						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
+						const calendarId = encodeURIComponentOnce(
+							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
+						);
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const options = this.getNodeParameter('options', i);
-						const tz = this.getNodeParameter('options.timeZone', i, '', { extractValue: true }) as string;
+						const tz = this.getNodeParameter('options.timeZone', i, '', {
+							extractValue: true,
+						}) as string;
 						if (options.maxAttendees) {
 							qs.maxAttendees = options.maxAttendees as number;
 						}
@@ -360,9 +378,13 @@ export class GoogleCalendar implements INodeType {
 					//https://developers.google.com/calendar/v3/reference/events/list
 					if (operation === 'getAll') {
 						const returnAll = this.getNodeParameter('returnAll', i);
-						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
+						const calendarId = encodeURIComponentOnce(
+							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
+						);
 						const options = this.getNodeParameter('options', i);
-						const tz = this.getNodeParameter('options.timeZone', i, '', { extractValue: true }) as string;
+						const tz = this.getNodeParameter('options.timeZone', i, '', {
+							extractValue: true,
+						}) as string;
 						if (options.iCalUID) {
 							qs.iCalUID = options.iCalUID as string;
 						}
@@ -419,7 +441,9 @@ export class GoogleCalendar implements INodeType {
 					}
 					//https://developers.google.com/calendar/v3/reference/events/patch
 					if (operation === 'update') {
-						const calendarId = encodeURIComponentOnce(this.getNodeParameter('calendar', i, '', { extractValue: true }) as string);
+						const calendarId = encodeURIComponentOnce(
+							this.getNodeParameter('calendar', i, '', { extractValue: true }) as string,
+						);
 						const eventId = this.getNodeParameter('eventId', i) as string;
 						const useDefaultReminders = this.getNodeParameter('useDefaultReminders', i) as boolean;
 						const updateFields = this.getNodeParameter('updateFields', i);
