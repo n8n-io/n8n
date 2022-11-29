@@ -53,7 +53,23 @@ import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
 import { RESPONSE_ERROR_MESSAGES } from './constants';
 
-const mockNodesData: INodeTypeData = {};
+const mockNode = {
+	name: '',
+	typeVersion: 1,
+	type: 'mock',
+	position: [0, 0],
+	parameters: {} as INodeParameters,
+} as INode;
+
+const mockNodesData: INodeTypeData = {
+	mock: {
+		sourcePath: '',
+		type: {
+			description: { properties: [] as INodeProperties[] },
+		} as INodeType,
+	},
+};
+
 const mockNodeTypes: INodeTypes = {
 	getByName(nodeType: string): INodeType | IVersionedNodeType {
 		return mockNodesData[nodeType]?.type;
@@ -395,16 +411,8 @@ export class CredentialsHelper extends ICredentialsHelper {
 				throw e;
 			}
 		} else {
-			const node = {
-				name: '',
-				typeVersion: 1,
-				type: 'mock',
-				position: [0, 0],
-				parameters: {} as INodeParameters,
-			} as INode;
-
 			const workflow = new Workflow({
-				nodes: [node],
+				nodes: [mockNode],
 				connections: {},
 				active: false,
 				nodeTypes: mockNodeTypes,
@@ -412,7 +420,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 
 			// Resolve expressions if any are set
 			decryptedData = workflow.expression.getComplexParameterValue(
-				node,
+				mockNode,
 				decryptedData as INodeParameters,
 				mode,
 				defaultTimezone,
