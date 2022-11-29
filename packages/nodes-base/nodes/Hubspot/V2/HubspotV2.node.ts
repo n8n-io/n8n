@@ -2932,6 +2932,14 @@ export class HubspotV2 implements INodeType {
 						);
 					}
 					if (error.cause.error.message !== 'The resource you are requesting could not be found') {
+						if (error.httpCode === '404' && error.description === 'resource not found') {
+							throw new NodeOperationError(
+								this.getNode(),
+								`${error.node.parameters.resource} #${
+									error.node.parameters[`${error.node.parameters.resource}Id`].value
+								} could not be found. Check your Company ID is correct`,
+							);
+						}
 						throw new NodeOperationError(this.getNode(), error.cause.error.message);
 					}
 					if (this.continueOnFail()) {
