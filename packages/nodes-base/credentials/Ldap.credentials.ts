@@ -1,18 +1,10 @@
 /* eslint-disable n8n-nodes-base/cred-class-name-unsuffixed,n8n-nodes-base/cred-class-field-name-unsuffixed,n8n-nodes-base/cred-class-field-display-name-missing-api */
-import {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Ldap implements ICredentialType {
 	name = 'ldap';
 	displayName = 'LDAP';
 	properties: INodeProperties[] = [
-		// The credentials to get from user and save encrypted.
-		// Properties can be defined exactly in the same way
-		// as node properties.
 		{
 			displayName: 'Hostname',
 			name: 'hostname',
@@ -21,23 +13,12 @@ export class Ldap implements ICredentialType {
 			required: true,
 		},
 		{
-			displayName: 'SSL/TLS',
-			name: 'secure',
-			type: 'boolean',
-			default: true,
-			required: true,
-		},
-		{
-			displayName: 'StartTLS',
-			name: 'starttls',
-			type: 'boolean',
-			default: false,
-			required: false,
-			displayOptions: {
-				show: {
-					secure: [true],
-				},
-			},
+			displayName: 'Port',
+			name: 'port',
+			type: 'string',
+			default: '389',
+			description:
+				'The port to connect to. If not specified, the default port will be used (389 or 636).',
 		},
 		{
 			displayName: 'Bind DN',
@@ -55,12 +36,24 @@ export class Ldap implements ICredentialType {
 			default: '',
 		},
 		{
-			displayName: 'Port',
-			name: 'port',
-			type: 'string',
-			default: '',
-			description:
-				'The port to connect to. If not specified, the default port will be used (389 or 636).',
+			displayName: 'SSL / TLS',
+			name: 'secure',
+			type: 'boolean',
+			default: false,
+			required: true,
+			description: 'Enable to use SSL / TLS',
+		},
+		{
+			displayName: 'StartTLS',
+			name: 'starttls',
+			type: 'boolean',
+			default: false,
+			required: false,
+			displayOptions: {
+				show: {
+					secure: [true],
+				},
+			},
 		},
 		{
 			displayName: 'Ignore SSL/TLS Issues',

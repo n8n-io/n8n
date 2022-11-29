@@ -221,6 +221,10 @@ export class Ldap implements INodeType {
 					// Set attributes to retreive
 					options.attributes = options.attributes ? (options.attributes as string).split(',') : [];
 
+					if (filter === 'custom') {
+						filter = this.getNodeParameter('customFilter', itemIndex) as string;
+					}
+
 					// Replace escaped filter special chars for ease of use
 					// Character       ASCII value
 					// ---------------------------

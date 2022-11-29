@@ -210,14 +210,48 @@ export const ldapFields: INodeProperties[] = [
 	{
 		displayName: 'Filter',
 		name: 'filter',
-		type: 'string',
-		default: '(objectclass=*)',
+		type: 'options',
+		default: '(objectclass=person)',
 		displayOptions: {
 			show: {
 				operation: ['search'],
 			},
 		},
-		description: `LDAP filter. Escape these chars * ( ) \\ with a backslash '\\'.`,
+		options: [
+			{
+				name: 'Custom',
+				value: 'custom',
+			},
+			{
+				name: 'Group',
+				value: '(objectclass=group)',
+			},
+			{
+				name: 'OU',
+				value: '(objectclass=organizationalUnit)',
+			},
+			{
+				name: 'Person',
+				value: '(objectclass=person)',
+			},
+			{
+				name: 'User',
+				value: '(objectclass=user)',
+			},
+		],
+		description: 'LDAP objects to search for',
+	},
+	{
+		displayName: 'Custom Filter',
+		name: 'customFilter',
+		type: 'string',
+		default: '(objectclass=*)',
+		displayOptions: {
+			show: {
+				filter: ['custom'],
+			},
+		},
+		description: `Custom LDAP filter. Escape these chars * ( ) \\ with a backslash '\\'.`,
 	},
 	{
 		displayName: 'Return All',
