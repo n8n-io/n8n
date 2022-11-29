@@ -566,10 +566,10 @@ export const dealFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Filters',
+		displayName: 'Options',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
@@ -713,10 +713,10 @@ export const dealFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Filters',
+		displayName: 'Options',
 		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {

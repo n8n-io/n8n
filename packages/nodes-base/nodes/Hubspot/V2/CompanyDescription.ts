@@ -37,16 +37,10 @@ export const companyOperations: INodeProperties[] = [
 				action: 'Get many companies',
 			},
 			{
-				name: 'Get Recently Created',
-				value: 'getRecentlyCreated',
-				description: 'Get recently created companies',
-				action: 'Get a recently created company',
-			},
-			{
-				name: 'Get Recently Modified',
-				value: 'getRecentlyModified',
-				description: 'Get recently modified companies',
-				action: 'Get a recently modified company',
+				name: 'Get Recently Created/Updated',
+				value: 'getRecentlyCreatedUpdated',
+				description: 'Get recently created/updated contacts',
+				action: 'Get recently created/updated contacts',
 			},
 			{
 				name: 'Search',
@@ -1036,7 +1030,7 @@ export const companyFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*               company:getRecentlyCreated company:getRecentlyModifie        */
+	/*              getRecentlyCreatedUpdate                                      */
 	/* -------------------------------------------------------------------------- */
 	{
 		displayName: 'Return All',
@@ -1045,7 +1039,7 @@ export const companyFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['company'],
-				operation: ['getRecentlyCreated', 'getRecentlyModified'],
+				operation: ['getRecentlyCreatedUpdated'],
 			},
 		},
 		default: false,
@@ -1058,7 +1052,7 @@ export const companyFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['company'],
-				operation: ['getRecentlyCreated', 'getRecentlyModified'],
+				operation: ['getRecentlyCreatedUpdated'],
 				returnAll: [false],
 			},
 		},
@@ -1070,15 +1064,15 @@ export const companyFields: INodeProperties[] = [
 		description: 'Max number of results to return',
 	},
 	{
-		displayName: 'Filters',
-		name: 'filters',
+		displayName: 'Options',
+		name: 'additionalFields',
 		type: 'collection',
-		placeholder: 'Add Filter',
+		placeholder: 'Add Option',
 		default: {},
 		displayOptions: {
 			show: {
 				resource: ['company'],
-				operation: ['getRecentlyModified', 'getRecentlyCreated'],
+				operation: ['getRecentlyCreatedUpdated'],
 			},
 		},
 		options: [
@@ -1091,13 +1085,49 @@ export const companyFields: INodeProperties[] = [
 					'Only return companys created after timestamp x. When using expressions, the time should be specified in YYYY-MM-DD hh-mm-ss format',
 			},
 			{
-				displayName: 'Include Property Versions',
-				name: 'includePropertyVersions',
-				type: 'boolean',
-				default: false,
-				// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
+				displayName: 'Company Properties to Include',
+				name: 'propertiesCollection',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						name: 'propertiesValues',
+						displayName: 'Companies Properties to Include',
+						values: [
+							{
+								displayName: 'Companies Properties to Include',
+								name: 'properties',
+								type: 'multiOptions',
+								typeOptions: {
+									loadOptionsMethod: 'getCompanyProperties',
+								},
+								default: [],
+								description:
+									'<p>Used to include specific companies properties in the results. By default, the results will only include Company ID and will not include the values for any properties for your Company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Include',
+								name: 'propertyMode',
+								type: 'options',
+								options: [
+									{
+										name: 'Value And History',
+										value: 'valueAndHistory',
+									},
+									{
+										name: 'Value Only',
+										value: 'valueOnly',
+									},
+								],
+								default: 'valueAndHistory',
+								description:
+									'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+							},
+						],
+					},
+				],
 				description:
-					'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
+					'<p>Used to include specific company properties in the results. By default, the results will only include Company ID and will not include the values for any properties for your Company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

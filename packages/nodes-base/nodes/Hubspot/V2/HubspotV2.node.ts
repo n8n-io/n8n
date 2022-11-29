@@ -2111,19 +2111,23 @@ export class HubspotV2 implements INodeType {
 							}
 						}
 						//https://developers.hubspot.com/docs/methods/companies/get_companies_modified
-						if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
-							let endpoint;
+						if (operation === 'getRecentlyCreatedUpdated') {
 							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-							if (operation === 'getRecentlyCreated') {
-								endpoint = `/companies/v2/companies/recent/created`;
-							} else {
-								endpoint = `/companies/v2/companies/recent/modified`;
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							if (additionalFields.since) {
+								qs.since = new Date(additionalFields.since as string).getTime();
 							}
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
-							if (filters.since) {
-								qs.since = new Date(filters.since as string).getTime();
+							if (additionalFields.propertiesCollection) {
+								const propertiesValues = additionalFields.propertiesCollection // @ts-ignore
+									.propertiesValues as IDataObject;
+								const properties = propertiesValues.properties as string | string[];
+								qs.properties = !Array.isArray(propertiesValues.properties)
+									? (properties as string).split(',')
+									: properties;
+								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
-							qs.includePropertyVersions = filters.includePropertyVersions as boolean;
+							let endpoint;
+							endpoint = `/companies/v2/companies/recent/modified`;
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
