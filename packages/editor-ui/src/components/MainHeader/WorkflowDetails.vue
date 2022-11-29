@@ -116,7 +116,7 @@ import Vue from "vue";
 import mixins from "vue-typed-mixins";
 import {
 	DUPLICATE_MODAL_KEY,
-	EnterpriseEditionFeature, FAKE_DOOR_FEATURES,
+	EnterpriseEditionFeature,
 	MAX_WORKFLOW_NAME_LENGTH,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS, WORKFLOW_MENU_ACTIONS,
