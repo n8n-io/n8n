@@ -97,10 +97,9 @@ EEWorkflowController.get(
 			);
 		}
 
-		return EEWorkflows.addCredentialsToWorkflow(
-			EEWorkflows.addOwnerAndSharings(workflow),
-			req.user,
-		);
+		EEWorkflows.addOwnerAndSharings(workflow);
+		await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
+		return workflow;
 	}),
 );
 
@@ -200,9 +199,12 @@ EEWorkflowController.get(
 		)) as unknown as WorkflowEntity[];
 
 		return Promise.all(
-			workflows.map(async (workflow) =>
-				EEWorkflows.addCredentialsToWorkflow(EEWorkflows.addOwnerAndSharings(workflow), req.user),
-			),
+			workflows.map(async (workflow) => {
+				EEWorkflows.addOwnerAndSharings(workflow);
+				await EEWorkflows.addCredentialsToWorkflow(workflow, req.user);
+				workflow.nodes = [];
+				return workflow;
+			}),
 		);
 	}),
 );
@@ -211,7 +213,7 @@ EEWorkflowController.patch(
 	'/:id(\\d+)',
 	ResponseHelper.send(async (req: WorkflowRequest.Update) => {
 		const { id: workflowId } = req.params;
-		const forceSave = req.query.forceSave === 'true';
+		// const forceSave = req.query.forceSave === 'true'; // disabled temporarily - tests were also disabled
 
 		const updateData = new WorkflowEntity();
 		const { tags, ...rest } = req.body;
@@ -224,7 +226,7 @@ EEWorkflowController.patch(
 			safeWorkflow,
 			workflowId,
 			tags,
-			forceSave,
+			true,
 		);
 
 		const { id, ...remainder } = updatedWorkflow;

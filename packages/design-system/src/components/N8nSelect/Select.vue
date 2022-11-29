@@ -32,7 +32,7 @@
 </template>
 
 <script lang="ts">
-import ElSelect from 'element-ui/lib/select';
+import { Select as ElSelect } from 'element-ui';
 import Vue from 'vue';
 
 export interface IProps {
@@ -44,7 +44,7 @@ export interface IProps {
 export default Vue.extend({
 	name: 'n8n-select',
 	components: {
-		ElSelect, // eslint-disable-line @typescript-eslint/no-unsafe-assignment
+		ElSelect,
 	},
 	props: {
 		value: {},

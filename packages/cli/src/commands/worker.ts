@@ -7,7 +7,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable @typescript-eslint/restrict-template-expressions */
 /* eslint-disable @typescript-eslint/no-unused-vars */
-// eslint-disable-next-line import/no-extraneous-dependencies
 import express from 'express';
 import http from 'http';
 import PCancelable from 'p-cancelable';
@@ -283,19 +282,16 @@ export class Worker extends Command {
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
 				await loadNodesAndCredentials.init();
 
+				// Add the found types to an instance other parts of the application can use
+				const nodeTypes = NodeTypes(loadNodesAndCredentials);
+				const credentialTypes = CredentialTypes(loadNodesAndCredentials);
+
 				// Load the credentials overwrites if any exist
-				const credentialsOverwrites = CredentialsOverwrites();
-				await credentialsOverwrites.init();
+				await CredentialsOverwrites(credentialTypes).init();
 
 				// Load all external hooks
 				const externalHooks = ExternalHooks();
 				await externalHooks.init();
-
-				// Add the found types to an instance other parts of the application can use
-				const nodeTypes = NodeTypes();
-				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
-				const credentialTypes = CredentialTypes();
-				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 				// Wait till the database is ready
 				await startDbInitPromise;

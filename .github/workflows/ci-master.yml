@@ -35,11 +35,6 @@ jobs:
       - name: Test
         run: pnpm test
 
-      - name: Test E2E
-        run: |
-          pnpm cypress:install
-          pnpm test:e2e:ci:smoke
-
       - name: Lint
         env:
           CI_LINT_MASTER: true
