@@ -159,7 +159,7 @@ import { genericHelpers } from '@/mixins/genericHelpers';
 import { mouseSelect } from '@/mixins/mouseSelect';
 import { moveNodeWorkflow } from '@/mixins/moveNodeWorkflow';
 import { restApi } from '@/mixins/restApi';
-import useGlobalLinkActions from '@/components/composables/useGlobalLinkActions';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 import { showMessage } from '@/mixins/showMessage';
 import { titleChange } from '@/mixins/titleChange';
 import { newVersions } from '@/mixins/newVersions';

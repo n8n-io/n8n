@@ -16,17 +16,10 @@ import type {
 } from 'n8n-workflow';
 import axios from 'axios';
 
-export async function getNodeTypes(
-	context: IRestApiContext,
-	{ onlyLatest } = { onlyLatest: false },
-) {
-	return makeRestApiRequest(context, 'GET', 'types/nodes.json', { onlyLatest, withActions: true });
+export async function getNodeTypes(baseUrl: string) {
+	const { data } = await axios.get(baseUrl + 'types/nodes.json');
+	return data;
 }
-
-// export async function getNodeTypes(baseUrl: string) {
-// 	const { data } = await axios.get(baseUrl + 'types/nodes.json');
-// 	return data;
-// }
 
 export async function getNodeTranslationHeaders(
 	context: IRestApiContext,
@@ -38,7 +31,7 @@ export async function getNodesInformation(
 	context: IRestApiContext,
 	nodeInfos: INodeTypeNameVersion[],
 ): Promise<INodeTypeDescription[]> {
-	return makeRestApiRequest(context, 'POST', '/node-types', { nodeInfos, withActions: true });
+	return makeRestApiRequest(context, 'POST', '/node-types', { nodeInfos });
 }
 
 export async function getNodeParameterOptions(

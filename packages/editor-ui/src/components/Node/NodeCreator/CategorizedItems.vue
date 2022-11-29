@@ -96,7 +96,7 @@ import Vue, { computed, reactive, onMounted, watch, getCurrentInstance, toRefs, 
 import camelcase from 'lodash.camelcase';
 
 import { externalHooks } from '@/mixins/externalHooks';
-import useGlobalLinkActions from '@/components/composables/useGlobalLinkActions';
+import useGlobalLinkActions from '@/composables/useGlobalLinkActions';
 
 import ItemIterator from './ItemIterator.vue';
 import NoResults from './NoResults.vue';

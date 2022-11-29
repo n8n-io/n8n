@@ -40,7 +40,7 @@ import {
 } from 'n8n-workflow';
 import Vue from "vue";
 
-import {useRootStore} from "./n8nRootStore";
+import { useRootStore } from "./n8nRootStore";
 import {
 	getActiveWorkflows,
 	getCurrentExecutions,
@@ -741,7 +741,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, {
 		},
 
 		setLastNodeParameters(updateInformation: IUpdateInformation) {
-			const latestNode = findLast(this.workflow.nodes, (node) => node.type === updateInformation.key) as INodeUi;
+			const latestNode = this.workflow.nodes.findLast((node) => node.type === updateInformation.key) as INodeUi;
 
 			if(latestNode) this.setNodeParameters({...updateInformation, name: latestNode.name});
 		},

@@ -24,10 +24,10 @@
 <script setup lang="ts">
 import { reactive, toRefs, getCurrentInstance, computed, onMounted } from 'vue';
 
-import { INodeCreateElement, INodeItemProps } from '@/Interface';
-import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, EMAIL_IMAP_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
+import { INodeCreateElement } from '@/Interface';
+import { CORE_NODES_CATEGORY, WEBHOOK_NODE_TYPE, OTHER_TRIGGER_NODES_SUBCATEGORY, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE, SCHEDULE_TRIGGER_NODE_TYPE } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';
-import { deepCopy, INodeAction } from 'n8n-workflow';
+import useNodeActions from '@/composables/useNodeActions';
 
 export interface Props {
 	searchItems: INodeCreateElement[];
@@ -35,13 +35,14 @@ export interface Props {
 
 const props = defineProps<Props>();
 const instance = getCurrentInstance();
-
+const { getMergedNodesActions } = useNodeActions();
 const state = reactive({
 	isRoot: true,
 	selectedSubcategory: '',
 	showMergedActions: false,
 	filter: '',
 });
+
 
 const items: INodeCreateElement[] = [{
 		key: "*",
@@ -166,52 +167,22 @@ function shouldShowNodeActions(node: INodeCreateElement) {
 	return false;
 }
 
-const WHITELISTED_APP_CORE_NODES = [
-	EMAIL_IMAP_NODE_TYPE,
-	WEBHOOK_NODE_TYPE,
-];
-
 const isAppEventSubcategory = computed(() => state.selectedSubcategory === "*");
 
 const firstLevelItems = computed(() => isRoot.value ? items : []);
 
 const isSearchActive = computed(() => state.filter !== '');
-
-
 // On App Event is a special subcategory because we want to
 // show merged regular nodes with actions and trigger nodes
-const mergedNodes = computed(() => Object.values(
-	props.searchItems.reduce((acc: Record<string, INodeCreateElement>, node: INodeCreateElement) => {
-		const clonedNode = deepCopy(node);
-		const nodeType = (clonedNode.properties as INodeItemProps).nodeType;
-		const actions = nodeType.actions || [];
-		const isCoreNode = nodeType.codex?.categories?.includes(CORE_NODES_CATEGORY) && !WHITELISTED_APP_CORE_NODES.includes(node.key);
-		const normalizedName = clonedNode.key.toLowerCase().replace('trigger', '');
-
-		const excludedCoreNode = isCoreNode && isAppEventSubcategory.value;
-
-		if(excludedCoreNode) return acc;
-
-		const existingNode = acc[normalizedName];
-		if(existingNode) {
-			(existingNode.properties as INodeItemProps).nodeType.actions?.push(...actions);
-		} else {
-			acc[normalizedName] = clonedNode;
-		}
-
-		// Filter-out placeholder recommended actions if they are the only actions
-		nodeType.actions = (nodeType.actions || []).filter((action: INodeAction, _: number, arr: INodeAction[]) => {
-			const isPlaceholderCategory = action.key === 'placeholder_recommended';
-			return !isPlaceholderCategory || (isPlaceholderCategory && arr.length > 1);
-		});
-
-		return acc;
-	}, {}),
-));
+const mergedNodes = computed(() => getMergedNodesActions(isAppEventSubcategory.value));
 
 onMounted(() => {
 	const isLocal = window.location.href.includes('localhost');
 	state.showMergedActions = isLocal || window?.posthog?.getFeatureFlag('merged-actions-nodes') === 'merge-actions';
+
+	window.__debug = () => {
+		console.log('Actions: ', categorizedNodesWithActions.value);
+	};
 });
 
 const { isRoot } = toRefs(state);

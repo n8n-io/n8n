@@ -39,7 +39,7 @@
 							:title="item.title"
 							:isTrigger="isTriggerAction(item)"
 						>
-							<template slot="icon">
+							<template #icon>
 								<node-icon :nodeType="nodeType" />
 							</template>
 						</n8n-node-creator-node>
@@ -59,7 +59,7 @@
 					:title="action.title"
 					:isTrigger="isTriggerAction(action)"
 				>
-					<template slot="icon">
+					<template #icon>
 						<node-icon :nodeType="nodeType" />
 					</template>
 				</n8n-node-creator-node>
@@ -76,14 +76,14 @@
 
 <script setup lang="ts">
 import { reactive, computed, toRefs, getCurrentInstance, onUnmounted, onMounted } from 'vue';
-import { IDataObject, INodeTypeDescription, INodeAction, INodeParameters } from 'n8n-workflow';
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { IDataObject, INodeTypeDescription, INodeAction, INodeParameters, INodeTypeNameVersion } from 'n8n-workflow';
+import { externalHooks } from '@/mixins/externalHooks';
 import { IUpdateInformation } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
 import SearchBar from './SearchBar.vue';
-import { sublimeSearch } from './sortUtils';
+import { sublimeSearch } from '@/utils';
 import { CUSTOM_API_CALL_KEY, HTTP_REQUEST_NODE_TYPE } from '@/constants';
-
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 export interface Props {
 	nodeType: INodeTypeDescription,
 	actions: INodeAction[],
@@ -137,6 +137,18 @@ const filteredActions = computed(() => {
 
 const isTriggerAction = (action: INodeAction) => action.nodeName?.toLowerCase().includes('trigger');
 
+async function fechNodeDetails() {
+	const { getNodesInformation } = useNodeTypesStore();
+	const { version, name } = props.nodeType;
+	const payload = {
+		name,
+		version: Array.isArray(version) ? version.slice(-1)[0] : version,
+	} as INodeTypeNameVersion;
+
+	const details = await getNodesInformation([payload]);
+	console.log("🚀 ~ file: NodeActions.vue:149 ~ fechNodeDetails ~ details", details);
+}
+fechNodeDetails();
 function toggleCategory(category: string) {
 	if (state.subtractedCategories.includes(category)) {
 		state.subtractedCategories = state.subtractedCategories.filter((item) => item !== category);
