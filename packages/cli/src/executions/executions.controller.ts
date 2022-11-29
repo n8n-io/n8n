@@ -40,6 +40,7 @@ import { getLogger } from '@/Logger';
 import * as Queue from '@/Queue';
 import type { ExecutionRequest } from '@/requests';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+import { EEExecutionsController } from './executions.controller.ee';
 
 export const executionsController = express.Router();
 
@@ -80,6 +81,8 @@ executionsController.use((req, res, next) => {
 	}
 	next();
 });
+
+executionsController.use('/', EEExecutionsController);
 
 /**
  * Helper function to retrieve count of Executions
