@@ -1,6 +1,6 @@
-import { COMMANDS, STORES } from "@/constants";
-import { BulkCommands, Command, HistoryState, INodeUi, Undoable, XYPosition } from "@/Interface";
-import { IConnection } from "n8n-workflow";
+import { BulkCommand, Command, Undoable, MoveNodeCommand } from "@/classes";
+import { STORES } from "@/constants";
+import { HistoryState, XYPosition } from "@/Interface";
 import { defineStore } from "pinia";
 
 const STACK_LIMIT = 100;
@@ -23,7 +23,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 		},
 		pushCommandToUndo(undoable: Command, clearRedo = true): void {
 			if (this.currentBulkAction) {
-				this.currentBulkAction.data.commands.push(undoable);
+				this.currentBulkAction.commands.push(undoable);
 				return;
 			}
 			this.undoStack.push(undoable);
@@ -32,7 +32,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 				this.clearRedoStack();
 			}
 		},
-		pushBulkCommandToUndo(undoable: BulkCommands, clearRedo = true): void {
+		pushBulkCommandToUndo(undoable: BulkCommand, clearRedo = true): void {
 			this.undoStack.push(undoable);
 			this.checkUndoStackLimit();
 			if (clearRedo) {
@@ -70,14 +70,8 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			this.redoStack.push(undoable);
 			this.checkRedoStackLimit();
 		},
-		startRecordingUndo(name: BulkCommands["data"]["name"]) {
-			this.currentBulkAction = {
-				type: 'bulk',
-				data: {
-					name,
-					commands: [],
-				},
-			};
+		startRecordingUndo() {
+			this.currentBulkAction = new BulkCommand([]);
 		},
 		stopRecordingUndo() {
 			if (this.currentBulkAction) {
@@ -88,61 +82,7 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 			}
 		},
 		updateNodePosition(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition) {
-			this.pushCommandToUndo({
-				type: 'command',
-				data: {
-					action: COMMANDS.POSITION_CHANGE,
-					options: {
-						nodeName,
-						oldPosition,
-						newPosition,
-					},
-				},
-			});
-		},
-		addConnection(connection: [IConnection, IConnection]) {
-			this.pushCommandToUndo({
-				type: 'command',
-				data: {
-					action: COMMANDS.ADD_CONNECTION,
-					options: {
-						connection,
-					},
-				},
-			});
-		},
-		addNode(node: INodeUi): void {
-			this.pushCommandToUndo({
-				type: 'command',
-				data: {
-					action: COMMANDS.ADD_NODE,
-					options: {
-						node,
-					},
-				},
-			});
-		},
-		removeNode(node: INodeUi): void {
-			this.pushCommandToUndo({
-				type: 'command',
-				data: {
-					action: COMMANDS.REMOVE_NODE,
-					options: {
-						node,
-					},
-				},
-			});
-		},
-		removeConnection(connection: [IConnection, IConnection]) {
-			this.pushCommandToUndo({
-				type: 'command',
-				data: {
-					action: COMMANDS.REMOVE_CONNECTION,
-					options: {
-						connection,
-					},
-				},
-			});
+			this.pushCommandToUndo(new MoveNodeCommand(nodeName, oldPosition, newPosition));
 		},
 	},
 });

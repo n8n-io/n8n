@@ -39,6 +39,7 @@ import {
 } from 'n8n-workflow';
 import { BULK_COMMANDS, COMMANDS, FAKE_DOOR_FEATURES } from './constants';
 import {ICredentialsDb} from "n8n";
+import { BulkCommand, Undoable } from './classes';
 
 export * from 'n8n-design-system/src/types';
 
@@ -1292,6 +1293,7 @@ export interface CurlToJSONResponse {
 	"parameters.sendBody": boolean;
 }
 
+// TODO: Remove unused interfaces
 export interface AddNodeCommand {
 	action: COMMANDS.ADD_NODE,
 	options: {
@@ -1348,10 +1350,10 @@ export interface BulkCommands {
 	}
 }
 
-export type Undoable = Command | BulkCommands;
+// export type Undoable = Command | BulkCommands;
 
 export interface HistoryState {
 	redoStack: Undoable[];
 	undoStack: Undoable[];
-	currentBulkAction: BulkCommands | null;
+	currentBulkAction: BulkCommand | null;
 }
