@@ -11,10 +11,10 @@ module.exports = defineConfig({
 		experimentalSessionAndOrigin: true,
 		experimentalInteractiveRunEvents: true,
 
-		setupNodeEvents(on) {
+		setupNodeEvents(on, config) {
 			on('task', {
-				'db:reset': () => fetch(BASE_URL + '/e2e/db/reset', { method: 'POST' }),
-				'db:setup-owner': (payload) =>
+				'reset': () => fetch(BASE_URL + '/e2e/db/reset', { method: 'POST' }),
+				'setup-owner': (payload) =>
 					fetch(BASE_URL + '/e2e/db/setup-owner', {
 						method: 'POST',
 						body: JSON.stringify(payload),
