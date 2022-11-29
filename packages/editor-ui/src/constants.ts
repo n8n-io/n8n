@@ -311,6 +311,8 @@ export enum VIEWS {
 	FAKE_DOOR = "ComingSoon",
 	COMMUNITY_NODES = "CommunityNodes",
 	WORKFLOWS = "WorkflowsView",
+	MFA_SETUP = 'MfaSetup',
+	MFA = 'Mfa',
 }
 
 export enum FAKE_DOOR_FEATURES {

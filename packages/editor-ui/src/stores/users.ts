@@ -23,6 +23,9 @@ export const useUsersStore = defineStore(STORES.USERS, {
 		currentUser(): IUser | null {
 			return this.currentUserId ? this.users[this.currentUserId] : null;
 		},
+		mfaEnabled(): boolean {
+			return this.currentUser?.mfaEnabled;
+		},
 		getUserById(state) {
 			return (userId: string): IUser | null => state.users[userId];
 		},
@@ -104,7 +107,7 @@ export const useUsersStore = defineStore(STORES.USERS, {
 				this.currentUserId = user.id;
 			}
 		},
-		async loginWithCreds(params: {email: string, password: string}): Promise<void> {
+		async loginWithCreds(params: {email: string, password: string, mfaToken?: string}): Promise<void> {
 			const rootStore = useRootStore();
 			const user = await login(rootStore.getRestApiContext, params);
 			if (user) {

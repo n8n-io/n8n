@@ -86,6 +86,12 @@ export default mixins(
 
 				this.$router.push({ name: VIEWS.HOMEPAGE });
 			} catch (error) {
+				if (error.message.includes('MFA')) {
+					this.$router.push({
+						name: VIEWS.MFA,
+						params: { email: values.email, password: values.password },
+					});
+				}
 				this.$showError(error, this.$locale.baseText('auth.signin.error'));
 				this.loading = false;
 			}

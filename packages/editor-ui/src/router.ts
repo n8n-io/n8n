@@ -18,6 +18,8 @@ import SettingsFakeDoorView from './views/SettingsFakeDoorView.vue';
 import SetupView from './views/SetupView.vue';
 import SigninView from './views/SigninView.vue';
 import SignupView from './views/SignupView.vue';
+import MfaSetupView from './views/MfaSetupView.vue';
+import Mfa from './views/MfaView.vue';
 import Router, { Route } from 'vue-router';
 
 import TemplatesCollectionView from '@/views/TemplatesCollectionView.vue';
@@ -31,6 +33,7 @@ import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
 import { useTemplatesStore } from './stores/templates';
+import { useUsersStore } from './stores/users';
 
 Vue.use(Router);
 
@@ -555,6 +558,37 @@ const router = new Router({
 					},
 				},
 			],
+		},
+		{
+			path: '/mfa-setup',
+			name: VIEWS.MFA_SETUP,
+			components: {
+				default: MfaSetupView,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						shouldAllow: () => {
+							const usersStore = useUsersStore();
+							return usersStore.mfaEnabled === false;
+						},
+					},
+				},
+			},
+		},
+		{
+			path: '/mfa',
+			name: VIEWS.MFA,
+			components: {
+				default: Mfa,
+			},
+			meta: {
+				permissions: {
+					allow: {
+						loginStatus: [LOGIN_STATUS.LoggedOut],
+					},
+				},
+			},
 		},
 		{
 			path: '*',

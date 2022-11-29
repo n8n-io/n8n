@@ -11,6 +11,7 @@ import { compareHash, sanitizeUser } from '../UserManagementHelper';
 import { User } from '@db/entities/User';
 import type { LoginRequest } from '@/requests';
 import config from '@/config';
+import { validateMfaToken } from '@/Mfa/helpers';
 
 export function authenticationMethods(this: N8nApp): void {
 	/**
@@ -21,7 +22,7 @@ export function authenticationMethods(this: N8nApp): void {
 	this.app.post(
 		`/${this.restEndpoint}/login`,
 		ResponseHelper.send(async (req: LoginRequest, res: Response): Promise<PublicUser> => {
-			const { email, password } = req.body;
+			const { email, password, mfaToken = '' } = req.body;
 			if (!email) {
 				throw new Error('Email is required to log in');
 			}
@@ -44,6 +45,10 @@ export function authenticationMethods(this: N8nApp): void {
 
 			if (!user?.password || !(await compareHash(req.body.password, user.password))) {
 				throw new ResponseHelper.AuthError('Wrong username or password. Do you have caps lock on?');
+			}
+
+			if (user.mfaEnabled && !validateMfaToken(user, mfaToken)) {
+				throw new ResponseHelper.AuthError('MFA Error');
 			}
 
 			await issueCookie(res, user);

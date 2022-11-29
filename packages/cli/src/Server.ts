@@ -157,6 +157,7 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { toHttpNodeParameters } from '@/CurlConverterHelper';
 import { setupErrorMiddleware } from '@/ErrorReporting';
 import { getLicense } from '@/License';
+import { mfaController } from './Mfa/MfaController';
 
 require('body-parser-xml')(bodyParser);
 
@@ -755,6 +756,12 @@ class App {
 		if (config.getEnv('nodes.communityPackages.enabled')) {
 			this.app.use(`/${this.restEndpoint}/nodes`, nodesController);
 		}
+
+		// ----------------------------------------
+		// MFA
+		// ----------------------------------------
+
+		this.app.use(`/${this.restEndpoint}/mfa`, mfaController);
 
 		// ----------------------------------------
 		// Healthcheck

@@ -128,6 +128,7 @@ importers:
       '@types/replacestream': ^4.0.1
       '@types/send': ^0.17.1
       '@types/shelljs': ^0.8.11
+      '@types/speakeasy': ^2.0.7
       '@types/superagent': 4.1.13
       '@types/supertest': ^2.0.11
       '@types/swagger-ui-express': ^4.1.3
@@ -199,6 +200,7 @@ importers:
       semver: ^7.3.8
       shelljs: ^0.8.5
       source-map-support: ^0.5.21
+      speakeasy: ^2.0.0
       sqlite3: ^5.1.2
       sse-channel: ^3.1.1
       supertest: ^6.2.2
@@ -220,6 +222,7 @@ importers:
       '@rudderstack/rudder-sdk-node': 1.0.6
       '@sentry/integrations': 7.18.0
       '@sentry/node': 7.18.0
+      '@types/speakeasy': 2.0.7
       axios: 0.21.4
       basic-auth: 2.0.1
       bcryptjs: 2.4.3
@@ -281,6 +284,7 @@ importers:
       replacestream: 4.0.3
       semver: 7.3.8
       shelljs: 0.8.5
+      speakeasy: 2.0.0
       sqlite3: 5.1.2
       sse-channel: 3.1.1
       swagger-ui-express: 4.5.0_express@4.18.2
@@ -530,6 +534,7 @@ importers:
       normalize-wheel: ^1.0.1
       pinia: ^2.0.22
       prismjs: ^1.17.1
+      qrcode.vue: ^1.7.0
       quill: 2.0.0-dev.4
       quill-autoformat: ^0.1.1
       sass: ^1.55.0
@@ -591,6 +596,7 @@ importers:
       normalize-wheel: 1.0.1
       pinia: 2.0.23_xjcbg5znturqejtkpd33hx726m
       prismjs: 1.29.0
+      qrcode.vue: 1.7.0_vue@2.7.13
       quill: 2.0.0-dev.4_wzpqp2wkmsfkgdbvlakyt3wndy
       quill-autoformat: 0.1.2
       timeago.js: 4.0.2
@@ -6062,6 +6068,12 @@ packages:
     resolution: {integrity: sha512-K5K+yml8LTo9bWJI/rECfIPrGgxdpeNbj+d53lwN4QjW1MCwlkhUms+gtdzigTeUyBr09+u8BwOIY3MXvHdcsA==}
     dev: true
 
+  /@types/speakeasy/2.0.7:
+    resolution: {integrity: sha512-JEcOhN2SQCoX86ZfiZEe8px84sVJtivBXMZfOVyARTYEj0hrwwbj1nF0FwEL3nJSoEV6uTbcdLllMKBgAYHWCQ==}
+    dependencies:
+      '@types/node': 16.11.65
+    dev: false
+
   /@types/ssh2-sftp-client/5.3.2:
     resolution: {integrity: sha512-s5R3hsnI3/7Ar57LG++gm2kxgONHtOZY2A3AgGzEwiJlHR8j7MRPDw1n/hG6oMnOUJ4zuoLNtDXgDfmmxV4lDA==}
     dependencies:
@@ -7640,7 +7652,7 @@ packages:
   /axios/0.21.4:
     resolution: {integrity: sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==}
     dependencies:
-      follow-redirects: 1.15.2
+      follow-redirects: 1.15.2_debug@3.2.7
     transitivePeerDependencies:
       - debug
     dev: false
@@ -7913,6 +7925,10 @@ packages:
       mixin-deep: 1.3.2
       pascalcase: 0.1.1
     dev: true
+
+  /base32.js/0.0.1:
+    resolution: {integrity: sha512-EGHIRiegFa62/SsA1J+Xs2tIzludPdzM064N9wjbiEgHnGnJ1V0WEpA4pEwCYT5nDvZk3ubf0shqaCS7k6xeUQ==}
+    dev: false
 
   /base64-js/1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
@@ -11872,16 +11888,6 @@ packages:
 
   /fn.name/1.1.0:
     resolution: {integrity: sha512-GRnmB5gPyJpAhTQdSZTSp9uaPSvl09KoYcMQtsB9rQoOmzs9dH6ffeccH+Z+cv6P68Hu5bC6JjRh4Ah/mHSNRw==}
-    dev: false
-
-  /follow-redirects/1.15.2:
-    resolution: {integrity: sha512-VQLG33o04KaQ8uYi2tVNbdrWp1QWxNNea+nmIB4EVM28v0hmP17z7aG1+wAkNzVq4KeXTq3221ye5qTJP91JwA==}
-    engines: {node: '>=4.0'}
-    peerDependencies:
-      debug: '*'
-    peerDependenciesMeta:
-      debug:
-        optional: true
     dev: false
 
   /follow-redirects/1.15.2_debug@3.2.7:
@@ -17869,6 +17875,14 @@ packages:
       - supports-color
     dev: true
 
+  /qrcode.vue/1.7.0_vue@2.7.13:
+    resolution: {integrity: sha512-R7t6Y3fDDtcU7L4rtqwGUDP9xD64gJhIwpfjhRCTKmBoYF6SS49PIJHRJ048cse6OI7iwTwgyy2C46N9Ygoc6g==}
+    peerDependencies:
+      vue: ^2.0.0
+    dependencies:
+      vue: 2.7.13
+    dev: false
+
   /qs/6.11.0:
     resolution: {integrity: sha512-MvjoMCJwEarSbUYk5O+nmoSzSutSsTwF85zcHPQ9OrlFoZOYIjaqBAJIqIXjptyD5vThxGq52Xu/MaJzRkIk4Q==}
     engines: {node: '>=0.6'}
@@ -19433,6 +19447,13 @@ packages:
   /spdx-license-ids/3.0.12:
     resolution: {integrity: sha512-rr+VVSXtRhO4OHbXUiAF7xW3Bo9DuuF6C5jH+q/x15j2jniycgKbxU09Hr0WqlSLUs4i4ltHGXqTe7VHclYWyA==}
     dev: true
+
+  /speakeasy/2.0.0:
+    resolution: {integrity: sha512-lW2A2s5LKi8rwu77ewisuUOtlCydF/hmQSOJjpTqTj1gZLkNgTaYnyvfxy2WBr4T/h+9c4g8HIITfj83OkFQFw==}
+    engines: {node: '>= 0.10.0'}
+    dependencies:
+      base32.js: 0.0.1
+    dev: false
 
   /spex/3.2.0:
     resolution: {integrity: sha512-9srjJM7NaymrpwMHvSmpDeIK5GoRMX/Tq0E8aOlDPS54dDnDUIp30DrP9SphMPEETDLzEM9+4qo+KipmbtPecg==}

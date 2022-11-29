@@ -1,9 +1,10 @@
 import { createApiKey, deleteApiKey, getApiKey } from "@/api/api-keys";
+import { disableMfa, enableMfa, getMfaQr } from "@/api/mfa";
 import { getPromptsData, getSettings, submitContactInfo, submitValueSurvey } from "@/api/settings";
 import { testHealthEndpoint } from "@/api/templates";
 import { CONTACT_PROMPT_MODAL_KEY, EnterpriseEditionFeature, STORES, VALUE_SURVEY_MODAL_KEY } from "@/constants";
-import { ILogLevel, IN8nPromptResponse, IN8nPrompts, IN8nUISettings, IN8nValueSurveyData, ISettingsState, WorkflowCallerPolicyDefaultOption } from "@/Interface";
-import { store } from "@/store";
+import { ILogLevel, IN8nPromptResponse, IN8nPrompts, IN8nUISettings, IN8nValueSurveyData, ISettingsState, IUserResponse, WorkflowCallerPolicyDefaultOption } from "@/Interface";
+import { IUser } from "n8n-design-system";
 import { ITelemetrySettings } from "n8n-workflow";
 import { defineStore } from "pinia";
 import Vue from "vue";
@@ -217,6 +218,26 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, {
 			const rootStore = useRootStore();
 			const { apiKey } = await createApiKey(rootStore.getRestApiContext);
 			return apiKey;
+		},
+		async getMfaQr(): Promise<{ qrCode: string, secret: string }> {
+			const rootStore = useRootStore();
+			return await getMfaQr(rootStore.getRestApiContext);
+		},
+		async enableMfa(data: { code: string }) {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await enableMfa(rootStore.getRestApiContext, data);
+			const currentUser = usersStore.currentUser as IUserResponse;
+			currentUser.mfaEnabled = true;
+			usersStore.addUsers([currentUser]);
+		},
+		async disabledMfa() {
+			const rootStore = useRootStore();
+			const usersStore = useUsersStore();
+			await disableMfa(rootStore.getRestApiContext);
+			const currentUser = usersStore.currentUser as IUserResponse;
+			currentUser.mfaEnabled = false;
+			usersStore.addUsers([currentUser]);
 		},
 		async deleteApiKey(): Promise<void> {
 			const rootStore = useRootStore();

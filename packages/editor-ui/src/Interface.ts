@@ -621,6 +621,7 @@ export interface IUser extends IUserResponse {
 	isOwner: boolean;
 	fullName?: string;
 	createdAt?: Date;
+	mfaEnabled: boolean;
 }
 
 export interface IVersionNotificationSettings {

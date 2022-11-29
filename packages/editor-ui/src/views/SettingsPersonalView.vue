@@ -4,9 +4,9 @@
 			<n8n-heading size="2xlarge">{{ $locale.baseText('settings.personal.personalSettings') }}</n8n-heading>
 			<div class="ph-no-capture" :class="$style.user">
 				<span :class="$style.username">
-					<n8n-text  color="text-light">{{currentUser.fullName}}</n8n-text>
+					<n8n-text  color="text-light">{{currentUser?.fullName}}</n8n-text>
 				</span>
-				<n8n-avatar :firstName="currentUser.firstName" :lastName="currentUser.lastName" size="large" />
+				<n8n-avatar :firstName="currentUser?.firstName" :lastName="currentUser?.lastName" size="large" />
 			</div>
 		</div>
 		<div>
@@ -22,6 +22,17 @@
 					@ready="onReadyToSubmit"
 					@submit="onSubmit"
 				/>
+			</div>
+			<div>
+				<div :class="$style.sectionHeader">
+					<n8n-heading size="large">Multi-factor Authentication</n8n-heading>
+				</div>
+				<div v-if="mfaDisabled" >
+					<n8n-button float="left" :label="$locale.baseText('settings.personal.enableMfa')" size="small" @click="onMfaEnableClick" />
+				</div>
+				<div v-else >
+					<n8n-button float="left" :label="$locale.baseText('settings.personal.disableMfa')" size="small" @click="onMfaDisableClick" />
+				</div>
 			</div>
 		</div>
 		<div>
@@ -43,10 +54,11 @@
 
 <script lang="ts">
 import { showMessage } from '@/mixins/showMessage';
-import { CHANGE_PASSWORD_MODAL_KEY } from '@/constants';
+import { CHANGE_PASSWORD_MODAL_KEY, VIEWS } from '@/constants';
 import { IFormInputs, IUser } from '@/Interface';
 import { useUIStore } from '@/stores/ui';
 import { useUsersStore } from '@/stores/users';
+import { useSettingsStore } from '@/stores/settings';
 import { mapStores } from 'pinia';
 import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
@@ -109,6 +121,9 @@ export default mixins(
 		currentUser(): IUser | null {
 			return this.usersStore.currentUser;
 		},
+		mfaDisabled(): boolean {
+			return !this.usersStore.mfaEnabled;
+		},
 	},
 	methods: {
 		onInput() {
@@ -144,6 +159,13 @@ export default mixins(
 		},
 		openPasswordModal() {
 			this.uiStore.openModal(CHANGE_PASSWORD_MODAL_KEY);
+		},
+		onMfaEnableClick() {
+			this.$router.push({ name: VIEWS.MFA_SETUP });
+		},
+		async onMfaDisableClick() {
+			const settingStore = useSettingsStore();
+			await settingStore.disabledMfa();
 		},
 	},
 });
@@ -190,6 +212,7 @@ export default mixins(
 
 .sectionHeader {
 	margin-bottom: var(--spacing-s);
+	margin-top: var(--spacing-s);
 }
 </style>
 

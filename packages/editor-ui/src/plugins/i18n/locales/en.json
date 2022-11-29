@@ -1408,5 +1408,12 @@
 	"dynamic.workflows.sharing.unavailable.action.cloud.upgrade": "Upgrade now",
 	"dynamic.workflows.sharing.unavailable.button": "Explore n8n cloud",
 	"dynamic.workflows.sharing.unavailable.button.cloud.upgrade": "Upgrade now",
-	"dynamic.workflows.sharing.unavailable.linkUrl": "https://n8n.cloud"
+	"dynamic.workflows.sharing.unavailable.linkUrl": "https://n8n.cloud",
+	"settings.mfa.secret": "Secret {secret}",
+	"settings.mfa": "MFA",
+	"settings.mfa.title": "Multi-factor Authentication",
+	"settings.mfa.updateConfiguration": "MFA configuration updated",
+	"settings.mfa.invalidAuthenticatorCode": "Invalid authenticator code",
+	"settings.personal.enableMfa": "Add MFA to account",
+	"settings.personal.disableMfa": "Remove MFA to account"
 }
