@@ -33,10 +33,10 @@
 				:schema="s"
 				:level="level + 1"
 				:parent="schema"
-				:sub-key="`${s.type}-${level}-${i}`"
-				:mapping-enabled="mappingEnabled"
-				:dragging-path="draggingPath"
-				:distance-from-active="distanceFromActive"
+				:subKey="`${s.type}-${level}-${i}`"
+				:mappingEnabled="mappingEnabled"
+				:draggingPath="draggingPath"
+				:distanceFromActive="distanceFromActive"
 				:node="node"
 				:style="{transitionDelay: transitionDelay(i)}"
 			/>
@@ -67,7 +67,7 @@ const key = computed((): string | undefined => isSchemaParentTypeArray.value ? `
 const schemaName = computed(() => isSchemaParentTypeArray.value ? `${props.schema.type}[${props.schema.key}]` : props.schema.key);
 const text = computed(() => Array.isArray(props.schema.value) ? '' : shorten(props.schema.value, 600, 0));
 
-const getJsonParameterPath = (path: string): string => `{{ ${props.distanceFromActive ? '$json' : `$node["${ props.node!.name }"].json`}${path} }}`;
+const getJsonParameterPath = (path: string): string => `{{ ${props.distanceFromActive === 1 ? '$json' : `$node["${ props.node!.name }"].json`}${path} }}`;
 const transitionDelay = (i:number) => `${i * 0.033}s`;
 
 const getIconBySchemaType = (type: Schema['type']): string => {

@@ -250,11 +250,11 @@
 			<run-data-schema
 				v-else-if="hasNodeRun && displayMode === 'schema'"
 				:schema="schema"
-				:mapping-enabled="mappingEnabled"
-				:distance-from-active="distanceFromActive"
+				:mappingEnabled="mappingEnabled"
+				:distanceFromActive="distanceFromActive"
 				:node="node"
-				:run-index="runIndex"
-				:total-runs="maxRunIndex"
+				:runIndex="runIndex"
+				:totalRuns="maxRunIndex"
 			/>
 
 			<div v-else-if="displayMode === 'binary' && binaryData.length === 0" :class="$style.center">

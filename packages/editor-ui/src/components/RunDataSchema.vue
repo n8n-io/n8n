@@ -15,10 +15,10 @@
 					:schema="schema"
 					:level="0"
 					:parent="null"
-					:sub-key="`${schema.type}-0-0`"
-					:mapping-enabled="mappingEnabled"
-					:dragging-path="draggingPath"
-					:distance-from-active="distanceFromActive"
+					:subKey="`${schema.type}-0-0`"
+					:mappingEnabled="mappingEnabled"
+					:draggingPath="draggingPath"
+					:distanceFromActive="distanceFromActive"
 					:node="node"
 				/>
 			</template>
@@ -87,12 +87,9 @@ const onDragEnd = (el: HTMLElement) => {
 
 <style lang="scss" module>
 .schema {
-	position: absolute;
-	top: 0;
-	left: 0;
+	display: inline-block;
 	padding-left: var(--spacing-s);
-	right: 0;
-	overflow-y: auto;
+	overflow: auto;
 	line-height: 1.5;
 	word-break: normal;
 	height: 100%;
