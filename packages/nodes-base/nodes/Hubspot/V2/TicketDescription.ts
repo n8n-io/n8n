@@ -261,7 +261,6 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Update Fields',
@@ -453,7 +452,6 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Options',
@@ -606,6 +604,5 @@ export const ticketFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 ];

@@ -464,7 +464,6 @@ export const engagementFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 
 	{
@@ -505,7 +504,6 @@ export const engagementFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 
 	/* -------------------------------------------------------------------------- */

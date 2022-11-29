@@ -571,8 +571,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		],
-		description:
-			"The Unique identifier in which to operate on, This is not a contact's email but a number like 1485.",
+		description: "This is not a contact's email but a number like 1485.",
 	},
 	{
 		displayName: 'Options',
@@ -837,8 +836,7 @@ export const contactFields: INodeProperties[] = [
 				],
 			},
 		],
-		description:
-			"The Unique identifier in which to operate on, This is not a contact's email but a number like 1485.",
+		description: "This is not a contact's email but a number like 1485.",
 	},
 
 	/* -------------------------------------------------------------------------- */

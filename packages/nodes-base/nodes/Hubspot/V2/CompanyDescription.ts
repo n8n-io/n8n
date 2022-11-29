@@ -462,7 +462,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Update Fields',
@@ -856,7 +855,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Options',
@@ -1026,7 +1024,6 @@ export const companyFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 
 	/* -------------------------------------------------------------------------- */

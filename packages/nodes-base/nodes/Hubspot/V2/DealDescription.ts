@@ -277,7 +277,6 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Update Fields',
@@ -460,7 +459,6 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 	{
 		displayName: 'Filters',
@@ -675,7 +673,6 @@ export const dealFields: INodeProperties[] = [
 				],
 			},
 		],
-		description: 'The Unique identifier in which to operate on',
 	},
 
 	/* -------------------------------------------------------------------------- */
