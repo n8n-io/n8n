@@ -196,7 +196,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 					if (operation === 'get') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/retrieve-entity-using-web-api
 						const accountId = this.getNodeParameter('accountId', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						if (options.returnFields) {
 							qs['$select'] = (options.returnFields as string[]).join(',');
 						}
@@ -214,9 +214,9 @@ export class MicrosoftDynamicsCrm implements INodeType {
 
 					if (operation === 'getAll') {
 						//https://docs.microsoft.com/en-us/powerapps/developer/data-platform/webapi/query-data-web-api
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const options = this.getNodeParameter('options', i) as IDataObject;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const options = this.getNodeParameter('options', i);
+						const filters = this.getNodeParameter('filters', i);
 						if (options.returnFields) {
 							qs['$select'] = (options.returnFields as string[]).join(',');
 						}
@@ -236,7 +236,7 @@ export class MicrosoftDynamicsCrm implements INodeType {
 								qs,
 							);
 						} else {
-							qs['$top'] = this.getNodeParameter('limit', 0) as number;
+							qs['$top'] = this.getNodeParameter('limit', 0);
 							responseData = await microsoftApiRequest.call(this, 'GET', `/accounts`, {}, qs);
 							responseData = responseData.value;
 						}

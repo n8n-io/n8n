@@ -14,8 +14,8 @@
 </template>
 
 <script lang="ts">
-import { genericHelpers } from '@/components/mixins/genericHelpers';
-import { workflowHelpers } from '@/components/mixins/workflowHelpers';
+import { genericHelpers } from '@/mixins/genericHelpers';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
 
 import mixins from 'vue-typed-mixins';
 import { IExecutionResponse, INodeUi } from '@/Interface';

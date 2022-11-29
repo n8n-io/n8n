@@ -1,17 +1,11 @@
-/* eslint-disable import/no-extraneous-dependencies */
 import express from 'express';
 import { readFile } from 'fs/promises';
-import _ from 'lodash';
 import { NodeTypeActions } from '@/NodeTypeActions';
-// import { CUSTOM_API_CALL_NAME, CUSTOM_API_CALL_KEY } from '@/constants';
 
-import {
-	// ICredentialType,
-	INodeType,
-	INodeTypeDescription,
-	INodeTypeNameVersion,
-	NodeHelpers,
-} from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import get from 'lodash.get';
+
+import type { INodeTypeDescription, INodeTypeNameVersion, INodeType } from 'n8n-workflow';
 
 import config from '@/config';
 import { NodeTypes } from '@/NodeTypes';
@@ -68,7 +62,8 @@ nodeTypesController.get(
 nodeTypesController.post(
 	'/',
 	ResponseHelper.send(async (req: express.Request): Promise<INodeTypeDescription[]> => {
-		const nodeInfos = _.get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
+		const nodeInfos = get(req, 'body.nodeInfos', []) as INodeTypeNameVersion[];
+
 		const defaultLocale = config.getEnv('defaultLocale');
 
 		if (defaultLocale === 'en') {

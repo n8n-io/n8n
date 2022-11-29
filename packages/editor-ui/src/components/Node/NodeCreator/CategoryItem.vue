@@ -6,7 +6,7 @@
 		<font-awesome-icon
 			:class="$style.arrow"
 			icon="chevron-down"
-			v-if="isExpadned"
+			v-if="isExpanded"
 		/>
 		<font-awesome-icon :class="$style.arrow" icon="chevron-up" v-else />
 	</div>
@@ -29,7 +29,7 @@ const instance = getCurrentInstance();
 const { categoriesWithNodes } = useNodeTypesStore();
 const nodeCreatorStore = useNodeCreatorStore();
 
-const isExpadned = computed<boolean>(() => {
+const isExpanded = computed<boolean>(() => {
 	return (props.item.properties as ICategoryItemProps).expanded;
 });
 

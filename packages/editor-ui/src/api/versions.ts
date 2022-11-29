@@ -1,7 +1,6 @@
 import { IVersion } from '@/Interface';
 import { INSTANCE_ID_HEADER } from '@/constants';
-import { IDataObject } from 'n8n-workflow';
-import { get } from './helpers';
+import { get } from '@/utils';
 
 export async function getNextVersions(endpoint: string, version: string, instanceId: string): Promise<IVersion[]> {
 	const headers = {[INSTANCE_ID_HEADER as string] : instanceId};

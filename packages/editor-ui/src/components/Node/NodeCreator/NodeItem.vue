@@ -14,11 +14,11 @@
 		:isTrigger="!allowActions && isTriggerNode"
 		:isPanelActive="showActionsPanel"
 	>
-		<template slot="icon">
+		<template #icon>
 			<node-icon :nodeType="nodeType" />
 		</template>
 
-		<template slot="tooltip" v-if="isCommunityNode">
+		<template #tooltip v-if="isCommunityNode">
 			<div
 				:class="$style.communityNodeIcon"
 				slot="content"
@@ -29,7 +29,7 @@
 			<n8n-icon icon="cube" />
 		</template>
 
-		<template slot="dragContent">
+		<template #dragContent>
 			<div :class="$style.draggableDataTransfer" ref="draggableDataTransfer"/>
 			<div
 				:class="$style.draggable"
@@ -40,7 +40,7 @@
 			</div>
 		</template>
 
-		<template slot="panel" v-if="allowActions && nodeType.actions && nodeType.actions.length > 0">
+		<template #panel v-if="allowActions && nodeType.actions && nodeType.actions.length > 0">
 			<node-actions
 				:class="$style.actions"
 				:nodeType="nodeType"
@@ -58,11 +58,11 @@
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
 import { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 
-import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
-import { isCommunityPackageName } from '@/components/helpers';
+import { getNewNodePosition, NODE_SIZE } from '@/utils/nodeViewUtils';
+import { isCommunityPackageName } from '@/utils';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { IUpdateInformation } from '@/Interface';
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { externalHooks } from '@/mixins/externalHooks';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import NodeActions from './NodeActions.vue';

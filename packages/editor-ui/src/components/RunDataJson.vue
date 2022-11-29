@@ -62,10 +62,9 @@ import VueJsonPretty from 'vue-json-pretty';
 import { LOCAL_STORAGE_MAPPING_FLAG } from '@/constants';
 import { IDataObject, INodeExecutionData } from "n8n-workflow";
 import Draggable from '@/components/Draggable.vue';
-import { convertPath, executionDataToJson, isString } from "@/components/helpers";
+import { convertPath, executionDataToJson, isString, shorten } from '@/utils';
 import { INodeUi } from "@/Interface";
-import { shorten } from './helpers';
-import { externalHooks } from "@/components/mixins/externalHooks";
+import { externalHooks } from "@/mixins/externalHooks";
 import { mapStores } from "pinia";
 import { useNDVStore } from "@/stores/ndv";
 

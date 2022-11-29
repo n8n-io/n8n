@@ -87,7 +87,6 @@ export class Telemetry {
 		}
 		else {
 			this.rudderStack.reset();
-			this.rudderStack.identify(undefined, traits);
 		}
 	}
 

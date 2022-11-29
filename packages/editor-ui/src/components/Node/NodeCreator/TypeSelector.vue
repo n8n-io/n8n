@@ -1,5 +1,5 @@
 <template>
-	<div class="type-selector" v-if="nodeCreatorStore.showTabs">
+	<div class="type-selector" v-if="nodeCreatorStore.showTabs" data-test-id="node-creator-type-selector">
 		<el-tabs stretch :value="nodeCreatorStore.selectedType" @input="nodeCreatorStore.setSelectedType">
 			<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.all')" :name="ALL_NODE_FILTER"></el-tab-pane>
 			<el-tab-pane :label="$locale.baseText('nodeCreator.mainPanel.regular')" :name="REGULAR_NODE_FILTER"></el-tab-pane>

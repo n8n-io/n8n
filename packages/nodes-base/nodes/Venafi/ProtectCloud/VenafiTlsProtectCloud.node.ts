@@ -112,13 +112,15 @@ export class VenafiTlsProtectCloud implements INodeType {
 				const returnData: INodePropertyOptions[] = [];
 				const currentApplication: string = this.getCurrentNodeParameter('applicationId') as string;
 
-				const { certificateIssuingTemplateAliasIdMap }  = await venafiApiRequest.call(
+				const { certificateIssuingTemplateAliasIdMap } = (await venafiApiRequest.call(
 					this,
 					'GET',
 					`/outagedetection/v1/applications/${currentApplication}`,
-				) as { certificateIssuingTemplateAliasIdMap: { [key: string]: string } };
+				)) as { certificateIssuingTemplateAliasIdMap: { [key: string]: string } };
 
-				for (const [templateName, templateId] of Object.entries(certificateIssuingTemplateAliasIdMap)) {
+				for (const [templateName, templateId] of Object.entries(
+					certificateIssuingTemplateAliasIdMap,
+				)) {
 					returnData.push({
 						name: templateName,
 						value: templateId,
@@ -147,7 +149,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							'certificateIssuingTemplateId',
 							i,
 						) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 						const generateCsr = this.getNodeParameter('generateCsr', i) as boolean;
 
 						const body: ICertficateRequest = {
@@ -161,7 +163,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								i,
 							) as string;
 							const commonName = this.getNodeParameter('commonName', i) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							const keyTypeDetails: IKeyTypeParameters = {};
 							const csrAttributes: ICsrAttributes = {};
@@ -265,7 +267,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 
 					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=/v3/api-docs/swagger-config&urls.primaryName=outagedetection-service#//v1/certificaterequests_getAll
 					if (operation === 'getMany') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						if (returnAll) {
 							responseData = await venafiApiRequestAllItems.call(
@@ -277,7 +279,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								qs,
 							);
 						} else {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
@@ -311,7 +313,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 						const certificateId = this.getNodeParameter('certificateId', i) as string;
 						const binaryProperty = this.getNodeParameter('binaryProperty', i) as string;
 						const downloadItem = this.getNodeParameter('downloadItem', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						// Cert Download
 						if (downloadItem === 'certificate') {
@@ -405,8 +407,8 @@ export class VenafiTlsProtectCloud implements INodeType {
 
 					//https://api.venafi.cloud/webjars/swagger-ui/index.html?configUrl=%2Fv3%2Fapi-docs%2Fswagger-config&urls.primaryName=outagedetection-service#/%2Fv1/certificates_getAllAsCsv
 					if (operation === 'getMany') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 
 						Object.assign(qs, filters);
 
@@ -420,7 +422,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 								qs,
 							);
 						} else {
-							qs.limit = this.getNodeParameter('limit', i) as number;
+							qs.limit = this.getNodeParameter('limit', i);
 							responseData = await venafiApiRequest.call(
 								this,
 								'GET',
@@ -448,7 +450,7 @@ export class VenafiTlsProtectCloud implements INodeType {
 							'existingCertificateId',
 							i,
 						) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						const body: IDataObject = {
 							certificateSigningRequest,

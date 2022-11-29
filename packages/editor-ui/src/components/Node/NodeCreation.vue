@@ -1,7 +1,7 @@
 <template>
 	<div>
 		<div v-if="!createNodeActive" :class="[$style.nodeButtonsWrapper, showStickyButton ? $style.noEvents : '']" @mouseenter="onCreateMenuHoverIn">
-			<div :class="$style.nodeCreatorButton">
+			<div :class="$style.nodeCreatorButton" data-test-id="node-creator-plus-button">
 				<n8n-icon-button size="xlarge" icon="plus" type="tertiary" :class="$style.nodeCreatorPlus" @click="openNodeCreator" :title="$locale.baseText('nodeView.addNode')"/>
 				<div :class="[$style.addStickyButton, showStickyButton ? $style.visibleButton : '']" @click="addStickyNote">
 					<n8n-icon-button size="medium" type="tertiary" :icon="['far', 'note-sticky']" :title="$locale.baseText('nodeView.addSticky')"/>
@@ -18,7 +18,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import * as CanvasHelpers from "@/views/canvasHelpers";
+import { getMidCanvasPosition } from '@/utils/nodeViewUtils';
 import {DEFAULT_STICKY_HEIGHT, DEFAULT_STICKY_WIDTH, STICKY_NODE_TYPE} from "@/constants";
 import { mapStores } from "pinia";
 import { useUIStore } from "@/stores/ui";
@@ -80,7 +80,7 @@ export default Vue.extend({
 
 			const offset: [number, number] = [...(this.uiStore.nodeViewOffsetPosition)];
 
-			const position = CanvasHelpers.getMidCanvasPosition(this.nodeViewScale, offset);
+			const position = getMidCanvasPosition(this.nodeViewScale, offset);
 			position[0] -= DEFAULT_STICKY_WIDTH / 2;
 			position[1] -= DEFAULT_STICKY_HEIGHT / 2;
 

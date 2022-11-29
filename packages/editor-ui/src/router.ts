@@ -26,7 +26,7 @@ import TemplatesSearchView from '@/views/TemplatesSearchView.vue';
 import CredentialsView from '@/views/CredentialsView.vue';
 import WorkflowsView from '@/views/WorkflowsView.vue';
 import { IPermissions } from './Interface';
-import { LOGIN_STATUS, ROLE } from './stores/userHelpers';
+import { LOGIN_STATUS, ROLE } from '@/utils';
 import { RouteConfigSingleView } from 'vue-router/types/router';
 import { VIEWS } from './constants';
 import { useSettingsStore } from './stores/settings';
@@ -74,7 +74,7 @@ const router = new Router({
 			name: VIEWS.HOMEPAGE,
 			meta: {
 				getRedirect() {
-					const startOnNewWorkflowRouteFlag = window.posthog?.isFeatureEnabled?.('start-at-wf-empty-state');
+					const startOnNewWorkflowRouteFlag = window.posthog?.getFeatureFlag?.('start-at-wf-empty-state') === 'test';
 					return { name: startOnNewWorkflowRouteFlag ? VIEWS.NEW_WORKFLOW : VIEWS.WORKFLOWS };
 				},
 				permissions: {

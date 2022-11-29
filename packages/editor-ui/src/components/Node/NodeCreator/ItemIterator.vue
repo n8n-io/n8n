@@ -12,6 +12,7 @@
 			v-for="(item, index) in renderedItems"
 			:key="item.key"
 			:class="item.type"
+			data-test-id="item-iterator-item"
 		>
 			<creator-item
 				:item="item"
@@ -64,6 +65,7 @@ watch(() => props.elements, () => {
 	state.renderedItems = [];
 	renderItems();
 });
+
 function wrappedEmit(event: 'selected' | 'dragstart' | 'dragend', element: INodeCreateElement, $e?: Event) {
 	if (props.disabled) return;
 

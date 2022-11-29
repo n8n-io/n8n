@@ -1,6 +1,6 @@
 <template>
 	<div
-		:class="{'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing}"
+		:class="{ 'n8n-sticky': true, [$style.sticky]: true, [$style.clickable]: !isResizing }"
 		:style="styles"
 		@keydown.prevent
 	>
@@ -39,7 +39,7 @@
 					@keydown.stop
 					@wheel.stop
 					class="sticky-textarea ph-no-capture"
-					:class="{'full-height': !shouldShowFooter}"
+					:class="{ 'full-height': !shouldShowFooter }"
 				>
 					<n8n-input
 						:value="content"
@@ -49,13 +49,9 @@
 						@input="onInput"
 						ref="input"
 					/>
-
 				</div>
 				<div v-if="editMode && shouldShowFooter" :class="$style.footer">
-					<n8n-text
-						size="xsmall"
-						aligh="right"
-					>
+					<n8n-text size="xsmall" aligh="right">
 						<span v-html="t('sticky.markdownHint')"></span>
 					</n8n-text>
 				</div>
@@ -142,7 +138,7 @@ export default mixins(Locale).extend({
 			}
 			return this.width;
 		},
-		styles(): { height: string, width: string } {
+		styles(): { height: string; width: string } {
 			return {
 				height: `${this.resHeight}px`,
 				width: `${this.resWidth}px`,
@@ -184,10 +180,7 @@ export default mixins(Locale).extend({
 	watch: {
 		editMode(newMode, prevMode) {
 			setTimeout(() => {
-				if (newMode &&
-					!prevMode &&
-					this.$refs.input
-				) {
+				if (newMode && !prevMode && this.$refs.input) {
 					const textarea = this.$refs.input as HTMLTextAreaElement;
 					if (this.defaultText === this.content) {
 						textarea.select();
@@ -195,7 +188,6 @@ export default mixins(Locale).extend({
 					textarea.focus();
 				}
 			}, 100);
-
 		},
 	},
 });
@@ -227,7 +219,12 @@ export default mixins(Locale).extend({
 		left: 0;
 		bottom: 0;
 		position: absolute;
-		background: linear-gradient(180deg, var(--color-sticky-default-background), #fff5d600 0.01%, var(--color-sticky-default-background));
+		background: linear-gradient(
+			180deg,
+			var(--color-sticky-default-background),
+			#fff5d600 0.01%,
+			var(--color-sticky-default-background)
+		);
 		border-radius: var(--border-radius-base);
 	}
 }

@@ -101,7 +101,7 @@ export class CustomerIo implements INodeType {
 
 					if (operation === 'getMetrics') {
 						const campaignId = this.getNodeParameter('campaignId', i) as number;
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(
@@ -121,7 +121,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const period = this.getNodeParameter('period', i) as string;
 							let endpoint = `/campaigns/${campaignId}/metrics`;
 
@@ -148,7 +148,7 @@ export class CustomerIo implements INodeType {
 				if (resource === 'customer') {
 					if (operation === 'upsert') {
 						const id = this.getNodeParameter('id', i) as number;
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						if (jsonParameters) {
 							const additionalFieldsJson = this.getNodeParameter(
@@ -168,7 +168,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 
 							if (additionalFields.customProperties) {
 								const data: any = {}; // tslint:disable-line:no-any
@@ -215,7 +215,7 @@ export class CustomerIo implements INodeType {
 					if (operation === 'track') {
 						const customerId = this.getNodeParameter('customerId', i) as number;
 						const eventName = this.getNodeParameter('eventName', i) as string;
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						body.name = eventName;
 
@@ -237,7 +237,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const data: any = {}; // tslint:disable-line:no-any
 
 							if (additionalFields.customAttributes) {
@@ -264,7 +264,7 @@ export class CustomerIo implements INodeType {
 
 					if (operation === 'trackAnonymous') {
 						const eventName = this.getNodeParameter('eventName', i) as string;
-						const jsonParameters = this.getNodeParameter('jsonParameters', i) as boolean;
+						const jsonParameters = this.getNodeParameter('jsonParameters', i);
 
 						body.name = eventName;
 
@@ -286,7 +286,7 @@ export class CustomerIo implements INodeType {
 								}
 							}
 						} else {
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('additionalFields', i);
 							const data: any = {}; // tslint:disable-line:no-any
 
 							if (additionalFields.customAttributes) {

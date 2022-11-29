@@ -10,7 +10,7 @@
 					:isReadOnly="isReadOnly"
 					@input="nameChanged"
 				></NodeTitle>
-				<div v-if="!isReadOnly">
+				<div v-if="executable">
 					<NodeExecuteButton
 						v-if="!blockUI"
 						:nodeName="node.name"
@@ -83,7 +83,7 @@
 					@valueChanged="valueChanged"
 					@activate="onWorkflowActivate"
 				>
-					<node-credentials :node="node" @credentialSelected="credentialSelected" />
+					<node-credentials :node="node" :readonly="isReadOnly" @credentialSelected="credentialSelected" />
 				</parameter-input-list>
 				<div v-if="parametersNoneSetting.length === 0" class="no-parameters">
 					<n8n-text>
@@ -150,12 +150,12 @@ import NodeSettingsTabs from '@/components/NodeSettingsTabs.vue';
 import NodeWebhooks from '@/components/NodeWebhooks.vue';
 import { get, set, unset } from 'lodash';
 
-import { externalHooks } from '@/components/mixins/externalHooks';
-import { nodeHelpers } from '@/components/mixins/nodeHelpers';
+import { externalHooks } from '@/mixins/externalHooks';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
 
 import mixins from 'vue-typed-mixins';
 import NodeExecuteButton from './NodeExecuteButton.vue';
-import { isCommunityPackageName } from './helpers';
+import { isCommunityPackageName } from '@/utils';
 import { mapStores } from 'pinia';
 import { useUIStore } from '@/stores/ui';
 import { useWorkflowsStore } from '@/stores/workflows';
@@ -263,6 +263,10 @@ export default mixins(externalHooks, nodeHelpers).extend({
 		blockUI: {
 			type: Boolean,
 			default: false,
+		},
+		executable: {
+			type: Boolean,
+			default: true,
 		},
 	},
 	data() {

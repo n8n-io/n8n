@@ -9,7 +9,9 @@
 				:searchItems="searchItems"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
 			>
-				<type-selector slot="header" />
+				<template #header>
+					<type-selector/>
+				</template>
 			</trigger-helper-panel>
 			<categorized-items
 				v-else
@@ -18,15 +20,17 @@
 				:initialActiveCategories="[CORE_NODES_CATEGORY]"
 				@nodeTypeSelected="$listeners.nodeTypeSelected"
 			>
-				<type-selector slot="header" />
+				<template #header>
+					<type-selector />
+				</template>
 			</categorized-items>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
-import { computed, watch, getCurrentInstance, onMounted, onUnmounted } from 'vue';
-import { externalHooks } from '@/components/mixins/externalHooks';
+import { watch, getCurrentInstance, onMounted, onUnmounted } from 'vue';
+import { externalHooks } from '@/mixins/externalHooks';
 import TriggerHelperPanel from './TriggerHelperPanel.vue';
 import { ALL_NODE_FILTER, TRIGGER_NODE_FILTER, OTHER_TRIGGER_NODES_SUBCATEGORY, CORE_NODES_CATEGORY } from '@/constants';
 import CategorizedItems from './CategorizedItems.vue';

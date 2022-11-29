@@ -6,7 +6,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import { BinaryDataManager, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
-// eslint-disable-next-line import/no-extraneous-dependencies
 import Redis from 'ioredis';
 
 import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
@@ -132,25 +131,22 @@ export class Webhook extends Command {
 
 				// Make sure the settings exist
 				// eslint-disable-next-line @typescript-eslint/no-unused-vars
-				const userSettings = await UserSettings.prepareUserSettings();
+				await UserSettings.prepareUserSettings();
 
 				// Load all node and credential types
 				const loadNodesAndCredentials = LoadNodesAndCredentials();
 				await loadNodesAndCredentials.init();
 
+				// Add the found types to an instance other parts of the application can use
+				const nodeTypes = NodeTypes(loadNodesAndCredentials);
+				const credentialTypes = CredentialTypes(loadNodesAndCredentials);
+
 				// Load the credentials overwrites if any exist
-				const credentialsOverwrites = CredentialsOverwrites();
-				await credentialsOverwrites.init();
+				await CredentialsOverwrites(credentialTypes).init();
 
 				// Load all external hooks
 				const externalHooks = ExternalHooks();
 				await externalHooks.init();
-
-				// Add the found types to an instance other parts of the application can use
-				const nodeTypes = NodeTypes();
-				await nodeTypes.init(loadNodesAndCredentials.nodeTypes);
-				const credentialTypes = CredentialTypes();
-				await credentialTypes.init(loadNodesAndCredentials.credentialTypes);
 
 				// Wait till the database is ready
 				await startDbInitPromise;

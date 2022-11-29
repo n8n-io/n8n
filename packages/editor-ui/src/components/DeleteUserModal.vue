@@ -7,7 +7,7 @@
 		width="460px"
 		:eventBus="modalBus"
 	>
-		<template slot="content">
+		<template #content>
 			<div>
 				<div v-if="isPending">
 					<n8n-text color="text-base">{{ $locale.baseText('settings.users.confirmUserDeletion') }}</n8n-text>
@@ -39,7 +39,7 @@
 				</div>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<n8n-button :loading="loading" :disabled="!enabled" :label="$locale.baseText('settings.users.delete')" @click="onSubmit" float="right" />
 		</template>
 	</Modal>
@@ -49,7 +49,7 @@
 <script lang="ts">
 import mixins from "vue-typed-mixins";
 
-import { showMessage } from "@/components/mixins/showMessage";
+import { showMessage } from "@/mixins/showMessage";
 import Modal from "./Modal.vue";
 import Vue from "vue";
 import { IUser } from "../Interface";
