@@ -1501,18 +1501,21 @@ export class HubspotV2 implements INodeType {
 						if (operation === 'getRecentlyCreatedUpdated') {
 							let endpoint;
 							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-							const filters = this.getNodeParameter('filters', i) as IDataObject;
-							if (filters.formSubmissionMode) {
-								qs.formSubmissionMode = filters.formSubmissionMode as string;
+							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+							if (additionalFields.formSubmissionMode) {
+								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
-							if (filters.listMerberships) {
-								qs.showListMemberships = filters.listMerberships as boolean;
+							if (additionalFields.listMerberships) {
+								qs.showListMemberships = additionalFields.listMerberships as boolean;
 							}
-							if (filters.properties) {
-								qs.property = filters.properties as string[];
-							}
-							if (filters.propertyMode) {
-								qs.propertyMode = snakeCase(filters.propertyMode as string);
+							if (additionalFields.propertiesCollection) {
+								const propertiesValues = additionalFields.propertiesCollection // @ts-ignore
+									.propertiesValues as IDataObject;
+								const properties = propertiesValues.properties as string | string[];
+								qs.properties = !Array.isArray(propertiesValues.properties)
+									? (properties as string).split(',')
+									: properties;
+								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
 
 							endpoint = '/contacts/v1/lists/recently_updated/contacts/recent';
