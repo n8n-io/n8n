@@ -163,9 +163,11 @@ export const useUIStore = defineStore(STORES.UI, {
 		],
 		dynamicTranslations: {
 			workflows: {
+				shareModal: {
+					title: 'dynamic.workflows.shareModal.title',
+				},
 				sharing: {
 					unavailable: {
-						title: 'dynamic.workflows.shareModal.title',
 						description: 'dynamic.workflows.sharing.unavailable.description',
 						action: 'dynamic.workflows.sharing.unavailable.action',
 						button: 'dynamic.workflows.sharing.unavailable.button',

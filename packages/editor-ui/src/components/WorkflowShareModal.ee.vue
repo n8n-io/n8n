@@ -1,7 +1,7 @@
 <template>
 	<Modal
 		width="460px"
-		:title="$locale.baseText(dynamicTranslations.workflows.sharing.unavailable.title, { interpolate: { name: workflow.name } })"
+		:title="$locale.baseText(dynamicTranslations.workflows.shareModal.title, { interpolate: { name: workflow.name } })"
 		:eventBus="modalBus"
 		:name="WORKFLOW_SHARE_MODAL_KEY"
 		:center="true"
