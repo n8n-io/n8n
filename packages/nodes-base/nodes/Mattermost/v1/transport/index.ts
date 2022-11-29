@@ -1,12 +1,6 @@
 import { IExecuteFunctions, IHookFunctions, ILoadOptionsFunctions } from 'n8n-core';
 
-import {
-	GenericValue,
-	IDataObject,
-	IHttpRequestMethods,
-	IHttpRequestOptions,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { GenericValue, IDataObject, IHttpRequestMethods, IHttpRequestOptions } from 'n8n-workflow';
 
 /**
  * Make an API request to Mattermost

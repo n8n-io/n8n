@@ -1,5 +1,4 @@
 /* eslint-disable no-restricted-syntax */
-/* eslint-disable import/no-cycle */
 import { Credentials, UserSettings } from 'n8n-core';
 import {
 	ICredentialDataDecryptedObject,
@@ -7,23 +6,20 @@ import {
 	INodeCredentialTestResult,
 	LoggerProxy,
 } from 'n8n-workflow';
-import { FindOneOptions, In } from 'typeorm';
+import { FindManyOptions, FindOneOptions, In } from 'typeorm';
 
-import {
-	createCredentialsFromCredentialsEntity,
-	CredentialsHelper,
-	Db,
-	ICredentialsDb,
-	ResponseHelper,
-} from '..';
-import { RESPONSE_ERROR_MESSAGES } from '../constants';
-import { CredentialsEntity } from '../databases/entities/CredentialsEntity';
-import { SharedCredentials } from '../databases/entities/SharedCredentials';
-import { validateEntity } from '../GenericHelpers';
+import * as Db from '@/Db';
+import * as ResponseHelper from '@/ResponseHelper';
+import { ICredentialsDb } from '@/Interfaces';
+import { CredentialsHelper, createCredentialsFromCredentialsEntity } from '@/CredentialsHelper';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import { CredentialsEntity } from '@db/entities/CredentialsEntity';
+import { SharedCredentials } from '@db/entities/SharedCredentials';
+import { validateEntity } from '@/GenericHelpers';
 import { externalHooks } from '../Server';
 
-import type { User } from '../databases/entities/User';
-import type { CredentialRequest } from '../requests';
+import type { User } from '@db/entities/User';
+import type { CredentialRequest } from '@/requests';
 
 export class CredentialsService {
 	static async get(
@@ -35,7 +31,10 @@ export class CredentialsService {
 		});
 	}
 
-	static async getAll(user: User, options?: { relations: string[] }): Promise<ICredentialsDb[]> {
+	static async getAll(
+		user: User,
+		options?: { relations?: string[]; roles?: string[] },
+	): Promise<ICredentialsDb[]> {
 		const SELECT_FIELDS: Array<keyof ICredentialsDb> = [
 			'id',
 			'name',
@@ -56,11 +55,21 @@ export class CredentialsService {
 
 		// if member, return credentials owned by or shared with member
 
-		const userSharings = await Db.collections.SharedCredentials.find({
+		const whereConditions: FindManyOptions = {
 			where: {
 				user,
 			},
-		});
+		};
+
+		if (options?.roles?.length) {
+			whereConditions.where = {
+				...whereConditions.where,
+				role: { name: In(options.roles) },
+			} as FindManyOptions;
+			whereConditions.relations = ['role'];
+		}
+
+		const userSharings = await Db.collections.SharedCredentials.find(whereConditions);
 
 		return Db.collections.Credentials.find({
 			select: SELECT_FIELDS,
@@ -71,13 +80,17 @@ export class CredentialsService {
 		});
 	}
 
+	static async getMany(filter: FindManyOptions<ICredentialsDb>): Promise<ICredentialsDb[]> {
+		return Db.collections.Credentials.find(filter);
+	}
+
 	/**
 	 * Retrieve the sharing that matches a user and a credential.
 	 */
 	static async getSharing(
 		user: User,
 		credentialId: number | string,
-		relations: string[] | undefined = ['credentials'],
+		relations: string[] = ['credentials'],
 		{ allowGlobalOwner } = { allowGlobalOwner: true },
 	): Promise<SharedCredentials | undefined> {
 		const options: FindOneOptions = {
@@ -90,8 +103,14 @@ export class CredentialsService {
 		// owner. This allows the global owner to view and delete
 		// credentials they don't own.
 		if (!allowGlobalOwner || user.globalRole.name !== 'owner') {
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			options.where.user = { id: user.id };
+			options.where = {
+				...options.where,
+				user: { id: user.id },
+				role: { name: 'owner' },
+			} as FindOneOptions;
+			if (!relations.includes('role')) {
+				relations.push('role');
+			}
 		}
 
 		if (relations?.length) {
@@ -187,11 +206,7 @@ export class CredentialsService {
 		try {
 			return await UserSettings.getEncryptionKey();
 		} catch (error) {
-			throw new ResponseHelper.ResponseError(
-				RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY,
-				undefined,
-				500,
-			);
+			throw new ResponseHelper.InternalServerError(RESPONSE_ERROR_MESSAGES.NO_ENCRYPTION_KEY);
 		}
 	}
 

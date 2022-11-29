@@ -145,8 +145,8 @@ export class SendGrid implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
-						const filters = this.getNodeParameter('filters', i) as IDataObject;
+						const returnAll = this.getNodeParameter('returnAll', i);
+						const filters = this.getNodeParameter('filters', i);
 						let endpoint = '/marketing/contacts';
 						let method = 'GET';
 						const body: IDataObject = {};
@@ -164,19 +164,19 @@ export class SendGrid implements INodeType {
 							qs,
 						);
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),
-							{ itemData: {item: i} },
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({error: error.message}),
-								{ itemData: {item: i} },
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
 							continue;
@@ -210,14 +210,14 @@ export class SendGrid implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),
-							{ itemData: {item: i} },
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({error: error.message}),
-								{ itemData: {item: i} },
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
 							continue;
@@ -232,7 +232,7 @@ export class SendGrid implements INodeType {
 					let lists;
 					for (let i = 0; i < length; i++) {
 						const email = this.getNodeParameter('email', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 						const contact: IDataObject = {
 							email,
 						};
@@ -307,7 +307,7 @@ export class SendGrid implements INodeType {
 					returnData.push(responseData);
 				} catch (error) {
 					if (this.continueOnFail()) {
-						returnData.push({ json:{ error: error.message } });
+						returnData.push({ json: { error: error.message } });
 					} else {
 						throw error;
 					}
@@ -331,14 +331,14 @@ export class SendGrid implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),
-							{ itemData: {item: i} },
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({error: error.message}),
-								{ itemData: {item: i} },
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
 							continue;
@@ -352,7 +352,7 @@ export class SendGrid implements INodeType {
 			if (operation === 'getAll') {
 				for (let i = 0; i < length; i++) {
 					try {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						responseData = await sendGridApiRequestAllItems.call(
 							this,
 							`/marketing/lists`,
@@ -362,7 +362,7 @@ export class SendGrid implements INodeType {
 							qs,
 						);
 						if (returnAll === false) {
-							const limit = this.getNodeParameter('limit', i) as number;
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.splice(0, limit);
 						}
 
@@ -374,8 +374,8 @@ export class SendGrid implements INodeType {
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({error: error.message}),
-								{ itemData: {item: i} },
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
 							continue;
@@ -399,14 +399,14 @@ export class SendGrid implements INodeType {
 
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(responseData),
-							{ itemData: {item: i} },
+							{ itemData: { item: i } },
 						);
 						returnData.push(...executionData);
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({error: error.message}),
-								{ itemData: {item: i} },
+								this.helpers.returnJsonArray({ error: error.message }),
+								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
 							continue;
@@ -435,7 +435,7 @@ export class SendGrid implements INodeType {
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({error: error.message}),
+								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);
@@ -496,7 +496,7 @@ export class SendGrid implements INodeType {
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray({error: error.message}),
+								this.helpers.returnJsonArray({ error: error.message }),
 								{ itemData: { item: i } },
 							);
 							returnData.push(...executionData);

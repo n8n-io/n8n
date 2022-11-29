@@ -78,7 +78,6 @@ export async function mauticApiRequestAllItems(
 	const returnData: IDataObject[] = [];
 
 	let responseData;
-	let data: IDataObject[] = [];
 	query.limit = 30;
 	query.start = 0;
 
@@ -88,7 +87,6 @@ export async function mauticApiRequestAllItems(
 		//@ts-ignore
 		returnData.push.apply(returnData, values);
 		query.start += query.limit;
-		data = [];
 	} while (
 		responseData.total !== undefined &&
 		returnData.length - parseInt(responseData.total, 10) < 0

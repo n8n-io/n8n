@@ -10,6 +10,7 @@ export class TapfiliateApi implements ICredentialType {
 			name: 'apiKey',
 			required: true,
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

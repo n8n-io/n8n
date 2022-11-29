@@ -6,7 +6,7 @@ import { apiRequest } from '../../../transport';
 
 export async function getAll(
 	this: IExecuteFunctions,
-	index: number,
+	_index: number,
 ): Promise<INodeExecutionData[]> {
 	const body: IDataObject = {};
 	const requestMethod = 'GET';
@@ -14,7 +14,7 @@ export async function getAll(
 
 	//limit parameters
 	const returnAll = this.getNodeParameter('returnAll', 0, false) as boolean;
-	const limit = this.getNodeParameter('limit', 0, 0) as number;
+	const limit = this.getNodeParameter('limit', 0, 0);
 
 	//response
 	const responseData = await apiRequest.call(this, requestMethod, endpoint, body);

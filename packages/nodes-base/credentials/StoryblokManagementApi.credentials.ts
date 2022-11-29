@@ -9,6 +9,7 @@ export class StoryblokManagementApi implements ICredentialType {
 			displayName: 'Personal Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

@@ -69,7 +69,7 @@
 						:stickyOffset="4"
 						@drop="onDrop"
 					>
-						<template v-slot="{ droppable, activeDrop }">
+						<template #default="{ droppable, activeDrop }">
 							<div
 								:class="{
 									[$style.listModeInputContainer]: isListMode,
@@ -84,6 +84,7 @@
 									:size="inputSize"
 									:value="expressionDisplayValue"
 									:title="displayTitle"
+									:disabled="isReadOnly"
 									@keydown.stop
 									ref="input"
 								/>
@@ -102,10 +103,7 @@
 									@focus="onInputFocus"
 									@blur="onInputBlur"
 								>
-									<div
-										v-if="isListMode"
-										slot="suffix"
-									>
+									<template v-if="isListMode" #suffix>
 										<i
 											:class="{
 												['el-input__icon']: true,
@@ -113,8 +111,8 @@
 												[$style.selectIcon]: true,
 												[$style.isReverse]: showResourceDropdown,
 											}"
-										></i>
-									</div>
+										/>
+									</template>
 								</n8n-input>
 							</div>
 						</template>
@@ -155,9 +153,6 @@ import {
 	INodePropertyMode,
 	NodeParameterValue,
 } from 'n8n-workflow';
-import {
-	hasOnlyListMode,
-} from './helpers';
 
 import DraggableTarget from '@/components/DraggableTarget.vue';
 import ExpressionEdit from '@/components/ExpressionEdit.vue';
@@ -165,12 +160,17 @@ import ParameterIssues from '@/components/ParameterIssues.vue';
 import ResourceLocatorDropdown from './ResourceLocatorDropdown.vue';
 import Vue, { PropType } from 'vue';
 import { INodeUi, IResourceLocatorReqParams, IResourceLocatorResultExpanded } from '@/Interface';
-import { debounceHelper } from '../mixins/debounce';
+import { debounceHelper } from '@/mixins/debounce';
 import stringify from 'fast-json-stable-stringify';
-import { workflowHelpers } from '../mixins/workflowHelpers';
-import { nodeHelpers } from '../mixins/nodeHelpers';
-import { getAppNameFromNodeName } from '../helpers';
-import { isResourceLocatorValue } from '@/typeGuards';
+import { workflowHelpers } from '@/mixins/workflowHelpers';
+import { nodeHelpers } from '@/mixins/nodeHelpers';
+import { getAppNameFromNodeName, isResourceLocatorValue, hasOnlyListMode } from '@/utils';
+import { mapStores } from 'pinia';
+import { useUIStore } from '@/stores/ui';
+import { useWorkflowsStore } from '@/stores/workflows';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useNDVStore } from '@/stores/ndv';
+import { useNodeTypesStore } from '@/stores/nodeTypes';
 
 interface IResourceLocatorQuery {
 	results: INodeListSearchItems[];
@@ -247,7 +247,6 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	},
 	data() {
 		return {
-			mainPanelMutationSubscription: () => {},
 			showResourceDropdown: false,
 			searchFilter: '',
 			cachedResponses: {} as { [key: string]: IResourceLocatorQuery },
@@ -256,13 +255,20 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		};
 	},
 	computed: {
+		...mapStores(
+			useNodeTypesStore,
+			useNDVStore,
+			useRootStore,
+			useUIStore,
+			useWorkflowsStore,
+		),
 		appName(): string {
 			if (!this.node) {
 				return '';
 			}
 
-			const nodeType = this.$store.getters['nodeTypes/getNodeType'](this.node.type);
-			return getAppNameFromNodeName(nodeType.displayName);
+			const nodeType = this.nodeTypesStore.getNodeType(this.node.type);
+			return getAppNameFromNodeName(nodeType?.displayName || '');
 		},
 		selectedMode(): string {
 			if (typeof this.value !== 'object') { // legacy mode
@@ -279,7 +285,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return this.selectedMode === 'list';
 		},
 		hasCredential(): boolean {
-			const node = this.$store.getters.activeNode as INodeUi | null;
+			const node = this.ndvStore.activeNode;
 			if (!node) {
 				return false;
 			}
@@ -424,23 +430,20 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 	mounted() {
 		this.$on('refreshList', this.refreshList);
 		window.addEventListener('resize', this.setWidth);
-		this.mainPanelMutationSubscription = this.$store.subscribe(this.setWidthOnMainPanelResize);
+		useNDVStore().$subscribe((mutation, state) => {
+			// Update the width when main panel dimension change
+			this.setWidth();
+		});
 		setTimeout(() => {
 			this.setWidth();
 		}, 0);
 	},
 	beforeDestroy() {
-		// Unsubscribe
-		this.mainPanelMutationSubscription();
 		window.removeEventListener('resize', this.setWidth);
 	},
 	methods: {
 		setWidth() {
 			this.width = (this.$refs.container as HTMLElement).offsetWidth;
-		},
-		setWidthOnMainPanelResize(mutation: { type: string }) {
-			// Update the width when main panel dimension change
-			if(mutation.type === 'ui/setMainPanelDimensions') this.setWidth();
 		},
 		getLinkAlt(entity: string) {
 			if (this.selectedMode === 'list' && entity) {
@@ -479,7 +482,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 			return parameter.typeOptions[argumentName];
 		},
 		openCredential(): void {
-			const node = this.$store.getters.activeNode as INodeUi | null;
+			const node = this.ndvStore.activeNode;
 			if (!node || !node.credentials) {
 				return;
 			}
@@ -488,7 +491,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 				return;
 			}
 			const id = node.credentials[credentialKey].id;
-			this.$store.dispatch('ui/openExistingCredential', { id });
+			this.uiStore.openExistingCredential(id);
 		},
 		findModeByName(name: string): INodePropertyMode | null {
 			if (this.parameter.modes) {
@@ -532,8 +535,8 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 		},
 		trackEvent(event: string, params?: {[key: string]: string}): void {
 			this.$telemetry.track(event, {
-				instance_id: this.$store.getters.instanceId,
-				workflow_id: this.$store.getters.workflowId,
+				instance_id: this.rootStore.instanceId,
+				workflow_id: this.workflowsStore.workflowId,
 				node_type: this.node && this.node.type,
 				resource: this.node && this.node.parameters && this.node.parameters.resource,
 				operation: this.node && this.node.parameters && this.node.parameters.operation,
@@ -617,10 +620,7 @@ export default mixins(debounceHelper, workflowHelpers, nodeHelpers).extend({
 					...(paginationToken ? { paginationToken } : {}),
 				};
 
-				const response: INodeListSearchResult = await this.$store.dispatch(
-					'nodeTypes/getResourceLocatorResults',
-					requestParams,
-				);
+				const response = await this.nodeTypesStore.getResourceLocatorResults(requestParams);
 
 				this.setResponse(paramsKey, {
 					results: (cachedResponse ? cachedResponse.results : []).concat(response.results),

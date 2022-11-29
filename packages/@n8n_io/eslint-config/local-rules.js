@@ -30,12 +30,14 @@ module.exports = {
 		meta: {
 			type: 'problem',
 			docs: {
-				description: 'Calls to JSON.parse() must be surrounded with a try/catch block.',
+				description:
+					'Calls to `JSON.parse()` must be replaced with `jsonParse()` from `n8n-workflow` or surrounded with a try/catch block.',
 				recommended: 'error',
 			},
 			schema: [],
 			messages: {
-				noUncaughtJsonParse: 'Surround the JSON.parse() call with a try/catch block.',
+				noUncaughtJsonParse:
+					'Use `jsonParse()` from `n8n-workflow` or surround the `JSON.parse()` call with a try/catch block.',
 			},
 		},
 		defaultOptions: [],

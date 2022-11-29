@@ -7,51 +7,60 @@ import {
 	ILoadOptionsFunctions,
 } from 'n8n-core';
 
-import { IDataObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { IDataObject, JsonObject, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { get } from 'lodash';
+
+export const eventID: { [key: string]: string } = {
+	create_client: '1',
+	create_invoice: '2',
+	create_quote: '3',
+	create_payment: '4',
+	create_vendor: '5',
+};
 
 export async function invoiceNinjaApiRequest(
 	this: IHookFunctions | IExecuteFunctions | IExecuteSingleFunctions | ILoadOptionsFunctions,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	query?: IDataObject,
 	uri?: string,
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const credentials = await this.getCredentials('invoiceNinjaApi');
 
-	const baseUrl = credentials!.url || 'https://app.invoiceninja.com';
+	if (credentials === undefined) {
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
+	}
+
+	const version = this.getNodeParameter('apiVersion', 0) as string;
+
+	const defaultUrl = version === 'v4' ? 'https://app.invoiceninja.com' : 'https://invoicing.co';
+	const baseUrl = credentials!.url || defaultUrl;
+
 	const options: OptionsWithUri = {
-		headers: {
-			Accept: 'application/json',
-			'X-Ninja-Token': credentials.apiToken,
-		},
 		method,
 		qs: query,
 		uri: uri || `${baseUrl}/api/v1${endpoint}`,
 		body,
 		json: true,
 	};
+
 	try {
-		return await this.helpers.request!(options);
+		return await this.helpers.requestWithAuthentication.call(this, 'invoiceNinjaApi', options);
 	} catch (error) {
-		throw new NodeApiError(this.getNode(), error);
+		throw new NodeApiError(this.getNode(), error as JsonObject);
 	}
 }
 
 export async function invoiceNinjaApiRequestAllItems(
-	this: IExecuteFunctions | ILoadOptionsFunctions,
+	this: IExecuteFunctions | ILoadOptionsFunctions | IHookFunctions,
 	propertyName: string,
 	method: string,
 	endpoint: string,
-	// tslint:disable-next-line:no-any
-	body: any = {},
+	body: IDataObject = {},
 	query: IDataObject = {},
-	// tslint:disable-next-line:no-any
-): Promise<any> {
+) {
 	const returnData: IDataObject[] = [];
 
 	let responseData;

@@ -1,36 +1,11 @@
-/* eslint-disable import/no-cycle */
-import {
-	BeforeUpdate,
-	CreateDateColumn,
-	Entity,
-	ManyToOne,
-	RelationId,
-	UpdateDateColumn,
-} from 'typeorm';
-import { IsDate, IsOptional } from 'class-validator';
-
-import * as config from '../../../config';
-import { DatabaseType } from '../../index';
+import { Entity, ManyToOne, RelationId } from 'typeorm';
 import { CredentialsEntity } from './CredentialsEntity';
 import { User } from './User';
 import { Role } from './Role';
-
-// eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-function getTimestampSyntax() {
-	const dbType = config.getEnv('database.type');
-
-	const map: { [key in DatabaseType]: string } = {
-		sqlite: "STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')",
-		postgresdb: 'CURRENT_TIMESTAMP(3)',
-		mysqldb: 'CURRENT_TIMESTAMP(3)',
-		mariadb: 'CURRENT_TIMESTAMP(3)',
-	};
-
-	return map[dbType];
-}
+import { AbstractEntity } from './AbstractEntity';
 
 @Entity()
-export class SharedCredentials {
+export class SharedCredentials extends AbstractEntity {
 	@ManyToOne(() => Role, (role) => role.sharedCredentials, { nullable: false })
 	role: Role;
 
@@ -48,23 +23,4 @@ export class SharedCredentials {
 
 	@RelationId((sharedCredential: SharedCredentials) => sharedCredential.credentials)
 	credentialId: number;
-
-	@CreateDateColumn({ precision: 3, default: () => getTimestampSyntax() })
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	createdAt: Date;
-
-	@UpdateDateColumn({
-		precision: 3,
-		default: () => getTimestampSyntax(),
-		onUpdate: getTimestampSyntax(),
-	})
-	@IsOptional() // ignored by validation because set at DB level
-	@IsDate()
-	updatedAt: Date;
-
-	@BeforeUpdate()
-	setUpdateDate(): void {
-		this.updatedAt = new Date();
-	}
 }

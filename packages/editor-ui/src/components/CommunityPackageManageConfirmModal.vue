@@ -8,9 +8,9 @@
 		:showClose="!loading"
 		:beforeClose="onModalClose"
 	>
-		<template slot="content">
+		<template #content>
 			<n8n-text>{{ getModalContent.message }}</n8n-text>
-			<div :class="$style.descriptionContainer" v-if="this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
+			<div :class="$style.descriptionContainer" v-if="mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UPDATE">
 				<n8n-info-tip theme="info" type="note" :bold="false">
 					<template>
 						<span v-text="getModalContent.description"></span>
@@ -18,7 +18,7 @@
 				</n8n-info-tip>
 			</div>
 		</template>
-		<template slot="footer">
+		<template #footer>
 			<n8n-button
 				:loading="loading"
 				:disabled="loading"
@@ -36,7 +36,9 @@ import Vue from 'vue';
 import mixins from 'vue-typed-mixins';
 import Modal from './Modal.vue';
 import { COMMUNITY_PACKAGE_CONFIRM_MODAL_KEY, COMMUNITY_PACKAGE_MANAGE_ACTIONS } from '../constants';
-import { showMessage } from './mixins/showMessage';
+import { showMessage } from '@/mixins/showMessage';
+import { mapStores } from 'pinia';
+import { useCommunityNodesStore } from '@/stores/communityNodes';
 
 export default mixins(showMessage).extend({
 	name: 'CommunityPackageManageConfirmModal',
@@ -65,8 +67,9 @@ export default mixins(showMessage).extend({
 		};
 	},
 	computed: {
+		...mapStores(useCommunityNodesStore),
 		activePackage() {
-			return this.$store.getters['communityNodes/getInstalledPackageByName'](this.activePackageName);
+			return this.communityNodesStore.getInstalledPackageByName(this.activePackageName);
 		},
 		getModalContent() {
 			if (this.mode === COMMUNITY_PACKAGE_MANAGE_ACTIONS.UNINSTALL) {
@@ -120,7 +123,7 @@ export default mixins(showMessage).extend({
 					package_author_email: this.activePackage.authorEmail,
 				});
 				this.loading = true;
-				await this.$store.dispatch('communityNodes/uninstallPackage', this.activePackageName);
+				await this.communityNodesStore.uninstallPackage(this.activePackageName);
 				this.$showMessage({
 					title: this.$locale.baseText('settings.communityNodes.messages.uninstall.success.title'),
 					type: 'success',
@@ -144,7 +147,7 @@ export default mixins(showMessage).extend({
 				});
 				this.loading = true;
 				const updatedVersion = this.activePackage.updateAvailable;
-				await this.$store.dispatch('communityNodes/updatePackage', this.activePackageName);
+				await this.communityNodesStore.updatePackage(this.activePackageName);
 				this.$showMessage({
 					title: this.$locale.baseText('settings.communityNodes.messages.update.success.title'),
 					message: this.$locale.baseText('settings.communityNodes.messages.update.success.message', {

@@ -1,5 +1,3 @@
-import { parse as urlParse } from 'url';
-
 import { IHookFunctions, IWebhookFunctions } from 'n8n-core';
 
 import {

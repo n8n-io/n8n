@@ -75,7 +75,6 @@ export class PostHog implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -88,7 +87,7 @@ export class PostHog implements INodeType {
 
 						const alias = this.getNodeParameter('alias', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const context =
 							(((additionalFields.contextUi as IDataObject) || {})
@@ -138,7 +137,7 @@ export class PostHog implements INodeType {
 
 						const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const properties =
 							(((additionalFields.propertiesUi as IDataObject) || {})
@@ -186,7 +185,7 @@ export class PostHog implements INodeType {
 					try {
 						const distinctId = this.getNodeParameter('distinctId', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const properties =
 							(((additionalFields.propertiesUi as IDataObject) || {})
@@ -233,7 +232,7 @@ export class PostHog implements INodeType {
 
 						const name = this.getNodeParameter('name', i) as string;
 
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const context =
 							(((additionalFields.contextUi as IDataObject) || {})

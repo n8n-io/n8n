@@ -1,7 +1,7 @@
 import { IExecuteFunctions } from 'n8n-core';
 
 import {
-	IDataObject,
+	deepCopy,
 	ILoadOptionsFunctions,
 	INodeExecutionData,
 	INodePropertyOptions,
@@ -378,7 +378,7 @@ export class DateTime implements INodeType {
 					const currentDate = this.getNodeParameter('value', i) as string;
 					const dataPropertyName = this.getNodeParameter('dataPropertyName', i) as string;
 					const toFormat = this.getNodeParameter('toFormat', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 					let newDate;
 
 					if (currentDate === undefined) {
@@ -431,7 +431,7 @@ export class DateTime implements INodeType {
 					if (dataPropertyName.includes('.')) {
 						// Uses dot notation so copy all data
 						newItem = {
-							json: JSON.parse(JSON.stringify(item.json)),
+							json: deepCopy(item.json),
 							pairedItem: {
 								item: i,
 							},
@@ -475,7 +475,7 @@ export class DateTime implements INodeType {
 					if (dataPropertyName.includes('.')) {
 						// Uses dot notation so copy all data
 						newItem = {
-							json: JSON.parse(JSON.stringify(item.json)),
+							json: deepCopy(item.json),
 							pairedItem: {
 								item: i,
 							},

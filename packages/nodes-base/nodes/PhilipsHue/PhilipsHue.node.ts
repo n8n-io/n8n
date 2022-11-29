@@ -90,7 +90,6 @@ export class PhilipsHue implements INodeType {
 		const items = this.getInputData();
 		const returnData: IDataObject[] = [];
 		const length = items.length;
-		const qs: IDataObject = {};
 		let responseData;
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
@@ -101,7 +100,7 @@ export class PhilipsHue implements INodeType {
 
 					const on = this.getNodeParameter('on', i) as boolean;
 
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					const body = {
 						on,
@@ -152,7 +151,7 @@ export class PhilipsHue implements INodeType {
 					);
 				}
 				if (operation === 'getAll') {
-					const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+					const returnAll = this.getNodeParameter('returnAll', i);
 
 					const user = await getUser.call(this);
 
@@ -161,7 +160,7 @@ export class PhilipsHue implements INodeType {
 					responseData = Object.values(lights);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.splice(0, limit);
 					}
 				}

@@ -28,6 +28,11 @@
 
 <script lang="ts">
 import {IFakeDoor} from '@/Interface';
+import { useRootStore } from '@/stores/n8nRootStore';
+import { useSettingsStore } from '@/stores/settings';
+import { useUIStore } from '@/stores/ui';
+import { useUsersStore } from '@/stores/users';
+import { mapStores } from 'pinia';
 import Vue from 'vue';
 
 export default Vue.extend({
@@ -43,23 +48,28 @@ export default Vue.extend({
 		},
 	},
 	computed: {
+		...mapStores(
+			useRootStore,
+			useSettingsStore,
+			useUIStore,
+			useUsersStore,
+		),
 		userId(): string {
-			return this.$store.getters['users/currentUserId'];
-		},
-		versionCli(): string {
-			return this.$store.getters['settings/versionCli'];
+			return this.usersStore.currentUserId || '';
 		},
 		instanceId(): string {
-			return this.$store.getters.instanceId;
+			return this.rootStore.instanceId;
 		},
-		featureInfo(): IFakeDoor {
-			return this.$store.getters['ui/getFakeDoorById'](this.featureId);
+		featureInfo(): IFakeDoor | undefined {
+			return this.uiStore.getFakeDoorById(this.featureId);
 		},
 	},
 	methods: {
 		openLinkPage() {
-			window.open(`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.versionCli}`, '_blank');
-			this.$telemetry.track('user clicked feature waiting list button', {feature: this.featureId});
+			if (this.featureInfo) {
+				window.open(`${this.featureInfo.linkURL}&u=${this.instanceId}#${this.userId}&v=${this.rootStore.versionCli}`, '_blank');
+				this.$telemetry.track('user clicked feature waiting list button', {feature: this.featureId});
+			}
 		},
 	},
 });

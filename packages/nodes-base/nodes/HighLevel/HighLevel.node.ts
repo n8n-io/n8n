@@ -46,7 +46,6 @@ export class HighLevel implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'HighLevel',
-			color: '#f1be40',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

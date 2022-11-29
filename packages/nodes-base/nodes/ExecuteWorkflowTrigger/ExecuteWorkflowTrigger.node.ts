@@ -20,7 +20,7 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		properties: [
 			{
 				displayName:
-					'When an ‘execute workflow’ node calls this workflow, the execution starts here. Any data passed into the \'execute workflow\' node will be output by this node.',
+					"When an ‘execute workflow’ node calls this workflow, the execution starts here. Any data passed into the 'execute workflow' node will be output by this node.",
 				name: 'notice',
 				type: 'notice',
 				default: '',

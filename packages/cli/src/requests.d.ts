@@ -1,4 +1,3 @@
-/* eslint-disable import/no-cycle */
 import express from 'express';
 import {
 	IConnections,
@@ -11,11 +10,11 @@ import {
 	IWorkflowSettings,
 } from 'n8n-workflow';
 
-import type { IExecutionDeleteFilter, IWorkflowDb } from '.';
-import type { Role } from './databases/entities/Role';
-import type { User } from './databases/entities/User';
-import * as UserManagementMailer from './UserManagement/email/UserManagementMailer';
-import type { PublicUser } from './UserManagement/Interfaces';
+import type { IExecutionDeleteFilter, IWorkflowDb } from '@/Interfaces';
+import type { Role } from '@db/entities/Role';
+import type { User } from '@db/entities/User';
+import * as UserManagementMailer from '@/UserManagement/email/UserManagementMailer';
+import type { PublicUser } from '@/UserManagement/Interfaces';
 
 export type AuthlessRequest<
 	RouteParams = {},
@@ -40,7 +39,7 @@ export type AuthenticatedRequest<
 // ----------------------------------
 
 export declare namespace WorkflowRequest {
-	type RequestBody = Partial<{
+	type CreateUpdatePayload = Partial<{
 		id: string; // delete if sent
 		name: string;
 		nodes: INode[];
@@ -48,9 +47,18 @@ export declare namespace WorkflowRequest {
 		settings: IWorkflowSettings;
 		active: boolean;
 		tags: string[];
+		hash: string;
 	}>;
 
-	type Create = AuthenticatedRequest<{}, {}, RequestBody>;
+	type ManualRunPayload = {
+		workflowData: IWorkflowDb;
+		runData: IRunData;
+		pinData: IPinData;
+		startNodes?: string[];
+		destinationNode?: string;
+	};
+
+	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
 	type Get = AuthenticatedRequest<{ id: string }>;
 
@@ -59,7 +67,7 @@ export declare namespace WorkflowRequest {
 	type Update = AuthenticatedRequest<
 		{ id: string },
 		{},
-		RequestBody & { updatedAt: string },
+		CreateUpdatePayload,
 		{ forceSave?: string }
 	>;
 
@@ -71,17 +79,7 @@ export declare namespace WorkflowRequest {
 
 	type GetAllActivationErrors = Get;
 
-	type ManualRun = AuthenticatedRequest<
-		{},
-		{},
-		{
-			workflowData: IWorkflowDb;
-			runData: IRunData;
-			pinData: IPinData;
-			startNodes?: string[];
-			destinationNode?: string;
-		}
-	>;
+	type ManualRun = AuthenticatedRequest<{}, {}, ManualRunPayload>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
 }

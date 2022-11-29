@@ -9,6 +9,7 @@ export class OuraApi implements ICredentialType {
 			displayName: 'Personal Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 		},
 	];

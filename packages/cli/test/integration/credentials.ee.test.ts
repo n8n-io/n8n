@@ -2,18 +2,18 @@ import express from 'express';
 import { UserSettings } from 'n8n-core';
 import { In } from 'typeorm';
 
-import { Db } from '../../src';
-import { RESPONSE_ERROR_MESSAGES } from '../../src/constants';
-import type { CredentialWithSharings } from '../../src/credentials/credentials.types';
-import * as UserManagementHelpers from '../../src/UserManagement/UserManagementHelper';
-import type { Role } from '../../src/databases/entities/Role';
+import * as Db from '@/Db';
+import { RESPONSE_ERROR_MESSAGES } from '@/constants';
+import type { CredentialWithSharings } from '@/credentials/credentials.types';
+import * as UserManagementHelpers from '@/UserManagement/UserManagementHelper';
+import type { Role } from '@db/entities/Role';
 import { randomCredentialPayload } from './shared/random';
 import * as testDb from './shared/testDb';
 import type { AuthAgent, SaveCredentialFunction } from './shared/types';
 import * as utils from './shared/utils';
 import type { IUser } from 'n8n-workflow';
 
-jest.mock('../../src/telemetry');
+jest.mock('@/telemetry');
 
 let app: express.Application;
 let testDbName = '';

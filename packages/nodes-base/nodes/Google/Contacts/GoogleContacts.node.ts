@@ -100,7 +100,7 @@ export class GoogleContacts implements INodeType {
 					if (operation === 'create') {
 						const familyName = this.getNodeParameter('familyName', i) as string;
 						const givenName = this.getNodeParameter('givenName', i) as string;
-						const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
 
 						const body: IDataObject = {
 							names: [
@@ -244,7 +244,7 @@ export class GoogleContacts implements INodeType {
 					if (operation === 'get') {
 						const contactId = this.getNodeParameter('contactId', i) as string;
 						const fields = this.getNodeParameter('fields', i) as string[];
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 
 						if (fields.includes('*')) {
 							qs.personFields = allFields.join(',');
@@ -263,10 +263,10 @@ export class GoogleContacts implements INodeType {
 					//https://developers.google.com/people/api/rest/v1/people.connections/list
 					//https://developers.google.com/people/api/rest/v1/people/searchContacts
 					if (operation === 'getAll') {
-						const returnAll = this.getNodeParameter('returnAll', i) as boolean;
+						const returnAll = this.getNodeParameter('returnAll', i);
 						const fields = this.getNodeParameter('fields', i) as string[];
 						const options = this.getNodeParameter('options', i, {}) as IDataObject;
-						const rawData = this.getNodeParameter('rawData', i) as boolean;
+						const rawData = this.getNodeParameter('rawData', i);
 						const useQuery = this.getNodeParameter('useQuery', i) as boolean;
 
 						const endpoint = useQuery ? ':searchContacts' : '/me/connections';
@@ -304,7 +304,7 @@ export class GoogleContacts implements INodeType {
 								responseData = responseData.map((result: IDataObject) => result.person);
 							}
 						} else {
-							qs.pageSize = this.getNodeParameter('limit', i) as number;
+							qs.pageSize = this.getNodeParameter('limit', i);
 							responseData = await googleApiRequest.call(this, 'GET', `/people${endpoint}`, {}, qs);
 
 							responseData =
@@ -329,7 +329,7 @@ export class GoogleContacts implements INodeType {
 
 						const fields = this.getNodeParameter('fields', i) as string[];
 
-						const updateFields = this.getNodeParameter('updateFields', i) as IDataObject;
+						const updateFields = this.getNodeParameter('updateFields', i);
 
 						let etag;
 

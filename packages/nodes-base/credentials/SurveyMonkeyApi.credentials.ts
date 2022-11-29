@@ -9,6 +9,7 @@ export class SurveyMonkeyApi implements ICredentialType {
 			displayName: 'Access Token',
 			name: 'accessToken',
 			type: 'string',
+			typeOptions: { password: true },
 			default: '',
 			description: `The access token must have the following scopes:
 			<ul>

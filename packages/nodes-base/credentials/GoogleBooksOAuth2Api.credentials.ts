@@ -6,7 +6,7 @@ export class GoogleBooksOAuth2Api implements ICredentialType {
 	name = 'googleBooksOAuth2Api';
 	extends = ['googleOAuth2Api'];
 	displayName = 'Google Books OAuth2 API';
-	documentationUrl = 'google';
+	documentationUrl = 'google/oauth-single-service';
 	properties: INodeProperties[] = [
 		{
 			displayName: 'Scope',

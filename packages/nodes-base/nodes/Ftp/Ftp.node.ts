@@ -414,7 +414,6 @@ export class Ftp implements INodeType {
 		const items = this.getInputData();
 		// const returnData: IDataObject[] = [];
 		const returnItems: INodeExecutionData[] = [];
-		const qs: IDataObject = {};
 		let responseData;
 		const operation = this.getNodeParameter('operation', 0) as string;
 
@@ -489,7 +488,7 @@ export class Ftp implements INodeType {
 
 					if (operation === 'delete') {
 						const path = this.getNodeParameter('path', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (options.folder === true) {
 							responseData = await sftp!.rmdir(path, !!options.recursive);
@@ -600,7 +599,7 @@ export class Ftp implements INodeType {
 
 					if (operation === 'delete') {
 						const path = this.getNodeParameter('path', i) as string;
-						const options = this.getNodeParameter('options', i) as IDataObject;
+						const options = this.getNodeParameter('options', i);
 
 						if (options.folder === true) {
 							responseData = await ftp!.rmdir(path, !!options.recursive);

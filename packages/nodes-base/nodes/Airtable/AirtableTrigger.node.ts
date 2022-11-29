@@ -35,20 +35,92 @@ export class AirtableTrigger implements INodeType {
 		outputs: ['main'],
 		properties: [
 			{
-				displayName: 'Base ID',
+				displayName: 'Base',
 				name: 'baseId',
-				type: 'string',
-				default: '',
+				type: 'resourceLocator',
+				default: { mode: 'url', value: '' },
 				required: true,
-				description: 'The ID of this base',
+				description: 'The Airtable Base in which to operate on',
+				modes: [
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https://airtable.com/([a-zA-Z0-9]{2,})/.*',
+									errorMessage: 'Not a valid Airtable Base URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https://airtable.com/([a-zA-Z0-9]{2,})',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Not a valid Airtable Base ID',
+								},
+							},
+						],
+						placeholder: 'appD3dfaeidke',
+						url: '=https://airtable.com/{{$value}}',
+					},
+				],
 			},
 			{
-				displayName: 'Table ID',
+				displayName: 'Table',
 				name: 'tableId',
-				type: 'string',
-				default: '',
-				description: 'The ID of the table to access',
+				type: 'resourceLocator',
+				default: { mode: 'url', value: '' },
 				required: true,
+				modes: [
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						placeholder: 'https://airtable.com/app12DiScdfes/tblAAAAAAAAAAAAA/viwHdfasdfeieg5p',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})/.*',
+									errorMessage: 'Not a valid Airtable Table URL',
+								},
+							},
+						],
+						extractValue: {
+							type: 'regex',
+							regex: 'https://airtable.com/[a-zA-Z0-9]{2,}/([a-zA-Z0-9]{2,})',
+						},
+					},
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						validation: [
+							{
+								type: 'regex',
+								properties: {
+									regex: '[a-zA-Z0-9]{2,}',
+									errorMessage: 'Not a valid Airtable Table ID',
+								},
+							},
+						],
+						placeholder: 'tbl3dirwqeidke',
+					},
+				],
 			},
 			{
 				displayName: 'Trigger Field',
@@ -126,9 +198,9 @@ export class AirtableTrigger implements INodeType {
 
 		const additionalFields = this.getNodeParameter('additionalFields') as IDataObject;
 
-		const base = this.getNodeParameter('baseId') as string;
+		const base = this.getNodeParameter('baseId', '', { extractValue: true }) as string;
 
-		const table = this.getNodeParameter('tableId') as string;
+		const table = this.getNodeParameter('tableId', '', { extractValue: true }) as string;
 
 		const triggerField = this.getNodeParameter('triggerField') as string;
 

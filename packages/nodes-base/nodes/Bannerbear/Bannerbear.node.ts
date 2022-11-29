@@ -109,7 +109,6 @@ export class Bannerbear implements INodeType {
 		const returnData: IDataObject[] = [];
 		const length = items.length;
 		let responseData;
-		const qs: IDataObject = {};
 		const resource = this.getNodeParameter('resource', 0) as string;
 		const operation = this.getNodeParameter('operation', 0) as string;
 		for (let i = 0; i < length; i++) {
@@ -117,7 +116,7 @@ export class Bannerbear implements INodeType {
 				//https://developers.bannerbear.com/#create-an-image
 				if (operation === 'create') {
 					const templateId = this.getNodeParameter('templateId', i) as string;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 					const modifications = (this.getNodeParameter('modificationsUi', i) as IDataObject)
 						.modificationsValues as IDataObject;
 					const body: IDataObject = {

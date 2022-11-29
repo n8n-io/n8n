@@ -1,15 +1,6 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import {
-	ICredentialsDecrypted,
-	ICredentialTestFunctions,
-	IDataObject,
-	INodeCredentialTestResult,
-	INodeExecutionData,
-	INodeType,
-	INodeTypeDescription,
-	JsonObject,
-} from 'n8n-workflow';
+import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
 import {
 	downloadAttachments,
@@ -36,7 +27,6 @@ export class KoBoToolbox implements INodeType {
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		defaults: {
 			name: 'KoBoToolbox',
-			color: '#64C0FF',
 		},
 		inputs: ['main'],
 		outputs: ['main'],
@@ -124,12 +114,12 @@ export class KoBoToolbox implements INodeType {
 							};
 						};
 					};
-					const formFilterOptions = this.getNodeParameter('filters', i) as IDataObject;
+					const formFilterOptions = this.getNodeParameter('filters', i);
 
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: '/api/v2/assets/',
 						qs: {
-							limit: this.getNodeParameter('limit', i, 1000) as number,
+							limit: this.getNodeParameter('limit', i, 1000),
 							...(formFilterOptions.filter && { q: formFilterOptions.filter }),
 							...(formQueryOptions?.sort?.value?.ordering && {
 								ordering:
@@ -152,13 +142,13 @@ export class KoBoToolbox implements INodeType {
 					//          Submissions: getAll
 					// ----------------------------------
 
-					const submissionQueryOptions = this.getNodeParameter('options', i) as IDataObject;
+					const submissionQueryOptions = this.getNodeParameter('options', i);
 					const filterJson = this.getNodeParameter('filterJson', i, null) as string;
 
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${formId}/data/`,
 						qs: {
-							limit: this.getNodeParameter('limit', i, 1000) as number,
+							limit: this.getNodeParameter('limit', i, 1000),
 							...(filterJson && { query: filterJson }),
 							...(submissionQueryOptions.sort && { sort: submissionQueryOptions.sort }),
 							...(submissionQueryOptions.fields && {
@@ -193,7 +183,7 @@ export class KoBoToolbox implements INodeType {
 					//          Submissions: get
 					// ----------------------------------
 					const submissionId = this.getNodeParameter('submissionId', i) as string;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					responseData = [
 						await koBoToolboxApiRequest.call(this, {
@@ -287,7 +277,7 @@ export class KoBoToolbox implements INodeType {
 					responseData = await koBoToolboxApiRequest.call(this, {
 						url: `/api/v2/assets/${formId}/hooks/`,
 						qs: {
-							limit: this.getNodeParameter('limit', i, 1000) as number,
+							limit: this.getNodeParameter('limit', i, 1000),
 						},
 						scroll: this.getNodeParameter('returnAll', i) as boolean,
 					});

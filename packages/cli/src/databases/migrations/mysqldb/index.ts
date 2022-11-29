@@ -22,6 +22,7 @@ import { AddJsonKeyPinData1659895550980 } from './1659895550980-AddJsonKeyPinDat
 import { CreateCredentialsUserRole1660062385367 } from './1660062385367-CreateCredentialsUserRole';
 import { CreateWorkflowsEditorRole1663755770894 } from './1663755770894-CreateWorkflowsEditorRole';
 import { CreateCredentialUsageTable1665484192213 } from './1665484192213-CreateCredentialUsageTable';
+import { RemoveCredentialUsageTable1665754637026 } from './1665754637026-RemoveCredentialUsageTable';
 
 export const mysqlMigrations = [
 	InitialMigration1588157391238,
@@ -48,4 +49,5 @@ export const mysqlMigrations = [
 	CreateCredentialsUserRole1660062385367,
 	CreateWorkflowsEditorRole1663755770894,
 	CreateCredentialUsageTable1665484192213,
+	RemoveCredentialUsageTable1665754637026,
 ];

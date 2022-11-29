@@ -1,6 +1,12 @@
 import { IExecuteFunctions } from 'n8n-core';
 
-import { IDataObject, INodeExecutionData, INodeType, INodeTypeDescription } from 'n8n-workflow';
+import {
+	IDataObject,
+	INodeExecutionData,
+	INodeType,
+	INodeTypeDescription,
+	jsonParse,
+} from 'n8n-workflow';
 
 import { elasticsearchApiRequest, elasticsearchApiRequestAllItems } from './GenericFunctions';
 
@@ -93,7 +99,7 @@ export class Elasticsearch implements INodeType {
 					const documentId = this.getNodeParameter('documentId', i);
 
 					const qs = {} as IDataObject;
-					const options = this.getNodeParameter('options', i) as IDataObject;
+					const options = this.getNodeParameter('options', i);
 
 					if (Object.keys(options).length) {
 						Object.assign(qs, options);
@@ -127,7 +133,12 @@ export class Elasticsearch implements INodeType {
 
 					if (Object.keys(options).length) {
 						const { query, ...rest } = options;
-						if (query) Object.assign(body, JSON.parse(query));
+						if (query) {
+							Object.assign(
+								body,
+								jsonParse(query, { errorMessage: "Invalid JSON in 'Query' option" }),
+							);
+						}
 						Object.assign(qs, rest);
 						qs._source = true;
 					}
@@ -205,7 +216,7 @@ export class Elasticsearch implements INodeType {
 					}
 
 					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(qs, omit(additionalFields, ['documentId']));
@@ -272,7 +283,7 @@ export class Elasticsearch implements INodeType {
 
 					const body = {} as IDataObject;
 					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (Object.keys(additionalFields).length) {
 						const { aliases, mappings, settings, ...rest } = additionalFields;
@@ -304,7 +315,7 @@ export class Elasticsearch implements INodeType {
 					const indexId = this.getNodeParameter('indexId', i) as string;
 
 					const qs = {} as IDataObject;
-					const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
+					const additionalFields = this.getNodeParameter('additionalFields', i);
 
 					if (Object.keys(additionalFields).length) {
 						Object.assign(qs, additionalFields);
@@ -325,7 +336,7 @@ export class Elasticsearch implements INodeType {
 					const returnAll = this.getNodeParameter('returnAll', i);
 
 					if (!returnAll) {
-						const limit = this.getNodeParameter('limit', i) as number;
+						const limit = this.getNodeParameter('limit', i);
 						responseData = responseData.slice(0, limit);
 					}
 				}
