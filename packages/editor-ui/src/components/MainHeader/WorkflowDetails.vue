@@ -133,7 +133,7 @@ import SaveButton from "@/components/SaveButton.vue";
 import TagsDropdown from "@/components/TagsDropdown.vue";
 import InlineTextEdit from "@/components/InlineTextEdit.vue";
 import BreakpointsObserver from "@/components/BreakpointsObserver.vue";
-import {IFakeDoor, IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare, NestedRecord} from "@/Interface";
+import {IWorkflowDataUpdate, IWorkflowDb, IWorkflowToShare, NestedRecord} from "@/Interface";
 
 import { saveAs } from 'file-saver';
 import { titleChange } from "@/mixins/titleChange";
@@ -261,9 +261,6 @@ export default mixins(workflowHelpers, titleChange).extend({
 					},
 				] : []),
 			];
-		},
-		fakeDoor(): IFakeDoor | undefined {
-			return this.uiStore.getFakeDoorById(FAKE_DOOR_FEATURES.WORKFLOWS_SHARING);
 		},
 	},
 	methods: {
