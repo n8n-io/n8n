@@ -70,6 +70,6 @@ export default Vue.extend({
 	border-radius: var(--border-radius-base);
 	color: var(--color-text-light);
 	border-color: var(--color-text-light);
-	padding: 1px var(--spacing-4xs);
+	padding: 1px var(--spacing-5xs);
 }
 </style>

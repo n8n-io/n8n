@@ -489,11 +489,6 @@
 	"fakeDoor.credentialEdit.sharing.actionBox.title.cloud.upgrade": "Upgrade to add users",
 	"fakeDoor.credentialEdit.sharing.actionBox.description.cloud.upgrade": "Power and Pro plan users can create multiple user accounts and share credentials. (Sharing workflows is coming soon)",
 	"fakeDoor.credentialEdit.sharing.actionBox.button.cloud.upgrade": "Upgrade",
-	"fakeDoor.workflowsSharing.title.cloud.upgrade": "Upgrade to add users",
-	"fakeDoor.workflowsSharing.description": "Sharing workflows with others is currently available only on n8n cloud, our hosted offering.",
-	"fakeDoor.workflowsSharing.description.cloud.upgrade": "Power and Pro plan users can create multiple user accounts and share workflows.",
-	"fakeDoor.workflowsSharing.button": "Explore n8n cloud",
-	"fakeDoor.workflowsSharing.button.cloud.upgrade": "Upgrade",
 	"fakeDoor.settings.environments.name": "Environments",
 	"fakeDoor.settings.environments.infoText": "Environments allow you to use different settings and credentials in a workflow when you're building it vs when it's running in production",
 	"fakeDoor.settings.environments.actionBox.title": "We’re working on environments (as a paid feature)",
@@ -1404,5 +1399,14 @@
 	"importParameter.showError.invalidCurlCommand.message": "This command is in an unsupported format",
 	"importParameter.showError.invalidProtocol1.title": "Use the {node} node",
 	"importParameter.showError.invalidProtocol2.title": "Invalid Protocol",
-	"importParameter.showError.invalidProtocol.message": "The HTTP node doesn’t support {protocol} requests"
+	"importParameter.showError.invalidProtocol.message": "The HTTP node doesn’t support {protocol} requests",
+	"dynamic.workflows.shareModal.title": "Share '{name}'",
+	"dynamic.workflows.shareModal.title.cloud.upgrade": "Upgrade to add users",
+	"dynamic.workflows.sharing.unavailable.description": "Sharing workflows with others is currently available only on n8n cloud, our hosted offering. {action}",
+	"dynamic.workflows.sharing.unavailable.description.cloud.upgrade": "Sharing is available for Team and Enterprise plans. {action} to unlock more features.",
+	"dynamic.workflows.sharing.unavailable.action": "Explore n8n cloud",
+	"dynamic.workflows.sharing.unavailable.action.cloud.upgrade": "Upgrade now",
+	"dynamic.workflows.sharing.unavailable.button": "Explore n8n cloud",
+	"dynamic.workflows.sharing.unavailable.button.cloud.upgrade": "Upgrade now",
+	"dynamic.workflows.sharing.unavailable.linkUrl": "https://n8n.cloud"
 }

@@ -202,7 +202,7 @@ export class WorkflowsService {
 
 		if (!forceSave && workflow.hash !== '' && workflow.hash !== shared.workflow.hash) {
 			throw new ResponseHelper.BadRequestError(
-				'We are sorry, but the workflow has been changed in the meantime. Please reload the workflow and try again.',
+				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
 			);
 		}
 

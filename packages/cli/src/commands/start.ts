@@ -6,10 +6,17 @@
 /* eslint-disable no-console */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import path from 'path';
+import { mkdir } from 'fs/promises';
+import { createReadStream, createWriteStream, existsSync } from 'fs';
 import localtunnel from 'localtunnel';
 import { BinaryDataManager, TUNNEL_SUBDOMAIN_ENV, UserSettings } from 'n8n-core';
 import { Command, flags } from '@oclif/command';
 import Redis from 'ioredis';
+import stream from 'stream';
+import replaceStream from 'replacestream';
+import { promisify } from 'util';
+import glob from 'fast-glob';
 
 import { IDataObject, LoggerProxy, sleep } from 'n8n-workflow';
 import { createHash } from 'crypto';
@@ -34,9 +41,12 @@ import { getLogger } from '@/Logger';
 import { getAllInstalledPackages } from '@/CommunityNodes/packageModel';
 import { initErrorHandling } from '@/ErrorReporting';
 import * as CrashJournal from '@/CrashJournal';
+import { createPostHogLoadingScript } from '@/telemetry/scripts';
+import { EDITOR_UI_DIST_DIR, GENERATED_STATIC_DIR } from '@/constants';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-var-requires
 const open = require('open');
+const pipeline = promisify(stream.pipeline);
 
 let activeWorkflowRunner: ActiveWorkflowRunner.ActiveWorkflowRunner | undefined;
 let processExitCode = 0;
@@ -152,6 +162,60 @@ export class Start extends Command {
 		exit();
 	}
 
+	static async generateStaticAssets() {
+		// Read the index file and replace the path placeholder
+		const n8nPath = config.getEnv('path');
+		const hooksUrls = config.getEnv('externalFrontendHooksUrls');
+
+		let scriptsString = '';
+		if (hooksUrls) {
+			scriptsString = hooksUrls.split(';').reduce((acc, curr) => {
+				return `${acc}<script src="${curr}"></script>`;
+			}, '');
+		}
+
+		if (config.getEnv('diagnostics.enabled')) {
+			const phLoadingScript = createPostHogLoadingScript({
+				apiKey: config.getEnv('diagnostics.config.posthog.apiKey'),
+				apiHost: config.getEnv('diagnostics.config.posthog.apiHost'),
+				autocapture: false,
+				disableSessionRecording: config.getEnv(
+					'diagnostics.config.posthog.disableSessionRecording',
+				),
+				debug: config.getEnv('logs.level') === 'debug',
+			});
+
+			scriptsString += phLoadingScript;
+		}
+
+		const closingTitleTag = '</title>';
+		const compileFile = async (fileName: string) => {
+			const filePath = path.join(EDITOR_UI_DIST_DIR, fileName);
+			if (/(index\.html)|.*\.(js|css)/.test(filePath) && existsSync(filePath)) {
+				const destFile = path.join(GENERATED_STATIC_DIR, fileName);
+				await mkdir(path.dirname(destFile), { recursive: true });
+				const streams = [
+					createReadStream(filePath, 'utf-8'),
+					replaceStream('/{{BASE_PATH}}/', n8nPath, { ignoreCase: false }),
+					replaceStream('/static/', n8nPath + 'static/', { ignoreCase: false }),
+				];
+				if (filePath.endsWith('index.html')) {
+					streams.push(
+						replaceStream(closingTitleTag, closingTitleTag + scriptsString, {
+							ignoreCase: false,
+						}),
+					);
+				}
+				streams.push(createWriteStream(destFile, 'utf-8'));
+				return pipeline(streams);
+			}
+		};
+
+		await compileFile('index.html');
+		const files = await glob('**/*.{css,js}', { cwd: EDITOR_UI_DIST_DIR });
+		await Promise.all(files.map(compileFile));
+	}
+
 	async run() {
 		// Make sure that n8n shuts down gracefully if possible
 		process.once('SIGTERM', Start.stopProcess);
@@ -198,6 +262,10 @@ export class Start extends Command {
 						'userManagement.jwtSecret',
 						createHash('sha256').update(baseKey).digest('hex'),
 					);
+				}
+
+				if (!config.getEnv('endpoints.disableUi')) {
+					await Start.generateStaticAssets();
 				}
 
 				// Load all node and credential types
