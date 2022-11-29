@@ -37,16 +37,10 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Get many deals',
 			},
 			{
-				name: 'Get Recently Created',
-				value: 'getRecentlyCreated',
-				description: 'Get recently created deals',
-				action: 'Get recently created deals',
-			},
-			{
-				name: 'Get Recently Modified',
-				value: 'getRecentlyModified',
-				description: 'Get recently modified deals',
-				action: 'Get recently modified deals',
+				name: 'Get Recent Deals',
+				value: 'getRecent',
+				description: 'Get recent deals',
+				action: 'Get recently deals',
 			},
 			{
 				name: 'Search',
@@ -469,10 +463,10 @@ export const dealFields: INodeProperties[] = [
 		description: 'The Unique identifier in which to operate on',
 	},
 	{
-		displayName: 'Options',
-		name: 'additionalFields',
+		displayName: 'Filters',
+		name: 'filters',
 		type: 'collection',
-		placeholder: 'Add Option',
+		placeholder: 'Add Filter',
 		default: {},
 		displayOptions: {
 			show: {
@@ -490,9 +484,53 @@ export const dealFields: INodeProperties[] = [
 				description:
 					'By default, you will only get data for the most recent version of a property in the "versions" data. If you include this parameter, you will get data for all previous versions.',
 			},
+			{
+				displayName: 'Deal Properties to Include',
+				name: 'propertiesCollection',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						name: 'propertiesValues',
+						displayName: 'Deal Properties to Include',
+						values: [
+							{
+								displayName: 'Deal Properties to Include',
+								name: 'properties',
+								type: 'multiOptions',
+								typeOptions: {
+									loadOptionsMethod: 'getDealProperties',
+								},
+								default: [],
+								description:
+									'<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Include',
+								name: 'propertyMode',
+								type: 'options',
+								options: [
+									{
+										name: 'Value And History',
+										value: 'valueAndHistory',
+									},
+									{
+										name: 'Value Only',
+										value: 'valueOnly',
+									},
+								],
+								default: 'valueAndHistory',
+								description:
+									'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+							},
+						],
+					},
+				],
+				description:
+					'<p>Used to include specific deal properties in the results. By default, the results will only include Deal ID and will not include the values for any properties for your Deals.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+			},
 		],
 	},
-
 	/* -------------------------------------------------------------------------- */
 	/*                                 deal:getAll                                */
 	/* -------------------------------------------------------------------------- */
@@ -641,8 +679,30 @@ export const dealFields: INodeProperties[] = [
 	},
 
 	/* -------------------------------------------------------------------------- */
-	/*               deal:getRecentlyCreated deal:getRecentlyModified             */
+	/*               deal:getRecentDeals            */
 	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Category',
+		name: 'category',
+		type: 'options',
+		displayOptions: {
+			show: {
+				resource: ['deal'],
+				operation: ['getRecent'],
+			},
+		},
+		options: [
+			{
+				name: 'Recently Created',
+				value: 'getRecentlyCreated',
+			},
+			{
+				name: 'Recently Modified',
+				value: 'getRecentlyModified',
+			},
+		],
+		default: 'getRecentlyCreated',
+	},
 	{
 		displayName: 'Return All',
 		name: 'returnAll',
@@ -650,7 +710,7 @@ export const dealFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['deal'],
-				operation: ['getRecentlyCreated', 'getRecentlyModified'],
+				operation: ['getRecent'],
 			},
 		},
 		default: false,
@@ -663,7 +723,7 @@ export const dealFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['deal'],
-				operation: ['getRecentlyCreated', 'getRecentlyModified'],
+				operation: ['getRecent'],
 				returnAll: [false],
 			},
 		},
@@ -683,7 +743,7 @@ export const dealFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['deal'],
-				operation: ['getRecentlyCreated', 'getRecentlyModified'],
+				operation: ['getRecent'],
 			},
 		},
 		options: [

@@ -2319,9 +2319,19 @@ export class HubspotV2 implements INodeType {
 								{},
 								{ extractValue: true },
 							) as string;
-							const additionalFields = this.getNodeParameter('additionalFields', i) as IDataObject;
-							if (additionalFields.includePropertyVersions) {
-								qs.includePropertyVersions = additionalFields.includePropertyVersions as boolean;
+							const filters = this.getNodeParameter('filters', i) as IDataObject;
+							if (filters.includePropertyVersions) {
+								qs.includePropertyVersions = filters.includePropertyVersions as boolean;
+							}
+
+							if (filters.propertiesCollection) {
+								const propertiesValues = filters.propertiesCollection // @ts-ignore
+									.propertiesValues as IDataObject;
+								const properties = propertiesValues.properties as string | string[];
+								qs.properties = !Array.isArray(propertiesValues.properties)
+									? (properties as string).split(',')
+									: properties;
+								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
 							const endpoint = `/deals/v1/deal/${dealId}`;
 							responseData = await hubspotApiRequest.call(this, 'GET', endpoint);
@@ -2359,17 +2369,18 @@ export class HubspotV2 implements INodeType {
 								responseData = responseData.deals;
 							}
 						}
-						if (operation === 'getRecentlyCreated' || operation === 'getRecentlyModified') {
+						if (operation === 'getRecent') {
 							let endpoint;
 							const filters = this.getNodeParameter('filters', i) as IDataObject;
 							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							const category = this.getNodeParameter('category', i) as string;
 							if (filters.since) {
 								qs.since = new Date(filters.since as string).getTime();
 							}
 							if (filters.includePropertyVersions) {
 								qs.includePropertyVersions = filters.includePropertyVersions as boolean;
 							}
-							if (operation === 'getRecentlyCreated') {
+							if (category === 'getRecentlyCreated') {
 								endpoint = `/deals/v1/deal/recent/created`;
 							} else {
 								endpoint = `/deals/v1/deal/recent/modified`;
