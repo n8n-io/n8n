@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { validate as jsonSchemaValidate } from 'jsonschema';
+import { BinaryDataManager } from 'n8n-core';
 import { deepCopy, IDataObject, LoggerProxy, JsonObject, jsonParse, Workflow } from 'n8n-workflow';
 import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
@@ -414,5 +415,98 @@ export class ExecutionsService {
 		}
 
 		return !!executionData.finished;
+	}
+
+	static async deleteExecutions(
+		req: ExecutionRequest.Delete,
+		sharedWorkflowIds: number[],
+	): Promise<void> {
+		if (sharedWorkflowIds.length === 0) {
+			// return early since without shared workflows there can be no hits
+			// (note: getSharedWorkflowIds() returns _all_ workflow ids for global owners)
+			return;
+		}
+		const { deleteBefore, ids, filters: requestFiltersRaw } = req.body;
+		let requestFilters;
+		if (requestFiltersRaw) {
+			try {
+				Object.keys(requestFiltersRaw).map((key) => {
+					if (!allowedExecutionsQueryFilterFields.includes(key)) delete requestFiltersRaw[key];
+				});
+				if (jsonSchemaValidate(requestFiltersRaw, schemaGetExecutionsQueryFilter).valid) {
+					requestFilters = requestFiltersRaw as IGetExecutionsQueryFilter;
+				}
+			} catch (error) {
+				throw new ResponseHelper.InternalServerError(
+					`Parameter "filter" contained invalid JSON string.`,
+				);
+			}
+		}
+
+		if (!deleteBefore && !ids) {
+			throw new Error('Either "deleteBefore" or "ids" must be present in the request body');
+		}
+
+		const binaryDataManager = BinaryDataManager.getInstance();
+
+		// delete executions by date, if user may access the underlying workflows
+
+		if (deleteBefore) {
+			const filters: IDataObject = {
+				startedAt: LessThanOrEqual(deleteBefore),
+			};
+
+			let query = Db.collections.Execution.createQueryBuilder()
+				.select()
+				.where({
+					...filters,
+					workflowId: In(sharedWorkflowIds),
+				});
+
+			if (requestFilters) {
+				query = query.andWhere(requestFilters);
+			}
+
+			const executions = await query.getMany();
+
+			if (!executions.length) return;
+
+			const idsToDelete = executions.map(({ id }) => id.toString());
+
+			await Promise.all(
+				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
+			);
+
+			await Db.collections.Execution.delete({ id: In(idsToDelete) });
+
+			return;
+		}
+
+		// delete executions by IDs, if user may access the underlying workflows
+
+		if (ids) {
+			const executions = await Db.collections.Execution.find({
+				where: {
+					id: In(ids),
+					workflowId: In(sharedWorkflowIds),
+				},
+			});
+
+			if (!executions.length) {
+				LoggerProxy.error('Failed to delete an execution due to insufficient permissions', {
+					userId: req.user.id,
+					executionIds: ids,
+				});
+				return;
+			}
+
+			const idsToDelete = executions.map(({ id }) => id.toString());
+
+			await Promise.all(
+				idsToDelete.map(async (id) => binaryDataManager.deleteBinaryDataByExecutionId(id)),
+			);
+
+			await Db.collections.Execution.delete(idsToDelete);
+		}
 	}
 }

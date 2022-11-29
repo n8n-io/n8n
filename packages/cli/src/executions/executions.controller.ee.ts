@@ -4,7 +4,6 @@ import {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
-	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
 import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
@@ -58,5 +57,18 @@ EEExecutionsController.post(
 	ResponseHelper.send(async (req: ExecutionRequest.Retry): Promise<boolean> => {
 		const sharedWorkflowIds = await EEExecutionsService.getWorkflowIdsForUser(req.user);
 		return EEExecutionsService.retryExecution(req, sharedWorkflowIds);
+	}),
+);
+
+/**
+ * POST /executions/delete
+ * INFORMATION: We use POST instead of DELETE to not run into any issues with the query data
+ * getting too long
+ */
+EEExecutionsController.post(
+	'/delete',
+	ResponseHelper.send(async (req: ExecutionRequest.Delete): Promise<void> => {
+		const sharedWorkflowIds = await EEExecutionsService.getWorkflowIdsForUser(req.user);
+		await EEExecutionsService.deleteExecutions(req, sharedWorkflowIds);
 	}),
 );
