@@ -79,7 +79,7 @@
 						<n8n-tooltip>
 							<n8n-button
 								type="secondary"
-								class="mr-2xs"
+								:class="['mr-2xs', $style.disabledShareButton]"
 							>
 								{{ $locale.baseText('workflowDetails.share') }}
 							</n8n-button>
@@ -572,5 +572,9 @@ $--header-spacing: 20px;
 
 .deleteItem {
 	color: var(--color-danger);
+}
+
+.disabledShareButton {
+	cursor: not-allowed;
 }
 </style>
