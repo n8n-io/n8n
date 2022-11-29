@@ -81,8 +81,5 @@ export const useHistoryStore = defineStore(STORES.HISTORY, {
 				this.currentBulkAction = null;
 			}
 		},
-		updateNodePosition(nodeName: string, oldPosition: XYPosition, newPosition: XYPosition) {
-			this.pushCommandToUndo(new MoveNodeCommand(nodeName, oldPosition, newPosition));
-		},
 	},
 });

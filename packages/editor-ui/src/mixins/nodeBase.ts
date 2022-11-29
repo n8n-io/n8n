@@ -14,6 +14,7 @@ import { useNodeTypesStore } from "@/stores/nodeTypes";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getStyleTokenValue } from "@/utils";
 import { useHistoryStore } from "@/stores/history";
+import { MoveNodeCommand } from "@/classes";
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -288,7 +289,7 @@ export const nodeBase = mixins(
 						// some dirty DOM query to get the new positions till I have more time to
 						// create a proper solution
 						let newNodePosition: XYPosition;
-						this.historyStore.startRecordingUndo(BULK_COMMANDS.MOVE_NODES);
+						this.historyStore.startRecordingUndo();
 						moveNodes.forEach((node: INodeUi) => {
 							const element = document.getElementById(node.id);
 							if (element === null) {
@@ -308,7 +309,7 @@ export const nodeBase = mixins(
 								},
 							};
 							const oldPosition = node.position;
-							this.historyStore.updateNodePosition(node.name, oldPosition, newNodePosition);
+							this.historyStore.pushCommandToUndo(new MoveNodeCommand(node.name, oldPosition, newNodePosition));
 							this.workflowsStore.updateNodeProperties(updateInformation);
 						});
 						this.historyStore.stopRecordingUndo();

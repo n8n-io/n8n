@@ -1293,65 +1293,6 @@ export interface CurlToJSONResponse {
 	"parameters.sendBody": boolean;
 }
 
-// TODO: Remove unused interfaces
-export interface AddNodeCommand {
-	action: COMMANDS.ADD_NODE,
-	options: {
-		node: INodeUi,
-	},
-}
-
-export interface RemoveNodeCommand {
-	action: COMMANDS.REMOVE_NODE,
-	options: {
-		node: INodeUi,
-	},
-}
-
-export interface NodePositionChangeCommand {
-	action: COMMANDS.POSITION_CHANGE,
-	options: {
-		nodeName: string;
-		oldPosition: XYPosition,
-		newPosition: XYPosition,
-	}
-}
-
-export interface AddOrRemoveConnectionCommand {
-	action: COMMANDS.ADD_CONNECTION | COMMANDS.REMOVE_CONNECTION,
-	options: {
-		connection: [IConnection, IConnection];
-	}
-}
-
-export interface CommandBase {
-	type: string;
-	data: {
-		action: string;
-		options: IDataObject;
-	}
-}
-
-export interface Command extends CommandBase {
-	type: 'command';
-	data: NodePositionChangeCommand |
-				AddOrRemoveConnectionCommand |
-				AddNodeCommand |
-				RemoveNodeCommand;
-}
-
-export interface BulkCommands {
-	type: 'bulk';
-	data: {
-		name: BULK_COMMANDS.IMPORT_WORKFLOW |
-					BULK_COMMANDS.RECONNECT_NODES |
-					BULK_COMMANDS.MOVE_NODES;
-		commands: Command[];
-	}
-}
-
-// export type Undoable = Command | BulkCommands;
-
 export interface HistoryState {
 	redoStack: Undoable[];
 	undoStack: Undoable[];
