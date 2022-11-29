@@ -26,7 +26,7 @@ import {
 	getTaskMetadata,
 	hubspotApiRequest,
 	hubspotApiRequestAllItems,
-} from '../GenericFunctions';
+} from './GenericFunctions';
 
 import { contactFields, contactOperations } from './ContactDescription';
 
@@ -48,7 +48,7 @@ import { IAssociation, IDeal } from './DealInterface';
 
 import { snakeCase } from 'change-case';
 
-import { validateCredentials } from '../GenericFunctions';
+import { validateCredentials } from './GenericFunctions';
 
 export class HubspotV2 implements INodeType {
 	description: INodeTypeDescription;
