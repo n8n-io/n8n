@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import RudderStack from '@rudderstack/rudder-sdk-node';
-import PostHog from 'posthog-node';
+import { PostHog } from 'posthog-node';
 import { ITelemetryTrackProperties, LoggerProxy } from 'n8n-workflow';
 import config from '@/config';
 import { IExecutionTrackProperties } from '@/Interfaces';
@@ -191,6 +191,7 @@ export class Telemetry {
 					return Promise.all([
 						this.postHog.capture({
 							distinctId: payload.userId,
+							sendFeatureFlags: true,
 							...payload,
 						}),
 						this.rudderStack.track(payload),
@@ -207,7 +208,7 @@ export class Telemetry {
 	async isFeatureFlagEnabled(
 		featureFlagName: string,
 		{ user_id: userId }: ITelemetryTrackProperties = {},
-	): Promise<boolean> {
+	): Promise<boolean | undefined> {
 		if (!this.postHog) return Promise.resolve(false);
 
 		const fullId = [this.instanceId, userId].join('#');
