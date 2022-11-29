@@ -570,7 +570,7 @@ export class TodoistV1 implements INodeType {
 			async searchProjects(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const projects = await todoistApiRequest.call(this, 'GET', '/projects');
 				return {
-					results: projects.map((project: any) => ({
+					results: projects.map((project: IDataObject) => ({
 						name: project.name,
 						value: project.id,
 					})),
@@ -579,7 +579,7 @@ export class TodoistV1 implements INodeType {
 			async searchLabels(this: ILoadOptionsFunctions): Promise<INodeListSearchResult> {
 				const labels = await todoistApiRequest.call(this, 'GET', '/labels');
 				return {
-					results: labels.map((label: any) => ({
+					results: labels.map((label: IDataObject) => ({
 						name: label.name,
 						value: label.id,
 					})),

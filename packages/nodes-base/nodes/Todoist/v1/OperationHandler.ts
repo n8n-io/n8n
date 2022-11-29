@@ -260,10 +260,9 @@ export class SyncHandler implements OperationHandler {
 
 	private convertToObject(map: Map<string, string>) {
 		return Array.from(map.entries()).reduce((o, [key, value]) => {
-			// @ts-ignore
-			o[key] = value;
+			o[key as string] = value;
 			return o;
-		}, {});
+		}, {} as IDataObject);
 	}
 
 	private enrichUUID(command: Command) {
@@ -305,7 +304,7 @@ export class SyncHandler implements OperationHandler {
 
 async function getLabelNameFromId(ctx: Context, labelIds: number[]): Promise<string[]> {
 	const labelList = [];
-	for (let label of labelIds) {
+	for (const label of labelIds) {
 		const thisLabel = await todoistApiRequest.call(ctx, 'GET', `/labels/${label}`);
 		labelList.push(thisLabel.name);
 	}

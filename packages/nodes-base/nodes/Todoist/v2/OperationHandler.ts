@@ -260,10 +260,9 @@ export class SyncHandler implements OperationHandler {
 
 	private convertToObject(map: Map<string, string>) {
 		return Array.from(map.entries()).reduce((o, [key, value]) => {
-			// @ts-ignore
 			o[key] = value;
 			return o;
-		}, {});
+		}, {} as IDataObject);
 	}
 
 	private enrichUUID(command: Command) {
