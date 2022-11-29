@@ -47,7 +47,7 @@
 				:actions="nodeType.actions"
 				@actionSelected="onActionSelected"
 				@back="showActionsPanel = false"
-				@dragstart="onDragStart"
+				@dragstart.stop="onDragStart"
 				@dragend="onDragEnd"
 			/>
 		</template>
@@ -56,12 +56,13 @@
 
 <script setup lang="ts">
 import { reactive, computed, toRefs, getCurrentInstance } from 'vue';
-import { INodeTypeDescription } from 'n8n-workflow';
+import { INodeParameters, INodeTypeDescription } from 'n8n-workflow';
 
 import { getNewNodePosition, NODE_SIZE } from '@/views/canvasHelpers';
 import { isCommunityPackageName } from '@/components/helpers';
 import { COMMUNITY_NODES_INSTALLATION_DOCS_URL, MANUAL_TRIGGER_NODE_TYPE } from '@/constants';
 import { IUpdateInformation } from '@/Interface';
+import { externalHooks } from '@/components/mixins/externalHooks';
 
 import NodeIcon from '@/components/NodeIcon.vue';
 import NodeActions from './NodeActions.vue';
@@ -84,6 +85,7 @@ const emit = defineEmits<{
 	(event: 'nodeTypeSelected', value: string[]): void,
 }>();
 
+const { $externalHooks } = new externalHooks();
 const instance = getCurrentInstance();
 const { workflowTriggerNodes, $onAction: onWorkflowStoreAction } = useWorkflowsStore();
 
@@ -136,10 +138,23 @@ function getActionNodeTypes(action: IUpdateInformation): string[] {
 }
 
 function setAddedNodeActionParameters(action: IUpdateInformation) {
-	onWorkflowStoreAction(({ name, after, store: { setLastNodeParameters } }) => {
+	const storeWatcher = onWorkflowStoreAction(({ name, after, store: { setLastNodeParameters } }) => {
 		if (name !== 'addNode') return;
-		after(() => setLastNodeParameters(action));
+		after(() => {
+			setLastNodeParameters(action);
+			trackActionSelected(action);
+			storeWatcher();
+		});
 	});
+}
+function trackActionSelected(action: IUpdateInformation) {
+	const payload = {
+		node_type: action.key,
+		action: action.name,
+		resource: (action.value as INodeParameters).resource || '',
+	};
+	$externalHooks().run('nodeCreateList.addAction', payload);
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.addAction', payload);
 }
 
 function onActionSelected(action: IUpdateInformation) {
@@ -173,7 +188,11 @@ function onDragStart(event: DragEvent): void {
 				const action = JSON.parse(actionData) as IUpdateInformation;
 
 				event.dataTransfer.setData('nodeTypeName', getActionNodeTypes(action).join(','));
-				document.body.addEventListener("dragend", () => onDragActionSelected(action));
+				function onDragEnd() {
+					onDragActionSelected(action);
+					document.body.removeEventListener("dragend", onDragEnd);
+				}
+				document.body.addEventListener("dragend", onDragEnd);
 			} catch (error) {
 				// Fail silently
 			}

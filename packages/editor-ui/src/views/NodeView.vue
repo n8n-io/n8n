@@ -229,7 +229,6 @@ import { useTagsStore } from '@/stores/tags';
 import { useNodeCreatorStore } from '@/stores/nodeCreator';
 import { dataPinningEventBus } from '@/event-bus/data-pinning-event-bus';
 import { useCanvasStore } from '@/stores/canvas';
-import { useNodeCreatorStore } from '@/stores/nodeCreator';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -3220,8 +3219,10 @@ export default mixins(
 				if (!this.containsTrigger) this.nodeCreatorStore.setSelectedType(TRIGGER_NODE_FILTER);
 
 				this.createNodeActive = createNodeActive;
-				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, createNodeActive });
-				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, createNodeActive, workflow_id: this.workflowsStore.workflowId });
+
+				const mode = this.nodeCreatorStore.selectedType === TRIGGER_NODE_FILTER ? 'trigger' : 'default';
+				this.$externalHooks().run('nodeView.createNodeActiveChanged', { source, mode, createNodeActive });
+				this.$telemetry.trackNodesPanel('nodeView.createNodeActiveChanged', { source, mode, createNodeActive, workflow_id: this.workflowsStore.workflowId });
 			},
 			onAddNode(nodeTypes: Array<{ nodeTypeName: string; position: XYPosition }>, dragAndDrop: boolean) {
 				nodeTypes.forEach(({ nodeTypeName, position }, index) => {
@@ -3230,7 +3231,7 @@ export default mixins(
 					// If there's more than one node, we want to connect them
 					// this has to be done in mutation subscriber to make sure both nodes already
 					// exist
-					this.workflowsStore.$onAction(({ name, after, args }) => {
+					const actionWatcher = this.workflowsStore.$onAction(({ name, after, args }) => {
 						if(name === 'addNode' && args[0].type === nodeTypeName) {
 							after(() => {
 								const lastAddedNode = this.nodes[this.nodes.length - 1];
@@ -3238,11 +3239,12 @@ export default mixins(
 
 								this.$nextTick(() => this.connectTwoNodes(previouslyAddedNode.name, 0, lastAddedNode.name, 0));
 
-								// Position the added node to the right side of the previsouly added
+								// Position the added node to the right side of the previsouly added one
 								lastAddedNode.position = [
 									previouslyAddedNode.position[0] + (CanvasHelpers.NODE_SIZE * 2),
 									previouslyAddedNode.position[1],
 								];
+								actionWatcher();
 							});
 						}
 					});

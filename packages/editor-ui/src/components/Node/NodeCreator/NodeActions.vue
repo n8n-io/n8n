@@ -75,8 +75,9 @@
 </template>
 
 <script setup lang="ts">
-import { reactive, computed, toRefs, getCurrentInstance, onUnmounted } from 'vue';
+import { reactive, computed, toRefs, getCurrentInstance, onUnmounted, onMounted } from 'vue';
 import { IDataObject, INodeTypeDescription, INodeAction, INodeParameters } from 'n8n-workflow';
+import { externalHooks } from '@/components/mixins/externalHooks';
 import { IUpdateInformation } from '@/Interface';
 import NodeIcon from '@/components/NodeIcon.vue';
 import SearchBar from './SearchBar.vue';
@@ -90,6 +91,7 @@ export interface Props {
 
 const props = defineProps<Props>();
 const instance = getCurrentInstance();
+const { $externalHooks } = new externalHooks();
 
 const emit = defineEmits<{
 	(event: 'actionSelected', action: IUpdateInformation): void,
@@ -153,7 +155,7 @@ function getActionData(actionItem: INodeAction): IUpdateInformation {
 		}, {});
 
 	return {
-		name: '',
+		name: actionItem.title,
 		key: actionItem.nodeName as string,
 		value: { ...actionItem.values , ...displayConditions} as INodeParameters,
 	};
@@ -167,6 +169,10 @@ function addHttpNode() {
 			authentication: "predefinedCredentialType",
 		} as INodeParameters,
 	});
+
+	const app_identifier = props.nodeType.name;
+	$externalHooks().run('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onActionsCustmAPIClicked', { app_identifier });
 }
 
 function onActionClick(actionItem: INodeAction) {
@@ -181,6 +187,26 @@ function onDragStart(event: DragEvent, action: INodeAction) {
 	event.dataTransfer?.setData('actionData', JSON.stringify(getActionData(action)));
 	emit('dragstart', event);
 }
+
+function trackView() {
+	const flatActions = props.actions
+		.flatMap(action => action.items as INodeAction[])
+		.filter(action => action.key !== CUSTOM_API_CALL_KEY);
+
+	const trigger_action_count = flatActions.filter((action) => isTriggerAction(action)).length;
+	const trackingPayload = {
+		app_identifier: props.nodeType.name,
+		actions: flatActions.map(action => action.key),
+		trigger_action_count,
+		regular_action_count: flatActions.length - trigger_action_count,
+	};
+
+	$externalHooks().run('nodeCreateList.onViewActions', trackingPayload);
+	instance?.proxy.$telemetry.trackNodesPanel('nodeCreateList.onViewActions', trackingPayload);
+}
+onMounted(() => {
+	trackView();
+});
 
 const { subtractedCategories, search } = toRefs(state);
 </script>
