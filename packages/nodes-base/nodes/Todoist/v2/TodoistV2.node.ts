@@ -215,7 +215,7 @@ const versionDescription: INodeTypeDescription = {
 			type: 'options',
 			typeOptions: {
 				loadOptionsMethod: 'getSections',
-				loadOptionsDependsOn: ['project'],
+				loadOptionsDependsOn: ['project.value'],
 			},
 			displayOptions: {
 				show: {
@@ -324,7 +324,7 @@ const versionDescription: INodeTypeDescription = {
 					type: 'options',
 					typeOptions: {
 						loadOptionsMethod: 'getItems',
-						loadOptionsDependsOn: ['project', 'options.section'],
+						loadOptionsDependsOn: ['project.value', 'options.section'],
 					},
 					default: {},
 					description:
@@ -347,7 +347,7 @@ const versionDescription: INodeTypeDescription = {
 					type: 'options',
 					typeOptions: {
 						loadOptionsMethod: 'getSections',
-						loadOptionsDependsOn: ['project'],
+						loadOptionsDependsOn: ['project.value'],
 					},
 					default: {},
 					description:
