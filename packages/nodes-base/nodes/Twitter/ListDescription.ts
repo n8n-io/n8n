@@ -25,37 +25,78 @@ export const listOperations: INodeProperties[] = [
 
 export const listFields: INodeProperties[] = [
 	/* -------------------------------------------------------------------------- */
-	/*                                directMessage:create                        */
+	/*                                list:add                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'List ID',
-		name: 'listId',
-		type: 'string',
+		displayName: 'List',
+		name: 'list',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
 		required: true,
-		default: '',
+		description: 'The list you want to add the user to',
 		displayOptions: {
 			show: {
-				resource: ['list'],
 				operation: ['add'],
+				resource: ['list'],
 			},
 		},
-		description: 'The ID of list you want to add the user to',
+		modes: [
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [],
+				placeholder: '',
+				url: '',
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. https://twitter.com/i/lists/7452025970',
+				url: '',
+			},
+			{
+				displayName: 'By Name',
+				name: 'name',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. Automation Tools',
+				url: '',
+			},
+		],
 	},
 	{
-		displayName: 'User ID',
-		name: 'userID',
-		type: 'string',
-		typeOptions: {
-			// alwaysOpenEditWindow: true,
-		},
+		displayName: 'User',
+		name: 'user',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
 		required: true,
-		default: '',
+		description: 'The user you want to add to the list',
 		displayOptions: {
 			show: {
-				resource: ['list'],
 				operation: ['add'],
+				resource: ['list'],
 			},
 		},
-		description: 'The ID of the user you want to add to the list',
+		modes: [
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [],
+				placeholder: '',
+				url: '',
+			},
+			{
+				displayName: 'By Username',
+				name: 'username',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. @n8n',
+				url: '',
+			},
+		],
 	},
 ];

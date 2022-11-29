@@ -28,17 +28,35 @@ export const userFields: INodeProperties[] = [
 	/*                                user:searchuser                        */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Username',
-		name: 'username',
-		type: 'string',
+		displayName: 'User',
+		name: 'user',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
 		required: true,
-		default: '',
+		description: 'The user you want to search',
 		displayOptions: {
 			show: {
-				resource: ['user'],
 				operation: ['searchuser'],
+				resource: ['user'],
 			},
 		},
-		description: 'The username of the user you want to search',
+		modes: [
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [],
+				placeholder: '',
+				url: '',
+			},
+			{
+				displayName: 'By Username',
+				name: 'username',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. @n8n',
+				url: '',
+			},
+		],
 	},
 ];

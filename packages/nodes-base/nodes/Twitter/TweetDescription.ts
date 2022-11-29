@@ -15,26 +15,26 @@ export const tweetOperations: INodeProperties[] = [
 			{
 				name: 'Create',
 				value: 'create',
-				description: 'Create or reply to a tweet',
-				action: 'Create a tweet',
-			},
-			{
-				name: 'Delete',
-				value: 'delete',
-				description: 'Delete a tweet',
-				action: 'Like a tweet',
+				description: 'Create or reply to a Tweet',
+				action: 'Create a Tweet',
 			},
 			{
 				name: 'Like',
 				value: 'like',
-				description: 'Like a tweet',
-				action: 'Like a tweet',
+				description: 'Like a Tweet',
+				action: 'Like a Tweet',
 			},
 			{
 				name: 'Search',
 				value: 'search',
-				description: 'Search tweets',
-				action: 'Search for tweets',
+				description: 'Search for Tweets from the last seven days',
+				action: 'Search Tweets',
+			},
+			{
+				name: 'Delete',
+				value: 'delete',
+				description: 'Delete a Tweet',
+				action: 'Like a Tweet',
 			},
 		],
 		default: 'create',
@@ -49,7 +49,7 @@ export const tweetFields: INodeProperties[] = [
 		displayName: 'Text',
 		name: 'text',
 		type: 'string',
-		default: '', // Placeholder
+		default: '', // Default value (no placeholder)
 		typeOptions: {
 			alwaysOpenEditWindow: false,
 			rows: 2, // Text area rows
@@ -61,9 +61,8 @@ export const tweetFields: INodeProperties[] = [
 				resource: ['tweet'],
 			},
 		},
-		// description: 'The text of the status update. URL encode as necessary. t.co link wrapping will affect character counts.',
 		description:
-			'The text of the status update. URLs must be encoded. t.co link wrapping will affect character counts.',
+			'The text of the status update. URLs must be encoded. Links wrapped with the t.co shortener will affect character count',
 	},
 	{
 		displayName: 'Options',
@@ -79,29 +78,12 @@ export const tweetFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'In Reply to Tweet',
-				name: 'inReplyToStatusId',
-				type: 'string',
-				default: '',
-				// description: 'The ID of the existing status that the update is in reply to',
-				description: "The ID of the existing tweet you're replying to",
-			},
-			{
-				displayName: 'Media',
-				name: 'attachments',
-				type: 'string',
-				default: 'data',
-				// description: 'Name of the binary properties which contain data which should be added to tweet as attachment. Multiple ones can be comma-separated.',
-				description:
-					'Name of the binary properties which contain data which should be added to tweet as attachment. Multiple attachments should be comma-separated.',
-			},
-			{
 				displayName: 'Location',
 				name: 'locationFieldsUi',
 				type: 'fixedCollection',
 				placeholder: 'Add Location',
 				default: {},
-				description: 'Subscriber location information',
+				description: 'Location information for the Tweet',
 				options: [
 					{
 						name: 'locationFieldsValues',
@@ -113,6 +95,7 @@ export const tweetFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								description: 'The location latitude',
+								placeholder: 'e.g. 52.516278',
 								default: '',
 							},
 							{
@@ -121,6 +104,7 @@ export const tweetFields: INodeProperties[] = [
 								type: 'string',
 								required: true,
 								description: 'The location longitude',
+								placeholder: 'e.g. 13.377926',
 								default: '',
 							},
 						],
@@ -128,79 +112,103 @@ export const tweetFields: INodeProperties[] = [
 				],
 			},
 			{
-				displayName: 'Display Coordinates',
-				name: 'displayCoordinates',
-				type: 'boolean',
-				default: false,
+				displayName: 'Media',
+				name: 'attachments',
+				type: 'string',
+				default: '',
+				required: true,
+				// default: 'data',
+				placeholder: 'e.g. data',
 				description:
-					'Whether or not to put a pin on the exact coordinates a Tweet has been sent from',
+					'Name of the binary properties which contain data that should be added to the tweet as an attachment. Multiple attachments should be comma-separated. You may include up to 4 photos or 1 animated GIF or 1 video in a Tweet',
 			},
 			{
-				displayName: 'Possibly Sensitive',
-				name: 'possiblySensitive',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether you are uploading Tweet media that might be considered sensitive content such as nudity, or medical procedures',
+				displayName: 'Quote Tweet',
+				name: 'inQuoteToStatusId',
+				type: 'resourceLocator',
+				default: { mode: 'id', value: '' },
+				required: true,
+				description: 'The Tweet being quoted',
+				modes: [
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						validation: [],
+						placeholder: '',
+						url: '',
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						validation: [],
+						placeholder: 'e.g. https://twitter.com/jack/status/20',
+						url: '',
+					},
+				],
+			},
+			{
+				displayName: 'Reply to Tweet',
+				name: 'inReplyToStatusId',
+				type: 'resourceLocator',
+				default: { mode: 'id', value: '' },
+				required: true,
+				description: 'The Tweet being replied to',
+				modes: [
+					{
+						displayName: 'By ID',
+						name: 'id',
+						type: 'string',
+						validation: [],
+						placeholder: '',
+						url: '',
+					},
+					{
+						displayName: 'By URL',
+						name: 'url',
+						type: 'string',
+						validation: [],
+						placeholder: 'e.g. https://twitter.com/jack/status/20',
+						url: '',
+					},
+				],
 			},
 		],
-	},
-
-	/* -------------------------------------------------------------------------- */
-	/*                                tweet:delete                                */
-	/* -------------------------------------------------------------------------- */
-	{
-		displayName: 'Tweet ID',
-		name: 'tweetId',
-		type: 'string',
-		required: true,
-		default: '',
-		displayOptions: {
-			show: {
-				operation: ['delete'],
-				resource: ['tweet'],
-			},
-		},
-		description: 'The ID of the tweet to delete',
 	},
 
 	/* -------------------------------------------------------------------------- */
 	/*                                tweet:like                                  */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Tweet ID',
+		displayName: 'Tweet',
 		name: 'tweetId',
-		type: 'string',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
 		required: true,
-		default: '',
+		description: 'The Tweet to like',
 		displayOptions: {
 			show: {
 				operation: ['like'],
 				resource: ['tweet'],
 			},
 		},
-		// description: 'The ID of the tweet',
-		description: 'The ID of the tweet to like',
-	},
-	{
-		displayName: 'Options',
-		name: 'additionalFields',
-		type: 'collection',
-		placeholder: 'Add Field',
-		default: {},
-		displayOptions: {
-			show: {
-				operation: ['like'],
-				resource: ['tweet'],
-			},
-		},
-		options: [
+		modes: [
 			{
-				displayName: 'Include Entities',
-				name: 'includeEntities',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the entities will be omitted',
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [],
+				placeholder: '',
+				url: '',
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. https://twitter.com/jack/status/20',
+				url: '',
 			},
 		],
 	},
@@ -218,6 +226,7 @@ export const tweetFields: INodeProperties[] = [
 		},
 		required: true,
 		default: '',
+		placeholder: 'e.g. automation',
 		displayOptions: {
 			show: {
 				operation: ['search'],
@@ -227,21 +236,6 @@ export const tweetFields: INodeProperties[] = [
 		description:
 			'A UTF-8, URL-encoded search query of 500 characters maximum, including operators. Queries may additionally be limited by complexity. Check the searching examples <a href="https://developer.twitter.com/en/docs/tweets/search/guides/standard-operators">here</a>.',
 	},
-	/*
-    {
-		displayName: 'Return All',
-		name: 'returnAll',
-		type: 'boolean',
-		displayOptions: {
-			show: {
-				operation: ['search'],
-				resource: ['tweet'],
-			},
-		},
-		default: false,
-		description: 'Whether to return all results or only up to a given limit',
-	},
-    */
 	{
 		// displayName: 'Limit',
 		displayName: 'Maximum Returned Tweets',
@@ -258,7 +252,7 @@ export const tweetFields: INodeProperties[] = [
 			minValue: 1,
 		},
 		default: 50,
-		description: 'Max number of results to return',
+		description: 'Maximum number of Tweets to return. Too many results may slow down the query',
 	},
 	{
 		displayName: 'Options',
@@ -274,132 +268,168 @@ export const tweetFields: INodeProperties[] = [
 		},
 		options: [
 			{
-				displayName: 'Include Entities',
-				name: 'includeEntities',
-				type: 'boolean',
-				default: false,
-				description: 'Whether the entities node will be included',
-			},
-			{
-				displayName: 'Language Name or ID',
-				name: 'lang',
-				type: 'options',
-				typeOptions: {
-					loadOptionsMethod: 'getLanguages',
-				},
-				default: '',
-				description:
-					'Restricts tweets to the given language, given by an ISO 639-1 code. Language detection is best-effort. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Location',
-				name: 'locationFieldsUi',
-				type: 'fixedCollection',
-				placeholder: 'Add Location',
-				default: {},
-				description: 'Subscriber location information.n',
-				options: [
-					{
-						name: 'locationFieldsValues',
-						displayName: 'Location',
-						values: [
-							{
-								displayName: 'Latitude',
-								name: 'latitude',
-								type: 'string',
-								required: true,
-								description: 'The location latitude',
-								default: '',
-							},
-							{
-								displayName: 'Longitude',
-								name: 'longitude',
-								type: 'string',
-								required: true,
-								description: 'The location longitude',
-								default: '',
-							},
-							{
-								displayName: 'Radius',
-								name: 'radius',
-								type: 'options',
-								options: [
-									{
-										name: 'Milles',
-										value: 'mi',
-									},
-									{
-										name: 'Kilometers',
-										value: 'km',
-									},
-								],
-								required: true,
-								description:
-									'Returns tweets by users located within a given radius of the given latitude/longitude',
-								default: '',
-							},
-							{
-								displayName: 'Distance',
-								name: 'distance',
-								type: 'number',
-								typeOptions: {
-									minValue: 0,
-								},
-								required: true,
-								default: '',
-							},
-						],
-					},
-				],
-			},
-			{
-				displayName: 'Result Type',
-				name: 'resultType',
+				displayName: 'Sort Order',
+				name: 'sortorder',
 				type: 'options',
 				options: [
-					{
-						name: 'Mixed',
-						value: 'mixed',
-						description: 'Include both popular and real time results in the response',
-					},
 					{
 						name: 'Recent',
 						value: 'recent',
-						description: 'Return only the most recent results in the response',
 					},
 					{
-						name: 'Popular',
-						value: 'popular',
-						description: 'Return only the most popular results in the response',
+						name: 'Relevant',
+						value: 'relevant',
 					},
 				],
-				default: 'mixed',
-				description: 'Specifies what type of search results you would prefer to receive',
+				required: true,
+				description: 'The order in which to return results',
+				default: 'recent',
 			},
 			{
-				displayName: 'Tweet Mode',
-				name: 'tweetMode',
-				type: 'options',
-				options: [
-					{
-						name: 'Compatibility',
-						value: 'compat',
-					},
-					{
-						name: 'Extended',
-						value: 'extended',
-					},
-				],
-				default: 'compat',
-				description:
-					'When the extended mode is selected, the response contains the entire untruncated text of the Tweet',
-			},
-			{
-				displayName: 'Until',
-				name: 'until',
+				displayName: 'Time End',
+				name: 'endtime',
 				type: 'dateTime',
 				default: '',
-				description: 'Returns tweets created before the given date',
+				description:
+					'The newest, most recent date to which the Tweets will be provided. Tweets after that date will not be returned.',
+			},
+			{
+				displayName: 'Time Start',
+				name: 'starttime',
+				type: 'dateTime',
+				default: '',
+				description:
+					'The oldest date (from most recent seven days) from which the Tweets will be provided. Tweets before that date will not be returned.',
+			},
+			{
+				displayName: 'Tweet Fields',
+				name: 'tweetfields',
+				type: 'multiOptions',
+				// eslint-disable-next-line n8n-nodes-base/node-param-multi-options-type-unsorted-items
+				options: [
+					{
+						name: 'Attachments',
+						value: 'attachments',
+					},
+					{
+						name: 'Author ID',
+						value: 'author_id',
+					},
+					{
+						name: 'Context Annotations',
+						value: 'context_annotations',
+					},
+					{
+						name: 'Conversation ID',
+						value: 'conversation_id',
+					},
+					{
+						name: 'Created At',
+						value: 'created_at',
+					},
+					{
+						name: 'Edit Controls',
+						value: 'edit_controls',
+					},
+					{
+						name: 'Entities',
+						value: 'entities',
+					},
+					{
+						name: 'Geo',
+						value: 'geo',
+					},
+					{
+						name: 'ID',
+						value: 'id',
+					},
+					{
+						name: 'In Reply To User ID',
+						value: 'in_reply_to_user_id',
+					},
+					{
+						name: 'Lang',
+						value: 'lang',
+					},
+					{
+						name: 'Non Public Metrics',
+						value: 'non_public_metrics',
+					},
+					{
+						name: 'Public Metrics',
+						value: 'public_metrics',
+					},
+					{
+						name: 'Organic Metrics',
+						value: 'organic_metrics',
+					},
+					{
+						name: 'Promoted Metrics',
+						value: 'promoted_metrics',
+					},
+					{
+						name: 'Possibly Sensitive',
+						value: 'possibly_sensitive',
+					},
+					{
+						name: 'Referenced Tweets',
+						value: 'referenced_tweets',
+					},
+					{
+						name: 'Reply Settings',
+						value: 'reply_settings',
+					},
+					{
+						name: 'Source',
+						value: 'source',
+					},
+					{
+						name: 'Text',
+						value: 'text',
+					},
+					{
+						name: 'Withheld',
+						value: 'withheld',
+					},
+				],
+				default: [],
+				description: 'The fields to add to each returned Tweet object',
+			},
+		],
+	},
+
+	/* -------------------------------------------------------------------------- */
+	/*                                tweet:delete                                */
+	/* -------------------------------------------------------------------------- */
+	{
+		displayName: 'Tweet',
+		name: 'tweetDeleteId',
+		type: 'resourceLocator',
+		default: { mode: 'id', value: '' },
+		required: true,
+		description: 'The Tweet to delete',
+		displayOptions: {
+			show: {
+				resource: ['tweet'],
+				operation: ['delete'],
+			},
+		},
+		modes: [
+			{
+				displayName: 'By ID',
+				name: 'id',
+				type: 'string',
+				validation: [],
+				placeholder: '',
+				url: '',
+			},
+			{
+				displayName: 'By URL',
+				name: 'url',
+				type: 'string',
+				validation: [],
+				placeholder: 'e.g. https://twitter.com/jack/status/20',
+				url: '',
 			},
 		],
 	},

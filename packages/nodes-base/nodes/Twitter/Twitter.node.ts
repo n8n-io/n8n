@@ -26,12 +26,13 @@ const ISO6391 = require('iso-639-1');
 
 export class Twitter implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Twitter (v2)',
+		displayName: 'Twitter',
 		name: 'twitter',
 		icon: 'file:twitter.svg',
 		group: ['input', 'output'],
 		version: 2,
-		description: 'Post, like, and search tweets, search users, add users to lists, and call custom APIs',
+		description:
+			'Post, like, and search tweets, search users, add users to lists, and call custom APIs',
 		subtitle: '={{$parameter["operation"] + ":" + $parameter["resource"]}}',
 		defaults: {
 			name: 'Twitter',
@@ -54,7 +55,7 @@ export class Twitter implements INodeType {
 					{
 						name: 'Tweet',
 						value: 'tweet',
-						description: 'Create, reply, delete, like, or search a tweet',
+						description: 'Create, reply, like, search, or delete a Tweet',
 					},
 					{
 						name: 'User',
@@ -83,6 +84,18 @@ export class Twitter implements INodeType {
 			// USER
 			...userOperations,
 			...userFields,
+			{
+				displayName:
+					"Use the <strong>HTTP Request</strong> node to make a custom API call. You can configure any call to the Twitter API using you credentials. <a href='https://docs.n8n.io/integrations/custom-operations/' target='_blank'>Learn more</a>",
+				name: 'campaigsNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: {
+					show: {
+						resource: ['api'],
+					},
+				},
+			},
 		],
 	};
 
