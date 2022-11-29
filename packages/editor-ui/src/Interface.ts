@@ -35,8 +35,9 @@ import {
 	INodeCredentials,
 	INodeListSearchItems,
 	NodeParameterValueType,
+	IConnection,
 } from 'n8n-workflow';
-import { FAKE_DOOR_FEATURES } from './constants';
+import { BULK_COMMANDS, COMMANDS, FAKE_DOOR_FEATURES } from './constants';
 import {ICredentialsDb} from "n8n";
 
 export * from 'n8n-design-system/src/types';
@@ -1284,4 +1285,63 @@ export interface CurlToJSONResponse {
 	"parameters.headerParameters.parameters.0.value": string;
 	"parameters.sendQuery": boolean;
 	"parameters.sendBody": boolean;
+}
+
+export interface AddNodeCommand {
+	action: COMMANDS.ADD_NODE,
+	options: {
+		node: INodeUi,
+	},
+}
+
+export interface RemoveNodeCommand {
+	action: COMMANDS.REMOVE_NODE,
+	options: {
+		node: INodeUi,
+	},
+}
+
+export interface NodePositionChangeCommand {
+	action: COMMANDS.POSITION_CHANGE,
+	options: {
+		nodeName: string;
+		oldPosition: XYPosition,
+		newPosition: XYPosition,
+	}
+}
+
+export interface AddOrRemoveConnectionCommand {
+	action: COMMANDS.ADD_CONNECTION | COMMANDS.REMOVE_CONNECTION,
+	options: {
+		connection: [IConnection, IConnection];
+	}
+}
+
+export interface CommandBase {
+	type: string;
+	data: {
+		action: string;
+		options: IDataObject;
+	}
+}
+
+export interface Command extends CommandBase {
+	type: 'command';
+	data: NodePositionChangeCommand | AddOrRemoveConnectionCommand | AddNodeCommand | RemoveNodeCommand;
+}
+
+export interface BulkCommands {
+	type: 'bulk';
+	data: {
+		name: BULK_COMMANDS.IMPORT_WORKFLOW | BULK_COMMANDS.RECONNECT_NODES;
+		commands: Command[];
+	}
+}
+
+export type Undoable = Command | BulkCommands;
+
+export interface HistoryState {
+	redoStack: Undoable[];
+	undoStack: Undoable[];
+	currentBulkAction: BulkCommands | null;
 }
