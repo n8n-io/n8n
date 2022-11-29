@@ -2374,18 +2374,16 @@ export class HubspotV2 implements INodeType {
 								responseData = responseData.deals;
 							}
 						}
-						if (operation === 'getRecent') {
-							let endpoint;
+						if (operation === 'getRecentlyCreatedUpdated') {
+							const endpoint = `/deals/v1/deal/recent/created`;
 							const filters = this.getNodeParameter('filters', i) as IDataObject;
 							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-							const category = this.getNodeParameter('category', i) as string;
 							if (filters.since) {
 								qs.since = new Date(filters.since as string).getTime();
 							}
 							if (filters.includePropertyVersions) {
 								qs.includePropertyVersions = filters.includePropertyVersions as boolean;
 							}
-							endpoint = `/deals/v1/deal/recent/created`;
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -2399,27 +2397,6 @@ export class HubspotV2 implements INodeType {
 								qs.count = this.getNodeParameter('limit', 0) as number;
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
-							}
-							endpoint = `/deals/v1/deal/recent/modified`;
-							if (returnAll) {
-								responseData = await hubspotApiRequestAllItems.call(
-									this,
-									'results',
-									'GET',
-									endpoint,
-									{},
-									qs,
-								);
-							} else {
-								qs.count = this.getNodeParameter('limit', 0) as number;
-								const responseDataTemp = await hubspotApiRequest.call(
-									this,
-									'GET',
-									endpoint,
-									{},
-									qs,
-								);
-								responseData = +responseDataTemp.results;
 							}
 						}
 						if (operation === 'delete') {

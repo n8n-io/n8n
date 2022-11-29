@@ -37,10 +37,10 @@ export const dealOperations: INodeProperties[] = [
 				action: 'Get many deals',
 			},
 			{
-				name: 'Get Recent Deals',
-				value: 'getRecent',
-				description: 'Get recent deals',
-				action: 'Get recently deals',
+				name: 'Get Recently Created/Updated',
+				value: 'getRecentlyCreatedUpdated',
+				description: 'Get recently created/updated contacts',
+				action: 'Get recently created/updated contacts',
 			},
 			{
 				name: 'Search',
@@ -682,35 +682,13 @@ export const dealFields: INodeProperties[] = [
 	/*               deal:getRecentDeals            */
 	/* -------------------------------------------------------------------------- */
 	{
-		displayName: 'Category',
-		name: 'category',
-		type: 'options',
-		displayOptions: {
-			show: {
-				resource: ['deal'],
-				operation: ['getRecent'],
-			},
-		},
-		options: [
-			{
-				name: 'Recently Created',
-				value: 'getRecentlyCreated',
-			},
-			{
-				name: 'Recently Modified',
-				value: 'getRecentlyModified',
-			},
-		],
-		default: 'getRecentlyCreated',
-	},
-	{
 		displayName: 'Return All',
 		name: 'returnAll',
 		type: 'boolean',
 		displayOptions: {
 			show: {
 				resource: ['deal'],
-				operation: ['getRecent'],
+				operation: ['getRecentlyCreatedUpdated'],
 			},
 		},
 		default: false,
@@ -723,7 +701,7 @@ export const dealFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['deal'],
-				operation: ['getRecent'],
+				operation: ['getRecentlyCreatedUpdated'],
 				returnAll: [false],
 			},
 		},
@@ -743,7 +721,7 @@ export const dealFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['deal'],
-				operation: ['getRecent'],
+				operation: ['getRecentlyCreatedUpdated'],
 			},
 		},
 		options: [
