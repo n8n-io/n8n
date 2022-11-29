@@ -945,22 +945,48 @@ export const companyFields: INodeProperties[] = [
 			},
 			{
 				displayName: 'Company Properties to Include',
-				name: 'properties',
-				type: 'multiOptions',
-				typeOptions: {
-					loadOptionsMethod: 'getCompanyProperties',
-				},
-				default: [],
+				name: 'propertiesCollection',
+				type: 'fixedCollection',
+				default: {},
+				options: [
+					{
+						name: 'propertiesValues',
+						displayName: 'Companies Properties to Include',
+						values: [
+							{
+								displayName: 'Companies Properties to Include',
+								name: 'properties',
+								type: 'multiOptions',
+								typeOptions: {
+									loadOptionsMethod: 'getCompanyProperties',
+								},
+								default: [],
+								description:
+									'<p>Used to include specific companies properties in the results. By default, the results will only include Company ID and will not include the values for any properties for your Company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
+							},
+							{
+								displayName: 'Include',
+								name: 'propertyMode',
+								type: 'options',
+								options: [
+									{
+										name: 'Value And History',
+										value: 'valueAndHistory',
+									},
+									{
+										name: 'Value Only',
+										value: 'valueOnly',
+									},
+								],
+								default: 'valueAndHistory',
+								description:
+									'Specify if the current value for a property should be fetched, or the value and all the historical values for that property',
+							},
+						],
+					},
+				],
 				description:
-					'<p>Used to include specific company properties in the results. By default, the results will only include company ID and will not include the values for any properties for your companies.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
-			},
-			{
-				displayName: 'Properties With History',
-				name: 'propertiesWithHistory',
-				type: 'string',
-				default: '',
-				description:
-					"Works similarly to properties=, but this parameter will include the history for the specified property, instead of just including the current value. Use this parameter when you need the full history of changes to a property's value.",
+					'<p>Used to include specific company properties in the results. By default, the results will only include Company ID and will not include the values for any properties for your Company.</p><p>Including this parameter will include the data for the specified property in the results. You can include this parameter multiple times to request multiple properties separated by a comma: <code>,</code>.</p>. Choose from the list, or specify IDs using an <a href="https://docs.n8n.io/code-examples/expressions/">expression</a>.',
 			},
 		],
 	},

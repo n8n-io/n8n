@@ -2077,16 +2077,22 @@ export class HubspotV2 implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/methods/companies/get-all-companies
 						if (operation === 'getAll') {
-							const options = this.getNodeParameter('options', i) as IDataObject;
+							const additionalFields = this.getNodeParameter('options', i) as IDataObject;
 							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
-							if (options.includeMergeAudits) {
-								qs.includeMergeAudits = options.includeMergeAudits as boolean;
+							if (additionalFields.formSubmissionMode) {
+								qs.formSubmissionMode = additionalFields.formSubmissionMode as string;
 							}
-							if (options.properties) {
-								qs.properties = options.properties as string[];
+							if (additionalFields.listMerberships) {
+								qs.showListMemberships = additionalFields.listMerberships as boolean;
 							}
-							if (options.propertiesWithHistory) {
-								qs.propertiesWithHistory = (options.propertiesWithHistory as string).split(',');
+							if (additionalFields.propertiesCollection) {
+								const propertiesValues = additionalFields.propertiesCollection // @ts-ignore
+									.propertiesValues as IDataObject;
+								const properties = propertiesValues.properties as string | string[];
+								qs.properties = !Array.isArray(propertiesValues.properties)
+									? (properties as string).split(',')
+									: properties;
+								qs.propertyMode = snakeCase(propertiesValues.propertyMode as string);
 							}
 							const endpoint = `/companies/v2/companies/paged`;
 							if (returnAll) {
