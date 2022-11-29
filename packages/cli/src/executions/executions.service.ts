@@ -50,6 +50,7 @@ export class ExecutionsService {
 	 */
 	static async getWorkflowIdsForUser(user: User): Promise<number[]> {
 		// Get all workflows using owner role
+		console.log('FE list called');
 		return getSharedWorkflowIds(user, ['owner']);
 	}
 
@@ -227,7 +228,7 @@ export class ExecutionsService {
 
 		const executions = await query.getMany();
 
-		const { count, estimated } = await ExecutionsService.getExecutionsCount(
+		const { count, estimated } = await this.getExecutionsCount(
 			countFilter as IDataObject,
 			req.user,
 		);
