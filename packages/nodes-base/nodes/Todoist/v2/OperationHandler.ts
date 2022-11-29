@@ -199,10 +199,9 @@ export class UpdateHandler implements OperationHandler {
 			body.due_lang = updateFields.dueLang as string;
 		}
 
-		const responseData = await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body);
-		return {
-			data: responseData,
-		};
+		await todoistApiRequest.call(ctx, 'POST', `/tasks/${id}`, body);
+
+		return { success: true };
 	}
 }
 
