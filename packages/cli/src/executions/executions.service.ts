@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { validate as jsonSchemaValidate } from 'jsonschema';
-import { deepCopy, IDataObject, LoggerProxy, JsonObject, jsonParse } from 'n8n-workflow';
+import { deepCopy, IDataObject, LoggerProxy, JsonObject, jsonParse, Workflow } from 'n8n-workflow';
 import { FindOperator, In, IsNull, LessThanOrEqual, Not, Raw } from 'typeorm';
 import * as ActiveExecutions from '@/ActiveExecutions';
 import config from '@/config';
@@ -9,12 +10,15 @@ import {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 	IExecutionsListResponse,
+	IWorkflowBase,
 	IWorkflowExecutionDataProcess,
 } from '@/Interfaces';
+import { NodeTypes } from '@/NodeTypes';
 import * as Queue from '@/Queue';
 import type { ExecutionRequest } from '@/requests';
 import * as ResponseHelper from '@/ResponseHelper';
 import { getSharedWorkflowIds } from '@/WorkflowHelpers';
+import { WorkflowRunner } from '@/WorkflowRunner';
 import { DatabaseType, Db, GenericHelpers } from '..';
 
 interface IGetExecutionsQueryFilter {
@@ -288,5 +292,127 @@ export class ExecutionsService {
 			id: id.toString(),
 			...rest,
 		};
+	}
+
+	static async retryExecution(
+		req: ExecutionRequest.Retry,
+		sharedWorkflowIds: number[],
+	): Promise<boolean> {
+		if (!sharedWorkflowIds.length) return false;
+
+		const { id: executionId } = req.params;
+		const execution = await Db.collections.Execution.findOne({
+			where: {
+				id: executionId,
+				workflowId: In(sharedWorkflowIds),
+			},
+		});
+
+		if (!execution) {
+			LoggerProxy.info(
+				'Attempt to retry an execution was blocked due to insufficient permissions',
+				{
+					userId: req.user.id,
+					executionId,
+				},
+			);
+			throw new ResponseHelper.NotFoundError(
+				`The execution with the ID "${executionId}" does not exist.`,
+			);
+		}
+
+		const fullExecutionData = ResponseHelper.unflattenExecutionData(execution);
+
+		if (fullExecutionData.finished) {
+			throw new Error('The execution succeeded, so it cannot be retried.');
+		}
+
+		const executionMode = 'retry';
+
+		fullExecutionData.workflowData.active = false;
+
+		// Start the workflow
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode,
+			executionData: fullExecutionData.data,
+			retryOf: req.params.id,
+			workflowData: fullExecutionData.workflowData,
+			userId: req.user.id,
+		};
+
+		const { lastNodeExecuted } = data.executionData!.resultData;
+
+		if (lastNodeExecuted) {
+			// Remove the old error and the data of the last run of the node that it can be replaced
+			delete data.executionData!.resultData.error;
+			const { length } = data.executionData!.resultData.runData[lastNodeExecuted];
+			if (
+				length > 0 &&
+				data.executionData!.resultData.runData[lastNodeExecuted][length - 1].error !== undefined
+			) {
+				// Remove results only if it is an error.
+				// If we are retrying due to a crash, the information is simply success info from last node
+				data.executionData!.resultData.runData[lastNodeExecuted].pop();
+				// Stack will determine what to run next
+			}
+		}
+
+		if (req.body.loadWorkflow) {
+			// Loads the currently saved workflow to execute instead of the
+			// one saved at the time of the execution.
+			const workflowId = fullExecutionData.workflowData.id as string;
+			const workflowData = (await Db.collections.Workflow.findOne(workflowId)) as IWorkflowBase;
+
+			if (workflowData === undefined) {
+				throw new Error(
+					`The workflow with the ID "${workflowId}" could not be found and so the data not be loaded for the retry.`,
+				);
+			}
+
+			data.workflowData = workflowData;
+			const nodeTypes = NodeTypes();
+			const workflowInstance = new Workflow({
+				id: workflowData.id as string,
+				name: workflowData.name,
+				nodes: workflowData.nodes,
+				connections: workflowData.connections,
+				active: false,
+				nodeTypes,
+				staticData: undefined,
+				settings: workflowData.settings,
+			});
+
+			// Replace all of the nodes in the execution stack with the ones of the new workflow
+			for (const stack of data.executionData!.executionData!.nodeExecutionStack) {
+				// Find the data of the last executed node in the new workflow
+				const node = workflowInstance.getNode(stack.node.name);
+				if (node === null) {
+					LoggerProxy.error('Failed to retry an execution because a node could not be found', {
+						userId: req.user.id,
+						executionId,
+						nodeName: stack.node.name,
+					});
+					throw new Error(
+						`Could not find the node "${stack.node.name}" in workflow. It probably got deleted or renamed. Without it the workflow can sadly not be retried.`,
+					);
+				}
+
+				// Replace the node data in the stack that it really uses the current data
+				stack.node = node;
+			}
+		}
+
+		const workflowRunner = new WorkflowRunner();
+		const retriedExecutionId = await workflowRunner.run(data);
+
+		const executionData = await ActiveExecutions.getInstance().getPostExecutePromise(
+			retriedExecutionId,
+		);
+
+		if (!executionData) {
+			throw new Error('The retry did not start for an unknown reason.');
+		}
+
+		return !!executionData.finished;
 	}
 }

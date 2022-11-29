@@ -49,3 +49,14 @@ EEExecutionsController.get(
 		},
 	),
 );
+
+/**
+ * POST /executions/:id/retry
+ */
+EEExecutionsController.post(
+	'/:id/retry',
+	ResponseHelper.send(async (req: ExecutionRequest.Retry): Promise<boolean> => {
+		const sharedWorkflowIds = await EEExecutionsService.getWorkflowIdsForUser(req.user);
+		return EEExecutionsService.retryExecution(req, sharedWorkflowIds);
+	}),
+);
