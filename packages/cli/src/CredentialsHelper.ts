@@ -468,6 +468,14 @@ export class CredentialsHelper extends ICredentialsHelper {
 	private getCredentialTestFunction(
 		credentialType: string,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
+		// Check if test is defined on credentials
+		const type = this.credentialTypes.getByName(credentialType);
+		if (type.test) {
+			return {
+				testRequest: type.test,
+			};
+		}
+
 		const nodeTypesToTestWith = this.credentialTypes.getNodeTypesToTestWith(credentialType);
 		for (const nodeName of nodeTypesToTestWith) {
 			const node = this.nodeTypes.getByName(nodeName);
@@ -513,14 +521,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 					}
 				}
 			}
-		}
-
-		// Check if test is defined on credentials
-		const type = this.credentialTypes.getByName(credentialType);
-		if (type.test) {
-			return {
-				testRequest: type.test,
-			};
 		}
 
 		return undefined;
