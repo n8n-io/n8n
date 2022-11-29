@@ -39,6 +39,7 @@ import {
 	IHttpRequestHelper,
 	INodeTypeData,
 	INodeTypes,
+	ICredentialTypes,
 } from 'n8n-workflow';
 
 import * as Db from '@/Db';
@@ -47,25 +48,32 @@ import * as WorkflowExecuteAdditionalData from '@/WorkflowExecuteAdditionalData'
 import { User } from '@db/entities/User';
 import { CredentialsEntity } from '@db/entities/CredentialsEntity';
 import { NodeTypes } from '@/NodeTypes';
-import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { CredentialTypes } from '@/CredentialTypes';
+import { CredentialsOverwrites } from '@/CredentialsOverwrites';
 import { whereClause } from './UserManagement/UserManagementHelper';
+import { RESPONSE_ERROR_MESSAGES } from './constants';
 
 const mockNodesData: INodeTypeData = {};
 const mockNodeTypes: INodeTypes = {
-	getAll(): Array<INodeType | IVersionedNodeType> {
-		return Object.values(mockNodesData).map((data) => data.type);
+	getByName(nodeType: string): INodeType | IVersionedNodeType {
+		return mockNodesData[nodeType]?.type;
 	},
-	getByNameAndVersion(nodeType: string, version?: number): INodeType | undefined {
-		if (mockNodesData[nodeType] === undefined) {
-			return undefined;
+	getByNameAndVersion(nodeType: string, version?: number): INodeType {
+		if (!mockNodesData[nodeType]) {
+			throw new Error(`${RESPONSE_ERROR_MESSAGES.NO_NODE}: ${nodeType}`);
 		}
 		return NodeHelpers.getVersionedNodeType(mockNodesData[nodeType].type, version);
 	},
 };
 
 export class CredentialsHelper extends ICredentialsHelper {
-	private credentialTypes = CredentialTypes();
+	constructor(
+		encryptionKey: string,
+		private credentialTypes: ICredentialTypes = CredentialTypes(),
+		private nodeTypes: INodeTypes = NodeTypes(),
+	) {
+		super(encryptionKey);
+	}
 
 	/**
 	 * Add the required authentication information to the request
@@ -461,24 +469,19 @@ export class CredentialsHelper extends ICredentialsHelper {
 		credentialType: string,
 		nodeToTestWith?: string,
 	): ICredentialTestFunction | ICredentialTestRequestData | undefined {
-		const nodeTypes = NodeTypes();
-		const allNodes = nodeTypes.getAll();
+		const nodeTypesToTestWith = nodeToTestWith
+			? [nodeToTestWith]
+			: this.credentialTypes.getNodeTypesToTestWith(credentialType);
 
-		// Check all the nodes one by one if they have a test function defined
-		for (let i = 0; i < allNodes.length; i++) {
-			const node = allNodes[i];
-
-			if (nodeToTestWith && node.description.name !== nodeToTestWith) {
-				// eslint-disable-next-line no-continue
-				continue;
-			}
+		for (const nodeName of nodeTypesToTestWith) {
+			const node = this.nodeTypes.getByName(nodeName);
 
 			// Always set to an array even if node is not versioned to not having
 			// to duplicate the logic
 			const allNodeTypes: INodeType[] = [];
 			if (node instanceof VersionedNodeType) {
 				// Node is versioned
-				allNodeTypes.push(...Object.values((node as IVersionedNodeType).nodeVersions));
+				allNodeTypes.push(...Object.values(node.nodeVersions));
 			} else {
 				// Node is not versioned
 				allNodeTypes.push(node as INodeType);
@@ -490,16 +493,12 @@ export class CredentialsHelper extends ICredentialsHelper {
 				for (const credential of nodeType.description.credentials ?? []) {
 					if (credential.name === credentialType && !!credential.testedBy) {
 						if (typeof credential.testedBy === 'string') {
-							if (Object.prototype.hasOwnProperty.call(node, 'nodeVersions')) {
+							if (node instanceof VersionedNodeType) {
 								// The node is versioned. So check all versions for test function
 								// starting with the latest
-								const versions = Object.keys((node as IVersionedNodeType).nodeVersions)
-									.sort()
-									.reverse();
+								const versions = Object.keys(node.nodeVersions).sort().reverse();
 								for (const version of versions) {
-									const versionedNode = (node as IVersionedNodeType).nodeVersions[
-										parseInt(version, 10)
-									];
+									const versionedNode = node.nodeVersions[parseInt(version, 10)];
 									if (
 										versionedNode.methods?.credentialTest &&
 										versionedNode.methods?.credentialTest[credential.testedBy]
@@ -570,8 +569,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 		if (credentialTestFunction.nodeType) {
 			nodeType = credentialTestFunction.nodeType;
 		} else {
-			const nodeTypes = NodeTypes();
-			nodeType = nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
+			nodeType = this.nodeTypes.getByNameAndVersion('n8n-nodes-base.noOp');
 		}
 
 		const node: INode = {
