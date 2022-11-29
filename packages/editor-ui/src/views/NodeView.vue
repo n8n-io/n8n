@@ -233,6 +233,7 @@ import { useCanvasStore } from '@/stores/canvas';
 import useWorkflowsEEStore from "@/stores/workflows.ee";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getAccountAge, getNodeViewTab } from '@/utils';
+import { useHistoryStore } from '@/stores/history';
 
 interface AddNodeOptions {
 	position?: XYPosition;
@@ -398,6 +399,7 @@ export default mixins(
 				useUsersStore,
 				useWorkflowsStore,
 				useWorkflowsEEStore,
+				useHistoryStore,
 			),
 			nativelyNumberSuffixedDefaults(): string[] {
 				return this.rootStore.nativelyNumberSuffixedDefaults;
@@ -2163,6 +2165,7 @@ export default mixins(
 					}
 				}
 				this.uiStore.nodeViewInitialized = true;
+				this.historyStore.reset();
 				this.workflowsStore.activeWorkflowExecution = null;
 				this.stopLoading();
 			}),
@@ -3246,6 +3249,23 @@ export default mixins(
 				await this.saveCurrentWorkflow();
 				callback?.();
 			},
+			onMoveNode({nodeName, position}: { nodeName: string, position: XYPosition }): void {
+				this.workflowsStore.updateNodeProperties({ name: nodeName, properties: {
+					position,
+				}});
+				setTimeout(() => {
+					const node = this.workflowsStore.getNodeByName(nodeName);
+					if (node) {
+						const endpoints = this.getJSPlumbEndpoints(nodeName);
+						endpoints.forEach(endpoint => {
+							endpoint.repaint();
+						});
+						// TODO: Figure out how NOT to repaint everything
+						this.instance.repaintEverything();
+						this.onNodeMoved(node);
+					}
+				}, 0);
+			},
 		},
 		async mounted() {
 			this.$titleReset();
@@ -3348,6 +3368,7 @@ export default mixins(
 			this.$root.$on('newWorkflow', this.newWorkflow);
 			this.$root.$on('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$on('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.$root.$on('nodeMove', this.onMoveNode);
 
 			dataPinningEventBus.$on('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$on('unpin-data', this.removePinDataConnections);
@@ -3363,6 +3384,7 @@ export default mixins(
 			this.$root.$off('newWorkflow', this.newWorkflow);
 			this.$root.$off('importWorkflowData', this.onImportWorkflowDataEvent);
 			this.$root.$off('importWorkflowUrl', this.onImportWorkflowUrlEvent);
+			this.$root.$off('nodeMove', this.onMoveNode);
 
 			dataPinningEventBus.$off('pin-data', this.addPinDataConnections);
 			dataPinningEventBus.$off('unpin-data', this.removePinDataConnections);

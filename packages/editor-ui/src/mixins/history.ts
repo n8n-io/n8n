@@ -86,11 +86,9 @@ export const historyHelper = mixins(deviceSupportHelpers).extend({
 			if (this.isCtrlKeyPressed(event) && event.key === 'z') {
 				event.preventDefault();
 				if (event.shiftKey) {
-					// this.redo();
-					console.log('REDO');
+					this.redo();
 				} else {
-					// this.undo();
-					console.log('UNDO');
+					this.undo();
 				}
 			}
 		},

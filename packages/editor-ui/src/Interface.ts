@@ -165,7 +165,7 @@ export interface IUpdateInformation {
 export interface INodeUpdatePropertiesInformation {
 	name: string; // Node-Name
 	properties: {
-		[key: string]: IDataObject;
+		[key: string]: IDataObject | XYPosition;
 	};
 }
 

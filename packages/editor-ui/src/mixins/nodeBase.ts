@@ -13,6 +13,7 @@ import { useWorkflowsStore } from "@/stores/workflows";
 import { useNodeTypesStore } from "@/stores/nodeTypes";
 import * as NodeViewUtils from '@/utils/nodeViewUtils';
 import { getStyleTokenValue } from "@/utils";
+import { useHistoryStore } from "@/stores/history";
 
 export const nodeBase = mixins(
 	deviceSupportHelpers,
@@ -33,6 +34,7 @@ export const nodeBase = mixins(
 			useNodeTypesStore,
 			useUIStore,
 			useWorkflowsStore,
+			useHistoryStore,
 		),
 		data (): INodeUi | null {
 			return this.workflowsStore.getNodeByName(this.name);
@@ -304,7 +306,8 @@ export const nodeBase = mixins(
 									position: newNodePosition,
 								},
 							};
-
+							const oldPosition = node.position;
+							this.historyStore.updateNodePosition(node.name, oldPosition, newNodePosition);
 							this.workflowsStore.updateNodeProperties(updateInformation);
 						});
 
