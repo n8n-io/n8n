@@ -2131,9 +2131,14 @@ export class HubspotV2 implements INodeType {
 						}
 						//https://developers.hubspot.com/docs/methods/companies/search_companies_by_domain
 						if (operation === 'searchByDomain') {
-							const domain = this.getNodeParameter('domain', i) as string;
+							let domain = this.getNodeParameter('domain', i) as string;
 							const options = this.getNodeParameter('options', i) as IDataObject;
 							const returnAll = this.getNodeParameter('returnAll', 0) as boolean;
+							if (domain.includes('https://')) {
+								domain = domain.replace('https://', '');
+							} else if (domain.includes('http://')) {
+								domain = domain.replace('http://', '');
+							}
 							const body: IDataObject = {
 								requestOptions: {},
 							};
@@ -2380,11 +2385,7 @@ export class HubspotV2 implements INodeType {
 							if (filters.includePropertyVersions) {
 								qs.includePropertyVersions = filters.includePropertyVersions as boolean;
 							}
-							if (category === 'getRecentlyCreated') {
-								endpoint = `/deals/v1/deal/recent/created`;
-							} else {
-								endpoint = `/deals/v1/deal/recent/modified`;
-							}
+							endpoint = `/deals/v1/deal/recent/created`;
 							if (returnAll) {
 								responseData = await hubspotApiRequestAllItems.call(
 									this,
@@ -2398,6 +2399,27 @@ export class HubspotV2 implements INodeType {
 								qs.count = this.getNodeParameter('limit', 0) as number;
 								responseData = await hubspotApiRequest.call(this, 'GET', endpoint, {}, qs);
 								responseData = responseData.results;
+							}
+							endpoint = `/deals/v1/deal/recent/modified`;
+							if (returnAll) {
+								responseData = await hubspotApiRequestAllItems.call(
+									this,
+									'results',
+									'GET',
+									endpoint,
+									{},
+									qs,
+								);
+							} else {
+								qs.count = this.getNodeParameter('limit', 0) as number;
+								const responseDataTemp = await hubspotApiRequest.call(
+									this,
+									'GET',
+									endpoint,
+									{},
+									qs,
+								);
+								responseData = +responseDataTemp.results;
 							}
 						}
 						if (operation === 'delete') {

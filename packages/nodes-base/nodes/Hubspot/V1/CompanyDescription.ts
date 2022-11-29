@@ -1007,6 +1007,7 @@ export const companyFields: INodeProperties[] = [
 			},
 		},
 		required: true,
+		description: "The company's website domain to search for, like n8n.io",
 		default: '',
 	},
 	{
